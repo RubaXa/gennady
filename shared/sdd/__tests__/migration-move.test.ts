@@ -4,9 +4,18 @@
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  rmSync,
+  existsSync,
+  renameSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import {
   planScopeMove,
   executeScopeMove,
@@ -14,6 +23,7 @@ import {
   renameCriticRoundHeadings,
 } from '../migration-move.ts';
 import { scanMigrationUnits, scaffoldUnitFile, unitFilePath } from '../migration-plan.ts';
+import { planMigrationFileHeaders } from '../migration-file-headers.ts';
 
 let root: string;
 
@@ -109,6 +119,25 @@ function fillPlanLayer(): void {
     mkdirSync(join(p, '..'), { recursive: true });
     writeFileSync(p, content, 'utf-8');
   }
+}
+
+function git(...args: string[]): string {
+  return execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+}
+
+function commitAll(message: string): void {
+  git('add', '-A');
+  git('-c', 'commit.gpgSign=false', 'commit', '-q', '-m', message);
+}
+
+function initHistory(): void {
+  git('init', '-q');
+  git('config', 'user.email', 'migration-test@example.com');
+  git('config', 'user.name', 'migration-test');
 }
 
 describe('migration-move', () => {
@@ -422,7 +451,7 @@ describe('migration-move', () => {
     );
   });
 
-  it('FO-6: ownership tag в теле source блокирует rewrite и не удаляется', () => {
+  it('FO-6 P1: @tasks-shaped prose в теле не является legacy header evidence и сохраняется', () => {
     mkdirSync(join(root, 'shared'), { recursive: true });
     const source = join(root, 'shared', 'demo.ts');
     const sourceBytes = [
@@ -441,10 +470,191 @@ describe('migration-move', () => {
     fillPlanLayer();
 
     const result = executeScopeMove(root, 'demo', true);
-    assert.ok(!result.ok);
-    if (!result.ok) assert.match(result.errors.join('\n'), /ownership tag.*строки 4/);
+    assert.ok(result.ok, JSON.stringify(result));
+    const migrated = readFileSync(source, 'utf8');
+    assert.match(migrated, /^\/\/ @file: demo behavior\n\/\/ @spec: DEMO-CORE\n\/\/ @consumers:/);
+    assert.match(migrated, /export const demo = true;\n\/\/ @tasks: demo-alpha/);
+  });
+
+  it('FO-6 P2: blank + declaration JSDoc после header не считается ambiguous continuation', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    writeFileSync(
+      source,
+      [
+        '/* Copyright Demo */',
+        '// @file: demo behavior',
+        '// @tasks: demo-alpha',
+        '// @consumers: DemoCommand',
+        '',
+        '/** declaration docs */',
+        'export const demo = true;',
+        '',
+      ].join('\n'),
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.strictEqual(
+      readFileSync(source, 'utf8'),
+      [
+        '/* Copyright Demo */',
+        '// @file: demo behavior',
+        '// @spec: DEMO-CORE',
+        '// @consumers: DemoCommand',
+        '',
+        '/** declaration docs */',
+        'export const demo = true;',
+        '',
+      ].join('\n')
+    );
+  });
+
+  it('FO-6 P3: deleted DONE ticket из bounded Git history сохраняет relation, но не становится owner', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    mkdirSync(join(root, 'tasks', 'archive'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const historicalTicket = join(root, 'tasks', 'archive', 'archive.task-169.md');
+    writeFileSync(
+      source,
+      '// @file: demo behavior\n// @tasks: TSK-169\n// @consumers: DemoCommand\nexport const demo = true;\n',
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    writeFileSync(
+      historicalTicket,
+      ticketWithTarget(
+        TICKET_A.replace(/demo-alpha/g, 'TSK-169').replace('**Scope:** demo', '**Scope:** archive'),
+        'shared/demo.ts'
+      ),
+      'utf8'
+    );
+    initHistory();
+    commitAll('historical ticket exists');
+    rmSync(historicalTicket);
+    commitAll('delete completed historical ticket');
+    fillPlanLayer();
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    const migrated = readFileSync(source, 'utf8');
+    assert.match(migrated, /\/\/ @spec: DEMO-CORE/);
+    assert.doesNotMatch(migrated, /@tasks:/);
+  });
+
+  it('FO-6 P3: duplicate historical/current Task-ID выбирается exact target, не глобально', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    mkdirSync(join(root, 'tasks', 'other'), { recursive: true });
+    mkdirSync(join(root, 'specs', 'other'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const originalTicket = join(root, 'tasks', 'demo', 'core', 'core.task-169.md');
+    const successorTicket = join(root, 'tasks', 'demo', 'core', 'core.task-171.md');
+    rmSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md'));
+    writeFileSync(
+      source,
+      '// @file: collision-scoped behavior\n// @tasks: TSK-169\n// @consumers: DemoCommand\n',
+      'utf8'
+    );
+    writeFileSync(
+      originalTicket,
+      ticketWithTarget(TICKET_B.replace(/demo-beta/g, 'TSK-169'), 'shared/demo.ts'),
+      'utf8'
+    );
+    initHistory();
+    commitAll('legacy TSK-169 belongs to demo target');
+    renameSync(originalTicket, successorTicket);
+    writeFileSync(
+      successorTicket,
+      readFileSync(successorTicket, 'utf8').replace(/TSK-169/g, 'TSK-171'),
+      'utf8'
+    );
+    writeFileSync(join(root, 'specs', 'other', 'other.spec.md'), '# other\n', 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'other', 'other.task-169.md'),
+      ticketWithTarget(
+        TICKET_B.replace(/demo-beta/g, 'TSK-169')
+          .replace('**Scope:** demo', '**Scope:** other')
+          .replace('**Module:** core', '**Module:** —'),
+        'shared/other.ts'
+      ),
+      'utf8'
+    );
+    commitAll('rename demo work to TSK-171 and reuse TSK-169 elsewhere');
+    fillPlanLayer();
+    const demoPlan = join(root, 'migration', 'demo', 'core', 'core.spec.migration.md');
+    writeFileSync(
+      demoPlan,
+      readFileSync(demoPlan, 'utf8').replace(
+        '| `tasks/demo/core/core.task-171.md` | TSK-171 | ? | ? |',
+        '| `tasks/demo/core/core.task-171.md` | TSK-171 | TSK-171 | `specs/demo/core/core.task.TSK-171.md` |'
+      ),
+      'utf8'
+    );
+
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(result.ok, JSON.stringify(result));
+    assert.match(readFileSync(source, 'utf8'), /\/\/ @spec: DEMO-CORE/);
+  });
+
+  it('FO-6 P3: missing frozen Git object блокирует preflight до writes', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes =
+      '// @file: missing history\n// @tasks: DELETED-1\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    initHistory();
+    commitAll('frozen input');
+    fillPlanLayer();
+    const units = scanMigrationUnits(root).units.filter((unit) => unit.scope === 'demo');
+
+    const result = planMigrationFileHeaders(root, units, 'missing-frozen-object');
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /Git history.*недоступна/);
     assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
-    assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
+    assert.doesNotMatch(
+      readFileSync(join(root, 'specs', 'demo', 'core', 'core.spec.md'), 'utf8'),
+      /SPEC_ID/
+    );
+  });
+
+  it('FO-6 P3: shallow history блокирует deleted-ticket evidence до writes', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes =
+      '// @file: shallow history\n// @tasks: DELETED-1\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    initHistory();
+    commitAll('shallow frozen input');
+    const gitDir = git('rev-parse', '--git-dir').trim();
+    writeFileSync(join(root, gitDir, 'shallow'), `${git('rev-parse', 'HEAD').trim()}\n`, 'utf8');
+    fillPlanLayer();
+    const units = scanMigrationUnits(root).units.filter((unit) => unit.scope === 'demo');
+
+    const result = planMigrationFileHeaders(root, units);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok) assert.match(result.errors.join('\n'), /Git history.*shallow/);
+    assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
   });
 
   it('FO-6: пустое обязательное значение source header блокирует V2 flip', () => {

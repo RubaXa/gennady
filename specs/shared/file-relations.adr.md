@@ -242,8 +242,16 @@ FO-2 сознательно публикует детерминированны�
 - **FO-6** входит в единый preflight/apply `sdd-migrate move --scope`: до первой записи строит
   полный план переезда, Spec ID и source headers. Existing valid `SPEC_ID` сохраняется; absent ID
   получает одноразовый proposal через `deriveInitialSpecId` с repo-wide collision check. Legacy
-  `@tasks` — только evidence candidate: каждый relation обязан восстановиться через versioned ticket
-  и exact `Target Files`/`Deleted Files`, а все evidence — дать одну owning spec. Missing,
+  `@tasks` — только evidence candidate из canonical leading source header: body/prose examples не
+  читаются как relation, declaration JSDoc после границы header не становится continuation, а
+  shebang/license и доказуемые multiline blocks сохраняются побайтово. Каждый relation обязан
+  восстановиться через versioned ticket и exact `Target Files`/`Deleted Files`, а все текущие
+  evidence — дать одну owning spec. Удалённый DONE-тикет может быть прочитан из Git history,
+  ограниченной frozen/base commit: он классифицируется только как `history` и никогда не становится
+  semantic owner. Git-proven rename делает старый ID только alias к exact-target current successor;
+  authority остаётся у successor. Historical/current ID collision разрешается exact target/path
+  evidence, не глобальным совпадением Task-ID; missing/shallow Git object приводит к fail-closed
+  blocker без ручного registry/cache. Missing,
   malformed, duplicate, unrecoverable или ambiguous mapping блокирует весь scope без partial move.
   Новый header имеет порядок `@file` → `@spec` → `@consumers`, повторный apply byte-preserving no-op,
   untouched V1 scopes не переписываются и не получают новых diagnostics.

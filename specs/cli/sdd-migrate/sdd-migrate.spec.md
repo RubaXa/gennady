@@ -42,19 +42,20 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 ## 3. Entity Inventory (Closed-World)
 
-| Name                       | Type    | Purpose                                                                                                                                                                              |
-| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `run`                      | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all`                                                                                                                  |
-| `findV1Tickets`            | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                                                                                                                                              |
-| `injectAnchors`            | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами                                                                                                                   |
-| `scaffoldExecutionLog`     | Utility | (`shared/sdd/anchor-inject`) скаффолдит `## Execution Log`, если у v1-тикета (Meta-сигнатура) его нет вообще                                                                         |
-| `hasPhasesWithoutOverview` | Utility | (`shared/sdd/anchor-inject`, B2-10) `true`, когда есть ≥1 `PHASE_P<N>`-якорь, но нет `PHASES_OVERVIEW` — фазовые ID недобываемы; ведёт к `refused` (см. D-MG011)                     |
-| `upgradeVerificationTable` | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) апгрейд 2-колоночной таблицы Verification в 3-колоночную (Role) + `PHASE_RECEIPTS:v1`-маркер |
-| `scaffoldFirstRound`       | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) скаффолдит `### Round 1` со всеми `#### P<N>`-блоками при апгрейде таблицы                   |
-| `executeScopeMove`         | Utility | Единый dry-run/write orchestration для ticket relocation, indexes и FO-6 whole-scope preflight                                                                                       |
-| `planMigrationFileHeaders` | Utility | Read-only Spec-ID/source-header plan: repo-wide evidence, scope-local writes, fail-closed blockers                                                                                   |
-| `badInvocation`            | Utility | Билдер диагностики (exit 4)                                                                                                                                                          |
-| `MigrateOutcome`           | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                                                             |
+| Name                         | Type    | Purpose                                                                                                                                                                              |
+| ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `run`                        | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all`                                                                                                                  |
+| `findV1Tickets`              | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                                                                                                                                              |
+| `injectAnchors`              | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами                                                                                                                   |
+| `scaffoldExecutionLog`       | Utility | (`shared/sdd/anchor-inject`) скаффолдит `## Execution Log`, если у v1-тикета (Meta-сигнатура) его нет вообще                                                                         |
+| `hasPhasesWithoutOverview`   | Utility | (`shared/sdd/anchor-inject`, B2-10) `true`, когда есть ≥1 `PHASE_P<N>`-якорь, но нет `PHASES_OVERVIEW` — фазовые ID недобываемы; ведёт к `refused` (см. D-MG011)                     |
+| `upgradeVerificationTable`   | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) апгрейд 2-колоночной таблицы Verification в 3-колоночную (Role) + `PHASE_RECEIPTS:v1`-маркер |
+| `scaffoldFirstRound`         | Utility | (`shared/sdd/anchor-inject`, унаследовано от пачки 22/E-06 — не документировано раньше) скаффолдит `### Round 1` со всеми `#### P<N>`-блоками при апгрейде таблицы                   |
+| `executeScopeMove`           | Utility | Единый dry-run/write orchestration для ticket relocation, indexes и FO-6 whole-scope preflight                                                                                       |
+| `planMigrationFileHeaders`   | Utility | Read-only Spec-ID/source-header plan: repo-wide evidence, scope-local writes, fail-closed blockers                                                                                   |
+| `parseSourceOwnershipHeader` | Utility | Единый parser canonical leading `//`/`#` ownership header; body/prose tags не становятся migration evidence                                                                          |
+| `badInvocation`              | Utility | Билдер диагностики (exit 4)                                                                                                                                                          |
+| `MigrateOutcome`             | Type    | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                                                             |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -92,7 +93,14 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
   только для фактически мигрируемого scope. Valid explicit ID сохраняется; absent ID получает только
   collision-checked migration proposal. Canonical source rewrite разрешён лишь при одном owning spec
   и полном восстановлении legacy relations через exact ticket targets. Любой blocker возвращает
-  полный список ошибок и запрещает move/header writes. Второй apply после успешного move — no-op.
+  полный список ошибок и запрещает move/header writes. Legacy `@tasks` читается только из canonical
+  leading header: optional shebang/license сохраняются, multiline continuations принадлежат своему
+  tag block, а blank + declaration JSDoc/block comment завершает header. Duplicate, empty и реально
+  неоднозначные header blocks остаются fail-closed. Для удалённого DONE-тикета preflight может
+  прочитать exact target из Git history, ограниченной frozen `HEAD`; такая связь является только
+  `history`, не semantic-owner. Для Git-proven rename старый ID является только alias к exact-target
+  current successor; semantic-owner выводится из successor, не alias. Shallow/missing Git object
+  блокирует восстановление. Второй apply после успешного move — no-op.
 
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -118,7 +126,7 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 ```
 cli/cmd/sdd-migrate/  index.ts · sdd-migrate.cmd.ts · sdd-migrate.types.ts · help.ts · __tests__/sdd-migrate.cmd.test.ts
 shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
-shared/sdd/migration-move.ts + migration-file-headers.ts + __tests__/migration-move.test.ts
+shared/sdd/migration-move.ts + migration-file-headers.ts + source-ownership-header.ts + __tests__/migration-move.test.ts
 ```
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
@@ -207,11 +215,19 @@ shared/sdd/migration-move.ts + migration-file-headers.ts + __tests__/migration-m
 ### D-MG012 — FO-6 ownership migration является частью whole-scope preflight `move`
 
 - **Status:** active · **Why:** только `move` фактически удаляет `tasks/<scope>/` и включает строгий
-V2 scope; отдельная header-команда могла бы создать полумигрированный V1. Поэтому dry-run показывает
-ticket moves + Spec-ID/header plan вместе, а `--write` сначала завершает repo-wide preflight и при
-любом blocker не пишет ничего. Path-derived Spec ID используется один раз как migration proposal;
-после материализации explicit ID остаётся authority при rename/move spec path. **Risk:** полный
-ticket corpus читается на preflight без persistent cache (FO-7 остаётся deferred).
+  V2 scope; отдельная header-команда могла бы создать полумигрированный V1. Поэтому dry-run показывает
+  ticket moves + Spec-ID/header plan вместе, а `--write` сначала завершает repo-wide preflight и при
+  любом blocker не пишет ничего. Path-derived Spec ID используется один раз как migration proposal;
+  после материализации explicit ID остаётся authority при rename/move spec path. **Risk:** полный
+  ticket corpus читается на preflight без persistent cache (FO-7 остаётся deferred).
+
+Уточнение принятого D-40 для самомиграции: parser legacy evidence не сканирует body/prose и не
+считает declaration JSDoc продолжением шапки. Удалённые DONE-тикеты восстанавливаются read-only из
+истории, достижимой от frozen `HEAD`, по exact target. Историческая запись сохраняет provenance, но
+никогда не назначает владельца; Git-proven rename разрешает старый ID только через exact current
+successor. Совпавшие старый и текущий Task-ID разрешаются по exact target, а не глобально по строке
+ID. Недоступный/shallow object даёт blocker вместо догадки или ручного registry.
+
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

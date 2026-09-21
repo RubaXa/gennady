@@ -3,6 +3,7 @@
 // @tasks: N/A
 
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { inspectRepoPath } from '../common/repo-path.ts';
 import { fileRelationTicketFromContent, resolveFileRelations } from './file-relations.ts';
@@ -10,10 +11,15 @@ import { detectScopeFlowVersion, ticketFlowVersion } from './flow.ts';
 import { isSddSourceFile } from './source-extensions.ts';
 import { extractSection } from './section.ts';
 import { collectSpecIdEntries, deriveInitialSpecId, parseSpecId } from './spec-id.ts';
-import { parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
+import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
 import { parseTasksHeader } from './tasks-append-only.ts';
 import { scanMigrationUnits, type SpecUnit } from './migration-plan.ts';
 import { collectTicketCorpus } from './ticket-resolve.ts';
+import {
+  parseSourceOwnershipHeader,
+  type ParsedSourceOwnershipHeader,
+} from './source-ownership-header.ts';
+import { injectAnchors } from './anchor-inject.ts';
 
 /** @purpose One byte-exact file rewrite approved by the whole-scope FO-6 preflight. */
 type MigrationFileRewrite = {
@@ -39,6 +45,19 @@ type OwnedTicket = {
   targets: string[];
   targetError: string | null;
 };
+
+type HistoricalTicket = {
+  taskId: string;
+  ticketFile: string;
+  deletionCommit: string;
+  targets: string[];
+  targetError: string | null;
+  successorTaskId: string | null;
+};
+
+type HistoricalTicketCorpus =
+  | { ok: true; ticketsById: Map<string, HistoricalTicket[]> }
+  | { ok: false; error: string };
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage']);
 
@@ -154,11 +173,10 @@ function explicitSpecPlans(
   return { idBySpec, rewrites };
 }
 
-function ticketTargets(
+function ticketTargetsFromContent(
   repoRoot: string,
-  ticketFile: string
+  content: string
 ): { targets: string[]; error: string | null } {
-  const content = readFileSync(join(repoRoot, ticketFile), 'utf8');
   const overview = extractSection(content, 'PHASES_OVERVIEW');
   if (overview.status === 'not_found') return { targets: [], error: null };
   if (overview.status !== 'ok') return { targets: [], error: 'PHASES_OVERVIEW malformed' };
@@ -176,6 +194,140 @@ function ticketTargets(
     }
   }
   return { targets: [...new Set(targets)].sort(compareText), error: null };
+}
+
+function ticketTargets(
+  repoRoot: string,
+  ticketFile: string
+): { targets: string[]; error: string | null } {
+  return ticketTargetsFromContent(repoRoot, readFileSync(join(repoRoot, ticketFile), 'utf8'));
+}
+
+function gitText(repoRoot: string, args: string[]): string {
+  return execFileSync('git', args, {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 64 * 1024 * 1024,
+  });
+}
+
+function historicalTicketCorpus(repoRoot: string, historyRef: string): HistoricalTicketCorpus {
+  try {
+    gitText(repoRoot, ['cat-file', '-e', `${historyRef}^{commit}`]);
+    if (gitText(repoRoot, ['rev-parse', '--is-shallow-repository']).trim() === 'true') {
+      return {
+        ok: false,
+        error: `Git history для ${historyRef} shallow — удалённые ticket objects недоказуемы`,
+      };
+    }
+    const deleted = gitText(repoRoot, [
+      'log',
+      '--format=commit:%H',
+      '--diff-filter=D',
+      '--name-only',
+      '--no-renames',
+      historyRef,
+      '--',
+      'tasks',
+      'specs',
+    ]);
+    const candidates: Array<{ commit: string; path: string }> = [];
+    let commit = '';
+    for (const raw of deleted.split(/\r?\n/)) {
+      const line = raw.trim();
+      const marker = /^commit:([0-9a-f]{40})$/.exec(line);
+      if (marker?.[1]) {
+        commit = marker[1];
+        continue;
+      }
+      if (
+        commit &&
+        line !== '' &&
+        (/(?:^|\/)tasks\/.*\.task-[^/]+\.md$/.test(line) ||
+          /(?:^|\/)specs\/.*\.task\.[^/]+\.md$/.test(line))
+      ) {
+        candidates.push({ commit, path: line });
+      }
+    }
+
+    const ticketsById = new Map<string, HistoricalTicket[]>();
+    const seen = new Set<string>();
+    const renameMaps = new Map<string, Map<string, string>>();
+    for (const candidate of candidates) {
+      let content: string;
+      try {
+        content = gitText(repoRoot, ['show', `${candidate.commit}^:${candidate.path}`]);
+      } catch (error) {
+        return {
+          ok: false,
+          error: `Git object ${candidate.commit}^:${candidate.path} недоступен: ${error instanceof Error ? error.message : String(error)}`,
+        };
+      }
+      const anchored = injectAnchors(content).text;
+      const metaSection = extractSection(anchored, 'META');
+      if (metaSection.status !== 'ok') continue;
+      const meta = parseMetaInfo(metaSection.content);
+      if (!meta.taskId) continue;
+      let successorTaskId: string | null = null;
+      if (!/\bDONE\b/.test(meta.status ?? '')) {
+        let renames = renameMaps.get(candidate.commit);
+        if (!renames) {
+          renames = new Map<string, string>();
+          const diff = gitText(repoRoot, [
+            'diff-tree',
+            '--no-commit-id',
+            '--name-status',
+            '-r',
+            '-M',
+            `${candidate.commit}^`,
+            candidate.commit,
+          ]);
+          for (const line of diff.split(/\r?\n/)) {
+            const [status, from, to] = line.split('\t');
+            if (status?.startsWith('R') && from && to) renames.set(from, to);
+          }
+          renameMaps.set(candidate.commit, renames);
+        }
+        const renamedTo = renames.get(candidate.path);
+        if (!renamedTo) continue;
+        const successor = injectAnchors(
+          gitText(repoRoot, ['show', `${candidate.commit}:${renamedTo}`])
+        ).text;
+        const successorMeta = extractSection(successor, 'META');
+        if (successorMeta.status !== 'ok') continue;
+        successorTaskId = parseMetaInfo(successorMeta.content).taskId;
+        if (!successorTaskId || successorTaskId === meta.taskId) continue;
+      }
+      const parsedTargets = ticketTargetsFromContent(repoRoot, anchored);
+      const key = `${meta.taskId}\0${candidate.path}\0${successorTaskId ?? ''}\0${parsedTargets.targets.join('\0')}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const record: HistoricalTicket = {
+        taskId: meta.taskId,
+        ticketFile: candidate.path,
+        deletionCommit: candidate.commit,
+        targets: parsedTargets.targets,
+        targetError: parsedTargets.error,
+        successorTaskId,
+      };
+      const records = ticketsById.get(meta.taskId) ?? [];
+      records.push(record);
+      records.sort((left, right) =>
+        compareText(
+          `${left.ticketFile}\0${left.deletionCommit}`,
+          `${right.ticketFile}\0${right.deletionCommit}`
+        )
+      );
+      ticketsById.set(meta.taskId, records);
+    }
+    return { ok: true, ticketsById };
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Git history для ${historyRef} недоступна: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 function ownedTickets(repoRoot: string, units: readonly SpecUnit[]): OwnedTicket[] {
@@ -323,121 +475,11 @@ function resolverClaimsFile(repoRoot: string, file: string, ticket: OwnedTicket)
   );
 }
 
-type ParsedSourceHeader = {
-  fileIndexes: number[];
-  specIndexes: number[];
-  taskIndexes: number[];
-  consumerIndexes: number[];
-  fileValue: string;
-  specValue: string;
-  consumerValue: string;
-  bodyTagIndexes: number[];
-  prefixes: string[];
-  blocks: Array<{
-    tag: 'file' | 'spec' | 'tasks' | 'consumers';
-    prefix: string;
-    start: number;
-    end: number;
-    lines: string[];
-  }>;
-  ambiguousHeaderIndexes: number[];
-};
-
-function parseSourceHeader(content: string): ParsedSourceHeader {
-  const lines = content.split(/\r?\n/);
-  let headerEnd = 0;
-  let blockComment = false;
-  for (let index = 0; index < lines.length; index += 1) {
-    const trimmed = (lines[index] ?? '').trim();
-    if (index === 0 && trimmed.startsWith('#!')) {
-      headerEnd = index + 1;
-      continue;
-    }
-    if (blockComment) {
-      headerEnd = index + 1;
-      if (trimmed.includes('*/')) blockComment = false;
-      continue;
-    }
-    if (trimmed.startsWith('/*')) {
-      headerEnd = index + 1;
-      blockComment = !trimmed.includes('*/');
-      continue;
-    }
-    if (trimmed === '' || trimmed.startsWith('//') || /^#(?:\s|@|$)/.test(trimmed)) {
-      headerEnd = index + 1;
-      continue;
-    }
-    break;
-  }
-  const result: ParsedSourceHeader = {
-    fileIndexes: [],
-    specIndexes: [],
-    taskIndexes: [],
-    consumerIndexes: [],
-    fileValue: '',
-    specValue: '',
-    consumerValue: '',
-    bodyTagIndexes: [],
-    prefixes: [],
-    blocks: [],
-    ambiguousHeaderIndexes: [],
-  };
-  const records: Array<{
-    tag: 'file' | 'spec' | 'tasks' | 'consumers';
-    prefix: string;
-    index: number;
-  }> = [];
-  lines.forEach((line, index) => {
-    const match = /^\s*(\/\/|#)\s*@(file|spec|tasks|consumers):\s*(.*)$/.exec(line);
-    if (!match) return;
-    if (index >= headerEnd) {
-      result.bodyTagIndexes.push(index);
-      return;
-    }
-    const prefix = match[1] as string;
-    const tag = match[2] as 'file' | 'spec' | 'tasks' | 'consumers';
-    const value = match[3] ?? '';
-    result.prefixes.push(prefix);
-    records.push({ tag, prefix, index });
-    if (tag === 'file') {
-      result.fileIndexes.push(index);
-      result.fileValue = value;
-    } else if (tag === 'spec') {
-      result.specIndexes.push(index);
-      result.specValue = value;
-    } else if (tag === 'tasks') result.taskIndexes.push(index);
-    else {
-      result.consumerIndexes.push(index);
-      result.consumerValue = value;
-    }
-  });
-  const claimed = new Set<number>();
-  for (const record of records) {
-    let end = record.index + 1;
-    const escapedPrefix = record.prefix === '//' ? '\\/\\/' : '#';
-    const continuation = new RegExp(`^\\s*${escapedPrefix}[ \\t]{2,}.*$`);
-    while (end < headerEnd && continuation.test(lines[end] ?? '')) end += 1;
-    for (let index = record.index; index < end; index += 1) claimed.add(index);
-    result.blocks.push({
-      tag: record.tag,
-      prefix: record.prefix,
-      start: record.index,
-      end,
-      lines: lines.slice(record.index, end),
-    });
-  }
-  if (records.length > 0) {
-    const first = records[0]?.index ?? 0;
-    for (let index = first; index < headerEnd; index += 1) {
-      if (!claimed.has(index) && (lines[index] ?? '').trim() !== '') {
-        result.ambiguousHeaderIndexes.push(index);
-      }
-    }
-  }
-  return result;
-}
-
-function renderSourceHeader(content: string, header: ParsedSourceHeader, specId: string): string {
+function renderSourceHeader(
+  content: string,
+  header: ParsedSourceOwnershipHeader,
+  specId: string
+): string {
   const newline = content.includes('\r\n') ? '\r\n' : '\n';
   const lines = content.split(/\r?\n/);
   const insertAt = Math.min(...header.blocks.map((block) => block.start));
@@ -446,7 +488,7 @@ function renderSourceHeader(content: string, header: ParsedSourceHeader, specId:
       Array.from({ length: block.end - block.start }, (_, offset) => block.start + offset)
     )
   );
-  const prefix = header.prefixes[0] as string;
+  const prefix = header.blocks[0]?.prefix as string;
   const fileBlock = header.blocks.find((block) => block.tag === 'file') as {
     lines: string[];
   };
@@ -468,11 +510,13 @@ function renderSourceHeader(content: string, header: ParsedSourceHeader, specId:
  *   an unrecoverable legacy relation; the caller must not perform any other move writes on failure.
  * @param repoRoot Absolute repository root.
  * @param scopeUnits Migration units belonging to the scope being moved.
+ * @param [historyRef] Frozen Git commit bounding deleted-ticket evidence; defaults to current HEAD.
  * @returns Whole-scope rewrites or every deterministic blocker.
  */
 export function planMigrationFileHeaders(
   repoRoot: string,
-  scopeUnits: readonly SpecUnit[]
+  scopeUnits: readonly SpecUnit[],
+  historyRef = 'HEAD'
 ): MigrationFileHeaderPlan {
   const errors: string[] = [];
   const specPlan = explicitSpecPlans(repoRoot, scopeUnits, errors);
@@ -506,6 +550,11 @@ export function planMigrationFileHeaders(
   }
 
   const sourceRewrites: MigrationFileRewrite[] = [];
+  let historical: HistoricalTicketCorpus | null = null;
+  const history = (): HistoricalTicketCorpus => {
+    historical ??= historicalTicketCorpus(repoRoot, historyRef);
+    return historical;
+  };
   const sources = collectFiles(repoRoot, (file) => isSddSourceFile(file));
   for (const absolute of sources) {
     const file = relative(repoRoot, absolute).split(sep).join('/');
@@ -519,7 +568,10 @@ export function planMigrationFileHeaders(
     );
     const referencedScopeTickets = legacyIds
       .flatMap((id) => ticketsById.get(id) ?? [])
-      .filter((ticket) => currentTicketFiles.has(ticket.ticketFile));
+      .filter(
+        (ticket) =>
+          currentTicketFiles.has(ticket.ticketFile) && resolverClaimsFile(repoRoot, file, ticket)
+      );
     if (directTickets.length === 0 && referencedScopeTickets.length === 0) continue;
 
     const evidence = new Map<string, OwnedTicket>();
@@ -529,19 +581,6 @@ export function planMigrationFileHeaders(
     for (const ticket of [...allDirectTickets, ...referencedScopeTickets]) addEvidence(ticket);
     for (const legacyId of legacyIds) {
       const matches = ticketsById.get(legacyId) ?? [];
-      const ticketFiles = [...new Set(matches.map((ticket) => ticket.ticketFile))];
-      if (ticketFiles.length === 0) {
-        errors.push(
-          `${file}: legacy @tasks relation ${legacyId} не разрешается в мигрируемом scope`
-        );
-        continue;
-      }
-      if (ticketFiles.length > 1) {
-        errors.push(
-          `${file}: legacy @tasks relation ${legacyId} неоднозначен (${ticketFiles.join(', ')})`
-        );
-        continue;
-      }
       const targetErrors = matches
         .map((ticket) => ticket.targetError)
         .filter((error): error is string => error !== null);
@@ -552,11 +591,66 @@ export function planMigrationFileHeaders(
         continue;
       }
       const claiming = matches.filter((ticket) => resolverClaimsFile(repoRoot, file, ticket));
-      if (claiming.length === 0) {
-        errors.push(`${file}: ticket ${legacyId} не объявляет файл exact Target/Deleted File`);
+      const claimingFiles = [...new Set(claiming.map((ticket) => ticket.ticketFile))];
+      if (claimingFiles.length > 1) {
+        errors.push(
+          `${file}: legacy @tasks relation ${legacyId} неоднозначен (${claimingFiles.join(', ')})`
+        );
         continue;
       }
-      for (const ticket of claiming) addEvidence(ticket);
+      if (claimingFiles.length === 1) {
+        for (const ticket of claiming) addEvidence(ticket);
+        continue;
+      }
+
+      const historicalCorpus = history();
+      if (!historicalCorpus.ok) {
+        errors.push(`${file}: legacy @tasks relation ${legacyId}: ${historicalCorpus.error}`);
+        continue;
+      }
+      const historicalMatches = historicalCorpus.ticketsById.get(legacyId) ?? [];
+      const historicalErrors = historicalMatches
+        .map((ticket) => ticket.targetError)
+        .filter((error): error is string => error !== null);
+      if (historicalErrors.length > 0) {
+        errors.push(
+          `${file}: historical ticket ${legacyId} не даёт проверяемый target (${historicalErrors.join('; ')})`
+        );
+        continue;
+      }
+      const historicalClaiming = historicalMatches.filter((ticket) =>
+        ticket.targets.includes(file)
+      );
+      const historicalFiles = [...new Set(historicalClaiming.map((ticket) => ticket.ticketFile))];
+      if (historicalFiles.length === 0) {
+        errors.push(
+          `${file}: legacy @tasks relation ${legacyId} не разрешается exact current/historical target`
+        );
+        continue;
+      }
+      if (historicalFiles.length > 1) {
+        errors.push(
+          `${file}: historical @tasks relation ${legacyId} неоднозначен (${historicalFiles.join(', ')})`
+        );
+        continue;
+      }
+      const aliases = historicalClaiming.filter((ticket) => ticket.successorTaskId !== null);
+      for (const alias of aliases) {
+        const successorMatches = (ticketsById.get(alias.successorTaskId as string) ?? []).filter(
+          (ticket) => resolverClaimsFile(repoRoot, file, ticket)
+        );
+        const successorFiles = [...new Set(successorMatches.map((ticket) => ticket.ticketFile))];
+        if (successorFiles.length !== 1) {
+          errors.push(
+            `${file}: historical alias ${legacyId} → ${alias.successorTaskId} не разрешается в один exact current ticket`
+          );
+          continue;
+        }
+        for (const ticket of successorMatches) addEvidence(ticket);
+      }
+      // A deleted DONE ticket proves history only. It deliberately does not enter `evidence`, so
+      // it can preserve provenance but can never select or replace the semantic owner. A proven
+      // rename alias can point at an exact current successor, but only that successor is evidence.
     }
     for (const ticket of evidence.values()) {
       if (ticket.targetError) {
@@ -581,13 +675,11 @@ export function planMigrationFileHeaders(
       errors.push(`${file}: owning spec ${ownerSpec} не имеет валидного/proposed Spec ID`);
       continue;
     }
-    const header = parseSourceHeader(before);
-    if (header.bodyTagIndexes.length > 0) {
-      errors.push(
-        `${file}: ownership tag вне canonical leading header (строки ${header.bodyTagIndexes.map((index) => index + 1).join(', ')})`
-      );
-      continue;
-    }
+    const header = parseSourceOwnershipHeader(before);
+    const fileBlocks = header.blocks.filter((block) => block.tag === 'file');
+    const specBlocks = header.blocks.filter((block) => block.tag === 'spec');
+    const taskBlocks = header.blocks.filter((block) => block.tag === 'tasks');
+    const consumerBlocks = header.blocks.filter((block) => block.tag === 'consumers');
     if (header.ambiguousHeaderIndexes.length > 0) {
       errors.push(
         `${file}: ownership header содержит неоднозначные comment lines (строки ${header.ambiguousHeaderIndexes.map((index) => index + 1).join(', ')})`
@@ -595,33 +687,33 @@ export function planMigrationFileHeaders(
       continue;
     }
     if (
-      header.fileIndexes.length !== 1 ||
-      header.consumerIndexes.length !== 1 ||
-      header.fileValue.trim() === '' ||
-      header.consumerValue.trim() === ''
+      fileBlocks.length !== 1 ||
+      consumerBlocks.length !== 1 ||
+      fileBlocks[0]?.value.trim() === '' ||
+      consumerBlocks[0]?.value.trim() === ''
     ) {
       errors.push(
         `${file}: canonical header требует ровно один непустой @file и один непустой @consumers`
       );
       continue;
     }
-    if (new Set(header.prefixes).size !== 1) {
+    if (new Set(header.blocks.map((block) => block.prefix)).size !== 1) {
       errors.push(`${file}: canonical header смешивает comment prefixes // и #`);
       continue;
     }
-    if (header.taskIndexes.length > 1 || header.specIndexes.length > 1) {
+    if (taskBlocks.length > 1 || specBlocks.length > 1) {
       errors.push(`${file}: дублированный @tasks/@spec header неоднозначен`);
       continue;
     }
-    const tasksBlock = header.blocks.find((block) => block.tag === 'tasks');
-    const specBlock = header.blocks.find((block) => block.tag === 'spec');
+    const tasksBlock = taskBlocks[0];
+    const specBlock = specBlocks[0];
     if ((tasksBlock?.lines.length ?? 1) > 1 || (specBlock?.lines.length ?? 1) > 1) {
       errors.push(`${file}: @tasks/@spec continuation нельзя безопасно перенести`);
       continue;
     }
-    if (header.specIndexes.length === 1 && header.specValue !== specId) {
+    if (specBlocks.length === 1 && specBlocks[0]?.value !== specId) {
       errors.push(
-        `${file}: существующий @spec ${header.specValue || '(empty)'} конфликтует с ${specId}`
+        `${file}: существующий @spec ${specBlocks[0]?.value || '(empty)'} конфликтует с ${specId}`
       );
       continue;
     }
