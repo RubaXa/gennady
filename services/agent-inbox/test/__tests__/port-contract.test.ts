@@ -1,6 +1,6 @@
 // @file: port-contract tests — cassette replay and fake/real drift diagnostics.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-166
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,7 +72,7 @@ function makeRecordingReplies(
   );
 }
 
-describe('TSK-166 port infrastructure', () => {
+describe('AI-seed port infrastructure', () => {
   it('cassette replays real response shape through real adapter', async () => {
     const cassetteDir = makeTestTmpDir('tsk-166-cassette-');
     directories.push(cassetteDir);

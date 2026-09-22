@@ -1,6 +1,6 @@
 // @file: Tests for the shared stop-word finder.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: TSK-105
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

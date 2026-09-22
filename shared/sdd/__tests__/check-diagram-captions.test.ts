@@ -1,7 +1,7 @@
 // @file: Unit tests for checkDiagramCaptions — every diagram in a mandated section needs a
-// `_<фраза> — <ACR>-REQ-<N>._` caption right after the closing fence; a cited ID must resolve.
+//   `_<фраза> — <ACR>-REQ-<N>._` caption right after the closing fence; a cited ID must resolve.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

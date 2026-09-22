@@ -1,5 +1,25 @@
 # Module: inbox-chat
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-CHAT
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -42,6 +62,8 @@ await handoffs.acknowledgeDelivery(handoff.id, browserDeliveryReceipt);
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### Chat, turns and anchors
 
 - **Public Operations:** ask, stream, attach anchor, route follow-up to required session.
@@ -62,11 +84,15 @@ await handoffs.acknowledgeDelivery(handoff.id, browserDeliveryReceipt);
 - **Lifecycle:** generation creates a pending handoff; baseline advances only after the browser confirms successful clipboard write.
 - **Errors & Degradation:** an unacknowledged handoff remains pending and cannot consume the delta baseline.
 - **Consumers:** operator and external DEV-agent.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 - Handoff is available on every tracked MR, independent of participation role.
 - Default repeat handoff contains changed artifact fragments and required artifact pointers.
@@ -83,6 +109,8 @@ await handoffs.acknowledgeDelivery(handoff.id, browserDeliveryReceipt);
 - **Invariants:** generation or failed clipboard write never advances the baseline.
 - **Runtime Backing:** real local generator plus browser receipt through API; deterministic test adapters.
 - **Verification Levels:** unit, integration and browser e2e.
+
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -112,7 +140,11 @@ inbox-chat/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 - `D-CHAT-01`: existing fix-task copy is extracted and extended, not reimplemented in React.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

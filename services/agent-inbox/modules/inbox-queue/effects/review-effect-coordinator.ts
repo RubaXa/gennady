@@ -1,6 +1,6 @@
 // @file: ReviewEffectCoordinator — sole dispatcher and reconciler for dependency-aware guarded and independent effects.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: scheduler/API commands
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import { createHash } from 'node:crypto';

@@ -1,6 +1,6 @@
 // @file: Finite real-CLI composition harness from empty SDD state through infra closure.
+// @spec: CLI
 // @consumers: sdd-new, sdd-check, sdd-task, sdd-verify, sdd-log, sdd-sync
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';

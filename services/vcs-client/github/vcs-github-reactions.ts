@@ -1,6 +1,6 @@
 // @file: GitHub reactions adapter — add/remove emoji reactions on issue/PR comments.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGithubClient
-// @tasks: TSK-98
 
 import { VcsClientReactions } from '../abstract/vcs-client-reactions.ts';
 import type { VcsReactionQuery } from '../entities/vcs-reaction-query.type.ts';

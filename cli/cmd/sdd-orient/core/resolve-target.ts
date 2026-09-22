@@ -1,4 +1,5 @@
 // @file: Resolve the sdd-orient argument — a spec path, or a scope name via the portal — to a spec file. Mirrors ticket-resolve.ts's path-or-id shape.
+// @spec: CLI-SDD-ORIENT
 // @consumers: SddOrientCommand
 
 import { resolve, join } from 'node:path';

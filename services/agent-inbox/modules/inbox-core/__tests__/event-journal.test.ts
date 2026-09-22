@@ -1,6 +1,6 @@
 // @file: Unit+integration tests for EventJournal — append/seq/since, concurrent writers, broken tail, global journal
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-156
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

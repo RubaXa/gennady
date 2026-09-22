@@ -1,6 +1,6 @@
 // @file: Explicitly allowlisted real GitLab native-effect reconciliation proof.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: operator-run node:test with an isolated writable MR
-// @tasks: TSK-174
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

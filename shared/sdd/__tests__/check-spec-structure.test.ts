@@ -1,6 +1,6 @@
 // @file: Unit tests for checkSpecStructure (spec-file section-anchor balance).
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

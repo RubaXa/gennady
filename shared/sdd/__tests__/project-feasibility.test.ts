@@ -1,6 +1,6 @@
 // @file: Project proof over the unchanged six-column V2 Bootstrap Requirements format.
+// @spec: SHARED
 // @consumers: checkProjectFeasibility, checkScaffoldDraftPlan
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

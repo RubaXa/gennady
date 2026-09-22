@@ -1,6 +1,6 @@
 // @file: vcs-approve command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-69
 
 /**
  * @purpose Print CLI help for the vcs-approve command.

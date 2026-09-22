@@ -1,6 +1,6 @@
 // @file: Unit tests for SyncCore — resolvePackageDir, scanDirectives, collectAndCompare
-// @consumers: TSK-54
-// @tasks: TSK-54
+// @spec: CLI-SYNC
+// @consumers: SYN-tests
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

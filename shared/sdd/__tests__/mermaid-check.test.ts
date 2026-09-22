@@ -1,6 +1,6 @@
 // @file: Unit tests for checkSpecMermaid — real mermaid-parser validation of ```mermaid blocks.
+// @spec: SHARED
 // @consumers: mermaid-check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

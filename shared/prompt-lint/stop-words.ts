@@ -1,7 +1,7 @@
 // @file: Shared stop-word dictionary for prompts and generated artifacts — catches bookish words,
 //   calques and slang that leak into operator output (AUTHORING §6, writing-style).
+// @spec: SHARED
 // @consumers: inbox-review-plan validate; (later) gennady lint prompt-check
-// @tasks: TSK-105
 
 // #region START_DICTIONARY
 

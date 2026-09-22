@@ -1,6 +1,6 @@
 // @file: Public value object types for the agent-run module API surface.
+// @spec: AGENT-RUN-CORE
 // @consumers: run, AgentEngine implementations, CLI commands, agent consumers
-// @tasks: TSK-62, TSK-64
 
 /**
  * @purpose Input to `run()`: describes the task, working directories, and execution constraints.

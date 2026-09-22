@@ -1,6 +1,6 @@
 // @file: SddNewCommand — CLI entry for gennady sdd-new: scaffold one SDD v2 artifact from the shared/sdd/templates.ts registry.
+// @spec: CLI-SDD-NEW
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

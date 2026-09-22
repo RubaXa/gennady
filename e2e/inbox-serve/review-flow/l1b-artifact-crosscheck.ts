@@ -2,8 +2,8 @@
 //   в ~/.gennady/agent-inbox/reports/<mr>/. Готовит почву для группы H (recovery/self-correction,
 //   LIVE-FLOW-EVAL.md §3d): показывает РЕАЛЬНОЕ пересечение "что GitLab говорит сейчас" и "что мы
 //   уже разобрали на диске" — без записи, без перепроверки (та будет в UC-73).
+// @spec: AGENT-INBOX
 // @consumers: ручной запуск оператором
-// @tasks: agent-inbox live-flow-eval
 
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';

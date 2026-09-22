@@ -1,4 +1,5 @@
 // @file: Regression tests for recursive lazy step-package assembly in the halt audit.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: audit-halt-activation.mjs
 
 import { afterEach, describe, it } from 'node:test';

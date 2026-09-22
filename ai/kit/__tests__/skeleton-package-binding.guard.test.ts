@@ -5,8 +5,8 @@
 //   invariant). Works entirely off files on disk plus the build plan (LazyDirectiveAssembler) —
 //   never calls the deferred `sdd-step` CLI (DA-DL-15), per directive-assembly.spec.md's own
 //   SkeletonPackageBindingGuard entity description.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: CI (node:test runner)
-// @tasks: DA-lazy-asm
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -3,8 +3,8 @@
 //   the cli/harness runs at emit time (types + the three pure builders); the fluent assertion matchers a
 //   `*.trajectory.test.ts` uses live in `__tests__/trajectory-assert.ts` (test territory), so production
 //   carries no test-only surface.
+// @spec: AI-SKILLS
 // @consumers: cli (emits trajectory.json); __tests__/trajectory-assert.ts (re-exports types to matchers)
-// @tasks: N/A
 
 import type { SddEvalTailEntry } from './types.ts';
 

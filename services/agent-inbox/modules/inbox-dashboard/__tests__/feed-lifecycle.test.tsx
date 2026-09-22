@@ -1,5 +1,6 @@
 // @file: feed lifecycle tests — canonical recurring/one-shot dashboard rendering.
-// @tasks: TSK-164
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
+// @consumers: node:test
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';

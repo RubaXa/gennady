@@ -1,6 +1,6 @@
 // @file: StatusBadge ink component — visual indicator for session status.
+// @spec: AGENT-MON-CLI-UI
 // @consumers: SessionCard
-// @tasks: TSK-46
 
 import { Text } from 'ink';
 

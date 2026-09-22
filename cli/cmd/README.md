@@ -39,7 +39,7 @@ npx gennady lint ./src --autofix
 npx gennady orient
 
 # Найти файлы по задаче
-npx gennady orient --task=TSK-03
+npx gennady orient --task=DP-snaps
 
 # Кто потребляет модуль
 npx gennady orient --consumer=DbcTsLinter

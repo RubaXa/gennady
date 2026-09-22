@@ -1,8 +1,9 @@
 // @file: Extract the important artifacts out of eval sandboxes, then tear the sandboxes down.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/cli.ts (run lifecycle); ai/flow-eval/__tests__/sandbox-lifecycle.test.ts
-// A sandbox is a throwaway ~500MB copy (dist + node_modules) per scenario. Nothing durable may live
-// only inside it: this module copies the specs/judge/summary a run produces into a persistent
-// artifacts root, and then removes the sandbox directories so they can never accumulate on disk.
+//   A sandbox is a throwaway ~500MB copy (dist + node_modules) per scenario. Nothing durable may live
+//   only inside it: this module copies the specs/judge/summary a run produces into a persistent
+//   artifacts root, and then removes the sandbox directories so they can never accumulate on disk.
 
 import { cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';

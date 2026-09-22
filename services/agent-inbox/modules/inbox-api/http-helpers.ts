@@ -1,6 +1,6 @@
 // @file: HTTP helpers — sendJson, sendDomainError, sendError, parseBody shared between HttpServer and routers.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer, BoardRouter, MrRouter, AuditRouter
-// @tasks: TSK-106, TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 

@@ -1,6 +1,6 @@
 // @file: Locks that every SDD eval fixture can satisfy the required coverage gate offline.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/provision
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

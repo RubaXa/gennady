@@ -1,6 +1,6 @@
 // @file: Unit tests for checkSpecLanguage — deterministic anglicism-calque lint (warn-only).
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

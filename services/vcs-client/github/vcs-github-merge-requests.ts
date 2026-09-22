@@ -1,6 +1,6 @@
 // @file: GitHub-specific implementation of pull request file operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGithubClient
-// @tasks: TSK-30, TSK-67, TSK-73, TSK-82, TSK-84, TSK-88, TSK-90
 
 import {
   VcsClientMergeRequests,

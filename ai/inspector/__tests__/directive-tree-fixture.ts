@@ -1,3 +1,6 @@
+// @file: ai/inspector/__tests__/directive-tree-fixture.ts
+// @spec: AI-SKILLS
+// @consumers: N/A
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

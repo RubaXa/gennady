@@ -2,8 +2,8 @@
 //   test process has no global EventSource without --experimental-eventsource) against a real,
 //   booted inbox-api HttpServer with the chat bridge wired to a real SessionPool[OpenCodeMock] +
 //   real StateStore over a real makeTestTmpDir tree, and a real on-disk review.json for /mutate CAS.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-130, TSK-152, TSK-162
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Integration tests for role-invariant six-dimension execution and publication gating.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: TSK-176 audit
-// @tasks: TSK-176
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

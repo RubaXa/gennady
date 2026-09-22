@@ -1,6 +1,6 @@
 // @file: Versioned review input classification and closed change-shape codes.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewInputManifestBuilder, ReviewContractCompiler
-// @tasks: TSK-176
 
 /** @purpose Closed deterministic change-shape vocabulary for review contract compilation. */
 export type ReviewChangeShapeCode =

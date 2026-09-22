@@ -1,6 +1,6 @@
 // @file: Read XML template if the file exists.
+// @spec: CLI
 // @consumers: load-review-verify-template.io, resolve-conflicts-template-load.io
-// @tasks: N/A
 
 import fs from 'node:fs';
 import path from 'node:path';

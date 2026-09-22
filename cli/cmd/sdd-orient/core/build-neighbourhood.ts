@@ -1,4 +1,5 @@
 // @file: Assemble the depth-1 neighbourhood model for one spec: portal line, direct neighbours, and consumers. Pure; rendering is separate.
+// @spec: CLI-SDD-ORIENT
 // @consumers: SddOrientCommand
 
 import { dirname, join, relative, resolve } from 'node:path';

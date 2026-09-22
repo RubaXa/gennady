@@ -1,6 +1,6 @@
 // @file: Render keyword search results — S4 scenario with scoring and entity match info.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { KeywordMatch } from '../orient.types.ts';
 import { relative } from 'node:path';

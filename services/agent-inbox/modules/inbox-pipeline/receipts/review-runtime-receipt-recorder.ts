@@ -1,6 +1,6 @@
 // @file: Control-plane-owned operation recorder with durable acknowledgment before eligibility.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: agent runtime integration, ReviewStructuralValidator
-// @tasks: TSK-176
 
 import { createHash } from 'node:crypto';
 import type {

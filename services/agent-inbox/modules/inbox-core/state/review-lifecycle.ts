@@ -1,6 +1,6 @@
 // @file: Tracking, terminal completion, activity horizon and visibility policy for one MR.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, inbox-api
-// @tasks: TSK-173
 
 type ReviewLifecycleState = 'open' | 'merged' | 'closed';
 

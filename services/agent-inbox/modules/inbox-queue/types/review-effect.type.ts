@@ -1,6 +1,6 @@
 // @file: ReviewEffect value object — idempotent mutation intent with closed origin discriminant and exhaustive ref-set classification.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectQueue, ReviewEffectCoordinator
-// @tasks: TSK-177
 
 import type { VcsEffectKind } from '../../inbox-vcs/vcs-port.ts';
 

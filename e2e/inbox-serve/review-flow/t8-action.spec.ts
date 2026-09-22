@@ -5,8 +5,8 @@
 //   RoleInstance at awaiting_operator (BoardProviderReal.executeAction → scheduler.findInstance,
 //   state must be awaiting_operator) — a disk-only review cannot drive it — so this test owns a full
 //   live review to node_ask, hence the long budget.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-131
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Integration tests for UpdateCheckWorker — local HTTP server, real fs cache, fetch interception.
-// @consumers: TSK-34
-// @tasks: TSK-34
+// @spec: CLI
+// @consumers: UC-tests
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Durable bounded repair task targeting exact current structural gaps.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRepairCoordinator, ReviewOrchestrator, agent runtime
-// @tasks: TSK-176
 
 /** @purpose Narrow immutable work request for one persisted repair attempt. */
 export type ReviewRepairTask = Readonly<{

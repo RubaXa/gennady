@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-roles OutcomeClassifier — classify + remediate across all 7 outcome classes.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113
 
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';

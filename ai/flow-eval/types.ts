@@ -1,4 +1,5 @@
 // @file: Typed contracts for the external SDD evaluation harness.
+// @spec: AI-SKILLS
 // @consumers: runner, observer, judge, OpenCode adapter, fake-backed tests
 
 /** @purpose An SDD scenario that can be evaluated without coupling the runner to telemetry. */

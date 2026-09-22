@@ -1,6 +1,6 @@
 // @file: StaticFiles — serve SPA static assets from dist directory with SPA fallback to index.html.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-106
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';

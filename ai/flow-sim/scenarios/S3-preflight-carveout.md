@@ -72,15 +72,15 @@
 ```markdown
 # Demo — Tasks
 
-| ID     | Module | Title            | Status |
-| ------ | ------ | ---------------- | ------ |
-| TSK-01 | core   | Реализовать ядро | done   |
+| ID        | Module | Title            | Status |
+| --------- | ------ | ---------------- | ------ |
+| DP-fields | core   | Реализовать ядро | done   |
 ```
 
 `tasks/demo/core/core.task-01.md`:
 
 ```markdown
-# TSK-01 — Реализовать ядро
+# DP-fields — Реализовать ядро
 
 ## Meta
 

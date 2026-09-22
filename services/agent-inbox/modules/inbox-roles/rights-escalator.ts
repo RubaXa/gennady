@@ -1,6 +1,6 @@
 // @file: RightsEscalator — monitors operator inactivity (24h) and triggers notifications.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleScheduler
-// @tasks: TSK-113
 
 import { logger } from '#logger';
 import { isDryRun, emitDryRun } from '../inbox-core/dry-run.ts';

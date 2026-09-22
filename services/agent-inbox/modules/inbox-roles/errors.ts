@@ -1,6 +1,6 @@
 // @file: Role-specific error types and factory for the inbox-roles module.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: role-engine, role-instance, role-scheduler
-// @tasks: TSK-113
 
 /**
  * @purpose All possible role engine error codes.

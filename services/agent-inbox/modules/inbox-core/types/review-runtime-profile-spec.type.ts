@@ -1,6 +1,6 @@
 // @file: Input shape for composing one immutable review runtime profile.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewRuntimeProfile, bootstrap
-// @tasks: TSK-172
 
 /** @purpose State namespaces separated by the runtime safety boundary. */
 export type ReviewStateNamespace = 'production' | 'test' | 'mock';

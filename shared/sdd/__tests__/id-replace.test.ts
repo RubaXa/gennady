@@ -1,6 +1,6 @@
 // @file: Unit tests for id-replace — TSV map validation, word-boundary replacement, leftover gate.
+// @spec: SHARED
 // @consumers: id-replace
-// @tasks: N/A
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -61,8 +61,12 @@ describe('id-replace', () => {
   describe('replaceIds', () => {
     it('заменяет только точные ID по словогранице; UTF-8 и TSK-310 не тронуты', () => {
       const f = join(root, 'specs', 'a.md');
-      writeFileSync(f, 'TSK-31 ok, TSK-310 нет, UTF-8 нет, xTSK-31 нет, (TSK-31) да', 'utf-8');
-      const report = replaceIds(root, [{ old: 'TSK-31', next: 'cat-vcs-url' }], true);
+      writeFileSync(
+        f,
+        'CAT-mr-url ok, TSK-310 нет, UTF-8 нет, xTSK-31 нет, (CAT-mr-url) да',
+        'utf-8'
+      );
+      const report = replaceIds(root, [{ old: 'CAT-mr-url', next: 'cat-vcs-url' }], true);
       assert.strictEqual(report.length, 1);
       assert.strictEqual(report[0]?.count, 2);
       const body = readFileSync(f, 'utf-8');

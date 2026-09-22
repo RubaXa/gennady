@@ -1,6 +1,6 @@
 // @file: RepairAdapter registry — maps formatter/project/contract capabilities to exact target invocations.
+// @spec: CLI-SDD-VERIFY
 // @consumers: SddVerifyCommand
-// @tasks: N/A
 
 import { extname } from 'node:path';
 import { scriptReachesGennady } from '../../../shared/sdd/readiness.ts';

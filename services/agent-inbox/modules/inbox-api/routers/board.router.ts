@@ -1,7 +1,7 @@
 // @file: BoardRouter — GET /api/board handler, attention-grouped from BoardProjection (D-306)
 //   with fallback to BoardProviderPort for backward compatibility.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-106, TSK-158, TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from '#logger';

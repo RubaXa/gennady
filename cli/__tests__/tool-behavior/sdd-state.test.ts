@@ -1,8 +1,8 @@
 // @file: Live-CLI behavior of sdd-state's readiness report — a real run against a fixture whose
 //   eight required scripts, read-only/mutating shapes, and gennady install all satisfy
 //   shared/sdd/readiness.ts, so the snapshot must report full readiness with nothing missing.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

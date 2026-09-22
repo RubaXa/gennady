@@ -1,6 +1,6 @@
 // @file: Runtime write-zone boundary for exact-target phase repair.
+// @spec: CLI-SDD-VERIFY
 // @consumers: phase-run.ts, sdd-verify.cmd.ts
-// @tasks: N/A
 
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';

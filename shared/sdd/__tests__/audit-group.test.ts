@@ -1,6 +1,6 @@
 // @file: Unit tests for shared/sdd/audit-group.ts — spec resolution, group boundary, target-files/handoff aggregation.
+// @spec: SHARED
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';

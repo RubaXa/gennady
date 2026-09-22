@@ -1,6 +1,6 @@
 // @file: StackPlugin implementation for Go repositories — wires detect, scope and plan.
+// @spec: CLI-VERIFY
 // @consumers: stack-registry
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';

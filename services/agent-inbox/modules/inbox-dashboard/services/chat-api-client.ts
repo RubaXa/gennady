@@ -1,6 +1,6 @@
 // @file: ChatApiClient — fetch+SSE client for the review-chat routes; separate from ApiClient (D-114).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ChatPanel, MrDetailPage
-// @tasks: TSK-130
 
 import type { ChatTurn, ContextChip, MutationProposal } from '../../inbox-chat/types.ts';
 import type { ChatErrorCode } from '../../inbox-chat/errors.ts';

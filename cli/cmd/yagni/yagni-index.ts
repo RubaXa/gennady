@@ -1,6 +1,6 @@
 // @file: One-pass source/spec indexes for YAGNI — one filesystem read and at most one reference AST parse per production file.
+// @spec: CLI-YAGNI
 // @consumers: yagni.cmd, focused differential tests
-// @tasks: N/A
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';

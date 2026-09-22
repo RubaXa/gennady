@@ -1,6 +1,6 @@
 // @file: <ACR>-REQ-<N> / <ACR>-DL-<N> grammar + the spec's own acronym derivation (AX_REQ_DL_ID_GRAMMAR) — shared by sdd-check's requirement/decision-log ID checks in check.ts.
+// @spec: SHARED
 // @consumers: check.ts
-// @tasks: N/A
 
 // Requirement-ID grammar per REQUIREMENT_ENTRY_FORMAT: `<ACR>-REQ-<N>` — ACR is upper-alnum
 // starting with a letter (same shape as a Task-ID's ACR half, see task-id.ts); `<N>` is a

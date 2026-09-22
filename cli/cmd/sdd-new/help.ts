@@ -1,6 +1,6 @@
 // @file: sdd-new command help output.
+// @spec: CLI-SDD-NEW
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-new command.

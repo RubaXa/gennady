@@ -1,5 +1,25 @@
 # Module: `sdd-verify`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-VERIFY
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-verify · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -150,6 +170,8 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 Verification Gate
 
 - **Runtime Backing:** `real-runtime`
@@ -172,7 +194,9 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 - Invariants:
   - Набор и порядок gate — фиксированные (`GATES`); phase-профиль механически выводится из kind, `full` выбирается отдельно (нет обнаружения по package.json)
   - `run(runner, profile, ..., phaseContext)` детерминистична при фиксированном раннере и структурном контексте
-  <!--/SECTION:MODULE_CONTRACTS-->
+
+</details>
+<!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
 
@@ -230,6 +254,8 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 <!--SECTION:MODULE_DECISION_LOG-->
 
 ## 7. Module Decision Log
+
+<details><summary>Подробности</summary>
 
 ### D-SV001 — Инъектируемый раннер + tail в index.ts
 
@@ -480,6 +506,10 @@ shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state 
 - **Phase:** Go maps `fix` to `gofmt -w` over exact `.go` Target Files, `type-check` to the literal plugin's `go build` then `go vet`, and `test` to `go test`. No package.json/npm readiness is inferred. Receipt environment state binds Go manifests and the preset-named Makefile recipes.
 - **Full:** `generate`, `build`, `vet`, `fmt`, `lint`, `test` come from the unchanged Go plugin after the standard stack-config transform. The runner honors plugin cwd/env/timeout/ENV_FAIL; `gofmt -l` output is a failure. Full verification takes one D-STACK-017 clean-tree guard per git toplevel, runs gates sequentially in the real tree, ignores gitignored output, and rolls back exact non-ignored drift before the next gate; `generate` drift is a FAIL with file list/fixer hint, while an undeclared mutation is a VIOLATION. Public invocation always uses HEAD and refuses a dirty tree. The pre-commit hook alone selects an internal index baseline after both hook and guard independently prove worktree equals index; gate drift is then restored to that captured index without changing staged bytes, and crash recovery is forbidden from resetting staged work. There is no public dirty/staged flag.
 - **Eval:** Go acceptance uses isolated migrated/V2 fixtures. Judge/LLM verdict remains diagnostic and cannot change aggregate exit code; no live LLM is required for mechanical acceptance.
+
+</details>
+
+<!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:OPEN_RISKS-->
 

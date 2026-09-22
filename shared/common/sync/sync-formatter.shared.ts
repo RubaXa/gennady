@@ -1,6 +1,6 @@
 // @file: Shared sync formatter — formatSyncOutput with markers and summary
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 /** @purpose Entry shape for the shared formatter: status discriminator and relative path. */
 export type SyncFormatEntry = {

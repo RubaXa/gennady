@@ -1,4 +1,5 @@
 // @file: Isolated SDD judge; receives only bounded intent, state, diff, events, and tail evidence.
+// @spec: AI-SKILLS
 // @consumers: SddEvalRunner, CLI/future command
 
 import type {

@@ -7,8 +7,8 @@
 //   StateStore) for 01-plan/02-report-diagram, reporting honestly on whether a real drawn diagram
 //   reaches the dashboard today — per spec §7 Инвариант R-01, a placeholder/raw-source frame must
 //   never be screenshotted as if it were drawn.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts reviewer-eval.spec.ts
-// @tasks: TSK-120, TSK-122
 
 import { test, expect, type Page } from '@playwright/test';
 import {

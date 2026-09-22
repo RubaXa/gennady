@@ -1,4 +1,4 @@
-# Task: TSK-57 — sync-skills command (типы, ядро, форматтер, CLI, тесты, регистрация)
+# Task: SS-command — sync-skills command (типы, ядро, форматтер, CLI, тесты, регистрация)
 
 <!--SECTION:META-->
 
@@ -6,13 +6,13 @@
 
 <!--/SECTION:META-->
 
-- **Task-ID:** TSK-57
+- **Task-ID:** SS-command
 - **Status:** [x] DONE
 - **Purpose:** Реализовать команду `gennady sync-skills`: типы (`SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult`), ядро (`SyncSkillsCore` — scanSkills, collectAndCompareSkills с orphan-удалением), форматтер (`SyncSkillsFormatter`), CLI-обвязка (`run` с DI через shared `SyncCmdDeps`), unit + integration тесты, регистрация в `gennady.ts`/`AGENTS.md`/`help.cmd.ts`.
 - **Scope:** cli
 - **Module:** sync-skills
-- **Dependencies:** TSK-56 (provides: `resolvePackageDir`, `compareBytes` from `shared/common/sync/sync-core.shared.ts`; `SyncFormatter` from `shared/common/sync/sync-formatter.shared.ts`; `SyncCmdDeps` type from `shared/common/sync/sync-deps.type.ts`)
-- **Prerequisite:** `ai/skills/` (13 каталогов скилов, скопированных из `~/.config/opencode/skills/` и `~/.claude/skills/sdd-critic/`) должны существовать до запуска `sync-skills`. Создание `ai/skills/` — вне scope TSK-57 (выполняется отдельно или в TSK-56)
+- **Dependencies:** SYN-shared (provides: `resolvePackageDir`, `compareBytes` from `shared/common/sync/sync-core.shared.ts`; `SyncFormatter` from `shared/common/sync/sync-formatter.shared.ts`; `SyncCmdDeps` type from `shared/common/sync/sync-deps.type.ts`)
+- **Prerequisite:** `ai/skills/` (13 каталогов скилов, скопированных из `~/.config/opencode/skills/` и `~/.claude/skills/sdd-critic/`) должны существовать до запуска `sync-skills`. Создание `ai/skills/` — вне scope SS-command (выполняется отдельно или в SYN-shared)
 - **Spec References:**
   - Module spec: [`sync-skills.spec.md`](../../../specs/cli/sync-skills/sync-skills.spec.md)
   - Scope spec: [`cli.spec.md §5.7`](../../../specs/cli/cli.spec.md)
@@ -36,7 +36,7 @@
 
 | ID  | Kind     | Deps   | Status |
 | --- | -------- | ------ | ------ |
-| P1  | impl     | TSK-56 | [x]    |
+| P1  | impl     | SYN-shared | [x]    |
 | P2  | test     | P1     | [x]    |
 | P3  | register | P2     | [x]    |
 
@@ -102,7 +102,7 @@
 
 **Scenario:** Типы и ядро компилируются [`type-check`]
 
-- **Given** TSK-56 завершён (shared core доступен)
+- **Given** SYN-shared завершён (shared core доступен)
 - **When** созданы `sync-skills.types.ts`, `sync-skills-core.ts`, `sync-skills-formatter.ts`
 - **Then** `npm run type-check` → exit 0
 
@@ -379,7 +379,7 @@
   - Scope ai/skills/ data creation неясен (MINOR, confusion)
 - **Отклонено:** 0 находок
 - **Изменения:**
-  - §1 Meta: добавлен пункт Prerequisite — ai/skills/ вне scope TSK-57
+  - §1 Meta: добавлен пункт Prerequisite — ai/skills/ вне scope SS-command
   - §4: добавлен BDD-сценарий «Форматтер — все статусы в normal mode» (added/updated/deleted/unchanged)
   - §4: добавлен BDD-сценарий «SyncSkillsResult.summary и dryRunSummary»
   - §4: добавлен BDD-сценарий «entries отсортированы лексикографически»

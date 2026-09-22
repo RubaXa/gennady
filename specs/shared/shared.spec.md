@@ -1,5 +1,11 @@
 # shared: Infrastructure Specification
 
+<!--SECTION:SPEC_ID-->
+
+SHARED
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 infrastructure

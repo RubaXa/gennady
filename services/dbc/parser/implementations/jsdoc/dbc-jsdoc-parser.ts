@@ -1,6 +1,6 @@
 // @file: JSDoc implementation of the DbcParser contract.
+// @spec: DBC-DBC-PARSER
 // @consumers: DbcSchema consumers (analysis, generation, verification, documentation, agent processing)
-// @tasks: TSK-02
 
 import {
   ERR_DBC_ORDER,

@@ -1,6 +1,6 @@
 // @file: Deterministic contract for the eval sandbox prepare/clean script (node fs, not shell rm).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/scripts/sandbox.mjs
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

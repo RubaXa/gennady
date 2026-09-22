@@ -1,6 +1,6 @@
 // @file: git-fixture.test — coverage for the real temp git repo fixture builder
+// @spec: SHARED
 // @consumers: none (test file)
-// @tasks: TSK-147
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

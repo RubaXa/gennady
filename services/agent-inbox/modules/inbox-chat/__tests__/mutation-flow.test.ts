@@ -1,6 +1,6 @@
-// @file: BDD coverage for TSK-163 durable chat and queued artifact mutation flow.
+// @file: BDD coverage for IC-anchors durable chat and queued artifact mutation flow.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
-// @tasks: TSK-163
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

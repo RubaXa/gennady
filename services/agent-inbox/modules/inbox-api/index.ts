@@ -1,6 +1,6 @@
 // @file: Re-export barrel for inbox-api module — HttpServer, ports, types, and routers.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: gennady inbox serve (CLI), inbox-dashboard, e2e tests
-// @tasks: TSK-106
 
 export { HttpServer } from './http-server.ts';
 export type { HttpServerConfig } from './http-server.ts';

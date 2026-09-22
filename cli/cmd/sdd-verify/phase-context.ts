@@ -1,6 +1,6 @@
 // @file: Resolve a phase verification context from one structurally parsed SDD ticket.
+// @spec: CLI-SDD-VERIFY
 // @consumers: sdd-verify/index.ts, tests
-// @tasks: V-05b, V-08c
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';

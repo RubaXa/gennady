@@ -1,6 +1,6 @@
 // @file: Anchor pairing and nesting validation — stack-based algorithm for START/END structural anchors.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-14
 
 import type { LintError } from '../lint.types.ts';
 import {

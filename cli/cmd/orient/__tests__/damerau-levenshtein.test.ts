@@ -1,6 +1,6 @@
 // @file: Unit tests for Damerau-Levenshtein distance and fuzzy matching functions.
+// @spec: CLI-ORIENT
 // @consumers: QueryKeyword, QueryConsumer, QueryEntity
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

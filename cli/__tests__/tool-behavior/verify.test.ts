@@ -1,8 +1,8 @@
 // @file: Live-CLI behavior of the read-only `gennady verify` facade (V-16a, D-13) — real
 //   `tsx cli/gennady.ts verify` runs against fixture roots: valid plan, bad invocation, broken
 //   `stack:` config. No gate is ever executed by any of these.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

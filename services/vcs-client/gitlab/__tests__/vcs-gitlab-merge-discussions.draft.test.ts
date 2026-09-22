@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeDiscussions — deleteDiscussion, createDraftNote, updateDraftNote, deleteDraftNote, publishDraftNote.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-86
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

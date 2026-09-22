@@ -1,6 +1,6 @@
 // @file: Unit tests for parseModelJson — model id extraction from OpenCode JSON
+// @spec: AGENT-MON
 // @consumers: OpenCodeProvider
-// @tasks: TSK-40
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

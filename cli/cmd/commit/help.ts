@@ -1,4 +1,5 @@
 // @file: commit command help output
+// @spec: CLI
 // @consumers: help command
 /**
  * @purpose Print CLI help for the commit command.

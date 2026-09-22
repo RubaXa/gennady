@@ -1,6 +1,6 @@
 // @file: Canonical local policies used by lifecycle and accumulated verification batches.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, composition root
-// @tasks: TSK-173
 
 import { isAbsolute, resolve } from 'node:path';
 

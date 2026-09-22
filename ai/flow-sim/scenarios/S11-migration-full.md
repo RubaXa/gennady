@@ -100,16 +100,16 @@ D-001 2024-01-01 — Один модуль на старте (почему: по
 ```markdown
 # Demo — Tasks
 
-| ID     | Module | Title                    | Status      |
-| ------ | ------ | ------------------------ | ----------- |
-| TSK-01 | core   | Реализовать ядро         | done        |
-| TSK-02 | core   | Валидация входных данных | in-progress |
+| ID        | Module | Title                    | Status      |
+| --------- | ------ | ------------------------ | ----------- |
+| DP-fields | core   | Реализовать ядро         | done        |
+| DP-jsdoc  | core   | Валидация входных данных | in-progress |
 ```
 
 `tasks/demo/core/core.task-01.md`:
 
 ```markdown
-# TSK-01 — Реализовать ядро
+# DP-fields — Реализовать ядро
 
 ## Meta
 
@@ -125,7 +125,7 @@ D-001 2024-01-01 — Один модуль на старте (почему: по
 `tasks/demo/core/core.task-02.md`:
 
 ```markdown
-# TSK-02 — Валидация входных данных
+# DP-jsdoc — Валидация входных данных
 
 ## Meta
 
@@ -139,7 +139,7 @@ D-001 2024-01-01 — Один модуль на старте (почему: по
 ```
 
 `cli/demo/core/validate.ts` (единственная сквозная точка проверки: `STEP_5_IDS --write` обязан
-заменить `TSK-01` в этом заголовке кода на новый slug-ID — не только в тикетах; путь взят внутри
+заменить `DP-fields` в этом заголовке кода на новый slug-ID — не только в тикетах; путь взят внутри
 `cli/`, а не гипотетического `src/`, — `sdd-migrate ids` бьёт по фиксированному списку зон
 `ID_REPLACE_ZONES = ['specs', 'tasks', 'cli', 'shared', 'services', 'ai', 'e2e']`
 (`shared/sdd/id-replace.ts`), и файл вне этого списка инструмент молча не тронет; `@file`/`@consumers`
@@ -158,7 +158,7 @@ D-001 2024-01-01 — Один модуль на старте (почему: по
 ```ts
 // @file: demo core input validation — placeholder for the inventory-reverse checkpoint.
 // @consumers: N/A
-// @tasks: TSK-01
+// @tasks: DP-fields
 
 export function validateInput(input: unknown): boolean {
   return typeof input === 'string' && input.length > 0;
@@ -212,7 +212,7 @@ loaded`, обоснованная её собственным `Mission`: «Enter
    which tickets would be anchored / already are).»
 
 4. `STEP_0_SCAN` — отчёт оператору зафиксирован строкой `show:`, содержимое включает units=1
-   (`demo`), tickets=2 (`TSK-01`, `TSK-02`), orphans=0 — дословно: «Report the shape to the operator:
+   (`demo`), tickets=2 (`DP-fields`, `DP-jsdoc`), orphans=0 — дословно: «Report the shape to the operator:
    units, tickets, orphans.» Без `show:` этот пункт непроверяем.
 
 5. `STEP_1_LAYER` — первый `--write` во всём прогоне (вторая dry-run/`--write` граница): `tool:
@@ -257,7 +257,7 @@ it scaffolded with an honest placeholder — `migrated from v1 — no rounds/pha
 дословно: «Once anchored, the agent brings each ticket's Meta to v2 form — `**Task-ID:**` /
 `**Status:**` / `**Purpose:**`, replacing v1's own field labels — reading every value from the
 ticket's real v1 content.» `write:` того же тикета меняет `- Purpose: ...` / `- Module: ...` / `-
-    Status: done` (v1, plain dash-bullets) на `**Task-ID:** TSK-01` / `**Status:** [x] DONE` /
+    Status: done` (v1, plain dash-bullets) на `**Task-ID:** DP-fields` / `**Status:** [x] DONE` /
 `**Purpose:** базовая логика core-модуля demo` — значения читаются из реального v1-контента
 (`done` → `[x] DONE`, `in-progress` → `[~] IN_PROGRESS`), ни один статус не «улучшен» и не
 выдуман. Найдена строка `### Round N` / `#### P<N>` с содержательным текстом (не плейсхолдером) в
@@ -271,8 +271,8 @@ Vision` → `VISION`, `2. Architecture` → `ARCHITECTURE`, `3. Decision Log` �
     row, is this step's work.» Трейс показывает разрешение именно этой строки (`show:` с решением
     keep/merge/drop для «Notes»), остальные три строки не переоткрываются агентом заново.
 
-11. `STEP_3_FILL_MAPS` — заполнен Ticket Map по правилу из Meta.Purpose: `TSK-01` →
-    `DEMO-core-init`, `TSK-02` → `DEMO-validate-input` — дословно: «fill the **Ticket Map**
+11. `STEP_3_FILL_MAPS` — заполнен Ticket Map по правилу из Meta.Purpose: `DP-fields` →
+    `DEMO-core-init`, `DP-jsdoc` → `DEMO-validate-input` — дословно: «fill the **Ticket Map**
     (`<ACR>-<slug>` from `Meta.Purpose`, kebab-case, unique repo-wide — the same slug twice means
     «one feature»; destination computed from the ID).» `write: migration/demo/demo.spec.migration.md`
     обновлён (Status → `MAPPED`). Форма ID — `<ACR>-<slug>` с ВЕРХНИМ ACR (`DEMO-...`), дословно по
@@ -329,7 +329,7 @@ ids --from-plan --write` (the map is derived from the approved Ticket Maps). The
     STEP_4 (чекпоинт 13), реально переписывает файлы.
 
 16. `STEP_5_IDS` — конкретное доказательство, что замена ID дошла до кода, а не только до тикетов:
-    `write: cli/demo/core/validate.ts`, содержимое ДО — `// @tasks: TSK-01`, содержимое ПОСЛЕ —
+    `write: cli/demo/core/validate.ts`, содержимое ДО — `// @tasks: DP-fields`, содержимое ПОСЛЕ —
     `// @tasks: DEMO-core-init`. Без этой строки `write:` с явным до/после чекпоинт 15 непроверяем
     на «трогает код», а не только `*.task-NN.md`.
 

@@ -1,3 +1,6 @@
+// @file: ai/kit/render.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Reusable Handlebars renderer for kit templates.
  * Shared by the static builder (build-directives.ts) and by dynamic tools that pass params.

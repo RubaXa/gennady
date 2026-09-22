@@ -1,6 +1,6 @@
 // @file: Pure classifier: mark each actionable MR new/updated/idle vs the registry.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A, TSK-94
 
 import type { VcsActionableMr } from '../../../../../services/vcs-client/entities/vcs-actionable-mr.type.ts';
 import type { InboxRegistry } from './inbox-registry.logic.ts';

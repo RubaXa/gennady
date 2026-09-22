@@ -1,6 +1,6 @@
 // @file: Barrel re-export for the ui module.
+// @spec: AGENT-MON-CLI-UI
 // @consumers: cmd/agent-mon
-// @tasks: TSK-46
 
 export { AgentMonApp } from './app.tsx';
 export type { AgentMonAppProps } from './app.tsx';

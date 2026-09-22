@@ -1,4 +1,5 @@
 // @file: pipe function → multiline
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  * @purpose Pipe function.

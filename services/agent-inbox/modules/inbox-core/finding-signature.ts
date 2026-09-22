@@ -1,6 +1,6 @@
 // @file: Comparable signatures for MR findings — delta primitive for repeated "Copy fix task" clicks.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-api (copied_fix_task event, TSK-145)
-// @tasks: TSK-144
 
 import { createHash } from 'node:crypto';
 import type { MrDetail } from '../inbox-api/types.ts';

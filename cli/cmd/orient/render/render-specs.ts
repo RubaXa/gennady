@@ -1,6 +1,6 @@
 // @file: Render spec overview and search results — S8/S9 scenarios.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { SpecOverview } from '../orient.types.ts';
 

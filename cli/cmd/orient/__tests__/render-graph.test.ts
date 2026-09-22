@@ -1,6 +1,6 @@
 // @file: Unit tests for renderGraph and renderRecursiveGraph — S7 architecture graph rendering.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

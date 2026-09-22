@@ -1,7 +1,7 @@
 // @file: BoardProjection — projects SyncSnapshot[] + EventJournal → attention-grouped MrCard[].
 //   Never reads executor in-memory state — only journal + sync snapshot (D-306).
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: board.router.ts, inbox-dashboard
-// @tasks: TSK-158, TSK-162
 
 import { logger } from '#logger';
 import type { SyncSnapshot } from '../../inbox-vcs/sync.ts';

@@ -1,6 +1,6 @@
 // @file: File header validation — checks for @file: and @consumers: directives before first import.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-13
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_MISSING_CONSUMERS, ERR_CLI_LINT_MISSING_FILE } from '../lint.types.ts';

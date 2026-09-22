@@ -1,6 +1,6 @@
 // @file: Contract guards that every requirements amplifier writes the one flat requirement model.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: SDD v2 directive build
-// @tasks: N/A
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

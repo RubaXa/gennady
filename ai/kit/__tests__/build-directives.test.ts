@@ -14,8 +14,8 @@
 //   breaking DA-REQ-12 in fact. The existsSync check right after each writeFileSync does not guard
 //   against this: a synchronous write already guarantees the file exists or throws — it says
 //   nothing about an interruption between loop iterations.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: DA-lazy-asm
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

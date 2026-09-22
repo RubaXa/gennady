@@ -1,6 +1,6 @@
 // @file: SddExtractCommand — CLI entry for gennady sdd-extract: read a file, slice one <!--SECTION:NAME--> block.
+// @spec: CLI-SDD-EXTRACT
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

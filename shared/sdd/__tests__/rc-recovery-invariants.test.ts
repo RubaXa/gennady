@@ -1,6 +1,6 @@
 // @file: Cross-cutting regression invariants recovered from the SDD v2 RC failure analysis.
+// @spec: SHARED
 // @consumers: scaffold, check, flow-eval
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';

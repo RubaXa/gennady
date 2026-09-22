@@ -3,8 +3,8 @@
 //   Scope file → findings or explicit no-findings), tool-call cross-check (telemetry vs Scope) for
 //   legacy session kinds, injection-coverage-ledger (findings vs injected Context entities) for
 //   review_needed lens sessions (D-86 override, TSK-137).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleInstance (gate nodes)
-// @tasks: TSK-113, TSK-137
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command cat — collects files (local and remote via --url) into XML/MD output.
+// @spec: CLI-CAT
 // @consumers: gennady.ts
-// @tasks: TSK-31
 
 import { catGen } from '../../utils/cat-gen/cat-gen.ts';
 import { resolveCatUrl } from './cat-url.fn.ts';

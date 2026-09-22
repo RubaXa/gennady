@@ -1,6 +1,6 @@
 // @file: YagniCommand — CLI entry for gennady yagni: diff symbols with < 2 usages, gated by Usage Waiver. Composition root for the SymbolIndex port.
+// @spec: CLI-YAGNI
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { spawnSync } from 'node:child_process';
 import { lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';

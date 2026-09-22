@@ -1,6 +1,6 @@
 // @file: ReviewRuntimeProfile value object enforcing the closed runtime capability matrix.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: RuntimeProfilePort, bootstrap, eval and mocks
-// @tasks: TSK-172
 
 import { join } from 'node:path';
 import type { ReviewRuntimeProfileSpec } from './types/review-runtime-profile-spec.type.ts';

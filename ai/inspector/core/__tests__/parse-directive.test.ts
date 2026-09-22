@@ -1,4 +1,6 @@
 // @file: ai/inspector — verify the directive parser against the real execute.directive.xml.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

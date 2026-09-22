@@ -1,9 +1,9 @@
 // @file: Single home for Execution Log parsing — the token vocabulary (B2-03), the phase-block /
 //   blocker-trail / handoff / post-close-integrity readers (B2-01, consolidating what used to be
 //   duplicated across check.ts and sdd-log.types.ts), and the structural parseExecutionLog (B2-01).
+// @spec: SHARED
 // @consumers: check.ts (re-exports for its existing callers), sdd-log.cmd/types, sdd-task.cmd,
 //   audit-group.ts, group-receipt.ts, templates.ts (scaffolded specs/3-tasks.md)
-// @tasks: N/A
 
 import { collectHeadings, extractHeadingSection, extractSection } from './section.ts';
 

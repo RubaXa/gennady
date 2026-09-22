@@ -4,12 +4,12 @@
 //   is currently up to date with what the generator would produce (the freshness gate a CI step or
 //   pre-push hook can call as `npm run results:table:check`).
 //
-//   results-table.ts exports nothing (renderGeneratedBlock/spliceGeneratedBlock are private, single
-//   in-file use — see the file's own comments): this test drives the real CLI entrypoint as a
-//   subprocess (`node --import tsx results-table.ts --results-dir DIR --out FILE [--check]`), the
-//   same way `npm run results:table[:check]` does, instead of importing internals.
+//     results-table.ts exports nothing (renderGeneratedBlock/spliceGeneratedBlock are private, single
+//     in-file use — see the file's own comments): this test drives the real CLI entrypoint as a
+//     subprocess (`node --import tsx results-table.ts --results-dir DIR --out FILE [--check]`), the
+//     same way `npm run results:table[:check]` does, instead of importing internals.
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

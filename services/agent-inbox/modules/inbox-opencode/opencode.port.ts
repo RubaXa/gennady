@@ -1,6 +1,6 @@
 // @file: AgentRuntimePort with the legacy OpenCode session surface retained in one hierarchy.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: SessionPool, inbox-roles, DI container
-// @tasks: TSK-111, TSK-160, TSK-175
 
 import type { OpenCodeCallResult } from './errors.ts';
 import { validateAgentSchema } from './schema-registry.ts';

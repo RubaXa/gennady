@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox eval — eval harness driving 10 scenario runs, metrics, eval-report.json + trend.jsonl
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: gennady.ts (inbox eval subcommand)
-// @tasks: TSK-165
 
 import { join } from 'node:path';
 import { logger } from '#logger';

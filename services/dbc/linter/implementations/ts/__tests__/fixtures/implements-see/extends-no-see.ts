@@ -1,3 +1,6 @@
+// @file: services/dbc/linter/implementations/ts/__tests__/fixtures/implements-see/extends-no-see.ts
+// @spec: DBC-DBC-LINTER
+// @consumers: N/A
 /** @purpose Base class. */
 class Base {
   calculate(x: number): number {

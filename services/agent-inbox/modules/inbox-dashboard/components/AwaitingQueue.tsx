@@ -1,6 +1,6 @@
 // @file: AwaitingQueue — "Waiting for me" queue aggregating all AWAITING ME cards across roles.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: BoardPage
-// @tasks: TSK-107
 
 import { Clock } from 'lucide-react';
 import type { MrCard as MrCardType } from '../../inbox-api/types.ts';

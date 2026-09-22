@@ -1,7 +1,7 @@
 // @file: Unit + contract tests for services/ai-kit/selector.ts — selectDirective base-template
 //   choice and additive mrShape-brick composition (TSK-136, D-121/D-122/D-123, AI-42/43/44).
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: TSK-136
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

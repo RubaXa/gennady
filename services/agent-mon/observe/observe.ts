@@ -1,6 +1,6 @@
 // @file: Async iterable for continuous session change observation
+// @spec: AGENT-MON-OBSERVE
 // @consumers: CLI
-// @tasks: TSK-38
 
 import { logger } from '#logger';
 import type { AgentMonitor } from '../monitor/agent-monitor.ts';

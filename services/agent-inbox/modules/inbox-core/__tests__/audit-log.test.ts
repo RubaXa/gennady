@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-core AuditLog — append, query, rotation at 10MB.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-109
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

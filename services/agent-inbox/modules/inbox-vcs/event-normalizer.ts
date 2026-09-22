@@ -1,6 +1,6 @@
 // @file: VcsEventNormalizer — deterministic complete-snapshot delta to canonical ReviewEvent facts.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: VcsSyncCoordinator
-// @tasks: TSK-174
 
 import { createHash } from 'node:crypto';
 import { ReviewEvent, type ReviewEventKind } from '../inbox-core/types/review-event.type.ts';
@@ -37,7 +37,7 @@ function participationKey(snapshot: VcsSnapshot): string {
 }
 
 /**
- * @purpose Convert complete GitLab observations into the canonical TSK-173 event vocabulary.
+ * @purpose Convert complete GitLab observations into the canonical IC-state event vocabulary.
  * @invariant Partial observations emit no fine-grained facts and never authorize cursor advancement.
  * @invariant Delta order is commits, description, discussions, approvals, pipeline, aggregate MR observation.
  */

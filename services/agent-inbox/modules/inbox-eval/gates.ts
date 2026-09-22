@@ -2,8 +2,8 @@
 //   SESSION-REFLECTION.md as a boolean invariant with evidence. Every gate is a pure function:
 //   (input) → { gate, pass, evidence }. No disk/network access — callers (EvalHarness, TSK-119)
 //   supply already-read artifacts, diff-hunk maps, and validate results.
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-119)
-// @tasks: TSK-118
 
 import type { ValidateResult } from '../inbox-roles/artifact-validator.ts';
 import type { EffectResult } from '../inbox-roles/effect-executor.ts';

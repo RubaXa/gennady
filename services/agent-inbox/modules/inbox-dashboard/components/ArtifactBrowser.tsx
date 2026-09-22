@@ -1,6 +1,6 @@
 // @file: ArtifactBrowser — artifact navigation (REPORT/PLAN/tracks/HISTORY/coverage/tool-log) + selected-artifact render.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrDetailPage
-// @tasks: TSK-107, TSK-133
 
 import { useState, useEffect } from 'react';
 import { FileText, Loader2, AlertTriangle } from 'lucide-react';

@@ -1,8 +1,8 @@
 // @file: Unit tests for inbox-roles ReviewerRole — three branches from node_prepare:
 //   review_needed (fan-out + security lens + code-review → synthesize), reply_needed
 //   (thread-triage, no full battery), update-review (delta-only).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

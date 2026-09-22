@@ -1,6 +1,6 @@
 // @file: Agent runtime degradation and strict prompt/schema/TTL integration boundaries.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-175
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

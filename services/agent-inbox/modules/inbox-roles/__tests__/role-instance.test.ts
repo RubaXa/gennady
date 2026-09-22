@@ -2,8 +2,8 @@
 //   recovery ladder (continue/restart/AWAITING_OPERATOR), checkpoint-based restart recovery,
 //   buildTaskText contract, Round 2 (D-118..D-123) persistResult + per-node ToolPolicy,
 //   SV-24 escalation gate (shouldEscalateToOperator) + SV-23 autonomous approve dry-run (TSK-143).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113, TSK-124, TSK-143
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

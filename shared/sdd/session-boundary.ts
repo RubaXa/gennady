@@ -1,4 +1,5 @@
 // @file: Shared must-remember workspace boundary appended to agent-facing SDD state outputs.
+// @spec: SHARED
 // @consumers: sdd-state, sdd-task, sdd-new
 
 import { join, resolve } from 'node:path';

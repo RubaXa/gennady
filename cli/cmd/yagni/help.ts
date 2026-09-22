@@ -1,6 +1,6 @@
 // @file: yagni command help output
+// @spec: CLI-YAGNI
 // @consumers: yagni.cmd
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the yagni command.

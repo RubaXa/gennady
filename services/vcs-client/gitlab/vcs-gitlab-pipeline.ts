@@ -1,6 +1,6 @@
 // @file: GitLab REST adapter implementing VcsClientPipeline contract.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGitlabClient
-// @tasks: TSK-84
 
 import { VcsClientPipeline } from '../abstract/vcs-client-pipeline.ts';
 import type { VcsJob } from '../entities/vcs-job.type.ts';

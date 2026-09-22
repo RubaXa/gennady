@@ -1,4 +1,5 @@
 // @file: pipe in interface method
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 export interface ISvc {
   /**

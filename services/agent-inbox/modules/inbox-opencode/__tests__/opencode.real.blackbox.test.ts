@@ -4,6 +4,9 @@
 // surface (session.create / prompt / message) is fakeable at the network tier — no spawned
 // binary, no live LLM. Complements the port-fake tier (OpenCodeMock) with a real-adapter path.
 
+// @file: services/agent-inbox/modules/inbox-opencode/__tests__/opencode.real.blackbox.test.ts
+// @spec: AGENT-INBOX-INBOX-OPENCODE
+// @consumers: N/A
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setupMockAgent } from '#utils/test/mock-http.ts';

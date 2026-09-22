@@ -1,7 +1,7 @@
 // @file: Integration tests for MutateRouter — revision-CAS apply (D-99), broadcast fan-out of
 //   mutation+refresh on success, and byte-unchanged review.json + refresh-to-all on conflict.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
-// @tasks: TSK-129, TSK-162, TSK-163
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

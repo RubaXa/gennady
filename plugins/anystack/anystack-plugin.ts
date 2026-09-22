@@ -1,6 +1,6 @@
 // @file: StackPlugin for repositories with no stack plugin — every gate comes from config.
+// @spec: CLI-VERIFY
 // @consumers: plugins/index.ts
-// @tasks: TSK-96
 
 import type { ScopeRequest, StackDetection, StackPlugin, StackScope } from 'gennady/stack';
 

@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsCliContext resolution — auto-detect, explicit overrides, error paths.
+// @spec: CLI
 // @consumers: agent-inbox (inbox-context, vcs-discussions, vcs-reply, vcs-approve, vcs-worktree, vcs-pipeline, vcs-draft-note)
-// @tasks: TSK-68, TSK-95
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

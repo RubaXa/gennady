@@ -1,8 +1,8 @@
 // @file: t2 — assign: manual-assign the real MR to the reviewer role against the REAL scheduler
 //   (real GitLab getMrContext for the initial checkpoint) and confirm a live RoleInstance now exists
 //   for the MR. No LLM review is driven here — just that assignment lands an instance.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-131
 
 import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';

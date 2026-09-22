@@ -1,6 +1,6 @@
 // @file: gracefulShutdown — SIGTERM/SIGINT handler: cancels OpenCode sessions, stops scheduler, closes HTTP server.
+// @spec: AGENT-INBOX
 // @consumers: gennady inbox serve CLI
-// @tasks: TSK-115, TSK-117, TSK-170
 
 import { readFile, unlink } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

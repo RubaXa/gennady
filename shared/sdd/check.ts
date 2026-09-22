@@ -1,6 +1,6 @@
 // @file: Pure mechanical SDD artifact checks (anchor balance, structure, status, exec-log integrity) — shared by sdd-check.
+// @spec: SHARED
 // @consumers: sdd-check.cmd, sdd-task.cmd, audit-group
-// @tasks: N/A
 
 import { dirname, basename, join, resolve } from 'node:path';
 import {

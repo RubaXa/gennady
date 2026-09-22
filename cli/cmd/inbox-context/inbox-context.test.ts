@@ -1,6 +1,6 @@
 // @file: Unit test for inbox-context TTL constant import.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-93
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

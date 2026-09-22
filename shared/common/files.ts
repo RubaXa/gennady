@@ -1,6 +1,6 @@
 // @file: Determine whether a file is a test file by naming conventions.
+// @spec: SHARED
 // @consumers: git-core
-// @tasks: N/A
 
 /**
  * @purpose Determine whether a file is a test file by naming conventions.

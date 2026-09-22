@@ -1,6 +1,6 @@
 // @file: Unit tests for countModuleSpecs — the MODULE_VISION marker walk under specs/.
+// @spec: SHARED
 // @consumers: module-specs
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

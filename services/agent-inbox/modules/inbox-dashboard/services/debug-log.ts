@@ -1,7 +1,7 @@
 // @file: DebugLog — in-memory ring buffer of diagnostic log lines + a global error flag, so any user
 //   can copy the current session's logs (🐞 button) without a dev console. Never persisted (privacy).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: DebugLogButton, App (global handlers), api-client (call sites)
-// @tasks: TSK-debug-log
 
 /** @purpose Max retained log lines — oldest evicted (FIFO) past this, so a long session stays bounded. */
 const CAPACITY = 500;

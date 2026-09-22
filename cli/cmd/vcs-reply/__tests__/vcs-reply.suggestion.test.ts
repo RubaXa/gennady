@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-reply suggestion field and suggestionRange block composition.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-79
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

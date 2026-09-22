@@ -1,6 +1,6 @@
 // @file: Fail-closed validation of CLI-owned phase receipts for completed v2 ticket phases.
+// @spec: CLI-SDD-CHECK
 // @consumers: sdd-check.cmd.ts
-// @tasks: N/A
 
 import { relative } from 'node:path';
 import { extractSection } from '../../../shared/sdd/section.ts';

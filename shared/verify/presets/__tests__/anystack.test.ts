@@ -1,7 +1,7 @@
 // @file: Unit tests for the anystack preset (V-08) — config-authored gate names/commands, fixed
 //   declaration order, never required (read-only, never makes a project not-ready).
+// @spec: SHARED
 // @consumers: CI
-// @tasks: V-08
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

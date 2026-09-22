@@ -1,6 +1,6 @@
 // @file: Types, error codes, and finding formatting for the sdd-check command.
+// @spec: CLI-SDD-CHECK
 // @consumers: SddCheckCommand
-// @tasks: N/A
 
 import { relative, resolve } from 'node:path';
 import type { Finding, TicketRef } from '../../../shared/sdd/check.ts';

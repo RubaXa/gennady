@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// @file: ai/kit/audit-axiom-activation.mjs
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Axiom-activation audit for sdd-v2 templates (AUTHORING.md §10 / operator principle).
  *

@@ -1,7 +1,7 @@
 // @file: Delta-assembly tests — graph classification, ctx fixpoint, and the actual reduction
-// build-directives.ts's second pass applies to rendered sdd-v2 directives.
+//   build-directives.ts's second pass applies to rendered sdd-v2 directives.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

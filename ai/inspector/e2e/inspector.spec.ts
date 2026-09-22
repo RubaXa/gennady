@@ -1,4 +1,6 @@
 // @file: ai/inspector — e2e: skill list renders, sdd-execute trace descends, screenshot for visual check.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { test, expect } from '@playwright/test';
 import { dirname, join } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Integration tests for sync-skills CLI — run() with mock deps
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsCmd
-// @tasks: TSK-57
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

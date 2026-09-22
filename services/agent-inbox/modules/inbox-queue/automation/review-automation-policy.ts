@@ -1,6 +1,6 @@
 // @file: ReviewAutomationPolicy — resolves only proven prior-operator-intent restoration; no speculative automation.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewActionCatalog, ReviewEffectCoordinator
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import type { VcsEffectKind } from '../types/review-effect.type.ts';

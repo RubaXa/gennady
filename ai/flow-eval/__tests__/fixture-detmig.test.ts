@@ -5,8 +5,8 @@
 //   `sdd-migrate anchors`) turns it GREEN; the same before/after `sdd-check` output fed through
 //   `computeMigrationGrade` (E-07's bar) flips FAIL → PASS. A companion case proves `sdd-state`
 //   continues to print the concrete scope type for a migrated project ([SCOPES] `type` column).
+// @spec: AI-SKILLS
 // @consumers: N/A (test file)
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +14,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { computeMigrationGrade, parseFindingHistogram } from '../migration-grade.ts';
+import { computeMigrationGrade, parseFindingBaseline } from '../migration-grade.ts';
 import { parseTicketCoveragePolicy, parseVerificationTable } from '../../../shared/sdd/ticket.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
 
@@ -90,7 +90,7 @@ describe('E-06/E-07 (batch 22): fixture-detmig — migrator turns the red-first 
     // Baseline-diff against an EMPTY pre-migration snapshot (the "first time ever checked" case,
     // e.g. a brand-new migration run with no prior sdd-check history) — SDD_VERIFICATION_TABLE_INVALID
     // is critical regardless of what baseline this run started from.
-    const grade = computeMigrationGrade({}, 'FLOW_VERSION=v2', before.text);
+    const grade = computeMigrationGrade([], 'FLOW_VERSION=v2', before.text);
     assert.equal(grade.pass, false, grade.detail);
     assert.ok(grade.introduced.some((i) => i.code === 'SDD_VERIFICATION_TABLE_INVALID'));
   });
@@ -150,7 +150,7 @@ describe('E-06/E-07 (batch 22): fixture-detmig — migrator turns the red-first 
     // (captured above) — this is how migration-grade.ts is actually used (baseline snapshot BEFORE
     // the worker/migrator runs, per docs/EVAL-SPEC.md). Pre-existing debt is backlog either way; the
     // point proven here is that nothing NEW appeared and the one critical code disappeared.
-    const baseline = parseFindingHistogram(capturedBefore);
+    const baseline = parseFindingBaseline(capturedBefore);
     const grade = computeMigrationGrade(baseline, 'FLOW_VERSION=v2', after.text);
     assert.equal(grade.pass, true, grade.detail);
     assert.deepEqual(grade.introduced, []); // strictly fewer/equal findings — migration only improved things

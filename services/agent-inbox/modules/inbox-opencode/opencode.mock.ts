@@ -1,6 +1,6 @@
 // @file: OpenCodeMock — deterministic adapter simulating ALL outcome classes for dev/e2e testing.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: SessionPool (dev/e2e), inbox-opencode tests, inbox-roles tests
-// @tasks: TSK-111, TSK-160, TSK-175
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

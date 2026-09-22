@@ -2,7 +2,8 @@
 //   dataset (docs/journal/eval-history.json). The JSON is the source of truth — edit it and re-run.
 //   Chronicle of every tool/directive/prompt change across the Codex RCv5 → Claude RC v6 sessions:
 //   before→after diff, decision + why, and three deltas (time / tokens / trajectory). No agent needed.
-// @usage: node --import tsx ai/flow-eval/scripts/build-history-report.ts   (from repo root; args optional: <in.json> <out.html>)
+//   @usage: node --import tsx ai/flow-eval/scripts/build-history-report.ts   (from repo root; args optional: <in.json> <out.html>)
+// @spec: AI-SKILLS
 // @consumers: docs/eval-history.html (generated); docs/README.md links it.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

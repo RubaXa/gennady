@@ -1,4 +1,6 @@
 // @file: ai/inspector — UI: skill list → (1) structure tree, (2) step-through debugger of the flow.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { renderMarkdown, renderInline } from './markdown.js';
 import {

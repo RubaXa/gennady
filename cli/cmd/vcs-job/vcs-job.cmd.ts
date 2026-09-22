@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: vcs-job CLI command — inspect and control pipeline jobs (status, play, cancel, retry).
+// @spec: CLI
 // @consumers: vcs-job
-// @tasks: TSK-85
 
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';

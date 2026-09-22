@@ -6,7 +6,7 @@
       The format of the output spec is defined in `specs/uikit/spec-format.md`. This directive governs the TRANSFORMATION logic: how to group variants, populate token mappings, generate BDD, and apply a11y defaults.
 
       You are NOT in charge of:
-      - Running `figma-utils extract` (that is a prior step, TSK-24);
+      - Running `figma-utils extract` (that is a prior step, CLI-alt-cli);
       - Validating the draft (SpecValidator is a separate check);
       - Finalising the spec (operator approves after review).
     </Mission>

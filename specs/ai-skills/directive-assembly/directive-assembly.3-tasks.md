@@ -4,7 +4,7 @@
 
 | Task-ID     | Title                                             | Dependencies | Status   | Reopens |
 | ----------- | ------------------------------------------------- | ------------ | -------- | ------- |
-| DA-lazy-asm | Lazy directive assembly: skeleton + step packages | —            | [x] DONE | —       |
+| DA-lazy-asm | Lazy directive assembly: skeleton + step packages | —            | [ ] TODO | —       |
 
 ## Slug Registry
 

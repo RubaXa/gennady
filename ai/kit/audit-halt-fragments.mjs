@@ -1,3 +1,6 @@
+// @file: ai/kit/audit-halt-fragments.mjs
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, extname, relative, resolve, sep } from 'node:path';
 

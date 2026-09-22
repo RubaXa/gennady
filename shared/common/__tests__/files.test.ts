@@ -1,6 +1,6 @@
 // @file: Unit tests for the test-territory predicates every diff-scoped gate relies on.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

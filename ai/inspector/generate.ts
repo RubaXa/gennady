@@ -1,5 +1,7 @@
 // @file: ai/inspector — build the trace model from real skills + directives → web/trace.json.
-// Run: npx tsx ai/inspector/generate.ts
+//   Run: npx tsx ai/inspector/generate.ts
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';

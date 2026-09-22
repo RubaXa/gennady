@@ -1,6 +1,6 @@
 // @file: ReviewerTail — creates review summary for reviewer with decision recommendations, dedup hints, posting candidates
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
-// @tasks: TSK-161
 
 import { logger } from '#logger';
 import type { FindingEntry } from '../findings-journal.ts';

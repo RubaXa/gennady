@@ -1,6 +1,6 @@
 // @file: Unit tests for deriveReviewProgress — graph node → stage, lens-track counter, elapsed clock.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-155
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

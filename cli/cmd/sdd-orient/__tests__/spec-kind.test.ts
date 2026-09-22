@@ -1,4 +1,5 @@
 // @file: Unit tests for detectSpecKind — v2 marker classification plus the legacy heading/title fallback.
+// @spec: CLI-SDD-ORIENT
 // @consumers: spec-kind
 
 import { describe, it } from 'node:test';

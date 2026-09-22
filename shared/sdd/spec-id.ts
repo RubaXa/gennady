@@ -1,6 +1,6 @@
 // @file: Canonical V2 Spec ID parsing, path-derived migration proposal, and on-demand ID-to-path index.
+// @spec: SHARED
 // @consumers: orient file-relations adapter, sdd-check ownership checks, sdd-new scaffolds
-// @tasks: N/A
 
 import { readdirSync, readFileSync, type Dirent } from 'node:fs';
 import { basename, relative, resolve, sep } from 'node:path';

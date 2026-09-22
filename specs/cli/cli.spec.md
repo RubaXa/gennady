@@ -1,5 +1,11 @@
 # cli: Scope Specification
 
+<!--SECTION:SPEC_ID-->
+
+CLI
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 product
@@ -250,12 +256,12 @@ $ gennady orient
 
 services/dbc/
   parser/
-    dbc-parser.types.ts — @file: Universal contract schema types, parser interface, and issue codes | @tasks: TSK-01 | @consumers: DbcParserImplementations | @exports: 4
+    dbc-parser.types.ts — @file: Universal contract schema types, parser interface, and issue codes | @tasks: DP-fields | @consumers: DbcParserImplementations | @exports: 4
     implementations/jsdoc/
-      dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: TSK-02 | @exports: 1
+      dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: DP-jsdoc | @exports: 1
       ... 1 more dir, 3 files
   linter/
-    dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: TSK-03 | @consumers: DbcTsLinter | @exports: 4
+    dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: DP-snaps | @consumers: DbcTsLinter | @exports: 4
     implementations/ts/
       ... 2 more files
 
@@ -272,7 +278,7 @@ $ gennady orient --detail
 
 services/dbc/
   parser/
-    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01 | @consumers: DbcParserImplementations | @exports: 4
+    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: DP-fields | @consumers: DbcParserImplementations | @exports: 4
       DbcParser: interface
         @purpose: Parse DBC contracts into universal schema
       DbcSchema: type
@@ -282,13 +288,13 @@ services/dbc/
 # exit 0
 
 # --- поиск по задаче (S2): один task-id ---
-$ gennady orient --task=TSK-04
+$ gennady orient --task=DL-ts-deps
 
-TSK-04 → tasks/dbc/dbc-linter/dbc-linter.task-04.md → specs/dbc/dbc-linter/dbc-linter.spec.md
+DL-ts-deps → tasks/dbc/dbc-linter/dbc-linter.task-04.md → specs/dbc/dbc-linter/dbc-linter.spec.md
 
 1 file:
 
-  dbc-ts-linter.ts — @file: TypeScript linter implementation with 4-pass contract match validation | @tasks: TSK-04, TSK-05 | @consumers: lint command | @exports: 4
+  dbc-ts-linter.ts — @file: TypeScript linter implementation with 4-pass contract match validation | @tasks: DL-ts-deps, DL-vite-ext | @consumers: lint command | @exports: 4
 
 Hints:
   --detail               Show exports for each file
@@ -298,20 +304,20 @@ Hints:
 # exit 0
 
 # --- поиск по задаче: несколько task-id ---
-$ gennady orient --task=TSK-01 --task=TSK-02
+$ gennady orient --task=DP-fields --task=DP-jsdoc
 
-TSK-01, TSK-02
+DP-fields, DP-jsdoc
 
-TSK-01: dbc-parser.types.ts, dbc-linter.types.ts
-TSK-02: dbc-jsdoc-parser.ts, dbc-ts-linter.ts, dbc-ts-ast-adapter.ts
+DP-fields: dbc-parser.types.ts, dbc-linter.types.ts
+DP-jsdoc: dbc-jsdoc-parser.ts, dbc-ts-linter.ts, dbc-ts-ast-adapter.ts
 
 5 files:
 
-  dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: TSK-02 | @exports: 1
-  dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: TSK-01 | @consumers: DbcTsLinter | @exports: 4
-  dbc-parser.types.ts — @file: Universal contract schema types, parser interface | @tasks: TSK-01 | @consumers: DbcParserImplementations | @exports: 4
-  dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @tasks: TSK-02, TSK-11 | @consumers: DbcTsLinter | @exports: 1
-  dbc-ts-linter.ts — @file: TypeScript linter implementation | @tasks: TSK-02, TSK-04, TSK-05 | @exports: 4
+  dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: DP-jsdoc | @exports: 1
+  dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: DP-fields | @consumers: DbcTsLinter | @exports: 4
+  dbc-parser.types.ts — @file: Universal contract schema types, parser interface | @tasks: DP-fields | @consumers: DbcParserImplementations | @exports: 4
+  dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @tasks: DP-jsdoc, DL-content | @consumers: DbcTsLinter | @exports: 1
+  dbc-ts-linter.ts — @file: TypeScript linter implementation | @tasks: DP-jsdoc, DL-ts-deps, DL-vite-ext | @exports: 4
 
 Hints:
   --detail               Show exports for each file
@@ -325,9 +331,9 @@ $ gennady orient --consumer=DbcTsLinter
 
 "DbcTsLinter" referenced as consumer by 3 files:
 
-  dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @tasks: TSK-07 | @consumers: DbcTsLinter | @exports: 5
-  dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: TSK-03 | @consumers: DbcTsLinter | @exports: 4
-  file-header.check.ts — @file: File header validation | @tasks: TSK-16 | @consumers: DbcTsLinter, lint.cmd.ts | @exports: 1
+  dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @tasks: DL-types | @consumers: DbcTsLinter | @exports: 5
+  dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @tasks: DP-snaps | @consumers: DbcTsLinter | @exports: 4
+  file-header.check.ts — @file: File header validation | @tasks: LIN-command | @consumers: DbcTsLinter, lint.cmd.ts | @exports: 1
 
 Hints:
   --detail               Show exports for each file
@@ -341,8 +347,8 @@ $ gennady orient "merge conflict"
 
 "merge conflict" found in 2 files:
 
-  cli/cmd/resolve-conflicts/resolve-conflicts.cmd.ts — @file: Resolves merge conflicts in review artifacts | @tasks: TSK-40 | @exports: 2
-  shared/common/merge.ts — @file: Merge utility functions | @tasks: TSK-22 | @exports: 3
+  cli/cmd/resolve-conflicts/resolve-conflicts.cmd.ts — @file: Resolves merge conflicts in review artifacts | @tasks: AM-opencode | @exports: 2
+  shared/common/merge.ts — @file: Merge utility functions | @tasks: VC-headers | @exports: 3
     - mergeArtifacts()  @purpose: Merge two review artifacts with conflict resolution
 
 Hints:
@@ -358,7 +364,7 @@ $ gennady orient --file=services/dbc/parser/dbc-parser.types.ts
 dbc-parser.types.ts
 
 @file: Universal contract schema types, parser interface, and issue codes for DBC parsers
-@tasks: TSK-01
+@tasks: DP-fields
 @consumers: DbcParserImplementations
 @exports: 4
 
@@ -405,7 +411,7 @@ $ gennady orient --entity=DbcJsDocParser
 
 "DbcJsDocParser" found in 1 file:
 
-  services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: TSK-02 | @exports: 1
+  services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @tasks: DP-jsdoc | @exports: 1
     DbcJsDocParser: class
       @purpose: Parse JSDoc contracts into universal DbcSchema
       @implements: DbcParser
@@ -422,7 +428,7 @@ $ gennady orient --entity=DbcJdocParsr --fuzzy
 
 "DbcJdocParsr" matched 1 entity:
 
-  services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts — @file: JSDoc implementation | @tasks: TSK-02 | @exports: 1
+  services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts — @file: JSDoc implementation | @tasks: DP-jsdoc | @exports: 1
     DbcJsDocParser: class
       @purpose: Parse JSDoc contracts into universal DbcSchema
 
@@ -434,17 +440,17 @@ $ gennady orient --graph
 Project dependencies:
 
   DbcJsDocParser consumes:
-    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01
+    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: DP-fields
 
   DbcTsLinter consumes:
-    dbc-linter.types.ts — @file: DbcLinter interface | @tasks: TSK-03
-    dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface | @tasks: TSK-07
-    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01
+    dbc-linter.types.ts — @file: DbcLinter interface | @tasks: DP-snaps
+    dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface | @tasks: DL-types
+    dbc-parser.types.ts — @file: Universal contract schema types | @tasks: DP-fields
 
   lint command consumes:
-    dbc-ts-linter.ts — @file: TypeScript linter | @tasks: TSK-04
-    file-header.check.ts — @file: File header validation | @tasks: TSK-16
-    anchor.check.ts — @file: Anchor validation | @tasks: TSK-17
+    dbc-ts-linter.ts — @file: TypeScript linter | @tasks: DL-ts-deps
+    file-header.check.ts — @file: File header validation | @tasks: LIN-command
+    anchor.check.ts — @file: Anchor validation | @tasks: LIN-unit
 
   ...
 
@@ -475,9 +481,9 @@ $ gennady orient --graph --recursive
 $ gennady orient --dir=services/dbc/parser
 
 services/dbc/parser/
-  dbc-parser.types.ts — @file: Universal contract schema types | @tasks: TSK-01 | @exports: 4
+  dbc-parser.types.ts — @file: Universal contract schema types | @tasks: DP-fields | @exports: 4
   implementations/jsdoc/
-    dbc-jsdoc-parser.ts — @file: JSDoc implementation | @tasks: TSK-02 | @exports: 1
+    dbc-jsdoc-parser.ts — @file: JSDoc implementation | @tasks: DP-jsdoc | @exports: 1
 
 # exit 0
 
@@ -522,15 +528,15 @@ $ gennady orient --specs
 Specs overview:
 
   dbc-linter.spec.md
-    TSK-03: dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @consumers: DbcTsLinter | @exports: 4
-    TSK-04: dbc-ts-linter.ts — @file: TypeScript linter implementation | @consumers: lint command | @exports: 4
-    TSK-07: dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @consumers: DbcTsLinter | @exports: 5
-    TSK-08: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
-    TSK-11: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
+    DP-snaps: dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @consumers: DbcTsLinter | @exports: 4
+    DL-ts-deps: dbc-ts-linter.ts — @file: TypeScript linter implementation | @consumers: lint command | @exports: 4
+    DL-types: dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @consumers: DbcTsLinter | @exports: 5
+    DL-ast: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
+    DL-content: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
 
   dbc-parser.spec.md
-    TSK-01: dbc-parser.types.ts — @file: Universal contract schema types, parser interface | @consumers: DbcParserImplementations | @exports: 4
-    TSK-02: dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @exports: 1
+    DP-fields: dbc-parser.types.ts — @file: Universal contract schema types, parser interface | @consumers: DbcParserImplementations | @exports: 4
+    DP-jsdoc: dbc-jsdoc-parser.ts — @file: JSDoc implementation of the DbcParser contract | @exports: 1
 
   dbc.spec.md
     (library-level spec — 2 sub-specs above)
@@ -549,10 +555,10 @@ dbc-linter.spec.md
 
 4 tasks, 4 files:
 
-  TSK-03: dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @consumers: DbcTsLinter | @exports: 4
-  TSK-04: dbc-ts-linter.ts — @file: TypeScript linter implementation | @consumers: lint command | @exports: 4
-  TSK-07: dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @consumers: DbcTsLinter | @exports: 5
-  TSK-08: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
+  DP-snaps: dbc-linter.types.ts — @file: DbcLinter interface and lint error codes | @consumers: DbcTsLinter | @exports: 4
+  DL-ts-deps: dbc-ts-linter.ts — @file: TypeScript linter implementation | @consumers: lint command | @exports: 4
+  DL-types: dbc-ast-adapter.types.ts — @file: DbcAstAdapter interface and AST types | @consumers: DbcTsLinter | @exports: 5
+  DL-ast: dbc-ts-ast-adapter.ts — @file: TypeScript tree-sitter AST adapter | @consumers: DbcTsLinter | @exports: 1
 
 Hints:
   orient --file=<path>       Inspect any file in full detail
@@ -762,7 +768,7 @@ $ gennady agents-rules
 | Тебе нужно ...                                          | Вызови                                          |
 | ------------------------------------------------------- | ----------------------------------------------- |
 | Понять структуру проекта, какие файлы за что отвечают   | `npx gennady orient`                            |
-| Найти файлы, связанные с конкретной задачей (TSK-XX)    | `npx gennady orient --task=TSK-03`              |
+| Найти файлы, связанные с конкретной задачей (TSK-XX)    | `npx gennady orient --task=DP-snaps`            |
 | Узнать, кто потребляет модуль (зависимости снизу-вверх) | `npx gennady orient --consumer=DbcTsLinter`     |
 | Найти файлы по ключевому слову в `@file:` описании      | `npx gennady orient "keyword"`                  |
 | Посмотреть хедер и DBC-контракты конкретного файла      | `npx gennady orient --file=path/to/file.ts`     |
@@ -781,13 +787,13 @@ npx gennady orient --consumer=DbcJsDocParser
 
 Вывод: список файлов, у которых `@consumers: DbcJsDocParser` в хедере.
 
-### Найти файлы задачи TSK-04
+### Найти файлы задачи DL-ts-deps
 
 ```bash
-npx gennady orient --task=TSK-04
+npx gennady orient --task=DL-ts-deps
 ```
 
-Вывод: `TSK-04 → dbc-ts-linter.spec.md → список файлов с аннотациями`.
+Вывод: `DL-ts-deps → dbc-ts-linter.spec.md → список файлов с аннотациями`.
 
 ### Посмотреть конкретный файл в деталях
 
@@ -2026,7 +2032,7 @@ cli/cmd/agents-rules/
   - Запрет любых disable-комментариев — слишком строго; легитимные кейсы существуют (compile-time gates, third-party type gaps)
   - Verification существования D-NNN в spec файлах сразу — преждевременная сложность; начинаем с синтаксической проверки, существование добавляем второй итерацией если понадобится
   - Расширить проверку на `: any` / `.skip` — отдельная политика; начинаем с самого узкого среза (только явные отключения), расширим после пилота
-  - Требовать только D-NNN без purpose (первая итерация) — позволяло формально соблюдать политику без реального обоснования (`/* @ts-ignore: D-099 */`); пересмотрено в refine (см. TSK-52)
+  - Требовать только D-NNN без purpose (первая итерация) — позволяло формально соблюдать политику без реального обоснования (`/* @ts-ignore: D-099 */`); пересмотрено в refine (см. LIN-purpose)
   - Жёсткий формат `<marker> — <D-NNN>: <purpose>` без альтернативных разделителей — ломает ESLint-конвенцию `-- reason`; выбран семантический подход (три части присутствуют, формат гибкий)
 
 ### D-006 — Контракт resolveTargets (дедупликация, исключения, graceful degradation)
@@ -2154,7 +2160,7 @@ cli/cmd/run/
 
 | Вариант | Почему отвергнут |
 | --- | --- |
-| Дефолт модели в CLI | Дублирует знание движка; ядро уже знает дефолт. CLI остаётся тонким. |
+| Дефолт модели в CLI | Дублирует знание движка и нарушает тонкую границу CLI                |
 | Логика запуска opencode прямо в CLI | Нарушает «ядро переиспользуемо не только из CLI»; вся логика в `@services/agent-run`. |
 | Своя библиотека парсинга аргументов | YAGNI — `node:util parseArgs` достаточно. |
 
@@ -2413,7 +2419,7 @@ services/vcs-client/
 | Обновить `cli/gennady.ts` (case 'run')                                   | file          | this-scope-task       | добавить `case 'run': await import('./cmd/run/index.ts'); break` + per-command-help `case 'run'` → `./cmd/run/help.ts`             |
 | Обновить `cli/AGENTS.md` (строка run)                                    | file          | this-scope-task       | добавить строку `run` в таблицу команд                                                                                              |
 | Обновить `cli/cmd/help/help.cmd.ts` (строка run)                         | file          | this-scope-task       | добавить `run` в вывод help                                                                                                         |
-| `@services/agent-run` доступен                                           | external-type | external-prereq-scope | scope `agent-run` (TSK-62/63 + model refine) предоставляет `run`/`listModels`/`AgentRunError`                                       |
+| `@services/agent-run` доступен                                           | external-type | external-prereq-scope | scope `agent-run` (COR-engine/63 + model refine) предоставляет `run`/`listModels`/`AgentRunError`                                       |
 | **review-issues**                                                        |               |                       |                                                                                                                                     |
 | `GITLAB_PERSONAL_TOKEN`                                                  | env           | operator-action       | Оператор устанавливает env-переменную                                                                                               |
 | **e2e**                                                                  |               |                       |                                                                                                                                     |
@@ -2469,6 +2475,16 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [sync-skills](./sync-skills/sync-skills.spec.md) — Команда `gennady sync-skills`: синхронизация `ai/directives/` (целиком), затем 13 SDD-скилов из npm-пакета в `.claude/skills/` проекта с orphan-удалением — не путать с `sync` (только directives, без скилов) и с `sdd-sync` (ниже; трекеры, не пакет)
 - [sdd-sync](./sdd-sync/sdd-sync.spec.md) — Команда `gennady sdd-sync`: распространяет Status одного тикета в трекеры `*.3-tasks.md` (rollup) — не пакетная синхронизация, файлов из npm-пакета не трогает
 - [sdd-migrate](./sdd-migrate/sdd-migrate.spec.md) — Команда `gennady sdd-migrate`: детерминированные шаги миграции SDD v1→v2 артефактов этого репозитория (`anchors`/`plan`/`ids`/`move`) — не пакетная синхронизация и не откат/back-sync
+- [sdd-check](./sdd-check/sdd-check.spec.md) — Строгая проверка SDD v2 артефактов и связей
+- [sdd-extract](./sdd-extract/sdd-extract.spec.md) — Извлечение именованных секций SDD v2
+- [sdd-log](./sdd-log/sdd-log.spec.md) — Ведение раундов и CLI-owned квитанций фаз
+- [sdd-new](./sdd-new/sdd-new.spec.md) — Создание канонических SDD v2 артефактов
+- [sdd-state](./sdd-state/sdd-state.spec.md) — Детерминированный снимок состояния SDD v2
+- [sdd-task](./sdd-task/sdd-task.spec.md) — Выбор и подготовка следующей задачи
+- [sdd-verify](./sdd-verify/sdd-verify.spec.md) — Исполнение фазовой лестницы проверки
+- [testcov](./testcov/testcov.spec.md) — Проверка покрытия тестами и адаптеры отчётов
+- [verify](./verify/verify.spec.md) — Общий full-profile план проверок стека
+- [yagni](./yagni/yagni.spec.md) — Проверка неиспользуемых экспортируемых сущностей
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI
 - [e2e](./e2e/e2e.spec.md) — E2E-тесты CLI-команд: `npm pack` → установка в fixture-проект → spawn реальных команд (lint, sync, orient, sync-skills)
@@ -2579,9 +2595,9 @@ graph TD
 | ID   | Insight                                                                                                                                                                                                                                            | Решение                                                                                                                                                                                                            |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | I-01 | `parseArgs()` делает внутренний `.slice(2)`. При передаче `process.argv` позиционные аргументы включают имя команды. Повторный `.slice()` вне parseArgs теряет аргументы.                                                                          | Фильтровать `args._` по расширению `.ts`, не делать повторный slice. Команда может запускаться по-разному (прямой импорт, tsx, npx) — структура argv нестабильна.                                                  |
-| I-02 | `resolve(filePath)` даёт абсолютный путь. Если передать его в проверки, ошибки выводят `/Users/.../file.ts`, а не относительный путь из аргументов.                                                                                                | Использовать `resolve()` только для `readFileSync`. Во все проверки передавать оригинальный `filePath` из аргументов.                                                                                              |
+| I-02 | `resolve(filePath)` даёт абсолютный путь и раскрывает его в ошибках вместо входного относительного пути                                                                                                                                        | Использовать `resolve()` только для `readFileSync`, а проверкам передавать исходный `filePath`                                                                                                                       |
 | I-03 | `git diff --staged --name-only` и `git ls-files --others --exclude-standard` падают вне git-репозитория.                                                                                                                                           | Обёрнуты в try/catch с понятным сообщением об ошибке.                                                                                                                                                              |
-| I-04 | Unit-тесты отдельных checks не покрывают CLI-интеграцию. Баги parseArgs и filePath-неконсистентности прошли бы незамеченными без ручного тестирования.                                                                                             | Создан TSK-18 — интеграционные тесты CLI: parseArgs, autofix-вывод, exit codes, консистентность путей, фильтр по расширению.                                                                                       |
+| I-04 | Unit-тесты отдельных checks не покрывают CLI-интеграцию. Баги parseArgs и filePath-неконсистентности прошли бы незамеченными без ручного тестирования.                                                                                             | Создан LIN-e2e — интеграционные тесты CLI: parseArgs, autofix-вывод, exit codes, консистентность путей, фильтр по расширению.                                                                                       |
 | I-05 | При autofix вывод не показывал количество исправленных ошибок — команда молча мутировала файл.                                                                                                                                                     | `LintReport` расширен полем `autoFixed`, вывод начинается с `Auto-fixed: N error(s)`.                                                                                                                              |
 | I-06 | `parseArgs(process.argv)` включает имя команды (`cat`) и путь к скрипту в `args._`. При запуске через `npx tsx ~/path/cli cat ...` в `args._` попадают и путь к скрипту, и `'cat'`. Простая проверка `args._.length > 0` даёт ложное срабатывание. | Фильтровать `args._`: удалять имя команды, пути скриптов (`.ts`, `.js`, `.mjs`, абсолютные пути). Команда должна работать при запуске через `tsx <абсолютный путь>`. Паттерн из lint (фильтр по расширению `.ts`). |
 | I-07 | GitLab `/repository/files/:path/raw` endpoint возвращает 404 для `source_branch` (имя ветки), но работает с `sha` (head commit).                                                                                                                   | `VcsGitlabMergeRequests.getChanges` использует `sha` из ответа MR как `ref`. `source_branch` — fallback.                                                                                                           |

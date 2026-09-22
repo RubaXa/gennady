@@ -1,7 +1,7 @@
 // @file: Gates, types, and verdict for sdd-verify — repair-first phase profiles and a read-only
 //   full profile, each with a fixed order and fail-closed required gates.
+// @spec: CLI-SDD-VERIFY
 // @consumers: SddVerifyCommand
-// @tasks: N/A
 
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {

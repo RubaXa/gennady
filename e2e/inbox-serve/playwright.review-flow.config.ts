@@ -2,8 +2,8 @@
 //   sibling playwright.config.ts, this config spawns NO webServer: the spec owns its entire
 //   lifecycle (temp state dir → seed MR → in-process real server on :4174 → real review pipeline →
 //   gracefulShutdown) inside beforeAll/afterAll. This config only names the spec and its output dir.
+// @spec: AGENT-INBOX
 // @consumers: npm run test:e2e:review-flow
-// @tasks: TSK-131
 
 import { defineConfig } from '@playwright/test';
 import { dirname, resolve } from 'node:path';

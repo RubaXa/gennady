@@ -1,6 +1,6 @@
 // @file: Deterministic isolated-copy config preparation for the cloud-ios Swift round-trip.
+// @spec: AI-SKILLS
 // @consumers: prepare-swift-roundtrip.ts, swift-fixture-prep.test.ts
-// @tasks: E-10, E-18
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

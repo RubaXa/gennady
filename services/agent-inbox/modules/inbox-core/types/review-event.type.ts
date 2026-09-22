@@ -1,6 +1,6 @@
 // @file: Versioned canonical review event accepted by the inbox-core journal boundary.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, JournalPort, inbox-vcs
-// @tasks: TSK-173, TSK-174
 
 /** @purpose Closed canonical review-event discriminator vocabulary. */
 export type ReviewEventKind =

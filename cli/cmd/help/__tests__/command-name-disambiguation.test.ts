@@ -2,8 +2,8 @@
 //   as one distinct subject, in both surfaces a user actually reads: the master `help.cmd.ts`
 //   listing (`npx gennady help`) and the `cli` scope's own module map (`specs/cli/cli.spec.md`
 //   §9.1). A grep-shaped regression lock, not a behavior test.
+// @spec: CLI-HELP
 // @consumers: release regression suite
-// @tasks: N/A
 
 // SO-14 (ai/drafts/research/sdd-v1-to-v2-transfer/32-TRACK-SYNC-OWNERSHIP.md §4.1, 61-TASK-BOARD.md
 //   §1): `sync` / `sync-skills` / `sdd-sync` / `sdd-migrate` all contain "sync"; `orient` /

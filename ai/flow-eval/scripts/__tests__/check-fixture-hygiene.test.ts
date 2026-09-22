@@ -3,8 +3,8 @@
 //   repo by design, D-62/L-13 variant (a), so the real ones are never touched by this test): a clean
 //   worktree with no secret-class files passes; drift and a secret-class file are each independently
 //   detected and reported.
+// @spec: AI-SKILLS
 // @consumers: migration-eval.sh, roundtrip-eval.sh, operators preparing an external fixture
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

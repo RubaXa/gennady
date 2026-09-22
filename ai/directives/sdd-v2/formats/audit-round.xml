@@ -26,7 +26,7 @@
 
   ### Audit Round 1 — 2026-05-12, after Execution Round 1
   ```
-  @audit task=TSK-04 round=1 mode=per-task after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B1·M1·m0·I0 phases_to_fix=[P2]
+  @audit task=DL-ts-deps round=1 mode=per-task after-exec-round=1 triggered-reopen=Round-2 status=FAIL counts=B1·M1·m0·I0 phases_to_fix=[P2]
   F-01 | sev=B | type=CLOSED_WORLD_DRIFT | conf=H | loc=src/payments/adapter.ts:42 | phase=P2 | src=specs/backend/payments/payments.spec.md#2 | route=spec-edit | act=добавить `IdempotencyKey` в Entity Inventory
   F-02 | sev=M | type=RULES_COMPLIANCE_VIOLATION | conf=H | loc=src/payments/adapter.ts:100 | phase=P2 | src=ai/directives/coding/typescript-rules.xml#AX_STRICT_NULL | route=ticket-reopen | act=добавить null-guard на response.balanceTransaction
   @glossary suggestions=[]

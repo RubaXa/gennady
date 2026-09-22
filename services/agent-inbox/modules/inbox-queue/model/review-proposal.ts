@@ -1,6 +1,6 @@
 // @file: ReviewProposal entity — one candidate operator or automatic action derived from an accepted guarded handoff.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewActionPackage, ReviewDecision
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import type { ReviewGuardedIntent } from '../types/review-guarded-intent.type.ts';

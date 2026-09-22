@@ -1,8 +1,8 @@
 // @file: D2 — real-git proof that worktree-ops' git calls are genuinely async (execFile, not
 //   execFileSync): a tight timer keeps ticking WHILE a real worktree-removal git operation is in
 //   flight, proving the event loop is never blocked for the duration of the call.
+// @spec: CLI
 // @consumers: node:test runner
-// @tasks: TSK-93
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,4 +1,5 @@
 // @file: Identity-safe lifecycle for adapter-owned coverage artifacts.
+// @spec: CLI-TESTCOV
 // @consumers: testcov.cmd.ts, sdd-verify/index.ts, coverage-adapter-registry.test.ts
 
 import { existsSync, lstatSync } from 'node:fs';

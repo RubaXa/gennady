@@ -14,7 +14,7 @@
       | `OrderProcessor` | Service | Композитная обработка lifecycle заказа |
       | `PaymentGatewayPort` | Port | Абстракция для списания средств |
       | `StripePaymentAdapter` | Adapter | Реализация PaymentGatewayPort через Stripe |
-      | `RefundLedger` | Service | Учёт возвратов — Deferred Implementation: TSK-42 |
+      | `RefundLedger` | Service | Учёт возвратов — Deferred Implementation: INP-rel-dep |
       ```
 
       **`Deferred Implementation: <TSK-id>`** — a declared entity whose build is deliberately owned

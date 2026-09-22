@@ -1,4 +1,5 @@
 // @file: no star prefix
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  @purpose Missing star prefix on all lines.

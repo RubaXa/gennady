@@ -1,6 +1,6 @@
 // @file: Contract tests for the stateless SDD v2 approval and execution flow.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: directive assembly, SDD skills, release regression suite
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

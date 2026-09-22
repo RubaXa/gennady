@@ -1,7 +1,7 @@
 // @file: Unit tests for the trajectory assertion helpers — a good migration path passes every matcher,
 //   and each rule (checkpoint order/greenness, maxTools, allow/deny, never) fails on a crafted bad path.
+// @spec: AI-SKILLS
 // @consumers: N/A (test)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for DisablesCheck — validates that every TS / linter disable cites a Decision Log entry AND carries a purpose.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-51, TSK-52
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -59,7 +59,7 @@ describe('DisablesCheck', () => {
     assert.deepEqual(check(content, 'foo.ts'), []);
   });
 
-  // --- TSK-52 additions: purpose enforcement (DC-21..DC-25) ---
+  // --- LIN-purpose additions: purpose enforcement (DC-21..DC-25) ---
 
   it('DC-21 D-NNN without purpose → MISSING_PURPOSE', () => {
     const content = `${S} @ts-expect-error: D-042\nclass _X {}\n`;

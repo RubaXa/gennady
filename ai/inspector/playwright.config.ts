@@ -1,4 +1,6 @@
 // @file: ai/inspector — Playwright config: serve web/ via serve.ts, run e2e from ./e2e.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { defineConfig } from '@playwright/test';
 import { dirname, join } from 'node:path';

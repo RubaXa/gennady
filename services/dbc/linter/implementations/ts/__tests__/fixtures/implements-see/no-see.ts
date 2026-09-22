@@ -1,3 +1,6 @@
+// @file: services/dbc/linter/implementations/ts/__tests__/fixtures/implements-see/no-see.ts
+// @spec: DBC-DBC-LINTER
+// @consumers: N/A
 /** @purpose Simple agent interface. */
 interface Agent {
   scan(x: number): string;

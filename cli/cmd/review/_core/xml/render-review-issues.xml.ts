@@ -1,6 +1,6 @@
 // @file: Build the final XML for review-issues (artifact only).
+// @spec: CLI-REVIEW
 // @consumers: run-review-command.logic
-// @tasks: N/A
 
 /**
  * @purpose Build the final XML for review-issues (artifact only).

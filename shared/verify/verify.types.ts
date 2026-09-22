@@ -1,6 +1,6 @@
 // @file: Closed-world types of the stack plugin system — plugin interface, gates, config, report.
+// @spec: SHARED
 // @consumers: stack-registry, stack-config, gate-runner, node-plugin, golang-plugin, verify.cmd
-// @tasks: TSK-95
 
 /** Identifier of a built-in stack plugin. */
 export type StackId = 'swift' | 'golang' | 'node' | 'anystack';

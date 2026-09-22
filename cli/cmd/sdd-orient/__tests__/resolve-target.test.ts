@@ -1,4 +1,5 @@
 // @file: Unit tests for resolveOrientTarget — path-or-scope-name resolution, against an in-memory SpecSectionSource fixture (no real filesystem).
+// @spec: CLI-SDD-ORIENT
 // @consumers: resolve-target
 
 import { describe, it } from 'node:test';

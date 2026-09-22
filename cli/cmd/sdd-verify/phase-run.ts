@@ -1,6 +1,6 @@
 // @file: Own one complete phase verification run and its atomic structured receipt lifecycle.
+// @spec: CLI-SDD-VERIFY
 // @consumers: sdd-verify/index.ts
-// @tasks: N/A
 
 import { randomBytes } from 'node:crypto';
 import {

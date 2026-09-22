@@ -1,6 +1,6 @@
 // @file: Deterministic ClockPort implementation advanced explicitly by tests and mock runtime.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core tests, inbox-mocks
-// @tasks: TSK-173
 
 import type { ClockPort } from '../ports/clock.port.ts';
 

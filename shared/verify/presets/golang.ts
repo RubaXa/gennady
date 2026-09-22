@@ -1,6 +1,6 @@
 // @file: Go stack preset — adapts the literal golang plugin to the SDD phase ladder and receipts.
+// @spec: SHARED
 // @consumers: presets/node, full-profile-plan, phase-receipt, readiness
-// @tasks: V-09
 
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';

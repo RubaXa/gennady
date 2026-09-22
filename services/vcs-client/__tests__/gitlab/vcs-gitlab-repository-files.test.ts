@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabRepositoryFiles.getFileContent.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-29
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

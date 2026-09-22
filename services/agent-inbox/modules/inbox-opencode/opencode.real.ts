@@ -1,6 +1,6 @@
 // @file: OpenCodeAgentAdapter — production AgentRuntimePort implementation via @opencode-ai/sdk.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: SessionPool (production), DI container, inbox-roles
-// @tasks: TSK-112, TSK-160, TSK-175
 
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';
 import { Agent as UndiciAgent } from 'undici';

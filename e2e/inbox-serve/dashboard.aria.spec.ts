@@ -1,6 +1,6 @@
 // @file: dashboard.aria.spec.ts — ARIA snapshot tests for inbox-dashboard accessibility structure.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts
-// @tasks: TSK-108, TSK-107
 
 import { test, expect } from '@playwright/test';
 import { captureAriaSnapshot } from './helpers/aria-snapshot.helper.ts';

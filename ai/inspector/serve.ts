@@ -1,6 +1,8 @@
 // @file: ai/inspector — zero-dep static server for web/ (so the UI can fetch trace.json over http).
-// Run: npx tsx ai/inspector/serve.ts   (PORT env optional, default 4173)
-// "Open in editor" is handled client-side via the editor URL scheme (vscode://file/...), no server spawn.
+//   Run: npx tsx ai/inspector/serve.ts   (PORT env optional, default 4173)
+//   "Open in editor" is handled client-side via the editor URL scheme (vscode://file/...), no server spawn.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';

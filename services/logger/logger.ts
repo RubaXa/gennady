@@ -1,4 +1,5 @@
 // @file: Project-wide logger contract and console-bound level-aware implementation.
+// @spec: SHARED
 // @consumers: All services and CLI commands
 
 /** @purpose Project-wide logger contract with a stable debug/info/warn/error API. */

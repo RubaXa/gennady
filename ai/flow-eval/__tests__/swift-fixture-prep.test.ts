@@ -1,6 +1,6 @@
 // @file: E-10/E-18 deterministic Swift fixture compatibility and isolated preparation.
+// @spec: AI-SKILLS
 // @consumers: CI, roundtrip-eval.sh
-// @tasks: E-10, E-18
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

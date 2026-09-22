@@ -1,4 +1,5 @@
 // @file: content on /** line
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  * @purpose Content on opening line.

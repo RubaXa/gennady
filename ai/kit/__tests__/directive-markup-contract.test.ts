@@ -3,8 +3,8 @@
 //   read, not an XML document, and must never run an XML parser/validator against it. v1 had this
 //   as AGENTS.md's first section; v2 lost it (the fact survived only in ai/kit/AUTHORING.md §1, a
 //   template-author document the operating agent does not read) until this fix restored it.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: T-B6-15
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

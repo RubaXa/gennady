@@ -1,7 +1,7 @@
 // @file: t1 — startup: the REAL product boots in-process (mocks:false, dryRun:true), its HTTP server
 //   answers GET /api/board with 200, and the built SPA index is served. No review, no browser.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-131
 
 import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';

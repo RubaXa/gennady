@@ -1,6 +1,6 @@
 // @file: CLI entry point — parses flags, wires providers and state, renders ink dashboard.
+// @spec: AGENT-MON-CLI-CMD
 // @consumers: cli/gennady.ts
-// @tasks: TSK-47
 
 import { render } from 'ink';
 import React from 'react';

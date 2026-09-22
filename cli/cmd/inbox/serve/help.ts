@@ -1,6 +1,6 @@
 // @file: inbox serve command help output
+// @spec: AGENT-INBOX
 // @consumers: help command, gennady.ts per-command help
-// @tasks: TSK-115
 
 /**
  * @purpose Print CLI help for the `gennady inbox serve` command.

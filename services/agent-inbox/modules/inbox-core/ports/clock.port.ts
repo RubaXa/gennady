@@ -1,6 +1,6 @@
 // @file: Clock boundary for production timers and deterministic review-batch tests.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core, inbox-queue, inbox-mocks
-// @tasks: TSK-173
 
 /**
  * @purpose Provide current time and cancellable scheduling without binding domain state to system timers.

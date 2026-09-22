@@ -1,6 +1,6 @@
 // @file: Unit tests for renderFileList and renderFileLine — universal file list format.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import type { ScannedFile } from '../orient.types.ts';
 function makeFile(absPath: string, overrides: Partial<ScannedFile> = {}): ScannedFile {
   return {
     absPath,
-    header: { file: 'test purpose', tasks: ['TSK-01'], consumers: ['ConsumerA'] },
+    header: { file: 'test purpose', tasks: ['DP-fields'], consumers: ['ConsumerA'] },
     exports: [
       {
         name: 'fn',
@@ -29,7 +29,7 @@ describe('renderFileLine', () => {
     const line = renderFileLine(file, '/project');
     assert.match(line, /src\/test\.ts/);
     assert.match(line, /@file: test purpose/);
-    assert.match(line, /@tasks: TSK-01/);
+    assert.match(line, /@tasks: DP-fields/);
     assert.match(line, /@consumers: ConsumerA/);
     assert.match(line, /@exports: 1/);
   });

@@ -1,6 +1,6 @@
 // @file: Verifies every directive's `BeliefState deps` are provided by the router core.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

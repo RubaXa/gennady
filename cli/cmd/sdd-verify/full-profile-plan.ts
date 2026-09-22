@@ -1,6 +1,6 @@
 // @file: D-64 assembled full profile — one primary preset plus non-blocking extra-stack tails.
+// @spec: CLI-SDD-VERIFY
 // @consumers: sdd-verify/index.ts, verify/verify.cmd.ts
-// @tasks: V-13b
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

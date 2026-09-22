@@ -1,7 +1,7 @@
 // @file: Unit tests for repo-wide stack detection — determinism, node inclusion, `use` narrowing,
 //   multi-stack repos, and the anystack-last-resort rule.
+// @spec: SHARED
 // @consumers: CI
-// @tasks: V-05, V-05b
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

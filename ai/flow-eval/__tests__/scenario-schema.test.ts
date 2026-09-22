@@ -1,6 +1,6 @@
 // @file: E-02 — every canonical scenario declares an objective completion bar (completion or acceptance).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/scenarios.json
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

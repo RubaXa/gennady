@@ -1,6 +1,6 @@
 // @file: Line counter — cloc for realCode category, git diff --numstat for other categories.
+// @spec: MR-STATS
 // @consumers: mr-stats.cmd
-// @tasks: TSK-139
 
 import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';

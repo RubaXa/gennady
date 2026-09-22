@@ -1,6 +1,6 @@
 // @file: Unified VCS read/effect contract, snapshots, capabilities, requests, and outcomes.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: SyncService, Effects, BackgroundVerifier
-// @tasks: TSK-158, TSK-174
 
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 

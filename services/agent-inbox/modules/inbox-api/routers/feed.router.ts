@@ -1,6 +1,6 @@
 // @file: FeedRouter — GET /api/feed?cursor=0 handler, cursor-based pagination via FeedProjection.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from '#logger';

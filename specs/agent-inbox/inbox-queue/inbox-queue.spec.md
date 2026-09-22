@@ -1,5 +1,25 @@
 # Module: inbox-queue
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-QUEUE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -85,6 +105,8 @@ core/pipeline. Уже `dispatching | unconfirmed` effect остаётся свя
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `ReviewTask`
 
@@ -239,11 +261,15 @@ core/pipeline. Уже `dispatching | unconfirmed` effect остаётся свя
 - **Events Emitted:** `ReviewGuardedHandoffAccepted`, `ReviewEffectDispatchRequested`, `ReviewDeltaRequested`.
 - **Errors & Degradation:** reconcile-only держит one-write effect `unconfirmed` до readback; unsupported не создаёт VCS request; stale newest state инвалидирует queued remainder, но dispatching/unconfirmed old-guard effects продолжают reconciliation; independent-command classification/gate ambiguity creates no effect; independent branches continue.
 - **Consumers:** Internal — scheduler/API commands; External — VCS effect/reconciliation ports.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### Module-level invariants
 
@@ -350,6 +376,7 @@ core/pipeline. Уже `dispatching | unconfirmed` effect остаётся свя
 - Classifier never synthesizes a proposal: guarded reroute consumes an existing
   proposal/package revision or fails closed, so no proposal duplication is possible.
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -417,6 +444,8 @@ classification; отдельная independent-command proposal/entity не со
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-QUEUE-01 — Package decision, per-effect confirmation
 
 - **Status:** active
@@ -445,7 +474,9 @@ classification; отдельная independent-command proposal/entity не со
   окно и могут завершиться `ambiguous` без automatic retry; `unsupported` capabilities
   уменьшают доступный action catalog вместо попытки best-effort write.
 - **Rejected alternatives:** pre-effect read как достаточная гарантия; blind retry;
-удаление stale package из UI.
+  удаление stale package из UI.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

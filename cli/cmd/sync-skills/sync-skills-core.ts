@@ -1,6 +1,6 @@
 // @file: SyncSkills core — scanSkills, collectAndCompareSkills
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsCmd, sync-skills-core.test.ts
-// @tasks: TSK-57
 
 import { readdirSync, statSync, readFileSync } from 'node:fs';
 import { join, sep } from 'node:path';

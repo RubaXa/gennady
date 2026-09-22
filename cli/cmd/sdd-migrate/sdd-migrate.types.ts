@@ -1,6 +1,6 @@
 // @file: Types and diagnostics for the sdd-migrate command.
+// @spec: CLI-SDD-MIGRATE
 // @consumers: SddMigrateCommand
-// @tasks: N/A
 
 /** @purpose Unknown mode, or missing target. */
 export const ERR_CLI_SDD_MIGRATE_BAD_INVOCATION = 'ERR_CLI_SDD_MIGRATE_BAD_INVOCATION' as const;

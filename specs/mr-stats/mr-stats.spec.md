@@ -1,5 +1,25 @@
 # mr-stats: Scope Specification
 
+<!--SECTION:SPEC_ID-->
+
+MR-STATS
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:SCOPE_TYPE-->
 
 ## scope-type
@@ -85,7 +105,7 @@ $ gennady mr-stats https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/1
 
 | ID    | Requirement                                                                                                                                                                                                                                |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| FR-01 | Принимает единственный аргумент — URL GitLab MR. Разбор URL через `parseVcsUrl` из `vcs` scope.                                                                                                                                            |
+| FR-01 | Принимает URL GitLab MR и разбирает его через `parseVcsUrl` из `vcs` scope                                                                                                                                                                 |
 | FR-02 | Получает метаданные MR: `iid`, `title`, `sourceBranch`, `targetBranch`, `mergedAt`, `author` — через `VcsGitlabClient.MergeRequests.getByIid`. Поле `project` берётся из `parseVcsUrl(url).repository`. Полный набор → `MrMetadata` (§10). |
 | FR-03 | Создаёт read-only git worktree для source- и target-веток через `vcs-worktree` (`prepareMrWorktree`).                                                                                                                                      |
 | FR-04 | Вычисляет список изменённых файлов: `git diff --name-only target...source`.                                                                                                                                                                |
@@ -111,7 +131,7 @@ $ gennady mr-stats https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/1
 | FR-08 | Для категории **Real Code**: поиск дубликатов через `jscpd` (clonesFound, clonedLines, percentage) на файлах source-ветки. |
 | FR-09 | Для всех категорий: количество файлов, строк добавлено / удалено. |
 | FR-10 | Очистка worktree после обработки (`removeWorktreeAt`). |
-| FR-11 | Вывод — структурированный JSON на stdout. Ошибки — в stderr. |
+| FR-11 | Структурированный JSON в stdout, ошибки в stderr |
 | FR-12 | Если MR не найден (ветка удалена, нет доступа) — понятная ошибка с ненулевым exit code. |
 
 **Failure modes — поведение при отказах внешних зависимостей:**
@@ -137,7 +157,7 @@ $ gennady mr-stats https://gitlab.corp.mail.ru/mail/messenger/-/merge_requests/1
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | NF-01 | Node.js 22+, TypeScript 5+ (стек gennady).                                                                                                                                                                                                  |
 | NF-02 | Zero новых зависимостей в `package.json`. `tree-sitter` + `tree-sitter-typescript` — уже в devDependencies, бандлятся Vite. Системные бинарники (`jscpd`, `cloc`, `glab`, `git`) — внешние рантайм-пререквизиты, устанавливаются глобально. |
-| NF-03 | macOS — primary target. Linux — совместимость по возможности.                                                                                                                                                                               |
+| NF-03 | macOS — primary target, Linux — best-effort compatibility                                                                                                                                                                                   |
 | NF-04 | Время обработки одного MR: < 30 секунд для MR размером до 500 изменённых файлов и 10k строк кода на машине Apple M1/M2, 16GB RAM (исключая clone). При превышении — warning в stderr, частичный результат выдаётся.                         |
 | NF-05 | Не модифицирует целевой репозиторий (read-only worktree).                                                                                                                                                                                   |
 
@@ -228,6 +248,8 @@ gennady mr-stats <url>
 
 ## 6. Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-001 — Architecture: Worktree-based analysis
 
 - **Status:** active
@@ -260,6 +282,8 @@ gennady mr-stats <url>
 - **Decision:** v1 — только top-level объявления. Modified = изменилось тело функции/класса или набор полей типа/интерфейса (игнорируя whitespace и комментарии). JSDoc-изменения игнорируются (не делают сущность modified). Декораторы считаются частью сущности (изменение декоратора → modified). Изменение только сигнатуры = modified. Переименование = removed + introduced. Импорты и ре-экспорты не считаются сущностями. Member reordering без изменения содержимого → не modified.
 - **Risk accepted:** Сигнатуры не отслеживаются отдельно. Может давать завышенный removed+introduced при рефакторингах с переименованием.
 - **Rejected alternatives:** Отслеживание сигнатур отдельно (deferred до v2).
+
+</details>
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -277,6 +301,8 @@ gennady mr-stats <url>
 <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 ## 8. Bootstrap Requirements
+
+<details><summary>Подробности</summary>
 
 | Requirement                                      | Kind           | Owner                 | Resolution                                                                                   |
 | ------------------------------------------------ | -------------- | --------------------- | -------------------------------------------------------------------------------------------- |
@@ -370,6 +396,7 @@ categories:
 
 | CLI-команда `mr-stats` | structural | this-scope-task | Создать `cli/cmd/mr-stats/` + зарегистрировать в `gennady.ts` |
 
+</details>
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:MODULE_MAP-->

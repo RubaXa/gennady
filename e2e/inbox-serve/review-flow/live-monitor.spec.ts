@@ -1,5 +1,7 @@
 // @file: live-monitor.spec.ts — песочница: следит за живым ревью от старта до финиша
-// Запуск: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts live-monitor.spec.ts
+//   Запуск: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts live-monitor.spec.ts
+// @spec: AGENT-INBOX
+// @consumers: N/A
 
 import { test, expect, type Page } from '@playwright/test';
 import { resolve, dirname } from 'node:path';

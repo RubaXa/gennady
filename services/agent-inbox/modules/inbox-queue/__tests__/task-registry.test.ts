@@ -1,6 +1,6 @@
 // @file: Unit tests for TaskRegistry — 19 type registry, formal grammar references, dedup key, supersede, enqueue result
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: node:test runner
-// @tasks: TSK-159
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

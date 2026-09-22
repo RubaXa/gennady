@@ -1,6 +1,6 @@
 // @file: ChatRouter — thin HTTP↔SSE bridge over inbox-chat's ChatSession (D-111, no business logic here).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: HttpServer
-// @tasks: TSK-129, TSK-162, TSK-163, TSK-175
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';

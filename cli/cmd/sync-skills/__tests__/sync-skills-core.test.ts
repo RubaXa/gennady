@@ -1,6 +1,6 @@
 // @file: Unit tests for SyncSkillsCore — scanSkills, collectAndCompareSkills
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsCore
-// @tasks: TSK-57
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

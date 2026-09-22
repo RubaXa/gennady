@@ -1,6 +1,6 @@
 // @file: Differential and edge tests for the one-pass YAGNI source/spec indexes.
+// @spec: CLI-YAGNI
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';

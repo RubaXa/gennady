@@ -1,6 +1,6 @@
 // @file: Legacy role-facing alias for the canonical runtime-owned outcome classifier.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleInstance.step()
-// @tasks: TSK-113, TSK-175
 
 import type {
   AgentClassifiedOutcome,

@@ -1,7 +1,7 @@
 // @file: Unit tests for PhaseTelemetry — JSONL append, 7-day GC, and analytics rollup
 //   (p50/p95/avg/error-rate per node, per-run totals, slowest phase).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-perf, TSK-153
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for the golang gate planner — non-mutating gates, module flags, timeouts, predicates.
+// @spec: CLI-VERIFY
 // @consumers: CI
-// @tasks: TSK-95
 
 import { describe, it, after } from 'node:test';
 import fs from 'node:fs';

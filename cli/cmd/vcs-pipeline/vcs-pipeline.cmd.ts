@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: vcs-pipeline CLI command — show MR pipeline status and failed jobs via getPipeline.
+// @spec: CLI
 // @consumers: vcs-pipeline
-// @tasks: TSK-83
 
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';

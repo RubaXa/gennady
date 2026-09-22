@@ -1,6 +1,6 @@
 // @file: Durable assembly selection stamped into every generated directive tree.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: build-directives, check-directives-fresh
-// @tasks: N/A
 
 import type { AssemblyMode } from './lazy-assembly.ts';
 

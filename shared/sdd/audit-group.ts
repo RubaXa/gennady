@@ -1,6 +1,6 @@
 // @file: Resolve a ticket's audit group — every ticket owned by one exact spec — and bound its git changes for `sdd-task --audit-group` / `--group-scope`.
+// @spec: SHARED
 // @consumers: sdd-task.cmd
-// @tasks: N/A
 
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';

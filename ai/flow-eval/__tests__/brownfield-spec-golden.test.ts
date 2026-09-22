@@ -1,7 +1,7 @@
 // @file: Both-outcomes proof for the brownfield spec-facing golden gates (QUALITY-RULES R2/R5):
-// recover-spec, delta-to-spec, modify-via-spec.
+//   recover-spec, delta-to-spec, modify-via-spec.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/provision (brownfield-recover-spec/-delta-to-spec/-via-spec fixtures)
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

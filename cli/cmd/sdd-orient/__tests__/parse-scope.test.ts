@@ -1,4 +1,5 @@
 // @file: Unit tests for parseModuleMap / parseModuleMapGraph — a scope's module list and its dependency graph edges, both spec formats.
+// @spec: CLI-SDD-ORIENT
 // @consumers: parse-scope
 
 import { describe, it } from 'node:test';

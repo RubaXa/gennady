@@ -1,6 +1,6 @@
 // @file: Unit tests for MetricsCollector — accept-rate, edit-rate, time-to-decision, graduation gates
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: node:test runner
-// @tasks: TSK-165
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

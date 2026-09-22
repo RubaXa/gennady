@@ -1,7 +1,7 @@
 // @file: One repo-wide stack detection — the single fact `sdd-state`/`sdd-task`/`sdd-verify` share
 //   instead of each re-guessing "what stack is this?" on its own.
+// @spec: SHARED
 // @consumers: sdd-state.cmd, sdd-task.cmd, sdd-verify/phase-context
-// @tasks: V-05, V-05b, V-06b, V-08b
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';

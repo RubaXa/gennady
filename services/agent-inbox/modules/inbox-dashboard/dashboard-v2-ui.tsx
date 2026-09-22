@@ -1,6 +1,6 @@
 // @file: DashboardV2Ui — loading, attention board, feed widgets, and permanent chat column.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: App
-// @tasks: TSK-164 TSK-169
 
 import { useEffect, useMemo, useState } from 'react';
 import type {

@@ -1,6 +1,6 @@
 // @file: Build a GitLab client for the actionable inbox; host from --vcs-host, config, or origin.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: TSK-91
 
 import { getGitRemote } from '../../../../../shared/backend/git/git-core.ts';
 import { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';

@@ -1,6 +1,6 @@
 // @file: Unit tests for legacy (v1, unanchored) ticket recognition + extraction.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,9 +14,9 @@ import {
 } from '../check.ts';
 
 const LEGACY = [
-  '# Task: TSK-12 — Demo',
+  '# Task: LIN-types — Demo',
   '## 1. Meta & Traceability',
-  '- **Task-ID:** TSK-12',
+  '- **Task-ID:** LIN-types',
   '- **Status:** [x] DONE',
   '- **Dependencies:** TSK-1',
   '## 2. Acceptance Criteria (BDD)',
@@ -56,7 +56,7 @@ describe('isLegacyTicket', () => {
 describe('legacyTicketRef', () => {
   it('extracts Task-ID, Status, Dependencies from the plain Meta header', () => {
     const ref = legacyTicketRef('t.md', LEGACY, 'v1');
-    assert.strictEqual(ref.taskId, 'TSK-12');
+    assert.strictEqual(ref.taskId, 'LIN-types');
     assert.strictEqual(ref.status, '[x] DONE');
     assert.deepStrictEqual(ref.dependencies, ['TSK-1']);
     assert.strictEqual(ref.flowVersion, 'v1');
@@ -88,7 +88,7 @@ describe('checkTrackers on a legacy ticket ref', () => {
 
   it('a tracker row for a legacy Task-ID is no longer an orphan once the ticket is in ticketRefs', () => {
     const ref = legacyTicketRef('t.md', LEGACY, 'v1');
-    const row: TrackerRowRef = { file: 'tracker.md', taskId: 'TSK-12', status: '[x] DONE' };
+    const row: TrackerRowRef = { file: 'tracker.md', taskId: 'LIN-types', status: '[x] DONE' };
     const findings = checkTrackers([ref], [row]);
     assert.strictEqual(findings.length, 0);
   });

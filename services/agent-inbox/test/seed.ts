@@ -1,6 +1,6 @@
 // @file: seed — deterministic agent-inbox state fixtures backed by the production journal shapes.
+// @spec: AGENT-INBOX
 // @consumers: agent-inbox integration and dashboard component tests
-// @tasks: TSK-166
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

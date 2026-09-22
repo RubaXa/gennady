@@ -1,6 +1,6 @@
 // @file: Normalized "merge request awaiting my reaction" shape for the inbox port.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-75, TSK-158, TSK-174
 
 /**
  * @purpose My relationship to a merge request — the axis the inbox groups by.

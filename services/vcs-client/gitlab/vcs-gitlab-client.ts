@@ -1,6 +1,6 @@
 // @file: GitLab REST API client — HTTP adapter implementing VcsClient contract.
+// @spec: VCS-VCS-CLIENT
 // @consumers: cli/review-verify, cli/cat
-// @tasks: TSK-29, TSK-84, TSK-174
 
 import { VcsGitlabMergeRequests } from './vcs-gitlab-merge-requests.ts';
 import { VcsGitlabMergeDiscussions } from './vcs-gitlab-merge-discussions.ts';

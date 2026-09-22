@@ -1,6 +1,6 @@
 // @file: SessionRouterPort + SessionRouter — table §4.2 mapping task types to session actions (reuse_producer if alive / new_fresh / operator_chat), engine tasks pass through
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: Executor
-// @tasks: TSK-159, TSK-175
 
 import { logger } from '#logger';
 import type { TaskInstance } from './task-registry.ts';

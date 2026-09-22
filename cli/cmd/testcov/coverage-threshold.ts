@@ -1,6 +1,6 @@
 // @file: Pure line-coverage aggregation + threshold check for `gennady testcov --min=<pct>`; selected-adapter artifact I/O and source traversal stay outside this module.
+// @spec: CLI-TESTCOV
 // @consumers: testcov.cmd.ts
-// @tasks: N/A
 
 /**
  * @purpose Aggregated statement (line) hit/total counts across a set of directories or files.

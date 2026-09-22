@@ -1,6 +1,6 @@
 // @file: Typed boundary of the pure SDD v2 file-relations resolver.
+// @spec: SHARED
 // @consumers: file-relations
-// @tasks: N/A
 
 import type { FlowVersion } from './flow.ts';
 

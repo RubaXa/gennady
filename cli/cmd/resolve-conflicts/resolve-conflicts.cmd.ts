@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: resolve-conflicts
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { parseResolveConflictsCommandArgs } from './_core/logic/resolve-conflicts-command-args-parse.logic.ts';
 import { runResolveConflictsCommand } from './_core/logic/resolve-conflicts-command-run.logic.ts';

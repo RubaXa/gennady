@@ -1,10 +1,12 @@
 // @file: ai/inspector — verify the directive parser against the REAL lazy-assembled pilots
-// (audit, scaffold, phase-execution-protocol). Regression guard for the blindness found in the
-// final review: a lazy skeleton's <ExecutionPlan>/<PhaseProcedure> carries a bullet list, not
-// <Step> blocks — the OLD parser found zero <Step> in the skeleton and silently rendered
-// `children: []`, dropping the entire step list from the trace. These tests fail loudly if that
-// regresses: non-empty step list, count matching the on-disk package files, and real step bodies
-// (not just the skeleton's one-line gist) present in the tree.
+//   (audit, scaffold, phase-execution-protocol). Regression guard for the blindness found in the
+//   final review: a lazy skeleton's <ExecutionPlan>/<PhaseProcedure> carries a bullet list, not
+//   <Step> blocks — the OLD parser found zero <Step> in the skeleton and silently rendered
+//   `children: []`, dropping the entire step list from the trace. These tests fail loudly if that
+//   regresses: non-empty step list, count matching the on-disk package files, and real step bodies
+//   (not just the skeleton's one-line gist) present in the tree.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';

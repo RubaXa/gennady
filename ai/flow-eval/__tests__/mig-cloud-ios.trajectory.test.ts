@@ -1,8 +1,8 @@
 // @file: The migration eval's trajectory spec — the deterministic path rules a correct v1→v2 migration
 //   run must satisfy, asserted over a trajectory.json. Proven both ways here with fixtures; the live
 //   harness produces the real trajectory.json and the SAME `assertMigrationTrajectory` runs over it.
+// @spec: AI-SKILLS
 // @consumers: N/A (test); assertMigrationTrajectory is the rule set the live run reuses.
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

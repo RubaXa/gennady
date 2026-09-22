@@ -1,6 +1,6 @@
 // @file: Shared Value Objects for inbox-chat — ChatTurn, ContextChip, MutationProposal, ReviewSnapshot (D-109: one file, no independent behavior yet).
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: ChatSession, ChatTranscript, ContextAssembler, MutationApplier (TSK-127)
-// @tasks: TSK-126, TSK-132
 
 /** @purpose Kind of context fragment attached to a chat turn — closed enum, rejects other values at compile time. */
 export type ContextChipKind = 'selection' | 'mention' | 'candidate';

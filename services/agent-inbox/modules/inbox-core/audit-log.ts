@@ -1,6 +1,6 @@
 // @file: AuditLog — append-only JSON Lines event log with rotation at 10MB for serve-mode.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: StateStore, inbox-api
-// @tasks: TSK-109
 
 import { appendFile, rename, stat, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

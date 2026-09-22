@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Entry point for vcs-diff command — dispatch to run().
+// @spec: CLI
 // @consumers: gennady CLI
-// @tasks: TSK-81
 
 import { run } from './vcs-diff.cmd.ts';
 

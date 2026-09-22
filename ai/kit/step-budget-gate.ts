@@ -1,6 +1,6 @@
 // @file: Mechanical token/char budget gate for lazy-assembled directive skeletons and step packages.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: CI pipeline (npm run check:directive-budgets)
-// @tasks: DA-lazy-asm
 
 /**
  * DA-REQ-6/14: an assembled lazy skeleton must stay within a *soft* 6000-token target and never

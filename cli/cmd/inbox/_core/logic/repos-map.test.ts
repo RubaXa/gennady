@@ -1,6 +1,6 @@
 // @file: Unit tests for repos-map resolveClonePath.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

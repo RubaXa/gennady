@@ -1,6 +1,6 @@
 // @file: SO-7 — a skill's source scan a readdirSync error cut short must never look empty.
+// @spec: CLI-SYNC-SKILLS
 // @consumers: sync-skills-core.ts
-// @tasks: TSK-57
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

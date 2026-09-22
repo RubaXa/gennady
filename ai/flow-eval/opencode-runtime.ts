@@ -1,4 +1,5 @@
 // @file: OpenCode SDK runtime for the external SDD evaluator.
+// @spec: AI-SKILLS
 // @consumers: SddEvalRunner, SddEvalJudge; no subprocess or codex binary is used.
 
 import type { OpencodeClient } from '@opencode-ai/sdk';

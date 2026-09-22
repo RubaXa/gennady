@@ -1,6 +1,6 @@
 // @file: Sync core — scanDirectives, collectAndCompare
+// @spec: CLI-SYNC
 // @consumers: sync.cmd.ts, sync-core.test.ts
-// @tasks: TSK-53, TSK-54, TSK-56
 
 import { readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';

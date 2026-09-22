@@ -1,6 +1,6 @@
 // @file: Starts a single-endpoint HTTP runtime that accepts remote log and disconnect envelopes.
+// @spec: SHARED
 // @consumers: remote-console
-// @tasks: N/A
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type {

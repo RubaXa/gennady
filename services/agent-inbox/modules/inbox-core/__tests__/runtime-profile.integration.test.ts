@@ -1,6 +1,6 @@
 // @file: Real-filesystem integration proof for runtime namespace isolation, reset and diagnostic reopen.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-172
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

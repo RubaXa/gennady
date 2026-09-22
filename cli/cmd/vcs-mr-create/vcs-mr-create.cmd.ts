@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Create a GitLab merge request from the current branch.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-91
 
 import {
   resolveVcsContext,

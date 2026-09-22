@@ -1,6 +1,6 @@
 // @file: Unit tests for CLI argument parsing and conflict validation — orient.cmd.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,8 +40,8 @@ describe('parseOrientArgs', () => {
   });
 
   it('parses --task flag', () => {
-    const args = parseOrientArgs(argv('--task=TSK-01', '--task', 'TSK-02'));
-    assert.deepStrictEqual(args.task, ['TSK-01', 'TSK-02']);
+    const args = parseOrientArgs(argv('--task=DP-fields', '--task', 'DP-jsdoc'));
+    assert.deepStrictEqual(args.task, ['DP-fields', 'DP-jsdoc']);
   });
 
   it('parses --consumer flag', () => {
@@ -131,7 +131,7 @@ describe('CLI conflict detection', () => {
 
   it('specs all conflicts: --specs incompatible with --task/--consumer/--entity/--graph', () => {
     const args = parseOrientArgs(
-      argv('--specs', '--task=TSK-01', '--consumer=C', '--entity=E', '--graph')
+      argv('--specs', '--task=DP-fields', '--consumer=C', '--entity=E', '--graph')
     );
     assert.ok(args.specs);
     assert.ok(args.task.length > 0);
@@ -165,7 +165,7 @@ describe('orient.cmd integration', () => {
     const tmpDir = createTmpDir();
     writeFileSync(
       join(tmpDir, 'test.ts'),
-      `// @file: test module\n// @tasks: TSK-01\nexport function helperFn(): void {}\n`
+      `// @file: test module\n// @tasks: DP-fields\nexport function helperFn(): void {}\n`
     );
     const files = scanFiles(tmpDir);
     assert.strictEqual(files.length, 1);

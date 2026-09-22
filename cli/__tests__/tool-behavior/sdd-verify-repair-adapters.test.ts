@@ -1,6 +1,6 @@
 // @file: Real-tool repair adapter matrix for sdd-verify phase targets.
+// @spec: CLI
 // @consumers: SddVerifyCommand
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

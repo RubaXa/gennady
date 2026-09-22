@@ -1,6 +1,6 @@
 // @file: ViewSwitch — always-visible segmented control (Candidates|Chat) for narrow viewport MrDetailPage (D-106).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrDetailPage
-// @tasks: TSK-130
 
 import { cn } from '../lib/utils.ts';
 

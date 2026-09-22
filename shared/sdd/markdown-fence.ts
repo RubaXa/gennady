@@ -1,6 +1,6 @@
 // @file: Shared line-oriented Markdown fence state for SDD structural parsers.
+// @spec: SHARED
 // @consumers: requirement-budget
-// @tasks: N/A
 
 /** @purpose Active CommonMark-style backtick or tilde fence. */
 export type MarkdownFence = {

@@ -1,6 +1,6 @@
 // @file: Both-outcomes proof for the R1 quality parser (structural integrity).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/quality-gate
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

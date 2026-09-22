@@ -1,6 +1,6 @@
 // @file: Unit tests for createMonitor factory function
+// @spec: AGENT-MON-MONITOR
 // @consumers: monitor
-// @tasks: TSK-36
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

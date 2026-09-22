@@ -1,6 +1,6 @@
 // @file: Physical namespace roots consumed by the runtime profile port.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: RuntimeProfilePort, bootstrap
-// @tasks: TSK-172
 
 /** @purpose Disjoint physical roots for production, real test and deterministic mock state. */
 export type ReviewRuntimeRoots = {

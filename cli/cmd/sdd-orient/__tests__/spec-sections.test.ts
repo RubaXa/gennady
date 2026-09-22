@@ -1,4 +1,5 @@
 // @file: Unit tests for findSpecSection — v2 marker first, legacy numbered-heading fallback second.
+// @spec: CLI-SDD-ORIENT
 // @consumers: spec-sections
 
 import { describe, it } from 'node:test';

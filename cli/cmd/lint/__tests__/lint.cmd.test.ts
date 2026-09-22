@@ -1,6 +1,6 @@
 // @file: Integration tests for LintCommand#run — validates CLI arg parsing, file collection, and output.
+// @spec: CLI-LINT
 // @consumers: gennady.ts
-// @tasks: TSK-17, TSK-18
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -684,7 +684,7 @@ describe('LintCommand', () => {
         '| Name | Type | Purpose |',
         '|---|---|---|',
         '| `Built` | Service | it exists |',
-        '| `Later` | Service | Deferred Implementation: TSK-42 — next batch |',
+        '| `Later` | Service | Deferred Implementation: INP-rel-dep — next batch |',
         '| `Ghost` | Service | it never got built, no deferral |',
         '<!--/SECTION:ENTITY_INVENTORY-->',
       ].join('\n'),
@@ -703,7 +703,7 @@ describe('LintCommand', () => {
     );
 
     // Run with the CWD chdir'd INTO the tiny fixture dir: lint's deferral resolver scans the ticket
-    // graph from process.cwd(), and we want it to scan this fixture (where TSK-42 is absent), NOT the
+    // graph from process.cwd(), and we want it to scan this fixture (where INP-rel-dep is absent), NOT the
     // whole real repo — both to keep the assertion hermetic and to avoid a heavy repo-wide scan
     // racing under the parallel c8 runner.
     const origCwd = process.cwd();
@@ -727,10 +727,10 @@ describe('LintCommand', () => {
         (e) =>
           e.code === 'ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED' &&
           e.message.includes('Later') &&
-          e.message.includes('TSK-42') &&
+          e.message.includes('INP-rel-dep') &&
           /not valid/i.test(e.message)
       ),
-      'Later defers to TSK-42, which owns no ticket in this graph — an invalid deferral is drift, not an exemption'
+      'Later defers to INP-rel-dep, which owns no ticket in this graph — an invalid deferral is drift, not an exemption'
     );
     assert.ok(
       report.errors.some(

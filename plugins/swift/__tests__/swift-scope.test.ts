@@ -1,6 +1,6 @@
 // @file: Unit tests for deterministic Swift file scope resolution.
+// @spec: CLI-VERIFY
 // @consumers: CI
-// @tasks: V-11
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

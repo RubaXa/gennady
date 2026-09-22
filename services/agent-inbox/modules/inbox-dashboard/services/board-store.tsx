@@ -1,6 +1,6 @@
 // @file: BoardStore — React Context for dashboard state, polling, and optimistic updates.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: inbox-dashboard components
-// @tasks: TSK-107
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { BoardData, MrCard } from '../../inbox-api/types.ts';

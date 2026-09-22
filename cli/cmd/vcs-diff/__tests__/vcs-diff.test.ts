@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-diff CLI command — happy path, --path, --dry-run, error cases.
+// @spec: CLI
 // @consumers: CI
-// @tasks: TSK-81
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

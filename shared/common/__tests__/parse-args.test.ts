@@ -1,6 +1,6 @@
 // @file: Unit tests for parseArgs — schema/alias parsing and strict unknown-flag detection.
+// @spec: SHARED
 // @consumers: parseArgs
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

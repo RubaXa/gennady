@@ -1,6 +1,6 @@
 // @file: Read-only Swift gate planning; Xcode workspace/scheme/destination stay config-owned.
+// @spec: CLI-VERIFY
 // @consumers: swift-plugin, Swift preset
-// @tasks: V-11
 
 import type { EnvFailPredicate, Gate, GatePlanOptions } from 'gennady/stack';
 import { exitCodeMatches, outputMatches } from 'gennady/stack';

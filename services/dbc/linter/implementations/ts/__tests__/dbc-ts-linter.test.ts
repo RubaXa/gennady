@@ -1,6 +1,6 @@
 // @file: Comprehensive test suite for DbcTsLinter covering all 88 test cases from the coverage matrix.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinter
-// @tasks: TSK-10, TSK-11, TSK-20, TSK-88
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -48,7 +48,13 @@ function setupTempFromFixture(fixtureRelative: string): {
 } {
   const dir = mkdtempSync(join(tmpdir(), 'dbc-lint-'));
   const srcPath = join(FIXTURES_DIR, fixtureRelative);
-  const content = readFileSync(srcPath, 'utf8');
+  // Repository-owned fixture templates carry valid SDD v2 ownership headers. These two cases
+  // exercise a literally empty parser input, so materialize that payload only in the isolated copy.
+  const content = ['parse-failed/binary-or-empty.ts', 'edge/empty-file.ts'].includes(
+    fixtureRelative
+  )
+    ? ''
+    : readFileSync(srcPath, 'utf8');
   const filePath = join(dir, 'test.ts');
   writeFileSync(filePath, content, 'utf8');
   return { dir, filePath };
@@ -1424,7 +1430,7 @@ describe('DbcTsLinter', () => {
 
   // #region START_GROUP_N_CONTENT_OPTION
 
-  describe('Group N — Content option (TSK-11)', () => {
+  describe('Group N — Content option (DL-content)', () => {
     it('N1 — should pass: lint with pre-read content', async () => {
       // contract: when content is passed, the linter uses it instead of reading from disk
       // failure mode: do not mock adapter — use real implementations to verify contract end-to-end
@@ -1528,7 +1534,7 @@ describe('DbcTsLinter', () => {
 
   // #region START_GROUP_O_REDUNDANT_IN_IMPLEMENTS
 
-  describe('Group O — ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS (TSK-88)', () => {
+  describe('Group O — ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS (DL-redund)', () => {
     it('N1 — should detect redundant params and returns in implements+see method', async () => {
       const { dir, filePath } = setupTempFromFixture('implements-see/happy.ts');
       try {
@@ -2017,7 +2023,7 @@ describe('DbcContractMatchValidator', () => {
 
 // #region START_GROUP_REORDER_TAGS_TESTS
 
-describe('_reorderTags (TSK-20)', () => {
+describe('_reorderTags (DL-tags)', () => {
   const parser = new DbcJsDocParser();
   const adapter = new DbcTsAstAdapter();
   const linter = new DbcTsLinter(parser, adapter);

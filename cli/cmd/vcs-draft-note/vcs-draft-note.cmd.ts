@@ -1,6 +1,6 @@
 // @file: Create, list, update, delete, and publish draft notes on GitLab MRs via CLI.
+// @spec: CLI
 // @consumers: vcs-draft
-// @tasks: TSK-87, TSK-97
 
 import {
   resolveVcsContext,

@@ -1,4 +1,5 @@
 // @file: OpenCode evidence reader for bounded session tails, events, status, and diff.
+// @spec: AI-SKILLS
 // @consumers: SddEvalObserver; delegates storage reads to the existing OpenCode server/session store.
 
 import type { OpencodeClient } from '@opencode-ai/sdk';

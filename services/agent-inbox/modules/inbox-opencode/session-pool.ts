@@ -1,6 +1,6 @@
 // @file: SessionPool / UnifiedPool — bounded pool of OpenCode sessions with priority queuing (👤>🦊>🏗), no preemption, aging.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-roles (for role-agent session management)
-// @tasks: TSK-111, TSK-159, TSK-160, TSK-175
 
 import { logger } from '#logger';
 import type { ReviewStateNamespace } from '../inbox-core/types/review-runtime-profile-spec.type.ts';

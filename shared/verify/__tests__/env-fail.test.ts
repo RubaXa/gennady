@@ -1,6 +1,6 @@
 // @file: Unit tests for ENV_FAIL combinators and the config rule compiler.
+// @spec: SHARED
 // @consumers: CI
-// @tasks: TSK-95
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

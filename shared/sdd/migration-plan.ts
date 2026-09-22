@@ -2,8 +2,8 @@
 //   `migration/**/*.migration.md` file per spec (generated inventory + agent-filled maps + step
 //   checklist), and verify the layer deterministically (inventory drift, map coverage, slug
 //   collisions). The plan is the on-disk source of truth the execution steps consume.
+// @spec: SHARED
 // @consumers: sdd-migrate.cmd
-// @tasks: N/A
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, relative, sep, basename, dirname } from 'node:path';
@@ -18,7 +18,7 @@ import { validateTaskId } from './task-id.ts';
 export type UnitTicket = {
   /** @purpose Ticket path relative to the repo root. */
   file: string;
-  /** @purpose Task-ID from Meta (e.g. `TSK-31`), or null when unparseable. */
+  /** @purpose Task-ID from Meta (e.g. `CAT-mr-url`), or null when unparseable. */
   taskId: string | null;
   /** @purpose Status token from Meta (e.g. `[x] DONE`), or null. */
   status: string | null;

@@ -1,7 +1,7 @@
 // @file: Unit tests for the 🐞 telemetry merge — client + server lines interleave chronologically
 //   and carry an origin tag, so a copied log reads as one coherent user-path timeline (D-113).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-debug-log
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Review pipeline launch options.
+// @spec: CLI-REVIEW
 // @consumers: run-review-command.logic
-// @tasks: N/A, TSK-70
 
 import type { ReviewCommandArgs } from './review-command-args.type.ts';
 import type { ReviewCommandMode } from './review-command-mode.type.ts';

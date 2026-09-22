@@ -1,6 +1,6 @@
 // @file: ReviewActionCatalog — closed catalog of action kinds, capability/policy table, and effect classification.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: package builder, ReviewAutomationPolicy, ReviewEffectCoordinator
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import type { VcsEffectKind } from '../types/review-effect.type.ts';

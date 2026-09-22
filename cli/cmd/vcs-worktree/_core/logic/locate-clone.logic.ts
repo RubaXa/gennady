@@ -1,6 +1,6 @@
 // @file: Locate (or clone) the local repository for a GitLab project.
+// @spec: CLI
 // @consumers: vcs-worktree.cmd
-// @tasks: N/A
 
 import { exec, execFile } from 'node:child_process';
 import { promisify } from 'node:util';

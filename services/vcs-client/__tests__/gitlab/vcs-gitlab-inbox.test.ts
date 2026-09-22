@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabInbox.getActionable.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Types, error codes, and diagnostic builders for the sdd-new command.
+// @spec: CLI-SDD-NEW
 // @consumers: SddNewCommand
-// @tasks: N/A
 
 import type { ArtifactKind, SectionManifestEntry } from '../../../shared/sdd/templates.ts';
 

@@ -1,6 +1,6 @@
 // @file: Integration tests for SddStateCommand#run — flow version, exact readiness, scopes+description, exit codes.
+// @spec: CLI-SDD-STATE
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

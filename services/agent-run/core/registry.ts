@@ -1,6 +1,6 @@
 // @file: Engine registry — registration, default resolution, and cached detect for listEngines.
+// @spec: AGENT-RUN-CORE
 // @consumers: run, listEngines, index.ts (composition root)
-// @tasks: TSK-62
 
 import { logger } from '#logger';
 import { AgentRunError } from './agent-run-error.ts';

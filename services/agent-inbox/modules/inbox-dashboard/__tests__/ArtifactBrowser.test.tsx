@@ -1,7 +1,7 @@
 // @file: Unit tests for ArtifactBrowser — artifact list from GET /artifacts, select →
 //   ArtifactView render, REPORT.md default selection.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-107
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

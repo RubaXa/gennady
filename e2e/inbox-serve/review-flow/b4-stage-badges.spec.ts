@@ -3,8 +3,8 @@
 //   runs, not frozen on one label. Drives the SAME live graph as t3-t4 (one real MR, real LLM
 //   sessions) and reads the badge via the real board API on each tick — a UI-facing check, not
 //   just backend node state.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-155
 
 import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';

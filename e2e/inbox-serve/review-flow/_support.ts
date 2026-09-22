@@ -8,8 +8,8 @@
 //   MR_REF was vk-workspace/superapp!602 until 2026-07-18 — that MR was for-real merged on GitLab
 //   (independent of this suite's dry-run actions), dropping it from the actionable board and
 //   breaking any UI-driven "assign" flow; switched to mail/messenger!159 (real, open, non-draft).
+// @spec: AGENT-INBOX
 // @consumers: e2e/inbox-serve/review-flow/*.spec.ts
-// @tasks: TSK-131
 
 import { cpSync, existsSync, mkdirSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';

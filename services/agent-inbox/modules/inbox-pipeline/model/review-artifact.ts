@@ -1,6 +1,6 @@
 // @file: Immutable addressable analysis artifact revisions.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewStructuralValidator, ReviewSynthesis, dashboard
-// @tasks: TSK-176
 
 /** @purpose One addressable fragment produced for a contract slot. */
 export type ReviewArtifactFragment = Readonly<{

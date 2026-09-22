@@ -1,4 +1,5 @@
 // @file: Fixture with an unpaired anchor.
+// @spec: CLI-E2E
 // @consumers: FixtureConsumer
 
 // #region START_UNPAIRED_ANCHOR

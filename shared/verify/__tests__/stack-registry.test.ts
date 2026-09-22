@@ -1,6 +1,6 @@
 // @file: Unit tests for the registry — detection order, multi-stack activation, gate vocabulary.
+// @spec: SHARED
 // @consumers: CI
-// @tasks: TSK-96
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

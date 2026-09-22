@@ -1,6 +1,6 @@
 // @file: Damerau-Levenshtein distance with adaptive threshold.
+// @spec: CLI-ORIENT
 // @consumers: QueryKeyword, QueryConsumer, QueryEntity
-// @tasks: TSK-55
 
 /**
  * @purpose Compute the Damerau-Levenshtein distance between two strings.

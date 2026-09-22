@@ -1,6 +1,6 @@
 // @file: Async mermaid validation for SDD artifacts — every ```mermaid block parses via the real grammar (honest, not presence-only). Kept out of check.ts (pure + sync).
+// @spec: SHARED
 // @consumers: sdd-check.cmd
-// @tasks: N/A
 
 import { extractMermaidBlockRefs, validateMermaid } from '../mermaid/mermaid.ts';
 import type { Finding } from './check.ts';

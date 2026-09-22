@@ -1,6 +1,6 @@
 // @file: Extract a named <!--SECTION:NAME--> block from an SDD markdown artifact — pure, shared by sdd-extract/sdd-check/sdd-task.
+// @spec: SHARED
 // @consumers: sdd-extract.cmd, sdd-orient.cmd
-// @tasks: N/A
 
 import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
 

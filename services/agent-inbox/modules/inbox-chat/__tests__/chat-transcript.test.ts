@@ -1,7 +1,7 @@
 // @file: Unit tests for inbox-chat ChatTranscript — empty-file degrade, append/load round trip,
 //   lazy chats/ directory creation, mrRef path encoding, malformed-line resilience.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
-// @tasks: TSK-126
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -8,6 +8,9 @@
 // ==================================================================
 
 // ❌ AB-25: START и END между методами
+// @file: cli/cmd/lint/checks/__tests__/fixtures/region-errors.example.ts
+// @spec: CLI-LINT
+// @consumers: N/A
 export class Example25 {
   // #region START_MID
   // #endregion END_MID

@@ -1,6 +1,6 @@
 // @file: Parse command-line arguments by options schema and aliases.
+// @spec: SHARED
 // @consumers: cat.cmd, commit.cmd, lint.cmd, parse-review-command-args.logic, remote-console.cmd, resolve-conflicts-command-args-parse.logic, review.cmd, vcs-reply, vcs-reply.cmd
-// @tasks: N/A, TSK-80
 
 /** @purpose Options controlling parseArgs behavior beyond the schema itself. */
 export type ParseArgsOptions = {

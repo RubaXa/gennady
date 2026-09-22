@@ -1,6 +1,6 @@
 // @file: Trusted control-plane tool receipt contract.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptRecorder, ReviewRuntimeReceiptStorePort, ReviewStructuralValidator
-// @tasks: TSK-176
 
 /** @purpose Closed tool operation vocabulary observed by the review control plane. */
 export type ReviewRuntimeOperation = 'READ' | 'SEARCH' | 'DIFF' | 'TEST' | 'INSPECT';

@@ -1,7 +1,7 @@
 // @file: FeedProjection — projects EventJournal entries → FeedWidget[] with cursor-based pagination.
 //   Updates lastReadAt on the registry when feed is consumed (read-cursor, D-317).
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: feed.router.ts, inbox-dashboard
-// @tasks: TSK-162
 
 import { logger } from '#logger';
 import type { EventJournal, JournalEntry } from '../../inbox-core/event-journal.ts';

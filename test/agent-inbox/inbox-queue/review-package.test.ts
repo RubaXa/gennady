@@ -1,6 +1,6 @@
 // @file: Unit tests — recommended actions default selected and alternatives are exclusive.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: TSK-177 audit
-// @tasks: TSK-177
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

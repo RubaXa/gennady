@@ -1,6 +1,6 @@
 // @file: CLI command mr-stats — structured MR statistics pipeline (URL → metadata → worktree → classify → cloc → tree-sitter → jscpd → JSON).
+// @spec: MR-STATS
 // @consumers: GennadyCli
-// @tasks: TSK-138, TSK-139
 
 import { performance } from 'node:perf_hooks';
 import { execFileSync } from 'node:child_process';

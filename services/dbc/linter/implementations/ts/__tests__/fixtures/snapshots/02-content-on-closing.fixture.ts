@@ -1,4 +1,5 @@
 // @file: content before */
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  * @purpose Content before closing.

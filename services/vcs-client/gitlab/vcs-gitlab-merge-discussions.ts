@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of merge request discussion operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGitlabClient
-// @tasks: TSK-71, TSK-86
 
 import {
   VcsClientMergeDiscussions,

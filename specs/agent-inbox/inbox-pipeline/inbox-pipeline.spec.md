@@ -1,5 +1,25 @@
 # Module: inbox-pipeline
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX-INBOX-PIPELINE
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -121,6 +141,8 @@ execution-агента вне этого списка считается drift �
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `ReviewIntent`
 
@@ -498,11 +520,14 @@ Goal, tests, changed files и discovered entities не имеют silent NA. Н�
 queue/effect outcomes являются отдельными immutable records в queue, а не мутациями
 pipeline handoff.
 
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### Module-level invariants
 
@@ -703,6 +728,7 @@ pipeline handoff.
 - Postconditions: constructed immutable record contains every required property and its recommendation digest; core journal and queue acceptance reference the same `handoffId`/record digest; queue returns or persists this exact record without DTO translation, field defaulting or capability recomputation.
 - Invariants: `manifestKey.mr/headSHA/eventCursor` equals all manifest/contract/verdict refs; `guardedTransitionId` and accepted observed revision belong to the successful local transaction; capability snapshot is action-specific and versioned; delivery status is `ACCEPTED`; retry replays byte-equivalent record; queue alone owns proposal/package/effect construction; no external GitLab atomicity is implied.
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -787,6 +813,8 @@ Entities — в `model/`; Services, Port и Adapters физически разд
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-PIPE-01 — Role-invariant review depth
 
 - **Status:** active
@@ -820,6 +848,7 @@ Entities — в `model/`; Services, Port и Adapters физически разд
 - **Risk accepted:** при отсутствии VCS conditional SHA внешний effect остаётся unconfirmed до обязательной reconciliation.
 - **Rejected alternatives:** обещать distributed atomicity; строить proposals/effects внутри synthesis; считать pre-effect read достаточным подтверждением freshness.
 
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

@@ -1,6 +1,6 @@
 // @file: Fixture — multi-line JSDoc with missing * prefix on middle line (already damaged).
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinterTest
-// @tasks: TSK-21
 /**
    * @purpose Dummy function to test star prefix repair.
    * @param x A param.

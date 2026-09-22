@@ -1,6 +1,7 @@
-// @file: Playwright config for TSK-164. The spec owns a real CLI serve process and deliberately
-// has no Vite webServer, so every browser request reaches the production static bundle/API.
-// @tasks: TSK-164
+// @file: Playwright config for ID-spa. The spec owns a real CLI serve process and deliberately
+//   has no Vite webServer, so every browser request reaches the production static bundle/API.
+// @spec: AGENT-INBOX
+// @consumers: N/A
 
 import { defineConfig } from '@playwright/test';
 import { dirname, resolve } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: ActionPanel — final action bundle for an MR: reviewer (post/approve/redispatch/skip) or author (publish/react/copy task/update description/redispatch/skip).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrDetailPage
-// @tasks: TSK-107, TSK-146
 
 import { useState } from 'react';
 import { Check, ShieldCheck, RotateCcw, X, ThumbsUp, ClipboardCopy, Pencil } from 'lucide-react';

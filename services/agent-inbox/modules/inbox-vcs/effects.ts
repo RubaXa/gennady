@@ -1,6 +1,6 @@
 // @file: Effects — unified permission-gated, idempotency-addressed, reconciled GitLab mutations.
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox-queue (effect_* tasks)
-// @tasks: TSK-158, TSK-174
 
 import { logger } from '#logger';
 import { createHash } from 'node:crypto';

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Edit a GitLab merge request — title, description, draft/ready, labels, assignee, reviewer.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-92
 
 import {
   resolveVcsContext,

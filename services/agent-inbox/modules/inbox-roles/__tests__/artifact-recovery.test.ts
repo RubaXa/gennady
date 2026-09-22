@@ -2,8 +2,8 @@
 //   and plan against real disk snapshots; recoverLegacyArtifact re-verifies a REAL, byte-copied
 //   pre-D-86 legacy artifact (vk-workspace/superapp!599, D-116 — no synthetic fixture for that shape)
 //   against the CURRENT live diff, never a blind carry-over of its recorded verdict.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-140
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

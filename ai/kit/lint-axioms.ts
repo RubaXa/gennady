@@ -1,3 +1,6 @@
+// @file: ai/kit/lint-axioms.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Dangling-axiom lint for rendered directives.
  *

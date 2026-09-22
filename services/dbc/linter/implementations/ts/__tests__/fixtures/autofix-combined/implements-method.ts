@@ -1,6 +1,6 @@
 // @file: Fixture — class implements interface, method has @see with redundant params.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinterTest
-// @tasks: TSK-09
 
 /** @purpose Marker interface for Agent. */
 export interface Agent {}

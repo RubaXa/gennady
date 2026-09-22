@@ -1,4 +1,5 @@
 // @file: Format-agnostic section lookup — v2 marker first, legacy numbered-heading fallback second. Decides which text is a section's body.
+// @spec: CLI-SDD-ORIENT
 // @consumers: parseModuleEntities, parseModuleContracts, parseModuleRequirements, parseModuleMap, buildNeighbourhood
 
 import { extractSection } from '../../../../shared/sdd/section.ts';

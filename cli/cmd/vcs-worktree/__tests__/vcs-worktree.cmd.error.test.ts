@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-worktree cmd — VcsResolveError handling contract.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-70
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

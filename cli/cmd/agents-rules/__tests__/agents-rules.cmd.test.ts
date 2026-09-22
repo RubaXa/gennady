@@ -1,6 +1,6 @@
 // @file: Integration tests for gennady agents-rules command — run() with mocked fs
+// @spec: CLI-AGENTS-RULES
 // @consumers: agents-rules.cmd.ts, run
-// @tasks: TSK-59
 
 import { describe, it, mock, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for SessionPool — capacity, queuing without deadlock, release, cleanup.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-111, TSK-160
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

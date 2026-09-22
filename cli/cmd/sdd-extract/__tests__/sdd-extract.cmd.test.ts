@@ -1,6 +1,6 @@
 // @file: Integration tests for SddExtractCommand#run — arg parsing, file-I/O mapping, outcome + exit codes.
+// @spec: CLI-SDD-EXTRACT
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

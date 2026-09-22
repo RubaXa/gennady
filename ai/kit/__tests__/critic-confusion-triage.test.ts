@@ -3,8 +3,8 @@
 //   "uncertainty = underspecification"), instead of v1's three-way triage ("confusion alone never
 //   proves the artifact is underspecified"; "only ARTIFACT_GAP may become a problem finding").
 //   T-B6-23 restored the triage in AX_CONFUSION_BUG and connected it into critic-protocol.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: T-B6-23
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

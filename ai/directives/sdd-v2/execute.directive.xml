@@ -155,7 +155,7 @@
         as covering the whole original question. Empty list → `[]`.
       - `deviations` — spec/ticket holes this phase self-resolved rather than asking the operator
         (`AX_DEVIATION_SELF_RESOLVE`); each entry cites the ticket-local Decision Log id it produced
-        (e.g. `TSK-58-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
+        (e.g. `SS-skills-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
 
       Free-form text forbidden outside the tag/extent grammar above. Each field is an array (possibly
       empty).

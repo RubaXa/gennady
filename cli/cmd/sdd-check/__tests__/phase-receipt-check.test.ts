@@ -1,6 +1,6 @@
 // @file: Negative completion-proof tests for sdd-check phase receipt validation.
+// @spec: CLI-SDD-CHECK
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

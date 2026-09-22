@@ -1,6 +1,6 @@
 // @file: SyncCommand — CLI entry point for gennady sync: parseArgs, resolve package, compare + copy directives.
+// @spec: CLI-SYNC
 // @consumers: gennady.ts
-// @tasks: TSK-53, TSK-54, TSK-56
 
 import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';

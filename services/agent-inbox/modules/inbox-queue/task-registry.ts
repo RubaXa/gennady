@@ -1,6 +1,6 @@
 // @file: TaskRegistry — 19 task types (pipeline, pattern, event, user, effect), formal reference grammar (type-name/glob/allOf/producerOf/external), dedup key computation, supersede logic
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: Executor, InMemoryTaskQueue
-// @tasks: TSK-159, TSK-161
 
 import { logger } from '#logger';
 

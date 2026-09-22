@@ -1,6 +1,6 @@
 // @file: RoleNode — typed graph nodes (prep/session/gate/ask/effect) and edges for role definitions.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: role-engine, role-instance, role-scheduler, reviewer.role.ts, author.role.ts
-// @tasks: TSK-113, TSK-121
 
 import type { MrContext, VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';

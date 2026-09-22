@@ -1,6 +1,6 @@
 // @file: FO-6 preflight for migrating V1 source ownership headers and materializing stable V2 Spec IDs.
+// @spec: SHARED
 // @consumers: migration-move
-// @tasks: N/A
 
 import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -60,7 +60,14 @@ type HistoricalTicketCorpus =
   | { ok: true; ticketsById: Map<string, HistoricalTicket[]> }
   | { ok: false; error: string };
 
+type MigrationFileOwner = {
+  file: string;
+  specId: string;
+  evidence: string;
+};
+
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage']);
+const FILE_OWNER_MAP = 'migration/FILE-SPEC-MAP.tsv';
 
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -85,6 +92,49 @@ function collectFiles(root: string, predicate: (path: string) => boolean): strin
   };
   walk(root);
   return files.sort(compareText);
+}
+
+/**
+ * @purpose Read the operator-approved, one-shot FO-6 source-owner decisions.
+ * @invariant The map is migration input only: exact file, canonical Spec ID and non-empty evidence;
+ *   it is never consulted by orient/check/runtime ownership resolution.
+ */
+function migrationFileOwners(repoRoot: string, errors: string[]): Map<string, MigrationFileOwner> {
+  const absolute = join(repoRoot, FILE_OWNER_MAP);
+  if (!existsSync(absolute)) return new Map();
+  const owners = new Map<string, MigrationFileOwner>();
+  const content = readFileSync(absolute, 'utf8');
+  for (const [index, raw] of content.split(/\r?\n/).entries()) {
+    if (raw.trim() === '' || raw.startsWith('#')) continue;
+    const cells = raw.split('\t');
+    if (cells.length !== 3) {
+      errors.push(`${FILE_OWNER_MAP}:${index + 1}: ожидаются file, Spec ID и evidence`);
+      continue;
+    }
+    const [rawFile = '', specId = '', evidence = ''] = cells;
+    const inspected = inspectRepoPath(repoRoot, rawFile, 'file');
+    if (!inspected.ok || !isSddSourceFile(rawFile)) {
+      errors.push(
+        `${FILE_OWNER_MAP}:${index + 1}: source path ${rawFile || '(empty)'} rejected (${inspected.ok ? 'unsupported source extension' : inspected.detail})`
+      );
+      continue;
+    }
+    if (!/^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*$/.test(specId)) {
+      errors.push(`${FILE_OWNER_MAP}:${index + 1}: Spec ID ${specId || '(empty)'} malformed`);
+      continue;
+    }
+    if (evidence.trim() === '') {
+      errors.push(`${FILE_OWNER_MAP}:${index + 1}: evidence пуст`);
+      continue;
+    }
+    const file = inspected.relative;
+    if (owners.has(file)) {
+      errors.push(`${FILE_OWNER_MAP}:${index + 1}: source ${file} дублирован`);
+      continue;
+    }
+    owners.set(file, { file, specId, evidence });
+  }
+  return owners;
 }
 
 function specIdSection(id: string, newline: string): string {
@@ -497,30 +547,54 @@ function resolverClaimsFile(repoRoot: string, file: string, ticket: OwnedTicket)
 function renderSourceHeader(
   content: string,
   header: ParsedSourceOwnershipHeader,
-  specId: string
+  specId: string,
+  file: string,
+  synthesizeMissing: boolean
 ): string {
   const newline = content.includes('\r\n') ? '\r\n' : '\n';
-  const lines = content.split(/\r?\n/);
-  const insertAt = Math.min(...header.blocks.map((block) => block.start));
+  const lines = content === '' ? [] : content.split(/\r?\n/);
+  let insertAt = Math.min(...header.blocks.map((block) => block.start));
+  if (!Number.isFinite(insertAt)) {
+    insertAt = 0;
+    if ((lines[0] ?? '').trim().startsWith('#!')) insertAt = 1;
+    while (insertAt < lines.length) {
+      const line = lines[insertAt] ?? '';
+      if (line.trim() === '' || line.trim().startsWith('//') || /^#(?:\s|$)/.test(line.trim())) {
+        insertAt += 1;
+        continue;
+      }
+      if (line.trim().startsWith('/*') && !line.trim().startsWith('/**')) {
+        do {
+          insertAt += 1;
+        } while (insertAt < lines.length && !(lines[insertAt - 1] ?? '').includes('*/'));
+        continue;
+      }
+      break;
+    }
+  }
   const removed = new Set(
     header.blocks.flatMap((block) =>
       Array.from({ length: block.end - block.start }, (_, offset) => block.start + offset)
     )
   );
-  const prefix = header.blocks[0]?.prefix as string;
-  const fileBlock = header.blocks.find((block) => block.tag === 'file') as {
-    lines: string[];
-  };
-  const consumerBlock = header.blocks.find((block) => block.tag === 'consumers') as {
-    lines: string[];
-  };
-  const canonical = [...fileBlock.lines, `${prefix} @spec: ${specId}`, ...consumerBlock.lines];
+  const hashComment = /\.(?:py|rb)$/.test(file);
+  const prefix = header.blocks[0]?.prefix ?? (hashComment ? '#' : '//');
+  const fileBlock = header.blocks.find((block) => block.tag === 'file');
+  const consumerBlock = header.blocks.find((block) => block.tag === 'consumers');
+  const fileLines = fileBlock?.lines ?? (synthesizeMissing ? [`${prefix} @file: ${file}`] : []);
+  const consumerLines =
+    consumerBlock?.lines ?? (synthesizeMissing ? [`${prefix} @consumers: N/A`] : []);
+  const canonical = [...fileLines, `${prefix} @spec: ${specId}`, ...consumerLines];
   const out: string[] = [];
   lines.forEach((line, index) => {
     if (index === insertAt) out.push(...canonical);
     if (!removed.has(index)) out.push(line);
   });
-  return out.join(newline);
+  if (insertAt === lines.length) out.push(...canonical);
+  const rendered = out.join(newline);
+  return rendered.replaceAll('\r\n', '\n') === content.replaceAll('\r\n', '\n')
+    ? content
+    : rendered;
 }
 
 /**
@@ -539,6 +613,52 @@ export function planMigrationFileHeaders(
 ): MigrationFileHeaderPlan {
   const errors: string[] = [];
   const specPlan = explicitSpecPlans(repoRoot, scopeUnits, errors);
+  const currentSpecFiles = new Set(scopeUnits.map((unit) => unit.specFile.split(sep).join('/')));
+  const currentSpecById = new Map<string, string>();
+  for (const [specFile, specId] of specPlan.idBySpec) {
+    const previous = currentSpecById.get(specId);
+    if (previous && previous !== specFile) {
+      errors.push(`Spec ID ${specId} неоднозначен в migrating scope: ${previous}, ${specFile}`);
+    } else {
+      currentSpecById.set(specId, specFile);
+    }
+  }
+  const approvedOwners = migrationFileOwners(repoRoot, errors);
+  const specsRoot = join(repoRoot, 'specs');
+  const knownSpecPathsById = new Map<string, Set<string>>();
+  for (const entry of collectSpecIdEntries(specsRoot)) {
+    const paths = knownSpecPathsById.get(entry.id) ?? new Set<string>();
+    paths.add(entry.path);
+    knownSpecPathsById.set(entry.id, paths);
+  }
+  for (const absolute of collectFiles(specsRoot, (file) => file.endsWith('.spec.md'))) {
+    const file = relative(repoRoot, absolute).split(sep).join('/');
+    const parsed = parseSpecId(readFileSync(absolute, 'utf8'));
+    if (parsed.status !== 'absent') continue;
+    const proposed = deriveInitialSpecId(specsRoot, absolute);
+    if (!proposed) continue;
+    const paths = knownSpecPathsById.get(proposed) ?? new Set<string>();
+    paths.add(file);
+    knownSpecPathsById.set(proposed, paths);
+  }
+  for (const [specFile, specId] of specPlan.idBySpec) {
+    const paths = knownSpecPathsById.get(specId) ?? new Set<string>();
+    paths.add(specFile);
+    knownSpecPathsById.set(specId, paths);
+  }
+  for (const owner of approvedOwners.values()) {
+    const paths = [...(knownSpecPathsById.get(owner.specId) ?? [])].sort(compareText);
+    if (paths.length !== 1) {
+      errors.push(
+        `${FILE_OWNER_MAP}: ${owner.file} ссылается на ${owner.specId}, resolved specs=${paths.length === 0 ? '0' : paths.join(', ')}`
+      );
+    }
+  }
+  const currentApprovedOwners = new Map<string, { owner: MigrationFileOwner; specFile: string }>();
+  for (const owner of approvedOwners.values()) {
+    const specFile = currentSpecById.get(owner.specId);
+    if (specFile) currentApprovedOwners.set(owner.file, { owner, specFile });
+  }
   const allTickets = [
     ...ownedTickets(repoRoot, scanMigrationUnits(repoRoot).units),
     ...v2OwnedTickets(repoRoot, errors),
@@ -546,8 +666,10 @@ export function planMigrationFileHeaders(
   const currentTicketFiles = new Set(
     scopeUnits.flatMap((unit) => unit.tickets.map((ticket) => ticket.file))
   );
+  const isCurrentTicket = (ticket: OwnedTicket): boolean =>
+    currentTicketFiles.has(ticket.ticketFile) || currentSpecFiles.has(ticket.specFile);
   for (const ticket of allTickets) {
-    if (currentTicketFiles.has(ticket.ticketFile) && ticket.targetError !== null) {
+    if (isCurrentTicket(ticket) && ticket.targetError !== null) {
       errors.push(
         `${ticket.ticketFile}: ownership evidence не разбирается (${ticket.targetError})`
       );
@@ -578,20 +700,54 @@ export function planMigrationFileHeaders(
   for (const absolute of sources) {
     const file = relative(repoRoot, absolute).split(sep).join('/');
     const before = readFileSync(absolute, 'utf8');
+    const parsedHeader = parseSourceOwnershipHeader(before);
+    const declaredSpecIds = parsedHeader.blocks
+      .filter((block) => block.tag === 'spec')
+      .map((block) => block.value.trim())
+      .filter(Boolean);
+    const mappedOwner = approvedOwners.get(file);
+    // A source is rewritten exactly once, by its approved/declared semantic-owner scope. Ticket
+    // relations from another scope stay relations; they cannot make that scope rewrite the owner.
+    if (mappedOwner && !currentSpecById.has(mappedOwner.specId)) continue;
+    if (
+      !mappedOwner &&
+      declaredSpecIds.length === 1 &&
+      !currentSpecById.has(declaredSpecIds[0] as string)
+    )
+      continue;
     const legacyIds = parseTasksHeader(before);
     const allDirectTickets = (ticketsByTarget.get(file) ?? []).filter((ticket) =>
       resolverClaimsFile(repoRoot, file, ticket)
     );
-    const directTickets = allDirectTickets.filter((ticket) =>
-      currentTicketFiles.has(ticket.ticketFile)
-    );
+    const directTickets = allDirectTickets.filter(isCurrentTicket);
+    const referencedCurrentTickets = legacyIds
+      .flatMap((id) => ticketsById.get(id) ?? [])
+      .filter(isCurrentTicket);
     const referencedScopeTickets = legacyIds
       .flatMap((id) => ticketsById.get(id) ?? [])
-      .filter(
-        (ticket) =>
-          currentTicketFiles.has(ticket.ticketFile) && resolverClaimsFile(repoRoot, file, ticket)
-      );
-    if (directTickets.length === 0 && referencedScopeTickets.length === 0) continue;
+      .filter((ticket) => isCurrentTicket(ticket) && resolverClaimsFile(repoRoot, file, ticket));
+    const approved = currentApprovedOwners.get(file);
+    if (approved) {
+      const alreadyCanonical =
+        legacyIds.length === 0 &&
+        declaredSpecIds.length === 1 &&
+        declaredSpecIds[0] === approved.owner.specId;
+      const expectedEvidence = legacyIds.length
+        ? `legacy @tasks ${legacyIds.join(', ')}`
+        : 'headerless inventory row';
+      if (!alreadyCanonical && !approved.owner.evidence.includes(expectedEvidence)) {
+        errors.push(
+          `${FILE_OWNER_MAP}: ${file} evidence не фиксирует exact source relation «${expectedEvidence}»`
+        );
+        continue;
+      }
+    }
+    if (
+      directTickets.length === 0 &&
+      referencedCurrentTickets.length === 0 &&
+      approved === undefined
+    )
+      continue;
 
     const evidence = new Map<string, OwnedTicket>();
     const addEvidence = (ticket: OwnedTicket): void => {
@@ -599,6 +755,11 @@ export function planMigrationFileHeaders(
     };
     for (const ticket of [...allDirectTickets, ...referencedScopeTickets]) addEvidence(ticket);
     for (const legacyId of legacyIds) {
+      if (approved !== undefined) {
+        // Explicit operator ACK: this exact legacy ID is archived with its per-row evidence in the
+        // versioned one-shot map before live @tasks is removed. Runtime consumers never load it.
+        continue;
+      }
       const matches = ticketsById.get(legacyId) ?? [];
       const claiming = matches.filter((ticket) => resolverClaimsFile(repoRoot, file, ticket));
       const claimingFiles = [...new Set(claiming.map((ticket) => ticket.ticketFile))];
@@ -610,6 +771,13 @@ export function planMigrationFileHeaders(
       }
       if (claimingFiles.length === 1) {
         for (const ticket of claiming) addEvidence(ticket);
+        continue;
+      }
+      const currentMatches = matches.filter(isCurrentTicket);
+      if (currentMatches.length > 0) {
+        errors.push(
+          `${file}: legacy @tasks relation ${legacyId} не имеет exact target; нужен ${FILE_OWNER_MAP}`
+        );
         continue;
       }
       if (matches.length > 0 && matches.every((ticket) => ticket.status === 'done')) {
@@ -688,9 +856,13 @@ export function planMigrationFileHeaders(
       }
     }
 
-    const ownerSpecs = [...new Set([...evidence.values()].map((ticket) => ticket.specFile))].sort(
-      compareText
-    );
+    const declaredOwnerSpec =
+      declaredSpecIds.length === 1 ? currentSpecById.get(declaredSpecIds[0] as string) : undefined;
+    const ownerSpecs = approved
+      ? [approved.specFile]
+      : declaredOwnerSpec
+        ? [declaredOwnerSpec]
+        : [...new Set([...evidence.values()].map((ticket) => ticket.specFile))].sort(compareText);
     if (ownerSpecs.length !== 1) {
       errors.push(
         `${file}: semantic owner неоднозначен (${ownerSpecs.length === 0 ? 'нет доказуемой спеки' : ownerSpecs.join(', ')})`
@@ -703,7 +875,7 @@ export function planMigrationFileHeaders(
       errors.push(`${file}: owning spec ${ownerSpec} не имеет валидного/proposed Spec ID`);
       continue;
     }
-    const header = parseSourceOwnershipHeader(before);
+    const header = parsedHeader;
     const fileBlocks = header.blocks.filter((block) => block.tag === 'file');
     const specBlocks = header.blocks.filter((block) => block.tag === 'spec');
     const taskBlocks = header.blocks.filter((block) => block.tag === 'tasks');
@@ -715,17 +887,18 @@ export function planMigrationFileHeaders(
       continue;
     }
     if (
-      fileBlocks.length !== 1 ||
-      consumerBlocks.length !== 1 ||
+      fileBlocks.length > 1 ||
+      consumerBlocks.length > 1 ||
       fileBlocks[0]?.value.trim() === '' ||
-      consumerBlocks[0]?.value.trim() === ''
+      consumerBlocks[0]?.value.trim() === '' ||
+      (approved === undefined && (fileBlocks.length !== 1 || consumerBlocks.length !== 1))
     ) {
       errors.push(
         `${file}: canonical header требует ровно один непустой @file и один непустой @consumers`
       );
       continue;
     }
-    if (new Set(header.blocks.map((block) => block.prefix)).size !== 1) {
+    if (new Set(header.blocks.map((block) => block.prefix)).size > 1) {
       errors.push(`${file}: canonical header смешивает comment prefixes // и #`);
       continue;
     }
@@ -745,7 +918,7 @@ export function planMigrationFileHeaders(
       );
       continue;
     }
-    const after = renderSourceHeader(before, header, specId);
+    const after = renderSourceHeader(before, header, specId, file, approved !== undefined);
     if (after !== before) {
       sourceRewrites.push({
         file,
@@ -753,6 +926,12 @@ export function planMigrationFileHeaders(
         after,
         report: `header  ${file} — @spec ${specId}; legacy @tasks удалён`,
       });
+    }
+  }
+
+  for (const file of currentApprovedOwners.keys()) {
+    if (!sources.some((absolute) => relative(repoRoot, absolute).split(sep).join('/') === file)) {
+      errors.push(`${FILE_OWNER_MAP}: source ${file} отсутствует в canonical source corpus`);
     }
   }
 

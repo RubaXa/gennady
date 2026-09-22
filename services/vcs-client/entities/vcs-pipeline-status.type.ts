@@ -1,6 +1,6 @@
 // @file: Pipeline status and job list value object for an MR.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeRequests
-// @tasks: TSK-82, TSK-84
 
 /**
  * @purpose Pipeline status and its job list for a merge request.

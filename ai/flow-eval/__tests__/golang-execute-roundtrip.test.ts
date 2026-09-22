@@ -1,6 +1,6 @@
 // @file: Deterministic V2 Go execute round-trip (E-12): pickable → phase receipt → clean mechanics.
+// @spec: AI-SKILLS
 // @consumers: V-09 golang preset, sdd-task pickability, sdd-verify phase transaction
-// @tasks: E-12
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

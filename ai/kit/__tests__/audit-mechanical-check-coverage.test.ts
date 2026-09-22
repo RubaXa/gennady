@@ -1,8 +1,8 @@
 // @file: Coverage test — every sdd-check code family documented in help.ts is also named where the
 //   audit directive teaches AX_MECHANICAL_VIA_SDD_CHECK, so the audit worker never "hand-redoes" a
 //   check it doesn't know sdd-check already performs (B2-11).
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

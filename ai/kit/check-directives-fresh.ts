@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// @file: ai/kit/check-directives-fresh.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Freshness gate for ai/directives/** (AUTHORING.md — build-directives is the only writer of that
  * tree).

@@ -1,6 +1,6 @@
 // @file: AttentionState — 5-value attention axis + deriveAttention pure function (6 rows + fallback).
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: SyncService, inbox-api, inbox-dashboard
-// @tasks: TSK-158
 
 /** @purpose Closed set of 5 attention states shown on the MR card. */
 export type AttentionState = '⏳' | '💬' | '🔀' | '✅' | '😴';

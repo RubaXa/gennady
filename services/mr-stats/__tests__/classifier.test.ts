@@ -1,6 +1,6 @@
 // @file: Unit tests for mr-stats classifier — loadClassifierRules, classify.
+// @spec: MR-STATS
 // @consumers: node:test runner
-// @tasks: TSK-139
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

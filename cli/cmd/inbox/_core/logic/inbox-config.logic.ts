@@ -1,6 +1,6 @@
 // @file: Inbox configuration I/O: types, validation, atomic load/save for ~/.gennady/agent-inbox/config.json.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd, inbox-config.cmd
-// @tasks: TSK-90
 
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: ApiClient — HTTP client for inbox-api REST endpoints consumed by the dashboard.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: BoardStore
-// @tasks: TSK-107, TSK-146
 
 import type {
   BoardData,

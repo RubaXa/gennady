@@ -1,7 +1,7 @@
 // @file: B6 — the "Assign" dropdown on an unassigned MR card must close when the operator clicks
 //   outside it, not only when a role is picked (UnassignedBlock.tsx#UnassignedMrCard).
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
-// @tasks: TSK-107
 
 import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';

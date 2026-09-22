@@ -1,6 +1,6 @@
 // @file: Cross-tool regression for one executable bootstrap → config → command-smoke ticket.
+// @spec: CLI
 // @consumers: sdd-new, sdd-check, sdd-task, sdd-verify
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

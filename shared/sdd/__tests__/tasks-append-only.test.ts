@@ -1,6 +1,6 @@
 // @file: Unit tests for tasks-append-only — TASKS_APPEND_ONLY header regression check.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -74,6 +74,27 @@ describe('parseSourceOwnershipHeader', () => {
     );
     assert.deepStrictEqual(parsed.blocks[0]?.lines, ['// @file: x', '//   exact detail']);
     assert.deepStrictEqual(parsed.ambiguousHeaderIndexes, [2]);
+  });
+
+  it('сохраняет paragraph break внутри multiline ownership block', () => {
+    const parsed = parseSourceOwnershipHeader(
+      [
+        '// @file: x',
+        '//   first paragraph',
+        '//',
+        '//     second paragraph after formatter indentation',
+        '// @tasks: TSK-1',
+        '// @consumers: y',
+        '',
+      ].join('\n')
+    );
+    assert.deepStrictEqual(parsed.ambiguousHeaderIndexes, []);
+    assert.deepStrictEqual(parsed.blocks[0]?.lines, [
+      '// @file: x',
+      '//   first paragraph',
+      '//',
+      '//     second paragraph after formatter indentation',
+    ]);
   });
 
   it('оставляет duplicate и empty tags видимыми fail-closed caller', () => {

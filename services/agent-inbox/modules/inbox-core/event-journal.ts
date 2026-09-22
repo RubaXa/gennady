@@ -1,6 +1,6 @@
 // @file: EventJournal — append-only JSONL journal: per-MR monotonic seq, O_APPEND+fsync, broken-tail recovery, global system journal
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core services, queue, pipeline, chat, api
-// @tasks: TSK-156, TSK-173
 
 import {
   existsSync,

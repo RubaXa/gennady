@@ -1,12 +1,13 @@
 // @file: Deterministic prepare/clean of eval sandbox roots via node fs — no manual rm/mktemp in shell.
+// @spec: AI-SKILLS
 // @consumers: eval runs (prepare a root), post-run cleanup (clean leftover roots).
-// Run with tsx, e.g.:
-//   node --import tsx ai/flow-eval/scripts/sandbox.ts prepare        -> prints a fresh sandbox root path
-//   node --import tsx ai/flow-eval/scripts/sandbox.ts clean          -> removes leftover eval sandbox roots
-//   node --import tsx ai/flow-eval/scripts/sandbox.ts clean --dry    -> lists what clean would remove
-//   node --import tsx ai/flow-eval/scripts/sandbox.ts clean --root D -> restrict the sweep to root D (repeatable)
-// The runner now tears its own sandboxes down (cli.ts, finally + signal handlers); this `clean` is the
-// belt-and-suspenders sweep for strays a crashed or externally-killed run could still leave behind.
+//   Run with tsx, e.g.:
+//     node --import tsx ai/flow-eval/scripts/sandbox.ts prepare        -> prints a fresh sandbox root path
+//     node --import tsx ai/flow-eval/scripts/sandbox.ts clean          -> removes leftover eval sandbox roots
+//     node --import tsx ai/flow-eval/scripts/sandbox.ts clean --dry    -> lists what clean would remove
+//     node --import tsx ai/flow-eval/scripts/sandbox.ts clean --root D -> restrict the sweep to root D (repeatable)
+//   The runner now tears its own sandboxes down (cli.ts, finally + signal handlers); this `clean` is the
+//   belt-and-suspenders sweep for strays a crashed or externally-killed run could still leave behind.
 
 import { realpathSync, rmSync, mkdtempSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';

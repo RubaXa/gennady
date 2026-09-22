@@ -1,6 +1,6 @@
 // @file: Integration tests for SddLogCommand#run — append-only, timestamps, round numbering, placeholder rejection.
+// @spec: CLI-SDD-LOG
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

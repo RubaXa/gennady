@@ -1,6 +1,6 @@
 // @file: ReviewEffectQueue entity — durable ordered effect state from enqueue through confirmed outcome.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectCoordinator
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import type { ReviewEffect, ReviewEffectState } from '../types/review-effect.type.ts';

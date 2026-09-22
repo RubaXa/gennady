@@ -1,6 +1,6 @@
 // @file: Unit tests for SyncFormatter — formatSyncOutput from shared
+// @spec: CLI-SYNC
 // @consumers: sync-formatter.ts
-// @tasks: TSK-54, TSK-56
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

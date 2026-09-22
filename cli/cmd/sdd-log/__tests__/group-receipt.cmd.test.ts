@@ -1,6 +1,6 @@
 // @file: Command tests for `sdd-log audit-receipt`/`review-receipt` — refuses a non-DONE group, writes a valid CLI-owned block.
+// @spec: CLI-SDD-LOG
 // @consumers: sdd-log.cmd
-// @tasks: N/A
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

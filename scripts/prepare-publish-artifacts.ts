@@ -1,3 +1,7 @@
+// @file: Prepare bundled publish artifacts that Vite does not copy automatically.
+// @spec: INFRA-NPM-PUBLISH
+// @consumers: package build and publish scripts
+
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

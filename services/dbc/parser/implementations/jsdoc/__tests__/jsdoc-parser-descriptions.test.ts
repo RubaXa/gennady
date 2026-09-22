@@ -1,3 +1,6 @@
+// @file: services/dbc/parser/implementations/jsdoc/__tests__/jsdoc-parser-descriptions.test.ts
+// @spec: DBC-DBC-PARSER
+// @consumers: N/A
 import { beforeEach, describe, it } from 'node:test';
 
 import { DbcJsDocParser } from '../dbc-jsdoc-parser.ts';

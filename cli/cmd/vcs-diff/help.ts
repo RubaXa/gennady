@@ -1,6 +1,6 @@
 // @file: vcs-diff command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-81
 
 /**
  * @purpose Print CLI help for the vcs-diff command.

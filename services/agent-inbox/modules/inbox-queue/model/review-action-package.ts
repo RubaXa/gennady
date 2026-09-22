@@ -1,6 +1,6 @@
 // @file: ReviewActionPackage entity — coherent UI/state unit of independent proposals, alternatives, and ordered dependencies.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewDecision, ReviewEffectQueue
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import type { ReviewGuardedIntent } from '../types/review-guarded-intent.type.ts';

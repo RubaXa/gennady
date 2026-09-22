@@ -1,5 +1,25 @@
 # Module: `sdd-task`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-TASK
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-task · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -111,6 +131,8 @@ Gates (all):
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 Planning Surface
 
 - **Runtime Backing:** `real-runtime`
@@ -130,6 +152,7 @@ Gates (all):
   - Verification принимает ровно `Command | Required by | Role`; raw shell pipe must be inside a code span whose outer backtick run is longer than every inner run
   - V2-тикет другой спеки не становится pickable через DONE-зависимость, пока её owning spec не несёт валидный текущий `SDD_AUDIT_RECEIPT`; V1-граф остаётся status-only
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -176,6 +199,8 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 
 ## 7. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-TK001 — Парсеры тикета в `shared/sdd/ticket.ts`
 
 - **Status:** active
@@ -193,7 +218,7 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 
 - **Status:** active
 - **Why:** оркестратор не должен «глазами» читать трекеры, чтобы понять, что готово (детерминизм > догадки — общий принцип флоу). `sdd-task` без Task-ID обходит тикеты → `ticketRef` (status+deps) → `pickableTasks` (`shared/sdd/check`: TODO + все deps DONE; placeholder «None…» = нет deps) → карта (pickable + заблокированные, чем). `execute` LOGIC_SWITCH (next / specific / batch) берёт карту тулом. Снимает нагрузку догадок с агента.
-- **Risk accepted:** Meta с прозой в Dependencies (запятые) даёт мусор-deps → тикет ложно blocked; чинится на стороне данных (находка: TSK-55 несёт прозу в deps).
+- **Risk accepted:** Meta с прозой в Dependencies (запятые) даёт мусор-deps → тикет ложно blocked; чинится на стороне данных (находка: ORI-command несёт прозу в deps).
 
 ### D-TK003 — Поэтапное извлечение секций фаз
 
@@ -294,6 +319,8 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 - **Why:** `[x] DONE` in V2 is the mechanical close before group audit. Treating it as sufficient let another spec consume an unaudited result, contradicting `AX_AUDIT_HOOK`. The map now resolves exact owning specs, re-derives the dependency group from the same immutable ticket snapshot, and accepts only the same structurally valid, non-stale `SDD_AUDIT_RECEIPT` used by `sdd-check`.
 - **Fail-closed ownership:** with audit context, every V2 candidate must have a resolvable owning spec. A DONE V2 dependency without one blocks as `<Task-ID> (owning spec)`; when both owners resolve, same-spec remains status-only and cross-spec requires the dependency owner's current receipt. An unresolved owner is never evidence that the dependency is satisfied.
 - **Grandfathering:** the shared per-ticket flow classifier applies this only to V2 candidates and V2 dependencies. V1 remains status-only until self-migration; no current V1 ticket or baseline is rewritten or newly graded.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

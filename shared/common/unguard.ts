@@ -1,6 +1,6 @@
 // @file: Synchronously unwrap a result tuple.
+// @spec: SHARED
 // @consumers: ai-legacy-agent, ai-legacy-core, ai-legacy-model
-// @tasks: N/A
 
 /**
  * @purpose Synchronously unwrap a result tuple.

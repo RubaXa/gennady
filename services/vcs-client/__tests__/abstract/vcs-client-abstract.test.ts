@@ -1,6 +1,6 @@
 // @file: Compile-time gate + runtime tests for VcsClient abstract ports.
+// @spec: CLI-LINT
 // @consumers: tsc --noEmit, node:test
-// @tasks: TSK-28
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

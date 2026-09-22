@@ -1,6 +1,6 @@
 // @file: Resolve the gennady state directory and its sub-paths (single --state-dir override).
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd, vcs-worktree.cmd, inbox-review-plan.cmd
-// @tasks: TSK-90, TSK-103, TSK-106
 
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';

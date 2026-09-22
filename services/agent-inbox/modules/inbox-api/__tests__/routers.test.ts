@@ -1,6 +1,6 @@
 // @file: Router contract tests — DTO closed-world validation, enqueue dedup, decision lifecycle, artifact path traversal, boot endpoint, HttpServer→projection wiring (F-02).
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-162, TSK-167
 
 import { describe, it, mock, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: sdd-log command help output.
+// @spec: CLI-SDD-LOG
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-log command.

@@ -1,5 +1,11 @@
 # agent-mon: Library Specification
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 library
@@ -290,7 +296,7 @@ path            TEXT
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, agent-mon, post-review fix
-- **Why:** `AgentMonitor.diff()` и `AgentMonitor.observe()` как методы создавали циклическую зависимость в DAG: TSK-36 (monitor) не может реализовать observe без TSK-38, а TSK-38 зависит от TSK-36. Свободные функции `diff()` и `observe(monitor, opts)` разрешают цикл: TSK-38 → TSK-36, без обратного ребра.
+- **Why:** `AgentMonitor.diff()` и `AgentMonitor.observe()` как методы создавали циклическую зависимость в DAG: MON-service (monitor) не может реализовать observe без OBS-stream, а OBS-stream зависит от MON-service. Свободные функции `diff()` и `observe(monitor, opts)` разрешают цикл: OBS-stream → MON-service, без обратного ребра.
 - **Risk accepted:** Изменение Golden DX (было `mon.diff()`, стало `diff()`). Минимальное — consumer всё ещё может использовать оба API.
 - **Rejected alternatives:** DI через `createMonitor({ diff, observe })` — усложняет фабрику без необходимости.
 

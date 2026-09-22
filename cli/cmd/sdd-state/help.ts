@@ -1,6 +1,6 @@
 // @file: sdd-state command help output.
+// @spec: CLI-SDD-STATE
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-state command.

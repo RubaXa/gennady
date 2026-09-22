@@ -1,6 +1,6 @@
 // @file: Regression proof that #40/#48 journal rules start at the per-scope v2 migration boundary.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

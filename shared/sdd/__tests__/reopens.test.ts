@@ -1,7 +1,7 @@
 // @file: Unit tests for causal Reopens (B2-06, issue #13, D-20) — Meta `Reopens` vs `## Audit
 //   Rounds` `@audit … triggered-reopen=Round-N` records, plus the closed round-reason vocabulary.
+// @spec: SHARED
 // @consumers: execution-log, check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ function auditRoundBlock(
   return [
     `### Audit Round ${n} — 2026-05-1${n}, after Execution Round ${afterExecRound}`,
     '```',
-    `@audit task=TSK-04 round=${n} mode=per-task after-exec-round=${afterExecRound} triggered-reopen=${triggeredReopen} status=${status} counts=B1·M0·m0·I0 phases_to_fix=[P2]`,
+    `@audit task=DL-ts-deps round=${n} mode=per-task after-exec-round=${afterExecRound} triggered-reopen=${triggeredReopen} status=${status} counts=B1·M0·m0·I0 phases_to_fix=[P2]`,
     'F-01 | sev=M | type=CLOSED_WORLD_DRIFT | conf=H | loc=x:1 | phase=P2 | src=y | route=ticket-reopen | act=z',
     '@glossary suggestions=[]',
     '```',

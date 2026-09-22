@@ -1,6 +1,6 @@
 // @file: Structured CLI-owned phase verification receipts and deterministic state fingerprints.
+// @spec: SHARED
 // @consumers: sdd-verify, sdd-check
-// @tasks: N/A
 
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';

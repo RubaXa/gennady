@@ -1,5 +1,25 @@
 # Module: `sdd-check`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-CHECK
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-check · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -95,6 +115,8 @@ specs/infra-base/infra-base.task.INF-gate.md:38: error: SDD_AUTHORING_TARGET_PAT
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 Mechanical Audit
 
 - **Runtime Backing:** `real-runtime`
@@ -121,6 +143,7 @@ specs/infra-base/infra-base.task.INF-gate.md:38: error: SDD_AUTHORING_TARGET_PAT
 
 - **Usage Waiver:** возвращаемый тип единого структурного парсера `parseExecutionLog` (`shared/sdd/execution-log.ts`, B2-01) — потребители деструктурируют результат (`.rounds`), не именуя тип отдельно; сама функция несёт ≥2 продакшен-вызова (`firstRoundPhaseBlockCounts`, `analyzeRoundClosures`).
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -167,6 +190,8 @@ shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/s
 <!--SECTION:MODULE_DECISION_LOG-->
 
 ## 7. Module Decision Log
+
+<details><summary>Подробности</summary>
 
 ### D-CK018 — Requirements budget и fail-closed review readiness
 
@@ -251,7 +276,7 @@ shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/s
 
 - **Status:** superseded by D-CK012
 - **Why:** Целостность трекеров (статус строки = статус тикета) — забота `sdd-sync` (он пишет + verify). Дублировать проверку в check — расхождение источников истины.
-- **Superseded because:** На практике `sdd-sync` пишет статус, но не verify'ит существующий рассинхрон — трекер может обогнать тикет (строка `DONE`, Meta тикета всё ещё `TODO`) незамеченно. Реальный кейс: `tasks/cli/README.md` заявлял TSK-58 `DONE`, сам тикет стоял `TODO` — `sdd-check --all` это не поймал (см. D-CK012). Дублирование источников истины — не аргумент против механической сверки; `checkTrackers` уже существовал (сверка добавлена позже без обновления этой записи) и был просто не подключён.
+- **Superseded because:** На практике `sdd-sync` пишет статус, но не verify'ит существующий рассинхрон — трекер может обогнать тикет (строка `DONE`, Meta тикета всё ещё `TODO`) незамеченно. Реальный кейс: `tasks/cli/README.md` заявлял SS-skills `DONE`, сам тикет стоял `TODO` — `sdd-check --all` это не поймал (см. D-CK012). Дублирование источников истины — не аргумент против механической сверки; `checkTrackers` уже существовал (сверка добавлена позже без обновления этой записи) и был просто не подключён.
 
 ### D-CK005 — Мягкие сигналы раздувания модуля (два кода, warn)
 
@@ -293,9 +318,9 @@ shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/s
 
 - **Status:** active
 - **Supersedes:** D-CK003
-- **Why:** `--all` классифицировал Tracker Index по имени файла (`*.3-tasks.md`/`*.2-tasks.md`) — ни один файл в репозитории так не называется, весь трекер-трафик живёт в `tasks/<scope>/README.md`; `checkTrackers` существовал, но получал пустой массив строк, поэтому не срабатывал ни в одну сторону. Реальный пропуск: `tasks/cli/README.md` строка TSK-58 `DONE`, тикет `orient.task-55.md` (`TSK-55`) — `TODO`; трекер обогнал тикет незамеченно. Классификация переведена на содержимое (`isTrackerIndex` — таблица Task-ID/Status), покрывает и легаси README, и будущий `*.3-tasks.md`. Отдельно найден и починен формат-баг: `parseTrackerRows` оставляет Status-ячейку сырой (с backtick — `sdd-sync` пишет обратно байт-в-байт), а Meta тикета — без backtick; `checkTrackers`' `norm()` их не срезал → лавина ложного `SDD_TRACKER_STATUS_DRIFT` (34 находки на реальном дереве, из них 32 — чисто формат). После обеих правок реальный дрифт — 2 находки (TSK-55 — подтверждённый живой баг; TSK-88 — побочный эффект существующей коллизии Task-ID между scope, уже отдельно `SDD_TASK_ID_COLLISION`).
-- **Risk accepted:** Включение классификации вскрыло другой существующий разрыв: v1-тикеты без `<!--SECTION:-->`-разметки (`isTicket` их не узнаёт) дают `SDD_TRACKER_ORPHAN_ROW`/`SDD_TRACKER_MISSING_ROW` шумом на легаси-дереве (55 + 15 находок) — включая намеренно вычищенные из трекера superseded-тикеты (`agent-inbox` TSK-156…170). Смягчено по образцу `SDD_BDD_SCENARIO_UNTESTED`: `SDD_TRACKER_STATUS_DRIFT` — всегда error (редкий, всегда genuine после того как обе стороны разрешились); `SDD_TRACKER_MISSING_ROW`/`SDD_TRACKER_ORPHAN_ROW` — `warn` на v1 (default), `error` на v2 (`TicketRef.flowVersion`/`TrackerRowRef.flowVersion`, из `ticketFlowVersion`). Сам разрыв `isTicket` на legacy-разметке — не тронут, отдельная задача.
-- **Update (isLegacyTicket закрыл разрыв):** легаси-тикеты (v1, голые заголовки `## N. Meta`/`## N. Execution Log`) теперь распознаются отдельно (`isLegacyTicket`) и участвуют в task-DAG/tracker↔ticket через `legacyTicketRef` (Task-ID/Status/Dependencies из `legacyHeaderBody`, без полного `checkTicket` — см. Module Contracts). Было (обход слепой к легаси, 125 файлов) → стало (76 легаси-тикетов видимы, 201 файл): `SDD_TRACKER_ORPHAN_ROW` 55 → 2 (обе находки — реальный дрифт: трекер-строка без тикета на диске); `SDD_TRACKER_MISSING_ROW` 15 → 37 (рост, не шум — легаси-тикеты, которых раньше не было в `ticketRefs`, теперь честно сверяются с трекером; большая часть — намеренно вычищенные из трекера superseded-тикеты, `agent-inbox` TSK-156…170, задокументированные в `tasks/agent-inbox/README.md`). Т.к. `MISSING_ROW` остаётся массовым и содержит легитимные (задокументированные) исключения, а не только настоящий дрифт, безусловный `error` для него НЕ введён — flowVersion-градация (D-CK012) остаётся. `ORPHAN_ROW` теперь единичный и настоящий на всём дереве, но severity-функция общая для обоих кодов (`severityOf`) — раздельная градация — YAGNI, пока `ORPHAN_ROW` не даёт собственного мотивированного кейса.
+- **Why:** `--all` классифицировал Tracker Index по имени файла (`*.3-tasks.md`/`*.2-tasks.md`) — ни один файл в репозитории так не называется, весь трекер-трафик живёт в `tasks/<scope>/README.md`; `checkTrackers` существовал, но получал пустой массив строк, поэтому не срабатывал ни в одну сторону. Реальный пропуск: `tasks/cli/README.md` строка SS-skills `DONE`, тикет `orient.task-55.md` (`ORI-command`) — `TODO`; трекер обогнал тикет незамеченно. Классификация переведена на содержимое (`isTrackerIndex` — таблица Task-ID/Status), покрывает и легаси README, и будущий `*.3-tasks.md`. Отдельно найден и починен формат-баг: `parseTrackerRows` оставляет Status-ячейку сырой (с backtick — `sdd-sync` пишет обратно байт-в-байт), а Meta тикета — без backtick; `checkTrackers`' `norm()` их не срезал → лавина ложного `SDD_TRACKER_STATUS_DRIFT` (34 находки на реальном дереве, из них 32 — чисто формат). После обеих правок реальный дрифт — 2 находки (ORI-command — подтверждённый живой баг; DL-redund — побочный эффект существующей коллизии Task-ID между scope, уже отдельно `SDD_TASK_ID_COLLISION`).
+- **Risk accepted:** Включение классификации вскрыло другой существующий разрыв: v1-тикеты без `<!--SECTION:-->`-разметки (`isTicket` их не узнаёт) дают `SDD_TRACKER_ORPHAN_ROW`/`SDD_TRACKER_MISSING_ROW` шумом на легаси-дереве (55 + 15 находок) — включая намеренно вычищенные из трекера superseded-тикеты (`agent-inbox` IC-journal…170). Смягчено по образцу `SDD_BDD_SCENARIO_UNTESTED`: `SDD_TRACKER_STATUS_DRIFT` — всегда error (редкий, всегда genuine после того как обе стороны разрешились); `SDD_TRACKER_MISSING_ROW`/`SDD_TRACKER_ORPHAN_ROW` — `warn` на v1 (default), `error` на v2 (`TicketRef.flowVersion`/`TrackerRowRef.flowVersion`, из `ticketFlowVersion`). Сам разрыв `isTicket` на legacy-разметке — не тронут, отдельная задача.
+- **Update (isLegacyTicket закрыл разрыв):** легаси-тикеты (v1, голые заголовки `## N. Meta`/`## N. Execution Log`) теперь распознаются отдельно (`isLegacyTicket`) и участвуют в task-DAG/tracker↔ticket через `legacyTicketRef` (Task-ID/Status/Dependencies из `legacyHeaderBody`, без полного `checkTicket` — см. Module Contracts). Было (обход слепой к легаси, 125 файлов) → стало (76 легаси-тикетов видимы, 201 файл): `SDD_TRACKER_ORPHAN_ROW` 55 → 2 (обе находки — реальный дрифт: трекер-строка без тикета на диске); `SDD_TRACKER_MISSING_ROW` 15 → 37 (рост, не шум — легаси-тикеты, которых раньше не было в `ticketRefs`, теперь честно сверяются с трекером; большая часть — намеренно вычищенные из трекера superseded-тикеты, `agent-inbox` IC-journal…170, задокументированные в `tasks/agent-inbox/README.md`). Т.к. `MISSING_ROW` остаётся массовым и содержит легитимные (задокументированные) исключения, а не только настоящий дрифт, безусловный `error` для него НЕ введён — flowVersion-градация (D-CK012) остаётся. `ORPHAN_ROW` теперь единичный и настоящий на всём дереве, но severity-функция общая для обоих кодов (`severityOf`) — раздельная градация — YAGNI, пока `ORPHAN_ROW` не даёт собственного мотивированного кейса.
 
 ### D-CK011 — B5: scope-deps ↔ портал-граф (`SDD_SCOPE_DEP_UNDECLARED`)
 
@@ -432,6 +457,8 @@ shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/s
 - **Status:** active · **Implements:** D-40, FO-4, B2-12
 - **Why:** отдельная эвристика в `sdd-check` разошлась бы с `orient --file` по owner/collision/spec-mismatch. Оба CLI теперь используют один `resolveOrientFileRelations` поверх FO-2 core и on-demand Spec-ID index. Полностью V2 repo строг для каждого поддержанного source, даже если header потерял `@spec`; в mixed repo положительным V2 evidence служит текущий `@spec`, `@spec` в HEAD или exact Target/Deleted File мигрированного V2-тикета. Untouched `@tasks`-only source без этих evidence остаётся V1-lenient и не получает ни error, ни warning новых `SDD_FILE_*`. `checkTasksAppendOnly` больше не универсальный V2 invariant: он сохраняет legacy history только для V1 и не запрещает V2 заменить `@tasks` на стабильный `@spec`.
 - **Evidence boundary:** `shared/sdd/source-extensions.ts` — один closed-world registry для source consumers, BDD index и YAGNI. `.ts/.tsx` имеют grammar-backed `exact`, все остальные перечисленные языки — `approximate`; approximate extractor не объявляется diff/Git evidence. `Foo.swift` и `FooTests.swift` фиксируют both-way production/test classification, а Swift XCTest method остаётся приблизительным распознаванием имени, не доказательством выполнения теста.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

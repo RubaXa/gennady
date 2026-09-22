@@ -1,6 +1,6 @@
 // @file: Unit tests for LanguageCheck — validates Cyrillic detection in JSDoc contracts and file headers.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-32
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

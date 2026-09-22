@@ -1,6 +1,6 @@
 // @file: ChatGc — TTL sweep for per-MR chat artifacts (chats/*.jsonl, reports/<mr>/snapshots/*), same 7d/168h mtime pattern as gcStaleWorktrees/gcStaleReports (D-105). One bad file never blocks the rest.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: serve bootstrap/poll cycle, inbox --reset CLI (wiring open — see TSK-128 Handoff)
-// @tasks: TSK-128
 
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';

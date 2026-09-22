@@ -1,6 +1,6 @@
 // @file: Unit tests for resolveTargets — validates 24 directory resolution scenarios.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-50
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

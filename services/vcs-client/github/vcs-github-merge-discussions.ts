@@ -1,6 +1,6 @@
 // @file: GitHub pull request comments adapter — maps issue comments + review comments to unified discussion format.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGithubClient
-// @tasks: TSK-30, TSK-95
 
 import {
   VcsClientMergeDiscussions,

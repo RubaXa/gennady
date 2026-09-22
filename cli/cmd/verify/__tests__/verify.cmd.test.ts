@@ -1,7 +1,7 @@
 // @file: Unit tests for the read-only `gennady verify` facade (V-16a, D-13) — invocation parsing
 //   and deterministic plan resolution, no execution, no mutation.
+// @spec: CLI-VERIFY
 // @consumers: CI
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

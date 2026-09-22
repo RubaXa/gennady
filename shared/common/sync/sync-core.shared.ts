@@ -1,6 +1,6 @@
 // @file: Shared sync core — resolvePackageDir, compareBytes
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

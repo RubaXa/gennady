@@ -1,6 +1,6 @@
 // @file: Unit tests for queryTask — find files by task ID (S2 scenario).
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,32 +23,32 @@ describe('queryTask', () => {
 
   it('single task: finds matching files', () => {
     const files = [
-      makeFile('/project/src/a.ts', ['TSK-01']),
-      makeFile('/project/src/b.ts', ['TSK-02']),
+      makeFile('/project/src/a.ts', ['DP-fields']),
+      makeFile('/project/src/b.ts', ['DP-jsdoc']),
     ];
-    const results = queryTask(files, ['TSK-01']);
+    const results = queryTask(files, ['DP-fields']);
     assert.strictEqual(results.length, 1);
-    assert.strictEqual(results[0].taskId, 'TSK-01');
+    assert.strictEqual(results[0].taskId, 'DP-fields');
     assert.strictEqual(results[0].files.length, 1);
     assert.strictEqual(results[0].files[0].absPath, '/project/src/a.ts');
   });
 
   it('multiple tasks: returns grouped results', () => {
     const files = [
-      makeFile('/project/src/a.ts', ['TSK-01']),
-      makeFile('/project/src/b.ts', ['TSK-02']),
-      makeFile('/project/src/c.ts', ['TSK-01', 'TSK-02']),
+      makeFile('/project/src/a.ts', ['DP-fields']),
+      makeFile('/project/src/b.ts', ['DP-jsdoc']),
+      makeFile('/project/src/c.ts', ['DP-fields', 'DP-jsdoc']),
     ];
-    const results = queryTask(files, ['TSK-01', 'TSK-02']);
+    const results = queryTask(files, ['DP-fields', 'DP-jsdoc']);
     assert.strictEqual(results.length, 2);
-    assert.strictEqual(results[0].taskId, 'TSK-01');
+    assert.strictEqual(results[0].taskId, 'DP-fields');
     assert.strictEqual(results[0].files.length, 2);
-    assert.strictEqual(results[1].taskId, 'TSK-02');
+    assert.strictEqual(results[1].taskId, 'DP-jsdoc');
     assert.strictEqual(results[1].files.length, 2);
   });
 
   it('task not found: returns empty files array', () => {
-    const files = [makeFile('/project/src/a.ts', ['TSK-01'])];
+    const files = [makeFile('/project/src/a.ts', ['DP-fields'])];
     const results = queryTask(files, ['TSK-999']);
     assert.strictEqual(results.length, 1);
     assert.strictEqual(results[0].taskId, 'TSK-999');
@@ -56,8 +56,8 @@ describe('queryTask', () => {
   });
 
   it('handles duplicate task IDs in input', () => {
-    const files = [makeFile('/project/src/a.ts', ['TSK-01'])];
-    const results = queryTask(files, ['TSK-01', 'TSK-01']);
+    const files = [makeFile('/project/src/a.ts', ['DP-fields'])];
+    const results = queryTask(files, ['DP-fields', 'DP-fields']);
     assert.strictEqual(results.length, 2);
     assert.strictEqual(results[0].files.length, 1);
     assert.strictEqual(results[1].files.length, 1);

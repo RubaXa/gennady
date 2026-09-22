@@ -1,5 +1,11 @@
 # Module: cmd
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-CLI-CMD
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 CLI entry point — парсинг флагов, создание монитора с провайдерами, запуск ink-приложения. Composition root: связывает `agent-mon` библиотеку с `state` и `ui`.

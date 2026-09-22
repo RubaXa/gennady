@@ -1,6 +1,6 @@
 // @file: run command help output
+// @spec: CLI-RUN
 // @consumers: help command
-// @tasks: TSK-65
 /**
  * @purpose Print CLI help for the run command.
  */

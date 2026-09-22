@@ -1,6 +1,6 @@
 // @file: Unit tests for the exact-match readiness check.
+// @spec: SHARED
 // @consumers: readiness
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,7 @@
 // @file: Proof that the judge's verdict is diagnostic only and never participates in the batch's
 //   exit code (E-21, D-28/L-14).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/cli.ts, ai/flow-eval/judge.ts
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

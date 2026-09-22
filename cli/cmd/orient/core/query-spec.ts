@@ -1,9 +1,10 @@
 // @file: Query spec files — S8/S9 scenarios for spec overview and spec search.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { resolve, relative, basename } from 'node:path';
+import { looksLikeTaskId } from '../../../../shared/sdd/task-id.ts';
 import type { SpecOverview } from '../orient.types.ts';
 
 /**
@@ -81,12 +82,7 @@ function walkSpecFiles(dir: string): string[] {
 }
 
 function extractTaskIdsFromSpec(content: string): string[] {
-  const ids = new Set<string>();
-  const regex = /TSK-\d+/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
-    ids.add(match[0]);
-  }
+  const ids = new Set((content.match(/[A-Za-z0-9-]+/g) ?? []).filter(looksLikeTaskId));
   return [...ids].sort();
 }
 

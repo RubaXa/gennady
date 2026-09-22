@@ -1,6 +1,6 @@
 // @file: End-to-end ownership tests for one phase run and its atomic receipt.
+// @spec: CLI-SDD-VERIFY
 // @consumers: N/A
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

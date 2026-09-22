@@ -1,6 +1,6 @@
 // @file: Pure error-mapping utility for opencode subprocess failures.
+// @spec: AGENT-RUN-OPENCODE
 // @consumers: OpencodeEngine
-// @tasks: TSK-63, TSK-64
 
 import type { ErrorCode } from '../../core/agent-run-error.ts';
 

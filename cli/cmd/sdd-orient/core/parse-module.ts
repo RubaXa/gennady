@@ -1,4 +1,5 @@
 // @file: Cheap module-level facts for the neighbourhood printout — entity/contract names, requirement id+title, never full bodies.
+// @spec: CLI-SDD-ORIENT
 // @consumers: buildNeighbourhood
 
 import { parseEntityRows } from '../../../../shared/sdd/inventory.ts';

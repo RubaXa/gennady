@@ -1,6 +1,6 @@
 // @file: LintCommand — CLI entry point for gennady lint: parseArgs (strict), git scan, single read, checks incl. optional --spec/--inventory-reverse inventory sync, ESLint output.
+// @spec: CLI-LINT
 // @consumers: gennady.ts
-// @tasks: TSK-16, TSK-49, TSK-60
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';

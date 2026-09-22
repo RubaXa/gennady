@@ -1,6 +1,6 @@
 // @file: VcsInboxPort — VCS integration abstraction: actionable MRs, MR context, discussions.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-api, inbox-roles, inbox-dashboard, CLI
-// @tasks: TSK-110
 
 import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionable-mr.type.ts';
 

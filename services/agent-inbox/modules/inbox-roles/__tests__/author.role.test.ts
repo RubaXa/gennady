@@ -1,8 +1,8 @@
 // @file: Unit tests for inbox-roles AuthorRole — prep → self-review → analyze-feedback →
 //   synthesize (REPORT.md/FIX_TASK.md/drafts) → ask → effect. Never approves own MR, never
 //   proposes a fresh thread write (D68).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

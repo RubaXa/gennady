@@ -4,8 +4,8 @@
 //   detection itself (author disagrees vs. explains) stays the job of the existing
 //   `node_thread_triage` session (reviewer.role.ts:700-725) — this module only consumes that
 //   classification, never reinvents it.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleInstance
-// @tasks: TSK-142
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

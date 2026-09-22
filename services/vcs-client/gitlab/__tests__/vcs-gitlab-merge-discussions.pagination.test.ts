@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeDiscussions#getAll runtime pagination.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner, inbox-vcs VcsPort adapter
-// @tasks: TSK-158
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

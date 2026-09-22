@@ -1,5 +1,25 @@
 # Module: `sdd-extract`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-EXTRACT
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-extract · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -80,6 +100,8 @@ _Полный список сущностей модуля `sdd-extract` + об�
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### `extractSection`
 
 - **Type:** Utility (pure)
@@ -98,11 +120,15 @@ _Полный список сущностей модуля `sdd-extract` + об�
   - Self-executing tail: печатает `content` (успех) или `message` (промах) в stdout, `process.exit(exitCode)`
 - **Errors & Degradation:** ENOENT → `fileNotFound`; прочие ошибки чтения (EACCES, EISDIR) → `fileNotReadable`.
 - **Consumers:** Internal `gennady.ts`; External — CLI, оркестратор / фазовые агенты SDD.
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### 5.1 Section Extraction
 
@@ -127,6 +153,7 @@ _Полный список сущностей модуля `sdd-extract` + об�
   - На успехе stdout не содержит строк-маркеров `<!--SECTION:...-->`
   - Логи состояния идут в stderr (logger) — pipe-safe
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -177,6 +204,8 @@ shared/sdd/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-SX001 — Ядро извлечения в `shared/sdd/`, не в папке команды
 
 - **Status:** active
@@ -200,6 +229,8 @@ shared/sdd/
 - **Status:** active
 - **Why:** Потребитель — AI-агент, читающий stdout тула; `AX_BASH_NO_SILENT_EMPTY` требует actionable-инструкцию в stdout. Exit-код разделяет успех/промах. Совпадает с поведением `extract-section.sh`.
 - **Risk accepted:** Низкий — логи состояния идут в stderr через logger, поэтому pipe тела секции не загрязняется.
+
+</details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->

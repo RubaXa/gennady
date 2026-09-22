@@ -2,8 +2,8 @@
 //   and concatenates them into a system prompt for a given node or role. Four node-ids
 //   (node_track_review/node_security_lens/node_code_review/node_synthesize) route through the
 //   dynamic `selector.ts` instead (TSK-136, D-121); everything else stays on the static map.
+// @spec: SHARED
 // @consumers: role engine (services/agent-inbox), CLI commands
-// @tasks: TSK-116, TSK-136
 
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';

@@ -1,6 +1,6 @@
 // @file: OrientCommand — CLI entry point for gennady orient: map, search, graph, specs.
+// @spec: CLI-ORIENT
 // @consumers: gennady.ts
-// @tasks: TSK-55
 
 import { readFileSync, existsSync, lstatSync } from 'node:fs';
 import { resolve, relative } from 'node:path';

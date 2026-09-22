@@ -1,6 +1,6 @@
 // @file: Dedicated GitLab approval and complete commit-comparison endpoint contract tests.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-174
 
 import { afterEach, describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

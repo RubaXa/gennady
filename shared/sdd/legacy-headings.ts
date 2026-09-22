@@ -1,4 +1,5 @@
 // @file: Extract a v1 (pre-marker) spec section body by fuzzy heading match — numbering-stripped, case-insensitive — for specs never anchored with <!--SECTION--> markers.
+// @spec: SHARED
 // @consumers: sdd-orient.cmd
 
 import { collectHeadings } from './section.ts';

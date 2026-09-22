@@ -1,6 +1,6 @@
 // @file: Port DbcAstAdapter and AST-related Value Objects for the dbc-linter module.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsAstAdapter
-// @tasks: TSK-07, TSK-11, TSK-88
 
 /** @purpose Describes a single parameter in a function or method signature. */
 export type DbcParamInfo = {

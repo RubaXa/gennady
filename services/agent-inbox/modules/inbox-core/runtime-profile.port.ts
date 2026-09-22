@@ -1,6 +1,6 @@
 // @file: Filesystem-backed RuntimeProfilePort enforcing canonical namespace isolation and owned reset.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: bootstrap, eval and mock harnesses
-// @tasks: TSK-172
 
 import { homedir, tmpdir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';

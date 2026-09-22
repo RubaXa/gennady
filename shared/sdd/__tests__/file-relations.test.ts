@@ -1,6 +1,6 @@
 // @file: FO-2 file-relations contract tests over isolated V2/V1 inputs.
+// @spec: SHARED
 // @consumers: N/A
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';

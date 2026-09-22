@@ -1,6 +1,6 @@
 // @file: Contract surface for the actionable inbox — MRs awaiting the user's reaction.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-75
 
 import type { VcsActionableMr } from '../entities/vcs-actionable-mr.type.ts';
 

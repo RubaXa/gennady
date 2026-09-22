@@ -1,6 +1,6 @@
 // @file: Safe reader for one-shot SDD CLI payloads written under project-local .claude/tmp/.
+// @spec: SHARED
 // @consumers: sdd-log, sdd-session
-// @tasks: N/A
 
 import { closeSync, constants, fstatSync, openSync, readFileSync } from 'node:fs';
 import { inspectRepoPath } from './repo-path.ts';

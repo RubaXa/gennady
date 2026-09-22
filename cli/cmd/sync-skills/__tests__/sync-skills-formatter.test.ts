@@ -1,6 +1,6 @@
 // @file: Unit tests for SyncSkillsFormatter — format()
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsFormatter
-// @tasks: TSK-57
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

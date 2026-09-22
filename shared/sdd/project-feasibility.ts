@@ -1,6 +1,6 @@
 // @file: Project bootstrap proof derived from the existing V2 spec format.
+// @spec: SHARED
 // @consumers: sdd-check, sdd-state, scaffold directives, tests
-// @tasks: N/A
 
 import { createHash } from 'node:crypto';
 import { DEFAULT_CAPABILITY_ADAPTER_REGISTRY } from './capability-adapter.ts';

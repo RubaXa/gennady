@@ -1,6 +1,6 @@
 // @file: One schema-first text envelope for actionable SDD CLI failures.
+// @spec: SHARED
 // @consumers: sdd-new, sdd-check, sdd-log, sdd-task
-// @tasks: N/A
 
 /** @purpose Required fields every flow-tool failure exposes to an agent. */
 export type SddToolGuidance = {

@@ -4,6 +4,9 @@
 // position into `{ newPath, baseSha, startSha, headSha, newLine }` from the MR's diff refs, and
 // degrade to a general note (anchor kept in the body) when refs can't be resolved.
 
+// @file: services/agent-inbox/modules/inbox-roles/__tests__/effect-executor.reply-position.test.ts
+// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @consumers: N/A
 import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
 

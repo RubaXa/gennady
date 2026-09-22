@@ -1,6 +1,6 @@
 // @file: Integration tests for the group-completion receipt WARN gate inside `sdd-check --all`.
+// @spec: CLI-SDD-CHECK
 // @consumers: sdd-check.cmd
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

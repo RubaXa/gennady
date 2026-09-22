@@ -1,6 +1,6 @@
 // @file: The `stack` config section — its schema, strict validation and application to a gate plan.
+// @spec: SHARED
 // @consumers: verify.cmd, fix.cmd
-// @tasks: TSK-95
 
 import path from 'node:path';
 import {

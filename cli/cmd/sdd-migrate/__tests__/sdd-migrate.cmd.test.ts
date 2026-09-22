@@ -1,6 +1,6 @@
 // @file: Integration tests for SddMigrateCommand#run — anchors dry-run / write / idempotent / --all / exit codes.
+// @spec: CLI-SDD-MIGRATE
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -162,9 +162,9 @@ describe('SddMigrateCommand', () => {
   // the migrator REFUSES such a ticket outright — neither dry-run nor --write touches it — rather
   // than silently anchoring PHASE_P1 while phase IDs stay undiscoverable.
   const V1_PHASE_NO_OVERVIEW = [
-    '# Task: TSK-14 — AnchorCheck',
+    '# Task: LIN-anchors — AnchorCheck',
     '## 1. Meta & Traceability',
-    '- **Task-ID:** TSK-14',
+    '- **Task-ID:** LIN-anchors',
     '## 2. Acceptance Criteria (BDD)',
     '**Scenario:** x [`unit`]',
     '## 3. Phases',
@@ -248,9 +248,9 @@ describe('SddMigrateCommand', () => {
   // Same "Phase P1" word-form, but WITH a Phases Overview section present — so this ticket is not
   // refused, and anchoring proceeds normally (recognizing the "Phase" word prefix, B2-10).
   const V1_PHASE_WITH_OVERVIEW = [
-    '# Task: TSK-15 — AnchorCheck2',
+    '# Task: LIN-dbc — AnchorCheck2',
     '## 1. Meta & Traceability',
-    '- **Task-ID:** TSK-15',
+    '- **Task-ID:** LIN-dbc',
     '## 2. Acceptance Criteria (BDD)',
     '**Scenario:** x [`unit`]',
     '## 3. Phases',
@@ -366,7 +366,7 @@ describe('SddMigrateCommand', () => {
       root = join(dir, 'ids-proj');
       rmSync(root, { recursive: true, force: true });
       mkdirSync(join(root, 'specs'), { recursive: true });
-      writeFileSync(join(root, 'specs', 'a.md'), 'см. TSK-5 и TSK-50', 'utf-8');
+      writeFileSync(join(root, 'specs', 'a.md'), 'см. TSK-5 и LIN-dir-test', 'utf-8');
       writeFileSync(join(root, 'map.tsv'), 'TSK-5\tdemo-feature\n', 'utf-8');
     });
 
@@ -374,14 +374,14 @@ describe('SddMigrateCommand', () => {
       const o = await mod.run(argv('ids', root, '--map', join(root, 'map.tsv')));
       assert.strictEqual(o.ok, true);
       if (o.ok) assert.match(o.text, /DRY-RUN .* 1 ID .* 1 вхождений/);
-      assert.match(readFileSync(join(root, 'specs', 'a.md'), 'utf-8'), /TSK-5 и TSK-50/);
+      assert.match(readFileSync(join(root, 'specs', 'a.md'), 'utf-8'), /TSK-5 и LIN-dir-test/);
     });
 
-    it('--write заменяет и проходит гейт «ноль старых ID»; TSK-50 не тронут', async () => {
+    it('--write заменяет и проходит гейт «ноль старых ID»; LIN-dir-test не тронут', async () => {
       const o = await mod.run(argv('ids', root, '--map', join(root, 'map.tsv'), '--write'));
       assert.strictEqual(o.ok, true, JSON.stringify(o));
       const body = readFileSync(join(root, 'specs', 'a.md'), 'utf-8');
-      assert.match(body, /demo-feature и TSK-50/);
+      assert.match(body, /demo-feature и LIN-dir-test/);
     });
 
     it('невалидная карта → exit 1 с перечислением проблем', async () => {

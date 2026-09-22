@@ -1,7 +1,7 @@
 // @file: Freshness-gate tests — a hand-edited or missing generated file under ai/directives/
 //         must be caught by comparing against a real rebuild.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: inbox-serve — start the inbox-api server with mock data for dev/e2e.
+// @spec: AGENT-INBOX
 // @consumers: playwright webServer, manual dev
-// @tasks: TSK-107
 
 import { HttpServer } from '../inbox-api/http-server.ts';
 import { BoardProviderMock } from '../inbox-api/board-provider.mock.ts';

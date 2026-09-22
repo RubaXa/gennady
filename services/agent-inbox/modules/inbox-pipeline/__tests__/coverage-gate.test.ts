@@ -1,6 +1,6 @@
 // @file: Tests for CoverageGate — tool-trace checklist verification with partial-read predicate, exclusions, max continue=2
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-161
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

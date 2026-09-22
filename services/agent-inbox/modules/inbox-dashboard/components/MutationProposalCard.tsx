@@ -1,6 +1,6 @@
 // @file: MutationProposalCard — diff-preview + provenance tag + Apply/Reject/Undo for an assistant-proposed mutation (CH-09, CH-10, D-98).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ChatThread
-// @tasks: TSK-130
 
 import { Check, Quote, RotateCcw, X } from 'lucide-react';
 import { cn } from '../lib/utils.ts';

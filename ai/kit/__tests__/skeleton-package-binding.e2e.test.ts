@@ -6,8 +6,8 @@
 //   this test level (see directive-assembly.spec.md#skeletonpackagebindingguard, Inter-Module
 //   Dependencies). Return condition: `sdd-step` ships, or a live run shows an agent losing the
 //   package body on a raw Read error.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: CI (node:test runner)
-// @tasks: DA-lazy-asm
 
 import { describe, it } from 'node:test';
 

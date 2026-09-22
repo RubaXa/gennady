@@ -1,6 +1,6 @@
 // @file: Add/remove emoji reactions on MR/PR comments — 👍 🚀 ❤️ etc.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-98
 
 import {
   resolveVcsContext,

@@ -1,6 +1,6 @@
 // @file: Unified VCS context resolver — auto-detect branch, project, host, and token for all VCS commands.
+// @spec: CLI
 // @consumers: vcs-approve, vcs-worktree, vcs-reply, review-issues
-// @tasks: TSK-68, TSK-95
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

@@ -1,6 +1,6 @@
 // @file: Integration tests for bootstrap — DI composition with mocks, server responds to /api/board.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-115, TSK-160, TSK-167, TSK-170, TSK-172, TSK-175
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -145,7 +145,7 @@ describe('bootstrap — mock mode', () => {
       title: 'lifecycle-proof',
       directory: process.cwd(),
       registration: {
-        taskId: 'TSK-175-proof',
+        taskId: 'IO-runtime-proof',
         mr: 'https://gitlab.test/group/project/-/merge_requests/160',
         artifacts: ['artifact://review/proof'],
         context: 'producer',
@@ -179,7 +179,7 @@ describe('bootstrap — mock mode', () => {
     assert.strictEqual(status, 200);
     assert.ok(typeof data === 'object' && data !== null);
 
-    // BoardProjection owns /api/board since TSK-158: the shape is attention-grouped
+    // BoardProjection owns /api/board since IV-gitlab: the shape is attention-grouped
     // ({ groups, cards, syncState }), not the legacy role-based provider payload.
     const board = data as Record<string, unknown>;
     assert.ok(Array.isArray(board.cards), 'board.cards should be an array');

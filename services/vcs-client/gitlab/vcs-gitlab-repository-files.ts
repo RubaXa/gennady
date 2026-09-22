@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of repository file operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGitlabClient
-// @tasks: TSK-29
 
 import { VcsClientRepositoryFiles } from '../abstract/vcs-client-repository-files.ts';
 import type { VcsFileContent, VcsFileContentQuery } from '../entities/vcs-file-content.type.ts';

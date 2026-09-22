@@ -1,6 +1,6 @@
 // @file: Unit tests for stack config — YAML+rc discovery, deep-merge with provenance, strict validation.
+// @spec: SHARED
 // @consumers: CI
-// @tasks: TSK-95
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

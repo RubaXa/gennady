@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-roles RoleScheduler — tick, assignManual, activeCount.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113, TSK-157, TSK-161
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

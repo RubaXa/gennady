@@ -1,6 +1,6 @@
 // @file: PlanTemplate — deterministic DAG plan generation from changeset with 3-layer tracks (mandatory/triggered/proposed)
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
-// @tasks: TSK-161
 
 import { logger } from '#logger';
 import type { TriggerRegistry, TriggeredTrack } from './trigger-registry.ts';

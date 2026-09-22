@@ -1,6 +1,6 @@
 // @file: Pure diff function comparing two AgentSession snapshots by semantic fields (excludes noisy cpuPercent, memoryMb)
+// @spec: AGENT-MON-DIFF
 // @consumers: observe, cli
-// @tasks: TSK-37
 
 import { logger } from '#logger';
 import type { AgentSession } from '../model/agent-session.type.js';

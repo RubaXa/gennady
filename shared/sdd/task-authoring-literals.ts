@@ -1,6 +1,6 @@
 // @file: Path-aware, copy-ready literals printed after sdd-new creates a task.
+// @spec: SHARED
 // @consumers: SddNewCommand
-// @tasks: N/A
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, posix, relative, resolve } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Unit tests for AnchorCheck — validates START/END anchor pairing and nesting.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-17, TSK-14
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

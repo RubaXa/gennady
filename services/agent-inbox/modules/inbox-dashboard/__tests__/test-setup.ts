@@ -1,6 +1,6 @@
 // @file: Test setup helper for inbox-dashboard component tests — jsdom + ReactDOM.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: inbox-dashboard __tests__
-// @tasks: TSK-107
 
 import { JSDOM } from 'jsdom';
 import { createRoot, type Root } from 'react-dom/client';

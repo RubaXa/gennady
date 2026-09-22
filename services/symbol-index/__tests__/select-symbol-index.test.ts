@@ -1,6 +1,6 @@
 // @file: Unit tests for selectSymbolIndex — pure by-extension adapter selection, no tree-sitter initialization (fake adapters, never actually invoked).
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

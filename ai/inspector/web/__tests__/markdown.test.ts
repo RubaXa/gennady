@@ -1,4 +1,6 @@
 // @file: ai/inspector — renderMarkdown + clean: token highlight, code spans, and the SECTION-marker regression.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

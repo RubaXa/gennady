@@ -1,6 +1,6 @@
 // @file: ReviewOutcome entity — reconciled classification of one effect with applied|not-applied|ambiguous status.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectQueue, ReviewActionPackage
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import type { ReviewEffectIdentity } from '../types/review-effect.type.ts';

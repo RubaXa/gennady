@@ -1,6 +1,6 @@
 // @file: Region comment validation — checks that #region START / #endregion END blocks don't have too many comments and START annotations aren't too verbose.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-XX
 
 import type { LintError } from '../lint.types.ts';
 import {

@@ -1,6 +1,6 @@
 // @file: Xcode xccov JSON adapter for Swift coverage threshold and freshness checks.
+// @spec: CLI-TESTCOV
 // @consumers: coverage-adapter-registry.ts
-// @tasks: V-11
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readdirSync, statSync } from 'node:fs';

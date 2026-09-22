@@ -1,6 +1,6 @@
 // @file: Append-only trusted receipt to evidence-slot consumption mapping.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptStorePort, ReviewStructuralValidator
-// @tasks: TSK-176
 
 /** @purpose Durable proof that one trusted receipt was consumed for one slot mapping. */
 export type ReviewReceiptConsumption = Readonly<{

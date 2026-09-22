@@ -5,7 +5,7 @@
 ## Meta
 
 - **Task-ID:** DA-lazy-asm
-- **Status:** [x] DONE
+- **Status:** [ ] TODO
 - **Purpose:** Расширить генератор директив (`ai/kit/build-directives.ts`) вторым режимом сборки — `lazy` (скелет + пакеты шагов), рядом с существующим `monolith` — и применить его к трём пилотным тяжеловесам (`audit`, `scaffold`, `phase-execution-protocol`) под механическими гейтами бюджета и связки.
 - **Scope:** ai-skills
 - **Module:** directive-assembly
@@ -32,16 +32,16 @@
 
 | ID  | Kind   | Deps       | Status |
 | --- | ------ | ---------- | ------ |
-| P1  | impl   | —          | [x]    |
-| P2  | impl   | —          | [x]    |
-| P3  | impl   | P1, P2     | [x]    |
-| P4  | test   | P1         | [x]    |
-| P5  | test   | P2         | [x]    |
-| P6  | config | P3         | [x]    |
-| P7  | test   | P1, P3, P6 | [x]    |
-| P8  | config | P2         | [x]    |
-| P9  | doc    | P1         | [x]    |
-| P10 | test   | P6         | [x]    |
+| P1  | impl   | —          | [ ]    |
+| P2  | impl   | —          | [ ]    |
+| P3  | impl   | P1, P2     | [ ]    |
+| P4  | test   | P1         | [ ]    |
+| P5  | test   | P2         | [ ]    |
+| P6  | config | P3         | [ ]    |
+| P7  | test   | P1, P3, P6 | [ ]    |
+| P8  | config | P2         | [ ]    |
+| P9  | doc    | P1         | [ ]    |
+| P10 | test   | P6         | [ ]    |
 
 <!-- Kind ∈ bootstrap | impl | test | config | doc | refactor (fix only on execution). impl and test are ALWAYS separate phases. Orchestrator reads this table to plan. -->
 <!--/SECTION:PHASES_OVERVIEW-->
@@ -64,8 +64,8 @@
   - Service: [`AxiomActivationClassifier`](./directive-assembly.spec.md#service-axiomactivationclassifier)
   - Constraints: [Requirements DA-REQ-1..13, DA-REQ-16](./directive-assembly.spec.md#requirements)
 - **Target Files:**
-  - ai/kit/lazy-assembly.ts (new)
-  - ai/kit/assembly-manifest.json (new — `{ "defaultMode": "monolith", "overrides": {} }`)
+  - ai/kit/lazy-assembly.ts
+  - ai/kit/assembly-manifest.json
 - **Inputs:** none
 - **Exit:** `lazy-assembly.ts` exports `resolveAssemblyMode`, `AxiomActivationClassifier`/`classify`,
 `LazyDirectiveAssembler`/`assemble`, `stampFingerprint`, `findVersionMismatches`,
@@ -88,7 +88,7 @@ against a fixture.
   - Service: [`StepBudgetGate`](./directive-assembly.spec.md#service-stepbudgetgate)
   - Constraints: [Requirements DA-REQ-6, DA-REQ-14](./directive-assembly.spec.md#requirements)
 - **Target Files:**
-  - ai/kit/step-budget-gate.ts (new)
+  - ai/kit/step-budget-gate.ts
 - **Inputs:** none
 - **Exit:** `check(skeletonText, packages)` returns an empty finding list when skeleton ≤8000 tokens
 (using `shared/common/tokens.ts#countTokens`) and every package ≤20 000 chars (DA-DL-16) with every
@@ -118,7 +118,7 @@ ctx(directive, edge)` — то есть после уже существующе
   - Service: [`StepBudgetGate`](./directive-assembly.spec.md#service-stepbudgetgate)
   - Constraints: [Requirements DA-REQ-1, DA-REQ-4, DA-REQ-10, DA-REQ-12, DA-REQ-14](./directive-assembly.spec.md#requirements)
 - **Target Files:**
-  - ai/kit/build-directives.ts (extend)
+  - ai/kit/build-directives.ts
 - **Inputs:** P1 handoff, P2 handoff
 - **Exit:** `npm run build:directives` (no manifest overrides) produces byte-identical output to
 before this task (regression-free monolith path); `npm run build:directives -- --assembly=lazy`
@@ -141,7 +141,7 @@ exceeded limit.
   - Service: [`LazyDirectiveAssembler`](./directive-assembly.spec.md#service-lazydirectiveassembler)
   - Service: [`AxiomActivationClassifier`](./directive-assembly.spec.md#service-axiomactivationclassifier)
 - **Target Files:**
-  - ai/kit/**tests**/lazy-assembly.test.ts (new)
+  - `ai/kit/__tests__/lazy-assembly.test.ts`
 - **Inputs:** P1 handoff
 - **Exit:** `node --import tsx --test ai/kit/__tests__/lazy-assembly.test.ts` passes with every
 canonical case name in Test Scenario Coverage present verbatim.
@@ -158,7 +158,7 @@ canonical case name in Test Scenario Coverage present verbatim.
 - **Spec Refs:**
   - Service: [`StepBudgetGate`](./directive-assembly.spec.md#service-stepbudgetgate)
 - **Target Files:**
-  - ai/kit/**tests**/step-budget-gate.test.ts (new)
+  - `ai/kit/__tests__/step-budget-gate.test.ts`
 - **Inputs:** P2 handoff
 - **Exit:** `node --import tsx --test ai/kit/__tests__/step-budget-gate.test.ts` passes with every
 canonical case name in Test Scenario Coverage present verbatim.
@@ -180,12 +180,23 @@ steps/<step-id>.xml` (пакеты) появились на диске для в
   - Constraints: [Module Decision Log DA-DL-10](./directive-assembly.spec.md#module-decision-log)
 - **Target Files:**
   - ai/kit/assembly-manifest.json (edit — add the three pilot overrides)
-  - ai/directives/sdd-v2/audit.directive.xml (generated)
-  - ai/directives/sdd-v2/audit/steps/\*.xml (generated)
-  - ai/directives/sdd-v2/scaffold.directive.xml (generated)
-  - ai/directives/sdd-v2/scaffold/steps/\*.xml (generated)
-  - ai/directives/sdd-v2/phase-execution-protocol.directive.xml (generated)
-  - ai/directives/sdd-v2/phase-execution-protocol/steps/\*.xml (generated)
+  - ai/directives/sdd-v2/audit.directive.xml
+  - ai/directives/sdd-v2/audit/steps/STEP_1_MECHANICAL.xml
+  - ai/directives/sdd-v2/audit/steps/STEP_2_SEMANTIC.xml
+  - ai/directives/sdd-v2/audit/steps/STEP_3_ROUTE.xml
+  - ai/directives/sdd-v2/scaffold.directive.xml
+  - ai/directives/sdd-v2/scaffold/steps/STEP_0_PREFLIGHT.xml
+  - ai/directives/sdd-v2/scaffold/steps/STEP_1_DERIVE.xml
+  - ai/directives/sdd-v2/scaffold/steps/STEP_2_MATERIALIZE.xml
+  - ai/directives/sdd-v2/scaffold/steps/STEP_3_MECHANICAL_CHECK.xml
+  - ai/directives/sdd-v2/scaffold/steps/STEP_4_INDEPENDENT_TICKET_REVIEW.xml
+  - ai/directives/sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml
+  - ai/directives/sdd-v2/scaffold/steps/STEP_6_HANDOFF.xml
+  - ai/directives/sdd-v2/phase-execution-protocol.directive.xml
+  - ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml
+  - ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml
+  - ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml
+  - ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml
 - **Inputs:** P3 handoff
 - **Exit:** `npm run build:directives` (manifest overrides now active, no `--assembly` flag needed)
 regenerates the three pilot directives as skeleton + step packages, every other directive stays
@@ -210,8 +221,8 @@ monolith; `npm run check:directives-fresh` passes against the new checked-in gen
   - Service: [`SkeletonPackageBindingGuard`](./directive-assembly.spec.md#skeletonpackagebindingguard)
   - Constraints: [Requirements DA-REQ-8, DA-REQ-11, DA-REQ-12, DA-REQ-15](./directive-assembly.spec.md#requirements)
 - **Target Files:**
-  - ai/kit/**tests**/skeleton-package-binding.guard.test.ts (new, по образцу `ai/kit/__tests__/delta-assembly.test.ts`)
-  - ai/kit/**tests**/skeleton-package-binding.e2e.test.ts (new, skip)
+  - `ai/kit/__tests__/skeleton-package-binding.guard.test.ts`
+  - `ai/kit/__tests__/skeleton-package-binding.e2e.test.ts`
 - **Inputs:** P1 handoff, P3 handoff, P6 handoff
 - **Exit:** `node --import tsx --test ai/kit/__tests__/skeleton-package-binding.*.test.ts` passes
 (e2e file entirely skipped); every canonical case name in Test Scenario Coverage present verbatim.
@@ -272,9 +283,9 @@ only at first authoring.
   - Service: [`LazyDirectiveAssembler`](./directive-assembly.spec.md#service-lazydirectiveassembler)
   - Constraints: [Requirements DA-REQ-1, DA-REQ-3, DA-REQ-4](./directive-assembly.spec.md#requirements)
 - **Target Files:**
-  - ai/kit/**tests**/delta-assembly.test.ts (extend)
-  - ai/kit/**tests**/readiness-preflight-gate.test.ts (extend)
-  - cli/**tests**/directive-tool-contract/directive-tool-contract.test.ts (extend)
+  - `ai/kit/__tests__/delta-assembly.test.ts`
+  - `ai/kit/__tests__/readiness-preflight-gate.test.ts`
+  - `cli/__tests__/directive-tool-contract/directive-tool-contract.test.ts`
 - **Inputs:** P6 handoff
 - **Exit:** каждый из трёх файлов определяет режим директивы через `resolveAssemblyMode` и для
 lazy-директивы читает скелет ВМЕСТЕ с её пакетами шагов, а не скелет в одиночку; проверяемые
@@ -530,12 +541,13 @@ use-case → `[DA-REQ-N]` → vision chain the operator reviews at scaffold.
 <!--/SECTION:BDD-->
 
 <!--SECTION:VERIFICATION-->
+<!--PHASE_RECEIPTS:v1-->
 
 ## Verification
 
-| Command                                          | Required by                 |
-| ------------------------------------------------ | --------------------------- |
-| `npm run type-check && npm test && npm run lint` | typescript-rules, node-test |
+| Command                                          | Required by                 | Role  |
+| ------------------------------------------------ | --------------------------- | ----- |
+| `npm run type-check && npm test && npm run lint` | typescript-rules, node-test | probe |
 
 <!-- One row per unique check-command alias. Phase-subagent runs only rows whose Required-by overlaps its phase Rules. -->
 <!-- NB (scaffold-time finding, not a blocker for this task): `infra-base` (the nearest infra scope
@@ -571,7 +583,7 @@ directive-assembly only) — flagged for the operator, not blocking. -->
 - Scenario lazy assembly produces one skeleton and one package per Step → `ai/kit/__tests__/lazy-assembly.test.ts` :: `produces one DirectiveSkeleton and exactly one StepPackage per Step for a lazy directive`
 - Scenario the skeleton never carries a Step's full body → `ai/kit/__tests__/lazy-assembly.test.ts` :: `omits the full text of every Step from the generated skeleton`
 - Scenario a package file is named after the literal Step id → `ai/kit/__tests__/lazy-assembly.test.ts` :: `writes each StepPackage under steps/<step-id>.xml using the literal Step id verbatim, never a positional number`
-- Scenario the skeleton's step list points to a plain-Read relative path → `ai/kit/__tests__/lazy-assembly.test.ts` :: `lists each step with a relative path to its package file readable by a plain Read, no CLI command and no version argument`
+- Scenario the skeleton's step list points to a plain-Read relative path → `ai/kit/__tests__/lazy-assembly.test.ts` :: `makes loading each step package a runtime imperative, not a discoverable-only path`
 - Scenario the same human-readable version stamps the skeleton and every package → `ai/kit/__tests__/lazy-assembly.test.ts` :: `stamps the same BuildFingerprint value into the skeleton header and the first line of every StepPackage`
 - Scenario version parity check finds nothing wrong on a fresh build → `ai/kit/__tests__/lazy-assembly.test.ts` :: `reports no mismatch when every package first line equals the skeleton header version`
 - Scenario version parity check names directive, step, and both versions on drift → `ai/kit/__tests__/lazy-assembly.test.ts` :: `reports the directive, the mismatched step, and both versions when a package first line differs from the skeleton header version`
@@ -712,7 +724,7 @@ _(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skele
       **Handoff →** artifacts: [ai/kit/__tests__/step-budget-gate.test.ts]; decisions: [test-cases=5 (skeleton-token-overage, package-char-overage, package-line-char-overage, cli-wrapper-clean-exit0, cli-wrapper-finding-exit1-with-directive-and-step-named), limits-read-via-exported-constants=SKELETON_TOKEN_LIMIT+PACKAGE_CHAR_LIMIT+PACKAGE_LINE_CHAR_LIMIT-no-duplicated-literals-in-assertions, blockers-resolved=ENOBUFS-fixed-via-maxBuffer-in-sdd-verify.cmd.ts+concurrent-session-edits-committed]; open: [DA-DL-16-drift: spec now states package hard limit 20000 chars (supersedes DA-DL-5/14), but ai/kit/step-budget-gate.ts (P2 Target File) still exports PACKAGE_CHAR_LIMIT=8000 — this phase's tests read the constant so they will track whichever value it holds without changes, but the code itself needs updating outside P5's write zone; entity-inventory: P2's 1 intro log group covering 6 exports still pending spec Entity Inventory backflow at audit]; deviations: []
 - [x] `2026-08-23T01:05:39.197Z` env-fix ai/kit/step-budget-gate.ts ← PACKAGE_CHAR_LIMIT 8000→20000, догнал DA-DL-16 (спека опередила код)
 
-#### P5 — re-run: fix F-budget-drift
+##### P5 — re-run: fix F-budget-drift
 
 - [x] `2026-08-23T01:09:58.913Z` discovery two fixtures were sized off the literal 8000 (90x90 chars, ~8189), which fell inside budget once PACKAGE_CHAR_LIMIT rose 8000→20000 (DA-DL-16); replaced both with buildOversizedPackageText(overBy) — text derived as PACKAGE_CHAR_LIMIT + overBy, tracking the constant under any future rebudget — in the package-char-cap unit case and the CLI over-budget case; renamed the unit case's canonical title (was 'finds a step package exceeding 8000 characters...') to drop the now-stale hardcoded number, per AX_BDD_NAME_DISCIPLINE framework-constraint clause; skeleton-token and package-line-char fixtures were already derived from their constants (+50/+100) and untouched, since SKELETON_TOKEN_LIMIT and PACKAGE_LINE_CHAR_LIMIT did not change
 - [x] `2026-08-23T01:12:15.328Z` ver npx gennady sdd-verify --profile test ai/kit/**tests**/step-budget-gate.test.ts → pass exit=0
@@ -813,7 +825,54 @@ _(Round = one execute-then-audit attempt; per-phase blocks within a Round. Skele
 - [x] `2026-08-23T02:47:26.931Z` ver npx gennady lint --spec=specs/ai-skills/directive-assembly/directive-assembly.spec.md ai/kit/audit-contract-activation.mjs -> pass exit=0
 - [x] `2026-08-23T02:48:28.518Z` ver npm run type-check && npm test && npm run lint -> pass exit=0 (3529 tests, 3524 pass, 0 fail, 5 skipped; lint:contracts clean)
 - [x] `2026-08-23T02:48:33.358Z` DONE
-    **Handoff →** artifacts: [ai/kit/audit-contract-activation.mjs]; decisions: [fix=readAssembledFragments-reads-skeleton-plus-every-step-package-the-skeleton-step-list-names-when-resolveAssemblyMode-is-lazy, availability-scope=unioned-across-all-fragments-of-one-directive-not-per-step, mention-check=per-fragment-never-joined-per-backtick-lesson, idsDefinedAt-also-fixed=READ_AND_USE_DIRECTIVE-target-chain-reconcile-to-audit-directive-is-itself-a-lazy-pilot, audit-axiom-activation-verified-unaffected=scans-pre-render-hbs-templates-never-assembled-directives-no-fix-applied, regression-verified=real-orphan-reinserted-and-caught-then-reverted, full-ticket-gate-green=npm-type-check-test-lint-pass-exit0-3529-tests-3524-pass-0-fail-5-skipped, audit-sdd-templates-green=check-directives-fresh-audit-axioms-audit-contracts-check-directive-budgets-all-pass]; open: []; deviations: []
+      **Handoff →** artifacts: [ai/kit/audit-contract-activation.mjs]; decisions: [fix=readAssembledFragments-reads-skeleton-plus-every-step-package-the-skeleton-step-list-names-when-resolveAssemblyMode-is-lazy, availability-scope=unioned-across-all-fragments-of-one-directive-not-per-step, mention-check=per-fragment-never-joined-per-backtick-lesson, idsDefinedAt-also-fixed=READ_AND_USE_DIRECTIVE-target-chain-reconcile-to-audit-directive-is-itself-a-lazy-pilot, audit-axiom-activation-verified-unaffected=scans-pre-render-hbs-templates-never-assembled-directives-no-fix-applied, regression-verified=real-orphan-reinserted-and-caught-then-reverted, full-ticket-gate-green=npm-type-check-test-lint-pass-exit0-3529-tests-3524-pass-0-fail-5-skipped, audit-sdd-templates-green=check-directives-fresh-audit-axioms-audit-contracts-check-directive-budgets-all-pass]; open: []; deviations: []
+
+### Round 3 — 2026-09-21, migration evidence reconciliation
+
+#### P1
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P2
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P3
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P4
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P5
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P6
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P7
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P8
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P9
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### P10
+
+- [ ] migration reopened: prior phase evidence is incomplete
+
+#### Round close
+
+- [ ] migration round remains open until every phase has a CLI-owned receipt
+
 <!--/SECTION:EXECUTION_LOG-->
 
 <!--SECTION:DECISION_LOG-->

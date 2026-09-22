@@ -1,6 +1,6 @@
 // @file: AgentSessionLifecycle — semantic routing plus park/resume/close and controlled TTL.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-opencode (UnifiedPool)
-// @tasks: TSK-160, TSK-175
 
 import { logger } from '#logger';
 import type { JournalPort } from '../inbox-core/event-journal.ts';

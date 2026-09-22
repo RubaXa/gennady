@@ -1,6 +1,8 @@
 // @file: ai/inspector — shared scanning primitives for SKILL.md and *.directive.xml (tag walk, refs, tools).
-// The directives/skills are XML-tag-delimited markdown. We target KNOWN PascalCase structural tags; prose
-// placeholders like <scope-name> are lowercase and never match, so markdown bodies do not confuse the scanner.
+//   The directives/skills are XML-tag-delimited markdown. We target KNOWN PascalCase structural tags; prose
+//   placeholders like <scope-name> are lowercase and never match, so markdown bodies do not confuse the scanner.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import type { TraceNode } from './model.ts';
 

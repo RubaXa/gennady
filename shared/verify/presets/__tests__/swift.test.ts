@@ -1,6 +1,6 @@
 // @file: Swift preset tests — phase mapping, config ownership, and D-SWIFT-ENV fingerprinting.
+// @spec: SHARED
 // @consumers: CI
-// @tasks: V-11
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

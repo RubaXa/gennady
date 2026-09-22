@@ -1,8 +1,8 @@
 // @file: StepBudgetGate tests — the pure `check()` measurement against the skeleton-token,
 //         package-char, and package-line-char budgets (DA-REQ-6/14), plus the
 //         `check:directive-budgets` CLI wrapper that scans a real directory tree and reports.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: DA-lazy-asm
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

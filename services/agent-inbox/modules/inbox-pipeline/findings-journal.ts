@@ -1,6 +1,6 @@
 // @file: FindingsJournal — append-only findings.jsonl, each finding: F-n with file:line, summary, severity, source:model
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: Synthesize, inbox-pipeline
-// @tasks: TSK-161
 
 import {
   existsSync,

@@ -1,6 +1,6 @@
 // @file: Artifact-relative chat anchors with quote-first re-resolution.
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: OperatorSession, MutationFlow, inbox-dashboard
-// @tasks: TSK-163
 
 /** @purpose Character interval in the raw artifact, never a DOM position. */
 export type AnchorFragment = {

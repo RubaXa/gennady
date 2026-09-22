@@ -1,5 +1,25 @@
 # agent-inbox: Scope Specification (v0 pivot)
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-INBOX
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:SCOPE_TYPE-->
 
 ## scope-type
@@ -82,251 +102,87 @@ reconciliation сверяет реальное состояние, после ч
 <!--/SECTION:GOLDEN_DX-->
 
 <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
-
+<!-- prettier-ignore-start -->
 ## 4. Requirements & Constraints
-
 ### 4.1 Functional Requirements
-
 #### MR discovery and lifecycle
-
-- **FR-001** — На первом запуске импортировать только открытые MR, где оператор явно
-  является author, assignee или reviewer либо участвовал через mention, comment или
-  approval.
-- **FR-002** — MR без активности более трёх месяцев не отображать, включая уже
-  отслеживаемый merged/closed MR без нажатого **Завершить**. Локальная история
-  сохраняется; новое событие возвращает отслеживаемый MR в видимую выборку.
-- **FR-003** — Уже отслеживаемый merged/closed MR в пределах activity horizon
-  сохранять и явно маркировать до нажатия **Завершить**. Кнопка доступна только для
-  merged/closed; за пределами horizon карточка скрывается автоматически.
+- **FR-001** — На первом запуске импортировать только открытые MR, где оператор явно является author, assignee или reviewer либо участвовал через mention, comment или approval.
+- **FR-002** — MR без активности более трёх месяцев не отображать, включая уже отслеживаемый merged/closed MR без нажатого **Завершить**. Локальная история сохраняется; новое событие возвращает отслеживаемый MR в видимую выборку.
+- **FR-003** — Уже отслеживаемый merged/closed MR в пределах activity horizon сохранять и явно маркировать до нажатия **Завершить**. Кнопка доступна только для merged/closed; за пределами horizon карточка скрывается автоматически.
 - **FR-004** — **Обновить описание** доступно на карточке любого MR всегда.
-- **FR-005** — MR отображается ровно один раз. Пересечение ролей разрешается в пользу
-  колонки **Мои / назначенные**, остальные роли остаются бейджами.
-
+- **FR-005** — MR отображается ровно один раз. Пересечение ролей разрешается в пользу колонки **Мои / назначенные**, остальные роли остаются бейджами.
 #### Full review and cross-review
-
-- **FR-006** — Для любого подходящего MR выполнять одинаково полное независимое
-  ревью; роль не уменьшает глубину анализа и влияет только на права и допустимые
-  эффекты.
-- **FR-007** — Проверять реальный код, цель MR, архитектуру, спецификации, тесты,
-  security и оптимальность; coverage подтверждать фактическим чтением, а не
-  самоотчётом агента.
-- **FR-008** — Чужие findings, approvals и дискуссии считать отдельным входом для
-  cross-review: перепроверять, соглашаться реакцией, дополнять, возражать или задавать
-  вопрос, сохраняя provenance каждого вывода.
-- **FR-009** — Если полный review coverage не доказан, запрещено предлагать или
-  автоматически восстанавливать approve.
-
+- **FR-006** — Для любого подходящего MR выполнять одинаково полное независимое ревью; роль не уменьшает глубину анализа и влияет только на права и допустимые эффекты.
+- **FR-007** — Проверять реальный код, цель MR, архитектуру, спецификации, тесты, security и оптимальность; coverage подтверждать фактическим чтением, а не самоотчётом агента.
+- **FR-008** — Чужие findings, approvals и дискуссии считать отдельным входом для cross-review: перепроверять, соглашаться реакцией, дополнять, возражать или задавать вопрос, сохраняя provenance каждого вывода.
+- **FR-009** — Если полный review coverage не доказан, запрещено предлагать или автоматически восстанавливать approve.
 #### Events and delta verification
-
-- **FR-010** — Любое изменение MR — commit, описание, новый/изменённый тред, ответ,
-  approval или другой наблюдаемый event — накапливается и оттягивает quiet timer.
-- **FR-011** — Любой человеческий ответ в дискуссии запускает верификацию после
-  конфигурируемого debounce (начальное значение 5 минут), независимо от смысла ответа.
-- **FR-012** — При отсутствии новых событий конфигурируемый quiet timeout (начальное
-  значение 10 минут) запускает проверку накопленной дельты.
-- **FR-013** — Новые события не прерывают уже выполняющуюся задачу; актуальная
-  delta-задача supersede/dedup предыдущие ожидающие задачи и закрывает разрыв.
-- **FR-014** — В v0 любое новое событие помечает весь неприменённый пакет устаревшим.
-  Устаревший пакет остаётся видимым, но недоступен до повторной проверки.
-- **FR-015** — **Верифицировать изменения** немедленно, без debounce, проверяет дельту
-  от baseline последнего задания, связанные findings и весь накопленный diff.
-
+- **FR-010** — Любое изменение MR — commit, описание, новый/изменённый тред, ответ, approval или другой наблюдаемый event — накапливается и оттягивает quiet timer.
+- **FR-011** — Любой человеческий ответ в дискуссии запускает верификацию после конфигурируемого debounce (начальное значение 5 минут), независимо от смысла ответа.
+- **FR-012** — При отсутствии новых событий конфигурируемый quiet timeout (начальное значение 10 минут) запускает проверку накопленной дельты.
+- **FR-013** — Новые события не прерывают уже выполняющуюся задачу; актуальная delta-задача supersede/dedup предыдущие ожидающие задачи и закрывает разрыв.
+- **FR-014** — В v0 любое новое событие помечает весь неприменённый пакет устаревшим. Устаревший пакет остаётся видимым, но недоступен до повторной проверки.
+- **FR-015** — **Верифицировать изменения** немедленно, без debounce, проверяет дельту от baseline последнего задания, связанные findings и весь накопленный diff.
 #### Hybrid decision package and GitLab effects
-
-- **FR-016** — Один review round формирует один гибридный пакет на MR: независимые
-  рекомендации — чекбоксы, взаимоисключающие решения — single-choice, зависимые
-  действия — упорядоченные группы. Рекомендации выбраны по умолчанию.
-- **FR-017** — Нажатие **Применить выбранные** является достаточным подтверждением и
-  немедленно создаёт реальные GitLab effect-задачи; дополнительного confirm-screen нет.
-- **FR-018** — Поддержать comment/reply, reaction, resolve/reopen разрешённого треда,
-  approve/unapprove, request changes и edit description.
-- **FR-019** — Независимые действия продолжаются после частичной ошибки. Ошибка
-  блокирует только зависимые действия; каждый effect имеет собственный статус и retry.
-- **FR-020** — Effects идемпотентны. При потерянном/неопределённом ответе система
-  сначала читает GitLab и только затем решает, требуется ли повтор.
-- **FR-021** — Разрешено резолвить собственные треды оператора и треды явно
-  allowlisted review-ботов в MR, где оператор author; остальные чужие треды не
-  изменяются.
-
+- **FR-016** — Один review round формирует один гибридный пакет на MR: независимые рекомендации — чекбоксы, взаимоисключающие решения — single-choice, зависимые действия — упорядоченные группы. Рекомендации выбраны по умолчанию.
+- **FR-017** — Нажатие **Применить выбранные** является достаточным подтверждением и немедленно создаёт реальные GitLab effect-задачи; дополнительного confirm-screen нет.
+- **FR-018** — Поддержать comment/reply, reaction, resolve/reopen разрешённого треда, approve/unapprove, request changes и edit description.
+- **FR-019** — Независимые действия продолжаются после частичной ошибки. Ошибка блокирует только зависимые действия; каждый effect имеет собственный статус и retry.
+- **FR-020** — Effects идемпотентны. При потерянном/неопределённом ответе система сначала читает GitLab и только затем решает, требуется ли повтор.
+- **FR-021** — Разрешено резолвить собственные треды оператора и треды явно allowlisted review-ботов в MR, где оператор author; остальные чужие треды не изменяются.
 #### Blocking semantics and intent-preserving automation
-
-- **FR-022** — Finding/thread имеет семантику `blocking | non-blocking`. Открытые
-  non-blocking треды не препятствуют approve.
-- **FR-023** — Approve, поставленный при открытом треде, является наблюдаемым сигналом,
-  что этот тред non-blocking, пока оператор явно не изменил решение.
-- **FR-024** — Подтверждённо исправленный разрешённый тред может быть автоматически
-  resolved.
-- **FR-025** — Если оператор ранее approve-нул MR, а GitLab сбросил approval после
-  push, ассистент автоматически восстанавливает approve после доказанного coverage и
-  при отсутствии blocking-проблем.
-- **FR-026** — Отказ автора исправлять non-blocking замечание не блокирует
-  восстановление approve, но принятие аргумента автора не автоматизируется: оператору
-  предлагаются согласие+resolve, возражение или дополнительный вопрос.
-- **FR-027** — Политики ручного/автоматического выполнения расширяются через единый
-  каталог типизированных действий; автоматизация не имеет отдельного executor.
-
+- **FR-022** — Finding/thread имеет семантику `blocking | non-blocking`. Открытые non-blocking треды не препятствуют approve.
+- **FR-023** — Approve, поставленный при открытом треде, является наблюдаемым сигналом, что этот тред non-blocking, пока оператор явно не изменил решение.
+- **FR-024** — Подтверждённо исправленный разрешённый тред может быть автоматически resolved.
+- **FR-025** — Если оператор ранее approve-нул MR, а GitLab сбросил approval после push, ассистент автоматически восстанавливает approve после доказанного coverage и при отсутствии blocking-проблем.
+- **FR-026** — Отказ автора исправлять non-blocking замечание не блокирует восстановление approve, но принятие аргумента автора не автоматизируется: оператору предлагаются согласие+resolve, возражение или дополнительный вопрос.
+- **FR-027** — Политики ручного/автоматического выполнения расширяются через единый каталог типизированных действий; автоматизация не имеет отдельного executor.
 #### DEV-agent handoff
-
-- **FR-028** — На любом MR независимо от роли доступна кнопка **Сгенерировать
-  задание**.
-- **FR-029** — Задание — короткая инструкция для DEV-агента: актуальный SHA, цель,
-  выбранные findings, изменившиеся части артефактов, обязательные пути/якоря для
-  чтения и критерии проверки. Полный контент артефактов не дублируется без причины.
-- **FR-030** — По умолчанию генерируется delta-задание от последнего handoff; доступен
-  явный вариант с полным контекстом.
-- **FR-031** — **Скопировать задание** копирует текст в clipboard. Скачивание файла и
-  встроенный редактор задания не требуются в v0.
-- **FR-032** — Finding или выбранную группу findings можно скопировать как отдельное
-  задание; любой reviewer может подхватить работу, даже если не является author.
-
+- **FR-028** — На любом MR независимо от роли доступна кнопка **Сгенерировать задание**.
+- **FR-029** — Задание — короткая инструкция для DEV-агента: актуальный SHA, цель, выбранные findings, изменившиеся части артефактов, обязательные пути/якоря для чтения и критерии проверки. Полный контент артефактов не дублируется без причины.
+- **FR-030** — По умолчанию генерируется delta-задание от последнего handoff; доступен явный вариант с полным контекстом.
+- **FR-031** — **Скопировать задание** копирует текст в clipboard. Скачивание файла и встроенный редактор задания не требуются в v0.
+- **FR-032** — Finding или выбранную группу findings можно скопировать как отдельное задание; любой reviewer может подхватить работу, даже если не является author.
 #### Dashboard and MR workspace
-
-- **FR-033** — Основной dashboard — две колонки ответственности: **Ревью** и
-  **Мои / назначенные**. Внутри каждой — приоритетная очередь: требуется решение,
-  агент работает, ждём внешнего события, без действий.
-- **FR-034** — Карточка компактно показывает роли, title, approvals, reviewers, CI,
-  threads, unread/new commits, текущую работу, таймер и все причины внимания.
-- **FR-035** — MR workspace — хронологическая лента smart widgets с `lastActivity`,
-  read/unread и разделителем нового: Findings, Awaiting Threads, Artifact Post,
-  GitLab Event, Progress Group, Current Plan и одноразовые Action outcomes.
-- **FR-036** — Ошибка или ожидание принадлежат конкретному виджету/действию и не
-  заменяют MR workspace пустым глобальным состоянием.
-- **FR-037** — Постоянный MR-scoped chat принимает мета-якорь
-  `widget + fragment + artifact`, объясняет и углубляет фактуру; основные действия
-  остаются контекстными элементами виджетов, а не командами чата.
-
+- **FR-033** — Основной dashboard — две колонки ответственности: **Ревью** и **Мои / назначенные**. Внутри каждой — приоритетная очередь: требуется решение, агент работает, ждём внешнего события, без действий.
+- **FR-034** — Карточка компактно показывает роли, title, approvals, reviewers, CI, threads, unread/new commits, текущую работу, таймер и все причины внимания.
+- **FR-035** — MR workspace — хронологическая лента smart widgets с `lastActivity`, read/unread и разделителем нового: Findings, Awaiting Threads, Artifact Post, GitLab Event, Progress Group, Current Plan и одноразовые Action outcomes.
+- **FR-036** — Ошибка или ожидание принадлежат конкретному виджету/действию и не заменяют MR workspace пустым глобальным состоянием.
+- **FR-037** — Постоянный MR-scoped chat принимает мета-якорь `widget + fragment + artifact`, объясняет и углубляет фактуру; основные действия остаются контекстными элементами виджетов, а не командами чата.
 #### Test runtime
-
-- **FR-038** — Production, test и mock используют физически разные state namespaces;
-  reset теста не может прочитать, изменить или удалить рабочее состояние.
-- **FR-039** — Каждый test run по умолчанию получает чистый `run-id`; сохранённый run
-  можно повторно открыть для диагностики.
-- **FR-040** — Mock mode детерминированно моделирует GitLab read/effect события,
-  время, частичные ошибки, approval reset и recovery.
-- **FR-041** — Real-readonly принимает явный пул MR, выполняет precondition probe и
-  выдаёт `PASS | FAIL | SKIP | INCONCLUSIVE` с наблюдаемой причиной. Изменение внешнего
-  состояния во время сценария даёт `INCONCLUSIVE`, а не ложный `FAIL`.
-- **FR-042** — Полностью пропущенный прогон не считается зелёным; отчёт показывает
-  обязательные сценарии, фактически выполненные сценарии и легитимные skips.
-- **FR-043** — Real-effects разрешён только для явно allowlisted тестовых MR/проектов;
-  произвольный рабочий MR никогда не становится effect-target только из-за попадания
-  в discovery pool.
-
+- **FR-038** — Production, test и mock используют физически разные state namespaces; reset теста не может прочитать, изменить или удалить рабочее состояние.
+- **FR-039** — Каждый test run по умолчанию получает чистый `run-id`; сохранённый run можно повторно открыть для диагностики.
+- **FR-040** — Mock mode детерминированно моделирует GitLab read/effect события, время, частичные ошибки, approval reset и recovery.
+- **FR-041** — Real-readonly принимает явный пул MR, выполняет precondition probe и выдаёт `PASS | FAIL | SKIP | INCONCLUSIVE` с наблюдаемой причиной. Изменение внешнего состояния во время сценария даёт `INCONCLUSIVE`, а не ложный `FAIL`.
+- **FR-042** — Полностью пропущенный прогон не считается зелёным; отчёт показывает обязательные сценарии, фактически выполненные сценарии и легитимные skips.
+- **FR-043** — Real-effects разрешён только для явно allowlisted тестовых MR/проектов; произвольный рабочий MR никогда не становится effect-target только из-за попадания в discovery pool.
 #### Deterministic agent control loop
-
-- **FR-044** — До запуска агента компилировать для каждого full/delta/cross-review
-  machine-readable Review Contract с устойчивыми slot ID, потребляя только sealed
-  Review Input Manifest. Compiler атомарно создаёт total mapping каждого manifest
-  input в один или несколько slots либо в детерминированно обоснованный
-  `not-applicable`; неклассифицированный файл получает обязательный
-  `file-fallback:<path>` slot. Mapping gap отклоняет весь contract до запуска агента и
-  не может достичь `PASS`. Контракт фиксирует полный план работы для наблюдаемой формы
-  изменений: цель, архитектуру, спецификации, тесты, security и optimality, а также
-  требуемые сущности, файлы, review lenses, секции артефактов и диаграммы. Каждое
-  измерение получает `required` либо детерминированно обоснованное `not-applicable`;
-  агент не может сам исключить его молчанием.
-- **FR-045** — Считать агента недоверенным исполнителем. Slot получает `complete`
-  только когда детерминированный validator подтвердил непустой неплейсхолдерный
-  артефакт требуемого типа и фактическое чтение/использование обязательных источников
-  по реальному tool trace; текстовый самоотчёт агента не является evidence.
-- **FR-046** — Диаграммные обязанности выводить из change shape как разные
-  типизированные slots: entity/dependency map; `before → after` при изменении
-  поведения или архитектуры; runtime/event flow, когда затронут исполняемый поток.
-  Одна универсальная диаграмма не закрывает несколько обязанностей, кроме явно
-  доказанной validator-ом эквивалентности их структурных контрактов.
-- **FR-047** — Для каждого отсутствующего или невалидного slot создавать адресное
-  repair-задание только с незакрытыми slot ID, ожидаемым типом evidence и ссылками на
-  исходный contract. Цикл `validate → repair → validate` продолжается до полного
-  `PASS` либо до наблюдаемого `BLOCKED` после ограниченного числа попыток; сохраняются
-  причины, попытки, provenance и незакрытые slots.
-- **FR-048** — До `PASS` запрещены synthesis, публикация decision package, approve и
-  любые ручные или автоматические GitLab effects, чьи входы потребляют artifacts,
-  findings или proposals текущего неполного round. Ручной запуск не обходит gate:
-  effect из неполного round остаётся запрещённым. До `PASS` разрешены только явные
-  команды оператора, входы которых доказуемо не используют данные этого round и
-  проходят собственные permission/policy gates. Неполные артефакты и прогресс видимы,
-  но не могут быть выданы за завершённое review.
-- **FR-049** — Перед Review Contract фиксировать immutable Review Input Manifest с
-  ключом `mr + head SHA + event cursor`. Manifest владеет полным immutable versioned
-  inventory всех изменённых файлов, затронутых сущностей, дискуссий и обязательных
-  источников round, а также их детерминированными classifications и change shape.
-  Manifest не владеет slots, mapping или fallback policy. Невозможность построить и
-  запечатать полный inventory переводит round в `BLOCKED` до contract compilation и
-  запуска агента.
-- **FR-050** — Каждый slot Review Contract объявляет output schema, source anchors,
-  cardinality и evidence reuse policy. Entity-slot как минимум требует identity,
-  responsibility/behavior, dependencies, risks и test impact. Одно evidence может
-  закрывать несколько slots только когда это явно разрешено их reuse policy и
-  validator сохранил отдельное соответствие каждому контракту; одинаковый generic
-  текст или механическое дублирование не закрывают несвязанные slots.
-- **FR-051** — Каждый source input в Review Input Manifest хранит immutable canonical
-  identity и точную version/digest либо захваченные immutable bytes. Contract и
-  validator читают и подтверждают именно эту версию; ссылка на mutable path, thread
-  или URL без зафиксированной версии не является evidence.
-- **FR-052** — Перед structural verdict, synthesis/publication и созданием effect
-  intent core выполняет локальную per-MR сериализованную транзакцию: атомарно
-  сравнивает latest observed `head SHA + event cursor` с manifest key и записывает
-  guarded verdict/handoff intent. Эта транзакция не объявляется атомарной с внешним
-  GitLab dispatch. Для каждого effect adapter передаёт provider conditional
-  revision/precondition, когда GitLab поддерживает её для операции. Без такой
-  precondition effect остаётся `unconfirmed`, а обязательный read-after-effect
-  reconciliation классифицирует его `applied | not-applied | ambiguous`; blind retry
-  запрещён. Любое вновь наблюдённое несовпадение с manifest инвалидирует оставшиеся
-  intents, помечает round `STALE` и создаёт новую delta.
-- **FR-053** — Фактические tool operations доказываются только append-only typed
-  runtime receipts, которые создаёт control plane, а не агент, и сохраняет независимо
-  от редактируемых review artifacts. Receipt связывает `contract ID/version`, manifest
-  key, `session/task`, canonical source identity/version/digest, operation, outcome и
-  монотонный sequence. Validator отклоняет agent-authored substitutes, нарушенную
-  последовательность, receipt другого contract/manifest и повторное использование
-  уже потреблённого receipt вне разрешённой reuse policy.
-- **FR-054** — Repair loop использует конфигурируемый `maxRepairAttempts` с начальным
-  значением `3` и монотонный per-round attempt counter. Counter не сбрасывается при
-  crash, retry или resume того же round. После исчерпания budget round получает
-  `BLOCKED`; продолжение требует явного решения оператора создать новый round либо
-  увеличить budget, причём увеличение сохраняет уже накопленный counter и provenance.
-
+- **FR-044** — До запуска агента компилировать для каждого full/delta/cross-review machine-readable Review Contract с устойчивыми slot ID, потребляя только sealed Review Input Manifest. Compiler атомарно создаёт total mapping каждого manifest input в один или несколько slots либо в детерминированно обоснованный `not-applicable`; неклассифицированный файл получает обязательный `file-fallback:<path>` slot. Mapping gap отклоняет весь contract до запуска агента и не может достичь `PASS`. Контракт фиксирует полный план работы для наблюдаемой формы изменений: цель, архитектуру, спецификации, тесты, security и optimality, а также требуемые сущности, файлы, review lenses, секции артефактов и диаграммы. Каждое измерение получает `required` либо детерминированно обоснованное `not-applicable`; агент не может сам исключить его молчанием.
+- **FR-045** — Считать агента недоверенным исполнителем. Slot получает `complete` только когда детерминированный validator подтвердил непустой неплейсхолдерный артефакт требуемого типа и фактическое чтение/использование обязательных источников по реальному tool trace; текстовый самоотчёт агента не является evidence.
+- **FR-046** — Диаграммные обязанности выводить из change shape как разные типизированные slots: entity/dependency map; `before → after` при изменении поведения или архитектуры; runtime/event flow, когда затронут исполняемый поток. Одна универсальная диаграмма не закрывает несколько обязанностей, кроме явно доказанной validator-ом эквивалентности их структурных контрактов.
+- **FR-047** — Для каждого отсутствующего или невалидного slot создавать адресное repair-задание только с незакрытыми slot ID, ожидаемым типом evidence и ссылками на исходный contract. Цикл `validate → repair → validate` продолжается до полного `PASS` либо до наблюдаемого `BLOCKED` после ограниченного числа попыток; сохраняются причины, попытки, provenance и незакрытые slots.
+- **FR-048** — До `PASS` запрещены synthesis, публикация decision package, approve и любые ручные или автоматические GitLab effects, чьи входы потребляют artifacts, findings или proposals текущего неполного round. Ручной запуск не обходит gate: effect из неполного round остаётся запрещённым. До `PASS` разрешены только явные команды оператора, входы которых доказуемо не используют данные этого round и проходят собственные permission/policy gates. Неполные артефакты и прогресс видимы, но не могут быть выданы за завершённое review.
+- **FR-049** — Перед Review Contract фиксировать immutable Review Input Manifest с ключом `mr + head SHA + event cursor`. Manifest владеет полным immutable versioned inventory всех изменённых файлов, затронутых сущностей, дискуссий и обязательных источников round, а также их детерминированными classifications и change shape. Manifest не владеет slots, mapping или fallback policy. Невозможность построить и запечатать полный inventory переводит round в `BLOCKED` до contract compilation и запуска агента.
+- **FR-050** — Каждый slot Review Contract объявляет output schema, source anchors, cardinality и evidence reuse policy. Entity-slot как минимум требует identity, responsibility/behavior, dependencies, risks и test impact. Одно evidence может закрывать несколько slots только когда это явно разрешено их reuse policy и validator сохранил отдельное соответствие каждому контракту; одинаковый generic текст или механическое дублирование не закрывают несвязанные slots.
+- **FR-051** — Каждый source input в Review Input Manifest хранит immutable canonical identity и точную version/digest либо захваченные immutable bytes. Contract и validator читают и подтверждают именно эту версию; ссылка на mutable path, thread или URL без зафиксированной версии не является evidence.
+- **FR-052** — Перед structural verdict, synthesis/publication и созданием effect intent core выполняет локальную per-MR сериализованную транзакцию: атомарно сравнивает latest observed `head SHA + event cursor` с manifest key и записывает guarded verdict/handoff intent. Эта транзакция не объявляется атомарной с внешним GitLab dispatch. Для каждого effect adapter передаёт provider conditional revision/precondition, когда GitLab поддерживает её для операции. Без такой precondition effect остаётся `unconfirmed`, а обязательный read-after-effect reconciliation классифицирует его `applied | not-applied | ambiguous`; blind retry запрещён. Любое вновь наблюдённое несовпадение с manifest инвалидирует оставшиеся intents, помечает round `STALE` и создаёт новую delta.
+- **FR-053** — Фактические tool operations доказываются только append-only typed runtime receipts, которые создаёт control plane, а не агент, и сохраняет независимо от редактируемых review artifacts. Receipt связывает `contract ID/version`, manifest key, `session/task`, canonical source identity/version/digest, operation, outcome и монотонный sequence. Validator отклоняет agent-authored substitutes, нарушенную последовательность, receipt другого contract/manifest и повторное использование уже потреблённого receipt вне разрешённой reuse policy.
+- **FR-054** — Repair loop использует конфигурируемый `maxRepairAttempts` с начальным значением `3` и монотонный per-round attempt counter. Counter не сбрасывается при crash, retry или resume того же round. После исчерпания budget round получает `BLOCKED`; продолжение требует явного решения оператора создать новый round либо увеличить budget, причём увеличение сохраняет уже накопленный counter и provenance.
 ### 4.2 Non-Functional Constraints
-
-- **NFR-001** — Один локальный процесс и один оператор; сложная распределённая
-  инфраструктура запрещена без нового подтверждённого use case.
-- **NFR-002** — Реальные GitLab sync/effects, agent runtime, persistence и dashboard
-  обязательны в первой полезной версии; simulation не заменяет acceptance.
-- **NFR-003** — Per-MR очереди независимы; разные MR обрабатываются параллельно без
-  глобального mutex.
-- **NFR-004** — После crash восстанавливаются очередь, решения, smart-widget feed и
-  незавершённые effects без потери и слепого повтора.
-- **NFR-005** — Все input manifests, contracts, runtime receipts, verdicts, findings,
-  artifacts, proposals, decisions, автоматические действия и outcomes имеют `mr`,
-  `sha/cursor`, `task`, `session/model`, время и provenance.
-- **NFR-006** — Работа, ожидание, деградация и ошибка наблюдаемы в UI в течение всего
-  lifecycle.
-- **NFR-007** — Порты создаются только на реальных change/trust boundaries, имеющих
-  минимум два потребителя или production+test adapters; interface-per-class запрещён.
-- **NFR-008** — Приёмка UI выполняется на реальных GitLab данных по AGENTS.md; mock
-  используется для детерминированного покрытия, но не как визуальное доказательство
-  production-flow.
-- **NFR-009** — Carbon & Steel: глубокие carbon surfaces, safety orange `#fc6d26`,
-  steel secondary, Geist для UI, JetBrains Mono для metadata/code, 1px borders,
-  tonal layering без декоративных теней, базовый radius 8px, высокая информационная
-  плотность IDE/cockpit. Основные UX-референсы: две компактные очереди dashboard,
-  двухколоночный MR workspace с Agent Terminal, findings/threads/plan widgets.
-- **NFR-010** — Компиляция Review Contract и структурная проверка completeness
-  детерминированы: одинаковые normalized inputs дают одинаковые slots и одинаковый
-  verdict. Наличие, тип, trace coverage и placeholder-нарушения проверяются
-  schema/parser/regex-подобными правилами без LLM-суждения.
-- **NFR-011** — Семантическое качество содержимого проверяется review/cross-review
-  агентами, но их оценка не может удалить обязательный slot или обойти структурный
-  gate; смена модели не изменяет контракт полноты.
-- **NFR-012** — Repair loop идемпотентен и crash-resumable: после рестарта он
-  продолжает от сохранённого contract/version и последнего verdict, не повторяя уже
-  подтверждённые slots и не теряя историю попыток.
-- **NFR-013** — Runtime receipts и их монотонная последовательность durable раньше,
-  чем соответствующий tool outcome может закрыть slot; artifact storage не может
-  перезаписать, удалить или подменить receipt log.
-
+- **NFR-001** — Один локальный процесс и один оператор; сложная распределённая инфраструктура запрещена без нового подтверждённого use case.
+- **NFR-002** — Реальные GitLab sync/effects, agent runtime, persistence и dashboard обязательны в первой полезной версии; simulation не заменяет acceptance.
+- **NFR-003** — Per-MR очереди независимы; разные MR обрабатываются параллельно без глобального mutex.
+- **NFR-004** — После crash восстанавливаются очередь, решения, smart-widget feed и незавершённые effects без потери и слепого повтора.
+- **NFR-005** — Все input manifests, contracts, runtime receipts, verdicts, findings, artifacts, proposals, decisions, автоматические действия и outcomes имеют `mr`, `sha/cursor`, `task`, `session/model`, время и provenance.
+- **NFR-006** — Работа, ожидание, деградация и ошибка наблюдаемы в UI в течение всего lifecycle.
+- **NFR-007** — Порты создаются только на реальных change/trust boundaries, имеющих минимум два потребителя или production+test adapters; interface-per-class запрещён.
+- **NFR-008** — Приёмка UI выполняется на реальных GitLab данных по AGENTS.md; mock используется для детерминированного покрытия, но не как визуальное доказательство production-flow.
+- **NFR-009** — Carbon & Steel: глубокие carbon surfaces, safety orange `#fc6d26`, steel secondary, Geist для UI, JetBrains Mono для metadata/code, 1px borders, tonal layering без декоративных теней, базовый radius 8px, высокая информационная плотность IDE/cockpit. Основные UX-референсы: две компактные очереди dashboard, двухколоночный MR workspace с Agent Terminal, findings/threads/plan widgets.
+- **NFR-010** — Компиляция Review Contract и структурная проверка completeness детерминированы: одинаковые normalized inputs дают одинаковые slots и одинаковый verdict. Наличие, тип, trace coverage и placeholder-нарушения проверяются schema/parser/regex-подобными правилами без LLM-суждения.
+- **NFR-011** — Семантическое качество содержимого проверяется review/cross-review агентами, но их оценка не может удалить обязательный slot или обойти структурный gate; смена модели не изменяет контракт полноты.
+- **NFR-012** — Repair loop идемпотентен и crash-resumable: после рестарта он продолжает от сохранённого contract/version и последнего verdict, не повторяя уже подтверждённые slots и не теряя историю попыток.
+- **NFR-013** — Runtime receipts и их монотонная последовательность durable раньше, чем соответствующий tool outcome может закрыть slot; artifact storage не может перезаписать, удалить или подменить receipt log.
 ### 4.3 Out-of-Scope v0
-
 - Multi-user, multi-account, tenancy, remote deployment и SaaS.
 - Мобильный native client.
 - Точечная инвалидация отдельных действий пакета.
@@ -334,9 +190,7 @@ reconciliation сверяет реальное состояние, после ч
 - Полная копия административного GitLab UI.
 - Скачиваемые файлы заданий и inline-редактор задания.
 - Обязательная plugin-system или внешний scheduler.
-
 ### 4.4 Runtime Backing & Deferred Scope
-
 | Capability                                    | Posture                           |
 | --------------------------------------------- | --------------------------------- |
 | GitLab discovery, facts and effects           | `real-runtime`                    |
@@ -348,25 +202,21 @@ reconciliation сверяет реальное состояние, после ч
 | Deterministic GitLab test adapter             | `simulation` for exhaustive tests |
 | Selective action invalidation                 | `not-implemented` (deferred)      |
 | Multi-user/remote runtime                     | `not-implemented` (out-of-scope)  |
-
 Trust boundaries requiring real hooks: GitLab token and permissions, GitLab effect
 reconciliation, agent-runtime tool trace for coverage, filesystem namespace isolation,
 browser clipboard permission, целостность версии Review Contract и соответствующего
 ей completeness verdict, control-plane ownership append-only runtime receipts,
 latest-observed freshness transaction, provider conditional preconditions и
 read-after-effect reconciliation.
-
 ### 4.5 Rules
-
 | Rule                                | Category | Source                                                                                 |
 | ----------------------------------- | -------- | -------------------------------------------------------------------------------------- |
 | `typescript-rules`                  | coding   | `ai/directives/coding/typescript-rules.xml`                                            |
 | `testing-common` + `node-test`      | testing  | `ai/directives/testing/common.xml`, `ai/directives/testing/node-test.xml`              |
 | `playwright-cli` → `playwright-e2e` | testing  | `ai/directives/testing/playwright-cli.xml`, `ai/directives/testing/playwright-e2e.xml` |
-
 No new infrastructure or architecture rule is activated: this pivot does not replace
 the repository toolchain, and the selected architecture is fully specified below.
-
+<!-- prettier-ignore-end -->
 <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
 
 <!--SECTION:ARCHITECTURE-->
@@ -469,6 +319,8 @@ contradicts v0 constraints.
 <!--SECTION:DECISION_LOG-->
 
 ## 6. Decision Log
+
+<details><summary>Подробности</summary>
 
 ### Superseded v2 decisions (body preserved)
 
@@ -630,6 +482,7 @@ freshness transitions, guarded intents, effect reconciliation и runtime receipt
 trace или применить устаревший результат после нового observed event. Локальная
 атомарность намеренно не распространяется на внешний GitLab dispatch.
 
+</details>
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -646,6 +499,8 @@ trace или применить устаревший результат посл
 
 ## 8. Bootstrap Requirements
 
+<details><summary>Подробности</summary>
+
 | Requirement                                 | Kind          | Owner                 | Resolution                                                                                             |
 | ------------------------------------------- | ------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
 | Node.js/npm/Vite/React/Playwright toolchain | tool          | external-prereq-scope | Exists in `package.json` and `infra-base`                                                              |
@@ -658,6 +513,7 @@ trace или применить устаревший результат посл
 
 No new third-party package is required by the selected architecture.
 
+</details>
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:MODULE_MAP-->
@@ -762,8 +618,8 @@ do not own implementation tickets.
   - `inbox-dashboard` — two queues, Carbon & Steel MR workspace and direct effects;
   - `inbox-eval` / `inbox-mocks` — isolated mock/real-readonly/real-effects modes;
   - any legacy role module — remove role-specific review depth; retain permission policy only.
-- **Tasks regenerated:** historical TSK-156…170 remain immutable DONE evidence; the
-  pivot execution DAG is TSK-172…183 and does not depend on obsolete role/attention contracts.
+- **Tasks regenerated:** historical IC-journal…170 remain immutable DONE evidence; the
+  pivot execution DAG is AI-roots…183 and does not depend on obsolete role/attention contracts.
 - **Rules to revisit:** none; active coding/testing rules remain valid.
 
 ### Acceptance after downstream regeneration

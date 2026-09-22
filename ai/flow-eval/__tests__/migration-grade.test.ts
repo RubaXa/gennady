@@ -1,10 +1,14 @@
-// @file: Deterministic-grade unit tests for the migration phase (histogram + pure baseline-diff grade).
+// @file: Deterministic-grade unit tests for migration's literal A1 code+file+severity comparator.
+// @spec: AI-SKILLS
 // @consumers: migration-grade
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFindingHistogram, computeMigrationGrade } from '../migration-grade.ts';
+import {
+  parseFindingBaseline,
+  parseFindingHistogram,
+  computeMigrationGrade,
+} from '../migration-grade.ts';
 
 /** @purpose Build a fake sdd-check output with `n` findings of one code+severity. */
 function findings(severity: 'error' | 'warn', code: string, n: number): string {
@@ -13,7 +17,7 @@ function findings(severity: 'error' | 'warn', code: string, n: number): string {
   );
 }
 
-describe('migration-grade (histogram + deterministic baseline-diff grade)', () => {
+describe('migration-grade (literal A1 identity comparator)', () => {
   it('parseFindingHistogram counts each code across errors and warnings', () => {
     const out = [
       findings('error', 'SDD_DEP_UNRESOLVED', 2),
@@ -26,11 +30,11 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
   });
 
   it('v2 + only pre-existing findings (unchanged vs baseline) → PASS, nothing introduced', () => {
-    const baseline = { SDD_DEP_UNRESOLVED: 9, SDD_LANGUAGE_CALQUE: 32 };
     const check = [
       findings('error', 'SDD_DEP_UNRESOLVED', 9),
       findings('warn', 'SDD_LANGUAGE_CALQUE', 32),
     ].join('\n');
+    const baseline = parseFindingBaseline(check);
     const g = computeMigrationGrade(baseline, 'FLOW_VERSION=v2\nPORTAL=present', check);
     assert.equal(g.flowV2, true);
     assert.deepEqual(g.introduced, []);
@@ -39,7 +43,7 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
 
   it('a NEW critical structural finding (broken spec ref) fails the migration', () => {
     const g = computeMigrationGrade(
-      {},
+      [],
       'FLOW_VERSION=v2',
       findings('error', 'SDD_BROKEN_SPEC_REF', 1)
     );
@@ -47,39 +51,34 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
     assert.equal(g.introduced[0]?.code, 'SDD_BROKEN_SPEC_REF');
   });
 
-  it('a NEW content-debt error (not structural) is backlog, not a failure', () => {
-    // SDD_DEP_UNRESOLVED is content/authoring debt exposed by strict v2, not a migration integrity break.
+  it('a NEW content-debt error fails literal A1 by code+file identity', () => {
     const g = computeMigrationGrade(
-      {},
+      [],
       'FLOW_VERSION=v2',
       findings('error', 'SDD_DEP_UNRESOLVED', 3)
     );
-    assert.equal(g.pass, true);
-    assert.match(g.detail, /backlog: SDD_DEP_UNRESOLVED\+3/);
+    assert.equal(g.pass, false);
+    assert.match(g.detail, /new-error-identities: SDD_DEP_UNRESOLVED@specs\/x\.md/);
   });
 
   it('a NEW warning + v2 → PASS — warnings are backlog', () => {
     const g = computeMigrationGrade(
-      {},
+      [],
       'FLOW_VERSION=v2',
       findings('warn', 'SDD_LANGUAGE_CALQUE', 5)
     );
     assert.equal(g.pass, true);
-    assert.equal(g.introduced.length, 1);
+    assert.deepEqual(g.introduced, []);
   });
 
   it('not v2 → FAIL even with zero new findings', () => {
-    const g = computeMigrationGrade({}, 'FLOW_VERSION=v1', '');
+    const g = computeMigrationGrade([], 'FLOW_VERSION=v1', '');
     assert.equal(g.flowV2, false);
     assert.equal(g.pass, false);
   });
 
-  it('baseline-diff: a STRUCTURAL code that only shrank vs baseline is not introduced', () => {
-    // SDD_BROKEN_SPEC_REF is structural, not executability — baseline-diffed on purpose (pre-existing
-    // v1 broken refs are content debt, not this migration's job). Contrast with the executability
-    // (SDD_VERIFICATION_TABLE_INVALID/SDD_COVERAGE_POLICY_INVALID) case below, which the V-BATCH-22
-    // fix (B-2) grades on what REMAINS instead.
-    const baseline = { SDD_BROKEN_SPEC_REF: 7 };
+  it('identity comparison permits a smaller occurrence count only at already-known files', () => {
+    const baseline = parseFindingBaseline(findings('error', 'SDD_BROKEN_SPEC_REF', 7));
     const g = computeMigrationGrade(
       baseline,
       'FLOW_VERSION=v2',
@@ -87,6 +86,19 @@ describe('migration-grade (histogram + deterministic baseline-diff grade)', () =
     );
     assert.deepEqual(g.introduced, []);
     assert.equal(g.pass, true);
+  });
+
+  it('same code and count at a different file is a NEW error identity', () => {
+    const baseline = parseFindingBaseline('specs/old.md:1: error: SDD_DEP_UNRESOLVED old');
+    const g = computeMigrationGrade(
+      baseline,
+      'FLOW_VERSION=v2',
+      'specs/new.md:1: error: SDD_DEP_UNRESOLVED new'
+    );
+    assert.equal(g.pass, false);
+    assert.deepEqual(g.introduced, [
+      { code: 'SDD_DEP_UNRESOLVED', file: 'specs/new.md', severity: 'error' },
+    ]);
   });
 });
 
@@ -109,7 +121,7 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
     'core.task.DEMO-2.md:66: error: SDD_COVERAGE_POLICY_INVALID  required coverage needs exactly one table row with Role=coverage (found 0); required coverage needs exactly one Coverage Owner Phase (`P<N>`)';
 
   it('RED — on the un-migrated (anchors-only) corpus, the bar fails BEFORE the migrator gains table-upgrade capability (E-06)', () => {
-    const g = computeMigrationGrade({}, 'FLOW_VERSION=v2', FROZEN_2COL_TABLE_OUTPUT);
+    const g = computeMigrationGrade([], 'FLOW_VERSION=v2', FROZEN_2COL_TABLE_OUTPUT);
     assert.equal(g.pass, false);
     assert.equal(g.introduced[0]?.code, 'SDD_VERIFICATION_TABLE_INVALID');
     assert.match(g.detail, /executability-remaining: SDD_VERIFICATION_TABLE_INVALID×1/);
@@ -117,7 +129,7 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
   });
 
   it('RED — a migrator that half-applies the coverage schema (marker present, fields wrong) also fails the bar', () => {
-    const g = computeMigrationGrade({}, 'FLOW_VERSION=v2', FROZEN_COVERAGE_POLICY_OUTPUT);
+    const g = computeMigrationGrade([], 'FLOW_VERSION=v2', FROZEN_COVERAGE_POLICY_OUTPUT);
     assert.equal(g.pass, false);
     assert.equal(g.introduced[0]?.code, 'SDD_COVERAGE_POLICY_INVALID');
   });
@@ -125,7 +137,7 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
   it('GREEN would follow once the migrator upgrades the table (not this task — proves the bar is not a tautology)', () => {
     // Frozen "after" shape: `sdd-check` on the SAME ticket, its table upgraded to 3-column with a real
     // coverage row (the transformation E-06 adds) — 0 findings for either code.
-    const g = computeMigrationGrade({}, 'FLOW_VERSION=v2', '[sdd-check] 0 error(s), 0 warning(s)');
+    const g = computeMigrationGrade([], 'FLOW_VERSION=v2', '[sdd-check] 0 error(s), 0 warning(s)');
     assert.equal(g.pass, true);
     assert.deepEqual(g.introduced, []);
   });
@@ -135,7 +147,12 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
   // v1 repo already had. On E-14 (full self-migration) that means "0 tables upgraded" would still be
   // `pass:true`. Executability is graded on what REMAINS, not on the delta.
   it('RED (fixed by B-2) — pre-existing (baseline) occurrences of either code are NOT backlog: unfixed means unusable', () => {
-    const baseline = { SDD_VERIFICATION_TABLE_INVALID: 2, SDD_COVERAGE_POLICY_INVALID: 1 };
+    const baseline = parseFindingBaseline(
+      [
+        findings('error', 'SDD_VERIFICATION_TABLE_INVALID', 2),
+        findings('error', 'SDD_COVERAGE_POLICY_INVALID', 1),
+      ].join('\n')
+    );
     const g = computeMigrationGrade(
       baseline,
       'FLOW_VERSION=v2',
@@ -153,7 +170,12 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
   });
 
   it('GREEN counterpart — the same baseline, but `after` is truly clean of both codes → PASS', () => {
-    const baseline = { SDD_VERIFICATION_TABLE_INVALID: 2, SDD_COVERAGE_POLICY_INVALID: 1 };
+    const baseline = parseFindingBaseline(
+      [
+        findings('error', 'SDD_VERIFICATION_TABLE_INVALID', 2),
+        findings('error', 'SDD_COVERAGE_POLICY_INVALID', 1),
+      ].join('\n')
+    );
     const g = computeMigrationGrade(
       baseline,
       'FLOW_VERSION=v2',
@@ -164,7 +186,7 @@ describe('E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / 
   });
 
   it('a SHRUNK-but-nonzero executability count still fails — partial fixes are not fixes', () => {
-    const baseline = { SDD_VERIFICATION_TABLE_INVALID: 7 };
+    const baseline = parseFindingBaseline(findings('error', 'SDD_VERIFICATION_TABLE_INVALID', 7));
     const g = computeMigrationGrade(
       baseline,
       'FLOW_VERSION=v2',

@@ -1,5 +1,11 @@
 # Module: model
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-MODEL
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Чистые типы и контракты для всей библиотеки agent-mon. Никакой реализации — только Value Objects и Port `AgentProvider`. Все остальные модули импортируют типы отсюда.

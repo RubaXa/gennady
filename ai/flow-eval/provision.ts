@@ -1,4 +1,5 @@
 // @file: Safe per-scenario workspace provisioner.
+// @spec: AI-SKILLS
 // @consumers: CLI, SddEvalRunner tests; never removes existing directories.
 
 import {
@@ -40,6 +41,7 @@ function canonicalScope(
   const slugify = operation === 'slugify';
   let document = TEMPLATES.product.skeleton
     .replaceAll('<scope-name>', scope)
+    .replaceAll('<SPEC-ID>', acronym)
     .replaceAll('<ACR>', acronym)
     .replaceAll('<module>', module)
     .replaceAll('<ModuleName>', module);
@@ -134,6 +136,7 @@ function canonicalModule(
     .replaceAll('<ModuleName>', module)
     .replaceAll('<scope-name>', scope)
     .replaceAll('<module>', module)
+    .replaceAll('<SPEC-ID>', acronym)
     .replaceAll('<ACR>', acronym);
   document = replaceSection(
     document,
@@ -1015,9 +1018,14 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`tic-tac-toe`](./tic-tac-toe/tic-tac-toe.spec.md) | product | ✅ | deterministic board rules |\n',
     'specs/tic-tac-toe/tic-tac-toe.spec.md': canonicalScope('tic-tac-toe', 'TTT', 'engine'),
     'specs/tic-tac-toe/engine/engine.spec.md': canonicalModule('tic-tac-toe', 'ENG', 'engine'),
-    'src/game.ts': 'export type Mark = "X" | "O";\nexport type Board = Array<Mark | null>;\n',
-    'scripts/test.mjs': REAL_TEST_RUNNER,
-    'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
+    'src/game.ts':
+      '// @file: Deterministic tic-tac-toe game types.\n// @spec: ENG\n// @consumers: tic-tac-toe runtime\n\nexport type Mark = "X" | "O";\nexport type Board = Array<Mark | null>;\n',
+    'scripts/test.mjs':
+      '// @file: Test runner for the tic-tac-toe fixture.\n// @spec: ENG\n// @consumers: npm test\n\n' +
+      REAL_TEST_RUNNER,
+    'scripts/test-coverage.mjs':
+      '// @file: Coverage runner for the tic-tac-toe fixture.\n// @spec: ENG\n// @consumers: npm run test:coverage\n\n' +
+      REAL_COVERAGE_RUNNER,
     'tsconfig.json': REAL_TS_CONFIG,
     'package.json':
       JSON.stringify(

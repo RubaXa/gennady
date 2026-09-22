@@ -1,5 +1,11 @@
 # Module: sync-skills
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SYNC-SKILLS
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 12 скилов: `sdd` (единая дверь-роутер), `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` — SDD-воркфлоу; `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` — не-SDD. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.

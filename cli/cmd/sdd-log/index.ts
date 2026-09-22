@@ -1,5 +1,5 @@
 // @file: Entry point for the gennady sdd-log command — dynamic import trigger.
+// @spec: CLI-SDD-LOG
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import './sdd-log.cmd.ts';

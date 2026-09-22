@@ -1,6 +1,6 @@
 // @file: InboxConfig wrapper — structured config signal, atomic save, unset support over CLI config logic.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: StateStore, CLI inbox commands
-// @tasks: TSK-109
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';

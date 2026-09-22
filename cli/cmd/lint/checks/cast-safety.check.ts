@@ -1,4 +1,5 @@
 // @file: CastSafetyCheck — flag every `expr as Type` assertion (TS) via the AST; any/unknown/never get the strong wording, general assertions the inference-bypass wording.
+// @spec: CLI-LINT
 // @consumers: LintCommand
 
 import { extname } from 'node:path';

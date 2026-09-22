@@ -1,6 +1,6 @@
 // @file: Integration tests for SddOrientCommand#run — real filesystem fixtures, both modes, every error path, exit codes.
+// @spec: CLI-SDD-ORIENT
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Integration coverage for PipelineRuntime sharing the production queue seam.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-157, TSK-161
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

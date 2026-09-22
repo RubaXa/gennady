@@ -3,8 +3,8 @@
 //   directly (the unit that is real, per TSK-113 P3 Handoff) — does not exercise the effect-node→
 //   EffectExecutor wiring itself, which is a documented open gap (NodeContext lacks vcs/store; see
 //   reviewer.role.ts / author.role.ts node_effect comments and P3 Handoff "open").
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @file: ai/flow-eval/scripts/session-metrics.py
+# @spec: AI-SKILLS
+# @consumers: N/A
 """Deterministic per-session metrics for the SDD execute flow — the improvement/non-regression proof the
 operator requires at the end of every session. Given a run id, the OpenCode session, and the fixture dir,
 it emits ONE machine-readable JSON record and appends it to results/metrics-ledger.jsonl. Purely

@@ -1,6 +1,6 @@
 // @file: Unit tests for inbox-roles RightsEscalator — evaluate (24h inactivity → notification + cooldown).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-113
 
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

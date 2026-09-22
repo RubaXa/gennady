@@ -1,6 +1,6 @@
 // @file: Unit tests for SessionLifecycle — park/resume/close/TTL state machine + outcome classification ladder.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-160
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

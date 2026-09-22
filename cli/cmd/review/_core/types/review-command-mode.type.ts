@@ -1,6 +1,6 @@
 // @file: Review command output mode.
+// @spec: CLI-REVIEW
 // @consumers: review-command-options.type
-// @tasks: N/A
 
 /**
  * @purpose Review command output mode.

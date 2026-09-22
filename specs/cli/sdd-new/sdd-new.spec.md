@@ -1,5 +1,25 @@
 # Module: `sdd-new`
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SDD-NEW
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 **Module:** sdd-new · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling, block L1 (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
 <!--SECTION:MODULE_VISION-->
@@ -126,6 +146,8 @@ $ npx gennady sdd-new --list
 
 ## 4. Module Contracts (DbC)
 
+<details><summary>Подробности</summary>
+
 ### 4.1 Artifact Scaffold
 
 - **Runtime Backing:** `real-runtime`
@@ -149,6 +171,7 @@ $ npx gennady sdd-new --list
   - `--manifest` проверяется ПОСЛЕ валидации `<kind>`, но ДО `missingOptions`/`resolvePath`/no-overwrite/записи — неизвестный `<kind>` с `--manifest` всё равно даёт `UNKNOWN_KIND`
   - Скелет никогда не выдумывается по месту — только шаблон из реестра; task-instantiation заменяет закрытый набор уже известных полей и не заполняет Purpose, contracts, phases или verification
 
+</details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
@@ -160,9 +183,9 @@ $ npx gennady sdd-new --list
 | `<kind>`          | string  | `product \| library \| infrastructure \| interface \| module \| task \| module-index \| scope-index \| project-index \| portal \| research`                      |
 | `--scope <s>`     | string  | Один kebab-case segment, не путь. Для `task` explicit либо структурно выведен из `--out`; для других scope-aware kinds `--out` может заменить его как path input |
 | `--module <m>`    | string  | Имя module любой глубины. Обязателен для kind `module` и task owner `module`; запрещён flat task owners; опционален для `module-index`                           |
-| `--id <ACR-slug>` | string  | Task-ID slug. Для `task` обязателен всегда, в том числе с `--out`                                                                                                |
+| `--id <ACR-slug>` | string  | Обязательный Task-ID slug для `task`, включая вызов с `--out`                                                                                                    |
 | `--owner <owner>` | enum    | Для `task` обязателен всегда: `infrastructure-flat \| scope-bootstrap \| module`; определяет один из трёх легальных ownership cases                              |
-| `--slug <slug>`   | string  | Человекочитаемый kebab-case слаг. Обязателен для `research`; дату (сегодняшнюю) подставляет инструмент, не оператор                                              |
+| `--slug <slug>`   | string  | Обязательный для `research` kebab-case слаг; дату подставляет инструмент                                                                                         |
 | `--out <path>`    | string  | Явный destination; для task — repo-relative non-symlink path внутри `specs/` с ровно одним structural owner; explicit identity только сверяет owner              |
 | `--list`          | boolean | Вывести все известные kind + их `pathPattern` и завершиться                                                                                                      |
 | `--manifest`      | boolean | Вывести таблицу секций для `<kind>` и завершиться — без создания файла, `--scope`/`--module`/`--id` не требуются                                                 |

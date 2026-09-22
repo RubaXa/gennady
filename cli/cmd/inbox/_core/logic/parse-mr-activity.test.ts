@@ -1,6 +1,6 @@
 // @file: Unit tests for parseMrActivity — parsing system notes into MrActivityEvent[].
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

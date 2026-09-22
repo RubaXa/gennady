@@ -1,6 +1,6 @@
 // @file: Integration tests for SddTaskCommand#run — planning surface, manifests, gate-matching, exit codes.
+// @spec: CLI-SDD-TASK
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,5 +1,11 @@
 # Module: dbc-linter
 
+<!--SECTION:SPEC_ID-->
+
+DBC-DBC-LINTER
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Модуль линтинга: проверка покрытия кодовых сущностей DBC-контрактами, валидация контрактов через `dbc-parser`, сверка сигнатур контракта с реальным кодом, генерация ESLint-совместимого отчёта и autofix исправимых ошибок.
@@ -330,7 +336,7 @@ services/dbc/linter/
 ### D-016 — Проверка type alias (объектный литерал) и interface property (function-typed)
 
 - **Status:** active
-- **Recorded:** session Execution, dbc, TSK-19
+- **Recorded:** session Execution, dbc, DL-objprop
 - **Why:** `type SimpleLogger = { debug: (m: string) => void }` — методы внутри type alias не проверялись. `interface property` с function type не проверялась. Адаптер расширен: `_extractTypeAliasMembers` (извлечение членов из object_type), `_isFunctionTypedProperty` (классификация function-typed property как interface-method). `_extractSignature` обновлён для `function_type` узлов.
 - **Risk accepted:** Только type alias с объектным литералом. Mapped types, intersection types, union types — не поддерживаются (v1).
 - **Rejected alternatives:** Полный парсинг всех вариантов type alias — overengineered для v1.
@@ -338,7 +344,7 @@ services/dbc/linter/
 ### D-017 — Fix `_reorderTags`: `*/` closing boundary
 
 - **Status:** active
-- **Recorded:** session Execution, dbc, TSK-20
+- **Recorded:** session Execution, dbc, DL-tags
 - **Why:** `_reorderTags` обрабатывал `*/` как continuation-строку последнего тега. После сортировки `*/` уезжал в середину, а теги с order=99 выпадали за границы JSDoc — синтаксис TypeScript ломался. Исправлено: `*/` детектится до разбора тегов и добавляется последней строкой. 7 тестов покрывают edge cases (нет тегов, один тег, обратный порядок, неизвестные теги, multi-line значения).
 - **Risk accepted:** —
 - **Rejected alternatives:** Игнорировать — баг воспроизводился на vcs-client с тегом `@consumer` (старый формат).
@@ -346,7 +352,7 @@ services/dbc/linter/
 ### D-018 — Autofix: normalizeMultiLine + single-tag inline + always-run formatting
 
 - **Status:** active
-- **Recorded:** session Execution, dbc, TSK-21
+- **Recorded:** session Execution, dbc, DL-jsdoc-fx
 - **Why:** (1) Добавлен `_normalizeMultiLine` — реконструирует любой multi-line JSDoc в канонический вид (`/**` отдельно, `*` префикс, ` */` отдельно). (2) `_inlineIfSafe` инлайнит однотеговые контракты, сохраняя исходный отступ. (3) `lintAndFix` всегда парсит и нормализует (убран ранний return при `initialCount === 0`).
 - **Risk accepted:** Однотеговые контракты становятся длинными inline-строками — допустимо для v1.
 - **Rejected alternatives:** Реконструкция JSDoc с нуля без сохранения отступов — теряет форматирование в IDE.
@@ -460,7 +466,7 @@ graph TD
   **F. ERR_DBC_LINT_PARAM_ORDER — порядок @param не совпадает с сигнатурой (autofix):**
   | # | Fixture | Что проверяется |
   |---|---------|-----------------|
-  | F1 | `param-order/reversed.ts` | Сигнатура: a, b, c. Контракт: @param c, @param b, @param a |
+  | F1 | `param-order/reversed.ts` | Сигнатура a, b, c при обратном порядке @param c, b, a |
   | F2 | `param-order/partial.ts` | Порядок нарушен частично (2 из 3 не на месте) |
   | F3 | `param-order/autofix.ts` | После autofix порядок исправлен |
 

@@ -1,6 +1,6 @@
 // @file: ReviewDecision entity — operator selection/edit/rejection or proven automatic restoration intent.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectQueue, ReviewEffectCoordinator
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 import type { ReviewGuardedIntent } from '../types/review-guarded-intent.type.ts';

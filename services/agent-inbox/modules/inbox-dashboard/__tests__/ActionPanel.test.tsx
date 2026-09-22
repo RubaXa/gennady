@@ -2,8 +2,8 @@
 //   author buttons incl. [Копировать задание] with no Approve, candidates checkboxes
 //   + inline-edit, posting a subset builds the expected payload; copy-fix-task first click
 //   (full composeFixTask, unchanged) vs. repeat click (brief composeFixTaskDelta) (TSK-146).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-107, TSK-146
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

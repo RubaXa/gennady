@@ -3,8 +3,8 @@
 //   deliberately malformed, proving deep-merge, provenance-carrying validation, and exit 4 end to
 //   end (not just at the loadStackConfig unit level already covered by
 //   shared/verify/__tests__/stack-config.test.ts).
+// @spec: CLI
 // @consumers: N/A
-// @tasks: V-07
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

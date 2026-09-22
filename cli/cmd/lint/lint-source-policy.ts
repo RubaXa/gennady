@@ -1,6 +1,6 @@
 // @file: GennadyLintSourcePolicy — one extension policy for lint target resolution and SDD audit evidence.
+// @spec: CLI-LINT
 // @consumers: LintCommand, SddTaskCommand
-// @tasks: N/A
 
 import { extname } from 'node:path';
 

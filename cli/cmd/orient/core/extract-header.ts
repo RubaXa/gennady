@@ -1,6 +1,6 @@
 // @file: Extract file header tags (@file:, V2 @spec:, legacy @tasks:, @consumers:) from source content.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { FileHeader } from '../orient.types.ts';
 import { looksLikeTaskId } from '../../../../shared/sdd/task-id.ts';

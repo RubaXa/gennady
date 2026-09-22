@@ -1,6 +1,6 @@
 // @file: Factory function for AgentMonitor instantiation
+// @spec: AGENT-MON-MONITOR
 // @consumers: CLI, agent-mon barrel
-// @tasks: TSK-36
 
 import { AgentMonitor } from './agent-monitor.ts';
 

@@ -1,8 +1,8 @@
 // @file: SddMigrateCommand — v1→v2 migration tool-modes: `anchors` injects <!--SECTION:--> markers
 //   into v1 tickets; `plan` generates/verifies the on-disk migration layer; `move` runs a
 //   whole-scope fail-closed Spec-ID/header preflight before relocating one scope's tickets.
+// @spec: CLI-SDD-MIGRATE
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync, existsSync } from 'node:fs';
 import { join, resolve, relative, dirname } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Smoke test for inbox-dashboard — open dashboard, verify header and board render.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test
-// @tasks: TSK-107
 
 import { test, expect } from '@playwright/test';
 import { mrArtifactRefs510, mrArtifactContents510 } from './fixtures/mock-data.ts';

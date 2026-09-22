@@ -1,6 +1,6 @@
 // @file: sdd-verify command help output.
+// @spec: CLI-SDD-VERIFY
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-verify command.

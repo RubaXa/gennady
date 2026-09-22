@@ -1,6 +1,6 @@
 // @file: Describe verify-block substitutions for the AI template.
+// @spec: CLI
 // @consumers: render-review-verify.xml, resolve-conflicts-render.xml
-// @tasks: N/A
 
 import { resolveSafeVerifyCommands } from './verify-commands/resolve-verify-commands.logic.ts';
 

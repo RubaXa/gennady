@@ -1,6 +1,6 @@
 // @file: Public production-style sync proof for canonical review ingestion and SystemClock scheduling.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-173
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

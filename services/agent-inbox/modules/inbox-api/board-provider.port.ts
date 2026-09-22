@@ -1,6 +1,6 @@
 // @file: BoardProviderPort — abstract boundary for board state access: getBoard, assignMr, executeAction, getReport.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: inbox-api routers, inbox-dashboard, DI container
-// @tasks: TSK-106, TSK-145
 
 import type {
   BoardData,

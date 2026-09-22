@@ -1,6 +1,6 @@
 // @file: CLI-owned group-completion receipt — the durable "group audited/reviewed, verdict V, at git-ref R" fact.
+// @spec: SHARED
 // @consumers: sdd-log.cmd (writer), sdd-check.cmd (re-derivation gate)
-// @tasks: N/A
 
 import { createHash } from 'node:crypto';
 import { basename } from 'node:path';

@@ -1,5 +1,11 @@
 # Module: run
 
+<!--SECTION:SPEC_ID-->
+
+CLI-RUN
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 CLI-обёртка `gennady run` над `services/agent-run/`. Парсит `--dir`, `--model`, `--engine`, `--timeout` и делегирует в движок запуска агентов (opencode). Тонкий слой: вся логика запуска, обнаружения движков и маппинга ошибок — в `agent-run`. CLI только валидирует аргументы, вызывает `run()` и печатает результат или ошибку.

@@ -1,6 +1,6 @@
 // @file: AuthorTail — prepares author notification with findings summary, MR context, review verdict
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
-// @tasks: TSK-161
 
 import { logger } from '#logger';
 import type { FindingEntry } from '../findings-journal.ts';

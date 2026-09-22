@@ -1,6 +1,6 @@
 // @file: E2E orchestrator — setup error-path tests + sequential lint → orient → sync → sync-skills.
+// @spec: CLI-E2E
 // @consumers: E2eContext, setupE2e
-// @tasks: TSK-60
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Shared VCS client factory — creates correct client (GitLab/GitHub) from resolved context.
+// @spec: CLI
 // @consumers: all vcs-* commands, inbox-context
-// @tasks: TSK-68
 
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';

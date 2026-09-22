@@ -1,6 +1,6 @@
 // @file: Both-outcomes proof of the batch's CI-suitable aggregate exit code (E-00).
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/cli.ts
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

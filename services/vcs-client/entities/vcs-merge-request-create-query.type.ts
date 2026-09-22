@@ -1,6 +1,6 @@
 // @file: Parameters for creating a merge request / pull request.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeRequests.create
-// @tasks: TSK-88
 
 /**
  * @purpose Parameters for creating a new Merge Request / Pull Request.

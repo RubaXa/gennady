@@ -1,6 +1,6 @@
 // @file: KanbanLane — read-only Kanban column (lanes are moved by the role engine, not the operator).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: RoleBlock
-// @tasks: TSK-107
 
 import type { MrCard as MrCardType } from '../../inbox-api/types.ts';
 import { MrCard } from './MrCard.tsx';

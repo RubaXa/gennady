@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-todo — mark todos done by MR ref, by id, dry-run, empty todos.
+// @spec: CLI
 // @consumers: CI
-// @tasks: TSK-76
 
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

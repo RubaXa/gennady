@@ -1,6 +1,6 @@
 // @file: OpencodeEngine — AgentEngine adapter for opencode subprocess execution.
+// @spec: AGENT-RUN-OPENCODE
 // @consumers: index.ts (composition root)
-// @tasks: TSK-63, TSK-64
 
 import { execFile, spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';

@@ -1,8 +1,8 @@
 // @file: Unit tests for SelectionPill — debounced post-mouseup appearance under a non-empty
 //   selection, attaching the selection as a ContextChip via onAttach on click (D-113, CH-01), and
 //   origin capture against the active artifact's raw source (D-115, TSK-132).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-130, TSK-132
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

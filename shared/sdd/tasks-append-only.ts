@@ -1,6 +1,6 @@
 // @file: Legacy-V1-only comparison of a file's `@tasks:` header ids against HEAD; V2 ownership uses one canonical @spec plus file-relations.
+// @spec: SHARED
 // @consumers: sdd-check.cmd
-// @tasks: N/A
 
 import type { Finding } from './check.ts';
 import { parseSourceOwnershipHeader } from './source-ownership-header.ts';

@@ -1,8 +1,8 @@
 // @file: Locks that DbcTsLinter autofix output is Prettier-compatible — the two defects that made
-// `npm run fix` (prettier --write; then lint --autofix) non-idempotent: a bare `*/` closing marker
-// and a `*`-prefix added in column 0. Both produced blocks that `prettier --check` then rejected.
+//   `npm run fix` (prettier --write; then lint --autofix) non-idempotent: a bare `*/` closing marker
+//   and a `*`-prefix added in column 0. Both produced blocks that `prettier --check` then rejected.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinter
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

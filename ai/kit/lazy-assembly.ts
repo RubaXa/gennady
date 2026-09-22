@@ -1,8 +1,8 @@
 // @file: Lazy directive assembly — splits a delta-reduced directive into a slim skeleton plus one
-// package per Step, and the pure helpers that guard the split (assembly-mode resolution, axiom/
-// contract activation signal, version-fingerprint parity, lazy-candidacy reassessment).
+//   package per Step, and the pure helpers that guard the split (assembly-mode resolution, axiom/
+//   contract activation signal, version-fingerprint parity, lazy-candidacy reassessment).
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: build-directives.ts (wiring lands in a later phase of this task)
-// @tasks: DA-lazy-asm
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

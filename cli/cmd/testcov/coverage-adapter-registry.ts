@@ -1,4 +1,5 @@
 // @file: Fail-closed adapter selection for platform-neutral testcov orchestration.
+// @spec: CLI-TESTCOV
 // @consumers: testcov.cmd.ts, coverage-adapter-registry.test.ts
 
 import type { CoverageAdapter, CoverageAdapterSelection } from './coverage-adapter.types.ts';

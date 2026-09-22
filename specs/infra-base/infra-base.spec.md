@@ -1,5 +1,11 @@
 # infra-base: Infrastructure Specification
 
+<!--SECTION:SPEC_ID-->
+
+INFRA-BASE
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 infrastructure

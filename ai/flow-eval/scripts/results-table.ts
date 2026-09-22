@@ -3,12 +3,13 @@
 //   outside the <!-- GAP-E-6:GENERATED:BEGIN/END --> markers: the surrounding hand-written prose and
 //   the PR #32 historical tables (restored from the OpenCode journal, no summary.json backs them)
 //   survive untouched.
+// @spec: AI-SKILLS
 // @consumers: package.json "results:table" (or run directly with tsx); a freshness test
 //   (results-table.test.ts) asserts regenerating produces byte-identical output — "the table IS the
 //   data", not a hand-maintained copy that can drift.
-// @usage: node --import tsx ai/flow-eval/scripts/results-table.ts [--results-dir DIR] [--out FILE] [--check]
-//   --check: exit 1 (no write) when the regenerated block would differ from what's on disk — the
-//   freshness gate a test or CI step can call directly.
+//   @usage: node --import tsx ai/flow-eval/scripts/results-table.ts [--results-dir DIR] [--out FILE] [--check]
+//     --check: exit 1 (no write) when the regenerated block would differ from what's on disk — the
+//     freshness gate a test or CI step can call directly.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

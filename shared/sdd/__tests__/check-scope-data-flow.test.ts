@@ -1,7 +1,7 @@
 // @file: Unit tests for checkScopeDataFlowDiagram — product/library scope specs already on the new
-// Requirements format must show a data-flow rung (subheading, or a diagram captioned as such).
+//   Requirements format must show a data-flow rung (subheading, or a diagram captioned as such).
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

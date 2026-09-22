@@ -1,6 +1,6 @@
 // @file: Generate commit message from staged diff via LLM.
+// @spec: CLI
 // @consumers: commit.cmd
-// @tasks: N/A
 
 import { AiLegacyCore } from '../ai-legacy/ai-legacy-core.ts';
 import { getGitDiffInfo } from '../../../shared/backend/git/git-core.ts';

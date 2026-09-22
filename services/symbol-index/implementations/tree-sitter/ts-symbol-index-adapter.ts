@@ -1,6 +1,6 @@
 // @file: tree-sitter TypeScript adapter for SymbolIndex — exact declared-symbol listing + reference counting via the same TS grammar services/dbc/linter uses.
+// @spec: SHARED
 // @consumers: yagni.cmd (composition root)
-// @tasks: N/A
 
 import type { default as Parser, SyntaxNode } from 'tree-sitter';
 import { DbcTsAstAdapter } from '../../../dbc/linter/implementations/ts/dbc-ts-ast-adapter.ts';

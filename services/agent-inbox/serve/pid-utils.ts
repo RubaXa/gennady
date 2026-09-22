@@ -2,8 +2,8 @@
 //   transparent graceful termination of an orphaned opencode child left by a previous
 //   `gennady inbox serve` instance (never any process outside our own recorded PID files —
 //   the operator's own manually-run opencode/OpenCode.app is never touched).
+// @spec: AGENT-INBOX
 // @consumers: gracefulShutdown, serve.cmd.ts, bootstrap.ts
-// @tasks: TSK-115, TSK-117
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

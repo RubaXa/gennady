@@ -1,6 +1,6 @@
 // @file: Tests for the DbcTsAstAdapter — parsing TypeScript files via tree-sitter.
+// @spec: DBC-DBC-LINTER
 // @consumers: N/A (testing only)
-// @tasks: TSK-08
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

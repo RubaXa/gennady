@@ -1,6 +1,6 @@
 // @file: sdd-migrate command help output.
+// @spec: CLI-SDD-MIGRATE
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-migrate command.

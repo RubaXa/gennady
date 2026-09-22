@@ -2,8 +2,8 @@
 //   (a)-(e), the peer-thread structural invariant, a live read-only classification against a real
 //   actionable MR (D-116), and the dry-run guard proving EffectExecutor never posts a real write
 //   when dispatching the "commit+verified, author silent" case.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-142
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

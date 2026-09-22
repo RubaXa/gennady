@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# @file: ai/flow-eval/scripts/reset-ticket.py
+# @spec: AI-SKILLS
+# @consumers: N/A
 """Reopen an SDD v2 ticket for a round-trip regeneration.
 
 Given the path to a `*.task.<ID>.md` file it: flips the Meta Status and every Phases-Overview row to

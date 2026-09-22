@@ -1,7 +1,7 @@
 // @file: Tests for inbox-review-plan command — deterministic track classification, plus the
 //   document-pipeline scaffold/validate modes and the inbox --reset reports cleanup.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-102, TSK-103, TSK-134
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Negative and positive proofs for exact missing-readiness-gate phase ownership.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';

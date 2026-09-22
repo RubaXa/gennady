@@ -1,6 +1,6 @@
 // @file: Resolve a CLI ticket argument (path or bare Task-ID) to file content — shared by every SDD command that takes a ticket argument.
+// @spec: SHARED
 // @consumers: sdd-task.cmd, sdd-log.cmd, sdd-check.cmd, sdd-sync.cmd
-// @tasks: N/A
 
 import { readdirSync, realpathSync } from 'node:fs';
 import { resolve, join, relative } from 'node:path';

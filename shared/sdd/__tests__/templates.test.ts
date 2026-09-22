@@ -1,6 +1,6 @@
 // @file: Unit tests for the artifact template registry — derived-list parity with check.ts and skeleton integrity.
+// @spec: SHARED
 // @consumers: templates
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

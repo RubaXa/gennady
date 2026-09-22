@@ -1,6 +1,6 @@
 // @file: Unit tests for the SDD eval judge verdict parser.
+// @spec: AI-SKILLS
 // @consumers: ai/flow-eval/judge
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

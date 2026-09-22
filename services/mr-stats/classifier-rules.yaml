@@ -1,6 +1,6 @@
 # @file: Classifier rules for mr-stats — 10 categories with include/exclude masks.
 # @consumers: Classifier
-# @tasks: TSK-138
+# @tasks: MS-config
 #
 # Категории в порядке приоритета (first-match wins).
 # Порядок: от наиболее специфичных к наиболее широким маскам.

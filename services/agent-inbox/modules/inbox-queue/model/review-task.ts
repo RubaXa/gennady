@@ -1,6 +1,6 @@
 // @file: ReviewTask entity — typed per-MR unit of orchestration work with lifecycle, supersede, and recovery semantics.
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewTaskRegistry, TaskExecutorPort
-// @tasks: TSK-177
 
 import { logger } from '#logger';
 

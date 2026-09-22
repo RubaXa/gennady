@@ -1,3 +1,6 @@
+// @file: shared/verify/presets/__tests__/golang.test.ts
+// @spec: SHARED
+// @consumers: N/A
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

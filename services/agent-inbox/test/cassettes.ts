@@ -1,6 +1,6 @@
 // @file: cassettes — sanitized, body-sensitive HTTP cassettes for real adapter contract tests.
+// @spec: AGENT-INBOX
 // @consumers: agent-inbox port contract suites
-// @tasks: TSK-166
 
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';

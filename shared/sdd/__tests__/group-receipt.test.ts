@@ -1,6 +1,6 @@
 // @file: Unit tests for the CLI-owned group-completion receipt — derive, build, format/parse, validity, and the WARN gate.
+// @spec: SHARED
 // @consumers: shared/sdd/group-receipt.ts
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

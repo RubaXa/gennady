@@ -1,6 +1,8 @@
 // @file: ai/inspector — recursively expand 'run' nodes (directive refs) into the referenced directive's tree.
-// Cycle-guarded (a directive that references an ancestor on the current path is marked, not followed) and
-// depth-capped. The file reader is injected so the resolver stays pure and testable.
+//   Cycle-guarded (a directive that references an ancestor on the current path is marked, not followed) and
+//   depth-capped. The file reader is injected so the resolver stays pure and testable.
+// @spec: AI-SKILLS
+// @consumers: N/A
 
 import type { FileReader, TraceNode } from './model.ts';
 import { parseDirective } from './parse-directive.ts';

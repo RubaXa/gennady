@@ -1,8 +1,8 @@
 // @file: Drift guard — every rendered ai/directives/sdd-v2/formats/<kind>-*.xml embeds the literal
-// skeleton from shared/sdd/templates.ts verbatim (indented one UNIT). Catches divergence between the
-// registry (single source of truth) and either the kit contract source or the generated output.
+//   skeleton from shared/sdd/templates.ts verbatim (indented one UNIT). Catches divergence between the
+//   registry (single source of truth) and either the kit contract source or the generated output.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

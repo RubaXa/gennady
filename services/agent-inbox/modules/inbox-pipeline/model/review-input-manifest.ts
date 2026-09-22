@@ -1,6 +1,6 @@
 // @file: Immutable captured review input inventory and persisted sealing outcome.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewInputManifestBuilder, ReviewContractCompiler, ReviewStructuralValidator
-// @tasks: TSK-176
 
 import type {
   ReviewInputClassification,

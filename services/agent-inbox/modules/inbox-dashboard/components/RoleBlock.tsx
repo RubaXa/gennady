@@ -1,6 +1,6 @@
 // @file: RoleBlock — collapsible role block with four Kanban lanes (INBOX → PROGRESS → AWAITING → DONE).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: BoardPage
-// @tasks: TSK-107
 
 import { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';

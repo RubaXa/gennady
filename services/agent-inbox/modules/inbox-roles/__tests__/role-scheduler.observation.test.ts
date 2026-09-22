@@ -5,8 +5,8 @@
 //   worktree is the only source of hasNewCommit). The SV-19 commit-only-hold case below wires a
 //   real `createGitFixture` worktree through `buildNodeContext` so `headChanged` genuinely
 //   resolves to `fast_forward` — see that case for the exact plumbing.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
-// @tasks: TSK-141, D-138, TSK-148
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

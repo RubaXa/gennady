@@ -1,7 +1,7 @@
 // @file: buildNodeContext — assembles a live NodeContext for one MR (worktree, changeset,
 //   base, stage/headChanged) from real VCS + registry state, for RoleScheduler assignment.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleScheduler
-// @tasks: TSK-121, TSK-122
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';

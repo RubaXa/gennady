@@ -1,6 +1,6 @@
 // @file: FeedWidget DTO — canonical discriminated feed-widget surface from inbox-api spec §4.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: FeedProjection, feed.router.ts, inbox-dashboard
-// @tasks: TSK-162
 
 /** @purpose Meta-anchor transported with a widget into inbox-chat (inbox-chat §2). */
 export type FeedWidgetAnchor = {

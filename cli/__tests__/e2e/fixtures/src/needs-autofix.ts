@@ -1,4 +1,5 @@
 // @file: Fixture with DBC errors for autofix.
+// @spec: CLI-E2E
 // @consumers: FixtureConsumer
 
 /**

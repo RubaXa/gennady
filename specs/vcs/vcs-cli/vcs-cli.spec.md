@@ -1,5 +1,11 @@
 # vcs-cli: Module Specification
 
+<!--SECTION:SPEC_ID-->
+
+VCS-VCS-CLI
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 CLI-команды VCS-домена: тонкие обёртки над `vcs-client`. Авто-детект контекста (ветка, проект, хост, токен) через `vcs-context-resolver`. Единый DI-паттерн с `resolveVcsContext` + `VcsGitlabClient`. Поддержка `--dry-run` на всех мутирующих командах.

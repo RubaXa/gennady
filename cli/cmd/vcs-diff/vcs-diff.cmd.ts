@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: vcs-diff CLI command — list changed files in MR via getChanges; show file content via getFileContent.
+// @spec: CLI
 // @consumers: vcs-diff
-// @tasks: TSK-81
 
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';

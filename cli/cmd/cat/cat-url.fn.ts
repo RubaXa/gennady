@@ -1,6 +1,6 @@
 // @file: Resolve cat --url: parse URL → VCS client → fetch ALL changed files → CatGenResult[].
+// @spec: CLI-CAT
 // @consumers: cli/cmd/cat/cat.cmd.ts
-// @tasks: TSK-31
 
 import { parseVcsUrl } from '../../../services/vcs-client/parse-vcs-url.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';

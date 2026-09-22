@@ -1,6 +1,6 @@
 // @file: Integration tests for exact bounded crash-resumable review repair.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: TSK-176 audit
-// @tasks: TSK-176
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

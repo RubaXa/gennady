@@ -1,5 +1,11 @@
 # Module: orient
 
+<!--SECTION:SPEC_ID-->
+
+CLI-ORIENT
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Навигация по проекту через file-header разметку (`@file:`, V2 `@spec:`, legacy `@tasks:`,
@@ -124,8 +130,8 @@ $ gennady orient
 $ gennady orient --detail
 
 # --- S2: поиск по задаче ---
-$ gennady orient --task=TSK-01
-$ gennady orient --task=TSK-01 --task=TSK-02
+$ gennady orient --task=DP-fields
+$ gennady orient --task=DP-fields --task=DP-jsdoc
 
 # --- S3: поиск потребителей ---
 $ gennady orient --consumer=DbcTsLinter

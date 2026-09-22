@@ -1,6 +1,6 @@
 // @file: Unit tests for ARIA snapshot helpers — captureAriaSnapshot, compareAriaSnapshot, generateAriaSnapshot.
+// @spec: AGENT-INBOX
 // @consumers: none (test-only)
-// @tasks: TSK-114
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

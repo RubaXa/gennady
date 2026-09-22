@@ -1,6 +1,6 @@
 // @file: Unit tests for checkDecisionLogIds — <ACR>-DL-<N> grammar/uniqueness + legacy D-NNN migration hint.
+// @spec: SHARED
 // @consumers: check
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

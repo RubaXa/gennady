@@ -1,4 +1,5 @@
 // @file: review command help output
+// @spec: CLI-REVIEW
 // @consumers: help command
 /**
  * @purpose Print CLI help for the review command.

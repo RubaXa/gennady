@@ -5,6 +5,11 @@
 #     bash ai/flow-eval/scripts/require-developer-repo.test.sh
 set -uo pipefail
 
+# Keep the "success is silent" assertion hermetic on hosts that do not install
+# the inherited locale (for example macOS with LC_ALL=C.UTF-8).
+export LC_ALL=C
+export LANG=C
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 guard="$script_dir/require-developer-repo.sh"
 

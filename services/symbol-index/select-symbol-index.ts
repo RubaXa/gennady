@@ -1,6 +1,6 @@
 // @file: Pure by-extension adapter selection for SymbolIndex — tree-sitter vs grep. Construction happens once in the yagni command (composition root); this only picks.
+// @spec: SHARED
 // @consumers: yagni.cmd (composition root)
-// @tasks: N/A
 
 import type { SymbolIndex } from './symbol-index.types.ts';
 import { sourceEvidenceLevel } from '../../shared/sdd/source-extensions.ts';

@@ -1,6 +1,6 @@
 // @file: Go project detection — modules, workspace, vendoring, golangci config, make targets, tools.
+// @spec: CLI-VERIFY
 // @consumers: golang-plugin, golang-plan.logic
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';

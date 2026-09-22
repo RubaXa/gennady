@@ -1,6 +1,6 @@
 // @file: sdd-check command help output.
+// @spec: CLI-SDD-CHECK
 // @consumers: help command
-// @tasks: N/A
 
 /**
  * @purpose Print CLI help for the sdd-check command.

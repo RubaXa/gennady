@@ -1,6 +1,6 @@
 // @file: Barrel export for all 10 eval runners
-// @consumers: EvalHarness (TSK-165)
-// @tasks: TSK-165
+// @spec: AGENT-INBOX-INBOX-EVAL
+// @consumers: EvalHarness (IE-harness)
 
 export { type EvalRunContext, type EvalRun, pass, fail } from './context.ts';
 export { runEval as runBoot } from './boot.run.ts';

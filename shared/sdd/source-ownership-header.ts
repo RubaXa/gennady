@@ -1,6 +1,6 @@
 // @file: Canonical parser for leading source ownership headers shared by V1 compatibility and V2 migration.
+// @spec: SHARED
 // @consumers: tasks-append-only, migration-file-headers
-// @tasks: N/A
 
 /** @purpose Canonical ownership tags supported in source-file headers. */
 export type SourceOwnershipTag = 'file' | 'spec' | 'tasks' | 'consumers';
@@ -96,7 +96,22 @@ export function parseSourceOwnershipHeader(content: string): ParsedSourceOwnersh
       index += 1;
       const escapedPrefix = prefix === '//' ? '\\/\\/' : '#';
       const continuation = new RegExp(`^\\s*${escapedPrefix}[ \\t]{2,}.*$`);
-      while (index < lines.length && continuation.test(lines[index] ?? '')) index += 1;
+      const blankComment = new RegExp(`^\\s*${escapedPrefix}[ \\t]*$`);
+      while (index < lines.length) {
+        if (continuation.test(lines[index] ?? '')) {
+          index += 1;
+          continue;
+        }
+        if (blankComment.test(lines[index] ?? '')) {
+          let next = index;
+          while (next < lines.length && blankComment.test(lines[next] ?? '')) next += 1;
+          if (continuation.test(lines[next] ?? '')) {
+            index = next;
+            continue;
+          }
+        }
+        break;
+      }
       blocks.push({
         tag,
         prefix,

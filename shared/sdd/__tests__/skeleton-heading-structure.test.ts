@@ -4,8 +4,8 @@
 //   a real incident: the module skeleton once carried `## Requirements` immediately followed by a lone
 //   `### Requirements` — copied from the scope skeleton, where that same subheading has siblings (###
 //   Out-of-Scope, ### Runtime & Deferred Scope, …) and is not an orphan there.
+// @spec: SHARED
 // @consumers: templates
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

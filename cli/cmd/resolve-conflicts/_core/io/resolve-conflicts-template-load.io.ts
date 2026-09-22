@@ -1,6 +1,6 @@
 // @file: Load resolve-conflicts template from the project or fallback from the library.
+// @spec: CLI
 // @consumers: resolve-conflicts-render.xml
-// @tasks: N/A
 
 import { loadAgentTemplate } from '../../../_shared/prompt/io/load-agent-template.io.ts';
 

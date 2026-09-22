@@ -1,6 +1,6 @@
 // @file: FO-5 contract tests for resolver-backed workflow consumers and canonical V2 headers.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: directive templates, file-header axioms, SDD scaffold templates
-// @tasks: N/A
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

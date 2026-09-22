@@ -1,6 +1,8 @@
 // @file: author-pipeline.spec.ts — e2e proof that the author role pipeline works end-to-end.
 //   Assigns a real MR as author, verifies lane placement, progress counters, and stage transitions.
-// @usage: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts author-pipeline.spec.ts
+//   @usage: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts author-pipeline.spec.ts
+// @spec: AGENT-INBOX
+// @consumers: N/A
 import { test, expect } from '@playwright/test';
 import { shot } from '../helpers/shot.ts';
 

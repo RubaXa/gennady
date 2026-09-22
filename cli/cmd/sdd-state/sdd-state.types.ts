@@ -1,6 +1,6 @@
 // @file: Types, error codes, and snapshot formatting for the sdd-state command.
+// @spec: CLI-SDD-STATE
 // @consumers: SddStateCommand
-// @tasks: N/A
 
 import type { ReadinessResult } from '../../../shared/sdd/readiness.ts';
 import type { GraphEdge, Scope } from '../../../shared/sdd/portal.ts';

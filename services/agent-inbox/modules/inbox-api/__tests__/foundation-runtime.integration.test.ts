@@ -1,6 +1,6 @@
 // @file: Foundation runtime integration — shared boot state and MR-scoped decision persistence.
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
-// @tasks: TSK-157
 
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -68,7 +68,7 @@ function requestJson(
   });
 }
 
-describe('TSK-157 foundation runtime backing', () => {
+describe('IC-decision foundation runtime backing', () => {
   const stateDir = mkdtempSync(join(tmpdir(), 'gennady-foundation-'));
   const readiness = new BootReadiness();
   const journals = new Map<string, DecisionJournal>();
@@ -136,7 +136,7 @@ describe('TSK-157 foundation runtime backing', () => {
   });
 });
 
-describe('TSK-157 public bootstrap lifecycle', () => {
+describe('IC-decision public bootstrap lifecycle', () => {
   it('serves real /api/boot snapshots before and through every bootstrap phase', async () => {
     const port = await reservePort();
     const observed: Array<{ status: number; body: Record<string, unknown> }> = [];

@@ -1,4 +1,5 @@
 // @file: Glob-to-regex conversion for --exclude file filtering.
+// @spec: CLI-LINT
 // @consumers: LintCommand
 
 /**

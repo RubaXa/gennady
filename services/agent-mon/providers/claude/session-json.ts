@@ -1,6 +1,6 @@
 // @file: Session JSON and title readers for Claude provider — filesystem access to ~/.claude/
+// @spec: AGENT-MON
 // @consumers: ClaudeProvider
-// @tasks: TSK-39
 
 import { readFileSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';

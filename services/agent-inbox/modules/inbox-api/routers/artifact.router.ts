@@ -1,6 +1,6 @@
 // @file: ArtifactRouter — GET /api/mr/:id/artifacts, GET /api/mr/:id/artifact?path= for the artifact browser.
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
-// @tasks: TSK-106, TSK-122, TSK-162
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { logger } from '#logger';

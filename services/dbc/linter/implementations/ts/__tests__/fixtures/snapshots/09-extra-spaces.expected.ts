@@ -1,4 +1,5 @@
 // @file: extra spaces
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
    *    @purpose    Extra spaces everywhere.

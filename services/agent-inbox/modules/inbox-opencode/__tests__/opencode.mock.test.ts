@@ -1,6 +1,6 @@
 // @file: Unit tests for OpenCodeMock — all outcome classes, continue recovery, recovery ladder.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
-// @tasks: TSK-111
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

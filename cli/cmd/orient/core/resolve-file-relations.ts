@@ -1,6 +1,6 @@
 // @file: Read-only orient adapter from source header and canonical SDD corpus to the shared file-relations core.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: N/A
 
 import { readdirSync, readFileSync, type Dirent } from 'node:fs';
 import { dirname, relative, resolve, sep } from 'node:path';

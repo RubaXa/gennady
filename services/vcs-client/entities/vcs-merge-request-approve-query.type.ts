@@ -1,6 +1,6 @@
 // @file: Parameters for approving a merge request — repository and IID.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeRequests
-// @tasks: TSK-67, TSK-73
 
 /** @purpose Parameters for approving a merge request. */
 export type VcsMergeRequestApproveQuery = {

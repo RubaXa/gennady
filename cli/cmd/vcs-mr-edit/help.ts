@@ -1,6 +1,6 @@
 // @file: vcs-mr-edit command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-92
 
 /**
  * @purpose Print CLI help for the vcs-mr-edit command.

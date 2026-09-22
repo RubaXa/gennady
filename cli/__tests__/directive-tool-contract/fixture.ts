@@ -1,8 +1,8 @@
 // @file: Minimal SDD-repo fixture for directive-tool-contract.test.ts — portal + one module spec +
 //   one v2-named ticket + a tiny real source module, git-initialized so git-scoped tools (yagni,
 //   sdd-check --changed, sdd-task --group-scope) see a real, clean HEAD.
+// @spec: CLI
 // @consumers: directive-tool-contract.test.ts
-// @tasks: N/A
 
 import { execSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';

@@ -1,6 +1,6 @@
 // @file: CLI command: inbox config — manage agent-inbox configuration (~/.gennady/agent-inbox/config.json).
+// @spec: AGENT-INBOX
 // @consumers: gennady.ts
-// @tasks: TSK-92
 
 import { existsSync, statSync } from 'node:fs';
 import { isAbsolute } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: Output formatting + exit-code convention for gennady yagni — same ESLint-compatible line format as `gennady lint`.
+// @spec: CLI-YAGNI
 // @consumers: yagni.cmd
-// @tasks: N/A
 
 import type { YagniFinding } from '../../../shared/sdd/yagni.ts';
 import type { YagniIoIssue } from './yagni-index.ts';

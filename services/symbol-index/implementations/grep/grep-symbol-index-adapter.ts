@@ -1,6 +1,6 @@
 // @file: Approximate, language-agnostic SymbolIndex fallback — plain regex, any extension without an installed tree-sitter grammar (the seam for Go/Python consumers).
+// @spec: SHARED
 // @consumers: yagni.cmd (composition root)
-// @tasks: N/A
 
 import { extname } from 'node:path';
 import type {

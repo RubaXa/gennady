@@ -3,8 +3,8 @@
 //   review on disk (GENNADY_STATE_DIR + SERVE_REGISTER_MRS point the webServer at it). Screenshots
 //   every significant stage into test-results/screenshots/, asserting the REAL content is on screen
 //   BEFORE each shot so a blank/placeholder frame fails loudly instead of lying.
+// @spec: AGENT-INBOX
 // @consumers: npx playwright test reviewer-flow.spec.ts
-// @tasks: TSK-123
 
 import { test, expect } from '@playwright/test';
 import { shot } from './helpers/shot.ts';

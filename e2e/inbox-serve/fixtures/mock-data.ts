@@ -1,6 +1,6 @@
 // @file: Mock data scenarios for inbox-dashboard e2e tests.
+// @spec: AGENT-INBOX
 // @consumers: e2e/inbox-serve/*.spec.ts
-// @tasks: TSK-107, TSK-108
 
 import type {
   BoardData,

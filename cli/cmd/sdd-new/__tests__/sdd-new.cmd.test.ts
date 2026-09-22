@@ -1,6 +1,6 @@
 // @file: Integration tests for SddNewCommand#run — arg parsing, path resolution, no-overwrite, manifest report.
+// @spec: CLI-SDD-NEW
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

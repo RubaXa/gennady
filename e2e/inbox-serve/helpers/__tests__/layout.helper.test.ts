@@ -1,6 +1,6 @@
 // @file: Unit tests for layout helper — getRelativePosition, isLeftOf, isBelow, isWithin.
+// @spec: AGENT-INBOX
 // @consumers: none (test-only)
-// @tasks: TSK-114
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

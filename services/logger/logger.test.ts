@@ -1,7 +1,7 @@
 // @file: Unit tests for the logger ring buffer — snapshotServerLog captures every level regardless
 //   of the console level filter (the 🐞 button needs post-hoc lines even when the console was quiet).
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: TSK-debug-log
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

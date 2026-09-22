@@ -1,6 +1,6 @@
 // @file: OpenCode outcome classes, structured error result, and error factory for the inbox-opencode module.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-opencode (port, mock, pool), inbox-roles
-// @tasks: TSK-111, TSK-175
 
 /**
  * @purpose All possible AI-node outcome classes — the recovery ladder in inbox-roles

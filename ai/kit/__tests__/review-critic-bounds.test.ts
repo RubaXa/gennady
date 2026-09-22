@@ -22,8 +22,8 @@
 //   an error or a one-line pointer (V-BATCH-20 N-4 adds the STEP_3_REPORT accounting-line lock).
 //   Also guards T-B6-05: reconcile activates AX_DISPATCH_VIA_BATCH so a task-continue dispatches
 //   through execute as one batch, with execute remaining the sole owner of audit/code-review.
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
 // @consumers: node:test runner
-// @tasks: T-B6-03, ISS-10, T-B6-05
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Unit tests for the SDD readiness ladder card render — key states per the operator's format.
+// @spec: SHARED
 // @consumers: ladder
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: ProviderColumn ink component — one provider column with header + session cards.
+// @spec: AGENT-MON-CLI-UI
 // @consumers: ColumnView
-// @tasks: TSK-46
 
 import { Box, Text } from 'ink';
 import type { ProviderColumn as ProviderColumnData } from '../state/view-model.type.ts';

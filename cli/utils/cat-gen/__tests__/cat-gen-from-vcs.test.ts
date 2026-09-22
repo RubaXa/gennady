@@ -1,6 +1,6 @@
 // @file: Unit tests for catGenFromVcs — pure function converting VCS files to CatGenResult[].
+// @spec: CLI
 // @consumers: node:test runner
-// @tasks: TSK-31
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

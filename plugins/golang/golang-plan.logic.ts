@@ -1,6 +1,6 @@
 // @file: Turn a detected Go project plus a scope into an ordered, non-mutating gate plan.
+// @spec: CLI-VERIFY
 // @consumers: golang-plugin, stack-config (gate id list)
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';

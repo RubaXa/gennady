@@ -1,6 +1,6 @@
 // @file: ChatPanel — composition of ChatThread + ChatComposer; owns the ChatApiClient SSE subscription for one MR (D-112).
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrDetailPage, ViewSwitch (single-pane view)
-// @tasks: TSK-130
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';

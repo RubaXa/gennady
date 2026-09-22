@@ -1,6 +1,6 @@
 // @file: Integration tests for sync CLI — run() with mock deps
+// @spec: CLI-SYNC
 // @consumers: sync.cmd.ts, run
-// @tasks: TSK-54, TSK-56
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

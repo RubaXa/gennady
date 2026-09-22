@@ -1,6 +1,6 @@
 // @file: Tests for consecutive START detection in AnchorCheck.
+// @spec: CLI-LINT
 // @consumers: AnchorCheck
-// @tasks: TSK-XX
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

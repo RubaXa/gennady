@@ -1,6 +1,6 @@
 // @file: Unit tests for the shared ticket-section parsers.
+// @spec: SHARED
 // @consumers: ticket
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -82,6 +82,20 @@ describe('parseMetaInfo', () => {
       anchor: 'specs/cli/core/core.spec.md#fooport',
     });
     assert.strictEqual(m.specRefs[1]?.name, 'FooAdapter');
+  });
+
+  it('stops Spec References at the next bold Meta field even when that field has no colon', () => {
+    const meta = [
+      '- **Spec References:**',
+      '  - Contract: [Owner](./owner.spec.md)',
+      '- **§Effective Rules** (cascade at [legacy](../../../tasks/demo/README.md)):',
+      '',
+      '  | Rule | File |',
+      '  | --- | --- |',
+    ].join('\n');
+    assert.deepStrictEqual(parseMetaInfo(meta).specRefs, [
+      { role: 'Contract', name: 'Owner', anchor: './owner.spec.md' },
+    ]);
   });
 
   it('treats None dependencies as empty', () => {

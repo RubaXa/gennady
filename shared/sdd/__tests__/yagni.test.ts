@@ -1,6 +1,6 @@
 // @file: Unit tests for the pure YAGNI usage-check logic (shared/sdd/yagni.ts) — no tree-sitter, no fs, no git; everything is passed in as data.
+// @spec: SHARED
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

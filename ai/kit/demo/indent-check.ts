@@ -1,3 +1,6 @@
+// @file: ai/kit/demo/indent-check.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Stress-test indentation: for every kit brick, include it at indent depth 2 (4 spaces) and
  * assert each output line equals (4 spaces + normalized brick line). Surfaces any case where

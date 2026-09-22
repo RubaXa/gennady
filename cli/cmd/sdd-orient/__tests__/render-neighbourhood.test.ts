@@ -1,4 +1,5 @@
 // @file: Unit tests for renderNeighbourhood — the fixed output contract, built from hand-constructed Neighbourhood models (no I/O).
+// @spec: CLI-SDD-ORIENT
 // @consumers: render-neighbourhood
 
 import { describe, it } from 'node:test';

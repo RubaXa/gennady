@@ -1,6 +1,6 @@
 // @file: Integration tests for SddSyncCommand#run — status propagation, verify, walk-up discovery, exit codes.
+// @spec: CLI-SDD-SYNC
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

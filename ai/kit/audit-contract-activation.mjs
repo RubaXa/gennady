@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+// @file: ai/kit/audit-contract-activation.mjs
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
 /**
  * Contract-activation audit for sdd-v2 templates (AUTHORING.md §7, §10, and the "Backlog: манифест
  * потребителей контрактов/аксиом" note at the end of that file).

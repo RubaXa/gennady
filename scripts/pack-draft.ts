@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+// @file: scripts/pack-draft.ts
+// @spec: INFRA-BASE
+// @consumers: N/A
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';

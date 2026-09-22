@@ -1,6 +1,6 @@
 // @file: Independent semantic cross-review preserving foreign and local provenance.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, ReviewSynthesis
-// @tasks: TSK-176
 
 /** @purpose Versioned foreign claim and independent current-code assessment input. */
 export type ReviewCrossReviewInput = {

@@ -1,5 +1,25 @@
 # ai-skills: Library Specification
 
+<!--SECTION:SPEC_ID-->
+
+AI-SKILLS
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:SCOPE_TYPE-->
 
 ## scope-type
@@ -243,6 +263,8 @@ ai/skills/<name>/
 <!--SECTION:DECISION_LOG-->
 ## 6. Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-001 — Навык = тонкий клиент над директивой
 
 - **Status:** active
@@ -336,6 +358,8 @@ ai/skills/<name>/
   - Сохранить session как необязательную подсказку — создаёт два конкурирующих источника истины.
   - Утверждать абстрактный scaffold plan — оператор не видит реальные ticket bytes.
   - Убрать model review полностью — механика не доказывает согласованность смысла.
+
+</details>
 <!--/SECTION:DECISION_LOG-->
 
 <!--SECTION:SCOPE_DEPENDENCIES-->
@@ -387,6 +411,8 @@ graph TD
 
 ## 9. Bootstrap Requirements
 
+<details><summary>Подробности</summary>
+
 | #     | Requirement                                     | Kind | Owner           | Resolution                            |
 | ----- | ----------------------------------------------- | ---- | --------------- | ------------------------------------- |
 | BR-01 | Создать `specs/ai-skills/ai-skills.spec.md`     | file | this-scope-task | Уже создан в STEP_8                   |
@@ -394,6 +420,8 @@ graph TD
 
 Все остальные зависимости (12 SKILL.md, директивы, скрипты, CLI) уже существуют в репозитории.
 
+
+</details>
 <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
 
 <!--SECTION:HANDOFF-->

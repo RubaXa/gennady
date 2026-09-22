@@ -1,6 +1,6 @@
 // @file: Single pipeline job details returned by getJob / playJob / cancelJob.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientPipeline
-// @tasks: TSK-84
 
 /** @purpose Normalized representation of a single CI/CD pipeline job. */
 export type VcsJob = {

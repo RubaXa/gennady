@@ -1,6 +1,6 @@
 // @file: Closed versioned schemas and deterministic slot policies for review contracts.
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContractCompiler, ReviewStructuralValidator
-// @tasks: TSK-176
 
 import { createHash } from 'node:crypto';
 import type { ReviewChangeShapeCode } from '../types/review-input-classification.type.ts';

@@ -1,6 +1,6 @@
 // @file: Swift preset — adapts the literal Swift plugin to phase ladders and receipt fingerprints.
+// @spec: SHARED
 // @consumers: presets/node, full-profile-plan, phase-receipt, readiness
-// @tasks: V-11
 
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
