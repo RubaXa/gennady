@@ -31,6 +31,7 @@ _Обзор пути от контракта к реализации и пров
 **Key properties:**
 
 - Pure core — `shared/sdd/check.ts#checkTicket` без I/O; обход ФС и резолв ссылок — в команде
+- V14-2: `SDD_DEVIATION_VERDICT_MISSING` — WARN у незакрытого V2-тикета и ERROR у DONE, если Decision Log содержит `pending-operator` или неизвестный verdict; V1 не получает этот diagnostic
 - ESLint-style — `file: severity: code  message` + сводка; exit 1 при наличии error
 - Dogfooded — `--all .` проходит по реальным 41 спеке репозитория начисто
 

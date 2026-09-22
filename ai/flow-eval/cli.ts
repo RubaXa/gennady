@@ -28,6 +28,8 @@ import {
 import { DEFAULT_SDD_EVAL_CONFIG, SddEvalRunner } from './runner.ts';
 import {
   collectSpecFiles,
+  countPendingOperatorDeviations,
+  formatBudgetExhausted,
   persistRunArtifacts,
   teardownSandboxDirectories,
   type SddEvalRunArtifact,
@@ -461,11 +463,21 @@ async function runAndReportBody(
     }
     // Collect this scenario's durable outcome so it survives the sandbox teardown below.
     if (directory) {
+      const budgetExhausted = result.worker.budgetExhausted
+        ? {
+            ...result.worker.budgetExhausted,
+            pendingOperatorCount: await countPendingOperatorDeviations(directory),
+          }
+        : undefined;
+      if (budgetExhausted) {
+        console.log(`  budget: ${formatBudgetExhausted(budgetExhausted)}`);
+      }
       const artifact: SddEvalRunArtifact = {
         scenarioId: result.worker.scenarioId,
         verdict,
         status: result.worker.status,
         ...(result.worker.budgetExhausted ? { outcome: 'budget-exhausted' as const } : {}),
+        ...(budgetExhausted ? { budgetExhausted } : {}),
         usage: u,
         quality,
         specFiles: producesSpecs ? await collectSpecFiles(directory) : [],
@@ -505,6 +517,7 @@ async function runAndReportBody(
         verdict,
         status: result.worker.status,
         outcome,
+        ...(budgetExhausted ? { budgetExhausted } : {}),
         actions: lastObservation?.toolCallCount ?? 0,
         durationMs:
           firstObservation && lastObservation && lastObservation !== firstObservation

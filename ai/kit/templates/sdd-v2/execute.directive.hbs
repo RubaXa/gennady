@@ -21,6 +21,7 @@
     {{> "axiom/process/ax-task-parallel"}}
     {{> "axiom/process/ax-re-dispatch"}}
     {{> "axiom/process/ax-task-resolution"}}
+    {{> "axiom/process/ax-deviation-self-resolve"}}
   </BeliefState>
 
   <Contracts>
@@ -41,6 +42,7 @@
     | `H_REAL_GATE_RED` | A declared real verification command remains red after one evidence-based correction |
     | `H_REQUIREMENT_UNCOVERED` | A mandatory Requirement-ID is absent from implemented tests |
     | `H_NO_PROGRESS` | Per `AX_RE_DISPATCH`, a re-dispatch returns the same blocking finding set as the immediately preceding attempt on the same artifact, with no new evidence between the two attempts |
+    | `H_ASK_WITHOUT_CARD` | The operator was asked mid-batch to resolve a spec/ticket hole without first recording its agent-owned Decision Log card with `[verdict: pending-operator]` |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -114,6 +116,9 @@
         checkpoint. A change to task meaning, dependencies, phases, or test plan invalidates approval
         #2 and returns to scaffold. A concrete missing external decision or capability that remains
         after bounded diagnosis stops with `H_PHASE_BLOCKED`.
+        If this step asks the operator about a spec/ticket hole before writing its
+        `[verdict: pending-operator]` Decision Log card, stop with `H_ASK_WITHOUT_CARD`; record first,
+        continue the bounded batch, and defer the one batched question to deviation-review.
       </Action>
     </Step>
 
@@ -140,7 +145,7 @@
         exact exit evidence remain in the CLI-owned receipt; do not duplicate them as prose. Commit
         boundaries follow repository policy. The Execution Log plus Git is sufficient for a fresh
         orchestrator to continue; no worker ID or hidden NEXT token is recorded.
-        When the phase made a disputed autonomous choice, its typed Handoff carries one
+        Per `AX_DEVIATION_SELF_RESOLVE`, when the phase made a disputed autonomous choice, its typed Handoff carries one
         `deviations: [<what> ← <why> @ <path#anchor>]` value per `DEVIATION_RECORD_FORMAT`; `phaseClose`
         persists it in the existing Execution Log rather than a second journal.
       </Action>
@@ -213,11 +218,13 @@
         The ticket and trackers were already transitioned to coherent DONE state in STEP_5 so audit
         could inspect the actual final artifact graph. Do not repeat `sdd-log close` or `sdd-sync`.
         Before emitting the summary, assert that STEP_6 left both durable group receipts: a whole-project
-        check must be clean of `SDD_GROUP_AUDIT_MISSING` and `SDD_GROUP_REVIEW_MISSING` for this group
+        check must be clean of `SDD_GROUP_AUDIT_MISSING`, `SDD_GROUP_REVIEW_MISSING`, and
+        `SDD_DEVIATION_VERDICT_MISSING` for this group
         (a stale/absent receipt means the group was not actually audited/reviewed at its current state —
         return to STEP_6 and record it; never close the group without them):
         <ToolCall owner="this-step" result="groupReceiptGate">npx gennady sdd-check --all .</ToolCall>
-        Consume `groupReceiptGate`; it must carry no `SDD_GROUP_AUDIT_MISSING` / `SDD_GROUP_REVIEW_MISSING`
+        Consume `groupReceiptGate`; it must carry no `SDD_GROUP_AUDIT_MISSING` /
+        `SDD_GROUP_REVIEW_MISSING` / `SDD_DEVIATION_VERDICT_MISSING`
         for this spec. Emit the execute summary from actual tool results. For batch mode, refresh the map.
         <ToolCall owner="this-step" result="refreshedExecutionMap">npx gennady sdd-task</ToolCall>
         Consume `refreshedExecutionMap` and continue with the next pickable ticket. Otherwise show the

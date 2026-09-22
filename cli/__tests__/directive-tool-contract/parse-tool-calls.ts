@@ -342,9 +342,14 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
           'authoring-complete',
           'audit-receipt',
           'review-receipt',
+          'deviation-verdict',
         ].includes(op!)
       )
         return 'unknown log operation';
+      if (op === 'deviation-verdict')
+        return p.length === 4 && f.size === 0
+          ? null
+          : 'deviation-verdict requires exactly a <D-id> and <verdict>';
       if (op === 'audit-receipt' || op === 'review-receipt')
         return p.length === 3 && f.size === 0 ? null : `${op} requires exactly a <verdict>`;
       if (op === 'close') return p.length === 2 && f.size === 0 ? null : 'close takes only ticket';

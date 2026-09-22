@@ -15,5 +15,5 @@ movement is compared separately by `(code, file, severity)`; it cannot be hidden
 Changing V1 files or rebaselining this contract is outside Batch 23A and requires an explicit operator
 decision.
 
-Batch 23A closes E-22, E-23, and V14-3 only. E-17 is deferred to 23B after V14-2; exact E-18 release
-validation is deferred to 23C.
+Batch 23A froze E-22/E-23/V14-3 evidence. Batch 23B subsequently closes E-17 through V14-2's
+typed `pending-operator` lifecycle; exact E-18 release validation remains deferred to 23C.

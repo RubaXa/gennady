@@ -33,7 +33,7 @@ let specDir: string;
 
 const CLOCK = new Date('2026-06-21T10:00:00.000Z');
 
-function ticket(taskId: string, done: boolean): string {
+function ticket(taskId: string, done: boolean, pendingDeviation = false): string {
   return [
     '# ticket',
     '<!--SECTION:META-->',
@@ -46,6 +46,13 @@ function ticket(taskId: string, done: boolean): string {
     '### Round 1 — 2026-01-01, initial',
     '<!--PHASE_RECEIPTS:v1-->',
     '<!--/SECTION:EXECUTION_LOG-->',
+    ...(pendingDeviation
+      ? [
+          '<!--SECTION:DECISION_LOG-->',
+          `${taskId.split('-')[0]}-DL-1 2026-09-22 — retry cap 3 (почему: bounded) [verdict: pending-operator]`,
+          '<!--/SECTION:DECISION_LOG-->',
+        ]
+      : []),
     '',
   ].join('\n');
 }
@@ -124,6 +131,17 @@ describe('sdd-log group-completion receipt', () => {
     assert.equal(receipt?.verdict, 'PASS');
     assert.deepEqual(receipt?.members, ['core.task.CORE-a.md', 'core.task.CORE-b.md']);
     assert.equal(receipt?.ts, CLOCK.toISOString());
+  });
+
+  it('V14-2c refuses a DONE group while one member has pending-operator', async () => {
+    writeGroup(true, true);
+    const member = join(specDir, 'core.task.CORE-a.md');
+    writeFileSync(member, ticket('CORE-a', true, true), 'utf8');
+    const before = readFileSync(join(specDir, 'core.spec.md'), 'utf8');
+    const outcome = await mod.run(argv('CORE-a', 'audit-receipt', 'PASS'), CLOCK, dir);
+    assert.equal(outcome.ok, false);
+    if (!outcome.ok) assert.match(outcome.message, /pending-operator.*CORE-DL-1/);
+    assert.equal(readFileSync(join(specDir, 'core.spec.md'), 'utf8'), before);
   });
 
   it('resolves the group from a bare Task-ID and records the review receipt independently', async () => {

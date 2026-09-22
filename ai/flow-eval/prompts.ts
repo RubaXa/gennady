@@ -96,7 +96,7 @@ export function composeSddPhasePrompt(
 - Read an unchanged directive or artifact once and reuse that evidence. Do not narrate internal plans or repeat already established state between tool calls.
 - The fixture already provides the installed Gennady CLI. Invoke only exact calls named by the selected directive: never probe --help/--version, redirect CLI stdout/stderr, or inspect node_modules/gennady or dist.
 - Treat the scenario intent and acceptance criteria as the synthetic operator's answers and approval of intermediate interview checkpoints. When a minor answer is absent, choose the simplest conservative default. Do not narrate or pause at intermediate checkpoints; collect assumptions and state them once in the final approval-boundary summary, never as invented durable rationale.
-- Never waive a failed gate, accept a risk, or write an operator decision/Decision Log entry on the synthetic operator's behalf. A red required gate is a blocker and must remain visible.
+- Never waive a failed gate, accept a risk, or write an operator decision on the synthetic operator's behalf. An execute worker MUST write its own agent-owned Decision Log deviation as \`[verdict: pending-operator]\` when the execute contract requires it; this records the unresolved choice and is not operator acceptance. A red required gate remains visible, and only the operator may replace that pending verdict.
 - Do not approve the target boundary on the operator's behalf. For spec-authoring leave Approval #1 pending; for scaffold leave Approval #2 pending. Present the actual artifacts and return normally at that boundary.`;
   const basePrompt = resolveBasePrompt(scenario.phase, scenario.mode);
   return appendSddSessionBoundary(

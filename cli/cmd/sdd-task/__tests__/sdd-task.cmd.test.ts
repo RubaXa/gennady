@@ -334,6 +334,25 @@ describe('SddTaskCommand', () => {
     assert.match(outcome.text, /\[BLOCKERS\]\nblockers: none/);
   });
 
+  it('V14-2b surfaces unresolved Decision Log deviations without rereading the ticket', async () => {
+    const t = join(dir, 'deviation.md');
+    writeFileSync(
+      t,
+      [
+        TICKET,
+        '<!--SECTION:DECISION_LOG-->',
+        'CLI-DL-1 2026-09-22 — retry cap 3 (почему: bounded) [verdict: pending-operator]',
+        '<!--/SECTION:DECISION_LOG-->',
+      ].join('\n'),
+      'utf8'
+    );
+    const outcome = await mod.run(argv(t));
+    assert.equal(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    if (!outcome.ok) return;
+    assert.match(outcome.text, /\[DEVIATIONS\]\ndeviations: pending-operator 1/);
+    assert.match(outcome.text, /CLI-DL-1 \[verdict: pending-operator\]/);
+  });
+
   it('no active blockers → next: hint points at running phases per protocol', async () => {
     const outcome = await mod.run(argv(ticket));
     assert.strictEqual(outcome.ok, true);

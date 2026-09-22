@@ -200,6 +200,10 @@
       <ACR>-DL-N <date> — <decision in one phrase> (почему: <compromise/criterion>; отвергнуто: <alternative — why not>; риск: <if accepted>)
       ```
 
+      An autonomous-execute deviation appends one final typed token to that SAME line:
+      `[verdict: pending-operator]`. The only replacements are `[verdict: accepted]`,
+      `[verdict: rework]`, and `[verdict: rolled-back]`; only `pending-operator` is open.
+
       **ID.** `<ACR>-DL-<N>` — spec acronym first, exactly like a Task-ID and like `<ACR>-REQ-<N>`
       (`REQUIREMENT_ENTRY_FORMAT`); `<N>` is sequential within THIS spec only — the acronym gives global
       uniqueness, not the number. This is the only grammar for NEW entries. Existing append-only

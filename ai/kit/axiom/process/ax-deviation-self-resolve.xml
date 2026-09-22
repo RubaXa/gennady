@@ -1,10 +1,10 @@
 <!-- new for sdd-v2: autonomy invariant — a spec/ticket hole is not a stop condition -->
-<Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true" status="draft">
+<Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
   Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
   reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
-  `AX_RELEASE_READY_DEFAULT` — then append a ticket-local Decision Log entry
-  (`<ACR>-DL-N <date> — <statement> (почему: …; отвергнуто: …)`, direct `Edit` —
-  `AX_TICKET_WRITE_SCOPE` treats this
+  the release-ready default — then append a ticket-local Decision Log entry
+  (`<ACR>-DL-N <date> — <statement> (почему: …; отвергнуто: …) [verdict: pending-operator]`, direct `Edit` —
+  the ticket write-scope contract treats this
   section as writable for exactly this purpose) at the point of decision, not after the fact; then
   continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
   ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
@@ -17,9 +17,13 @@
   an operator decision. Test: "can I honor the approved goals with a sound technical default?" →
   self-resolve/replan; "does this change product intent or need external authority?" → typed boundary.
 
+  This LOW-confidence branch is execute-flow-scoped: recording the smallest safe reversible choice
+  lets execution continue, but it never waives an Approval Check, a red required gate, missing
+  external authority, or acceptance of open MAJOR product risk.
+
   The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
   every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
-  `AskUserQuestion` (`QUESTION_RULE_SLIM`): add to the spec · roll back · accept as-is. Never one
+  `AskUserQuestion` (`QUESTION_RULE_SLIM`): принять как есть · переделать · откатить. Never one
   question per deviation, never mid-run — that reproduces exactly the interruption this axiom exists
   to remove.
 </Axiom>

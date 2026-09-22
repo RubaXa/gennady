@@ -252,9 +252,6 @@ const SDD_V2_DANGLING_REFS = (
       ['AX_SPEC_PROGRESSIVE_DISCLOSURE', ['formats/infrastructure-spec-structure.xml', 'formats/interface-spec-structure.xml', 'formats/library-spec-structure.xml', 'formats/module-spec-structure.xml', 'formats/product-spec-structure.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 8'],
       ['AX_STRICT_NULL', ['audit.directive.xml', 'formats/audit-round.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 11'],
       ['AX_SPEC_TABLE_IS_INDEX', ['formats/entity-inventory-format.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 19'],
-      // Deferred to the autonomous-execute umbrella (V14-2, post-2.0.0-draft per D-49) — not this
-      // plan's Волна 0 to connect.
-      ['AX_DEVIATION_SELF_RESOLVE', ['execute.directive.xml', 'phase-execution-protocol.directive.xml'], 'deferred — V14-2a umbrella'],
     ] as const
   ).flatMap(([id, files]) => files.map((file) => `sdd-v2/${file}::${id}`));
 

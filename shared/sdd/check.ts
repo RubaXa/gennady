@@ -47,6 +47,7 @@ import {
   parseTestCoverage,
 } from './bdd-coverage.ts';
 import type { RuleRegistryEntry } from './task-authoring-literals.ts';
+import { deviationIsOpen, parseDeviationRecords } from './deviation.ts';
 
 /**
  * @purpose One audit finding.
@@ -366,6 +367,25 @@ export function checkTicket(
     isDone = meta.status?.includes('[x]') ?? false;
   }
   // #endregion END_META
+
+  // #region START_DEVIATIONS — pending operator decisions stay advisory mid-work and block DONE.
+  if (enforceV2JournalContract) {
+    for (const deviation of parseDeviationRecords(content).filter(deviationIsOpen)) {
+      const message =
+        deviation.verdict === 'invalid'
+          ? `Decision Log deviation ${deviation.id} has unsupported verdict "${deviation.rawVerdict}"; use pending-operator, accepted, rework, or rolled-back.`
+          : `Decision Log deviation ${deviation.id} is still pending-operator; resolve it before closing the ticket group.`;
+      const finding = {
+        severity: isDone ? ('error' as const) : ('warn' as const),
+        code: 'SDD_DEVIATION_VERDICT_MISSING',
+        file,
+        line: deviation.line,
+        message,
+      };
+      findings.push(finding);
+    }
+  }
+  // #endregion END_DEVIATIONS
 
   // #region START_BDD_NEGATIVE — invariant: the BDD section carries ≥1 negative/failure scenario
   const bddSec = extractSection(content, 'BDD');

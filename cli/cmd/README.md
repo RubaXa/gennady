@@ -195,7 +195,7 @@ npx gennady yagni /path/to/repo
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                           |
 | `sdd-verify`        | Запуск verification ladder для тикета или профиля          |
 | `verify`            | Read-only JSON-план D-64 full-profile без запуска гейтов   |
-| `sdd-log`           | События Execution Log + атомарное закрытие фазы            |
+| `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения     |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами             |
 | `sdd-task`          | Карта исполнения и фазовый контекст тикета                 |
 | `sdd-migrate`       | SDD v1 → v2: anchors, IDs, move и ownership headers        |

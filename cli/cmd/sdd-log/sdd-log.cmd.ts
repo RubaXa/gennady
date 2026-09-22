@@ -27,6 +27,12 @@ import {
 import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import {
+  deviationIsOpen,
+  parseDeviationRecords,
+  setDeviationVerdict,
+  type DeviationVerdict,
+} from '../../../shared/sdd/deviation.ts';
+import {
   ambiguousIdError,
   appendToBlockerTrail,
   authoringCompletionError,
@@ -77,6 +83,7 @@ const MODES = [
   'authoring-complete',
   'audit-receipt',
   'review-receipt',
+  'deviation-verdict',
 ] as const;
 /** @purpose Single-line verdict token accepted by the group-completion receipt modes. */
 const GROUP_VERDICT_RE = /^[^\r\n]{1,120}$/;
@@ -329,6 +336,16 @@ async function runCommand(
       content: resolution.ticketContents.get(resolve(ref.file)) ?? '',
     }));
     if (members.length === 0) return groupReceiptError('resolved group has no member tickets');
+    const openDeviations = members.flatMap((member) =>
+      parseDeviationRecords(member.content)
+        .filter(deviationIsOpen)
+        .map((record) => `${relative(root, member.file)}:${record.id}`)
+    );
+    if (openDeviations.length > 0) {
+      return groupReceiptError(
+        `group has unresolved pending-operator deviation(s): ${openDeviations.join(', ')}`
+      );
+    }
     // Measure the spec against the canonical root; resolveAuditGroup already realpath-normalized it.
     let canonicalRoot: string;
     try {
@@ -386,6 +403,27 @@ async function runCommand(
   // caller passed a bare Task-ID.
   const displayPath = resolved.resolvedFrom === 'id' ? relative(root, abs) || abs : ticket;
   // #endregion END_READ
+
+  // #region START_DEVIATION_VERDICT — edit the existing Decision Log record, never a sidecar.
+  if (mode === 'deviation-verdict') {
+    if (contentFile || blockerFile || phaseFlagValue || axiomFlag || unblockFlag) {
+      return badInvocation('deviation-verdict accepts only <D-id> <accepted|rework|rolled-back>');
+    }
+    const deviationId = positional[2] ?? '';
+    const verdict = positional[3] ?? '';
+    if (positional.length !== 4) {
+      return badInvocation(
+        'deviation-verdict requires exactly <D-id> <accepted|rework|rolled-back>'
+      );
+    }
+    const edited = setDeviationVerdict(content, deviationId, verdict as DeviationVerdict);
+    if (!edited.ok) return badInvocation(edited.detail);
+    const written = writeProvenRepoFile(resolved.identity, edited.content);
+    if (!written.ok) return fileError(displayPath);
+    const body = `[sdd-log] deviation ${deviationId} verdict → ${verdict}`;
+    return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
+  }
+  // #endregion END_DEVIATION_VERDICT
 
   const bounds = findSectionBounds(content, LOG_SECTION);
   if (!bounds) return noLogSection(displayPath);

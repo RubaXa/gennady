@@ -74,7 +74,7 @@
       the same fact into both logs.
 
       - Spec authoring or architecture: append one canonical Decision Log entry:
-        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>)`.
+        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>) [verdict: pending-operator]`.
       - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
       - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
         `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
@@ -82,6 +82,10 @@
       Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
       re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
       choice and continue. Operator review happens once, after the whole batch and its audits.
+
+      `verdict` is a closed token: `pending-operator` (the default and the only open state), `accepted`,
+      `rework`, or `rolled-back`. Resolution edits this existing Decision Log line through
+      `sdd-log deviation-verdict`; it never creates another journal or sidecar.
     </Contract>
 
 After completing this step, and only then, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold/steps/STEP_2_MATERIALIZE.xml"). Do not preload later step packages.

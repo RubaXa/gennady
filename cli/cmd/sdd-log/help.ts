@@ -44,6 +44,9 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-log <group> review-receipt <verdict>  # record the durable group-code-review fact on the owning spec'
   );
+  console.info(
+    '  npx gennady sdd-log <ticket> deviation-verdict <D-id> <accepted|rework|rolled-back>  # resolve an existing Decision Log deviation'
+  );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
   console.info('  npx gennady sdd-log <ticket> round --content-file .claude/tmp/<name>');
@@ -82,6 +85,9 @@ export function printHelp(): void {
   );
   console.info(
     '    forge-resistant SDD_AUDIT_RECEIPT / SDD_REVIEW_RECEIPT block on the owning spec. A reopen invalidates it.'
+  );
+  console.info(
+    '  - deviation-verdict edits exactly one existing ticket-local Decision Log token and never creates a sidecar.'
   );
   console.info(
     "  - complete requires this phase's CLI-owned sdd-verify receipt, the current-Round skeleton,"

@@ -108,6 +108,7 @@ function gatesForPhase(detail: PhaseDetail, gates: Gate[]): Gate[] {
  * @param gates All Verification gates.
  * @param [activeBlockers] Unresolved 🛑 BLOCKED line texts (shared/sdd/check.ts#scanBlockerTrail), oldest first; default empty.
  * @param [auditGroupLine] Precomputed group summary and copy-pasteable audit command, or null when the ticket's filename doesn't resolve to an owning spec.
+ * @param [openDeviations] Typed unresolved Decision Log records surfaced without rereading the ticket.
  * @returns The formatted planning-surface text.
  */
 export function formatPlan(
@@ -116,7 +117,8 @@ export function formatPlan(
   detailsById: Record<string, PhaseDetail | undefined>,
   gates: Gate[],
   activeBlockers: string[] = [],
-  auditGroupLine: string | null = null
+  auditGroupLine: string | null = null,
+  openDeviations: readonly string[] = []
 ): string {
   const lines: string[] = [];
   lines.push(`[sdd-task] ${meta.taskId ?? '<unknown>'} — ${meta.status ?? '<no status>'}`);
@@ -176,14 +178,24 @@ export function formatPlan(
     for (const b of activeBlockers) lines.push(`- ${b}`);
   }
 
+  lines.push('', '[DEVIATIONS]');
+  if (openDeviations.length === 0) {
+    lines.push('deviations: none');
+  } else {
+    lines.push(`deviations: pending-operator ${openDeviations.length}`);
+    for (const deviation of openDeviations) lines.push(`- ${deviation}`);
+  }
+
   // This trailing line is orchestrator guidance, not part of the per-phase read-manifest above —
   // the orchestrator pastes each `▸ <phase>` block verbatim into a worker's dispatch prompt, never
   // this whole output, so a line down here never reaches a worker's context.
   lines.push(
     '',
-    activeBlockers.length === 0
+    activeBlockers.length === 0 && openDeviations.length === 0
       ? 'next: открой тикет, исполняй фазы по протоколу (phase-execution-protocol), по одной, в порядке deps.'
-      : 'next: сначала разбери активные блокеры с оператором — фазы не запускать, пока список не пуст.'
+      : openDeviations.length > 0
+        ? 'next: заверши работу по фазам; перед закрытием группы разбери pending-operator через deviation-review.'
+        : 'next: сначала разбери активные блокеры с оператором — фазы не запускать, пока список не пуст.'
   );
 
   return lines.join('\n');

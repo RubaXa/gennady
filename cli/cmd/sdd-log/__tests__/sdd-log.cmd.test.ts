@@ -145,6 +145,42 @@ describe('SddLogCommand', () => {
     writeFileSync(ticket, BASE, 'utf-8');
   });
 
+  it('V14-2b edits one existing deviation verdict and creates no sidecar', async () => {
+    const withDeviation = [
+      BASE,
+      '<!--SECTION:DECISION_LOG-->',
+      'DEM-DL-1 2026-09-22 — retry cap 3 (почему: bounded) [verdict: pending-operator]',
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\n');
+    writeFileSync(ticket, withDeviation, 'utf8');
+    const outcome = await mod.run(argv(ticket, 'deviation-verdict', 'DEM-DL-1', 'accepted'), CLOCK);
+    assert.equal(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    const next = readFileSync(ticket, 'utf8');
+    assert.match(next, /DEM-DL-1.*\[verdict: accepted\]/);
+    assert.doesNotMatch(next, /pending-operator/);
+    assert.equal(existsSync(join(dir, 'deviations.json')), false);
+  });
+
+  it('V14-2b refuses unknown verdicts and duplicate deviation ids without changing bytes', async () => {
+    const line = 'DEM-DL-1 2026-09-22 — retry cap 3 (почему: bounded) [verdict: pending-operator]';
+    const original = [
+      BASE,
+      '<!--SECTION:DECISION_LOG-->',
+      line,
+      line,
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\n');
+    writeFileSync(ticket, original, 'utf8');
+    const invalid = await mod.run(argv(ticket, 'deviation-verdict', 'DEM-DL-1', 'waived'), CLOCK);
+    assert.equal(invalid.ok, false);
+    const duplicate = await mod.run(
+      argv(ticket, 'deviation-verdict', 'DEM-DL-1', 'accepted'),
+      CLOCK
+    );
+    assert.equal(duplicate.ok, false);
+    assert.equal(readFileSync(ticket, 'utf8'), original);
+  });
+
   after(() => {
     process.exit = origExit;
     process.argv = origArgv;

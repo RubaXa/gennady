@@ -10,4 +10,5 @@ immediately preceding attempt on this same artifact — same ids, same substance
 between the two attempts (no changed diff, no new tool output, no new fact the prior attempt did not
 already have), that repetition is provable non-progress, not further review: halt `H_NO_PROGRESS`
 instead of re-dispatching again on the identical set. A genuinely new edit, a new tool run, or a new
-fact resets the count and earns a fresh dispatch as above.</Axiom>
+fact resets the count and earns a fresh dispatch as above. Creating or restating the required
+`[verdict: pending-operator]` bookkeeping record is NOT new evidence and never resets this count.</Axiom>
