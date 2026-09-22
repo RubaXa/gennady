@@ -325,6 +325,35 @@ describe('migration-move', () => {
     for (const [file, bytes] of snapshot) assert.strictEqual(readFileSync(file, 'utf8'), bytes);
   });
 
+  it('FO-6: already-migrated mixed-EOL header is a byte-exact no-op', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    writeFileSync(
+      source,
+      '// @file: demo behavior\n// @tasks: demo-alpha\n// @consumers: DemoCommand\nexport const demo = true;\n',
+      'utf8'
+    );
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ticketWithTarget(TICKET_A, 'shared/demo.ts'),
+      'utf8'
+    );
+    fillPlanLayer();
+    const first = executeScopeMove(root, 'demo', true);
+    assert.ok(first.ok, JSON.stringify(first));
+    makeMovedTicketsCanonical();
+
+    const mixedBytes =
+      '// @file: demo behavior\r\n// @spec: DEMO-CORE\n// @consumers: DemoCommand\r\nexport const demo = true;\r\n';
+    writeFileSync(source, mixedBytes, 'utf8');
+
+    const second = executeScopeMove(root, 'demo', false);
+    assert.ok(second.ok, JSON.stringify(second));
+    if (second.ok)
+      assert.deepStrictEqual(second.report, ['  no-op scope demo — уже мигрирован в v2']);
+    assert.strictEqual(readFileSync(source, 'utf8'), mixedBytes);
+  });
+
   it('FO-6: unrecoverable legacy relation блокирует весь scope до любых writes', () => {
     mkdirSync(join(root, 'shared'), { recursive: true });
     const source = join(root, 'shared', 'demo.ts');

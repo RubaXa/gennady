@@ -591,7 +591,10 @@ function renderSourceHeader(
     if (!removed.has(index)) out.push(line);
   });
   if (insertAt === lines.length) out.push(...canonical);
-  return out.join(newline);
+  const rendered = out.join(newline);
+  return rendered.replaceAll('\r\n', '\n') === content.replaceAll('\r\n', '\n')
+    ? content
+    : rendered;
 }
 
 /**

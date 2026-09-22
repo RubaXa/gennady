@@ -76,6 +76,27 @@ describe('parseSourceOwnershipHeader', () => {
     assert.deepStrictEqual(parsed.ambiguousHeaderIndexes, [2]);
   });
 
+  it('сохраняет paragraph break внутри multiline ownership block', () => {
+    const parsed = parseSourceOwnershipHeader(
+      [
+        '// @file: x',
+        '//   first paragraph',
+        '//',
+        '//     second paragraph after formatter indentation',
+        '// @tasks: TSK-1',
+        '// @consumers: y',
+        '',
+      ].join('\n')
+    );
+    assert.deepStrictEqual(parsed.ambiguousHeaderIndexes, []);
+    assert.deepStrictEqual(parsed.blocks[0]?.lines, [
+      '// @file: x',
+      '//   first paragraph',
+      '//',
+      '//     second paragraph after formatter indentation',
+    ]);
+  });
+
   it('оставляет duplicate и empty tags видимыми fail-closed caller', () => {
     const parsed = parseSourceOwnershipHeader(
       '// @file:\n// @tasks: TSK-1\n// @tasks: TSK-2\n// @consumers: y\n'
