@@ -208,7 +208,8 @@ describe('stateless execution and specification format', () => {
     assert.ok(finalGateAt >= 0 && finalGateAt < roundCloseAt);
     assert.ok(roundCloseAt < trackerSyncAt && trackerSyncAt < coherentTreeAt);
     assert.ok(coherentTreeAt < auditAt);
-    assert.match(execute, /audit never receives a known\s+ticket\/index status drift/);
+    assert.match(execute, /except an exact\s+`SDD_DEVIATION_VERDICT_MISSING`/);
+    assert.match(execute, /Never suppress any other code/);
     assert.match(execute, /Do not repeat `sdd-log close` or `sdd-sync`/);
   });
 
@@ -268,8 +269,15 @@ describe('stateless execution and specification format', () => {
     assert.match(review, /questions/i);
     const refreshAt = execute.indexOf('result="refreshedExecutionMap"');
     const reviewAt = execute.indexOf('deviation-review.directive.xml');
+    const finalGateAt = execute.indexOf('result="groupReceiptGate"');
+    const auditReceiptAt = execute.indexOf('result="auditReceipt"');
+    const reviewReceiptAt = execute.indexOf('result="reviewReceipt"');
     assert.ok(refreshAt >= 0 && refreshAt < reviewAt);
-    assert.match(execute, /batch[\s\S]+queue is complete[\s\S]+deviation-review\.directive\.xml/i);
+    assert.ok(auditReceiptAt < reviewReceiptAt && reviewReceiptAt < reviewAt);
+    assert.ok(reviewAt < finalGateAt);
+    assert.equal(execute.split('deviation-review.directive.xml').length - 1, 1);
+    assert.match(execute, /bounded selection[\s\S]+complete[\s\S]+deviation-review\.directive\.xml/i);
+    assert.match(execute, /except an exact\s+`SDD_DEVIATION_VERDICT_MISSING`/);
     assert.doesNotMatch(format + review + execute, /DEVIATIONS\.md/);
   });
 

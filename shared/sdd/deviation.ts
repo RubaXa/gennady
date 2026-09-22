@@ -3,6 +3,7 @@
 // @consumers: sdd-check, sdd-log, sdd-task, flow-eval
 
 import { findSectionBounds } from './section.ts';
+import { DL_ID_GRAMMAR } from './requirement-id.ts';
 
 const DEVIATION_VERDICTS = ['pending-operator', 'accepted', 'rework', 'rolled-back'] as const;
 
@@ -23,8 +24,8 @@ export type DeviationRecord = {
   text: string;
 };
 
-const DEVIATION_TOKEN_RE =
-  /^\s*(?:-\s*)?([A-Z][A-Z0-9]*-DL-[1-9][0-9]*)\b.*\[verdict:\s*([^\]\r\n]+)\]/;
+const DECISION_LOG_LINE_ID_RE = /^\s*(?:-\s*)?(\S+)/;
+const DEVIATION_VERDICT_RE = /\[verdict:\s*([^\]\r\n]*)\]/;
 
 /**
  * @purpose Parse typed deviation records from the canonical ticket-local Decision Log only.
@@ -39,14 +40,13 @@ export function parseDeviationRecords(content: string): DeviationRecord[] {
   const records: DeviationRecord[] = [];
   for (let index = bounds.openLine + 1; index < bounds.closeLine; index++) {
     const text = lines[index] ?? '';
-    const match = DEVIATION_TOKEN_RE.exec(text);
-    if (!match?.[1] || !match[2]) continue;
-    const rawVerdict = match[2].trim();
-    const token = rawVerdict.split(/\s+/)[0] ?? '';
+    const id = DECISION_LOG_LINE_ID_RE.exec(text)?.[1];
+    const rawVerdict = DEVIATION_VERDICT_RE.exec(text)?.[1]?.trim();
+    if (!id || !DL_ID_GRAMMAR.test(id) || rawVerdict === undefined) continue;
     records.push({
-      id: match[1],
-      verdict: DEVIATION_VERDICTS.includes(token as DeviationVerdict)
-        ? (token as DeviationVerdict)
+      id,
+      verdict: DEVIATION_VERDICTS.includes(rawVerdict as DeviationVerdict)
+        ? (rawVerdict as DeviationVerdict)
         : 'invalid',
       rawVerdict,
       line: index + 1,
@@ -97,6 +97,13 @@ export function setDeviationVerdict(
     };
   }
   const before = matches[0] as DeviationRecord;
+  if (before.verdict === verdict) return { ok: true, content, before, verdict };
+  if (before.verdict !== 'pending-operator') {
+    return {
+      ok: false,
+      detail: `deviation ${id} is already ${before.rawVerdict}; only pending-operator may transition to a terminal verdict`,
+    };
+  }
   const lines = content.split('\n');
   lines[before.line - 1] = before.text.replace(
     /\[verdict:\s*[^\]\r\n]+\]/,

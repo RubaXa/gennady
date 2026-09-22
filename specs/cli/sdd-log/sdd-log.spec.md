@@ -46,7 +46,7 @@ _Обзор пути от контракта к реализации и пров
 - `complete` требует `--phase P<N>`, typed payload с `artifacts` / `decisions` / `open` / `deviations`, receipt этой фазы и ровно один её skeleton в последнем Round
 - `authoring-complete` требует exact `*.spec.md` путь (не Task-ID), чистый `checkSpecAuthoringDraft` и записывает draft/final authoring receipt на саму спеку — `sdd-log` для тикетов и этот режим для спек делят одну команду, не парсер журнала
 - `audit-receipt`/`review-receipt` требуют single-line `<verdict>` (≤120 символов, без плейсхолдера) и группу, где каждый член резолвится и стоит `[x]` DONE; пишут group-completion receipt на владеющую спеку, не в `EXECUTION_LOG` тикета
-- `deviation-verdict <D-id> <accepted|rework|rolled-back>` заменяет закрытый токен ровно одной существующей записи Decision Log; sidecar/новую запись не создаёт; group receipt отказывается при любом `pending-operator`
+- `deviation-verdict <D-id> <accepted|rework|rolled-back>` переводит ровно одну существующую Decision Log запись из `pending-operator` в terminal verdict (повтор того же terminal — byte-no-op; другой terminal не переписывает историю); sidecar/новую запись не создаёт. Audit/review receipt фиксирует уже полученный реальный verdict до финального deviation review, а окончательное закрытие группы блокирует `sdd-check --all`, пока остаётся `SDD_DEVIATION_VERDICT_MISSING`.
 - Round-номер авто-инкремент по числу `### Round N`
 - exit `0` записано · `1` файл · `2` нет секции / receipt / согласованного phase-state / group-receipt state · `4` плохой вызов / обязательный флаг / authoring state
 <!--/SECTION:MODULE_VISION-->

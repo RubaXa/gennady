@@ -67,6 +67,25 @@ describe('V14-2 deviation record', () => {
     );
   });
 
+  it('reuses canonical DL-ID grammar including DL-0 and requires an exact closed verdict token', () => {
+    const zero = ticket('[ ] TODO', 'pending-operator').replace('DEM-DL-1', 'DEM-DL-0');
+    assert.equal(parseDeviationRecords(zero)[0]?.id, 'DEM-DL-0');
+    assert.equal(parseDeviationRecords(zero).every(deviationIsOpen), true);
+
+    const garbage = parseDeviationRecords(ticket('[ ] TODO', 'accepted garbage'));
+    assert.equal(garbage[0]?.verdict, 'invalid');
+    assert.equal(garbage.every(deviationIsOpen), true);
+    const empty = parseDeviationRecords(ticket('[ ] TODO', ''));
+    assert.equal(empty[0]?.verdict, 'invalid');
+    assert.equal(empty.every(deviationIsOpen), true);
+
+    for (const verdict of ['accepted', 'rework', 'rolled-back'] as const) {
+      const exact = parseDeviationRecords(ticket('[ ] TODO', verdict));
+      assert.equal(exact[0]?.verdict, verdict);
+      assert.equal(exact.some(deviationIsOpen), false);
+    }
+  });
+
   it('fails closed on duplicate ids and refuses pending as a resolution', () => {
     const duplicate = ticket('[ ] TODO', 'pending-operator').replace(
       '<!--/SECTION:DECISION_LOG-->',
@@ -78,5 +97,22 @@ describe('V14-2 deviation record', () => {
         .ok,
       false
     );
+  });
+
+  it('allows only pending-to-terminal transition and keeps same-terminal retry byte-idempotent', () => {
+    const pending = ticket('[ ] TODO', 'pending-operator');
+    const accepted = setDeviationVerdict(pending, 'DEM-DL-1', 'accepted');
+    assert.equal(accepted.ok, true);
+    if (!accepted.ok) return;
+    const retry = setDeviationVerdict(accepted.content, 'DEM-DL-1', 'accepted');
+    assert.deepEqual(retry, {
+      ok: true,
+      content: accepted.content,
+      before: parseDeviationRecords(accepted.content)[0],
+      verdict: 'accepted',
+    });
+    const rewrite = setDeviationVerdict(accepted.content, 'DEM-DL-1', 'rolled-back');
+    assert.equal(rewrite.ok, false);
+    if (!rewrite.ok) assert.match(rewrite.detail, /already accepted/);
   });
 });

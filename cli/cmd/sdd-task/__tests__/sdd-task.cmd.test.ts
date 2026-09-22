@@ -381,6 +381,31 @@ describe('SddTaskCommand', () => {
     assert.match(outcome.text, /next: сначала разбери активные блокеры с оператором/);
   });
 
+  it('active blockers keep stop-first priority when a pending deviation is also visible', async () => {
+    const t = join(dir, 'blocked-and-deviation.md');
+    writeFileSync(
+      t,
+      [
+        TICKET,
+        '<!--SECTION:EXECUTION_LOG-->',
+        '#### P1',
+        '- 🛑 BLOCKED waiting on operator decision',
+        '<!--/SECTION:EXECUTION_LOG-->',
+        '<!--SECTION:DECISION_LOG-->',
+        'CLI-DL-0 2026-09-22 — retry cap 3 (почему: bounded) [verdict: pending-operator]',
+        '<!--/SECTION:DECISION_LOG-->',
+      ].join('\n'),
+      'utf-8'
+    );
+    const outcome = await mod.run(argv(t));
+    assert.equal(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    if (!outcome.ok) return;
+    assert.match(outcome.text, /\[BLOCKERS\]\nblockers: ACTIVE 1/);
+    assert.match(outcome.text, /\[DEVIATIONS\]\ndeviations: pending-operator 1/);
+    assert.match(outcome.text, /next: сначала разбери активные блокеры с оператором/);
+    assert.doesNotMatch(outcome.text, /next: заверши работу по фазам/);
+  });
+
   it('a resolved blocker (later ✅ RESOLVED) reports blockers: none', async () => {
     const t = join(dir, 'resolved.md');
     writeFileSync(

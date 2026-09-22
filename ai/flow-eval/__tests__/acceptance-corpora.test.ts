@@ -234,6 +234,19 @@ function runCurrentSddCheckText(
   return { exitCode: result.status ?? -1, text: result.stdout?.toString() ?? '' };
 }
 
+function runCurrentGennady(
+  root: string,
+  args: readonly string[]
+): { exitCode: number; text: string } {
+  const result = runChecked(
+    process.execPath,
+    ['--import', import.meta.resolve('tsx'), join(PROJECT_ROOT, 'cli/gennady.ts'), ...args],
+    root,
+    { allowExit: [0, 1, 2, 4] }
+  );
+  return { exitCode: result.status ?? -1, text: result.stdout?.toString() ?? '' };
+}
+
 function warningMovement(
   baseline: SddCheckBaseline,
   fresh: readonly BaselineFinding[]
@@ -823,12 +836,20 @@ describe('Batch 23A acceptance corpora', () => {
       mkdirSync(join(root, 'specs/demo'), { recursive: true });
       const pending = `${groupTicket('DEM-a', 1, true)}\n${[
         '<!--SECTION:DECISION_LOG-->',
-        'DEM-DL-1 2026-09-22 — retry cap 3 (почему: spec silent) [verdict: pending-operator]',
+        'DEM-DL-0 2026-09-22 — retry cap 3 (почему: spec silent) [verdict: pending-operator]',
         '<!--/SECTION:DECISION_LOG-->',
       ].join('\n')}`;
       writeFileSync(join(root, specFile), cleanScopeSpec());
       writeFileSync(memberFile, pending);
       writeTracker(root, [{ id: 'DEM-a' }]);
+
+      const audit = runCurrentGennady(root, ['sdd-log', 'DEM-a', 'audit-receipt', 'PASS']);
+      assert.equal(audit.exitCode, 0, audit.text);
+      const review = runCurrentGennady(root, ['sdd-log', 'DEM-a', 'review-receipt', 'PASS']);
+      assert.equal(review.exitCode, 0, review.text);
+      const receiptsBeforeVerdict = readFileSync(join(root, specFile), 'utf8');
+      assert.match(receiptsBeforeVerdict, /SDD_AUDIT_RECEIPT/);
+      assert.match(receiptsBeforeVerdict, /SDD_REVIEW_RECEIPT/);
 
       const before = runCurrentSddCheck(root, root);
       assert.equal(before.exitCode, 1);
@@ -839,13 +860,15 @@ describe('Batch 23A acceptance corpora', () => {
         1
       );
 
-      const resolved = pending.replace('[verdict: pending-operator]', '[verdict: accepted]');
-      const members = [{ file: memberFile, content: resolved }];
-      writeFileSync(memberFile, resolved);
-      writeFileSync(
-        join(root, specFile),
-        `${cleanScopeSpec()}\n${specWithGroupReceipts(specFile, members)}`
-      );
+      const verdict = runCurrentGennady(root, [
+        'sdd-log',
+        'DEM-a',
+        'deviation-verdict',
+        'DEM-DL-0',
+        'accepted',
+      ]);
+      assert.equal(verdict.exitCode, 0, verdict.text);
+      assert.match(readFileSync(memberFile, 'utf8'), /DEM-DL-0[^\n]+\[verdict: accepted\]/);
       const after = runCurrentSddCheck(root, root);
       assert.equal(after.exitCode, 0, JSON.stringify(after.payload.findings, null, 2));
       assert.deepEqual(cliOutcome(after.payload), []);

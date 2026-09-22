@@ -133,15 +133,16 @@ describe('sdd-log group-completion receipt', () => {
     assert.equal(receipt?.ts, CLOCK.toISOString());
   });
 
-  it('V14-2c refuses a DONE group while one member has pending-operator', async () => {
+  it('V14-2c records real audit evidence before final pending-operator review', async () => {
     writeGroup(true, true);
     const member = join(specDir, 'core.task.CORE-a.md');
-    writeFileSync(member, ticket('CORE-a', true, true), 'utf8');
-    const before = readFileSync(join(specDir, 'core.spec.md'), 'utf8');
+    writeFileSync(member, ticket('CORE-a', true, true).replace('CORE-DL-1', 'CORE-DL-0'), 'utf8');
     const outcome = await mod.run(argv('CORE-a', 'audit-receipt', 'PASS'), CLOCK, dir);
-    assert.equal(outcome.ok, false);
-    if (!outcome.ok) assert.match(outcome.message, /pending-operator.*CORE-DL-1/);
-    assert.equal(readFileSync(join(specDir, 'core.spec.md'), 'utf8'), before);
+    assert.equal(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    assert.equal(
+      readReceipt(readFileSync(join(specDir, 'core.spec.md'), 'utf8'), 'audit')?.verdict,
+      'PASS'
+    );
   });
 
   it('resolves the group from a bare Task-ID and records the review receipt independently', async () => {

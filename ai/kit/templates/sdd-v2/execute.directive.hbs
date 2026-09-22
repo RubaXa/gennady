@@ -174,8 +174,10 @@
         <ToolCall owner="this-step" result="coherentTreeGate">npx gennady sdd-check --all .</ToolCall>
         Consume all three results. `roundClose` replaces the scaffolded Round-close skeleton exactly
         once; never edit or delete that block manually. `trackerSync` is required even for a single
-        ticket. A red `coherentTreeGate` is corrected before audit, so audit never receives a known
-        ticket/index status drift as an implementation finding.
+        ticket. Correct every red `coherentTreeGate` finding before audit except an exact
+        `SDD_DEVIATION_VERDICT_MISSING`: that one typed finding is deliberately deferred so all
+        selected tickets and their real audits can finish before the single final deviation review.
+        Never suppress any other code, and carry the deferred deviation identity to STEP_7.
       </Action>
     </Step>
 
@@ -217,21 +219,21 @@
       <Action>
         The ticket and trackers were already transitioned to coherent DONE state in STEP_5 so audit
         could inspect the actual final artifact graph. Do not repeat `sdd-log close` or `sdd-sync`.
-        Before emitting the summary, assert that STEP_6 left both durable group receipts: a whole-project
-        check must be clean of `SDD_GROUP_AUDIT_MISSING`, `SDD_GROUP_REVIEW_MISSING`, and
-        `SDD_DEVIATION_VERDICT_MISSING` for this group
-        (a stale/absent receipt means the group was not actually audited/reviewed at its current state —
-        return to STEP_6 and record it; never close the group without them):
+        Refresh the map after STEP_6 and continue until every ticket in the bounded selection has
+        finished execution and its group has real audit/review receipts. A pending deviation does not
+        authorize another ticket phase, but it also does not interrupt the remaining selected queue.
+        <ToolCall owner="this-step" result="refreshedExecutionMap">npx gennady sdd-task</ToolCall>
+        Consume `refreshedExecutionMap`; continue the bounded selection when execution/audit work
+        remains. Once it is complete, dynamically
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/deviation-review.directive.xml")` exactly once
+        for all collected deviations (a single group is a batch of size one). Never run that review
+        between tickets. After its verdict persistence and final integrity check, assert final closure:
         <ToolCall owner="this-step" result="groupReceiptGate">npx gennady sdd-check --all .</ToolCall>
         Consume `groupReceiptGate`; it must carry no `SDD_GROUP_AUDIT_MISSING` /
-        `SDD_GROUP_REVIEW_MISSING` / `SDD_DEVIATION_VERDICT_MISSING`
-        for this spec. Emit the execute summary from actual tool results. For batch mode, refresh the map.
-        <ToolCall owner="this-step" result="refreshedExecutionMap">npx gennady sdd-task</ToolCall>
-        Consume `refreshedExecutionMap` and continue with the next pickable ticket. Otherwise show the
-        next concrete Task-ID/path or state that the queue is complete. In batch mode only, once the
-        queue is complete after all selected tickets and audits, dynamically
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/deviation-review.directive.xml")`. Never pause for
-        this review between tickets. No session close operation exists.
+        `SDD_GROUP_REVIEW_MISSING` / `SDD_DEVIATION_VERDICT_MISSING` for any selected group. A
+        stale/absent receipt returns to STEP_6; an unresolved deviation returns to the one review,
+        never to phase execution. Only then emit the execute summary and next concrete Task-ID/path,
+        or state that the queue is complete. No session close operation exists.
       </Action>
     </Step>
   </ExecutionPlan>

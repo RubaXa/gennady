@@ -26,12 +26,7 @@ import {
 } from '../../../shared/common/repo-file-identity.ts';
 import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
-import {
-  deviationIsOpen,
-  parseDeviationRecords,
-  setDeviationVerdict,
-  type DeviationVerdict,
-} from '../../../shared/sdd/deviation.ts';
+import { setDeviationVerdict, type DeviationVerdict } from '../../../shared/sdd/deviation.ts';
 import {
   ambiguousIdError,
   appendToBlockerTrail,
@@ -336,16 +331,6 @@ async function runCommand(
       content: resolution.ticketContents.get(resolve(ref.file)) ?? '',
     }));
     if (members.length === 0) return groupReceiptError('resolved group has no member tickets');
-    const openDeviations = members.flatMap((member) =>
-      parseDeviationRecords(member.content)
-        .filter(deviationIsOpen)
-        .map((record) => `${relative(root, member.file)}:${record.id}`)
-    );
-    if (openDeviations.length > 0) {
-      return groupReceiptError(
-        `group has unresolved pending-operator deviation(s): ${openDeviations.join(', ')}`
-      );
-    }
     // Measure the spec against the canonical root; resolveAuditGroup already realpath-normalized it.
     let canonicalRoot: string;
     try {

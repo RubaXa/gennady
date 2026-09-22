@@ -191,11 +191,11 @@ export function formatPlan(
   // this whole output, so a line down here never reaches a worker's context.
   lines.push(
     '',
-    activeBlockers.length === 0 && openDeviations.length === 0
-      ? 'next: открой тикет, исполняй фазы по протоколу (phase-execution-protocol), по одной, в порядке deps.'
+    activeBlockers.length > 0
+      ? 'next: сначала разбери активные блокеры с оператором — фазы не запускать, пока список не пуст.'
       : openDeviations.length > 0
         ? 'next: заверши работу по фазам; перед закрытием группы разбери pending-operator через deviation-review.'
-        : 'next: сначала разбери активные блокеры с оператором — фазы не запускать, пока список не пуст.'
+        : 'next: открой тикет, исполняй фазы по протоколу (phase-execution-protocol), по одной, в порядке deps.'
   );
 
   return lines.join('\n');
