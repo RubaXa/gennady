@@ -184,8 +184,8 @@ npx gennady yagni /path/to/repo
 | `remote-console`    | Зеркалирование браузерной консоли в stdout                 |
 | `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants    |
 | `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности       |
-| `sync`              | Синхронизация `ai/directives/` из npm-пакета               |
-| `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`              |
+| `sync`              | V2-синхронизация `ai/directives/`; V1 отказывает до записи |
+| `sync-skills`       | V2-навыки в `.claude/skills/`; V1 отказывает до записи     |
 | `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов               |
 | `orient`            | File-header/DBC навигация и V2 `@spec` ownership relations |
 | `sdd-orient`        | Окрестность спеки или scope в SDD-графе                    |

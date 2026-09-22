@@ -74,6 +74,11 @@ authoring flow; V2→V2/V3 migration route не существует.
 
 ## Синхронизация
 
+Команды синхронизации устанавливают только SDD v2. Если проект всё ещё содержит `tasks/`, они
+fail-closed останавливаются до записи директив или навыков. Сначала выполните штатную миграцию по
+[`guides/v1-to-v2-migration.md`](../../guides/v1-to-v2-migration.md); sync разрешается после
+`FLOW_VERSION=v2`. `.gennady-synced` — лишь манифест владения файлами sync, не признак миграции.
+
 ```bash
 npx gennady sync-skills
 npx gennady sync-skills --dry-run

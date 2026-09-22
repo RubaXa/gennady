@@ -90,41 +90,47 @@ function gateBucket(run: SddEvalDurableSummary): GateBucket {
  *   `formatJudgeDiagnostic`, never folded in here.
  */
 function formatMechanicalState(runs: readonly SddEvalDurableSummary[]): string {
-  const total = runs.length;
-  const buckets = runs.map(gateBucket);
+  const budgetExhausted = runs.filter((run) => run.outcome === 'budget-exhausted').length;
+  const measuredRuns = runs.filter((run) => run.outcome !== 'budget-exhausted');
+  const total = measuredRuns.length;
+  const buckets = measuredRuns.map(gateBucket);
   const pass = buckets.filter((b) => b === 'pass').length;
   const fail = buckets.filter((b) => b === 'fail').length;
-  const budgetExhausted = buckets.filter((b) => b === 'budget-exhausted').length;
   const undetermined = buckets.filter((b) => b === 'undetermined').length;
+  const budgetSuffix =
+    budgetExhausted > 0 ? `; budget-exhausted ${budgetExhausted} вне статистики` : '';
 
-  if (undetermined === total) return `нет мех. гейта (${total}) — см. golden/verify.sh вручную`;
-  if (budgetExhausted === total) return `budget-exhausted (${budgetExhausted}/${total})`;
-  if (pass === total) return `Проходит (${pass}/${total})`;
-  if (pass === 0 && undetermined === 0) return `Не проходит (${fail}/${total})`;
+  if (total === 0) return `budget-exhausted (${budgetExhausted}; вне статистики)`;
+  if (undetermined === total)
+    return `нет мех. гейта (${total}) — см. golden/verify.sh вручную${budgetSuffix}`;
+  if (pass === total) return `Проходит (${pass}/${total})${budgetSuffix}`;
+  if (pass === 0 && undetermined === 0) return `Не проходит (${fail}/${total})${budgetSuffix}`;
   const parts = [
     `pass ${pass}`,
     fail > 0 ? `fail ${fail}` : null,
-    budgetExhausted > 0 ? `budget-exhausted ${budgetExhausted}` : null,
     undetermined > 0 ? `н/д ${undetermined}` : null,
   ].filter((p): p is string => p !== null);
-  return `Смешанно: ${parts.join(', ')}/${total}`;
+  return `Смешанно: ${parts.join(', ')}/${total}${budgetSuffix}`;
 }
 
 /** @purpose "Судья (диагностика)" column — the judge's own verdict tally (D-45: diagnosis, never the
  *  gate). Kept as its own column so a disagreement between judge and mechanical gate (a known,
  *  expected pattern — see EXPERIMENTS-LOG.md's `slugify-toolchain` runs) is visible, not hidden. */
 function formatJudgeDiagnostic(runs: readonly SddEvalDurableSummary[]): string {
+  const budgetExhausted = runs.filter((run) => run.outcome === 'budget-exhausted').length;
+  const measuredRuns = runs.filter((run) => run.outcome !== 'budget-exhausted');
   const counts = new Map<SddEvalDurableOutcome, number>();
-  for (const run of runs) counts.set(run.outcome, (counts.get(run.outcome) ?? 0) + 1);
+  for (const run of measuredRuns) counts.set(run.outcome, (counts.get(run.outcome) ?? 0) + 1);
   const pass = counts.get('pass') ?? 0;
-  const total = runs.length;
-  if (pass === total) return `pass (${pass}/${total})`;
+  const total = measuredRuns.length;
+  const budgetSuffix =
+    budgetExhausted > 0 ? `; budget-exhausted ${budgetExhausted} вне статистики` : '';
+  if (total === 0) return `нет вердикта; budget-exhausted ${budgetExhausted} вне статистики`;
+  if (pass === total) return `pass (${pass}/${total})${budgetSuffix}`;
   if (pass === 0) {
-    const budgetExhausted = counts.get('budget-exhausted') ?? 0;
-    if (budgetExhausted === total) return `budget-exhausted (${budgetExhausted}/${total})`;
-    return `fail (0/${total})`;
+    return `fail (0/${total})${budgetSuffix}`;
   }
-  return `Смешанно: pass ${pass}/${total}`;
+  return `Смешанно: pass ${pass}/${total}${budgetSuffix}`;
 }
 
 function renderTable(groups: ScenarioGroup[]): string {
@@ -138,13 +144,14 @@ function renderTable(groups: ScenarioGroup[]): string {
     '| Сценарий | Прогонов | Действий (медиана) | Время (медиана) | Токенов (медиана) | Состояние (мех.) | Судья (диагностика) |\n' +
     '| -------- | -------: | ------------------: | ---------------- | -----------------: | --------------- | -------------------- |';
   const rows = groups.map((group) => {
-    const actions = median(group.runs.map((run) => run.actions));
+    const measuredRuns = group.runs.filter((run) => run.outcome !== 'budget-exhausted');
+    const actions = median(measuredRuns.map((run) => run.actions));
     const duration = median(
-      group.runs.map((run) => run.durationMs).filter((v): v is number => typeof v === 'number')
+      measuredRuns.map((run) => run.durationMs).filter((v): v is number => typeof v === 'number')
     );
-    const tokens = median(group.runs.map((run) => usageTotal(run.usage)));
+    const tokens = median(measuredRuns.map((run) => usageTotal(run.usage)));
     return (
-      `| \`${group.scenarioId}\` | ${group.runs.length} | ${Math.round(actions)} | ` +
+      `| \`${group.scenarioId}\` | ${measuredRuns.length} | ${Math.round(actions)} | ` +
       `${formatDurationMs(duration)} | ${formatTokens(tokens)} | ${formatMechanicalState(group.runs)} | ` +
       `${formatJudgeDiagnostic(group.runs)} |`
     );

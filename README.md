@@ -219,6 +219,10 @@ npx gennady lint ./src --autofix --verbose
 
 Синхронизация `ai/directives/` из npm-пакета в текущий проект.
 
+Sync предназначен для SDD v2. Если в проекте ещё есть канонический маркер v1 `tasks/`, команда
+останавливается **до записи файлов** и направляет в штатную миграцию. См.
+[`guides/v1-to-v2-migration.md`](guides/v1-to-v2-migration.md).
+
 ```bash
 npx gennady sync
 npx gennady sync --dry-run
@@ -235,6 +239,9 @@ npx gennady sync ts-patterns typescript --dry-run
 
 Синхронизация SDD-навыков из `ai/skills/` в `.claude/skills/` проекта.
 
+На SDD v1 consumer команда также отказывается до любых записей. Наличие
+`.claude/skills/.gennady-synced` помогает диагностике владения, но не заменяет миграцию проекта.
+
 ```bash
 npx gennady sync-skills
 npx gennady sync-skills --dry-run
@@ -244,6 +251,7 @@ npx gennady sync-skills sdd-execute
 **Опции:**
 
 - `--dry-run`: предпросмотр без записи
+- `--with-directives`: сначала также синхронизировать `ai/directives/` (по умолчанию выключено)
 
 ---
 

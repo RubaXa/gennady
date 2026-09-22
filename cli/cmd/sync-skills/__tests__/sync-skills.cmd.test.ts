@@ -291,6 +291,21 @@ describe('run --dry-run', () => {
     };
   }
 
+  it('SO-12: refuses v2 skill sync over a v1 consumer before directives or skills mutate', () => {
+    mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# New');
+    createFile(_directivesDir, 'sdd-v2/a.xml', '<directive/>');
+    const stderr = captureStream();
+    const deps = makeDeps({ stderr: stderr as unknown as NodeJS.WriteStream });
+
+    const exitCode = run(['node', 'gennady', 'sync-skills', '--with-directives'], deps);
+
+    assert.equal(exitCode, 1);
+    assert.match(stderr._chunks.join(''), /синхронизация SDD v2 остановлена до записи/);
+    assert.equal(existsSync(join(_tmpDir, 'ai', 'directives', 'sdd-v2', 'a.xml')), false);
+    assert.equal(existsSync(join(_tmpDir, '.claude', 'skills', 'sdd-audit', 'SKILL.md')), false);
+  });
+
   it('previews without writing files', () => {
     createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# New');
 

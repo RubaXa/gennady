@@ -26,6 +26,7 @@ import { collectAndCompareSkills } from './sync-skills-core.ts';
 import { format } from './sync-skills-formatter.ts';
 import { ERR_SKILLS_SKILL_NOT_FOUND, ERR_SKILLS_SOURCE_NOT_FOUND } from './sync-skills.types.ts';
 import type { SyncSkillsFileEntry, SyncSkillsOptions } from './sync-skills.types.ts';
+import { v1ConsumerSyncRefusal } from '../../../shared/common/sync/v1-consumer-guard.ts';
 
 export type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 
@@ -152,6 +153,12 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   // #endregion END_PARSE
 
   const cwd = process.cwd();
+
+  const v1Refusal = v1ConsumerSyncRefusal(cwd);
+  if (v1Refusal) {
+    _stderr.write(`${v1Refusal}\n`);
+    return 1;
+  }
 
   // SO-9: sync-skills is a narrow, filterable command; syncing ALL directives unconditionally —
   // even for `gennady sync-skills sdd-execute` — is the widest action a narrow command can take,

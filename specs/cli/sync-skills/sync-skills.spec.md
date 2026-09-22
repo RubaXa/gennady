@@ -35,6 +35,7 @@ _Это полный список сущностей модуля. Любое в
 | `SyncCmdDeps`                 | Port         | Импортируется из `shared/common/sync/sync-deps.type.ts` (shared с `sync`)                           |
 | `ERR_SKILLS_SOURCE_NOT_FOUND` | Error code   | Source directory not found                                                                          |
 | `ERR_SKILLS_SKILL_NOT_FOUND`  | Error code   | Skill name not found in source                                                                      |
+| `v1ConsumerSyncRefusal`       | Function     | SO-12/D-23: общий pre-write отказ при `tasks/`; manifest — только diagnostic hint                   |
 
 ## 3. Entity Surfaces
 
@@ -472,3 +473,15 @@ graph TD
   - Переменные `${SKILL_DIR}` / `${GENNADY_CLI}` вместо dev-путей — агент не резолвит их в dev-режиме (там нет хостера, который подставит значения)
   - Два набора файлов (dev + prod) — дублирование, расхождение
   - Пост-обработка отдельной командой — требует от пользователя двух шагов; нормализация — часть контракта sync
+
+### D-M009 — SDD v1 consumer блокируется до skill/directive writes (SO-12/D-23)
+
+- **Status:** active
+- **Recorded:** Batch 23B / Wave 5
+- **Why:** `sync-skills`, включая `--with-directives`, не является мигратором. При `tasks/` общий
+  guard возвращает teaching diagnostic до первой записи. `.gennady-synced` сообщает ownership и не
+  обходит отказ.
+- **Risk accepted:** сначала требуется завершить `sdd-migrate`; путь зафиксирован в
+  `guides/v1-to-v2-migration.md`.
+- **Rejected alternatives:** молча заменить v1 surface — sync не владеет решениями о semantic
+  ownership, Task IDs и ticket destinations.

@@ -13,6 +13,8 @@ export type SddEvalRunArtifact = {
   scenarioId: string;
   verdict: string;
   status: string;
+  /** @purpose E-17 non-statistical outcome; deterministic failures remain in `quality`. */
+  outcome?: 'budget-exhausted';
   usage?: unknown;
   quality?: { rule: string; pass: boolean; detail: string };
   /** Absolute paths (inside the sandbox) of spec files the worker produced. */
@@ -81,6 +83,7 @@ export async function persistRunArtifacts(
       scenarioId: entry.scenarioId,
       verdict: entry.verdict,
       status: entry.status,
+      outcome: entry.outcome,
       usage: entry.usage,
       quality: entry.quality,
       specFiles: savedSpecs,

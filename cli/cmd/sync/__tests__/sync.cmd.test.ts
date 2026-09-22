@@ -77,6 +77,34 @@ describe('run (integration)', () => {
     (process as any).cwd = () => _tmpDir;
   });
 
+  it('SO-12: refuses a first v2 sync over a v1 consumer before writing', () => {
+    mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    writeFileSync(join(_sourceDir, 'new.xml'), '<new/>', 'utf-8');
+    const stdout = captureStream();
+    const stderr = captureStream();
+    const deps = makeDeps(_sourceDir, _targetDir);
+    deps.stdout = stdout as unknown as NodeJS.WriteStream;
+    deps.stderr = stderr as unknown as NodeJS.WriteStream;
+
+    assert.equal(run(['node', 'sync'], deps), 1);
+    assert.equal(stdout._chunks.join(''), '');
+    assert.match(stderr._chunks.join(''), /tasks.*канонический маркер SDD v1/s);
+    assert.match(stderr._chunks.join(''), /sdd-migrate plan/);
+    assert.equal(existsSync(join(_targetDir, 'new.xml')), false);
+  });
+
+  it('SO-12: an ownership manifest is only a diagnostic hint and never bypasses v1 refusal', () => {
+    mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    mkdirSync(join(_tmpDir, '.claude', 'skills'), { recursive: true });
+    writeFileSync(join(_tmpDir, '.claude', 'skills', '.gennady-synced'), 'sdd\n', 'utf-8');
+    const stderr = captureStream();
+    const deps = makeDeps(_sourceDir, _targetDir);
+    deps.stderr = stderr as unknown as NodeJS.WriteStream;
+
+    assert.equal(run(['node', 'sync'], deps), 1);
+    assert.match(stderr._chunks.join(''), /только манифест владения sync/);
+  });
+
   afterEach(() => {
     if (existsSync(_tmpDir)) rmSync(_tmpDir, { recursive: true });
     (process as any).cwd = _originalCwd;

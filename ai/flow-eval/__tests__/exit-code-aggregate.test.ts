@@ -57,6 +57,19 @@ describe('E-00: the batch exit code is a mechanical fold over durable outcomes, 
     );
   });
 
+  it('E-17: budget-exhausted stays separate and does not fail CI or pass/fail statistics', () => {
+    assert.strictEqual(
+      computeAggregateExitCode([
+        artifact({
+          verdict: 'budget-exhausted',
+          outcome: 'budget-exhausted',
+          quality: { rule: 'R-COMPLETE', pass: false, detail: 'unfinished at budget boundary' },
+        }),
+      ]),
+      0
+    );
+  });
+
   it('exit 0 for an EMPTY batch (nothing ran, nothing failed)', () => {
     assert.strictEqual(computeAggregateExitCode([]), 0);
   });
