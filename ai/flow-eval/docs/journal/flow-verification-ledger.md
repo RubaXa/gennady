@@ -125,17 +125,31 @@ regress. Baselines recorded in `ai/flow-eval/results/metrics-ledger.jsonl` (perm
 
 ### B2-16b — evidence-reviewed normalization ledger
 
-Нормализация не добавляет receipts, DONE, результаты или новые event-строки. Для каждого тикета
-multiset существующих checked-event/Handoff строк сохранён byte-for-byte: число строк и SHA-256
-отсортированного множества до/после совпадают.
+Нормализация не добавляет receipts, DONE, результаты или новые event-строки. Проверяется весь файл
+(не только Execution Log, потому что `CLI-draft` переносит ошибочно размещённые evidence-строки из
+phase definition): event — строка, буквально начинающаяся с `- [x] `; Handoff — строка, совпадающая с
+`^[[:space:]]*\*\*Handoff →\*\*`. Число строк и SHA-256 их C-locale-sorted byte stream воспроизводятся
+до/после такой командой (временные файлы находятся вне repository):
+
+```sh
+BASE=8ea0d8efe2737ba09b2279fab84900cc0ad7dce9
+for file in specs/cli/cli.task.CLI-alt-cli.md specs/cli/cli.task.CLI-alt-core.md specs/cli/cli.task.CLI-alt-test.md specs/cli/cli.task.CLI-diff.md specs/cli/cli.task.CLI-draft.md specs/cli/lint/lint.task.LIN-headers.md; do
+  git show "$BASE:$file" | awk '$0 ~ /^- \[x\] / || $0 ~ /^[[:space:]]*\*\*Handoff →\*\*/ { print }' > /tmp/gennady-evidence-base.txt
+  awk '$0 ~ /^- \[x\] / || $0 ~ /^[[:space:]]*\*\*Handoff →\*\*/ { print }' "$file" > /tmp/gennady-evidence-head.txt
+  for snapshot in /tmp/gennady-evidence-base.txt /tmp/gennady-evidence-head.txt; do
+    printf '%s lines=' "$file"; wc -l < "$snapshot" | tr -d ' '
+    LC_ALL=C sort "$snapshot" | openssl dgst -sha256
+  done
+done
+```
 
 | Ticket         | Исходное доказательство                                                                                                                  | Однозначная принадлежность                                                                                                                | Минимальная структурная правка                                                              | Строки / SHA-256                                                            |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `CLI-alt-cli`  | Round 1 содержит только файлы/символы `alt-opinion` command, prompts и регистрацию; в тикете одна фаза P1 `cmd + prompts + registration` | Единственная фаза и exact Target Files совпадают со всеми event-строками                                                                  | Добавлен только heading `#### P1` перед существующими строками                              | `17→17`, `4f9c68f025e7c5b6b06a91d6a114008bb85a3634dcc13e25d56ced9839e46ad7` |
+| `CLI-alt-cli`  | Round 1 содержит только файлы/символы `alt-opinion` command, prompts и регистрацию; в тикете одна фаза P1 `cmd + prompts + registration` | Единственная фаза и exact Target Files совпадают со всеми event-строками                                                                  | Добавлен только heading `#### P1` перед существующими строками                              | `18→18`, `57474f3c150c0864a550864fc2e44bd776d7dd4bb8efb2bcedf2eb5e96db7763` |
 | `CLI-alt-core` | `### Round 2 — initial, P2 runner` уже содержит `#### P2` и только `alt-opinion-runner.ts`; P1 в предыдущем блоке содержит types/parser  | Название, существующий phase heading и exact Target Files независимо указывают на P2                                                      | Удалён ошибочный level-3 Round boundary; существующий P2-блок присоединён к initial Round 1 | `94→94`, `a42d86869a55b2eae4ff7821884b83146fe0e698433e7048bca4657e56fbfd65` |
-| `CLI-alt-test` | Три строки файлов буквально называют parser, runner и cmd tests; две команды отдельно называют parser+runner и cmd                       | Каждая строка файла совпадает с единственным Target File P1/P2/P3; combined parser+runner command остаётся в P2 после уже наблюдённого P1 | Добавлены P1/P2/P3 headings; строка cmd-file перенесена вместе с cmd verification под P3    | `17→17`, `ec9a666b8c04d71a69d20707c38d1254bdc9ce1ed76ad06ad6e25a576e9ce773` |
+| `CLI-alt-test` | Три строки файлов буквально называют parser, runner и cmd tests; две команды отдельно называют parser+runner и cmd                       | Каждая строка файла совпадает с единственным Target File P1/P2/P3; combined parser+runner command остаётся в P2 после уже наблюдённого P1 | Добавлены P1/P2/P3 headings; строка cmd-file перенесена вместе с cmd verification под P3    | `19→19`, `1fa107fda8adfc7f05bc574cb1ac4e8283c1ffa325ffe909cf91d6705c8a865e` |
 | `CLI-diff`     | `### Round 2 — P2 test` уже содержит `#### P2` и exact `vcs-diff.test.ts`; Round 1 содержит P1 implementation                            | Название, heading и Target Files однозначно совпадают с P2                                                                                | Удалён ошибочный level-3 Round boundary; существующий P2-блок присоединён к initial Round 1 | `18→18`, `c3913d4403eb09eabe3e31f6f68a5869dfdff700c75b49d8dfd274993b24f422` |
-| `CLI-draft`    | Checked test events и Handoff ошибочно лежали внутри `PHASE_P2`, но называют оба exact P2 Target Files и `sdd verify`                    | Target Files и test-only события однозначно принадлежат P2; байты уже существовали, это не восстановление результата                      | Verbatim P2 evidence перемещено из phase definition в Execution Log Round 1 под `#### P2`   | `15→15`, `be7e4b138f563f0ffeb50c1568a4f8d1d0f83c62c3aeaf0c6f95a4ffda943cf6` |
+| `CLI-draft`    | Checked test events и Handoff ошибочно лежали внутри `PHASE_P2`, но называют оба exact P2 Target Files и `sdd verify`                    | Target Files и test-only события однозначно принадлежат P2; байты уже существовали, это не восстановление результата                      | Verbatim P2 evidence перемещено из phase definition в Execution Log Round 1 под `#### P2`   | `12→12`, `60f29871a58ff633a601a03bc7d989a60c248667768790e60f3d7c07249dbaf2` |
 | `LIN-headers`  | `##### P1` стоит над `file-header.check.ts`, а тикет имеет единственную P1 с этим exact Target File                                      | ID и Target File совпадают без альтернатив                                                                                                | Исправлен только heading level `#####` → `####`                                             | `7→7`, `8534aa662161a6970fbdca1515238913413547ba066b0c296c2be5e00a1cdb2c`   |
 
 ## F. Batch 23 split — acceptance status
