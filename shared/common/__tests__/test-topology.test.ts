@@ -403,6 +403,8 @@ describe('test topology contract', () => {
       coverageSpawns[1].args.filter((arg) => /\.test\.ts$/.test(arg)),
       [...topology.local, ...topology.external].sort()
     );
+    assert.ok(coverageSpawns[0].args.includes(BOUNDED_OUTER_CONCURRENCY));
+    assert.ok(coverageSpawns[1].args.includes(LOCAL_PARTITION_CONCURRENCY));
     assert.strictEqual(
       pkg.scripts.test,
       'node --import tsx scripts/test-topology.ts deterministic'
@@ -436,10 +438,10 @@ describe('test topology contract', () => {
     );
   });
 
-  it("pins one bounded outer concurrency for every runner mode except deterministic's local partition", () => {
-    // REL-7: `deterministic` is deliberately excluded here — its two partitions run at different
-    // concurrencies, locked separately below.
-    for (const mode of ['unit', 'coverage', 'experimental'] as const) {
+  it('pins one bounded outer concurrency for every unpartitioned runner mode', () => {
+    // REL-7: `deterministic` and `coverage` are deliberately excluded here — their partitions run
+    // at different concurrencies, locked by the exact partition assertions above and below.
+    for (const mode of ['unit', 'experimental'] as const) {
       for (const { args } of probeSpawns(mode)) {
         assert.strictEqual(
           args.filter((arg) => arg.startsWith('--test-concurrency=')).length,

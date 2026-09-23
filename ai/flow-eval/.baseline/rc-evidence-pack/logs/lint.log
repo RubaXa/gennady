@@ -1,0 +1,30 @@
+$ npm run lint
+
+--- stdout ---
+
+> gennady@2.0.0-draft.1 lint
+> npm run format && npm run type-check && npm run lint:contracts
+
+
+> gennady@2.0.0-draft.1 format
+> prettier --check . --cache --cache-strategy content
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> gennady@2.0.0-draft.1 type-check
+> tsc --noEmit
+
+
+> gennady@2.0.0-draft.1 lint:contracts
+> tsx cli/gennady.ts lint cli/ shared/ services/
+
+✅ [LintCommand#run] [linting → clean] no errors
+
+
+--- stderr ---
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+

@@ -1,0 +1,275 @@
+{
+  "schema": "gennady.rc-evidence-pack.v1",
+  "sourceCommit": "d76a5ec5d04f4a8415908b091f178f283f20b796",
+  "generatedAt": "2026-09-23T14:42:08.228Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v22.23.2",
+    "nodeExecutable": "/Users/k.lebedev/.local/share/mise/installs/node/22.23.2/bin/node",
+    "npm": "10.9.8",
+    "packageLockSha256": "45bb173abae13e19e22183f0481dd90494b2c8594934653cbdf620cde30566b0"
+  },
+  "commands": [
+    {
+      "id": "type-check",
+      "command": "npm run type-check",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/type-check.log",
+      "sha256": "9c1b29c328f41f4f49d90aaf7bf2de7e3652d831c5df50a7bea69e7cb98e0f20"
+    },
+    {
+      "id": "format-check",
+      "command": "npm run format",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/format-check.log",
+      "sha256": "a70e3032ad7d51e4e0ff413f992a608c5530ecfba4c8957a9f70c824ded156c3"
+    },
+    {
+      "id": "lint",
+      "command": "npm run lint",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/lint.log",
+      "sha256": "05e3017dd0444ce3f9d7dffeacc1c2d721f0278d69a8c04b8f59927265aca0f1"
+    },
+    {
+      "id": "audit-sdd-templates",
+      "command": "npm run audit:sdd-templates",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/audit-sdd-templates.log",
+      "sha256": "d4c8e8f4e3bf018accfdbcec7b5781d196dee9dd38f1cb96609910767fb9822e"
+    },
+    {
+      "id": "build",
+      "command": "npm run build",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/build.log",
+      "sha256": "4e86184f034a7a53c9bcdcb72bd90d5d51cf497bcfc00d2f4f033757c4cb4fa5"
+    },
+    {
+      "id": "test",
+      "command": "npm test",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/test.log",
+      "sha256": "f6d8a3398bf393bb522928063e6fed9ad2f8ce6ea310ff099bd5958aad859b31"
+    },
+    {
+      "id": "migration-1-agent-inbox",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-inbox",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-inbox.log",
+      "sha256": "a6388e3306b7af8e3dea45ba5e2b2a8ea4992225aa283c6c32bdf5742134780a"
+    },
+    {
+      "id": "migration-1-agent-mon",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-mon.log",
+      "sha256": "619880dee9f32b66649e7707a62d036160552bc2126a346c4d0e674ced400475"
+    },
+    {
+      "id": "migration-1-agent-mon-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon-cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-mon-cli.log",
+      "sha256": "914889936e88e051d1367df1f4f806c3ae9ab9648f6243b30661250ae9b9903f"
+    },
+    {
+      "id": "migration-1-agent-run",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-run",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-run.log",
+      "sha256": "b0bcf31727e1029a745bc848839d8afb06a5a358d1db410e8edd62b31f3bf540"
+    },
+    {
+      "id": "migration-1-ai-skills",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope ai-skills",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-ai-skills.log",
+      "sha256": "c4f08d1dca87f574a4ded9fa909049dded41a7fe076dc9c866ea9eaeac346e23"
+    },
+    {
+      "id": "migration-1-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-cli.log",
+      "sha256": "1a49ba081a7cd4340640df65415898045d70a266bb7dfc45af8d4faf92b9478a"
+    },
+    {
+      "id": "migration-1-dbc",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope dbc",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-dbc.log",
+      "sha256": "319208124b8fc253d51121940e4ed1ed86bc84274c10fdafe00bba640dd94bc6"
+    },
+    {
+      "id": "migration-1-infra-base",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-base",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-infra-base.log",
+      "sha256": "1c912982a89064e74e98dbc9d338b4702621af28acd283e96786689f3747d7ae"
+    },
+    {
+      "id": "migration-1-infra-npm-publish",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-npm-publish",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-infra-npm-publish.log",
+      "sha256": "51368f8a67f9985073ff8fb11b38ed5c7c79c45ec7a92c71a76ca407967aa4c0"
+    },
+    {
+      "id": "migration-1-mr-stats",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope mr-stats",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-mr-stats.log",
+      "sha256": "37c66c46833aa97cd078b540a1746e36bea80760db33b6036fe798513fbedef9"
+    },
+    {
+      "id": "migration-1-shared",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope shared",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-shared.log",
+      "sha256": "5f3922946bb432d765cdc7c838bec973d03a3c2d2bab8d285d411b308254e36b"
+    },
+    {
+      "id": "migration-1-vcs",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope vcs",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-vcs.log",
+      "sha256": "3438c82bbc385e4baf2329d0a773f308c3ef5912cdf2fc72d9ab91156a47b9c8"
+    },
+    {
+      "id": "migration-2-agent-inbox",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-inbox",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-inbox.log",
+      "sha256": "a6388e3306b7af8e3dea45ba5e2b2a8ea4992225aa283c6c32bdf5742134780a"
+    },
+    {
+      "id": "migration-2-agent-mon",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-mon.log",
+      "sha256": "619880dee9f32b66649e7707a62d036160552bc2126a346c4d0e674ced400475"
+    },
+    {
+      "id": "migration-2-agent-mon-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon-cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-mon-cli.log",
+      "sha256": "914889936e88e051d1367df1f4f806c3ae9ab9648f6243b30661250ae9b9903f"
+    },
+    {
+      "id": "migration-2-agent-run",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-run",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-run.log",
+      "sha256": "b0bcf31727e1029a745bc848839d8afb06a5a358d1db410e8edd62b31f3bf540"
+    },
+    {
+      "id": "migration-2-ai-skills",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope ai-skills",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-ai-skills.log",
+      "sha256": "c4f08d1dca87f574a4ded9fa909049dded41a7fe076dc9c866ea9eaeac346e23"
+    },
+    {
+      "id": "migration-2-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-cli.log",
+      "sha256": "1a49ba081a7cd4340640df65415898045d70a266bb7dfc45af8d4faf92b9478a"
+    },
+    {
+      "id": "migration-2-dbc",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope dbc",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-dbc.log",
+      "sha256": "319208124b8fc253d51121940e4ed1ed86bc84274c10fdafe00bba640dd94bc6"
+    },
+    {
+      "id": "migration-2-infra-base",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-base",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-infra-base.log",
+      "sha256": "1c912982a89064e74e98dbc9d338b4702621af28acd283e96786689f3747d7ae"
+    },
+    {
+      "id": "migration-2-infra-npm-publish",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-npm-publish",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-infra-npm-publish.log",
+      "sha256": "51368f8a67f9985073ff8fb11b38ed5c7c79c45ec7a92c71a76ca407967aa4c0"
+    },
+    {
+      "id": "migration-2-mr-stats",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope mr-stats",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-mr-stats.log",
+      "sha256": "37c66c46833aa97cd078b540a1746e36bea80760db33b6036fe798513fbedef9"
+    },
+    {
+      "id": "migration-2-shared",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope shared",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-shared.log",
+      "sha256": "5f3922946bb432d765cdc7c838bec973d03a3c2d2bab8d285d411b308254e36b"
+    },
+    {
+      "id": "migration-2-vcs",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope vcs",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-vcs.log",
+      "sha256": "3438c82bbc385e4baf2329d0a773f308c3ef5912cdf2fc72d9ab91156a47b9c8"
+    }
+  ],
+  "migration": {
+    "scopes": [
+      "agent-inbox",
+      "agent-mon",
+      "agent-mon-cli",
+      "agent-run",
+      "ai-skills",
+      "cli",
+      "dbc",
+      "infra-base",
+      "infra-npm-publish",
+      "mr-stats",
+      "shared",
+      "vcs"
+    ],
+    "rounds": 2,
+    "allNoOp": true
+  }
+}

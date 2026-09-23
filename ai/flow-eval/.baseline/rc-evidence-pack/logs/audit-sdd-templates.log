@@ -1,0 +1,48 @@
+$ npm run audit:sdd-templates
+
+--- stdout ---
+
+> gennady@2.0.0-draft.1 audit:sdd-templates
+> npm run check:directives-fresh && npm run audit:axioms && npm run audit:contracts && npm run audit:halts && npm run check:directive-budgets
+
+
+> gennady@2.0.0-draft.1 check:directives-fresh
+> node --experimental-strip-types ai/kit/check-directives-fresh.ts
+
+✓ ai/directives/** matches a fresh rebuild.
+
+> gennady@2.0.0-draft.1 audit:axioms
+> node ai/kit/audit-axiom-activation.mjs
+
+✓ axiom-activation audit clean — 28 template(s) checked.
+
+> gennady@2.0.0-draft.1 audit:contracts
+> node ai/kit/audit-contract-activation.mjs
+
+✓ contract-activation audit clean — 28 template(s) + 33 assembled directive(s) + 54 contract file(s), against 55 template file(s) (recursive), checked.
+
+> gennady@2.0.0-draft.1 audit:halts
+> node ai/kit/audit-halt-activation.mjs
+
+✓ halt-activation audit clean — 33 template(s) + 33 assembled directive(s) checked.
+
+> gennady@2.0.0-draft.1 check:directive-budgets
+> node --experimental-strip-types ai/kit/step-budget-gate.ts
+
+✓ every measured directive under ai/directives/sdd-v2/** is within its hard limit (see soft-target warning(s) above).
+
+
+--- stderr ---
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+⚠ execute (skeleton): skeleton tokens (soft target) = 6966 exceeds 6000 by 966 — soft target, build still succeeds
+⚠ infra (skeleton): skeleton tokens (hard limit) = 9766 exceeds 8000 by 1766 — allowlisted monolith pending lazy-split (owner: T-B6-10a); warns instead of failing until split, build still succeeds
+⚠ migration-v1-v2 (skeleton): skeleton tokens (soft target) = 6949 exceeds 6000 by 949 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds
+⚠ reconcile (skeleton): skeleton tokens (soft target) = 6706 exceeds 6000 by 706 — soft target, build still succeeds
+⚠ root (skeleton): skeleton tokens (soft target) = 7751 exceeds 6000 by 1751 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds
+⚠ router (skeleton): skeleton tokens (soft target) = 6224 exceeds 6000 by 224 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds
+
