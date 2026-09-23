@@ -180,6 +180,12 @@ test('runner aborts changing activity when the hard observation budget is exhaus
   assert.deepEqual(runtime.aborts, ['ses_1']);
   assert.equal(result.worker.observations.at(-1)?.stuck, true);
   assert.deepEqual(result.worker.observations.at(-1)?.errors, ['observation budget exceeded']);
+  assert.deepEqual(result.worker.budgetExhausted, {
+    kind: 'observation',
+    detail: 'observation budget 2 exhausted',
+  });
+  assert.equal(result.worker.error, undefined);
+  assert.equal(result.judge, undefined);
 });
 
 test('CLI rejects invalid observation controls before provisioning or SDK access', async () => {
@@ -1215,6 +1221,11 @@ test('runner physically kills a worker that blows the wall-clock budget', async 
     directory: '/tmp/isolated-slow',
   });
   assert.deepEqual(runtime.aborts, ['ses_1']);
-  assert.match(result.worker.error ?? '', /wall-clock budget 20ms exceeded/);
-  assert.equal(result.worker.status, 'error');
+  assert.equal(result.worker.error, undefined);
+  assert.deepEqual(result.worker.budgetExhausted, {
+    kind: 'wall-clock',
+    detail: 'wall-clock budget 20ms exceeded',
+  });
+  assert.equal(result.worker.status, 'unknown');
+  assert.equal(result.judge, undefined);
 });

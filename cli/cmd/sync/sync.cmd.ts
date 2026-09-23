@@ -13,6 +13,7 @@ import type { SyncFileEntry, SyncOptions } from './sync.types.ts';
 import { ERR_SYNC_SUBDIR_NOT_FOUND } from './sync.types.ts';
 import type { SyncCoreDeps } from './sync-core.ts';
 import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
+import { v1ConsumerSyncRefusal } from '../../../shared/common/sync/v1-consumer-guard.ts';
 
 export type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 
@@ -73,6 +74,12 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   // #endregion END_PARSE
 
   const cwd = process.cwd();
+
+  const v1Refusal = v1ConsumerSyncRefusal(cwd);
+  if (v1Refusal) {
+    _stderr.write(`${v1Refusal}\n`);
+    return 1;
+  }
 
   // #region START_RESOLVE_PACKAGE — invariant: local node_modules > import.meta.resolve
   const packageDir = _resolvePackageDir(cwd, 'ai/directives');

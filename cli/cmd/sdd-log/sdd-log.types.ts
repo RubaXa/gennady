@@ -795,6 +795,7 @@ export function badInvocation(detail: string): LogOutcome {
       '         complete "artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]" --phase P<N> |',
       '         authoring-complete   # exact scope/module *.spec.md path |',
       '         audit-receipt <verdict> | review-receipt <verdict>   # group-completion receipt on the owning spec',
+      '         deviation-verdict <D-id> <accepted|rework|rolled-back>   # edit an existing Decision Log deviation',
       '  agent free text: replace the quoted content with --content-file .claude/tmp/<safe-name>;',
       '  blocker uses --payload-file .claude/tmp/<safe-name>.json with reason/axiom/unblock keys.',
       '  --phase P<N> is only valid on line | handoff | blocker | resolved | complete.',

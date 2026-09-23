@@ -158,6 +158,36 @@ describe('GAP-E-6: results-table.ts generator (both-way, frozen fixtures, no liv
     }
   });
 
+  it('E-17 excludes budget-exhausted runs from counts, medians, and pass/fail denominators', async () => {
+    const root = tempResultsDir();
+    const outFile = tempOutFile(EMPTY_DOC);
+    try {
+      await persistDurableResult(root, fakeSummary({ actions: 60, durationMs: 10 * 60_000 }));
+      await persistDurableResult(
+        root,
+        fakeSummary({
+          verdict: 'budget-exhausted',
+          outcome: 'budget-exhausted',
+          actions: 999,
+          durationMs: 99 * 60_000,
+          usage: { total: 999000 },
+          quality: { rule: 'R-COMPLETE', pass: false, detail: 'unfinished' },
+          hasJudge: false,
+        })
+      );
+      const { code, stderr } = await runResultsTable(['--results-dir', root, '--out', outFile]);
+      assert.equal(code, 0, stderr);
+      const written = await readFile(outFile, 'utf8');
+      assert.match(written, /\| `fibonacci-library` \| 1 \| 60 \| ~10 мин \| ~191 000 \|/);
+      assert.match(written, /Проходит \(1\/1\); budget-exhausted 1 вне статистики/);
+      assert.match(written, /pass \(1\/1\); budget-exhausted 1 вне статистики/);
+      assert.doesNotMatch(written, /999/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+      cleanupOutFile(outFile);
+    }
+  });
+
   it('a JUDGE split with an UNCHANGED mechanical gate reports "Проходит" mechanically, "Смешанно" only in the judge column (V-BATCH-22 B-6)', async () => {
     // Both runs mechanically PASS (quality.pass: true, the fakeSummary default) — only the judge's
     // own verdict differs. Before the fix, "Состояние" counted `run.outcome` (judge-derived), so this

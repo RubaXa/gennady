@@ -53,6 +53,7 @@ import { getChangedFiles } from '../../../shared/common/changed-files.ts';
 import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.ts';
 import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
+import { deviationIsOpen, parseDeviationRecords } from '../../../shared/sdd/deviation.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
 import {
@@ -639,10 +640,21 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
   const auditGroupLine = groupRes.ok
     ? buildAuditGroupLine(groupRes.specPath, groupRes.group, root, meta.taskId ?? ticket)
     : null;
+  const openDeviations = parseDeviationRecords(content)
+    .filter(deviationIsOpen)
+    .map((record) => `${record.id} [verdict: ${record.rawVerdict}]`);
   return withResolutionLine(
     {
       ok: true,
-      text: formatPlan(meta, phases, detailsById, gates, activeBlockers, auditGroupLine),
+      text: formatPlan(
+        meta,
+        phases,
+        detailsById,
+        gates,
+        activeBlockers,
+        auditGroupLine,
+        openDeviations
+      ),
     },
     resolutionLine
   );

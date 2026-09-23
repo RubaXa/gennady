@@ -5,14 +5,23 @@
 //   only inside it: this module copies the specs/judge/summary a run produces into a persistent
 //   artifacts root, and then removes the sandbox directories so they can never accumulate on disk.
 
-import { cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
+import { countOpenDeviations } from '../../shared/sdd/deviation.ts';
 
 /** @purpose One scenario's durable outcome — everything worth keeping after its sandbox is gone. */
 export type SddEvalRunArtifact = {
   scenarioId: string;
   verdict: string;
   status: string;
+  /** @purpose E-17 non-statistical outcome; deterministic failures remain in `quality`. */
+  outcome?: 'budget-exhausted';
+  /** Typed observation boundary plus the unresolved-decision count it left visible. */
+  budgetExhausted?: {
+    kind: 'observation' | 'wall-clock';
+    detail: string;
+    pendingOperatorCount: number;
+  };
   usage?: unknown;
   quality?: { rule: string; pass: boolean; detail: string };
   /** Absolute paths (inside the sandbox) of spec files the worker produced. */
@@ -22,6 +31,41 @@ export type SddEvalRunArtifact = {
   /** Absolute sandbox directory this outcome came from. */
   directory: string;
 };
+
+/**
+ * @purpose Render the E-17 boundary as one stable observable line for CLI and tests.
+ * @param boundary Typed budget cause plus unresolved operator-decision count.
+ * @returns Human-readable detail preserving both budget kind and pending count.
+ */
+export function formatBudgetExhausted(
+  boundary: NonNullable<SddEvalRunArtifact['budgetExhausted']>
+): string {
+  return `${boundary.kind} — ${boundary.detail}; pending-operator=${boundary.pendingOperatorCount}`;
+}
+
+/** @purpose Count unresolved deviation records in co-located V2 tickets without judging them. */
+export async function countPendingOperatorDeviations(root: string): Promise<number> {
+  const contents: string[] = [];
+  async function walk(dir: string): Promise<void> {
+    let entries: Awaited<ReturnType<typeof readdir>>;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (NON_ARTIFACT_SEGMENTS.has(entry.name)) continue;
+        await walk(join(dir, entry.name));
+      } else if (entry.isFile() && /\.task\.[^.]+\.md$/.test(entry.name)) {
+        const content = await readFile(join(dir, entry.name), 'utf8').catch(() => null);
+        if (content !== null) contents.push(content);
+      }
+    }
+  }
+  await walk(root);
+  return countOpenDeviations(contents);
+}
 
 // Directory segments that are provisioned scaffolding, never worker-authored output.
 const NON_ARTIFACT_SEGMENTS = new Set(['ai', 'node_modules', '.claude', '.git']);
@@ -81,6 +125,8 @@ export async function persistRunArtifacts(
       scenarioId: entry.scenarioId,
       verdict: entry.verdict,
       status: entry.status,
+      outcome: entry.outcome,
+      budgetExhausted: entry.budgetExhausted,
       usage: entry.usage,
       quality: entry.quality,
       specFiles: savedSpecs,

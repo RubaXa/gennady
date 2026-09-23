@@ -28,10 +28,10 @@ console.info(
   '  lint              Validate .ts files: headers, anchors, DBC contracts, invariants, disables'
 );
 console.info(
-  '  sync              Synchronize ai/directives/ from npm package into current project'
+  '  sync              Synchronize v2 ai/directives/ (refuses an SDD v1 consumer before writes)'
 );
 console.info(
-  '  sync-skills       Synchronize SDD skills from ai/skills/ to .claude/skills/ (add --with-directives to also sync ai/directives/ first, off by default — run `sync` on its own for that)'
+  '  sync-skills       Synchronize v2 SDD skills (refuses v1; --with-directives is opt-in)'
 );
 console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'

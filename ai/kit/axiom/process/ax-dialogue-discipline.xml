@@ -4,6 +4,11 @@
   - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
   - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
 
+  Execute-flow exception: a LOW-confidence spec/ticket hole that has a smallest safe reversible
+  default follows `AX_DEVIATION_SELF_RESOLVE` — record an agent-owned Decision Log entry with
+  `[verdict: pending-operator]` and continue. This exception does not cover product-risk acceptance,
+  external authority, Approval Checks, or a red required gate.
+
   The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
 
   Named hard stops — Approval Checks and the SCALE confirmation exchange — are exempt from the proceed rule; they always stop, however high the confidence.

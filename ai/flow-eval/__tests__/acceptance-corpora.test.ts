@@ -234,6 +234,19 @@ function runCurrentSddCheckText(
   return { exitCode: result.status ?? -1, text: result.stdout?.toString() ?? '' };
 }
 
+function runCurrentGennady(
+  root: string,
+  args: readonly string[]
+): { exitCode: number; text: string } {
+  const result = runChecked(
+    process.execPath,
+    ['--import', import.meta.resolve('tsx'), join(PROJECT_ROOT, 'cli/gennady.ts'), ...args],
+    root,
+    { allowExit: [0, 1, 2, 4] }
+  );
+  return { exitCode: result.status ?? -1, text: result.stdout?.toString() ?? '' };
+}
+
 function warningMovement(
   baseline: SddCheckBaseline,
   fresh: readonly BaselineFinding[]
@@ -455,7 +468,7 @@ function specWithGroupReceipts(specFile: string, members: GroupMemberInput[]): s
 describe('Batch 23A acceptance corpora', () => {
   it('E-22: frozen golden-v1 has zero new error identity; expected red exit and warning movement stay explicit', () => {
     assert.equal(goldenContract.schema, 'gennady.flow-eval.golden-v1.v1');
-    assert.deepEqual(goldenContract.deferred, ['E-17', 'E-18']);
+    assert.deepEqual(goldenContract.deferred, ['E-18']);
     withTempRoot('gennady-golden-v1-', (scratch) => {
       prepareFrozenV1Corpus(scratch, goldenContract);
       const checkout = join(scratch, 'checkout');
@@ -816,9 +829,55 @@ describe('Batch 23A acceptance corpora', () => {
     });
   });
 
-  it('23A traceability does not claim deferred 23B/23C acceptance', () => {
+  it('V14-2c/E-17: pending survives a budget boundary and blocks group close until resolved', () => {
+    withTempRoot('gennady-pending-group-', (root) => {
+      const specFile = 'specs/demo/demo.spec.md';
+      const memberFile = join(root, 'specs/demo/demo.task.DEM-a.md');
+      mkdirSync(join(root, 'specs/demo'), { recursive: true });
+      const pending = `${groupTicket('DEM-a', 1, true)}\n${[
+        '<!--SECTION:DECISION_LOG-->',
+        'DEM-DL-0 2026-09-22 — retry cap 3 (почему: spec silent) [verdict: pending-operator]',
+        '<!--/SECTION:DECISION_LOG-->',
+      ].join('\n')}`;
+      writeFileSync(join(root, specFile), cleanScopeSpec());
+      writeFileSync(memberFile, pending);
+      writeTracker(root, [{ id: 'DEM-a' }]);
+
+      const audit = runCurrentGennady(root, ['sdd-log', 'DEM-a', 'audit-receipt', 'PASS']);
+      assert.equal(audit.exitCode, 0, audit.text);
+      const review = runCurrentGennady(root, ['sdd-log', 'DEM-a', 'review-receipt', 'PASS']);
+      assert.equal(review.exitCode, 0, review.text);
+      const receiptsBeforeVerdict = readFileSync(join(root, specFile), 'utf8');
+      assert.match(receiptsBeforeVerdict, /SDD_AUDIT_RECEIPT/);
+      assert.match(receiptsBeforeVerdict, /SDD_REVIEW_RECEIPT/);
+
+      const before = runCurrentSddCheck(root, root);
+      assert.equal(before.exitCode, 1);
+      assert.equal(
+        before.payload.findings.filter(
+          (finding) => finding.code === 'SDD_DEVIATION_VERDICT_MISSING'
+        ).length,
+        1
+      );
+
+      const verdict = runCurrentGennady(root, [
+        'sdd-log',
+        'DEM-a',
+        'deviation-verdict',
+        'DEM-DL-0',
+        'accepted',
+      ]);
+      assert.equal(verdict.exitCode, 0, verdict.text);
+      assert.match(readFileSync(memberFile, 'utf8'), /DEM-DL-0[^\n]+\[verdict: accepted\]/);
+      const after = runCurrentSddCheck(root, root);
+      assert.equal(after.exitCode, 0, JSON.stringify(after.payload.findings, null, 2));
+      assert.deepEqual(cliOutcome(after.payload), []);
+    });
+  });
+
+  it('23A contract remains frozen while current traceability closes E-17 and keeps E-18 deferred', () => {
     assert.deepEqual(adversarialContract.acceptance, ['E-23', 'V14-3']);
-    assert.deepEqual(adversarialContract.deferred, ['E-17', 'E-18']);
+    assert.deepEqual(adversarialContract.deferred, ['E-18']);
     assert.deepEqual(
       adversarialContract.cases.map(({ id }) => id),
       [

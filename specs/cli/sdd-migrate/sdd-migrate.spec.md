@@ -26,7 +26,7 @@ _Обзор пути от контракта к реализации и пров
 
 ## 1. Module Vision
 
-Миграция v1 SDD-артефактов в v2 — детерминированные, верифицируемые шаги. `anchors`, `plan`, `ids` и `move` сохраняют dry-run по умолчанию. `move` выполняет один whole-scope fail-closed preflight для ticket relocation, stable Spec IDs и source ownership headers; только после зелёного preflight фактически переводит scope в V2.
+Миграция v1 SDD-артефактов в v2 — детерминированные, верифицируемые шаги. `bootstrap`, `anchors`, `plan`, `ids` и `move` сохраняют dry-run по умолчанию. `bootstrap` заменяет доказанный package-owned V1 tooling полным свежим V2 migration runtime; `move` выполняет один whole-scope fail-closed preflight для ticket relocation, stable Spec IDs и source ownership headers; только после зелёного preflight фактически переводит scope в V2.
 
 **Key properties:**
 
@@ -34,6 +34,7 @@ _Обзор пути от контракта к реализации и пров
 - Dry-run-first — без `--write` только репорт «что бы изменил»; на боевом репо вскрыл 56 голых / 12 уже-заякоренных из 68
 - Idempotent — секция с уже-имеющимся маркером пропускается; покрывает оба v1-суб-формата (голые / newer-с-якорями)
 - Whole-scope preflight — malformed/duplicate Spec ID, unrecoverable legacy relation или ambiguous semantic owner блокируют relocation и все header writes до первой мутации
+- Bootstrap transaction — manifest/known-hash ownership, symlink boundary и все collisions проверяются до записи; ошибка записи откатывает consumer bytes
 
 **Invariants:**
 
@@ -47,6 +48,9 @@ _Обзор пути от контракта к реализации и пров
 ## 2. Module Usage Example
 
 ```bash
+$ npx gennady sdd-migrate bootstrap .              # dry-run полного fresh V2 runtime
+$ npx gennady sdd-migrate bootstrap . --write      # purge proven V1 + install current package assets
+
 $ npx gennady sdd-migrate anchors tasks/cli/cat/cli-cat.task-31.md
 [sdd-migrate anchors] DRY-RUN · 1 ticket(s)
   would tasks/cli/cat/cli-cat.task-31.md — META, PHASES_OVERVIEW, PHASE_P1, PHASE_P2, BDD, VERIFICATION, TEST_COVERAGE, EXECUTION_LOG
@@ -65,6 +69,7 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 | Name                         | Type    | Purpose                                                                                                                                                                              |
 | ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `run`                        | Command | Точка входа CLI: режим `anchors`, dry-run/`--write`, single/`--all`                                                                                                                  |
+| `bootstrapMigrationRuntime`  | Service | Full-current-runtime transaction: proven V1 purge, symlink-safe preflight, rollback                                                                                                  |
 | `findV1Tickets`              | Utility | Рекурсивный сбор `tasks/**/*.task-*.md`                                                                                                                                              |
 | `injectAnchors`              | Utility | (`shared/sdd/anchor-inject`) обёртка канонических секций маркерами                                                                                                                   |
 | `scaffoldExecutionLog`       | Utility | (`shared/sdd/anchor-inject`) скаффолдит `## Execution Log`, если у v1-тикета (Meta-сигнатура) его нет вообще                                                                         |
@@ -133,14 +138,15 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 
 ## 5. Public Options & Policies
 
-| Argument       | Type   | Description                                                       |
-| -------------- | ------ | ----------------------------------------------------------------- |
-| `anchors`      | mode   | Инжект `<!--SECTION:-->` в v1-тикеты                              |
-| `<ticket>`     | string | Один тикет (если не `--all`)                                      |
-| `--all [root]` | flag   | Все `tasks/**/*.task-*.md` под root (по умолч. cwd)               |
-| `--write`      | flag   | Применить (иначе dry-run)                                         |
-| `move`         | mode   | Перевести один scope: tickets, indexes, Spec IDs и source headers |
-| `--scope <s>`  | string | Scope для whole-scope move preflight                              |
+| Argument       | Type   | Description                                                        |
+| -------------- | ------ | ------------------------------------------------------------------ |
+| `anchors`      | mode   | Инжект `<!--SECTION:-->` в v1-тикеты                               |
+| `bootstrap`    | mode   | Purge доказанного V1 tooling + полный текущий V2 migration runtime |
+| `<ticket>`     | string | Один тикет (если не `--all`)                                       |
+| `--all [root]` | flag   | Все `tasks/**/*.task-*.md` под root (по умолч. cwd)                |
+| `--write`      | flag   | Применить (иначе dry-run)                                          |
+| `move`         | mode   | Перевести один scope: tickets, indexes, Spec IDs и source headers  |
+| `--scope <s>`  | string | Scope для whole-scope move preflight                               |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -151,6 +157,7 @@ $ npx gennady sdd-migrate anchors --all . --write  # применить + зат
 ```
 cli/cmd/sdd-migrate/  index.ts · sdd-migrate.cmd.ts · sdd-migrate.types.ts · help.ts · __tests__/sdd-migrate.cmd.test.ts
 shared/sdd/anchor-inject.ts  (injectAnchors)  + __tests__/anchor-inject.test.ts
+shared/sdd/migration-bootstrap.ts + migration-bootstrap.types.ts + __tests__/migration-bootstrap.test.ts
 shared/sdd/migration-move.ts + migration-file-headers.ts + source-ownership-header.ts + __tests__/migration-move.test.ts
 ```
 
@@ -247,6 +254,18 @@ shared/sdd/migration-move.ts + migration-file-headers.ts + source-ownership-head
   любом blocker не пишет ничего. Path-derived Spec ID используется один раз как migration proposal;
   после материализации explicit ID остаётся authority при rename/move spec path. **Risk:** полный
   ticket corpus читается на preflight без persistent cache (FO-7 остаётся deferred).
+
+### D-MG013 — D-23 bootstrap ставит полный текущий V2 runtime до migration
+
+- **Status:** active · **Supersedes:** blanket «сначала migration, затем получить V2 tooling».
+  `bootstrap` materializes все package `ai/skills/**` и `ai/directives/sdd-v2/**`, но не вызывает
+  обычный sync. Перед записью он сканирует legacy roots и current targets, запрещает symlinks и
+  принимает V1 bytes только по `.gennady-synced`/exact SHA-256 frozen pre-cutover snapshot.
+  Modified/unknown bytes дают полный blocker list; `specs/**`, `tasks/**` и code не входят в plan.
+  После последнего `move` обычные full sync/sync-skills доводят mirror уже в V2 repo.
+- **Risk accepted:** автоматический hash proof ограничен явно известным последним V1 snapshot.
+  Более старая/иная версия не угадывается: оператор сохраняет кастомизации и обновляет/разрешает
+  runtime вручную, затем повторяет bootstrap.
 
 Уточнение принятого D-40 для самомиграции: parser legacy evidence не сканирует body/prose и не
 считает declaration JSDoc продолжением шапки. Удалённые DONE-тикеты восстанавливаются read-only из

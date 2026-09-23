@@ -35,8 +35,9 @@ export type SddEvalScenario = {
   /**
    * @purpose Per-scenario hard wall-clock budget in ms — overrides `SddEvalConfig.maxWallClockMs`.
    * For EXISTING evals set it to the established time this task is known to need; for NEW evals set it
-   * as the target it must hit. Exceed it and the runner aborts the worker and fails the scenario — a
-   * simple migration is minutes, not an hour. Omit to fall back to the batch-level budget.
+   * as the target it must hit. Exceed it and the runner aborts the worker with the separate E-17
+   * `budget-exhausted` outcome; it does not fabricate a quality failure. A simple migration is
+   * minutes, not an hour. Omit to fall back to the batch-level budget.
    */
   budgetMs?: number;
 };
@@ -165,8 +166,8 @@ export type SddEvalConfig = {
   /**
    * @purpose Hard WALL-CLOCK budget per scenario in ms. Independent of observation cadence: when the
    * total elapsed time (worker prompt + observation loop) exceeds it, the runner aborts the worker
-   * session and fails the scenario with `wall-clock budget … exceeded`. A simple task must finish fast;
-   * a thrashing worker is killed, not left to burn an hour. Omit/0 disables (observation budget only).
+   * session and reports the separate `budget-exhausted` outcome. A simple task must finish fast; a
+   * thrashing worker is killed, not left to burn an hour. Omit/0 disables (observation budget only).
    */
   maxWallClockMs?: number;
   /** @purpose Maximum tail messages requested from OpenCode per observation. */
@@ -255,6 +256,13 @@ export type SddEvalWorkerResult = {
   status: SddEvalObservation['status'];
   /** @purpose Token/cost totals for the run; absent when the evidence source cannot report them. */
   usage?: SddEvalUsage;
+  /** @purpose Present only when a hard harness budget stopped the run; never a worker error. */
+  budgetExhausted?: {
+    /** @purpose Which independent hard bound stopped the run. */
+    kind: 'observation' | 'wall-clock';
+    /** @purpose Stable operator-facing diagnostic recorded with the run. */
+    detail: string;
+  };
   error?: string;
 };
 

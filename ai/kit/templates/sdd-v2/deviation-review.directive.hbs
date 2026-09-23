@@ -1,7 +1,8 @@
 <SddDeviationReview keywords="deviation, final, batch, audit, operator" type="directive" ver="1.0">
   <Mission>
     Review disputed autonomous decisions once, after the whole batch is complete. This is a dynamic
-    final conversation over durable owner logs and completed audit evidence; it writes no sidecar.
+    final conversation over durable owner logs and completed audit evidence. It creates no sidecar;
+    it resolves each item by editing that existing Decision Log record through the canonical CLI.
   </Mission>
 
   <BeliefState>
@@ -32,6 +33,18 @@
         unresolved item). If all three are empty, say so and finish without a ceremony. Otherwise ask
         once for the operator's decisions. Route corrections to their existing artifact owner and
         invalidate the applicable approval marker; never patch code from this review directive.
+      </Action>
+    </Step>
+    <Step id="STEP_3_PERSIST">
+      <Goal>Persist every operator verdict on its existing deviation record.</Goal>
+      <Action>
+        For each reviewed record call <ToolCall owner="this-step" result="verdictWrite">npx gennady sdd-log &lt;ticket&gt; deviation-verdict &lt;D-id&gt; &lt;accepted|rework|rolled-back&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;D-id&gt;, &lt;accepted|rework|rolled-back&gt;: the exact reviewed ticket,
+        existing Decision Log identity, and operator-selected closed verdict. Use verdictWrite.
+        `rework` routes through `AX_REOPEN_FORMAT`; `rolled-back` identifies the superseding Decision
+        Log fact in the record prose. Never create a sidecar or append a duplicate deviation. Then run
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall>
+        and use integrityCheck; finish only when it carries no `SDD_DEVIATION_VERDICT_MISSING`.
       </Action>
     </Step>
   </ExecutionPlan>

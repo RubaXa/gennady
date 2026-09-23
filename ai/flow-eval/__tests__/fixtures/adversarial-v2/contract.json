@@ -46,5 +46,5 @@
     "injectedExit": 1,
     "onlyOutcome": { "code": "SDD_TASK_ID_COLLISION", "severity": "error" }
   },
-  "deferred": ["E-17", "E-18"]
+  "deferred": ["E-18"]
 }

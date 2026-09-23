@@ -28,6 +28,8 @@ import {
 import { DEFAULT_SDD_EVAL_CONFIG, SddEvalRunner } from './runner.ts';
 import {
   collectSpecFiles,
+  countPendingOperatorDeviations,
+  formatBudgetExhausted,
   persistRunArtifacts,
   teardownSandboxDirectories,
   type SddEvalRunArtifact,
@@ -219,7 +221,8 @@ export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
 }
 
 /**
- * @purpose CI-suitable aggregate exit code for one batch (E-00). A `worker-error` (the harness/runtime
+ * @purpose CI-suitable aggregate exit code for one batch (E-00/E-17). `budget-exhausted` is reported
+ *   separately and excluded from pass/fail. A `worker-error` (the harness/runtime
  *   itself failed) or a failed DETERMINISTIC quality gate (R1/R-COMPLETE/MIGRATION `quality.pass ===
  *   false`) is a hard batch failure. The judge's verdict (`pass`/`fail`/`inconclusive`) is diagnostic
  *   only (D-28/L-14/E-21) and never appears in this computation — see `judge.ts`.
@@ -228,7 +231,9 @@ export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
  */
 export function computeAggregateExitCode(artifacts: readonly SddEvalRunArtifact[]): 0 | 1 {
   const failed = artifacts.some(
-    (artifact) => artifact.verdict === 'worker-error' || artifact.quality?.pass === false
+    (artifact) =>
+      artifact.outcome !== 'budget-exhausted' &&
+      (artifact.verdict === 'worker-error' || artifact.quality?.pass === false)
   );
   return failed ? 1 : 0;
 }
@@ -347,7 +352,9 @@ async function runAndReportBody(
   const results = await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated);
   const byId = new Map(isolated.map((scenario) => [scenario.id, scenario]));
   for (const result of results) {
-    const verdict = result.judge?.verdict ?? 'worker-error';
+    const verdict = result.worker.budgetExhausted
+      ? 'budget-exhausted'
+      : (result.judge?.verdict ?? 'worker-error');
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
     if (result.worker.error) console.log(`  [diag] worker.error: ${result.worker.error}`);
     {
@@ -456,10 +463,21 @@ async function runAndReportBody(
     }
     // Collect this scenario's durable outcome so it survives the sandbox teardown below.
     if (directory) {
+      const budgetExhausted = result.worker.budgetExhausted
+        ? {
+            ...result.worker.budgetExhausted,
+            pendingOperatorCount: await countPendingOperatorDeviations(directory),
+          }
+        : undefined;
+      if (budgetExhausted) {
+        console.log(`  budget: ${formatBudgetExhausted(budgetExhausted)}`);
+      }
       const artifact: SddEvalRunArtifact = {
         scenarioId: result.worker.scenarioId,
         verdict,
         status: result.worker.status,
+        ...(result.worker.budgetExhausted ? { outcome: 'budget-exhausted' as const } : {}),
+        ...(budgetExhausted ? { budgetExhausted } : {}),
         usage: u,
         quality,
         specFiles: producesSpecs ? await collectSpecFiles(directory) : [],
@@ -477,9 +495,7 @@ async function runAndReportBody(
       const finishedAt = new Date();
       const lastObservation = result.worker.observations.at(-1);
       const firstObservation = result.worker.observations[0];
-      const budgetExhausted =
-        lastObservation?.errors.includes('observation budget exceeded') ?? false;
-      const outcome: SddEvalDurableSummary['outcome'] = budgetExhausted
+      const outcome: SddEvalDurableSummary['outcome'] = result.worker.budgetExhausted
         ? 'budget-exhausted'
         : verdict === 'pass' || verdict === 'fail' || verdict === 'worker-error'
           ? verdict
@@ -501,6 +517,7 @@ async function runAndReportBody(
         verdict,
         status: result.worker.status,
         outcome,
+        ...(budgetExhausted ? { budgetExhausted } : {}),
         actions: lastObservation?.toolCallCount ?? 0,
         durationMs:
           firstObservation && lastObservation && lastObservation !== firstObservation

@@ -19,6 +19,7 @@ import { registerLintTests } from './lint.e2e.test.ts';
 import { registerOrientTests } from './orient.e2e.test.ts';
 import { registerSyncTests } from './sync.e2e.test.ts';
 import { registerSyncSkillsTests } from './sync-skills.e2e.test.ts';
+import { registerMigrationBootstrapTests } from './migration-bootstrap.e2e.test.ts';
 
 describe('setup', () => {
   it('should export setupE2e function', () => {
@@ -273,6 +274,7 @@ if (isE2eRun) {
 
     registerLintTests();
     registerOrientTests();
+    registerMigrationBootstrapTests();
     registerSyncTests();
     registerSyncSkillsTests();
 

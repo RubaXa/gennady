@@ -134,8 +134,11 @@ regress. Baselines recorded in `ai/flow-eval/results/metrics-ledger.jsonl` (perm
   lookup, malformed coverage, skipped/todo tests, and stale phase/group receipts to their explicit
   outcomes, with valid and V1 counterparts. Its single V14-3 injection changes only the second
   Task-ID and flips exactly `SDD_TASK_ID_COLLISION` plus exit `0→1`.
-- **23B — E-17: DEFERRED.** Starts only after V14-2; 23A does not claim or exercise FO/@spec.
+- **23B — E-17: IMPLEMENTED.** V14-2a..d activates the agent-owned Decision Log deviation card,
+  exposes it through `sdd-task`, makes pending DONE tickets/group receipts fail closed, persists an
+  operator verdict through `sdd-log deviation-verdict`, and records observation-vs-wall-clock budget
+  detail plus unresolved count while keeping `budget-exhausted` outside aggregate statistics.
 - **23C — exact E-18: DEFERRED to release validation.** The Swift runtime smoke accepted for Batch 12
   is not relabelled as the exact cloud-ios E-18 round-trip, and 23A makes no live-LLM/eval claim.
-- **Batch 23 as a whole remains OPEN** until 23B and 23C are discharged; 23A also does not perform E-14
+- **Batch 23 as a whole remains OPEN** until 23C is discharged; 23A also does not perform E-14
   self-migration, remove `tasks/`, regrade warnings as errors, or alter the V1 corpus.

@@ -52,6 +52,12 @@ export type SddEvalDurableSummary = {
   verdict: string;
   status: string;
   outcome: SddEvalDurableOutcome;
+  /** @purpose Typed E-17 boundary; preserves observation vs wall-clock and open decision count. */
+  budgetExhausted?: {
+    kind: 'observation' | 'wall-clock';
+    detail: string;
+    pendingOperatorCount: number;
+  };
   /** @purpose Tool-call count at the run's final observation (best available proxy — see runner.ts). */
   actions: number;
   /** @purpose Wall-clock span between the first and last observation, in ms; undefined with < 2. */

@@ -16,6 +16,14 @@ import type {
   SddEvalWorkerResult,
 } from './types.ts';
 
+/** @purpose Internal typed deadline signal so real runtime failures cannot be mistaken for E-17. */
+class SddEvalWallClockBudgetError extends Error {
+  constructor(readonly budgetMs: number) {
+    super(`wall-clock budget ${budgetMs}ms exceeded`);
+    this.name = 'SddEvalWallClockBudgetError';
+  }
+}
+
 /** @purpose One scenario result with an optional independent judge result. */
 export type SddEvalResult = {
   worker: SddEvalWorkerResult;
@@ -67,8 +75,8 @@ export class SddEvalRunner {
 
   /**
    * @purpose Enforce the hard wall-clock budget: race the worker work against a deadline; if it fires
-   * first, abort the worker session and rethrow so the scenario fails as budget-exceeded — a thrashing
-   * worker is killed, never left to burn the full observation budget. No budget configured → passthrough.
+   * first, abort the worker session and throw the typed E-17 budget signal — a thrashing worker is
+   * killed, never folded into a runtime/worker error. No budget configured → passthrough.
    * @param work The in-flight worker (prompt + observation loop).
    * @param sessionId Worker session to abort on timeout.
    * @returns The observations if the work finished within budget.
@@ -81,7 +89,7 @@ export class SddEvalRunner {
     if (!ms || ms <= 0) return work;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`wall-clock budget ${ms}ms exceeded`)), ms);
+      timer = setTimeout(() => reject(new SddEvalWallClockBudgetError(ms)), ms);
     });
     try {
       return await Promise.race([work, deadline]);
@@ -104,6 +112,7 @@ export class SddEvalRunner {
 
     let observations: SddEvalObservation[];
     let workerError: string | undefined;
+    let budgetExhausted: SddEvalWorkerResult['budgetExhausted'];
     try {
       const work = (async (): Promise<SddEvalObservation[]> => {
         await this.#runtime.prompt({
@@ -141,9 +150,17 @@ export class SddEvalRunner {
           stuck: true,
           errors: [...budgetEnd.errors, 'observation budget exceeded'],
         };
+        budgetExhausted = {
+          kind: 'observation',
+          detail: `observation budget ${this.#config.maxObservations} exhausted`,
+        };
       }
     } catch (cause) {
-      workerError = cause instanceof Error ? cause.message : String(cause);
+      if (cause instanceof SddEvalWallClockBudgetError) {
+        budgetExhausted = { kind: 'wall-clock', detail: cause.message };
+      } else {
+        workerError = cause instanceof Error ? cause.message : String(cause);
+      }
       observations = [];
     }
 
@@ -172,9 +189,10 @@ export class SddEvalRunner {
       tail,
       status: finalObservation?.status ?? (workerError ? 'error' : 'unknown'),
       ...(usage ? { usage } : {}),
+      ...(budgetExhausted && !workerError ? { budgetExhausted } : {}),
       ...(workerError ? { error: workerError } : {}),
     };
-    if (workerError) return { worker };
+    if (workerError || budgetExhausted) return { worker };
     const judge = await this.#judge?.evaluate(scenario.id, scenario.directory, {
       intent: worker.intent,
       acceptance: scenario.acceptance,

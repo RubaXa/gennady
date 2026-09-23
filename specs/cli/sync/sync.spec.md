@@ -40,6 +40,7 @@ _Это полный список сущностей модуля. Любое в
 | `SyncFormatEntry`       | Value Object | `{ status: 'added'\|'updated'\|'deleted'\|'unchanged'; relativePath: string }` (shared)      |
 | `SyncFormatOptions`     | Value Object | `{ dryRun?: boolean }` (shared)                                                              |
 | `SyncCmdDeps` (shared)  | Port         | Расширенная версия с `unlink?`, `rmdir?` для sync-skills (shared)                            |
+| `v1ConsumerSyncRefusal` | Function     | D-23: pre-write отказ для consumer с canonical marker v1 `tasks/`; `null` для v2             |
 
 ## 3. Entity Surfaces
 
@@ -213,6 +214,7 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 ├── sync-core.shared.ts         # resolvePackageDir(subdir), compareBytes
 ├── sync-formatter.shared.ts    # formatSyncOutput(entries, opts) — общие маркеры, dry-run, итог
 ├── sync-deps.type.ts           # SyncCmdDeps (расширен unlink, rmdir)
+├── v1-consumer-guard.ts        # SO-12/D-23: общий pre-write отказ на SDD v1 consumer
 └── __tests__/
     ├── sync-core.shared.test.ts
     └── sync-formatter.shared.test.ts
@@ -298,6 +300,21 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 - **Risk accepted:** Нет — удалённые директивы не имели живых читателей (проверено: только упоминались в этом списке исключений и в спеках).
 - **Rejected alternatives:**
   - Оставить пустые записи в `EXCLUDED_ENTRIES` «на будущее» — мёртвый код, список должен отражать текущую реальность файловой системы пакета
+
+### D-M007 — Full sync ждёт явного migration bootstrap (SO-12/D-23, superseded)
+
+- **Status:** active
+- **Recorded:** Batch 23B / Wave 5
+- **Why:** `tasks/` — canonical marker SDD v1. Обычный full sync не владеет purge/migration
+  transaction и остаётся закрыт. Пересмотрённый D-23 вводит явный
+  `sdd-migrate bootstrap`: он сначала fail-closed доказывает ownership/hash всех V1 runtime bytes,
+  затем одной rollback-capable транзакцией удаляет V1 tooling и устанавливает полный текущий V2
+  migration runtime. Diagnostic ведёт в bootstrap, а не сразу в `plan`.
+- **Risk accepted:** sync недоступен до штатной migration. Автоматически поддерживается exact
+  известный V1 package snapshot; неизвестная или локально изменённая версия блокируется с перечнем
+  путей и требует сохранения/разбора человеком.
+- **Rejected alternatives:** `.gennady-synced` как доказательство migration — это только ownership
+  manifest синхронизированных навыков.
 
 ## 8. Inter-Module Dependencies
 

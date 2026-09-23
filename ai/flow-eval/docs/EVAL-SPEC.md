@@ -89,12 +89,16 @@ PASS|FAIL — …`), затем `usage: total=… cost=…`, затем (GAP-E-6
 Пройден = **детерминированный бар зелёный**: `<sandbox>/golden/verify.sh` фикстуры exit 0 (фазы `task`/
 `brownfield`); `R-COMPLETE` pass (фаза `execute` с объявленным `completion`); оценка миграции PASS
 (фаза `migration`); `R1` чист там, где пишутся спеки. Вердикт судьи — диагностика, а не бар:
-агрегированного кода возврата у прогона нет (батч из одних `fail` завершается кодом 0 — это
-проверяется тестом `exit-code-aggregate.test.ts`, и это НЕ баг, а сознательное разделение: судья не
-гейтит код выхода, см. таблицу «Что детерминировано» ниже), а исчерпанный бюджет наблюдений — не
-`fail`, а отдельный исход `budget-exhausted` (D-28): бюджетный артефакт диагностически не равен провалу
-качества, и в код возврата тоже не подмешивается — см. «Часть B» ниже и `RUNBOOK.md` про бюджеты по
-фазам. Известный дефект: `R1` даёт FAIL на
+агрегированный код возврата считается только по детерминированным гейтам и ошибкам harness/runtime:
+вердикт судьи `fail` сам по себе его не меняет (это проверяет `exit-code-aggregate.test.ts`).
+Исчерпанный observation или wall-clock бюджет — не `fail`, а отдельный исход `budget-exhausted`
+(D-28/E-17): такой артефакт не подмешивается ни в код возврата, ни в pass/fail-статистику; таблица
+показывает его отдельным счётчиком. Артефакт сохраняет тип границы (`observation` или `wall-clock`),
+диагностику и число `pending-operator`; exit остаётся 0, но незакрытая запись механически красит
+`sdd-check --all` и не даёт финально закрыть группу до `sdd-log deviation-verdict`; реальные
+audit/review receipts при этом записываются до единственного batched deviation review. См. «Часть B» ниже
+и `RUNBOOK.md` про бюджеты по фазам. Известный
+дефект: `R1` даёт FAIL на
 репозитории с 0 ошибок и ≥1 ворнингом — сверяйся с числом ошибок в выводе `sdd-check`, а не только со
 строкой `quality R1`.
 
@@ -312,8 +316,8 @@ two EXECUTABILITY codes (`SDD_VERIFICATION_TABLE_INVALID`/`SDD_COVERAGE_POLICY_I
 **Stop conditions — halt and report; never retry automatically.**
 
 - Any precondition fails, or a required env var is missing.
-- Output shows `worker-error`, or `errors` contains `observation budget exceeded`: the verdict is a
-  budget artefact — report `budget-exhausted`, not a quality `fail`.
+- Output shows `budget-exhausted` (observation или wall-clock): это отдельный бюджетный исход, не
+  quality `fail` и не `worker-error`. Настоящий `worker-error` остаётся ошибкой harness/runtime.
 - `stuck=true` with an `errors` entry naming `forbidden implementation archaeology` / `forbidden CLI
 interface probe` / `forbidden CLI shell redirection`: the worker broke the headless contract; report
   the violation, not a flow defect.

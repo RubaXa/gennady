@@ -184,8 +184,8 @@ npx gennady yagni /path/to/repo
 | `remote-console`    | Зеркалирование браузерной консоли в stdout                 |
 | `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants    |
 | `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности       |
-| `sync`              | Синхронизация `ai/directives/` из npm-пакета               |
-| `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`              |
+| `sync`              | V2-синхронизация `ai/directives/`; V1 отказывает до записи |
+| `sync-skills`       | V2-навыки в `.claude/skills/`; V1 отказывает до записи     |
 | `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов               |
 | `orient`            | File-header/DBC навигация и V2 `@spec` ownership relations |
 | `sdd-orient`        | Окрестность спеки или scope в SDD-графе                    |
@@ -195,10 +195,10 @@ npx gennady yagni /path/to/repo
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                           |
 | `sdd-verify`        | Запуск verification ladder для тикета или профиля          |
 | `verify`            | Read-only JSON-план D-64 full-profile без запуска гейтов   |
-| `sdd-log`           | События Execution Log + атомарное закрытие фазы            |
+| `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения     |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами             |
 | `sdd-task`          | Карта исполнения и фазовый контекст тикета                 |
-| `sdd-migrate`       | SDD v1 → v2: anchors, IDs, move и ownership headers        |
+| `sdd-migrate`       | SDD v1 → v2: bootstrap, anchors, IDs, move и headers       |
 | `agents-rules`      | Инструкция по orient для AI-агентов                        |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)         |
 | `yagni`             | Символы диффа с < 2 использований, гейт по Usage Waiver    |

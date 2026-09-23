@@ -344,7 +344,11 @@ describe('SddMigrateCommand', () => {
       const w = await mod.run(argv('plan', root, '--write'));
       assert.strictEqual(w.ok, true);
       assert.ok(existsSync(join(root, 'migration', 'demo', 'demo.spec.migration.md')));
-      assert.ok(existsSync(join(root, 'migration', 'README.md')));
+      const readme = readFileSync(join(root, 'migration', 'README.md'), 'utf-8');
+      assert.ok(readme.includes('G0 🤖 `npx gennady sdd-migrate bootstrap . --write`'));
+      assert.ok(readme.indexOf('G4 🛑') < readme.indexOf('G5 🤖'));
+      assert.match(readme, /G5 .*sdd-migrate anchors/);
+      assert.match(readme, /G9 .*sdd-state/);
       const v = await mod.run(argv('plan', root, '--verify'));
       assert.strictEqual(v.ok, true, JSON.stringify(v));
     });

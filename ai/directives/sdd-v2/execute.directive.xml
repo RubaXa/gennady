@@ -120,7 +120,8 @@
       between the two attempts (no changed diff, no new tool output, no new fact the prior attempt did not
       already have), that repetition is provable non-progress, not further review: halt `H_NO_PROGRESS`
       instead of re-dispatching again on the identical set. A genuinely new edit, a new tool run, or a new
-    fact resets the count and earns a fresh dispatch as above.</Axiom>
+      fact resets the count and earns a fresh dispatch as above. Creating or restating the required
+    `[verdict: pending-operator]` bookkeeping record is NOT new evidence and never resets this count.</Axiom>
     <Axiom id="AX_TASK_RESOLUTION">
       Every workflow consumer resolves each affected file with
       `npx gennady orient --file <repo-relative-path> --json` before classification. The versioned result
@@ -131,6 +132,34 @@
       or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
       never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
       migration evidence only and never routing authority for V2.
+    </Axiom>
+    <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
+      Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
+      reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
+      the release-ready default — then append a ticket-local Decision Log entry
+      (`<ACR>-DL-N <date> — <statement> (почему: …; отвергнуто: …) [verdict: pending-operator]`, direct `Edit` —
+      the ticket write-scope contract treats this
+      section as writable for exactly this purpose) at the point of decision, not after the fact; then
+      continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
+      ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
+      the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
+      directly (`AX_OWNER`).
+
+      Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
+      work needs to make. Technical environment/infra gaps use `RECOVERABLE_TECHNICAL`; exact missing
+      permission uses `EXTERNAL_AUTHORITY_REQUIRED`. Product-risk acceptance on an open `MAJOR` remains
+      an operator decision. Test: "can I honor the approved goals with a sound technical default?" →
+      self-resolve/replan; "does this change product intent or need external authority?" → typed boundary.
+
+      This LOW-confidence branch is execute-flow-scoped: recording the smallest safe reversible choice
+      lets execution continue, but it never waives an Approval Check, a red required gate, missing
+      external authority, or acceptance of open MAJOR product risk.
+
+      The orchestrator collects every `deviations:` entry across the run just finished — one ticket, or
+      every ticket of a `batch` — and raises them ONCE, at the very end, as a single batched
+      `AskUserQuestion` (`QUESTION_RULE_SLIM`): принять как есть · переделать · откатить. Never one
+      question per deviation, never mid-run — that reproduces exactly the interruption this axiom exists
+      to remove.
     </Axiom>
   </BeliefState>
 
@@ -188,7 +217,7 @@
       the same fact into both logs.
 
       - Spec authoring or architecture: append one canonical Decision Log entry:
-        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>)`.
+        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>) [verdict: pending-operator]`.
       - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
       - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
         `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
@@ -196,6 +225,12 @@
       Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
       re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
       choice and continue. Operator review happens once, after the whole batch and its audits.
+
+      `verdict` is a closed token: `pending-operator` (the default and the only open state), `accepted`,
+      `rework`, or `rolled-back`. Resolution edits this existing Decision Log line through
+      `sdd-log deviation-verdict`; only `pending-operator` transitions to a terminal verdict, and a
+      terminal verdict is never rewritten to a different terminal state. It never creates another
+      journal or sidecar.
     </Contract>
   </Contracts>
 
@@ -208,6 +243,7 @@
     | `H_REAL_GATE_RED` | A declared real verification command remains red after one evidence-based correction |
     | `H_REQUIREMENT_UNCOVERED` | A mandatory Requirement-ID is absent from implemented tests |
     | `H_NO_PROGRESS` | Per `AX_RE_DISPATCH`, a re-dispatch returns the same blocking finding set as the immediately preceding attempt on the same artifact, with no new evidence between the two attempts |
+    | `H_ASK_WITHOUT_CARD` | The operator was asked mid-batch to resolve a spec/ticket hole without first recording its agent-owned Decision Log card with `[verdict: pending-operator]` |
   </HaltConditions>
 
   <ExecutionPlan>
@@ -281,6 +317,9 @@
         checkpoint. A change to task meaning, dependencies, phases, or test plan invalidates approval
         #2 and returns to scaffold. A concrete missing external decision or capability that remains
         after bounded diagnosis stops with `H_PHASE_BLOCKED`.
+        If this step asks the operator about a spec/ticket hole before writing its
+        `[verdict: pending-operator]` Decision Log card, stop with `H_ASK_WITHOUT_CARD`; record first,
+        continue the bounded batch, and defer the one batched question to deviation-review.
       </Action>
     </Step>
 
@@ -307,7 +346,7 @@
         exact exit evidence remain in the CLI-owned receipt; do not duplicate them as prose. Commit
         boundaries follow repository policy. The Execution Log plus Git is sufficient for a fresh
         orchestrator to continue; no worker ID or hidden NEXT token is recorded.
-        When the phase made a disputed autonomous choice, its typed Handoff carries one
+        Per `AX_DEVIATION_SELF_RESOLVE`, when the phase made a disputed autonomous choice, its typed Handoff carries one
         `deviations: [<what> ← <why> @ <path#anchor>]` value per `DEVIATION_RECORD_FORMAT`; `phaseClose`
         persists it in the existing Execution Log rather than a second journal.
       </Action>
@@ -336,8 +375,10 @@
         <ToolCall owner="this-step" result="coherentTreeGate">npx gennady sdd-check --all .</ToolCall>
         Consume all three results. `roundClose` replaces the scaffolded Round-close skeleton exactly
         once; never edit or delete that block manually. `trackerSync` is required even for a single
-        ticket. A red `coherentTreeGate` is corrected before audit, so audit never receives a known
-        ticket/index status drift as an implementation finding.
+        ticket. Correct every red `coherentTreeGate` finding before audit except an exact
+        `SDD_DEVIATION_VERDICT_MISSING`: that one typed finding is deliberately deferred so all
+        selected tickets and their real audits can finish before the single final deviation review.
+        Never suppress any other code, and carry the deferred deviation identity to STEP_7.
       </Action>
     </Step>
 
@@ -379,19 +420,21 @@
       <Action>
         The ticket and trackers were already transitioned to coherent DONE state in STEP_5 so audit
         could inspect the actual final artifact graph. Do not repeat `sdd-log close` or `sdd-sync`.
-        Before emitting the summary, assert that STEP_6 left both durable group receipts: a whole-project
-        check must be clean of `SDD_GROUP_AUDIT_MISSING` and `SDD_GROUP_REVIEW_MISSING` for this group
-        (a stale/absent receipt means the group was not actually audited/reviewed at its current state —
-        return to STEP_6 and record it; never close the group without them):
-        <ToolCall owner="this-step" result="groupReceiptGate">npx gennady sdd-check --all .</ToolCall>
-        Consume `groupReceiptGate`; it must carry no `SDD_GROUP_AUDIT_MISSING` / `SDD_GROUP_REVIEW_MISSING`
-        for this spec. Emit the execute summary from actual tool results. For batch mode, refresh the map.
+        Refresh the map after STEP_6 and continue until every ticket in the bounded selection has
+        finished execution and its group has real audit/review receipts. A pending deviation does not
+        authorize another ticket phase, but it also does not interrupt the remaining selected queue.
         <ToolCall owner="this-step" result="refreshedExecutionMap">npx gennady sdd-task</ToolCall>
-        Consume `refreshedExecutionMap` and continue with the next pickable ticket. Otherwise show the
-        next concrete Task-ID/path or state that the queue is complete. In batch mode only, once the
-        queue is complete after all selected tickets and audits, dynamically
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/deviation-review.directive.xml")`. Never pause for
-        this review between tickets. No session close operation exists.
+        Consume `refreshedExecutionMap`; continue the bounded selection when execution/audit work
+        remains. Once it is complete, dynamically
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/deviation-review.directive.xml")` exactly once
+        for all collected deviations (a single group is a batch of size one). Never run that review
+        between tickets. After its verdict persistence and final integrity check, assert final closure:
+        <ToolCall owner="this-step" result="groupReceiptGate">npx gennady sdd-check --all .</ToolCall>
+        Consume `groupReceiptGate`; it must carry no `SDD_GROUP_AUDIT_MISSING` /
+        `SDD_GROUP_REVIEW_MISSING` / `SDD_DEVIATION_VERDICT_MISSING` for any selected group. A
+        stale/absent receipt returns to STEP_6; an unresolved deviation returns to the one review,
+        never to phase execution. Only then emit the execute summary and next concrete Task-ID/path,
+        or state that the queue is complete. No session close operation exists.
       </Action>
     </Step>
   </ExecutionPlan>
