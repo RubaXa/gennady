@@ -250,15 +250,15 @@ describe('groupReceiptIssue — forge/stale re-derivation gate', () => {
   });
 });
 
-describe('checkGroupReceipts — WARN gate', () => {
+describe('checkGroupReceipts — blocking gate', () => {
   const members = [member('core.task.T1.md'), member('core.task.T2.md')];
   const specFile = 'specs/core/core.spec.md';
 
-  it('WARNs for a complete v2 group with no receipt', () => {
+  it('ERRORs for a complete v2 group with no receipt', () => {
     const findings = checkGroupReceipts([{ specFile, specContent: SPEC_BASE, members }]);
     const codes = findings.map((f) => f.code).sort();
     assert.deepEqual(codes, [AUDIT_CODE, REVIEW_CODE].sort());
-    assert.ok(findings.every((f) => f.severity === 'warn'));
+    assert.ok(findings.every((f) => f.severity === 'error'));
     assert.ok(findings.every((f) => f.file === specFile));
   });
 
@@ -272,7 +272,7 @@ describe('checkGroupReceipts — WARN gate', () => {
     assert.deepEqual(checkGroupReceipts([{ specFile, specContent: spec, members }]), []);
   });
 
-  it('re-WARNs after a member reopened and re-closed (stale receipt)', () => {
+  it('re-ERRORs after a member reopened and re-closed (stale receipt)', () => {
     let spec = SPEC_BASE;
     for (const kind of ['audit', 'review'] as const) {
       const built = buildGroupReceipt(kind, specFile, members, 'ref', 'PASS', 'ts');
@@ -293,10 +293,22 @@ describe('checkGroupReceipts — WARN gate', () => {
     );
   });
 
-  it('grandfathers a group whose members lack the v2 schema marker', () => {
+  it('does not grandfather v2-named members merely because the marker is absent', () => {
     const legacy = [
       member('core.task.T1.md', { aware: false }),
       member('core.task.T2.md', { aware: false }),
+    ];
+    const findings = checkGroupReceipts([{ specFile, specContent: SPEC_BASE, members: legacy }]);
+    assert.deepEqual(
+      findings.map((finding) => finding.code).sort(),
+      [AUDIT_CODE, REVIEW_CODE].sort()
+    );
+  });
+
+  it('grandfathers legacy-named members without the v2 schema marker', () => {
+    const legacy = [
+      member('core.task-1.md', { aware: false }),
+      member('core.task-2.md', { aware: false }),
     ];
     assert.deepEqual(
       checkGroupReceipts([{ specFile, specContent: SPEC_BASE, members: legacy }]),
@@ -308,8 +320,8 @@ describe('checkGroupReceipts — WARN gate', () => {
   // not silence, and not the same as "fully legacy" above.
   it('WARNs explicitly (does not silently skip) a partially-marked group', () => {
     const partial = [
-      member('core.task.T1.md', { aware: true }),
-      member('core.task.T2.md', { aware: false }),
+      member('core.task-1.md', { aware: true }),
+      member('core.task-2.md', { aware: false }),
     ];
     const findings = checkGroupReceipts([{ specFile, specContent: SPEC_BASE, members: partial }]);
     assert.deepEqual(

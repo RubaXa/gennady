@@ -111,6 +111,9 @@ function ticket(): string {
     '<!--/SECTION:VERIFICATION-->',
     '<!--SECTION:EXECUTION_LOG-->',
     '## 7. Execution Log',
+    '### Round 1 — 2026-09-23, initial',
+    '#### P1 — impl',
+    '#### P2 — test',
     '<!--/SECTION:EXECUTION_LOG-->',
     '',
   ].join('\n');

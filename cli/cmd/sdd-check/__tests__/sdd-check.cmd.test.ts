@@ -900,6 +900,8 @@ describe('SddCheckCommand', () => {
         row,
         '<!--/SECTION:TEST_COVERAGE-->',
         '<!--SECTION:EXECUTION_LOG-->',
+        '### Round 1 — 2026-09-23, initial',
+        '#### P1 — test',
         '- pending',
         '<!--/SECTION:EXECUTION_LOG-->',
       ].join('\n');

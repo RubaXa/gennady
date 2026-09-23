@@ -753,7 +753,7 @@ describe('Batch 23A acceptance corpora', () => {
     }
   });
 
-  it('E-23: stale group receipt stays explicit warn; current and unmarked V1 counterparts stay clean', () => {
+  it('E-23: stale group receipt fails closed; current and legacy-named V1 counterparts stay clean', () => {
     const contract = expectedCase('stale-group-receipt');
     withTempRoot('gennady-adversarial-group-receipt-', (root) => {
       const specFile = 'specs/demo/demo.spec.md';
@@ -773,9 +773,13 @@ describe('Batch 23A acceptance corpora', () => {
 
       const legacyMembers = members.map((member) => ({
         ...member,
+        file: join(root, 'tasks/demo/demo.task-1.md'),
         content: member.content.replace('<!--PHASE_RECEIPTS:v1-->\n', ''),
       }));
-      assert.deepEqual(checkGroupReceipts([{ specFile, specContent, members: legacyMembers }]), []);
+      assert.deepEqual(
+        checkGroupReceipts([{ specFile, specContent, members: legacyMembers, flowVersion: 'v1' }]),
+        []
+      );
 
       mkdirSync(join(root, 'specs/demo'), { recursive: true });
       writeFileSync(join(root, specFile), `${cleanScopeSpec()}\n${specContent}`);

@@ -108,7 +108,8 @@ regress. Baselines recorded in `ai/flow-eval/results/metrics-ledger.jsonl` (perm
 - **E1. Group-audit/review receipt mechanism LANDED & green.** `shared/sdd/group-receipt.ts`,
   `sdd-log <group> audit-receipt|review-receipt <verdict>` (CLI-written on the owning spec, refuses unless
   all members DONE, SHA-256 member-state signature ⇒ reopen-invalidation), check codes
-  `SDD_GROUP_AUDIT_MISSING`/`SDD_GROUP_REVIEW_MISSING` (WARN, grandfathered on `PHASE_RECEIPTS:v1`),
+  `SDD_GROUP_AUDIT_MISSING`/`SDD_GROUP_REVIEW_MISSING` (изначально WARN; после самомиграции и A13 —
+  ERROR, а каноническое v2-имя само включает structural Execution Log и group-receipt contract),
   axioms `AX_GROUP_AUDIT_LEAVES_A_RECEIPT`/`AX_GROUP_REVIEW_LEAVES_A_RECEIPT`, and STEP_6 now carries real
   `<ToolCall>`s for both receipts (no longer prose). `npm run check` = ALL PASS (5/5); unit tests cover
   writer-refusal/valid-mint, forge+stale rejection, warn-missing/clean-valid/reopen-invalid, grandfather.
@@ -116,11 +117,40 @@ regress. Baselines recorded in `ai/flow-eval/results/metrics-ledger.jsonl` (perm
 - **E2. RED-FIRST gate proven & wired.** `session-metrics.py gate` exits 1 on the abandoned-artifact state
   (guard built, ticket TODO, round not closed, receipts absent) — deterministic, no LLM. Wired into
   `roundtrip-eval.sh` execute summary (fixes H4). Baseline `fc2-baseline` recorded in metrics-ledger.jsonl.
-- **E3. FOLLOW-ON — migration must emit `PHASE_RECEIPTS:v1` (and full v2 ticket schema).** The migrated
-  infra-base tickets carry no `PHASE_RECEIPTS:v1` marker, so the new group enforcement is grandfathered
-  OFF for them (same family as the earlier 2-col verification-table + `SCOPE-TYPE`-vs-`SCOPE_TYPE` gaps).
-  For the enforcement to apply to a round-tripped ticket, migration must upgrade tickets to the full v2
-  schema (marker included). This is the migrator-completeness work, tracked separately.
+- **E3. CLOSED — migration emits the full v2 ticket schema; the filename is also authoritative.** E-14
+  migrated the repository to canonical `*.task.<ID>.md` tickets. B2-16b makes that filename sufficient
+  to activate structural Execution Log and group-receipt checks even if a marker is accidentally missing;
+  B2-20/A13 therefore promotes missing or stale group audit/review receipts to blocking errors. Legacy
+  scopes without the marker stay isolated to the frozen V1 compatibility layer.
+
+### B2-16b — evidence-reviewed normalization ledger
+
+Нормализация не добавляет receipts, DONE, результаты или новые event-строки. Проверяется весь файл
+(не только Execution Log, потому что `CLI-draft` переносит ошибочно размещённые evidence-строки из
+phase definition): event — строка, буквально начинающаяся с `- [x] `; Handoff — строка, совпадающая с
+`^[[:space:]]*\*\*Handoff →\*\*`. Число строк и SHA-256 их C-locale-sorted byte stream воспроизводятся
+до/после такой командой (временные файлы находятся вне repository):
+
+```sh
+BASE=8ea0d8efe2737ba09b2279fab84900cc0ad7dce9
+for file in specs/cli/cli.task.CLI-alt-cli.md specs/cli/cli.task.CLI-alt-core.md specs/cli/cli.task.CLI-alt-test.md specs/cli/cli.task.CLI-diff.md specs/cli/cli.task.CLI-draft.md specs/cli/lint/lint.task.LIN-headers.md; do
+  git show "$BASE:$file" | awk '$0 ~ /^- \[x\] / || $0 ~ /^[[:space:]]*\*\*Handoff →\*\*/ { print }' > /tmp/gennady-evidence-base.txt
+  awk '$0 ~ /^- \[x\] / || $0 ~ /^[[:space:]]*\*\*Handoff →\*\*/ { print }' "$file" > /tmp/gennady-evidence-head.txt
+  for snapshot in /tmp/gennady-evidence-base.txt /tmp/gennady-evidence-head.txt; do
+    printf '%s lines=' "$file"; wc -l < "$snapshot" | tr -d ' '
+    LC_ALL=C sort "$snapshot" | openssl dgst -sha256
+  done
+done
+```
+
+| Ticket         | Исходное доказательство                                                                                                                  | Однозначная принадлежность                                                                                                                | Минимальная структурная правка                                                              | Строки / SHA-256                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `CLI-alt-cli`  | Round 1 содержит только файлы/символы `alt-opinion` command, prompts и регистрацию; в тикете одна фаза P1 `cmd + prompts + registration` | Единственная фаза и exact Target Files совпадают со всеми event-строками                                                                  | Добавлен только heading `#### P1` перед существующими строками                              | `18→18`, `57474f3c150c0864a550864fc2e44bd776d7dd4bb8efb2bcedf2eb5e96db7763` |
+| `CLI-alt-core` | `### Round 2 — initial, P2 runner` уже содержит `#### P2` и только `alt-opinion-runner.ts`; P1 в предыдущем блоке содержит types/parser  | Название, существующий phase heading и exact Target Files независимо указывают на P2                                                      | Удалён ошибочный level-3 Round boundary; существующий P2-блок присоединён к initial Round 1 | `94→94`, `a42d86869a55b2eae4ff7821884b83146fe0e698433e7048bca4657e56fbfd65` |
+| `CLI-alt-test` | Три строки файлов буквально называют parser, runner и cmd tests; две команды отдельно называют parser+runner и cmd                       | Каждая строка файла совпадает с единственным Target File P1/P2/P3; combined parser+runner command остаётся в P2 после уже наблюдённого P1 | Добавлены P1/P2/P3 headings; строка cmd-file перенесена вместе с cmd verification под P3    | `19→19`, `1fa107fda8adfc7f05bc574cb1ac4e8283c1ffa325ffe909cf91d6705c8a865e` |
+| `CLI-diff`     | `### Round 2 — P2 test` уже содержит `#### P2` и exact `vcs-diff.test.ts`; Round 1 содержит P1 implementation                            | Название, heading и Target Files однозначно совпадают с P2                                                                                | Удалён ошибочный level-3 Round boundary; существующий P2-блок присоединён к initial Round 1 | `18→18`, `c3913d4403eb09eabe3e31f6f68a5869dfdff700c75b49d8dfd274993b24f422` |
+| `CLI-draft`    | Checked test events и Handoff ошибочно лежали внутри `PHASE_P2`, но называют оба exact P2 Target Files и `sdd verify`                    | Target Files и test-only события однозначно принадлежат P2; байты уже существовали, это не восстановление результата                      | Verbatim P2 evidence перемещено из phase definition в Execution Log Round 1 под `#### P2`   | `12→12`, `60f29871a58ff633a601a03bc7d989a60c248667768790e60f3d7c07249dbaf2` |
+| `LIN-headers`  | `##### P1` стоит над `file-header.check.ts`, а тикет имеет единственную P1 с этим exact Target File                                      | ID и Target File совпадают без альтернатив                                                                                                | Исправлен только heading level `#####` → `####`                                             | `7→7`, `8534aa662161a6970fbdca1515238913413547ba066b0c296c2be5e00a1cdb2c`   |
 
 ## F. Batch 23 split — acceptance status
 

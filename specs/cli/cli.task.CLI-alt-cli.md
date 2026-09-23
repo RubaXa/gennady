@@ -74,6 +74,8 @@
 
 ### Round 1 — 2026-05-18, initial
 
+#### P1 — cmd + prompts + registration
+
 - [x] `2026-05-18T00:40:00` recon targets=absent divergence=none
 - [x] `2026-05-18T00:40:00` file cli/cmd/alt-opinion/index.ts
 - [x] `2026-05-18T00:40:00` file cli/cmd/alt-opinion/alt-opinion.cmd.ts

@@ -16,7 +16,12 @@ import { parseGraphEdges } from './portal.ts';
 import type { Scope, GraphEdge } from './portal.ts';
 import type { FlowVersion } from './flow.ts';
 import { SCOPE_KINDS, TEMPLATES, loadBearingSections, foldSections } from './templates.ts';
-import { validateTaskId, findPrefixClashes, describeIdConflict } from './task-id.ts';
+import {
+  validateTaskId,
+  findPrefixClashes,
+  describeIdConflict,
+  isV2TicketFileName,
+} from './task-id.ts';
 import { parsePhaseReceipts } from './phase-receipt.ts';
 import {
   PHASE_RECEIPTS_SCHEMA_MARKER,
@@ -550,7 +555,11 @@ export function checkTicket(
         err('SDD_PHASE_SECTION_ORPHAN', `PHASE_${s} section has no row in the Phases Overview.`);
     }
 
-    if (logSec.status === 'ok' && content.includes(PHASE_RECEIPTS_SCHEMA_MARKER)) {
+    if (
+      logSec.status === 'ok' &&
+      (content.includes(PHASE_RECEIPTS_SCHEMA_MARKER) ||
+        (flowVersion === 'v2' && isV2TicketFileName(file)))
+    ) {
       const logPhaseCounts = firstRoundPhaseBlockCounts(logSec.content);
       if (logPhaseCounts === null) {
         err(

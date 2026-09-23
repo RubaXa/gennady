@@ -85,8 +85,6 @@
 - [x] `2026-06-26T18:02:35Z` DONE
       **Handoff →** artifacts: [cli/cmd/vcs-diff/vcs-diff.cmd.ts, cli/cmd/vcs-diff/index.ts, cli/cmd/vcs-diff/help.ts, cli/gennady.ts]; decisions: [pattern=vcs-approve DI, vcs-client=VcsGitlabClient, resolver=vcs-context-resolver]; open: [README-update: cli/cmd/README.md и AGENTS.md таблица не обновлены — вне Target Files]
 
-### Round 2 — P2 test
-
 #### P2
 
 - [x] `2026-06-26T18:24:21Z` discovery ticket missing §5 Verification and §6 Test Scenario Coverage sections — верификация выполнена через sdd verify + node-test hooks

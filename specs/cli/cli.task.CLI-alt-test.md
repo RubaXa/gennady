@@ -90,11 +90,19 @@
 
 ### Round 1 — 2026-05-18, initial
 
+#### P1 — parser tests
+
 - [x] `2026-05-18T00:50:00` recon targets=absent divergence=none
 - [x] `2026-05-18T00:50:00` file cli/cmd/alt-opinion/**tests**/alt-opinion-parser.test.ts
+
+#### P2 — runner tests
+
 - [x] `2026-05-18T00:50:00` file cli/cmd/alt-opinion/**tests**/alt-opinion-runner.test.ts
-- [x] `2026-05-18T00:50:00` file cli/cmd/alt-opinion/**tests**/alt-opinion.cmd.test.ts
 - [x] `2026-05-18T00:50:00` ver node --import tsx --test parser + runner → 24/24 pass exit=0
+
+#### P3 — CLI integration tests
+
+- [x] `2026-05-18T00:50:00` file cli/cmd/alt-opinion/**tests**/alt-opinion.cmd.test.ts
 - [x] `2026-05-18T00:51:00` ver node --import tsx --experimental-test-module-mocks --test cmd → 12/12 pass exit=0
 - [x] `2026-05-18T00:51:00` ver npx tsc --noEmit → pass exit=0
 - [x] `2026-05-18T00:51:00` Scenario coverage: 13 parser + 11 runner + 12 CLI = 36/36

@@ -111,6 +111,10 @@ const TICKET = [
   '<!--/SECTION:TEST_COVERAGE-->',
   '<!--SECTION:EXECUTION_LOG-->',
   '## Execution Log',
+  '### Round 1 — 2026-09-23, initial',
+  '#### P1 — bootstrap',
+  '#### P2 — config',
+  '#### P3 — test',
   '- pending',
   '<!--/SECTION:EXECUTION_LOG-->',
 ].join('\n');
@@ -164,7 +168,9 @@ describe('bootstrap ticket lifecycle', () => {
     const eslintTicket = TICKET.replace(
       '| P3 | test | P2 | [ ] |',
       '| P3 | test | P2 | [ ] |\n| P4 | config | P2 | [ ] |'
-    ).replace('<!--SECTION:PHASE_P3-->', `${eslintPhase}\n<!--SECTION:PHASE_P3-->`);
+    )
+      .replace('<!--SECTION:PHASE_P3-->', `${eslintPhase}\n<!--SECTION:PHASE_P3-->`)
+      .replace('#### P3 — test', '#### P3 — test\n#### P4 — config');
     const { root } = buildRepoFixture({
       files: {
         'ai/directives/infra/nodejs-npm-setup.xml':
