@@ -31,7 +31,8 @@ export function v1ConsumerSyncRefusal(root: string): string | null {
     `Найдено: ${join(root, 'tasks')} — канонический маркер SDD v1.`,
     'Причина: наложение v2-директив и v2-скиллов на живое v1-дерево оставит смешанный, неоднозначный consumer.',
     manifestHint,
-    'Что сделать: сначала выполните `npx gennady sdd-migrate plan .`, проверьте и примените штатные шаги миграции из `migration/README.md`.',
+    'Что сделать: сначала выполните `npx gennady sdd-migrate bootstrap .`, проверьте dry-run и повторите с `--write`.',
+    'Bootstrap безопасно заменит только доказанно package-owned V1 tooling и установит свежий runtime миграции; затем выполните шаги из `migration/README.md`.',
     'Повторите sync только когда `npx gennady sdd-state .` сообщает `FLOW_VERSION=v2` и каталог `tasks/` отсутствует.',
   ].join('\n');
 }

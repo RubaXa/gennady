@@ -301,15 +301,18 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 - **Rejected alternatives:**
   - Оставить пустые записи в `EXCLUDED_ENTRIES` «на будущее» — мёртвый код, список должен отражать текущую реальность файловой системы пакета
 
-### D-M007 — Первый v2-sync над v1 consumer отказывает до записи (SO-12/D-23)
+### D-M007 — Full sync ждёт явного migration bootstrap (SO-12/D-23, superseded)
 
 - **Status:** active
 - **Recorded:** Batch 23B / Wave 5
-- **Why:** `tasks/` — canonical marker SDD v1. Наложение v2-директив или навыков до migration
-  создаёт mixed tree, который sync не может семантически разрешить. Обе команды вызывают общий
-  `v1ConsumerSyncRefusal` до package resolution и file writes.
-- **Risk accepted:** sync недоступен до штатной migration; teaching diagnostic даёт стартовую
-  команду и критерий `FLOW_VERSION=v2`.
+- **Why:** `tasks/` — canonical marker SDD v1. Обычный full sync не владеет purge/migration
+  transaction и остаётся закрыт. Пересмотрённый D-23 вводит явный
+  `sdd-migrate bootstrap`: он сначала fail-closed доказывает ownership/hash всех V1 runtime bytes,
+  затем одной rollback-capable транзакцией удаляет V1 tooling и устанавливает полный текущий V2
+  migration runtime. Diagnostic ведёт в bootstrap, а не сразу в `plan`.
+- **Risk accepted:** sync недоступен до штатной migration. Автоматически поддерживается exact
+  известный V1 package snapshot; неизвестная или локально изменённая версия блокируется с перечнем
+  путей и требует сохранения/разбора человеком.
 - **Rejected alternatives:** `.gennady-synced` как доказательство migration — это только ownership
   manifest синхронизированных навыков.
 

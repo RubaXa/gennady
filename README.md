@@ -220,7 +220,9 @@ npx gennady lint ./src --autofix --verbose
 Синхронизация `ai/directives/` из npm-пакета в текущий проект.
 
 Sync предназначен для SDD v2. Если в проекте ещё есть канонический маркер v1 `tasks/`, команда
-останавливается **до записи файлов** и направляет в штатную миграцию. См.
+останавливается **до записи файлов**. Сначала `npx gennady sdd-migrate bootstrap .` безопасно заменяет
+только доказанно package-owned V1 tooling и ставит свежий runtime миграции; полный sync выполняется
+после последнего `move`, когда `tasks/` исчез. См.
 [`guides/v1-to-v2-migration.md`](guides/v1-to-v2-migration.md).
 
 ```bash

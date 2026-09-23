@@ -27,7 +27,8 @@ export function badInvocation(detail: string): MigrateOutcome {
     exitCode: 4,
     message: [
       `[sdd-migrate] ${ERR_CLI_SDD_MIGRATE_BAD_INVOCATION}: ${detail}`,
-      '  expected: gennady sdd-migrate anchors (<ticket> | --all [root]) [--write]',
+      '  expected: gennady sdd-migrate bootstrap [root] [--write]',
+      '        or: gennady sdd-migrate anchors (<ticket> | --all [root]) [--write]',
       '        or: gennady sdd-migrate plan [root] [--write | --verify]',
       '        or: gennady sdd-migrate ids [root] (--map <tsv> | --from-plan) [--write]',
       '        or: gennady sdd-migrate move [root] --scope <scope> [--write]',

@@ -1,8 +1,8 @@
 # Миграция SDD v1 → v2 перед синхронизацией
 
-`gennady sync` и `gennady sync-skills` устанавливают SDD v2. Они не смешивают новый runtime со
-старым layout: если в корне проекта существует каталог `tasks/`, обе команды завершаются с кодом 1
-до записи файлов.
+`gennady sync` и `gennady sync-skills` устанавливают полный обычный SDD v2 runtime. Они не смешивают
+его с живым V1 layout: если в корне существует `tasks/`, обе команды завершаются с кодом 1 до записи.
+Для перехода служит отдельный transactional bootstrap внутри `sdd-migrate`.
 
 ## Почему sync не мигрирует проект сам
 
@@ -15,10 +15,20 @@
 Работайте в чистой ветке и сохраняйте generated migration layer в репозитории:
 
 ```bash
+npx gennady sdd-migrate bootstrap .
+npx gennady sdd-migrate bootstrap . --write
+npx gennady sdd-state . # FLOW_VERSION=v1, но локальный migration runtime уже свежий
 npx gennady sdd-migrate plan .
 npx gennady sdd-migrate plan . --write
 npx gennady sdd-migrate plan . --verify
 ```
+
+Bootstrap берёт assets из того же установленного npm package, чей CLI запущен: ставить старые skills
+через sync заранее не нужно. Он удаляет только V1 runtime, доказанный ownership-манифестом или exact
+SHA-256 известного последнего V1 package snapshot, и устанавливает полный текущий набор
+`ai/directives/sdd-v2/**` + `ai/skills/**`. `specs/**`, `tasks/**` и код проекта не являются target.
+Неизвестная версия, локально изменённый runtime, лишний helper или symlink дают `BLOCKED` до первой
+записи: сохраните локальные изменения отдельно и повторите bootstrap; автоматического угадывания нет.
 
 Заполните созданный `migration/README.md` и карты, получите требуемое подтверждение оператора, затем
 выполняйте перечисленные там `anchors`, `ids` и `move` шаги. Каждая команда сначала запускается без
@@ -43,4 +53,5 @@ npx gennady sync-skills --dry-run
 npx gennady sync-skills
 ```
 
-Dry-run остаётся обязательным предпросмотром изменений sync, но не является обходом V1-защиты.
+Dry-run остаётся обязательным предпросмотром. Обычный sync не обходит V1-защиту: его очередь наступает
+только после штатного последнего `move`, удалившего опустевший `tasks/`.

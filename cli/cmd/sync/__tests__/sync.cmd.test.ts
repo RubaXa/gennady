@@ -89,7 +89,7 @@ describe('run (integration)', () => {
     assert.equal(run(['node', 'sync'], deps), 1);
     assert.equal(stdout._chunks.join(''), '');
     assert.match(stderr._chunks.join(''), /tasks.*канонический маркер SDD v1/s);
-    assert.match(stderr._chunks.join(''), /sdd-migrate plan/);
+    assert.match(stderr._chunks.join(''), /sdd-migrate bootstrap/);
     assert.equal(existsSync(join(_targetDir, 'new.xml')), false);
   });
 

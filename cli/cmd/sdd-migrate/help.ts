@@ -12,6 +12,12 @@ export function printHelp(): void {
   console.info("current project) — sdd-migrate rewrites this repository's own SDD artifacts.");
   console.info('');
   console.info('Usage:');
+  console.info(
+    '  npx gennady sdd-migrate bootstrap [root]         # V1 runtime purge + V2 migration runtime (dry-run)'
+  );
+  console.info(
+    '  npx gennady sdd-migrate bootstrap [root] --write # apply the preflighted transaction'
+  );
   console.info('  npx gennady sdd-migrate anchors <ticket>         # one v1 ticket (dry-run)');
   console.info(
     '  npx gennady sdd-migrate anchors --all [root]     # every tasks/**/*.task-*.md (dry-run)'
@@ -27,6 +33,12 @@ export function printHelp(): void {
   console.info(
     '  npx gennady sdd-migrate move [root] --scope <s>  # tickets + Spec IDs + headers (dry-run)'
   );
+  console.info('');
+  console.info('bootstrap mode:');
+  console.info('  Removes only hash/manifest-proven package-owned V1 tooling, then installs the');
+  console.info('  complete current V2 directives + skills runtime used for guided migration.');
+  console.info('  Unknown or modified runtime bytes block the whole transaction before writes.');
+  console.info('  specs/**, tasks/** and project code are never bootstrap targets.');
   console.info('');
   console.info('anchors mode:');
   console.info('  Wraps each canonical section of a v1 ticket (plain `## N.` headers) in');

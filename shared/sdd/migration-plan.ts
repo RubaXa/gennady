@@ -315,7 +315,7 @@ function renderInventory(unit: SpecUnit): string {
   const lines: string[] = [
     '## Inventory',
     '',
-    '<!-- Сгенерировано `sdd-migrate plan`. Не редактировать руками — `plan --verify` сверяет этот блок с реальностью и падает при расхождении. -->',
+    '<!-- Сгенерировано `npx gennady sdd-migrate plan`. Не редактировать руками — `npx gennady sdd-migrate plan . --verify` сверяет этот блок с реальностью и падает при расхождении. -->',
     '',
     `- spec: \`${unit.specFile}\` · строк: ${unit.lines} · scope-type: ${unit.scopeType ? `\`${unit.scopeType}\`` : '—'} · mermaid-блоков: ${unit.mermaidCount} · якорей: ${unit.anchors.length}`,
     `- обязательные целевые секции: ${unit.targetSections.map((s) => `\`${s}\``).join(', ')}`,
@@ -341,7 +341,7 @@ function renderSectionMap(unit: SpecUnit): string {
   const lines: string[] = [
     '## Section Map',
     '',
-    '<!-- Предзаполнено `sdd-migrate plan` по курируемым правилам (mapHeadingToSection). Агент правит',
+    '<!-- Предзаполнено `npx gennady sdd-migrate plan` по курируемым правилам (mapHeadingToSection). Агент правит',
     '     только строки с целью UNMAPPED — остальные пересматривает лишь если правило ошиблось.',
     `     Действия: ${SECTION_ACTIONS.join(' | ')}. Каждая обязательная целевая секция должна появиться в колонке «Цель».`,
     '     Полный целевой порядок секций — в format-файле структуры (ai/directives/sdd-v2/formats/*-spec-structure.xml). -->',
@@ -400,7 +400,7 @@ function renderDiagramPlan(unit: SpecUnit): string {
 
 /** @purpose Render the per-unit step checklist — the parallel worker's self-sufficient job card. */
 function renderSteps(unit: SpecUnit): string {
-  const scopeGate = `npx tsx cli/gennady.ts sdd-check --all specs/${unit.scope}`;
+  const scopeGate = `npx gennady sdd-check --all specs/${unit.scope}`;
   return [
     '## Steps',
     '',
@@ -408,7 +408,7 @@ function renderSteps(unit: SpecUnit): string {
     '     и выполняются централизованно — здесь только то, что делается в рамках этой спеки. -->',
     '',
     '- [ ] S1 ✍️ Изучить исходник, заполнить Section Map / Ticket Map / Diagram Plan → **Status:** MAPPED',
-    '- [ ] S2 ✅ `npx tsx cli/gennady.ts sdd-migrate plan --verify` — карты полны, расхождений с реальностью нет',
+    '- [ ] S2 ✅ `npx gennady sdd-migrate plan . --verify` — карты полны, расхождений с реальностью нет',
     '- [ ] S3 🛑 Подтверждение оператора → **Status:** APPROVED',
     '- [ ] S4 ✍️ Реструктуризация спеки по Section Map: целевой порядок секций из format-файла, заголовки без номеров, тяжёлые секции — в `<details>`, Overview с диаграммой по Diagram Plan',
     '- [ ] S5 ✍️ Текст — плоский технический русский (без калек и метафор; код/ID/токены — English)',
@@ -463,19 +463,21 @@ export function scaffoldPlanReadme(scan: MigrationScan): string {
   const lines: string[] = [
     '# Миграция v1 → v2 — план',
     '',
-    'Слой сгенерирован `sdd-migrate plan`. Один файл плана — на одну спеку (её секции + её задачи).',
-    'Статусы юнитов живут в самих unit-файлах; `sdd-migrate plan --verify` проверяет весь слой.',
+    'Слой сгенерирован `npx gennady sdd-migrate plan`. Один файл плана — на одну спеку (её секции + её задачи).',
+    'Статусы юнитов живут в самих unit-файлах; `npx gennady sdd-migrate plan . --verify` проверяет весь слой.',
     '',
     '## Порядок исполнения',
     '',
-    '- [ ] G1 🤖 `sdd-migrate anchors --all . --write` — якоря во все v1-тикеты (идемпотентно)',
-    '- [ ] G2 ✍️ Заполнить unit-файлы (Section Map / Ticket Map / Diagram Plan) — раздаётся параллельно, по одному юниту на агента',
-    '- [ ] G3 ✅ `sdd-migrate plan --verify` — весь слой полон, слаги без коллизий, расхождений нет',
+    '- [ ] G0 🤖 `npx gennady sdd-migrate bootstrap . --write` — доказанно удалить V1 tooling и установить полный свежий V2 runtime миграции (сначала dry-run без `--write`)',
+    '- [ ] G1 🤖 `npx gennady sdd-migrate plan . --write` — материализовать repo-owned слой `migration/**`',
+    '- [ ] G2 ✍️ Заполнить unit-файлы (Section Map / Ticket Map / Diagram Plan) по локальным `ai/directives/sdd-v2/formats/*-spec-structure.xml` — bootstrap гарантирует эти package-owned bytes',
+    '- [ ] G3 ✅ `npx gennady sdd-migrate plan . --verify` — весь слой полон, слаги без коллизий, расхождений нет',
     '- [ ] G4 🛑 Подтверждение оператора по всему плану',
-    '- [ ] G5 🤖 `sdd-migrate ids --map migration/ids.tsv --write` — карта собирается из всех Ticket Map; замена по словогранице',
-    '- [ ] G6 🤖 `sdd-migrate move --scope <scope> --write` — по одному scope: переезд тикетов + индексы `*.3-tasks.md`; пустой `tasks/<scope>/` удаляется → строгие v2-проверки включаются на этом scope',
-    '- [ ] G7 ✍️ Шаги S4–S6 каждого юнита — раздаётся параллельно (юниты не пересекаются по файлам)',
-    '- [ ] G8 ✅ Финальный гейт: `sdd-state` → `FLOW_VERSION=v2` · `sdd-check --all .` чист · ноль старых Task-ID',
+    '- [ ] G5 🤖 `npx gennady sdd-migrate anchors --all . --write` — только после ACK поставить якоря во все v1-тикеты (идемпотентно)',
+    '- [ ] G6 🤖 `npx gennady sdd-migrate ids . --from-plan --write` — карта собирается из всех Ticket Map; замена по словогранице',
+    '- [ ] G7 🤖 `npx gennady sdd-migrate move . --scope <scope> --write` — по одному scope: переезд тикетов + индексы `*.3-tasks.md`; пустой `tasks/<scope>/` удаляется → строгие v2-проверки включаются на этом scope',
+    '- [ ] G8 ✍️ Шаги S4–S6 каждого юнита — раздаётся параллельно (юниты не пересекаются по файлам)',
+    '- [ ] G9 ✅ Финальный гейт: `npx gennady sdd-state .` → `FLOW_VERSION=v2` · `npx gennady sdd-check --all .` чист · ноль старых Task-ID; затем обычные `npx gennady sync` и `npx gennady sync-skills`',
     '',
     '## Юниты',
     '',
@@ -579,7 +581,7 @@ export function verifyUnitFile(file: string, content: string, fresh: SpecUnit): 
   } else if (inv.content.trim() !== renderInventory(fresh).trim()) {
     err(
       'MIG_INVENTORY_DRIFT',
-      'Inventory разошёлся с реальностью (спека или тикеты изменились после генерации плана) — перегенерируй юнит: sdd-migrate plan --all --write.'
+      'Inventory разошёлся с реальностью (спека или тикеты изменились после генерации плана) — перегенерируй слой: npx gennady sdd-migrate plan . --write.'
     );
   }
   // #endregion END_INVENTORY_DRIFT
@@ -671,7 +673,7 @@ export function verifyUnitFile(file: string, content: string, fresh: SpecUnit): 
       if (oldId === '' || oldId === '—') {
         err(
           'MIG_TICKET_ID_UNREADABLE',
-          `Старый Task-ID не прочитан из тикета \`${src}\` (parseMeta вернул null — проверь формат строки Task-ID в Meta) — заменять нечего, sdd-migrate ids промолчит.`
+          `Старый Task-ID не прочитан из тикета \`${src}\` (parseMeta вернул null — проверь формат строки Task-ID в Meta) — заменять нечего, npx gennady sdd-migrate ids промолчит.`
         );
       }
       const newId = unquote(r[2] ?? '');
@@ -740,7 +742,7 @@ export function verifyMigrationPlan(repoRoot: string): Finding[] {
         severity: 'error',
         code: 'MIG_UNIT_FILE_MISSING',
         file: planPath,
-        message: `Нет файла плана для спеки \`${unit.specFile}\` — сгенерируй: sdd-migrate plan --all --write.`,
+        message: `Нет файла плана для спеки \`${unit.specFile}\` — сгенерируй: npx gennady sdd-migrate plan . --write.`,
       });
       continue;
     }

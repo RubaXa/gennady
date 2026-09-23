@@ -33,6 +33,10 @@ import {
 import { executeScopeMove } from '../../../shared/sdd/migration-move.ts';
 import { parseMeta } from '../../../shared/sdd/tracker.ts';
 import { badInvocation, type MigrateOutcome } from './sdd-migrate.types.ts';
+import {
+  bootstrapMigrationRuntime,
+  resolveBootstrapPackageDir,
+} from '../../../shared/sdd/migration-bootstrap.ts';
 
 /** @purpose Recursively collect v1 ticket files under `<root>/tasks/`, detected by CONTENT (a Task-ID in Meta) rather than filename, so tickets named in a repo's own way (e.g. `<scope>.IB-NN.md`) are not silently dropped. | @param root Project root. | @returns Absolute ticket paths. */
 function findV1Tickets(root: string): string[] {
@@ -226,6 +230,48 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
   );
   const mode = positional[0];
 
+  if (mode === 'bootstrap') {
+    const root = resolve(positional[1] ?? '.');
+    const write = args.write === true || args.write === 'true';
+    const directivesDir = resolveBootstrapPackageDir('ai/directives/sdd-v2');
+    const skillsDir = resolveBootstrapPackageDir('ai/skills');
+    if (!directivesDir || !skillsDir) {
+      return {
+        ok: false,
+        code: 'ERR_CLI_SDD_MIGRATE_BOOTSTRAP_PACKAGE',
+        exitCode: 1,
+        message:
+          '[sdd-migrate bootstrap] package source не найден; установите текущий gennady локально или запустите через `npx gennady`.',
+      };
+    }
+    const result = bootstrapMigrationRuntime(root, directivesDir, skillsDir, write);
+    if (!result.ok) {
+      return {
+        ok: false,
+        code: 'ERR_CLI_SDD_MIGRATE_BOOTSTRAP_BLOCKED',
+        exitCode: 1,
+        message: [
+          '[sdd-migrate bootstrap] BLOCKED — до записи обнаружены неизвестные/изменённые runtime-файлы:',
+          ...result.errors.map((error) => `  ${error}`),
+          'Действие: сохраните проектные изменения отдельно или подтвердите происхождение файлов; bootstrap ничего не изменил.',
+        ].join('\n'),
+      };
+    }
+    const report = result.actions.map(
+      (action) => `  ${write ? action.kind : `would ${action.kind}`} ${action.path}`
+    );
+    return {
+      ok: true,
+      text: [
+        `[sdd-migrate bootstrap] ${write ? 'WRITE' : 'DRY-RUN'} · ${result.actions.length} action(s)`,
+        ...report,
+        write
+          ? '\nFresh V2 migration runtime установлен. Дальше: `npx gennady sdd-state .`, затем `npx gennady sdd-migrate plan .`.'
+          : '\n(dry-run — повторить с --write; specs/**, tasks/** и project code не входят в план)',
+      ].join('\n'),
+    };
+  }
+
   if (mode === 'plan') {
     const root = resolve(positional[1] ?? '.');
     return runPlan(root, {
@@ -268,7 +314,9 @@ export async function run(rawArgs: string[]): Promise<MigrateOutcome> {
   }
 
   if (mode !== 'anchors')
-    return badInvocation(`unknown mode "${mode ?? ''}" — supported: anchors, plan, ids, move`);
+    return badInvocation(
+      `unknown mode "${mode ?? ''}" — supported: bootstrap, anchors, plan, ids, move`
+    );
 
   const write = args.write === true || args.write === 'true';
   const all = args.all === true || args.all === 'true';

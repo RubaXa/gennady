@@ -474,14 +474,15 @@ graph TD
   - Два набора файлов (dev + prod) — дублирование, расхождение
   - Пост-обработка отдельной командой — требует от пользователя двух шагов; нормализация — часть контракта sync
 
-### D-M009 — SDD v1 consumer блокируется до skill/directive writes (SO-12/D-23)
+### D-M009 — Full skill sync ждёт migration bootstrap (SO-12/D-23, superseded)
 
 - **Status:** active
 - **Recorded:** Batch 23B / Wave 5
 - **Why:** `sync-skills`, включая `--with-directives`, не является мигратором. При `tasks/` общий
-  guard возвращает teaching diagnostic до первой записи. `.gennady-synced` сообщает ownership и не
-  обходит отказ.
-- **Risk accepted:** сначала требуется завершить `sdd-migrate`; путь зафиксирован в
+  guard возвращает teaching diagnostic до первой записи. Явный `sdd-migrate bootstrap` использует
+  `.gennady-synced` + known historical hashes, purges доказанный V1 runtime и materializes полный
+  текущий V2 runtime; только он имеет такой preflight/rollback contract.
+- **Risk accepted:** сначала требуется bootstrap и завершение `sdd-migrate`; путь зафиксирован в
   `guides/v1-to-v2-migration.md`.
 - **Rejected alternatives:** молча заменить v1 surface — sync не владеет решениями о semantic
   ownership, Task IDs и ticket destinations.

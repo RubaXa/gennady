@@ -88,11 +88,14 @@
       <Goal>Inventory the v1 repo deterministically — dry-runs only, no writes.</Goal>
       <Action>
         Confirm `FLOW_VERSION=v1` from the exact caller-provided `routerState` snapshot (else
-        `H_NOT_V1`); do not call `sdd-state` again at entry. Gather with tools, not by eye:
+        `H_NOT_V1`); do not call `sdd-state` again at entry. This directive is available only after
+        the operator has completed the migration bootstrap in write mode: the package-owned V1
+        tooling is gone and the complete current V2 migration runtime is local. Gather with tools,
+        not by eye:
         migrationPlan ToolCall below (DRY-RUN — how many units, one per spec, and their ticket counts;
         orphan tickets surface here) and migrationAnchors ToolCall below (DRY-RUN — which tickets would
         be anchored / already are). Report the shape to the operator: units, tickets, orphans.
-        <ToolCall owner="this-step" result="migrationPlan">npx gennady sdd-migrate plan --all .</ToolCall> Use migrationPlan.
+        <ToolCall owner="this-step" result="migrationPlan">npx gennady sdd-migrate plan .</ToolCall> Use migrationPlan.
         <ToolCall owner="this-step" result="migrationAnchors">npx gennady sdd-migrate anchors --all .</ToolCall> Use migrationAnchors.
       </Action>
     </Step>
@@ -107,27 +110,11 @@
         each ticket's v1 Meta (a New-ID guess when the v1 Meta already carries ACR/slug-shaped
         fields — a best-effort seed, not an authoritative fill, the agent still reviews and corrects
         it in STEP_3) with the Diagram Plan left fully to the agent; a per-unit step checklist — plus
-        `migration/README.md` (the global G1–G8 order and the unit table). Explain to the operator,
+        `migration/README.md` (the global G0–G9 order and the unit table). Explain to the operator,
         in plain Russian: the plan is files, not chat — it survives session breaks, it is verified
         mechanically (`plan --verify`), and its units are self-sufficient job cards that can be
         handed to parallel agents. Nothing outside `migration/` is written here.
-        <ToolCall owner="this-step" result="migrationPlanWrite">npx gennady sdd-migrate plan --all . --write</ToolCall> Use migrationPlanWrite.
-      </Action>
-    </Step>
-    <Step id="STEP_2_ANCHORS">
-      <Goal>Make v1 tickets visible to the v2 tools.</Goal>
-      <Action>
-        Run migrationAnchorsWrite ToolCall below (deterministic — wraps canonical sections in
-        `<!--SECTION:-->` markers; idempotent, skips already-anchored). A v1 ticket missing a
-        mandatory v2 section (`EXECUTION_LOG`) gets it scaffolded with an honest placeholder —
-        `migrated from v1 — no rounds/phases recorded in v1 format` — never a fabricated Round; the tool never invents
-        content for a section it scaffolds, only marks the gap truthfully. Once anchored, the agent
-        brings each ticket's Meta to v2 form — `**Task-ID:**` / `**Status:**` / `**Purpose:**`,
-        replacing v1's own field labels — reading every value from the ticket's real v1 content;
-        never a guessed or invented status, round, or phase. Verify with exact
-        integrityCheck ToolCall below (anchor balance clean).
-        <ToolCall owner="this-step" result="migrationAnchorsWrite">npx gennady sdd-migrate anchors --all . --write</ToolCall> Use migrationAnchorsWrite.
-        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
+        <ToolCall owner="this-step" result="migrationPlanWrite">npx gennady sdd-migrate plan . --write</ToolCall> Use migrationPlanWrite.
       </Action>
     </Step>
     <Step id="STEP_3_FILL_MAPS">
@@ -140,7 +127,7 @@
         (parallelizable — a unit file is the worker's whole context): resolve every `UNMAPPED` row
         (keep / rename / merge / split / drop + the real target SECTION, from the scope-type's
         `*-spec-structure.xml`), spot-check the pre-filled rows against the source (a curated rule can
-        be wrong on an atypical heading — fix it, do not defer to STEP_7), review and correct the
+        be wrong on an atypical heading — fix it, do not defer to STEP_8), review and correct the
         **Ticket Map**'s tolerant v1-Meta pre-fill for every row (a row with no usable v1 Meta stays
         empty for the agent to fill from scratch): New ID `<ACR>-<slug>` — `ACR` UPPERCASE, `slug`
         kebab-case from `Meta.Purpose`, unique repo-wide (`NEW_ID_REGEX` gates the grammar — the same
@@ -150,7 +137,7 @@
         Gate: migrationPlanVerify ToolCall below — inventory unchanged, maps complete, zero `UNMAPPED`
         targets remaining, action vocabulary respected, slug grammar valid, zero cross-unit slug
         collisions. Fix and re-verify until clean.
-        <ToolCall owner="this-step" result="migrationPlanVerify">npx gennady sdd-migrate plan --verify</ToolCall> Use migrationPlanVerify.
+        <ToolCall owner="this-step" result="migrationPlanVerify">npx gennady sdd-migrate plan . --verify</ToolCall> Use migrationPlanVerify.
       </Action>
     </Step>
     <Step id="STEP_4_ACK">
@@ -158,8 +145,8 @@
       <Action>
         Present the verified layer, in plain Russian, facts separate from proposals
         (`AX_EVIDENCE_HYGIENE`): units and their section/ticket maps, the derived ID map, which
-        decisions will merge (STEP_7), what gets simplified beyond a 1:1 copy, the files+code the
-        ID replacement will touch (from `sdd-migrate ids --from-plan` DRY-RUN counts), and — for
+        decisions will merge (STEP_8), what gets simplified beyond a 1:1 copy, the files+code the
+        ID replacement will touch (from `sdd-migrate ids . --from-plan` DRY-RUN counts), and — for
         every unit that lacks a `SCOPE_TYPE` anchor — the proposed scope-type token (`product` |
         `library` | `infrastructure` | `interface`, read from the scope's own row in
         `specs/README.md`, never guessed). Before presenting, run exact
@@ -168,21 +155,37 @@
         correction) —
         `AX_OPERATOR_AGREEMENT`; `H_OPERATOR_REJECTS_PLAN` on decline. On go-ahead set units
         `**Status:** APPROVED`. STOP.
-        <ToolCall owner="this-step" result="migrationIds">npx gennady sdd-migrate ids --from-plan</ToolCall> Use migrationIds.
+        <ToolCall owner="this-step" result="migrationIds">npx gennady sdd-migrate ids . --from-plan</ToolCall> Use migrationIds.
       </Action>
     </Step>
-    <Step id="STEP_5_IDS">
+    <Step id="STEP_5_ANCHORS">
+      <Goal>After the operator's ACK, make v1 tickets visible to the v2 tools.</Goal>
+      <Action>
+        Run migrationAnchorsWrite ToolCall below (deterministic — wraps canonical sections in
+        `<!--SECTION:-->` markers; idempotent, skips already-anchored). A v1 ticket missing a
+        mandatory v2 section (`EXECUTION_LOG`) gets it scaffolded with an honest placeholder —
+        `migrated from v1 — no rounds/phases recorded in v1 format` — never a fabricated Round; the
+        tool never invents content for a section it scaffolds, only marks the gap truthfully. Once
+        anchored, the agent brings each ticket's Meta to v2 form — `**Task-ID:**` / `**Status:**` /
+        `**Purpose:**`, replacing v1's own field labels — reading every value from the ticket's real
+        v1 content; never a guessed or invented status, round, or phase. Verify with exact
+        integrityCheck ToolCall below (anchor balance clean).
+        <ToolCall owner="this-step" result="migrationAnchorsWrite">npx gennady sdd-migrate anchors --all . --write</ToolCall> Use migrationAnchorsWrite.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
+      </Action>
+    </Step>
+    <Step id="STEP_6_IDS">
       <Goal>Replace Task-IDs across specs, tickets, and code — mechanically.</Goal>
       <Action>
         Run migrationIdsWrite ToolCall below (the map is derived from the approved Ticket Maps).
         The tool replaces exact IDs on word boundaries only — never a blind `TSK-[0-9]+` pattern,
         never non-IDs (`UTF-8`), never legacy `D-N` / `FR-NN` / scope-prefixed requirement IDs — and gates
         itself on zero old IDs remaining. Then exact integrityCheck ToolCall below clean.
-        <ToolCall owner="this-step" result="migrationIdsWrite">npx gennady sdd-migrate ids --from-plan --write</ToolCall> Use migrationIdsWrite.
+        <ToolCall owner="this-step" result="migrationIdsWrite">npx gennady sdd-migrate ids . --from-plan --write</ToolCall> Use migrationIdsWrite.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
       </Action>
     </Step>
-    <Step id="STEP_6_MOVE">
+    <Step id="STEP_7_MOVE">
       <Goal>Relocate tickets co-located and build the indexes — one scope at a time.</Goal>
       <Action>
         Per scope: migrationMoveWrite ToolCall below — relocates every ticket to its
@@ -211,10 +214,10 @@
         the scope to v2 — `sdd-check` detects flow per scope, so the migrated scope is now checked
         strictly while unmigrated neighbours stay lenient. A blocked move (unfilled map, stray
         ticket) stops that scope, not the run.
-        <ToolCall owner="this-step" result="migrationMoveWrite">npx gennady sdd-migrate move --scope <scope> --write</ToolCall> Use migrationMoveWrite.
+        <ToolCall owner="this-step" result="migrationMoveWrite">npx gennady sdd-migrate move . --scope <scope> --write</ToolCall> Use migrationMoveWrite.
       </Action>
     </Step>
-    <Step id="STEP_7_RESTRUCTURE">
+    <Step id="STEP_8_RESTRUCTURE">
       <Goal>Transform each spec to the v2 document structure — the per-unit semantic work.</Goal>
       <Action>
         For each unit (parallelizable — units do not share files; repo-wide mechanical steps are
@@ -252,15 +255,15 @@
         Gate per scope: integrityCheck ToolCall below — strict v2 structure, folds, real mermaid
         parse, and the language lint (`SDD_LANGUAGE_CALQUE`) that gates the comprehension pass above
         mechanically — clean. Set the unit `**Status:** DONE`.
-        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Inputs <scope>: <scope>=exact current migration unit scope just restructured in this STEP_7. Use integrityCheck.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Inputs <scope>: <scope>=exact current migration unit scope just restructured in this STEP_8. Use integrityCheck.
       </Action>
     </Step>
-    <Step id="STEP_8_VERIFY">
+    <Step id="STEP_9_VERIFY">
       <Goal>Prove the migration is complete; retire the working layer.</Goal>
       <Action>
         Final gate, all green or `H_VERIFICATION_FAIL`:
         migrationState ToolCall below → `FLOW_VERSION=v2` · integrityCheck ToolCall below clean (every migrated scope spec now
-        carries `SCOPE_TYPE` from STEP_7, so this run exercises the strict `REQUIRED_SECTIONS` gate
+        carries `SCOPE_TYPE` from STEP_8, so this run exercises the strict `REQUIRED_SECTIONS` gate
         for real, not the dormant no-`SCOPE_TYPE` path) · zero original Task-IDs and zero
         `*.task-*.md` names remain (migrationIds ToolCall below DRY-RUN reports nothing to do) ·
         every unit `**Status:** DONE` · per migrated module, run
@@ -278,9 +281,9 @@
         repo; git history keeps the record). Return control to the caller — script readiness is the
         router's separate gate. Return exact post-mutation alias `migrationState`; the caller reuses
         it as its active routing snapshot and must not refresh again.
-        <ToolCall owner="this-step" result="migrationState">npx gennady sdd-state</ToolCall> Use migrationState.
+        <ToolCall owner="this-step" result="migrationState">npx gennady sdd-state .</ToolCall> Use migrationState.
         <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
-        <ToolCall owner="this-step" result="migrationIds">npx gennady sdd-migrate ids --from-plan</ToolCall> Use migrationIds.
+        <ToolCall owner="this-step" result="migrationIds">npx gennady sdd-migrate ids . --from-plan</ToolCall> Use migrationIds.
         <ToolCall owner="this-step" result="inventoryCheck">npx gennady lint --spec=<module-spec> --inventory-reverse <module-code-dir></ToolCall> Inputs <module-spec>, <module-code-dir>: <module-spec>/<module-code-dir>=each exact migrated module spec and its code root recorded by the unit. Use inventoryCheck.
       </Action>
     </Step>
@@ -298,7 +301,9 @@
     scope-prefixed requirement/scenario IDs stay (optional later reformat to BDD `<ACR>-REQ-N`) ·
     `UTF-8` / `UTF-16` and similar are NOT IDs — never replaced.
 
-    **Tooling state — all four mechanical modes are real tools:** `sdd-migrate plan` (generate /
+    **Tooling state — bootstrap plus all four mechanical modes are real tools:** `sdd-migrate
+    bootstrap` (fail-closed replacement of package-owned V1 tooling with the complete current V2
+    migration runtime; unknown or modified legacy bytes require operator action) · `sdd-migrate plan` (generate /
     `--verify` the migration layer — the Section Map arrives pre-filled by `mapHeadingToSection`; the
     Ticket Map's New-ID arrives pre-filled tolerantly from each ticket's v1 Meta where it already
     carries ACR/slug-shaped fields — a best-effort seed the agent still reviews, never authoritative;
@@ -310,9 +315,9 @@
     relative markdown-link rewriting inside every moved ticket and every referencing file in the same
     zones + automatic removal of the now-emptied `tasks/<scope>/`). What stays semantic — closing
     `UNMAPPED` rows and correcting the Ticket Map pre-fill (STEP_3) and the
-    restructure/compression/comprehension pass (STEP_7) — is agent work executed against a verified
+    restructure/compression/comprehension pass (STEP_8) — is agent work executed against a verified
     plan and gated by strict per-scope `sdd-check` plus, at the final gate, `gennady lint
-    --inventory-reverse` per migrated module (STEP_8).
+    --inventory-reverse` per migrated module (STEP_9).
 
     **Mixed state is first-class:** `sdd-check` detects the flow version per scope. On a v1 repo a
     scope counts as migrated (v2, strict) only positively: `tasks/<scope>/` removed AND the
@@ -320,15 +325,15 @@
     merely never had tasks stays lenient until the repo flips. Migration therefore runs one scope at
     a time — each migrated scope is checked strictly immediately, no waiting for the whole repo.
 
-    **Parallel dispatch:** unit files are self-sufficient — STEP_3 and STEP_7 fan out one unit per
+    **Parallel dispatch:** unit files are self-sufficient — STEP_3 and STEP_8 fan out one unit per
     agent (units never share files); the repo-wide mechanical steps (anchors / ids / move) run
-    centrally between the fan-outs, per `migration/README.md`'s G1–G8 order.
+    centrally between the fan-outs, per `migration/README.md`'s G0–G9 order.
   </ReferenceData>
 
   <ChatOutput>
     Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
     `🔁 MIG_R<N> · v1→v2 · step=<id> · tickets=<n> · ready=<yes|no>`. Breadcrumb milestones for this
-    flow (per `BREADCRUMB_FORMAT`): Inventory · Plan · Anchors · Ack · IDs · Move · Restructure ·
+    flow (per `BREADCRUMB_FORMAT`): Bootstrap · Inventory · Plan · Ack · Anchors · IDs · Move · Restructure ·
     Verify.
 
     {{> "contract/process/message-layout"}}
