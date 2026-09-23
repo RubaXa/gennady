@@ -1,0 +1,130 @@
+$ npm run build
+
+--- stdout ---
+
+> gennady@2.0.0-draft.1 build
+> vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 1618 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/chunks/index-JCKv_qmm.js                         0.07 kB │ gzip:   0.09 kB
+dist/chunks/index-3iRe6nEj.js                         0.07 kB │ gzip:   0.09 kB
+dist/chunks/index-GcpUCcBy.js                         0.07 kB │ gzip:   0.09 kB
+dist/chunks/index-h7k12ZGX.js                         0.07 kB │ gzip:   0.09 kB
+dist/chunks/index-CukILBsc.js                         0.08 kB │ gzip:   0.10 kB
+dist/chunks/lint-source-policy-BkPKL2Rp.js            0.17 kB │ gzip:   0.16 kB
+dist/chunks/index-BLg-yyEm.js                         0.20 kB │ gzip:   0.18 kB
+dist/chunks/help-B2ETH0j6.js                          0.48 kB │ gzip:   0.24 kB
+dist/chunks/index-DXlpdxzp.js                         0.56 kB │ gzip:   0.38 kB
+dist/chunks/help-Db0rU0KC.js                          0.61 kB │ gzip:   0.32 kB
+dist/chunks/help-CsuLpZn-.js                          0.73 kB │ gzip:   0.32 kB
+dist/chunks/help-BCDURaCQ.js                          0.74 kB │ gzip:   0.32 kB
+dist/chunks/index-CtJKSOL0.js                         0.81 kB │ gzip:   0.45 kB
+dist/chunks/config-help-Ws1ngThF.js                   0.83 kB │ gzip:   0.37 kB
+dist/chunks/help-Coi1l5u9.js                          0.91 kB │ gzip:   0.39 kB
+dist/chunks/help-CTGgIaO0.js                          0.99 kB │ gzip:   0.45 kB
+dist/chunks/help-BvgYOSyQ.js                          1.00 kB │ gzip:   0.46 kB
+dist/chunks/help-5qCaicff.js                          1.03 kB │ gzip:   0.42 kB
+dist/chunks/help-D-EH655m.js                          1.06 kB │ gzip:   0.44 kB
+dist/chunks/help-DYc54gp0.js                          1.07 kB │ gzip:   0.53 kB
+dist/chunks/stats-help-BnLpk6Ns.js                    1.07 kB │ gzip:   0.55 kB
+dist/chunks/help-BtKSJyz4.js                          1.07 kB │ gzip:   0.44 kB
+dist/chunks/help-CjkR6SB9.js                          1.08 kB │ gzip:   0.48 kB
+dist/chunks/help-CXLu7Or0.js                          1.15 kB │ gzip:   0.52 kB
+dist/chunks/help-BiBPW0kL.js                          1.20 kB │ gzip:   0.51 kB
+dist/chunks/help-n8XrJTZI.js                          1.31 kB │ gzip:   0.50 kB
+dist/chunks/help-CRqzv6Db.js                          1.34 kB │ gzip:   0.61 kB
+dist/chunks/help-BD8-LEeF.js                          1.35 kB │ gzip:   0.49 kB
+dist/chunks/help-BZy6KWe9.js                          1.39 kB │ gzip:   0.61 kB
+dist/chunks/help-C3Ykc-Nc.js                          1.43 kB │ gzip:   0.52 kB
+dist/chunks/help-krcRU3UT.js                          1.45 kB │ gzip:   0.59 kB
+dist/chunks/help-XJGUgft3.js                          1.47 kB │ gzip:   0.67 kB
+dist/chunks/help-DGVzsKCv.js                          1.50 kB │ gzip:   0.55 kB
+dist/chunks/help-CFtBzvdI.js                          1.51 kB │ gzip:   0.64 kB
+dist/chunks/help-DrzfwozG.js                          1.53 kB │ gzip:   0.76 kB
+dist/chunks/help-CplOgbQt.js                          1.53 kB │ gzip:   0.62 kB
+dist/chunks/eval.cmd-DfoVdH4w.js                      1.55 kB │ gzip:   0.81 kB
+dist/chunks/help-EO114G8_.js                          1.63 kB │ gzip:   0.81 kB
+dist/chunks/help-_U6NUUQV.js                          1.63 kB │ gzip:   0.61 kB
+dist/chunks/help-B6e1u35w.js                          1.71 kB │ gzip:   0.60 kB
+dist/chunks/index-BdxbkhUd.js                         1.74 kB │ gzip:   0.83 kB
+dist/chunks/devtools-Cmbzs-Ce.js                      1.78 kB │ gzip:   0.69 kB
+dist/chunks/index-CKEmWIRw.js                         1.81 kB │ gzip:   0.89 kB
+dist/chunks/index-DUMYWaoc.js                         1.87 kB │ gzip:   0.88 kB
+dist/chunks/help-C0GfohvW.js                          1.89 kB │ gzip:   0.86 kB
+dist/chunks/help-Bb-4xa8Y.js                          1.93 kB │ gzip:   0.86 kB
+dist/chunks/help-BOdcV1vC.js                          2.03 kB │ gzip:   0.80 kB
+dist/chunks/index-B582N9nC.js                         2.17 kB │ gzip:   1.04 kB
+dist/chunks/help-Cogag-cb.js                          2.28 kB │ gzip:   0.77 kB
+dist/chunks/help-Db1OZhxV.js                          2.53 kB │ gzip:   0.85 kB
+dist/chunks/stats-index-C1iLz7dm.js                   2.54 kB │ gzip:   1.23 kB
+dist/chunks/help-wdnPQTX_.js                          2.58 kB │ gzip:   1.11 kB
+dist/chunks/classify-mr-stage.logic-CuMkKarJ.js       2.63 kB │ gzip:   1.13 kB
+dist/chunks/index-BjO7TyRj.js                         2.84 kB │ gzip:   1.39 kB
+dist/chunks/config-index-CgmwQREB.js                  3.11 kB │ gzip:   1.24 kB
+dist/chunks/help-N0ueAQfo.js                          3.12 kB │ gzip:   1.20 kB
+dist/chunks/index-B7vwFWF3.js                         3.34 kB │ gzip:   1.45 kB
+dist/chunks/index-D6_uLFJ0.js                         3.37 kB │ gzip:   1.40 kB
+dist/chunks/resolve-file-relations-hou8BOgi.js        3.41 kB │ gzip:   1.46 kB
+dist/chunks/help.cmd-DNfd04fQ.js                      3.44 kB │ gzip:   1.29 kB
+dist/chunks/index-CAZq0WT3.js                         3.80 kB │ gzip:   1.61 kB
+dist/chunks/index-B7gPibBY.js                         4.32 kB │ gzip:   1.76 kB
+dist/chunks/help-xvMooQES.js                          4.34 kB │ gzip:   1.70 kB
+dist/chunks/index-CeS-xuQo.js                         4.38 kB │ gzip:   1.66 kB
+dist/chunks/help-CES366oI.js                          4.40 kB │ gzip:   1.62 kB
+dist/chunks/help-BVjZw1ad.js                          4.69 kB │ gzip:   1.88 kB
+dist/chunks/help-DfA0CVsg.js                          4.72 kB │ gzip:   2.04 kB
+dist/chunks/index-C_kvyas0.js                         4.74 kB │ gzip:   1.76 kB
+dist/chunks/index-D5EynXOm.js                         4.83 kB │ gzip:   1.80 kB
+dist/chunks/index-DQJDJj0p.js                         4.84 kB │ gzip:   1.98 kB
+dist/chunks/index-RgFlrcgn.js                         4.86 kB │ gzip:   2.08 kB
+dist/chunks/help-DOGKzzQ1.js                          4.98 kB │ gzip:   1.71 kB
+dist/chunks/help-CgCVbDPz.js                          5.14 kB │ gzip:   2.10 kB
+dist/chunks/sync-core-Bcez3Ec7.js                     5.19 kB │ gzip:   1.95 kB
+dist/chunks/index-yfTtgDzw.js                         5.45 kB │ gzip:   2.03 kB
+dist/chunks/help-Bf0MiLin.js                          5.82 kB │ gzip:   1.93 kB
+dist/index.js                                         5.84 kB │ gzip:   2.24 kB
+dist/chunks/index-R55T1Az9.js                         6.16 kB │ gzip:   2.44 kB
+dist/chunks/index-CciaP58V.js                         6.26 kB │ gzip:   2.38 kB
+dist/chunks/index-BLKQtiVe.js                         6.52 kB │ gzip:   2.45 kB
+dist/chunks/serve.cmd-DoGzGIPc.js                     6.98 kB │ gzip:   2.80 kB
+dist/chunks/index-beA6fQ9P.js                         7.39 kB │ gzip:   2.81 kB
+dist/chunks/index-5zgttsVb.js                         7.43 kB │ gzip:   2.81 kB
+dist/chunks/run-review-command.logic-B6L5i0w-.js      9.31 kB │ gzip:   3.36 kB
+dist/chunks/index--vr7rdjB.js                         9.31 kB │ gzip:   3.39 kB
+dist/chunks/index-BeCowGXC.js                        10.40 kB │ gzip:   4.04 kB
+dist/chunks/index-CTvw9Oyl.js                        10.87 kB │ gzip:   4.21 kB
+dist/chunks/index-vGlyo1q5.js                        11.32 kB │ gzip:   4.28 kB
+dist/gennady.js                                      11.56 kB │ gzip:   2.64 kB
+dist/chunks/index-VB7Zhyze.js                        11.91 kB │ gzip:   4.42 kB
+dist/chunks/full-profile-plan-CkItDG-r.js            12.03 kB │ gzip:   4.33 kB
+dist/chunks/index-BD2-aChe.js                        12.94 kB │ gzip:   4.72 kB
+dist/chunks/index-CIWf3Xri.js                        14.31 kB │ gzip:   5.14 kB
+dist/chunks/phase-receipt-validation-Du6KR0hd.js     14.90 kB │ gzip:   5.03 kB
+dist/chunks/index-Cc7pHyCb.js                        15.87 kB │ gzip:   5.10 kB
+dist/chunks/index-CuJ02Cbu.js                        17.45 kB │ gzip:   5.70 kB
+dist/chunks/coverage-artifact-Da4Y04o6.js            17.68 kB │ gzip:   5.50 kB
+dist/chunks/index-BL51EZuF.js                        23.68 kB │ gzip:   8.17 kB
+dist/chunks/index-B_furAr2.js                        24.36 kB │ gzip:   6.94 kB
+dist/chunks/index-CZ7ykI-e.js                        28.95 kB │ gzip:   9.09 kB
+dist/chunks/index-R-cUx182.js                        31.72 kB │ gzip:  10.94 kB
+dist/chunks/index-DlDg92V-.js                        39.17 kB │ gzip:  12.65 kB
+dist/chunks/index-BrWwgnwI.js                        39.22 kB │ gzip:  11.65 kB
+dist/chunks/index-DXM2ea95.js                        45.94 kB │ gzip:  14.29 kB
+dist/chunks/index-CNdt8z7W.js                       125.95 kB │ gzip:  32.94 kB
+dist/chunks/shared-Cwj-kL9v.js                      484.50 kB │ gzip: 145.68 kB
+dist/chunks/index-CpryqOc6.js                     1,028.99 kB │ gzip: 249.99 kB
+dist/chunks/services-Cu8JBli_.js                  1,974.34 kB │ gzip: 513.86 kB
+✓ built in 3.64s
+
+
+--- stderr ---
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+Circular chunk: services -> shared -> services. Please adjust the manual chunk logic for these chunks.
+[plugin vite:reporter] 
+(!) /private/tmp/gennady-rel18-release-evidence-20260923/services/vcs-client/gitlab/vcs-gitlab-client.ts is dynamically imported by /private/tmp/gennady-rel18-release-evidence-20260923/services/agent-inbox/modules/inbox-core/vcs-inbox.real.ts but also statically imported by /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/_shared/create-vcs-client.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/cat/cat-url.fn.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/inbox/_core/logic/build-inbox-context.logic.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/review/_core/logic/build-review-context-vcs.logic.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/review/_core/logic/run-review-command.logic.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/vcs-approve/vcs-approve.cmd.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/vcs-diff/vcs-diff.cmd.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/vcs-discussions/vcs-discussions.cmd.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/vcs-pipeline/vcs-pipeline.cmd.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/vcs-reply/vcs-reply.cmd.ts, /private/tmp/gennady-rel18-release-evidence-20260923/cli/cmd/vcs-todo/vcs-todo.cmd.ts, /private/tmp/gennady-rel18-release-evidence-20260923/services/agent-inbox/modules/inbox-vcs/vcs-gitlab.port.ts, /private/tmp/gennady-rel18-release-evidence-20260923/services/agent-inbox/serve/bootstrap.ts, dynamic import will not move module into another chunk.
+
+

@@ -1,0 +1,11 @@
+$ node --import tsx cli/gennady.ts sdd-migrate move . --scope mr-stats
+
+--- stdout ---
+[sdd-migrate move] DRY-RUN · scope mr-stats
+  no-op scope mr-stats — уже мигрирован в v2
+
+(dry-run — повторить с --write, чтобы применить)
+
+
+--- stderr ---
+

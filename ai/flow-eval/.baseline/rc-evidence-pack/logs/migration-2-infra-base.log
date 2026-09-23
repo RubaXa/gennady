@@ -1,0 +1,11 @@
+$ node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-base
+
+--- stdout ---
+[sdd-migrate move] DRY-RUN · scope infra-base
+  no-op scope infra-base — уже мигрирован в v2
+
+(dry-run — повторить с --write, чтобы применить)
+
+
+--- stderr ---
+
