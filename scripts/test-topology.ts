@@ -414,7 +414,12 @@ function coveragePartitions(topology: TestTopology): TestPartition[] {
     {
       name: 'black-box',
       coverage: false,
-      concurrency: OUTER_TEST_CONCURRENCY,
+      // This partition contains the same subprocess-heavy `local` suites that REL-7 isolates in the
+      // deterministic run. Keeping them at the local bound is required here too: at outer=10 the
+      // E-22/E-23 acceptance corpus reproducibly exceeds the 30s file timeout under sibling load,
+      // while the exact file passes in ~12s alone. This is load isolation, not a wider timeout or an
+      // exclusion from the mandatory release gate.
+      concurrency: LOCAL_PARTITION_CONCURRENCY,
       layers: ['local', 'external'],
       files: [...topology.local, ...topology.external].sort(),
     },
@@ -518,7 +523,8 @@ function help(): string {
     '  excluded  Print each EXPLICITLY_EXCLUDED_TEST_FILES entry (file, owner, reason) — GAP-2.',
     '  Package aliases: npm test=deterministic; npm run test:coverage=coverage; npm run test:topology=check;',
     '  npm run test:experimental=experimental.',
-    `  unit/coverage/experimental use bounded outer concurrency=${OUTER_TEST_CONCURRENCY}.`,
+    `  unit/coverage-observed/experimental use bounded outer concurrency=${OUTER_TEST_CONCURRENCY}.`,
+    `  coverage black-box local+external uses concurrency=${LOCAL_PARTITION_CONCURRENCY} (REL-7).`,
     `  deterministic runs local as its own partition at concurrency=${LOCAL_PARTITION_CONCURRENCY} (REL-7),`,
     `  then contract+external+unit at bounded outer concurrency=${OUTER_TEST_CONCURRENCY}. Subprocess-heavy suites own inner bounds.`,
     '  --help    Show this help.',
