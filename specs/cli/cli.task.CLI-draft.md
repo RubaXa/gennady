@@ -73,6 +73,15 @@
 - [x] `2026-06-26T21:20:56Z` DONE
       **Handoff →** artifacts: [cli/cmd/vcs-reply/vcs-reply.cmd.ts, cli/cmd/vcs-draft-note/vcs-draft-note.cmd.ts, cli/cmd/vcs-draft-note/index.ts, cli/cmd/vcs-draft-note/help.ts, cli/gennady.ts]; decisions: [deleteDiscussion=via-{discussionId-delete:true-without-noteId}, vcs-draft-di=vcs-approve-pattern-with-VcsDraftDeps, vcs-draft-actions=list-create-update-delete-publish]; open: []
 
+#### P2 — test
+
+- [x] `2026-06-26T21:36:35Z` intro vcs-draft-note.test.ts ← BDD-покрытие CLI-команды vcs-draft-note (--list|--create|--update|--delete|--publish, dry-run, валидация, ошибки API)
+- [x] `2026-06-26T21:36:35Z` intro vcs-reply.delete.test.ts ← BDD-покрытие delete discussion для vcs-reply ({discussionId, delete:true} → deleteDiscussion)
+- [x] `2026-06-26T21:36:35Z` insight listDrafts при пустом списке делает return вместо deps.exit — возможный баг (не завершает процесс)
+- [x] `2026-06-26T21:36:35Z` ver sdd verify → pass exit=0 (4/4 gates)
+- [x] `2026-06-26T21:36:35Z` DONE
+      **Handoff →** artifacts: [cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.delete.test.ts]; decisions: [vcs-draft-test-strategy=fetch-mock-via-process.exit-override, vcs-reply-delete-test=follows-edit.test.ts-pattern]; open: [H-01: listDrafts пустой список не вызывает exit, процесс не завершается]
+
 ### Round 2 — 2026-09-21, migration evidence reconciliation
 
 #### P1
@@ -97,12 +106,5 @@
 - **Target Files:** `cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts`, `cli/cmd/vcs-reply/__tests__/vcs-reply.delete.test.ts`
 - **Inputs:** P1 handoff
 - **Exit:** 7 BDD covered; tests pass; typecheck+format clean
-
-- [x] `2026-06-26T21:36:35Z` intro vcs-draft-note.test.ts ← BDD-покрытие CLI-команды vcs-draft-note (--list|--create|--update|--delete|--publish, dry-run, валидация, ошибки API)
-- [x] `2026-06-26T21:36:35Z` intro vcs-reply.delete.test.ts ← BDD-покрытие delete discussion для vcs-reply ({discussionId, delete:true} → deleteDiscussion)
-- [x] `2026-06-26T21:36:35Z` insight listDrafts при пустом списке делает return вместо deps.exit — возможный баг (не завершает процесс)
-- [x] `2026-06-26T21:36:35Z` ver sdd verify → pass exit=0 (4/4 gates)
-- [x] `2026-06-26T21:36:35Z` DONE
-      **Handoff →** artifacts: [cli/cmd/vcs-draft-note/__tests__/vcs-draft-note.test.ts, cli/cmd/vcs-reply/__tests__/vcs-reply.delete.test.ts]; decisions: [vcs-draft-test-strategy=fetch-mock-via-process.exit-override, vcs-reply-delete-test=follows-edit.test.ts-pattern]; open: [H-01: listDrafts пустой список не вызывает exit, процесс не завершается]
 
 <!--/SECTION:PHASE_P2-->

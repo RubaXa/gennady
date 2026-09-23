@@ -62,6 +62,17 @@ const SKIP_DIRS = new Set([
 // `<module>.task-<N>.md`, hyphen before a bare number, and never matches this).
 const V2_TASK_FILENAME = /\.task\.([^/\\]+)\.md$/;
 
+/**
+ * @purpose Recognize the canonical v2 ticket filename boundary used by receipt-aware checks.
+ * @invariant A legacy `<module>.task-<N>.md` name never matches; the Task-ID itself is validated by
+ *   the separate Task-ID grammar gate, so this predicate only classifies the filename generation.
+ * @param file Absolute or relative candidate ticket path.
+ * @returns Whether the basename has the `<module>.task.<ID>.md` v2 shape.
+ */
+export function isV2TicketFileName(file: string): boolean {
+  return V2_TASK_FILENAME.test(file);
+}
+
 /** @purpose True when `full`'s path (relative to nothing in particular) carries a `specs` directory segment. | @param full A file path (absolute or relative). | @returns Whether any path segment equals "specs". */
 function underSpecs(full: string): boolean {
   return full.split(sep).includes('specs');

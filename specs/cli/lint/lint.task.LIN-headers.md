@@ -96,7 +96,7 @@
 
 ### Round 1 — 2026-05-15, initial
 
-##### P1
+#### P1
 
 - [x] `[2026-05-15T15:49:25Z]` recon git=main/dirty targets=absent divergence=none
 - [x] `[2026-05-15T15:49:25Z]` rules typescript-rules

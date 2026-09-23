@@ -111,11 +111,10 @@ describe('sdd-check --all group-completion receipt gate', () => {
     process.chdir(origCwd);
   });
 
-  it('WARNs (never errors) when a fully-DONE v2 group has no receipt', async () => {
+  it('fails when a fully-DONE v2 group has no receipt', async () => {
     const { root } = makeGroup({ done: true }, { done: true });
     const result = await mod.run(argv('--all', root));
-    // The codes surface for the completed v2 group; their WARN severity (advisory, non-fatal) is
-    // asserted directly in shared/sdd/__tests__/group-receipt.test.ts.
+    assert.strictEqual(result.exitCode, 1, result.text);
     assert.match(result.text, /SDD_GROUP_AUDIT_MISSING/);
     assert.match(result.text, /SDD_GROUP_REVIEW_MISSING/);
     rmSync(root, { recursive: true, force: true });
@@ -130,7 +129,7 @@ describe('sdd-check --all group-completion receipt gate', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('re-WARNs when a member reopened after the receipt (stale signature)', async () => {
+  it('fails when a member reopened after the receipt (stale signature)', async () => {
     const { root, specPath, members } = makeGroup({ done: true }, { done: true });
     recordReceipts(specPath, members);
     // Member reopened then re-closed with an extra Round → complete again but signature is stale.
@@ -140,6 +139,7 @@ describe('sdd-check --all group-completion receipt gate', () => {
       'utf-8'
     );
     const result = await mod.run(argv('--all', root));
+    assert.strictEqual(result.exitCode, 1, result.text);
     assert.match(result.text, /SDD_GROUP_AUDIT_MISSING/);
     assert.match(result.text, /SDD_GROUP_REVIEW_MISSING/);
     rmSync(root, { recursive: true, force: true });
@@ -153,11 +153,12 @@ describe('sdd-check --all group-completion receipt gate', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it('grandfathers a DONE group whose tickets predate the v2 schema marker', async () => {
+  it('does not grandfather v2-named tickets merely because the marker is absent', async () => {
     const { root } = makeGroup({ done: true, aware: false }, { done: true, aware: false });
     const result = await mod.run(argv('--all', root));
-    assert.doesNotMatch(result.text, /SDD_GROUP_AUDIT_MISSING/);
-    assert.doesNotMatch(result.text, /SDD_GROUP_REVIEW_MISSING/);
+    assert.strictEqual(result.exitCode, 1, result.text);
+    assert.match(result.text, /SDD_GROUP_AUDIT_MISSING/);
+    assert.match(result.text, /SDD_GROUP_REVIEW_MISSING/);
     rmSync(root, { recursive: true, force: true });
   });
 });

@@ -8,6 +8,8 @@ import { extractSection } from './section.ts';
 import { parseMetaInfo } from './ticket.ts';
 import type { Finding } from './finding.ts';
 import { nextRoundNumber, PHASE_RECEIPTS_SCHEMA_MARKER } from './execution-log.ts';
+import { isV2TicketFileName } from './task-id.ts';
+import type { FlowVersion } from './flow.ts';
 
 /** @purpose The two group-completion review transitions — audit and behavioural code-review. */
 export type GroupReceiptKind = 'audit' | 'review';
@@ -18,9 +20,9 @@ export const GROUP_RECEIPT_MARKER: Readonly<Record<GroupReceiptKind, string>> = 
   review: 'SDD_REVIEW_RECEIPT',
 };
 
-/** @purpose WARN code emitted when a complete group has no valid audit receipt. */
+/** @purpose ERROR code emitted when a complete group has no valid audit receipt. */
 const AUDIT_MISSING_CODE = 'SDD_GROUP_AUDIT_MISSING';
-/** @purpose WARN code emitted when a complete group has no valid code-review receipt. */
+/** @purpose ERROR code emitted when a complete group has no valid code-review receipt. */
 const REVIEW_MISSING_CODE = 'SDD_GROUP_REVIEW_MISSING';
 /** @purpose WARN code emitted when a group is migrating — SOME but not all members carry the v2
  *   receipt-aware schema marker — so grading stays explicitly skipped rather than silent (B2-16). */
@@ -79,12 +81,15 @@ function memberIsDone(content: string): boolean {
 }
 
 /**
- * @purpose Whether a member ticket carries the v2 receipt-aware schema marker (the grandfathering gate).
- * @param content Full member ticket markdown.
- * @returns True when the marker is present.
+ * @purpose Whether a member is receipt-aware by explicit marker or canonical v2 filename.
+ * @param member Resolved group member.
+ * @returns True when the marker is present or its filename has the v2 shape.
  */
-function memberIsReceiptAware(content: string): boolean {
-  return content.includes(PHASE_RECEIPTS_SCHEMA_MARKER);
+function memberIsReceiptAware(member: GroupMemberInput, flowVersion: FlowVersion): boolean {
+  return (
+    member.content.includes(PHASE_RECEIPTS_SCHEMA_MARKER) ||
+    (flowVersion === 'v2' && isV2TicketFileName(member.file))
+  );
 }
 
 /**
@@ -302,23 +307,29 @@ export type GroupUnderCheck = {
   specContent: string;
   /** @purpose Every resolved group member (file + full markdown). */
   members: GroupMemberInput[];
+  /** @purpose Owning scope flow boundary; defaults to v2 for standalone/current callers. */
+  flowVersion?: FlowVersion;
 };
 
 /**
- * @purpose Re-derive each complete group and WARN when its audit/review receipt is missing, forged,
- *   or stale — grandfathered on the v2 schema marker, keyed off the WHOLE group being DONE.
+ * @purpose Re-derive each complete group and ERROR when its audit/review receipt is missing, forged,
+ *   or stale — grandfathered only for legacy-named members without the v2 marker, keyed off the
+ *   WHOLE group being DONE.
  * @invariant Never per-ticket isDone. A SOME-but-not-all-marked group is an explicit
  *   `SDD_GROUP_RECEIPT_PARTIALLY_MARKED` skip (B2-16), not silence; a fully-unmarked group stays
  *   silently ungraded, same as before.
  * @param groups Every resolved group with its owning spec and live members.
- * @returns One WARN per complete v2 group lacking a valid audit or review receipt, plus one WARN per
- *   partially-marked group.
+ * @returns One ERROR per complete v2 group lacking a valid audit or review receipt, plus one WARN per
+ *   partially-migrated group.
  */
 export function checkGroupReceipts(groups: GroupUnderCheck[]): Finding[] {
   const findings: Finding[] = [];
   for (const group of groups) {
     if (group.members.length === 0) continue;
-    const markedCount = group.members.filter((m) => memberIsReceiptAware(m.content)).length;
+    const flowVersion = group.flowVersion ?? 'v2';
+    const markedCount = group.members.filter((member) =>
+      memberIsReceiptAware(member, flowVersion)
+    ).length;
     if (markedCount === 0) continue;
     if (markedCount < group.members.length) {
       findings.push({
@@ -345,7 +356,7 @@ export function checkGroupReceipts(groups: GroupUnderCheck[]): Finding[] {
           : (parsed.receipts.map((r) => groupReceiptIssue(r, derived)).find((i) => i !== null) ??
             'no valid receipt');
       findings.push({
-        severity: 'warn',
+        severity: 'error',
         code,
         file: group.specFile,
         message: `Group of ${group.members.length} DONE ticket(s) for this spec has no valid ${label} receipt (${detail}). Run \`gennady sdd-log <group> ${kind}-receipt <verdict>\` after the read-only ${label} returns.`,

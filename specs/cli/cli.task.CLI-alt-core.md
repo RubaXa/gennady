@@ -253,8 +253,6 @@
 - [x] `2026-05-17T21:02:22Z` DONE
       **Handoff →** artifacts: [cli/cmd/alt-opinion/alt-opinion.types.ts, cli/cmd/alt-opinion/alt-opinion-parser.ts]; decisions: [parser-signature=parseAltOpinionArgs(rawArgs, opts?={stdinContent?}), model-parsing=internal parseModelArg helper, provider-type=AltOpinionProvider string union, stdin-reading=sync readFileSync(process.stdin.fd), result-type=discriminated union AltOpinionResult]; open: []
 
-### Round 2 — initial, P2 runner
-
 #### P2
 
 - [x] `2026-05-17T21:11:41Z` recon targets=absent divergence=none

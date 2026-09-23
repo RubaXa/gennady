@@ -265,14 +265,7 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
     assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_DUPLICATE'), c.join(','));
   });
 
-  // B2-16/L-2 (variant 3) names a second predicate — "a v2-named `*.task.<ID>.md` file is ALWAYS
-  // receipt-aware, even with no literal marker" — NOT implemented in this batch: measured against
-  // the real test-fixture corpus, 31 unrelated `.test.ts` files already use v2-shaped ticket names
-  // in fixtures that predate this predicate and carry no Round/receipt scaffold, so wiring it in
-  // here would redden ~9 unrelated suites outside this batch's file zone (bootstrap-path,
-  // clean-repo-composition, sdd-verify, inbox-review-plan, testcov, directive-tool-contract, …).
-  // Left as a literal-marker-only gate (pre-existing behavior) — see the batch report's Deviations.
-  it('stays grandfathered on the literal marker for a v2-named ticket file with no marker (deviation from L-2)', () => {
+  it('treats a v2-named ticket as receipt-aware even without the literal marker', () => {
     const c = codes(
       'specs/demo/core/core.task.DEM-work.md',
       ticket({
@@ -282,12 +275,12 @@ describe('checkTicket — phase graph + exec-log completeness', () => {
         executionLog: 'no round header here',
       })
     );
-    assert.ok(!c.includes('SDD_EXECUTION_LOG_ROUND_MISSING'), c.join(','));
+    assert.ok(c.includes('SDD_EXECUTION_LOG_ROUND_MISSING'), c.join(','));
   });
 
-  it('grandfathers an older V2 ticket without the receipt schema marker', () => {
+  it('grandfathers a legacy-named ticket without the receipt schema marker', () => {
     const c = codes(
-      't.md',
+      'tasks/demo/core/core.task-1.md',
       ticket({
         rows: [{ id: 'P1' }, { id: 'P2', deps: 'P1' }],
         sections: ['P1', 'P2'],

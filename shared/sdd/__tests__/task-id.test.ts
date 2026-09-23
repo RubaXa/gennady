@@ -14,8 +14,19 @@ import {
   findPrefixClashes,
   describeIdConflict,
   suggestTaskId,
+  isV2TicketFileName,
   SLUG_MAX_LEN,
 } from '../task-id.ts';
+
+describe('isV2TicketFileName', () => {
+  it('distinguishes canonical v2 ticket names from legacy and lookalike names', () => {
+    assert.equal(isV2TicketFileName('specs/app/app.task.APP-work.md'), true);
+    assert.equal(isV2TicketFileName('/repo/specs/app/app.task.TSK-1.md'), true);
+    assert.equal(isV2TicketFileName('tasks/app/app.task-1.md'), false);
+    assert.equal(isV2TicketFileName('specs/app/app.task.md'), false);
+    assert.equal(isV2TicketFileName('specs/app/app.task.APP-work.md.bak'), false);
+  });
+});
 
 describe('validateTaskId', () => {
   it('accepts a well-formed <ACR>-<slug>', () => {

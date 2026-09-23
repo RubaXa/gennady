@@ -34,10 +34,10 @@
     {
       "id": "stale-group-receipt",
       "expected": [
-        { "code": "SDD_GROUP_AUDIT_MISSING", "severity": "warn" },
-        { "code": "SDD_GROUP_REVIEW_MISSING", "severity": "warn" }
+        { "code": "SDD_GROUP_AUDIT_MISSING", "severity": "error" },
+        { "code": "SDD_GROUP_REVIEW_MISSING", "severity": "error" }
       ],
-      "exit": 0
+      "exit": 1
     }
   ],
   "injection": {

@@ -1536,12 +1536,16 @@ export async function run(
     }
     const ticketsWereZero = ticketRefs.length === 0;
     findings.push(...checkTaskGraph(ticketRefs));
-    // #region START_GROUP_RECEIPTS — invariant: group walked v2 tickets by owning spec, then WARN when a fully-DONE group lacks a valid receipt (grandfathered and graded inside checkGroupReceipts)
-    const specContentByCanonical = new Map<string, { file: string; content: string }>();
+    // #region START_GROUP_RECEIPTS — invariant: group walks v2 tickets by owning spec, then ERRORs when a fully-DONE group lacks a valid receipt (grandfathered and graded inside checkGroupReceipts)
+    const specContentByCanonical = new Map<
+      string,
+      { file: string; content: string; flowVersion: FlowVersion }
+    >();
     for (const entry of specEntries)
       specContentByCanonical.set(realpathSafe(entry.file), {
         file: entry.file,
         content: entry.content,
+        flowVersion: entry.flowVersion ?? 'v2',
       });
     const membersByCanonicalSpec = new Map<string, GroupMemberInput[]>();
     for (const member of groupTickets) {
@@ -1556,7 +1560,12 @@ export async function run(
     for (const [key, members] of membersByCanonicalSpec) {
       const spec = specContentByCanonical.get(key);
       if (!spec) continue;
-      groupsUnderCheck.push({ specFile: spec.file, specContent: spec.content, members });
+      groupsUnderCheck.push({
+        specFile: spec.file,
+        specContent: spec.content,
+        members,
+        flowVersion: spec.flowVersion,
+      });
     }
     findings.push(...checkGroupReceipts(groupsUnderCheck));
     // #endregion END_GROUP_RECEIPTS
