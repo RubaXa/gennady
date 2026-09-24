@@ -18,7 +18,11 @@ import type {
   VerifyReadiness,
 } from '../../shared/verify/model/verify-readiness.type.ts';
 import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts';
-import type { Requirement, VerifyStep } from '../../shared/verify/model/verify-step.type.ts';
+import type {
+  Requirement,
+  VerifyEnvironmentFailureRule,
+  VerifyStep,
+} from '../../shared/verify/model/verify-step.type.ts';
 import type { StackDetection } from '../../shared/verify/verify.types.ts';
 import type { GoProject, GoToolId } from './golang-detect.logic.ts';
 import { scopeHasGoGenerate } from './golang-plan.logic.ts';
@@ -48,6 +52,53 @@ const TIMEOUTS = {
   integration: 20 * 60_000,
   coverage: 20 * 60_000,
 } as const;
+
+const GO_MODULE_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
+  {
+    outputMatches:
+      '^go: .*(?:Forbidden|403|410 Gone|dial tcp|i/o timeout|no such host|connection refused|certificate|module lookup disabled|proxy\\.golang\\.org|unrecognized import path)',
+    hint: 'restore access to the configured Go module proxy or mirror and retry',
+    source: 'builtin:golang',
+  },
+  {
+    outputMatches:
+      '^\\S+\\.go:\\d+:\\d+: .*(?:module lookup disabled|dial tcp|i/o timeout|no such host|connection refused|Forbidden|403)',
+    hint: 'restore Go module resolution for the selected toolchain and retry',
+    source: 'builtin:golang',
+  },
+];
+
+const GO_TOOL_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
+  {
+    outputMatches: '^panic: ',
+    hint: 'the Go tool crashed before producing a product verdict; repair the pinned toolchain',
+    source: 'builtin:golang',
+  },
+  ...GO_MODULE_ENV_FAIL,
+];
+
+const GO_GENERATE_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
+  ...GO_MODULE_ENV_FAIL,
+  {
+    outputMatches: 'executable file not found',
+    hint: 'install the generator binary or declare it as a go.mod tool directive',
+    source: 'builtin:golang',
+  },
+];
+
+const GO_LINT_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
+  {
+    exitCodeMatches: '>1',
+    hint: 'golangci-lint did not return its code-finding exit 1; repair the pinned linter',
+    source: 'builtin:golang',
+  },
+  {
+    outputMatches: 'requires newer Go version|compile.*version .*go\\d',
+    hint: 'install golangci-lint built for the Go version required by this module',
+    source: 'builtin:golang',
+  },
+  ...GO_TOOL_ENV_FAIL,
+];
 
 function factsOf(detection: StackDetection): GoProject {
   return detection.details as GoProject;
@@ -128,7 +179,7 @@ function step(
   argv: readonly string[] | null,
   project: GoProject,
   requires: readonly Requirement[],
-  options: Pick<VerifyStep, 'writes' | 'invalidates'> = {}
+  options: Pick<VerifyStep, 'writes' | 'invalidates' | 'outputMeansFailure' | 'envFail'> = {}
 ): VerifyStep {
   return {
     id,
@@ -239,7 +290,8 @@ export function createGolangVerifyPreset(
           ? null
           : [go, 'generate', ...flags, ...packages],
         project,
-        hasGenerate ? goRequirements('generate') : []
+        hasGenerate ? goRequirements('generate') : [],
+        { envFail: GO_GENERATE_ENV_FAIL }
       ),
       step(
         'build',
@@ -250,11 +302,19 @@ export function createGolangVerifyPreset(
           ? null
           : [go, 'build', '-o', '/dev/null', ...flags, ...packages],
         project,
-        [...goRequirements('build')]
+        [...goRequirements('build')],
+        { envFail: GO_TOOL_ENV_FAIL }
       ),
-      step('vet', ['code'], ['build'], 'observe', goArgv(project, 'vet', scope), project, [
-        ...goRequirements('vet'),
-      ]),
+      step(
+        'vet',
+        ['code'],
+        ['build'],
+        'observe',
+        goArgv(project, 'vet', scope),
+        project,
+        [...goRequirements('vet')],
+        { envFail: GO_TOOL_ENV_FAIL }
+      ),
       step(
         'lint-fix',
         ['code'],
@@ -263,7 +323,11 @@ export function createGolangVerifyPreset(
         lintArgv(project, scope, true),
         project,
         lintRequirements('lint-fix'),
-        { writes: sourceWrites, invalidates: ['generate', 'build', 'vet'] }
+        {
+          writes: sourceWrites,
+          invalidates: ['generate', 'build', 'vet'],
+          envFail: GO_LINT_ENV_FAIL,
+        }
       ),
       step(
         'lint',
@@ -272,7 +336,8 @@ export function createGolangVerifyPreset(
         'observe',
         lintArgv(project, scope, false),
         project,
-        lintRequirements('lint')
+        lintRequirements('lint'),
+        { envFail: GO_LINT_ENV_FAIL }
       ),
       step(
         'format-fix',
@@ -296,11 +361,19 @@ export function createGolangVerifyPreset(
         'observe',
         gofmt === null || scope.fmtTargets.length === 0 ? null : [gofmt, '-l', ...scope.fmtTargets],
         project,
-        [toolRequirement('fmt', 'gofmt', project), formatTargetsRequirement('fmt', false)]
+        [toolRequirement('fmt', 'gofmt', project), formatTargetsRequirement('fmt', false)],
+        { outputMeansFailure: true }
       ),
-      step('test', ['unit'], ['fmt'], 'observe', goTestArgv(project, scope), project, [
-        ...goRequirements('test'),
-      ]),
+      step(
+        'test',
+        ['unit'],
+        ['fmt'],
+        'observe',
+        goTestArgv(project, scope),
+        project,
+        [...goRequirements('test')],
+        { envFail: GO_MODULE_ENV_FAIL }
+      ),
       step('integration', ['integration'], ['test'], 'observe', null, project, [
         explicitCommandRequirement('integration'),
       ]),
@@ -626,12 +699,16 @@ function readinessEntry(
   phase: string,
   requirement: Requirement,
   ready: boolean,
-  message?: string
+  message?: string,
+  stepId?: `${string}:${string}`,
+  disposition?: VerifyReadiness['disposition']
 ): VerifyReadiness {
   return {
     plugin: 'golang',
     phase,
     requirementId: requirement.id,
+    ...(stepId === undefined ? {} : { stepId }),
+    ...(disposition === undefined ? {} : { disposition }),
     status: ready ? 'READY' : requirement.required ? 'BLOCKED' : 'DEGRADED',
     message: message ?? (ready ? `${requirement.description}: ready` : requirement.description),
     ...(ready ? {} : { fix: requirement.fix }),
@@ -665,8 +742,13 @@ export function evaluateGolangReadiness(
         plugin: 'golang',
         phase: plan.phase,
         requirementId: `golang:waiver:${planned.id}`,
+        stepId: planned.id,
+        disposition: 'waived',
         status: 'WAIVED',
         message: `${planned.id} disabled by ${waiver.source}: ${waiver.reason}`,
+        blocking: false,
+        policyReason: waiver.reason,
+        policySource: waiver.source,
       });
       continue;
     }
@@ -681,6 +763,8 @@ export function evaluateGolangReadiness(
         plugin: 'golang',
         phase: plan.phase,
         requirementId: 'golang:generate:not-applicable',
+        stepId: planned.id,
+        disposition: 'not-applicable',
         status: 'READY',
         message: 'golang:generate is not applicable: no //go:generate directives in scope',
       });
@@ -703,7 +787,18 @@ export function evaluateGolangReadiness(
                     requirement.id.startsWith('golang:format-targets:')
                   ? authored?.command !== undefined
                   : false;
-      entries.push(readinessEntry(plan.phase, requirement, ready));
+      entries.push(
+        readinessEntry(
+          plan.phase,
+          requirement,
+          ready,
+          undefined,
+          planned.id,
+          !ready && !requirement.required && authored?.command === undefined
+            ? 'optional-unavailable'
+            : undefined
+        )
+      );
     }
   }
 

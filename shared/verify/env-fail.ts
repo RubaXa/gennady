@@ -21,6 +21,7 @@ export const ENV_FAIL_RULE_KEYS = [
   'stdoutMatches',
   'stderrMatches',
   'outputMatches',
+  'caseInsensitive',
   'hint',
 ] as const;
 
@@ -180,6 +181,14 @@ export function compileEnvFailRules(
       });
     }
 
+    const caseInsensitive = entries['caseInsensitive'];
+    if (caseInsensitive !== undefined && typeof caseInsensitive !== 'boolean') {
+      errors.push({
+        path: `${at}.caseInsensitive`,
+        message: 'must be a boolean; arbitrary regular-expression flags are not accepted',
+      });
+    }
+
     const parts: EnvFailPredicate[] = [];
     let discriminating = false;
 
@@ -219,7 +228,9 @@ export function compileEnvFailRules(
         continue;
       }
       try {
-        parts.push(streamMatches(stream, new RegExp(source, 'm')));
+        parts.push(
+          streamMatches(stream, new RegExp(source, caseInsensitive === true ? 'im' : 'm'))
+        );
         discriminating = true;
       } catch (cause) {
         errors.push({

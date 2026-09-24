@@ -177,6 +177,11 @@ describe('Node target StackPlugin', () => {
           'READY'
         );
         assert.strictEqual(result.readiness.status, 'DEGRADED');
+        assert.ok(
+          result.readiness.entries
+            .filter((entry) => entry.status === 'WAIVED')
+            .every((entry) => entry.stepId !== undefined && entry.disposition === 'waived')
+        );
       },
       JSON.stringify({ verify: { presets: { node: { steps: disabled } } } })
     );

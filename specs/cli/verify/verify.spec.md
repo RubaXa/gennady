@@ -43,10 +43,8 @@ a second target engine.
 | `CapabilityMatrix`         | Per-plugin/per-phase readiness with terminal `READY`, `DEGRADED` or `BLOCKED`; explicit disable is visible as `WAIVED`. |
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
-UV-01 materializes the model; UV-02 adds pure DAG validation/slicing with qualified plan ids. UV-03
-adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds
-Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG; UV-08 adds the target-only workspace transaction. Local execution/verdict/repair-loop remain UV-09/10, while cutover, remote verification and dynamic rules remain owned by U4/U5/U6.
+UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
+UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction and UV-09 the direct-argv local executor/verdict. Repair-loop remains UV-10; cutover, remote verification and dynamic rules remain U4/U5/U6.
 
 ### Target call chain
 
@@ -306,7 +304,7 @@ compatibility runtime до U4. Refines D-68.
 
 ### VER-REQ-12 [должен · нештатная]
 
-**Когда** target executor захватывает workspace, **то `WorkspaceGuard` должен** сохранить dirty tracked/staged/unstaged/untracked non-ignored files и index без stash/refs/reset/clean; запрещать writes для non-repair effects; ограничивать repair include минус exclude внутри canonical root без symlink/escape/index mutation, применяя детерминированную glob-семантику `**`, `*`, `?`, braces и exclude-after-include; детерминированно атрибутировать create/modify/delete/rename (`previousPath`); продвигать checkpoint только после успешного repair; восстанавливать последний valid checkpoint при failure/violation/SIGINT/SIGTERM (130/143) только после integrity preflight всех blobs/index/HEAD, сохраняя lock+checkpoint при restore error для retry и восстанавливая stale dead owner до новой выдачи. Concurrent live owner блокирует. `HEAD`/ref drift никогда не откатывается автоматически: guard возвращает typed `VERIFY_WORKSPACE_REPOSITORY_MUTATION`, не трогает workspace/index и удерживает checkpoint для operator recovery; actual gitdir запрещён как root, effective `.git` writes всегда запрещены, а любой include, способный адресовать `.git`, требует явный `.git/**` exclude. Untracked gitignored output имеет explicit `preserve-and-exclude`, но tracked ignored drift остаётся наблюдаемым. UV-09/10 потребляют guard; legacy runtime не переключается до U4. Refines D-67.
+**Когда** target executor захватывает workspace, **то `WorkspaceGuard` должен** сохранить dirty tracked/staged/unstaged/untracked non-ignored files и index без stash/refs/reset/clean; запрещать writes для non-repair effects; ограничивать repair include минус exclude внутри canonical root без symlink/escape/index mutation, применяя детерминированную glob-семантику `**`, `*`, `?`, braces и exclude-after-include; детерминированно атрибутировать create/modify/delete/rename (`previousPath`); продвигать checkpoint только после успешного repair; восстанавливать последний valid checkpoint при failure/violation/SIGINT/SIGTERM (130/143) только после integrity preflight всех blobs/index/HEAD, сохраняя lock+checkpoint при restore error для retry и восстанавливая stale dead owner до новой выдачи. Concurrent live owner блокирует. `HEAD`/ref drift никогда не откатывается автоматически: guard возвращает typed `VERIFY_WORKSPACE_REPOSITORY_MUTATION`, не трогает workspace/index и удерживает checkpoint для operator recovery; actual gitdir запрещён как root, effective `.git` writes всегда запрещены, а любой include, способный адресовать `.git`, требует явный `.git/**` exclude. Untracked gitignored output имеет explicit `preserve-and-exclude`, но tracked ignored drift остаётся наблюдаемым. UV-09 исполняет только direct argv без shell, валидирует canonical cwd/readiness, применяет serializable env-fail/output policy (`caseInsensitive: boolean` — единственный дополнительный regex mode; произвольные flags запрещены), hard timeout/cancellation с child-tree termination, сохраняет bounded UTF-8 summary каждого evidence item без argv/env secrets и отдаёт единый typed terminal outcome. Plain и exit-only шаги drain/discard verbose streams; `outputMeansFailure` хранит только streaming non-whitespace bit; finite prefix buffer включается лишь для regex streams. Его overflow никогда не убивает процесс и не делает successful exit ложным failure: executor продолжает drain, использует уже доказанный match, а nonzero без доказанного verdict возвращает fail-closed `VERIFY_LOCAL_OUTPUT_LIMIT`. Readiness связывает non-runnable fact с exact `stepId`: explicit disable → `waived`, not-applicable/optional unavailable → `skipped`, required/plugin-wide missing capability → `blocked`; ни один такой node не spawn-ится. Successful raw logs не сохраняются. Guard/ref/write failure доминирует обычный process verdict. UV-10 владеет repair/invalidation loop; legacy runtime не переключается до U4. Refines D-67.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -316,28 +314,30 @@ compatibility runtime до U4. Refines D-68.
 
 _Полный список файлов-сущностей, перенесённых задачей V-02. Функции/типы внутри них — в `Module Contracts` (§8), только там, где на них есть `Usage Waiver`._
 
-| Name                                | Type     | Purpose                                                                                            |
-| ----------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| `shared/verify/verify.types.ts`     | Types    | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)                                     |
-| `shared/verify/env-fail.ts`         | Utility  | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)                                     |
-| `shared/verify/tree-guard.ts`       | Port     | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)                               |
-| `shared/verify/stack-registry.ts`   | Service  | Реестр builtin-стеков и их gate id, детект активных стеков                                         |
-| `shared/verify/plugin-api.ts`       | Port     | Публичная поверхность `gennady/stack` для авторов стек-плагинов                                    |
-| `shared/verify/stack-config.ts`     | Service  | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                             |
-| `services/config/config-loader.ts`  | Service  | Универсальный загрузчик секции конфига + провенанс + форматирование                                |
-| `plugins/index.ts`                  | Registry | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                                |
-| `plugins/anystack/**`               | Adapter  | Legacy config gates; target empty preset stays visibly blocked until UV-22                         |
-| `plugins/golang/**`                 | Adapter  | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                             |
-| `plugins/swift/**`                  | Plugin   | SwiftPM/Xcode/Tuist legacy adapter plus target DAG, identity readiness and read-only planner       |
-| `shared/verify/presets/node.ts`     | Service  | `resolvePreset(stack, …)` — dispatcher; node inline, anystack delegated (V-04/V-08)                |
-| `shared/verify/presets/anystack.ts` | Service  | `resolveAnystackPreset` — config-authored gates, fixed order, never required (V-08)                |
-| `shared/verify/presets/swift.ts`    | Service  | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                       |
-| `shared/verify/stack-detection.ts`  | Service  | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05) |
-| `shared/verify/model/**`            | Types    | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
-| `shared/verify/planning/**`         | Service  | DAG validation/slicing and deterministic scope-aware multistack orchestration                      |
-| `shared/verify/config/**`           | Service  | Strict target loader, provenance contracts and temporary lossless legacy adapter                   |
-| `shared/verify/execution/**`        | Service  | Target-only dirty-safe workspace checkpoint, write enforcement, restore and mutation attribution   |
-| `plugins/node/**`                   | Plugin   | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner |
+| Name                                | Type         | Purpose                                                                                            |
+| ----------------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
+| `shared/verify/verify.types.ts`     | Types        | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)                                     |
+| `shared/verify/env-fail.ts`         | Utility      | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)                                     |
+| `shared/verify/tree-guard.ts`       | Port         | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)                               |
+| `shared/verify/stack-registry.ts`   | Service      | Реестр builtin-стеков и их gate id, детект активных стеков                                         |
+| `shared/verify/plugin-api.ts`       | Port         | Публичная поверхность `gennady/stack` для авторов стек-плагинов                                    |
+| `shared/verify/stack-config.ts`     | Service      | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                             |
+| `services/config/config-loader.ts`  | Service      | Универсальный загрузчик секции конфига + провенанс + форматирование                                |
+| `plugins/index.ts`                  | Registry     | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                                |
+| `plugins/anystack/**`               | Adapter      | Legacy config gates; target empty preset stays visibly blocked until UV-22                         |
+| `plugins/golang/**`                 | Adapter      | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                             |
+| `plugins/swift/**`                  | Plugin       | SwiftPM/Xcode/Tuist legacy adapter plus target DAG, identity readiness and read-only planner       |
+| `shared/verify/presets/node.ts`     | Service      | `resolvePreset(stack, …)` — dispatcher; node inline, anystack delegated (V-04/V-08)                |
+| `shared/verify/presets/anystack.ts` | Service      | `resolveAnystackPreset` — config-authored gates, fixed order, never required (V-08)                |
+| `shared/verify/presets/swift.ts`    | Service      | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                       |
+| `shared/verify/stack-detection.ts`  | Service      | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05) |
+| `shared/verify/model/**`            | Types        | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
+| `shared/verify/planning/**`         | Service      | DAG validation/slicing and deterministic scope-aware multistack orchestration                      |
+| `shared/verify/config/**`           | Service      | Strict target loader, provenance contracts and temporary lossless legacy adapter                   |
+| `shared/verify/execution/**`        | Service      | Dirty-safe workspace transaction plus direct-argv local step execution and bounded evidence        |
+| `plugins/node/**`                   | Plugin       | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner |
+| `LocalStepExecution`                | Value Object | One terminal local-step product with typed non-runnable and cancellation outcomes                  |
+| `executeLocalStep`                  | Service      | Execute one validated local step under `WorkspaceGuard` with bounded evidence                      |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -425,21 +425,21 @@ exact target step ids. UV-24 removes the adapter after migration evidence.
   UV-09 must consume its single composed plan/readiness product; legacy stays frozen until U4.
 
 <details>
-<summary>UV-08 target workspace transaction surface</summary>
-
-### `WorkspaceGuard` / `acquireWorkspaceGuard`
-
-- **Usage Waiver:** UV-08 lands the target transaction before its executor; UV-09 consumes it. Adversarial tests own the interim dirty/restore proof; legacy `TreeGuard` stays frozen until U4.
-
+<summary>UV-08/09 target workspace and local-execution surfaces</summary>
+### `acquireWorkspaceGuard`
+- **Usage Waiver:** UV-09 consumes `WorkspaceGuard`; UV-10 owns acquisition/release around the selected plan. Legacy `TreeGuard` stays frozen until U4.
+### `stdoutMatches` / `stderrMatches`
+- **Usage Waiver:** D-67 retains stream-specific serializable environment predicates for project-owned/custom steps; builtins currently need combined output and UV-22 connects authored custom presets.
+### `executeLocalStep`
+- **Usage Waiver:** UV-09 lands the single-step executor before UV-10 connects the plan/repair runner; adversarial tests own its interim direct consumer.
 </details>
-
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`; UV-08 добавил target-only `WorkspaceGuard`/acquisition pair. Итого открыто **27**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`; UV-08 добавил workspace pair; UV-09 consumed `WorkspaceGuard`, retained acquisition and added two stream-policy fields plus the target executor. Итого открыто **29**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 17 символов open: 15 унаследованных после снятия `applyStackConfig`/`scopeHasGoGenerate` и 2 D-64 test seam. По владельцу: V-09 — 4 (`C`, `I`, `Bad`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -658,7 +658,7 @@ plugins/
 
 ### VERIFY-DL-7 / D-67 — Repair и readiness остаются честными
 
-- **Status:** accepted; WorkspaceGuard implemented by UV-08, execution/verdict/repair loop continue in UV-09/10.
+- **Status:** accepted; WorkspaceGuard implemented by UV-08 and local execution/verdict by UV-09; repair loop continues in UV-10.
 - **Decision:** каждый пишущий шаг объявляет effect, write boundary и invalidation; неожиданный write
   является `VIOLATION`, repair bounded и повторяет только инвалидированные проверки. Missing required
   capability даёт `BLOCKED`, explicit disable — видимый `WAIVED/DEGRADED`, не pass.

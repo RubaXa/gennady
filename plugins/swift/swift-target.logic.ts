@@ -20,7 +20,11 @@ import type {
   VerifyReadiness,
 } from '../../shared/verify/model/verify-readiness.type.ts';
 import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts';
-import type { Requirement, VerifyStep } from '../../shared/verify/model/verify-step.type.ts';
+import type {
+  Requirement,
+  VerifyEnvironmentFailureRule,
+  VerifyStep,
+} from '../../shared/verify/model/verify-step.type.ts';
 import type {
   StackConfig,
   StackDetection,
@@ -48,6 +52,44 @@ const TIMEOUTS: Readonly<Record<SwiftTargetStepId, number>> = {
   integration: 90 * 60_000,
   coverage: 90 * 60_000,
 };
+
+const XCODE_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
+  {
+    outputMatches:
+      'Unable to find a de(?:vice|stination) matching|no available devices matched|Cannot find simulator',
+    caseInsensitive: true,
+    hint: 'install or select the configured simulator runtime and retry the exact Xcode step',
+    source: 'builtin:swift',
+  },
+  {
+    outputMatches:
+      'Could not resolve package dependencies|failed to download|Internet connection appears to be offline',
+    caseInsensitive: true,
+    hint: 'restore access to the configured Swift package mirrors and retry',
+    source: 'builtin:swift',
+  },
+  {
+    outputMatches:
+      'Unable to open workspace|cannot be opened because it does not exist|does not contain a scheme named',
+    caseInsensitive: true,
+    hint: 'regenerate the project-owned workspace or scheme before verification',
+    source: 'builtin:swift',
+  },
+  {
+    outputMatches: 'unable to attach DB|Provisioning profile',
+    caseInsensitive: true,
+    hint: 'repair the selected Xcode environment or signing state; do not edit product code',
+    source: 'builtin:swift',
+  },
+];
+
+const SWIFTLINT_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
+  {
+    exitCodeMatches: ['!=0', '!=2'],
+    hint: 'swiftlint did not return its code-finding exit 2; repair the pinned SwiftLint environment',
+    source: 'builtin:swift',
+  },
+];
 
 function factsOf(detection: StackDetection): SwiftProject {
   return detection.details as SwiftProject;
@@ -116,7 +158,7 @@ function step(
   argv: readonly string[] | null,
   project: SwiftProject,
   requires: readonly Requirement[],
-  options: Pick<VerifyStep, 'writes' | 'invalidates'> = {}
+  options: Pick<VerifyStep, 'writes' | 'invalidates' | 'outputMeansFailure' | 'envFail'> = {}
 ): VerifyStep {
   return {
     id,
@@ -195,7 +237,9 @@ export function createSwiftVerifyPreset(
   return {
     plugin: 'swift',
     steps: [
-      step('build', ['code'], [], 'observe', buildArgv, project, buildRequirements),
+      step('build', ['code'], [], 'observe', buildArgv, project, buildRequirements, {
+        envFail: XCODE_ENV_FAIL,
+      }),
       step(
         'format-fix',
         ['code'],
@@ -204,7 +248,11 @@ export function createSwiftVerifyPreset(
         formatArgv(project, targetFiles, true),
         project,
         formatterRequirements('format-fix'),
-        { writes: exactWrites, invalidates: ['build'] }
+        {
+          writes: exactWrites,
+          invalidates: ['build'],
+          ...(selectedFormatter === 'swiftlint' ? { envFail: SWIFTLINT_ENV_FAIL } : {}),
+        }
       ),
       step(
         'format',
@@ -213,7 +261,8 @@ export function createSwiftVerifyPreset(
         'observe',
         formatArgv(project, targetFiles, false),
         project,
-        formatterRequirements('format')
+        formatterRequirements('format'),
+        selectedFormatter === 'swiftlint' ? { envFail: SWIFTLINT_ENV_FAIL } : {}
       ),
       step(
         'lint',
@@ -224,9 +273,12 @@ export function createSwiftVerifyPreset(
           ? null
           : [project.tools.swiftlint.bin, 'lint', '--strict', ...targetFiles],
         project,
-        [toolRequirement('lint', 'swiftlint', false)]
+        [toolRequirement('lint', 'swiftlint', false)],
+        { envFail: SWIFTLINT_ENV_FAIL }
       ),
-      step('test', ['unit'], ['lint'], 'observe', testArgv, project, testRequirements),
+      step('test', ['unit'], ['lint'], 'observe', testArgv, project, testRequirements, {
+        envFail: XCODE_ENV_FAIL,
+      }),
       step('integration', ['integration'], ['test'], 'observe', null, project, [
         explicitCommandRequirement('integration'),
       ]),
@@ -700,12 +752,16 @@ function readinessEntry(
   phase: string,
   requirement: Requirement,
   ready: boolean,
-  message?: string
+  message?: string,
+  stepId?: `${string}:${string}`,
+  disposition?: VerifyReadiness['disposition']
 ): VerifyReadiness {
   return {
     plugin: 'swift',
     phase,
     requirementId: requirement.id,
+    ...(stepId === undefined ? {} : { stepId }),
+    ...(disposition === undefined ? {} : { disposition }),
     status: ready ? 'READY' : requirement.required ? 'BLOCKED' : 'DEGRADED',
     message: message ?? (ready ? `${requirement.description}: ready` : requirement.description),
     ...(ready ? {} : { fix: requirement.fix }),
@@ -753,8 +809,13 @@ export function evaluateSwiftReadiness(
         plugin: 'swift',
         phase: plan.phase,
         requirementId: `swift:waiver:${planned.id}`,
+        stepId: planned.id,
+        disposition: 'waived',
         status: 'WAIVED',
         message: `${planned.id} disabled by ${waiver.source}: ${waiver.reason}`,
+        blocking: false,
+        policyReason: waiver.reason,
+        policySource: waiver.source,
       });
       continue;
     }
@@ -774,7 +835,18 @@ export function evaluateSwiftReadiness(
                 : requirement.id.startsWith('swift:command:')
                   ? authored?.command !== undefined
                   : false;
-      entries.push(readinessEntry(plan.phase, requirement, ready));
+      entries.push(
+        readinessEntry(
+          plan.phase,
+          requirement,
+          ready,
+          undefined,
+          planned.id,
+          !ready && !requirement.required && authored?.command === undefined
+            ? 'optional-unavailable'
+            : undefined
+        )
+      );
     }
   }
   const status = entries.some((entry) => entry.status === 'BLOCKED')
