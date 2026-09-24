@@ -3,7 +3,7 @@
 // @spec: SHARED
 // @consumers: sdd-state.cmd, sdd-task.cmd, sdd-verify/phase-context
 
-import { detectStacks, BUILTIN_STACK_PLUGINS } from './stack-registry.ts';
+import { detectStacks, BUILTIN_STACK_PLUGINS, type ActiveStack } from './stack-registry.ts';
 import type { StackConfig, StackDetection, StackId } from './verify.types.ts';
 
 /**
@@ -37,6 +37,34 @@ export function orderDetectedStacks(
   const detectedSet = new Set(detected);
   const priority = use ?? DEFAULT_STACK_PRIORITY;
   return priority.filter((stack) => detectedSet.has(stack));
+}
+
+/**
+ * @purpose Select actual target-capable detections without the legacy bootstrap-node assignment.
+ * @invariant With no stack.use, anystack is used only when no concrete plugin detects. With
+ *   stack.use, ordering is exactly the detected intersection and absent ids are never created.
+ * @param root Absolute repository root.
+ * @param config Validated stack config controlling the candidate intersection.
+ * @returns Target-capable active stacks in stable project/default order.
+ */
+export function detectTargetStacks(root: string, config: StackConfig | null): ActiveStack[] {
+  const active = detectStacks(root, config, BUILTIN_STACK_PLUGINS).filter(
+    (entry) => entry.plugin.target !== undefined
+  );
+  const concrete = active.filter((entry) => entry.plugin.id !== 'anystack');
+  const anystack = active.find((entry) => entry.plugin.id === 'anystack');
+  const chosen =
+    config?.use === undefined
+      ? concrete.length > 0
+        ? concrete
+        : anystack === undefined
+          ? []
+          : [anystack]
+      : active;
+  const byPlugin = new Map(chosen.map((entry) => [entry.plugin.id, entry]));
+  return orderDetectedStacks([...byPlugin.keys()], config?.use).map(
+    (plugin) => byPlugin.get(plugin)!
+  );
 }
 
 /**

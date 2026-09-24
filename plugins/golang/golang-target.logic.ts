@@ -516,7 +516,9 @@ export function materializeGolangVerifyConfig(
   return {
     ...loaded,
     config:
-      errors.length === 0 ? { presets: { ...loaded.config.presets, golang: { steps } } } : null,
+      errors.length === 0
+        ? { presets: { ...loaded.config.presets, golang: { ...plugin, steps } } }
+        : null,
     errors,
     provenance,
   };

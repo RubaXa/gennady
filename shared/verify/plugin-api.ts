@@ -45,6 +45,10 @@ export type {
   VerifyReadinessStatus,
 } from './model/verify-readiness.type.ts';
 export type {
+  MultistackVerifyPlan,
+  VerifyStackParticipation,
+} from './model/verify-multistack.type.ts';
+export type {
   VerifyEvidence,
   VerifyMutation,
   VerifyPlan,
@@ -62,6 +66,7 @@ export type {
   ComposeVerifyPresetsInput,
   DetectedVerifyConfigLayer,
   LegacyVerifyConfigAdapter,
+  VerifyPluginPolicy,
   VerifyCommandConfig,
   VerifyConfig,
   VerifyConfigLoad,

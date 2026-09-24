@@ -3,6 +3,7 @@
 // @spec: CLI-VERIFY
 
 import type { VerifyPreset } from '../model/verify-preset.type.ts';
+import type { PluginId } from '../model/plugin-id.type.ts';
 import type { VerifyPlan } from '../model/verify-report.type.ts';
 import type { QualifiedStepId } from '../model/verify-step.type.ts';
 import { resolveDependencies } from './resolve-dependencies.ts';
@@ -13,11 +14,18 @@ import { VerifyPlanError } from './verify-plan.error.ts';
  * @purpose Select phase-tagged seeds plus their transitive dependencies in deterministic order.
  * @param presets Authored plugin presets to validate and slice.
  * @param phase Exact phase name every composed preset must declare.
+ * @param [seedPlugins] Optional scope-affected plugins allowed to contribute phase seeds; the full
+ *   composed DAG remains available to dependency closure.
  * @returns Qualified phase plan containing seeds and their dependency closure.
  */
-export function selectPhase(presets: readonly VerifyPreset[], phase: string): VerifyPlan {
+export function selectPhase(
+  presets: readonly VerifyPreset[],
+  phase: string,
+  seedPlugins?: readonly PluginId[]
+): VerifyPlan {
   const plan = validatePlan(presets);
   const selectedIds: QualifiedStepId[] = [];
+  const allowedPlugins = seedPlugins === undefined ? null : new Set(seedPlugins);
 
   for (const preset of plan.presets) {
     const selector = preset.phases[phase];
@@ -30,6 +38,8 @@ export function selectPhase(presets: readonly VerifyPreset[], phase: string): Ve
         { plugin: preset.plugin, phase, knownPhases: Object.keys(preset.phases).sort() }
       );
     }
+
+    if (allowedPlugins !== null && !allowedPlugins.has(preset.plugin)) continue;
 
     const excluded = new Set(selector.exclude ?? []);
     for (const step of preset.steps) {

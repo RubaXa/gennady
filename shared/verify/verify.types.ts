@@ -6,6 +6,7 @@ import type { PluginId } from './model/plugin-id.type.ts';
 import type { VerifyPreset } from './model/verify-preset.type.ts';
 import type { CapabilityMatrix } from './model/verify-readiness.type.ts';
 import type { VerifyPlan } from './model/verify-report.type.ts';
+import type { VerifyScope } from './model/verify-context.type.ts';
 import type { VerifyStepWaiver } from './config/verify-config.type.ts';
 
 export type { PluginId } from './model/plugin-id.type.ts';
@@ -332,6 +333,8 @@ export type StackVerifyCapability = {
  * @invariant It only builds immutable plan/readiness data; execution remains owned by U3.
  */
 export type StackTargetVerifyCapability = {
+  /** @purpose Decide whether the resolved file scope affects this detected plugin. | @param detection Plugin detection with immutable project facts. | @param scope Normalized repository scope. | @returns True when this plugin may contribute phase seeds. */
+  affectsScope(detection: StackDetection, scope: VerifyScope): boolean;
   /** @purpose Build one plugin-owned target DAG from facts gathered by detect(). | @param detection Plugin detection with immutable project facts. | @returns Complete plugin-owned target preset. */
   createPreset(detection: StackDetection): VerifyPreset;
   /** @purpose Evaluate capabilities for one already-selected slice without executing its steps. | @param detection Plugin detection with immutable project facts. | @param preset Composed plugin preset. | @param plan Selected phase slice. | @param waivers Explicit disabled-step facts. | @returns Selected-slice capability matrix. */

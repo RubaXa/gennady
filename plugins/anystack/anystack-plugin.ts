@@ -2,7 +2,14 @@
 // @spec: CLI-VERIFY
 // @consumers: plugins/index.ts
 
-import type { ScopeRequest, StackDetection, StackPlugin, StackScope } from 'gennady/stack';
+import type {
+  CapabilityMatrix,
+  ScopeRequest,
+  StackDetection,
+  StackPlugin,
+  StackScope,
+  VerifyPreset,
+} from 'gennady/stack';
 
 /** No built-in gates: the whole gate list is authored as `extraGates` (spec §2). */
 export const ANYSTACK_GATE_IDS: readonly string[] = [];
@@ -47,6 +54,49 @@ export const anystackPlugin: StackPlugin = {
     planGates(): [] {
       // Every gate arrives from config; applyStackConfig appends them (stack.spec §4.6, FR-STACK-05).
       return [];
+    },
+  },
+  target: {
+    affectsScope() {
+      return true;
+    },
+    createPreset(): VerifyPreset {
+      return {
+        plugin: 'anystack',
+        steps: [],
+        phases: Object.fromEntries(
+          ['code', 'unit', 'integration', 'coverage', 'full'].map((phase) => [
+            phase,
+            { include: [] },
+          ])
+        ),
+        requirements: [
+          {
+            id: 'anystack:declarative-steps',
+            kind: 'config',
+            description: 'anystack requires project-owned declarative target steps',
+            required: true,
+            fix: 'keep the legacy extraGates runner until custom target steps ship in UV-22',
+          },
+        ],
+        rules: [],
+      };
+    },
+    evaluateReadiness(_detection, preset, plan): CapabilityMatrix {
+      const requirement = preset.requirements[0]!;
+      return {
+        status: 'BLOCKED',
+        entries: [
+          {
+            plugin: 'anystack',
+            phase: plan.phase,
+            requirementId: requirement.id,
+            status: 'BLOCKED',
+            message: requirement.description,
+            fix: requirement.fix,
+          },
+        ],
+      };
     },
   },
 };

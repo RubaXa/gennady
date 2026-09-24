@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { StackDetection, StackPlugin } from 'gennady/stack';
 import { detectGoProject, type GoProject } from './golang-detect.logic.ts';
-import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
+import { isGolangScopePath, resolveGoScope, type GoScope } from './golang-scope.logic.ts';
 import { GO_GATE_ORDER, planGoGates } from './golang-plan.logic.ts';
 import { createGolangVerifyPreset, evaluateGolangReadiness } from './golang-target.logic.ts';
 
@@ -80,6 +80,11 @@ export const golangPlugin: StackPlugin = {
     },
   },
   target: {
+    affectsScope(_detection, scope) {
+      return (
+        scope.mode === 'all' || scope.files.length === 0 || scope.files.some(isGolangScopePath)
+      );
+    },
     createPreset: createGolangVerifyPreset,
     evaluateReadiness: evaluateGolangReadiness,
   },

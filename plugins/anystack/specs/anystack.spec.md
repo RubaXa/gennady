@@ -4,6 +4,11 @@
 
 `StackPlugin`-заглушка для репозиториев, у которых плагина нет: собственных гейтов не приносит, а весь список гейтов автор пишет в `stack.anystack.extraGates`. Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Run replica) — [stack.spec.md §2](../../../specs/stack/stack.spec.md).
 
+Этот текст описывает frozen legacy runtime до U4. UV-07 target path регистрирует тот же plugin id как
+пустой `VerifyPreset`: unowned file scope получает его только без explicit `stack.use`, readiness
+остаётся visibly `BLOCKED` по `anystack:declarative-steps`, а произвольные target steps/phases
+появятся в UV-22. Пустой preset никогда не является zero-step success.
+
 **Parent scope:** [`stack`](../../../specs/stack/stack.spec.md) · **Локальность:** [`plugins`](../../../specs/plugins/plugins.spec.md) · **E2E-механизм:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md)
 
 Зачем это нужно: экзотический стек (или монорепа с самодельным `make`-пайплайном) сегодня упирается в `NO_STACK_DETECTED` — `verify` отказывается работать, пока кто-нибудь не напишет плагин. Но всё, что репозиторию реально нужно от gennady, — это **исполнитель гейтов**: реплика прогона, вердикты, `envFail`-правила, таймауты, отчёт, JSON для оркестратора. Заглушка отдаёт это всё, не изобретая детекции. Цена: `id` плагина остаётся обязательным — это пространство имён гейтов (`anystack:build`) и ключ конфиг-секции.
@@ -31,6 +36,7 @@ stack:
 | `verify`   | ✅ обязательный | `planGates` возвращает пустой список; гейты добавляет конфиг              |
 | `fix`      | ➖ не объявляет | Фиксер задаётся полем `fixer` у своего гейта (stack.spec §4.4)            |
 | `gateIds`  | ✅ пустой       | Словарь гейтов пуст: `extraGates` не проверяются по нему (config.spec §3) |
+| `target`   | ⚠️ blocked      | Empty DAG + required declarative-steps readiness до UV-22                 |
 
 ## 3. Detection
 
@@ -46,6 +52,10 @@ stack:
 ## 4. Scope Resolution
 
 `resolveScope` возвращает запрошенный режим как есть с примечанием, что скоуп ничего не сужает. Причина: гейт из конфига — это фиксированный `argv`, и что он прочитает, решает только его собственная команда. Флаги `--all`/`--only`/позиционные цели продолжают работать как фильтры **гейтов** (это уровень `verify`), но не превращаются в аргументы команды.
+
+Target multistack planner считает `anystack` affected для unowned scope, но не добавляет его рядом с
+реальным owner по умолчанию. Явный `stack.use` остаётся detected intersection: если он исключил
+`anystack` и ни один selected plugin не владеет file scope, target planning fail-closed.
 
 ## 5. Gates
 

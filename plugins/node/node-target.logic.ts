@@ -407,7 +407,7 @@ export function materializeNodeVerifyConfig(
         ? {
             presets: {
               ...loaded.config.presets,
-              node: { steps },
+              node: { ...plugin, steps },
             },
           }
         : null,

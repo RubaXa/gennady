@@ -41,6 +41,16 @@ export const nodePlugin: StackPlugin = {
     },
   },
   target: {
+    affectsScope(_detection, scope) {
+      if (scope.mode === 'all' || scope.files.length === 0) return true;
+      return scope.files.some(
+        (file) =>
+          /\.(?:[cm]?[jt]sx?|jsonc?|mdx?|ya?ml|css|scss|html)$/.test(file) ||
+          /^(?:package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|tsconfig(?:\.[^/]+)?\.json|eslint\.config\.[cm]?[jt]s|\.eslintrc(?:\.[^/]+)?|\.prettierrc(?:\.[^/]+)?)$/.test(
+            file
+          )
+      );
+    },
     createPreset: createNodeVerifyPreset,
     evaluateReadiness: evaluateNodeReadiness,
   },
