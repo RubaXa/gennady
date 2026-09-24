@@ -24,6 +24,9 @@ function withProject(
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'node-target-'));
   try {
     fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(document));
+    fs.mkdirSync(path.join(root, 'src'));
+    fs.writeFileSync(path.join(root, 'src', 'a.ts'), 'export const a = 1;\n');
+    fs.writeFileSync(path.join(root, 'src', 'b.ts'), 'export const b = 2;\n');
     if (yaml !== undefined) fs.writeFileSync(path.join(root, 'gennady.yaml'), yaml);
     run(root);
   } finally {
@@ -216,6 +219,7 @@ describe('Node target StackPlugin', () => {
       '.',
       'src/',
       'src\\a.ts',
+      'src/missing.ts',
       '',
     ]) {
       assert.throws(
@@ -231,6 +235,33 @@ describe('Node target StackPlugin', () => {
           return true;
         }
       );
+    }
+  });
+
+  it('rejects regular and dangling Target File symlinks', () => {
+    const outside = path.join(os.tmpdir(), `node-target-outside-${process.pid}.ts`);
+    fs.writeFileSync(outside, 'export {};\n');
+    try {
+      withProject({ scripts: {} }, (root) => {
+        fs.symlinkSync(outside, path.join(root, 'linked.ts'));
+        fs.symlinkSync(`${outside}.missing`, path.join(root, 'dangling.ts'));
+        for (const target of ['linked.ts', 'dangling.ts']) {
+          assert.throws(
+            () =>
+              resolveNodeVerifyPlan(root, 'code', {
+                homeDirectory: root,
+                targetFiles: [target],
+              }),
+            (error: unknown) => {
+              assert.ok(error instanceof VerifyConfigError);
+              assert.strictEqual(error.path, 'scope.targetFiles[0]');
+              return true;
+            }
+          );
+        }
+      });
+    } finally {
+      fs.rmSync(outside, { force: true });
     }
   });
 

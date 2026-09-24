@@ -1,5 +1,5 @@
-// @file: Target-only Node planning entrypoint connecting U1 config, composition and phase slicing.
-// @consumers: unified planner migration and UV-04 tests
+// @file: Target-only Go planning entrypoint connecting shared config, DAG composition and slicing.
+// @consumers: unified affected-stack planner and UV-05 tests
 // @spec: CLI-VERIFY
 
 import { adaptLegacyStackConfig } from '../../shared/verify/config/adapt-legacy-stack-config.ts';
@@ -14,23 +14,24 @@ import { selectPhase } from '../../shared/verify/planning/select-phase.ts';
 import { loadStackConfig } from '../../shared/verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../../shared/verify/stack-registry.ts';
 import type { StackDetection } from '../../shared/verify/verify.types.ts';
-import { nodePlugin } from './node-plugin.ts';
-import type { NodeProjectFacts } from './node-project.logic.ts';
+import type { GoProject } from './golang-detect.logic.ts';
+import { golangPlugin } from './golang-plugin.ts';
+import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
 import {
-  materializeLegacyNodeCommands,
-  materializeNodeVerifyConfig,
-  nodeDetectedConfig,
-} from './node-target.logic.ts';
+  createGolangVerifyPreset,
+  golangDetectedConfig,
+  materializeGolangVerifyConfig,
+  materializeLegacyGolangCommands,
+} from './golang-target.logic.ts';
 
 /**
- * @purpose Build the Node target plan/config/readiness product without executing any step.
- * @param root Absolute Node repository root.
- * @param phase Exact built-in Node phase name.
+ * @purpose Build the Go target plan/config/readiness product without executing any step.
+ * @param root Absolute Go repository root.
+ * @param phase Exact built-in Go phase name.
  * @param [options] Explicit personal config and Target Files facts.
- * @returns Composed preset, selected plan and readiness snapshot.
- * @sideEffect IO: reads package/config files and existing Target File metadata only.
+ * @returns Detection, composed preset, selected plan and readiness snapshot.
  */
-export function resolveNodeVerifyPlan(
+export function resolveGolangVerifyPlan(
   root: string,
   phase: string,
   options: {
@@ -39,34 +40,38 @@ export function resolveNodeVerifyPlan(
   } = {}
 ): {
   readonly detection: StackDetection;
-  readonly facts: NodeProjectFacts;
+  readonly project: GoProject;
+  readonly scope: GoScope;
   readonly composed: ComposedVerifyPresets;
   readonly plan: VerifyPlan;
   readonly readiness: CapabilityMatrix;
 } {
-  const detection = nodePlugin.detect(root);
-  if (detection === null || nodePlugin.target === undefined) {
+  const detection = golangPlugin.detect(root);
+  if (detection === null || golangPlugin.target === undefined) {
     throw new VerifyConfigError(
       'VERIFY_CONFIG_UNKNOWN_PLUGIN',
-      'verify.presets.node',
-      'Node target planning requires a root package.json',
-      'add package.json or select a detected stack plugin'
+      'verify.presets.golang',
+      'Go target planning requires a root go.mod',
+      'add go.mod or select a detected stack plugin'
     );
   }
-  const facts = detection.details as NodeProjectFacts;
-  const preset = nodePlugin.target.createPreset(detection);
+  const project = detection.details as GoProject;
   const targetFiles = normalizeTargetFiles(root, options.targetFiles ?? []);
-  const files = materializeNodeVerifyConfig(
+  const goTargets = targetFiles.filter((candidate) => candidate.endsWith('.go'));
+  const scope = resolveGoScope(project, {
+    mode: targetFiles.length === 0 ? 'all' : 'files',
+    targets: goTargets,
+  });
+  const preset = createGolangVerifyPreset(detection, scope);
+  const files = materializeGolangVerifyConfig(
     loadVerifyConfig(root, [preset], options.homeDirectory),
-    facts,
-    targetFiles
+    scope
   );
   if (files.errors[0] !== undefined) throw files.errors[0];
 
-  const gateIds = preset.steps.map((candidate) => candidate.id);
   const legacyLoad = loadStackConfig(
     root,
-    { ...BUILTIN_GATE_IDS, node: gateIds },
+    BUILTIN_GATE_IDS,
     options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
   );
   if (legacyLoad.errors[0] !== undefined) {
@@ -75,18 +80,17 @@ export function resolveNodeVerifyPlan(
       'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
       error.path,
       error.message,
-      'migrate this stack.node entry to verify.presets.node before target planning'
+      'migrate this stack.golang entry to verify.presets.golang before target planning'
     );
   }
-  const legacy = materializeLegacyNodeCommands(
-    adaptLegacyStackConfig(root, [preset], legacyLoad.config, legacyLoad.provenance),
-    targetFiles
+  const legacy = materializeLegacyGolangCommands(
+    adaptLegacyStackConfig(root, [preset], legacyLoad.config, legacyLoad.provenance)
   );
   if (legacy.errors[0] !== undefined) throw legacy.errors[0];
 
   const composed = composePresets({
     presets: [preset],
-    detected: [nodeDetectedConfig(preset, facts, targetFiles)],
+    detected: [golangDetectedConfig(preset, scope)],
     legacy,
     files,
   });
@@ -94,10 +98,11 @@ export function resolveNodeVerifyPlan(
   const plan = selectPhase(composed.presets, phase);
   return {
     detection,
-    facts,
+    project,
+    scope,
     composed,
     plan,
-    readiness: nodePlugin.target.evaluateReadiness(
+    readiness: golangPlugin.target.evaluateReadiness(
       detection,
       composedPreset,
       plan,
