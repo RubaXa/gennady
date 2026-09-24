@@ -156,6 +156,74 @@ describe('loadStackConfig — discovery and merge', () => {
 });
 
 describe('loadStackConfig — strict validation (fatal errors)', () => {
+  it('accepts minimal Swift Xcode identity only for the Swift plugin', () => {
+    const ids = { ...GATE_IDS, swift: ['format', 'build', 'test', 'lint'] };
+    withConfigs(
+      {
+        'gennady.yaml': [
+          'stack:',
+          '  swift:',
+          '    xcode:',
+          '      project: App.xcodeproj',
+          '      scheme: App',
+          '      destination: platform=macOS',
+          '',
+        ].join('\n'),
+      },
+      (dir) => {
+        const load = loadStackConfig(dir, ids);
+        assert.deepEqual(load.errors, []);
+        assert.deepEqual(pluginConfigOf(load.config, 'swift')?.xcode, {
+          project: 'App.xcodeproj',
+          scheme: 'App',
+          destination: 'platform=macOS',
+        });
+      }
+    );
+  });
+
+  it('rejects ambiguous or foreign Xcode identity fields', () => {
+    const ids = { ...GATE_IDS, swift: ['format', 'build', 'test', 'lint'] };
+    withConfigs(
+      {
+        'gennady.yaml': [
+          'stack:',
+          '  swift:',
+          '    xcode:',
+          '      workspace: App.xcworkspace',
+          '      project: App.xcodeproj',
+          '      scheme: App',
+          '      destination: platform=macOS',
+          '      argv: [xcodebuild]',
+          '',
+        ].join('\n'),
+      },
+      (dir) => {
+        const load = loadStackConfig(dir, ids);
+        assert.ok(load.errors.some((error) => error.path === 'stack.swift.xcode'));
+        assert.ok(load.errors.some((error) => error.path === 'stack.swift.xcode.argv'));
+      }
+    );
+    withConfigs(
+      {
+        'gennady.yaml': [
+          'stack:',
+          '  golang:',
+          '    xcode:',
+          '      project: App.xcodeproj',
+          '      scheme: App',
+          '      destination: platform=macOS',
+          '',
+        ].join('\n'),
+      },
+      (dir) => {
+        assert.ok(
+          loadStackConfig(dir, ids).errors.some((error) => error.path === 'stack.golang.xcode')
+        );
+      }
+    );
+  });
+
   it('ignores a broken foreign `models` section in .gennadyrc (review B5)', () => {
     withConfigs(
       { '.gennadyrc': '{"models":{},"stack":{"golang":{"skipGates":["lint"]}}}' },

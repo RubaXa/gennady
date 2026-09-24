@@ -281,6 +281,17 @@ export type StackPluginConfig = {
   readonly overrideGates?: Readonly<Record<string, GateSpec>>;
   /** @purpose Repo-specific gates appended after the built-ins. */
   readonly extraGates?: readonly GateSpec[];
+  /**
+   * @purpose Project-owned Xcode identity used by the Swift target preset without copying argv.
+   * @invariant Exactly one of workspace/project is present; scheme and destination are required.
+   */
+  readonly xcode?: {
+    readonly workspace?: string;
+    readonly project?: string;
+    readonly scheme: string;
+    readonly destination: string;
+    readonly testPlan?: string;
+  };
 };
 
 /**

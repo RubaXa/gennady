@@ -6,6 +6,7 @@ import type { StackDetection, StackPlugin } from 'gennady/stack';
 import { detectSwiftProject, type SwiftProject } from './swift-detect.logic.ts';
 import { SWIFT_GATE_ORDER, planSwiftGates } from './swift-plan.logic.ts';
 import { resolveSwiftScope, type SwiftScope } from './swift-scope.logic.ts';
+import { createSwiftVerifyPreset, evaluateSwiftReadiness } from './swift-target.logic.ts';
 
 function summary(project: SwiftProject): string[] {
   return [
@@ -15,6 +16,7 @@ function summary(project: SwiftProject): string[] {
   ];
 }
 
+/** @purpose Register Swift legacy verification and target preset/readiness behind one plugin id. */
 export const swiftPlugin: StackPlugin = {
   id: 'swift',
   marker: 'Package.swift|Project.swift|*.xcodeproj|*.xcworkspace',
@@ -40,5 +42,9 @@ export const swiftPlugin: StackPlugin = {
     planGates(detection, scope, options) {
       return planSwiftGates(detection.details as SwiftProject, scope as SwiftScope, options);
     },
+  },
+  target: {
+    createPreset: createSwiftVerifyPreset,
+    evaluateReadiness: evaluateSwiftReadiness,
   },
 };

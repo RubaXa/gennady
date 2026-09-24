@@ -29,6 +29,8 @@ const EXTRA_GATE_DEFAULT_TIMEOUT_MS = 10 * 60_000;
 
 /** Known keys of a per-plugin config section (config.spec §3.3). */
 const PLUGIN_SECTION_KEYS = ['skipGates', 'overrideGates', 'extraGates'] as const;
+const SWIFT_PLUGIN_SECTION_KEYS = [...PLUGIN_SECTION_KEYS, 'xcode'] as const;
+const SWIFT_XCODE_KEYS = ['workspace', 'project', 'scheme', 'destination', 'testPlan'] as const;
 
 /** Known keys of a GateSpec (config.spec §3.4). */
 export const GATE_SPEC_KEYS = [
@@ -270,6 +272,45 @@ function validateGateSpec(
   }
 }
 
+/** @purpose Validate the minimal project-owned Xcode identity without constructing commands. */
+function validateSwiftXcodeIdentity(value: unknown, errors: ConfigError[]): void {
+  const keyPath = 'stack.swift.xcode';
+  if (!isPlainObject(value)) {
+    errors.push({ path: keyPath, message: 'must be an object' });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!(SWIFT_XCODE_KEYS as readonly string[]).includes(key)) {
+      errors.push(unknownKeyError(`${keyPath}.${key}`, SWIFT_XCODE_KEYS));
+    }
+  }
+  for (const key of SWIFT_XCODE_KEYS) {
+    const field = value[key];
+    if (field !== undefined && (typeof field !== 'string' || field.trim().length === 0)) {
+      errors.push({ path: `${keyPath}.${key}`, message: 'must be a non-empty string' });
+    }
+  }
+  const workspace = value['workspace'];
+  const project = value['project'];
+  if ((workspace === undefined) === (project === undefined)) {
+    errors.push({
+      path: keyPath,
+      message: 'requires exactly one of workspace or project',
+    });
+  }
+  for (const required of ['scheme', 'destination'] as const) {
+    if (typeof value[required] !== 'string' || value[required].trim().length === 0) {
+      errors.push({ path: `${keyPath}.${required}`, message: 'required non-empty string' });
+    }
+  }
+  if (typeof workspace === 'string' && !workspace.endsWith('.xcworkspace')) {
+    errors.push({ path: `${keyPath}.workspace`, message: 'must name an .xcworkspace path' });
+  }
+  if (typeof project === 'string' && !project.endsWith('.xcodeproj')) {
+    errors.push({ path: `${keyPath}.project`, message: 'must name an .xcodeproj path' });
+  }
+}
+
 /**
  * @purpose Validate the merged stack section against the closed schema (config.spec §3, §4.1).
  * @param config Merged stack section.
@@ -311,10 +352,15 @@ export function validateStackConfig(
     const gateIds = builtinGateIds[key] ?? [];
     const section = value as StackPluginConfig;
 
+    const allowedSectionKeys = key === 'swift' ? SWIFT_PLUGIN_SECTION_KEYS : PLUGIN_SECTION_KEYS;
     for (const sectionKey of Object.keys(value)) {
-      if (!(PLUGIN_SECTION_KEYS as readonly string[]).includes(sectionKey)) {
-        errors.push(unknownKeyError(`stack.${key}.${sectionKey}`, PLUGIN_SECTION_KEYS));
+      if (!(allowedSectionKeys as readonly string[]).includes(sectionKey)) {
+        errors.push(unknownKeyError(`stack.${key}.${sectionKey}`, allowedSectionKeys));
       }
+    }
+
+    if (key === 'swift' && section.xcode !== undefined) {
+      validateSwiftXcodeIdentity(section.xcode, errors);
     }
 
     const extraIds = (Array.isArray(section.extraGates) ? section.extraGates : [])

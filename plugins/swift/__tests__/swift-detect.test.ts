@@ -43,6 +43,31 @@ describe('detectSwiftProject', () => {
     assert.deepEqual(discoverSwiftBuildDefinitions(root), ['Dependencies/Some/Package.swift']);
   });
 
+  it('does not assign Swift from nested Tuist root markers', () => {
+    const root = fixture({
+      'Vendor/Foo/Project.swift': 'import ProjectDescription\n',
+      'Vendor/Bar/Workspace.swift': 'import ProjectDescription\n',
+    });
+
+    assert.equal(detectSwiftProject(root), null);
+    assert.deepEqual(discoverSwiftBuildDefinitions(root), [
+      'Vendor/Bar/Workspace.swift',
+      'Vendor/Foo/Project.swift',
+    ]);
+  });
+
+  it('accepts literal root Tuist project and workspace markers', () => {
+    const root = fixture({
+      'Project.swift': 'import ProjectDescription\n',
+      'Workspace.swift': 'import ProjectDescription\n',
+    });
+
+    const project = detectSwiftProject(root);
+
+    assert.equal(project?.kind, 'xcode');
+    assert.deepEqual(project?.markers, ['Project.swift', 'Workspace.swift']);
+  });
+
   it('uses SwiftPM defaults only for a root Package.swift', () => {
     const root = fixture({
       'Package.swift': '// swift-tools-version: 6.0\n',
