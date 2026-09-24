@@ -465,3 +465,6 @@ Issue akkrat #21 и раздел D3 аудита: цикл ревью↔испр
 
 Публикация запрещена до U8: exact Swift E-18, remote exact-SHA evidence, удаление `sdd-verify`
 runner/`knowledge.xml`/compatibility adapters и один clean-commit evidence pack обязательны.
+
+**U0 ACK:** принят оператором 2026-09-24 после закрытия трёх review-флагов коммитом `69e63269`;
+разрешён старт U1 с UV-01.
