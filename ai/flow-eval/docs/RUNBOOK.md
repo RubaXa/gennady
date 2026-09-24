@@ -131,8 +131,7 @@ npm run sdd-flow-eval -- \
   --concurrency 1 \
   --observe-every-ms 90000 \
   --stuck-after 4 \
-  --max-observations 30 \
-  --keep
+  --max-observations 30
 ```
 
 - `--concurrency 1` ВСЕГДА для батчей, содержащих `spec-authoring`/`scaffold`: каждый такой worker
@@ -141,11 +140,22 @@ npm run sdd-flow-eval -- \
   сценарии по умолчанию всё равно запускаются одним батчем — не смешивай без причины.
 - Для проверки одной фазы передай отдельный JSON-файл с одним объектом из `scenarios.json` вместо
   всего файла.
-- `--keep` оставляет песочницы (нужен для расследования / для цепочных прогонов ниже); без него
-  `sandbox-lifecycle.ts` удаляет их в `finally` сразу после прогона.
+- Без `--keep` retention песочниц равен нулю: finalizer сначала сохраняет compact evidence, затем
+  удаляет только exact owned-пути. `--keep` нужен лишь для расследования/цепочных прогонов и хранит
+  не более 2 песочниц на корень до 24 часов; overflow и expired удаляются автоматически.
 - `--results-dir <DIR>` переопределяет постоянный каталог результатов (по умолчанию
   `<gennady-root>/ai/flow-eval/results`, GAP-E-6); `--artifacts-dir <DIR>` — транзиентный батч-каталог
-  (по умолчанию `<gennady-root>/ai/flow-eval/.results`).
+  (по умолчанию `<gennady-root>/ai/flow-eval/.results`, максимум 10 каталогов/7 дней). Permanent
+  `results/` cleanup не затрагивает.
+- `SIGINT`/`SIGTERM` принимаются до provisioning, кооперативно абортят runtime, сохраняют частичные
+  evidence перед cleanup и дают exit 130/143. Повторный сигнал — аварийная граница.
+- `node_modules` не копируется в каждый сценарий. Shared content-addressed store допускает symlink
+  только при совпадении `package-lock.json`, `node_modules/.package-lock.json`, allowlist, Node ABI,
+  platform и arch; mismatch завершает setup fail-closed, без install/copy fallback. Active lease
+  защищён; неактивные stores ограничены 2 каталогами/7 днями, третья одновременно active contract
+  lease завершается fail-closed.
+- Если compact evidence не удался, finalizer не удаляет и не переводит sandbox в debug-retention:
+  exact owned path остаётся pending для повторного finalization после устранения причины.
 
 ### Как читать наблюдение
 
@@ -163,7 +173,8 @@ fibonacci-library: status=running progress=true artifact=changed artifact-wait=0
 
 Канонический `scenarios.json` гоняет каждую фазу на СВОЕЙ фикстуре независимо. Чтобы проверить
 **сквозной greenfield** (одна фикстура проходит `authoring → scaffold → execute`), фазы «сцепляют» на
-одной песочнице — нужен `--keep` на каждом шаге:
+одной песочнице — нужен `--keep` на каждом шаге. Цепочка обязана уложиться в bounded retention
+(24 часа и максимум 2 retained-песочницы на корень):
 
 1. Прогнать authoring (свой JSON с одним `spec-authoring`-сценарием) на свежем `--directory`, с `--keep`.
 2. Найти песочницу: `ls -d "$SDD_EVAL_ROOT"/sdd-flow-eval-*`.
@@ -174,8 +185,8 @@ fibonacci-library: status=running progress=true artifact=changed artifact-wait=0
 4. Прогнать scaffold на ТОЙ ЖЕ песочнице (сценарий с `"directory": "<sandbox>"` вместо `fixture`),
    approval #2 тем же скриптом, затем execute.
 
-Переиспользуемая песочница держит свой `dist` с момента провижна. Менял код между фазами — либо
-`npm run build` и подложи свежий `dist` вручную, либо начни с новой песочницы.
+Повторное provisioning той же песочницы обновляет локальный CLI, но снова валидирует dependency
+contract. Менял код между фазами — сначала `npm run build`; lock mismatch не обходится ручной копией.
 
 ### Завершение
 
