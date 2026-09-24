@@ -4,6 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { anystackPlugin } from '../../../plugins/anystack/anystack-plugin.ts';
 import type { GoProject } from '../../../plugins/golang/golang-detect.logic.ts';
 import { isGolangScopePath, resolveGoScope } from '../../../plugins/golang/golang-scope.logic.ts';
@@ -174,13 +175,42 @@ function normalizeScope(root: string, scope: VerifyScope): VerifyScope {
   };
 }
 
+function walkProjectFiles(root: string, directory = root): readonly string[] {
+  const files: string[] = [];
+  for (const entry of fs
+    .readdirSync(directory, { withFileTypes: true })
+    .sort((left, right) => compareText(left.name, right.name))) {
+    if (entry.name === '.git' || entry.name === 'node_modules') continue;
+    const absolute = path.join(directory, entry.name);
+    if (entry.isSymbolicLink()) continue;
+    if (entry.isDirectory()) files.push(...walkProjectFiles(root, absolute));
+    else if (entry.isFile()) files.push(path.relative(root, absolute).split(path.sep).join('/'));
+  }
+  return files;
+}
+
+function allProjectFiles(root: string): readonly string[] {
+  try {
+    const output = execFileSync(
+      'git',
+      ['-C', root, 'ls-files', '--cached', '--others', '--exclude-standard', '-z'],
+      { encoding: 'buffer', stdio: ['ignore', 'pipe', 'ignore'] }
+    );
+    return output.toString('utf8').split('\0').filter(Boolean).sort(compareText);
+  } catch {
+    return walkProjectFiles(root);
+  }
+}
+
 function existingTargetFiles(root: string, scope: VerifyScope): readonly string[] {
-  return scope.mode === 'all'
-    ? []
-    : normalizeTargetFiles(
-        root,
-        scope.files.filter((value) => fs.existsSync(path.resolve(root, value)))
-      );
+  const files = scope.mode === 'all' ? allProjectFiles(root) : scope.files;
+  return normalizeTargetFiles(
+    root,
+    files.filter((value) => {
+      const entry = fs.lstatSync(path.resolve(root, value), { throwIfNoEntry: false });
+      return entry?.isFile() === true && !entry.isSymbolicLink();
+    })
+  );
 }
 
 function rootConfigInScope(scope: VerifyScope): boolean {

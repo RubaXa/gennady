@@ -1,32 +1,28 @@
-// @file: verify command help output.
+// @file: Help for the unified target verify command.
 // @spec: CLI-VERIFY
 // @consumers: help command
 
-/**
- * @purpose Print CLI help for the verify command.
- */
+/** @purpose Print public target verify usage and terminal semantics. */
 export function printHelp(): void {
-  console.info('gennady verify — read-only planner/CI-reporter (D-13); never runs a gate');
+  console.info('gennady verify — plan and run one phase through the unified Verify engine');
   console.info('');
   console.info('Usage:');
-  console.info('  npx gennady verify --plan --json');
+  console.info('  npx gennady verify --phase=<phase> [--json]');
+  console.info('  npx gennady verify --plan --json [--phase=<phase>]');
+  console.info('');
+  console.info('  Text is the default execution report; --json emits the stable machine report.');
+  console.info(
+    '  --plan never spawns a step or mutates the workspace; without --phase it selects full.'
+  );
+  console.info(
+    '  Normal runs may apply only preset-declared bounded repair steps; there is no fix command.'
+  );
+  console.info(
+    '  Current scope is the complete repository; phase names come from detected presets.'
+  );
   console.info('');
   console.info(
-    '  Prints the resolved full-profile plan as JSON: { profile, stack, stacks, gates: [{ name, stack, command, required, blocking }] }.'
+    'Exit codes: 0 pass/plan · 1 terminal non-pass · 4 invocation/planning/config error'
   );
-  console.info(
-    '  `stack` is the detected primary; `stacks` is the primary-then-tail detected order (D-64).'
-  );
-  console.info(
-    '  The primary full profile is blocking; qualified extra-stack gates form a read-only,'
-  );
-  console.info('  non-blocking tail. `stack.use` only reorders/narrows stacks that really detect.');
-  console.info(
-    '  No mutating facade exists in this release (D-13/O-2) — to actually run gates, use'
-  );
-  console.info('  npx gennady sdd-verify --profile full [--only=<glob>] [--skip=<glob>].');
-  console.info('');
-  console.info(
-    'Exit codes: 0 plan printed · 1 detected primary has no preset · 4 bad invocation/config'
-  );
+  console.info('            130 SIGINT · 143 SIGTERM (after cooperative restore)');
 }

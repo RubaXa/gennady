@@ -138,7 +138,7 @@ function formatTargetsRequirement(stepId: 'format-fix' | 'fmt', exact: boolean):
       : 'golang:fmt has at least one Go formatting target in scope',
     required: true,
     fix: exact
-      ? 'provide explicit .go targetFiles; automatic scope materialization arrives in UV-07'
+      ? 'select at least one existing .go target file, or disable/override gofmt repair for the phase'
       : 'select an existing .go Target File or a repository containing Go source',
   };
 }

@@ -29,7 +29,7 @@ terminal step results, attributed mutations, evidence and the exact immutable ru
 `sdd-verify` remains only as a compatibility runner until golden receipt parity is proven; it is not
 a second target engine.
 
-### Accepted target data, planning, config and built-in preset contract (UV-01..07)
+### Accepted target data, planning, execution and reporting contract (UV-01..11)
 
 | Contract                   | Normative obligation                                                                                                    |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -44,7 +44,7 @@ a second target engine.
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, and UV-10 bounded repair/selective invalidation. Reporting remains UV-11; cutover, remote verification and dynamic rules remain U4/U5/U6.
+UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. Cutover, remote verification and dynamic rules remain U4/U5/U6.
 
 ### Target call chain
 
@@ -62,6 +62,10 @@ UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transact
 **Key properties:**
 
 - **Пересмотрено при закрытии V-16a:** модуль **получил собственный, но read-only CLI-вход** — `cli/cmd/verify/**` (`gennady verify --plan --json`, D-13, никогда не мутирует и не запускает гейт). Формулировка «не имеет собственного CLI-входа» верна только для мутирующего/исполняющего пути — им по-прежнему владеют `sdd-verify`/`sdd-state`/`sdd-task`, подключаемые задачами V-03..V-11.
+- **Пересмотрено при закрытии UV-11:** historical V-16a form остаётся accepted no-spawn invocation,
+  но теперь проецирует target plan. `gennady verify --phase=<phase>` является публичным target
+  executor с text default и `--json`; frozen `sdd-verify` всё ещё отдельно владеет receipt semantics
+  до U4 parity/cutover.
 - **V-04a закрыта:** `phase-receipt.ts` (`environmentState`, вне этого модуля) теперь резолвит пресет через `resolvePreset('node', …)` (`presets/node.ts`) и фейлится явно на этапе резолва для стека без реализованного источника (И-3) — реальный вызов из `gennady sdd-verify` в этот модуль есть.
 - **V-05/V-05b закрыты:** новый `shared/verify/stack-detection.ts` (`detectRepoStack`) даёт один общий факт `StackDetection` вместо per-caller угадывания; `sdd-state`, `sdd-task` и `sdd-verify/phase-context` вызывают его безусловно с одной и той же валидной секцией `stack:`. Детектор сам владеет bootstrap-safety: корень без конкретного маркера и без `stack.use` получает исторический node fallback (`STACK_SOURCE=fallback:node`), `go.mod` без `stack.use` детектится как golang, а `stack.use` только сужает кандидатов. `sdd-state` печатает итоговые `STACK=`/`STACK_SOURCE=` в `[READINESS]`. Реальный второй вызов `detectStacks` (`stack-registry.ts`) есть — его запись `Usage Waiver` снята.
 - **V-07 закрыта:** `cli/cmd/sdd-verify/index.ts` подключает `loadStackConfig(root, BUILTIN_GATE_IDS)` как реальный preflight-гейт — любая ошибка схемы `stack:` (`gennady.yaml`/`.gennadyrc`) останавливает `sdd-verify` с exit 4 (`ERR_CLI_SDD_VERIFY_STACK_CONFIG`) до выполнения любого гейта; отсутствие секции — не ошибка. `loadStackConfig`/`BUILTIN_GATE_IDS`/`StackConfigError`/`StackConfigLoad` сняты (реальные вторые ссылки); `validateStackConfig`/`allOf`/`ConfigSectionLoad`/`formatDuration` остаются waived (уточнены по факту, см. §6). Доказано e2e (`cli/__tests__/tool-behavior/sdd-verify-stack-config.test.ts`): валидный `gennady.yaml` с 3 `extraGates` (id/argv/envFail/requires/fixer) не спотыкается о гейт; неизвестный ключ и неизвестный `stack.use` id → exit 4. **Открытый разрыв, не закрытый этой пачкой (кандидат V-07b):** за пределами exit-4 валидации слитый `config`/провенанс нигде не наблюдаемы ни в одном v2-выводе — `resolvePhaseContext` (V-08b) теперь читает `config` для anystack-гейтов, но это потребление, не наблюдаемость (нет per-key provenance в снимке/выводе).
@@ -292,19 +296,48 @@ Refines D-66/D-67.
 **Когда** target planner получает resolved scope, **то он должен** подключить все detected presets
 один раз, выбрать phase seeds только из scope-affected plugins и вернуть единый dependency-closed
 DAG. Пустой Target Files означает all-scope: все selected detected plugins affected/blocking. Root
+all-scope materializes the repository's existing tracked and non-ignored untracked files as exact
+repair operands without changing the normalized `scope.mode=all` report identity. Root
 `gennady.yaml`/`.gennadyrc` affects all selected stacks. Unaffected plugins не исполняются и не
 образуют D-64 tail; cross-plugin dependency может visibly включить их как `dependency`. Changed
 scope требует exact non-empty `changedFrom` и сохраняет его рядом с resolved files.
 
-`stack.use` задаёт только detected intersection/order и никогда не назначает отсутствующий plugin.
-Unowned scope получает visible blocked empty `anystack`; explicit filter без owner fail-closed вместо
-zero-step pass. Порядок не зависит от registration/map insertion. Participating failures blocking
-по умолчанию; `blocking: false` требует project reason и visible provenance. Legacy tail остаётся
-compatibility runtime до U4. Refines D-68.
-
 ### VER-REQ-12 [должен · нештатная]
 
+**Когда** target planner выбирает participating plugins, **то `stack.use` должен** задавать только
+detected intersection/order и никогда не назначать отсутствующий plugin. Unowned scope получает
+visible blocked empty `anystack`; explicit filter без owner fail-closed вместо zero-step pass.
+Порядок не зависит от registration/map insertion. Participating failures blocking по умолчанию;
+`blocking: false` требует project reason и visible provenance. Legacy tail остаётся compatibility
+runtime до U4. Refines D-68.
+
+### VER-REQ-13 [должен · нештатная]
+
 **Когда** target executor захватывает workspace, **то `WorkspaceGuard` должен** сохранить dirty tracked/staged/unstaged/untracked non-ignored files и index без stash/refs/reset/clean; запрещать writes для non-repair effects; ограничивать repair include минус exclude внутри canonical root без symlink/escape/index mutation, применяя детерминированную glob-семантику `**`, `*`, `?`, braces и exclude-after-include; детерминированно атрибутировать create/modify/delete/rename (`previousPath`); продвигать checkpoint только после успешного repair; восстанавливать последний valid checkpoint при failure/violation/SIGINT/SIGTERM (130/143) только после integrity preflight всех blobs/index/HEAD, сохраняя lock+checkpoint при restore error для retry и восстанавливая stale dead owner до новой выдачи. Concurrent live owner блокирует. `HEAD`/ref drift никогда не откатывается автоматически: guard возвращает typed `VERIFY_WORKSPACE_REPOSITORY_MUTATION`, не трогает workspace/index и удерживает checkpoint для operator recovery; actual gitdir запрещён как root, effective `.git` writes всегда запрещены, а любой include, способный адресовать `.git`, требует явный `.git/**` exclude. Untracked gitignored output имеет explicit `preserve-and-exclude`, но tracked ignored drift остаётся наблюдаемым. UV-09 исполняет только direct argv без shell, валидирует canonical cwd/readiness, применяет serializable env-fail/output policy (`caseInsensitive: boolean` — единственный дополнительный regex mode; произвольные flags запрещены), hard timeout/cancellation с child-tree termination, сохраняет bounded UTF-8 summary каждого evidence item без argv/env secrets и отдаёт единый typed terminal outcome. Plain и exit-only шаги drain/discard verbose streams; `outputMeansFailure` хранит только streaming non-whitespace bit; finite prefix buffer включается лишь для regex streams. Его overflow никогда не убивает процесс и не делает successful exit ложным failure: executor продолжает drain, использует уже доказанный match, а nonzero без доказанного verdict возвращает fail-closed `VERIFY_LOCAL_OUTPUT_LIMIT`. Readiness связывает non-runnable fact с exact `stepId`: explicit disable → `waived`, not-applicable/optional unavailable → `skipped`, required/plugin-wide missing capability → `blocked`; ни один такой node не spawn-ится. Successful raw logs не сохраняются. UV-10 исполняет один dependency-ordered slice: каждый mutating repair обязан сойтись к no-op за максимум три passes, после каждой мутации переисполняются только уже успешные `observe`/`drift-signal` targets из `invalidates` и их уже успешные dependents в исходном plan order. Unselected или ещё не выполненные targets не запускаются. Третий pass всё ещё мутирует → `VERIFY_REPAIR_NON_CONVERGENT`/`violation`; failed/timeout/cancelled repair откатывается guard-ом. Все реальные attempts, mutations и bounded evidence сохраняются в execution order. Guard/ref/write failure доминирует обычный process verdict. Legacy runtime не переключается до U4. Refines D-67.
+
+### VER-REQ-14 [должен]
+
+**Когда** оператор вызывает `gennady verify --phase=<phase>`, **то CLI должен** построить один
+immutable `VerificationContext` с normalized scope, participating plugin ids, exact pre-run HEAD,
+empty frameworks и явно пустым deterministic pre-U6 rule snapshot; затем выполнить ровно продукт
+`resolveMultistackVerifyPlan → runLocalVerifyPlan` и вернуть один `VerifyRunReport`. Text является
+default presentation, `--json` — versioned stable machine projection. `--plan --json` сохраняется
+как строго read-only compatibility mode без исполнения verification steps; без explicit phase он
+выбирает `full`, маркирует `kind=plan` и `evidence=false`, но использует тот же target planner.
+
+U4 receipt sink, U5 remote executor и U6 dynamic rules остаются за этой задачей. Refines D-65/D-67.
+
+### VER-REQ-15 [должен · нештатная]
+
+**Когда** target run или plan завершён, **то report должен** содержать context, readiness, exact
+selected DAG slice, attempts, mutations, bounded evidence, rule snapshot и verdict. Text перечисляет
+каждую non-ready instruction/fix и явно показывает `WAIVED`/`DEGRADED`; plan не называется execution
+proof. Machine projection заменяет executable argv/env values deterministic command digest, делает
+cwd/write roots repo-relative, редактирует common secret forms и никогда не публикует absolute
+repository path. `pass` даёт exit 0, любой terminal non-pass — exit 1, invocation/planning/config
+error — exit 4, cooperative SIGINT/SIGTERM — 130/143 после WorkspaceGuard restoration. Cancellation
+сохраняется step result/evidence и проецируется в accepted run taxonomy как `violation`, не как
+pass/blocked. Refines D-65/D-67.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -335,11 +368,23 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/planning/**`         | Service      | DAG validation/slicing and deterministic scope-aware multistack orchestration                      |
 | `shared/verify/config/**`           | Service      | Strict target loader, provenance contracts and temporary lossless legacy adapter                   |
 | `shared/verify/execution/**`        | Service      | Dirty-safe workspace transaction plus direct-argv local step execution and bounded evidence        |
+| `shared/verify/reporting/**`        | Reporter     | Immutable report composition plus safe stable text/JSON projections                                |
+| `cli/cmd/verify/**`                 | Facade       | Public target phase runner and strict no-spawn plan compatibility mode                             |
 | `plugins/node/**`                   | Plugin       | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner |
 | `LocalStepExecution`                | Value Object | One terminal local-step product with typed non-runnable and cancellation outcomes                  |
 | `executeLocalStep`                  | Service      | Execute one validated local step under `WorkspaceGuard` with bounded evidence                      |
 | `LocalVerifyExecution`              | Value Object | Ordered local phase attempts, mutations, evidence and aggregate terminal state                     |
 | `runLocalVerifyPlan`                | Service      | Bounded repair convergence and selective invalidation over one selected local phase                |
+| `resolveMultistackVerifyPlan`       | Service      | One scope-aware detected composition, phase slice and readiness product                            |
+| `buildVerifyRunReport`              | Service      | Join planning/execution with honest pre-U6 rule and framework facts                                |
+| `projectVerifyReport`               | Service      | Redacted repo-relative versioned machine projection                                                |
+| `safeVerifyText`                    | Utility      | Remove repository roots and common secret forms from presentation strings                          |
+| `renderVerifyJson`                  | Reporter     | Stable JSON serializer over the safe public projection                                             |
+| `renderVerifyText`                  | Reporter     | Actionable operator view of readiness, attempts, mutations, evidence and verdict                   |
+| `VerifyInvocation`                  | Value Object | Strict phase/plan/output selection accepted by the public facade                                   |
+| `VerifyInvocationResult`            | Value Object | Parsed invocation or actionable exit-4 diagnostic                                                  |
+| `parseVerifyInvocation`             | Service      | Strict phase/output/no-spawn invocation parser                                                     |
+| `runVerifyCommand`                  | Facade       | One public composition root for target plan, local execution and reporting                         |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -390,11 +435,10 @@ The registered Node, Go and Swift plugins now contribute real target presets and
 entrypoints compose and slice them. `VerifyPreset` is no longer an unused exported contract
 (VERIFY-DL-6).
 
-### `VerifyRunReport`
+### `VerifyRunReport` — closed by UV-11
 
-- **Usage Waiver:** the approved single terminal product precedes its reporters and SDD sink;
-  UV-11/UV-12 must connect those production consumers before the compatibility runner is removed
-  (VERIFY-DL-5, VERIFY-DL-7).
+`buildVerifyRunReport` now creates the deep-frozen terminal product consumed by both stable
+reporters and the public target CLI. UV-12 adds the optional SDD sink without changing this product.
 
 ### `selectPhase` — closed by UV-04
 
@@ -421,10 +465,10 @@ exact target step ids. UV-24 removes the adapter after migration evidence.
   UV-07 consumes their underlying plugin adapters through one shared composition, not three
   independently composed plans. Exact Xcode runtime proof remains E-18/UV-26 (VERIFY-DL-4/6/8).
 
-### `resolveMultistackVerifyPlan`
+### `resolveMultistackVerifyPlan` — closed by UV-11
 
-- **Usage Waiver:** UV-07 exposes the read-only target orchestration entrypoint before U3 execution.
-  UV-09 must consume its single composed plan/readiness product; legacy stays frozen until U4.
+The public `runVerifyCommand` composition root consumes its single plan/readiness product for both
+no-spawn plan projection and real local execution. Legacy stays frozen until U4.
 
 <details>
 <summary>UV-08..10 target workspace and local-execution surfaces</summary>
@@ -433,9 +477,11 @@ exact target step ids. UV-24 removes the adapter after migration evidence.
 ### `stdoutMatches` / `stderrMatches`
 - **Usage Waiver:** D-67 retains stream-specific serializable environment predicates for project-owned/custom steps; builtins currently need combined output and UV-22 connects authored custom presets.
 ### `LocalVerifyExecution`
-- **Usage Waiver:** UV-10 lands the target execution product before UV-11 projects it into the canonical report; `runLocalVerifyPlan` is its first production owner.
+- **Closed by UV-11:** `buildVerifyRunReport` consumes the target execution product and preserves all
+  real attempts, mutations and evidence in execution order.
 ### `runLocalVerifyPlan`
-- **Usage Waiver:** UV-10 lands the target runner before UV-11 connects CLI/report projection; adversarial tests own its interim direct consumer.
+- **Closed by UV-11:** `runVerifyCommand` invokes the shared target runner; no second CLI runner is
+  introduced. UV-12 reuses the same product for receipts.
 </details>
 <!--/SECTION:ENTITY_SURFACES-->
 
@@ -443,7 +489,7 @@ exact target step ids. UV-24 removes the adapter after migration evidence.
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`; UV-08 добавил workspace pair; UV-09 consumed `WorkspaceGuard`, retained acquisition and added two stream-policy fields plus the target executor; UV-10 consumed that executor and added its target execution product/facade. Итого открыто **30**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`; UV-08 добавил workspace pair; UV-09 consumed `WorkspaceGuard`, retained acquisition and added two stream-policy fields plus the target executor; UV-10 consumed that executor and added its target execution product/facade; UV-11 connected and removed the four interim waivers for `VerifyRunReport`, `resolveMultistackVerifyPlan`, `LocalVerifyExecution` and `runLocalVerifyPlan`. Итого открыто **26**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 17 символов open: 15 унаследованных после снятия `applyStackConfig`/`scopeHasGoGenerate` и 2 D-64 test seam. По владельцу: V-09 — 4 (`C`, `I`, `Bad`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -470,7 +516,11 @@ exact target step ids. UV-24 removes the adapter after migration evidence.
 
 ### `formatDuration`
 
-- **Usage Waiver:** печать `timeoutMs` гейта в человекочитаемом виде. **Пересмотрено при закрытии V-07:** V-07 добавляет только загрузку+валидацию (+exit 4), без печати самого гейт-плана. **Пересмотрено при закрытии V-16a:** `gennady verify --plan --json` вышел с узким `VerifyPlanGate` без `timeoutMs`. **Пересмотрено D-64/V-13b:** config-authored secondary `extraGates` теперь входят в общий full-plan, но его JSON по-прежнему несёт только `name`/`stack`/`command`/`required`/`blocking`; timeout не обещан и не исполняется текущим `GateRunner`. Waiver остаётся до отдельного расширения runner/JSON-контракта, не до plugin↔preset convergence.
+- **Usage Waiver:** печать duration в legacy stack runtime. **Пересмотрено при закрытии UV-11:**
+  target JSON теперь несёт numeric step `timeoutMs` и result `durationMs`, а text intentionally печатает
+  deterministic raw milliseconds; он не вызывает legacy formatter. `formatDuration` остаётся
+  underused только в compatibility model и снимается вместе с ним либо при реальном втором legacy
+  consumer, не искусственным вызовом из target reporter.
 
 ### `allOf`
 
@@ -595,6 +645,15 @@ shared/verify/
 │   ├── validate-plan.ts
 │   ├── resolve-dependencies.ts
 │   └── select-phase.ts
+├── execution/
+│   ├── workspace-guard.ts
+│   ├── local.executor.ts
+│   └── repair-loop.ts
+├── reporting/
+│   ├── build-report.ts
+│   ├── report-safety.ts
+│   ├── text-reporter.ts
+│   └── json-reporter.ts
 └── presets/
 services/config/
 └── config-loader.ts
@@ -606,7 +665,7 @@ plugins/
 └── swift/**
 ```
 
-**File Mapping:** см. Entity Inventory (§4) — один-к-одному с этим деревом; `presets/` подключён задачами V-04/V-08/V-09/V-11.
+**File Mapping:** см. Entity Inventory (§4) — один-к-одному с этим деревом; `presets/` подключён задачами V-04/V-08/V-09/V-11, а target `cli/cmd/verify/**` подключён UV-11 без изменения legacy `sdd-verify` receipt path.
 
 <!--/SECTION:FILE_STRUCTURE-->
 
@@ -629,7 +688,10 @@ plugins/
 - **Status:** compatibility-only through U4; superseded in target planning by VERIFY-DL-8.
 - **Decision:** без `stack.use` detected-множество упорядочивается `swift > golang > node > anystack`, где anystack — default last-resort. `stack.use` задаёт порядок только пересечения с реально detected стеками: сужает и приоритизирует, но не назначает отсутствующий стек. Явно перечисленный `anystack` является реально applicable always-match и участвует ровно на позиции списка (`[anystack, node]` на Node-репозитории делает anystack primary); markerless корень без `stack.use` сохраняет отдельный `bootstrapNode` fallback.
 - **Full profile:** primary единолично владеет блокирующим full-profile. После него идут гейты остальных detected стеков: read-only, с qualified именами `stack:gate`, стабильным порядком и non-blocking verdict. Они видимы в JSON/текстовом отчёте и выбираются общим `--only`/`--skip` matcher.
-- **Single model:** `sdd-verify --profile full` исполняет, а `gennady verify --plan --json` отображает один `AssembledFullProfile`; расхождение порядка/команд/обязательности между фасадами запрещено.
+- **Historical single model through V-16a:** `sdd-verify --profile full` исполнял, а старый
+  `gennady verify --plan --json` отображал один `AssembledFullProfile`. UV-11 intentionally moves the
+  public `verify` facade to the accepted target DAG while `sdd-verify` receipts remain frozen; U4
+  proves parity and removes this temporary compatibility split.
 - **Boundary:** frozen legacy runtime; target planner не воспроизводит primary/tail.
 
 ### VERIFY-DL-3 — Go phase repair ограничен exact Target Files
@@ -662,7 +724,7 @@ plugins/
 
 ### VERIFY-DL-7 / D-67 — Repair и readiness остаются честными
 
-- **Status:** accepted; WorkspaceGuard implemented by UV-08, local execution/verdict by UV-09, and bounded repair/selective invalidation by UV-10; UV-11 owns report projection.
+- **Status:** implemented through UV-11; WorkspaceGuard landed in UV-08, local execution/verdict in UV-09, bounded repair/selective invalidation in UV-10, and report projection/public target CLI in UV-11.
 - **Decision:** каждый пишущий шаг объявляет effect, write boundary и invalidation; неожиданный write
   является `VIOLATION`, repair bounded и повторяет только инвалидированные проверки. Missing required
   capability даёт `BLOCKED`, explicit disable — видимый `WAIVED/DEGRADED`, не pass.
@@ -745,7 +807,9 @@ _Кто подключит `verify` к своему ладдеру и какая
   | None | —        | —      |
 
 - **Open risks & validation needs:**
-  - `StackRun`/`VerifyReport` (§6) — **закрыто по факту V-16a (V-BATCH-13):** предполагаемый владелец `gennady verify --plan --json` closed with its own `VerifyPlanDocument`/`VerifyPlanGate`, not the MAIN shape — owner exhausted, unassigned; revisit if/when «extraGates/anystack вживляются в полный профиль» lands, else candidates for removal.
+  - Legacy `StackRun`/`VerifyReport` (§6) remain distinct from target `VerifyRunReport`. UV-11 deleted
+    the transient `VerifyPlanDocument` facade instead of adopting these unused MAIN-era shapes;
+    remove them with compatibility cleanup if U4 parity finds no real consumer.
   - `validateStackConfig`/`ConfigSectionLoad`/`allOf` (§6) — **закрыто по факту V-07:** подключение `loadStackConfig` не добавило новую текстовую ссылку на эти три символа (только исполняет их на реальном CLI-пути, доказано e2e); владелец не назначен — снимается, когда появится прямой второй call site.
   - `unmatchedGateOverrides` (§6) остаётся без владельца; `applyStackConfig` снят с waiver после реального D-64 вызова из assembled full-profile.
   - `C`/`I`/`Bad` (§6) — структурный false-positive source-policy `yagni` на `e2e/fixtures/**`; если V-09 не даст реального второго упоминания, нужна отдельная задача на сужение `yagni` (вне этой волны).

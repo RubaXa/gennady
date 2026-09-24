@@ -39,7 +39,7 @@
 | sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                      |
 | sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Запуск verification ladder для тикета или профиля                                   |
-| verify            | [cmd/verify/](cmd/verify/)                       | Read-only JSON-план D-64 full-profile без запуска гейтов                            |
+| verify            | [cmd/verify/](cmd/verify/)                       | Unified phase runner + text/JSON report; `--plan` strictly read-only                |
 | sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | События Execution Log + атомарное закрытие проверенной фазы                         |
 | sdd-sync          | [cmd/sdd-sync/](cmd/sdd-sync/)                   | Синхронизация статуса тикета с tasks-трекерами                                      |
 | sdd-task          | [cmd/sdd-task/](cmd/sdd-task/)                   | Карта исполнения и фазовый контекст тикета                                          |

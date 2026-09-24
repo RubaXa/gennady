@@ -124,6 +124,19 @@ npx gennady agent-mon
 npx gennady agent-mon --once
 ```
 
+### 10. Unified Verify
+
+```bash
+# Выполнить выбранный срез; человекочитаемый отчёт по умолчанию
+npx gennady verify --phase=code
+
+# Стабильный machine-readable отчёт
+npx gennady verify --phase=unit --json
+
+# Только спланировать, не запускать шаги и не менять workspace
+npx gennady verify --plan --json --phase=full
+```
+
 ### 11. Визуализация покрытия тестами
 
 ```bash
@@ -194,7 +207,7 @@ npx gennady yagni /path/to/repo
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта             |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                           |
 | `sdd-verify`        | Запуск verification ladder для тикета или профиля          |
-| `verify`            | Read-only JSON-план D-64 full-profile без запуска гейтов   |
+| `verify`            | Unified Verify phase: text/JSON report; `--plan` read-only |
 | `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения     |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами             |
 | `sdd-task`          | Карта исполнения и фазовый контекст тикета                 |
