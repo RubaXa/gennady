@@ -1,263 +1,394 @@
-// @file: Unit tests for the read-only `gennady verify` facade (V-16a, D-13) — invocation parsing
-//   and deterministic plan resolution, no execution, no mutation.
+// @file: UV-11 invocation, report, no-spawn planning and real Node repair contracts.
 // @spec: CLI-VERIFY
 // @consumers: CI
 
-import { describe, it } from 'node:test';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { describe, it } from 'node:test';
+import type { VerifyRunReport } from '../../../../shared/verify/model/verify-report.type.ts';
+import { renderVerifyJson } from '../../../../shared/verify/reporting/json-reporter.ts';
+import { renderVerifyText } from '../../../../shared/verify/reporting/text-reporter.ts';
+import { runVerifyCommand } from '../verify.cmd.ts';
 import { parseVerifyInvocation } from '../verify.types.ts';
-import { resolveVerifyPlan } from '../verify.cmd.ts';
 
-// `verify.types.ts` keeps its own error-code constant module-private (ordinary decomposition, not
-// public surface) — this test asserts on the message text directly instead of importing it.
-const ERR_CLI_VERIFY_BAD_INVOCATION = 'ERR_CLI_VERIFY_BAD_INVOCATION';
+const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 
-const argv = (...rest: string[]): string[] => ['node', 'gennady.ts', 'verify', ...rest];
+function argv(...rest: string[]): string[] {
+  return ['node', 'gennady.ts', 'verify', ...rest];
+}
+
+function git(root: string, ...args: string[]): string {
+  return execFileSync(
+    'git',
+    ['-C', root, '-c', 'user.email=verify@test', '-c', 'user.name=verify', ...args],
+    { encoding: 'utf8' }
+  ).trim();
+}
+
+function createNodeRepo(options: { readonly sentinelTypecheck?: boolean } = {}): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-command-'));
+  const gennady = path.join(REPO_ROOT, 'cli', 'gennady.ts');
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'));
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules\n');
+  fs.writeFileSync(
+    path.join(root, 'package.json'),
+    JSON.stringify({
+      name: 'verify-fixture',
+      private: true,
+      scripts: {
+        'type-check': options.sentinelTypecheck
+          ? "node -e \"require('node:fs').writeFileSync('spawned','yes')\""
+          : 'node -e ""',
+        'lint:fix': `node ${gennady} lint --autofix`,
+        lint: `node ${gennady} lint`,
+        'format:fix': 'prettier --write',
+        format: 'prettier --check src.ts',
+      },
+    })
+  );
+  fs.writeFileSync(
+    path.join(root, 'src.ts'),
+    [
+      '// @file: Deliberately unformatted target used by the verify repair integration.',
+      '// @consumers: N/A',
+      '',
+      '/** @purpose Exercise bounded formatter repair. */',
+      'export const verifyFixture={value:1}',
+      '',
+    ].join('\n')
+  );
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, 'add', '.gitignore', 'package.json', 'src.ts');
+  git(root, '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'fixture');
+  return fs.realpathSync(root);
+}
+
+function manualReport(root: string): VerifyRunReport {
+  const rules = {
+    digest: 'sha256:empty',
+    required: [],
+    suggested: [],
+    skipped: [],
+  } as const;
+  return {
+    context: {
+      request: { root, phase: 'code', scope: { mode: 'all', files: [] } },
+      plugins: ['node'],
+      frameworks: [],
+      headSha: 'a'.repeat(40),
+      rules,
+    },
+    readiness: {
+      status: 'BLOCKED',
+      entries: [
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'ready',
+          status: 'READY',
+          message: 'ready',
+        },
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'degraded',
+          status: 'DEGRADED',
+          message: 'optional tool missing',
+          fix: 'install optional tool',
+        },
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'waiver',
+          stepId: 'node:lint',
+          disposition: 'waived',
+          status: 'WAIVED',
+          message: 'disabled for migration',
+          fix: 'restore lint',
+        },
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'blocked',
+          status: 'BLOCKED',
+          message: 'token=not-public',
+          fix: 'set token=not-public',
+          policySource: `${root}/gennady.yaml`,
+          policyReason: 'password=not-public',
+          policyReasonSource: `${root}/gennady.yaml`,
+        },
+      ],
+    },
+    plan: {
+      phase: 'code',
+      steps: [
+        {
+          id: 'node:lint',
+          plugin: 'node',
+          tags: ['code'],
+          needs: [],
+          executor: 'local',
+          effect: 'observe',
+          command: {
+            argv: ['tool', '--token', 'not-public'],
+            cwd: root,
+            env: { API_KEY: 'not-public' },
+            timeoutMs: 1000,
+          },
+          requires: [],
+          envFail: [
+            {
+              outputMatches: `${root}/cache token=not-public`,
+              hint: `remove password=not-public from ${root}/gennady.yaml`,
+              source: `${root}/gennady.yaml`,
+            },
+          ],
+          timeoutMs: 1000,
+          onFailure: 'stop-phase',
+        },
+      ],
+    },
+    results: [
+      {
+        stepId: 'node:lint',
+        plugin: 'node',
+        status: 'fail',
+        exitCode: 1,
+        durationMs: 2,
+        output: `${root}/src.ts token=not-public`,
+      },
+    ],
+    mutations: [{ path: 'src.ts', stepId: 'node:lint', kind: 'modified', allowed: true }],
+    evidence: [
+      {
+        kind: 'diff',
+        identity: `diff:${root}/src.ts`,
+        summary: `${root}/src.ts password=not-public`,
+      },
+    ],
+    rules,
+    verdict: 'blocked',
+  };
+}
 
 describe('parseVerifyInvocation', () => {
-  it('--plan --json is the one valid invocation', () => {
-    assert.deepStrictEqual(parseVerifyInvocation(argv('--plan', '--json')), { ok: true });
+  it('accepts target execution with text default and explicit JSON', () => {
+    assert.deepStrictEqual(parseVerifyInvocation(argv('--phase=code')), {
+      ok: true,
+      invocation: { phase: 'code', planOnly: false, format: 'text' },
+    });
+    assert.deepStrictEqual(parseVerifyInvocation(argv('--phase', 'unit', '--json')), {
+      ok: true,
+      invocation: { phase: 'unit', planOnly: false, format: 'json' },
+    });
   });
 
-  it('order does not matter', () => {
-    assert.deepStrictEqual(parseVerifyInvocation(argv('--json', '--plan')), { ok: true });
+  it('keeps --plan --json compatibility read-only and defaults only it to full', () => {
+    assert.deepStrictEqual(parseVerifyInvocation(argv('--plan', '--json')), {
+      ok: true,
+      invocation: { phase: 'full', planOnly: true, format: 'json' },
+    });
   });
 
-  it('no flags at all is a hard error, not an implicit plan', () => {
-    const r = parseVerifyInvocation(argv());
-    assert.strictEqual(r.ok, false);
-    if (r.ok) return;
-    assert.match(r.message, new RegExp(ERR_CLI_VERIFY_BAD_INVOCATION));
-    assert.match(r.message, /both --plan and --json are required/);
-  });
-
-  it('--plan alone (no --json) is rejected', () => {
-    const r = parseVerifyInvocation(argv('--plan'));
-    assert.strictEqual(r.ok, false);
-  });
-
-  it('--json alone (no --plan) is rejected', () => {
-    const r = parseVerifyInvocation(argv('--json'));
-    assert.strictEqual(r.ok, false);
-  });
-
-  it('an unrelated flag (e.g. a mutating-sounding --fix) is rejected, not silently dropped', () => {
-    const r = parseVerifyInvocation(argv('--plan', '--json', '--fix'));
-    assert.strictEqual(r.ok, false);
-    if (r.ok) return;
-    assert.match(r.message, new RegExp(ERR_CLI_VERIFY_BAD_INVOCATION));
-  });
-
-  it('a stray positional path is rejected, not silently ignored', () => {
-    const r = parseVerifyInvocation(argv('--plan', '--json', 'src/app.ts'));
-    assert.strictEqual(r.ok, false);
-    if (r.ok) return;
-    assert.match(r.message, /unexpected path argument\(s\): src\/app\.ts/);
-  });
-
-  it('bad-invocation message always names the one usage', () => {
-    const r = parseVerifyInvocation(argv());
-    assert.strictEqual(r.ok, false);
-    if (r.ok) return;
-    assert.match(r.message, /usage: npx gennady verify --plan --json/);
+  it('rejects missing phase, plan without JSON, duplicates, paths and unknown flags', () => {
+    for (const args of [
+      [],
+      ['--json'],
+      ['--plan'],
+      ['--phase=code', '--phase=unit'],
+      ['--phase=code', 'src.ts'],
+      ['--phase=code', '--fix'],
+    ]) {
+      const parsed = parseVerifyInvocation(argv(...args));
+      assert.strictEqual(parsed.ok, false, args.join(' '));
+      if (!parsed.ok) assert.match(parsed.message, /ERR_CLI_VERIFY_BAD_INVOCATION/);
+    }
   });
 });
 
-/** @purpose Create a temp project dir with given files, run fn, clean up. */
-function withProject<T>(files: Record<string, string>, fn: (dir: string) => T): T {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-plan-'));
-  try {
-    for (const [name, content] of Object.entries(files)) {
-      fs.writeFileSync(path.join(dir, name), content);
-    }
-    return fn(dir);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-describe('resolveVerifyPlan — read-only, exactly what sdd-verify --profile full would run', () => {
-  it('a node repo with real scripts resolves each gate to `npm run <script>`; yagni always dispatches through gennady', () => {
-    withProject(
-      {
-        'package.json': JSON.stringify({
-          name: 'consumer',
-          scripts: {
-            'type-check': 'tsc --noEmit',
-            'test:coverage': 'c8 node --test',
-            lint: 'eslint .',
-            format: 'prettier --check .',
-          },
-        }),
-      },
-      (dir) => {
-        const plan = resolveVerifyPlan(dir);
-        assert.strictEqual(plan.kind, 'plan');
-        assert.strictEqual(plan.evidence, false);
-        assert.strictEqual(plan.profile, 'full');
-        assert.strictEqual(plan.stack, 'node');
-        assert.deepStrictEqual(
-          plan.gates
-            .filter((g) => g.name !== 'yagni')
-            .map((g) => ({ name: g.name, command: g.command, required: g.required })),
-          [
-            { name: 'type-check', command: 'npm run type-check', required: true },
-            { name: 'test:coverage', command: 'npm run test:coverage', required: true },
-            { name: 'lint', command: 'npm run lint', required: true },
-            { name: 'format', command: 'npm run format', required: true },
-          ]
-        );
-        // `yagni`'s exact self-hosting/consumer branch depends on `isSelfHosting()`'s own cwd read
-        // (not this fixture's `root`, matching sdd-verify.cmd.ts's identical cwd-relative behavior)
-        // — this unit test only proves it is a gennady-native dispatch, never an npm script lookup.
-        const yagni = plan.gates.find((g) => g.name === 'yagni');
-        assert.match(yagni?.command ?? '', /npx --no-install .*yagni$/);
-        assert.strictEqual(yagni?.required, true);
-      }
-    );
+describe('Verify report projection', () => {
+  it('is deterministic, versioned and strips absolute paths, argv/env values and common secrets', () => {
+    const root = '/private/tmp/private-repo';
+    const report = manualReport(root);
+    const first = renderVerifyJson(report, root);
+    const second = renderVerifyJson(report, root);
+    assert.strictEqual(first, second);
+    const document = JSON.parse(first);
+    assert.strictEqual(document.schemaVersion, 1);
+    assert.strictEqual(document.kind, 'verify-run-report');
+    assert.strictEqual(document.context.request.root, '.');
+    assert.ok(Array.isArray(document.evidence));
+    assert.strictEqual(document.evidence[0].kind, 'diff');
+    assert.match(document.plan.steps[0].command.identity, /^sha256:/);
+    assert.deepStrictEqual(document.plan.steps[0].command.environmentKeys, ['API_KEY']);
+    assert.doesNotMatch(first, new RegExp(root));
+    assert.doesNotMatch(first, /not-public/);
+    assert.doesNotMatch(first, /--token/);
   });
 
-  it('a repo with no package.json at all still resolves a plan — command null for non-gennady gates, never throws', () => {
-    withProject({}, (dir) => {
-      const plan = resolveVerifyPlan(dir);
-      assert.strictEqual(plan.stack, 'node');
+  it('text shows all non-ready instructions, step outcome, mutation, evidence and final verdict', () => {
+    const root = '/private/tmp/private-repo';
+    const text = renderVerifyText(manualReport(root), root);
+    assert.match(text, /readiness=BLOCKED/);
+    assert.match(text, /DEGRADED node: optional tool missing/);
+    assert.match(text, /WAIVED node node:lint: disabled for migration/);
+    assert.match(text, /BLOCKED node: token=\[redacted\]/);
+    assert.match(text, /fix: install optional tool/);
+    assert.match(text, /FAIL node:lint/);
+    assert.match(text, /MODIFIED src\.ts by=node:lint allowed=true/);
+    assert.match(text, /diff diff:\.\/src\.ts/);
+    assert.match(text, /VERDICT BLOCKED/);
+  });
+});
+
+describe('runVerifyCommand target integration', () => {
+  it('--plan builds a full target report but never spawns or mutates', async () => {
+    const root = createNodeRepo({ sentinelTypecheck: true });
+    try {
+      const before = fs.readFileSync(path.join(root, 'src.ts'), 'utf8');
+      fs.writeFileSync(path.join(root, 'notes.txt'), 'not a Node repair target\n');
+      fs.writeFileSync(path.join(root, 'deleted.ts'), 'export const deleted = true;\n');
+      git(root, 'add', 'deleted.ts');
+      git(root, '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'add deleted source');
+      fs.rmSync(path.join(root, 'deleted.ts'));
+      fs.symlinkSync('src.ts', path.join(root, 'linked.ts'));
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: true, format: 'json' },
+        { homeDirectory: root }
+      );
+      assert.strictEqual(result.exitCode, 0, result.stderr);
+      const document = JSON.parse(result.stdout);
+      assert.strictEqual(document.kind, 'plan');
+      assert.strictEqual(document.evidence, false);
+      assert.ok(document.plan.steps.some((step: { id: string }) => step.id === 'node:lint-fix'));
+      for (const step of result.report?.plan.steps.filter(
+        (candidate) => candidate.effect === 'repair'
+      ) ?? []) {
+        assert.deepStrictEqual(step.command?.argv.slice(-2), ['--', 'src.ts']);
+      }
+      assert.deepStrictEqual(document.results, []);
+      assert.strictEqual(fs.existsSync(path.join(root, 'spawned')), false);
+      assert.strictEqual(fs.readFileSync(path.join(root, 'src.ts'), 'utf8'), before);
+      assert.strictEqual(
+        fs.readFileSync(path.join(root, 'notes.txt'), 'utf8'),
+        'not a Node repair target\n'
+      );
+      assert.strictEqual(fs.readlinkSync(path.join(root, 'linked.ts')), 'src.ts');
       assert.deepStrictEqual(
-        plan.gates.filter((g) => g.name !== 'yagni').map((g) => g.command),
-        [null, null, null, null]
+        fs.readdirSync(path.join(root, '.git')).filter((name) => name.startsWith('gennady-')),
+        []
       );
-      // yagni is a gennady-native dispatch, never gated by an npm script (matches sdd-verify.cmd.ts).
-      assert.match(
-        plan.gates.find((g) => g.name === 'yagni')?.command ?? '',
-        /npx --no-install .*yagni$/
-      );
-    });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('D-64: a detected secondary stack follows node as a qualified non-blocking tail in both plan consumers', () => {
-    withProject(
-      {
-        'package.json': '{}',
-        'go.mod': 'module example.com/x\n\ngo 1.22\n',
-        'gennady.yaml':
-          'stack:\n  use: [node, golang]\n  golang:\n    extraGates:\n      - id: govulncheck\n        argv: [govulncheck]\n',
-      },
-      (dir) => {
-        const plan = resolveVerifyPlan(dir, {
-          use: ['node', 'golang'],
-          golang: { extraGates: [{ id: 'govulncheck', argv: ['govulncheck'] }] },
-        });
-        assert.strictEqual(plan.stack, 'node');
-        assert.deepStrictEqual(
-          plan.gates.map((g) => g.name),
-          [
-            'type-check',
-            'test:coverage',
-            'lint',
-            'format',
-            'yagni',
-            'golang:generate',
-            'golang:build',
-            'golang:vet',
-            'golang:fmt',
-            'golang:lint',
-            'golang:test',
-            'golang:govulncheck',
-          ]
-        );
-        assert.deepEqual(plan.stacks, ['node', 'golang']);
-        assert.deepEqual(plan.gates.at(-1), {
-          name: 'golang:govulncheck',
-          stack: 'golang',
-          command: 'govulncheck',
-          required: false,
-          blocking: false,
-        });
+  it('runs a real Node code slice, applies bounded repair and reports it in text', async () => {
+    const root = createNodeRepo();
+    try {
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'text' },
+        { homeDirectory: root }
+      );
+      assert.strictEqual(result.exitCode, 0, result.stderr || result.stdout);
+      assert.strictEqual(result.report?.verdict, 'pass');
+      assert.match(result.stdout, /VERIFY phase=code/);
+      assert.match(result.stdout, /PASS node:lint-fix/);
+      assert.match(result.stdout, /MODIFIED src\.ts by=node:(?:lint|format)-fix allowed=true/);
+      assert.match(result.stdout, /VERDICT PASS/);
+      assert.match(fs.readFileSync(path.join(root, 'src.ts'), 'utf8'), /@file:/);
+      assert.ok(result.report?.mutations.some((mutation) => mutation.path === 'src.ts'));
+      assert.strictEqual(Object.isFrozen(result.report), true);
+      assert.strictEqual(Object.isFrozen(result.report?.context), true);
+      assert.strictEqual(result.report?.context.frameworks.length, 0);
+      assert.strictEqual(result.report?.context.headSha, git(root, 'rev-parse', 'HEAD'));
+      assert.match(result.report?.rules.digest ?? '', /^sha256:/);
+      assert.strictEqual(result.report?.context.rules, result.report?.rules);
+      for (const repair of result.report?.plan.steps.filter((step) => step.effect === 'repair') ??
+        []) {
+        assert.deepStrictEqual(repair.command?.argv.slice(-2), ['--', 'src.ts']);
       }
-    );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('D-64: stack.use can prioritize explicit always-match anystack; absent Swift never becomes primary', () => {
-    withProject({ 'package.json': '{}' }, (dir) => {
-      const explicit = resolveVerifyPlan(dir, {
-        use: ['anystack', 'node'],
-        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
-      });
-      assert.strictEqual(explicit.stack, 'anystack');
-      assert.deepEqual(explicit.stacks, ['anystack', 'node']);
-      assert.deepEqual(
-        explicit.gates.map((gate) => gate.name),
-        [
-          'syntax',
-          'node:type-check',
-          'node:test:coverage',
-          'node:lint',
-          'node:format',
-          'node:yagni',
-        ]
+  it('maps a product failure to deterministic report verdict and exit 1', async () => {
+    const root = createNodeRepo();
+    try {
+      const document = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+      document.scripts['type-check'] = 'node -e "process.exit(7)"';
+      fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(document));
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'json' },
+        { homeDirectory: root }
       );
-      assert.equal(explicit.gates[0]?.blocking, true);
-      assert.ok(explicit.gates.slice(1).every((gate) => gate.stack === 'node'));
-      assert.ok(explicit.gates.slice(1).every((gate) => gate.blocking === false));
-
-      const absent = resolveVerifyPlan(dir, { use: ['swift', 'node'] });
-      assert.strictEqual(absent.stack, 'node');
-      assert.deepEqual(absent.stacks, ['node']);
-
-      assert.throws(
-        () => resolveVerifyPlan(dir, { use: ['swift'] }),
-        /SDD_VERIFY_NO_STACK_DETECTED/
-      );
-    });
+      assert.strictEqual(result.exitCode, 1);
+      assert.strictEqual(result.report?.verdict, 'fail');
+      assert.strictEqual(JSON.parse(result.stdout).verdict, 'fail');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('D-64: explicit markerless anystack owns its own blocking full profile, never a Node ladder', () => {
-    withProject({}, (dir) => {
-      const plan = resolveVerifyPlan(dir, {
-        use: ['anystack'],
-        anystack: { extraGates: [{ id: 'syntax', argv: ['check', 'syntax'] }] },
-      });
-      assert.strictEqual(plan.stack, 'anystack');
-      assert.deepEqual(plan.stacks, ['anystack']);
-      assert.deepEqual(plan.gates, [
-        {
-          name: 'syntax',
-          stack: 'anystack',
-          command: 'check syntax',
-          required: false,
-          blocking: true,
-        },
-      ]);
-    });
+  it('keeps explicit waivers visible as DEGRADED and never spawns waived nodes', async () => {
+    const root = createNodeRepo({ sentinelTypecheck: true });
+    try {
+      const steps = Object.fromEntries(
+        ['type-check', 'lint-fix', 'lint', 'format-fix', 'format'].map((step) => [
+          step,
+          { enabled: false, reason: `migration waiver for ${step}` },
+        ])
+      );
+      fs.writeFileSync(
+        path.join(root, 'gennady.yaml'),
+        JSON.stringify({ verify: { presets: { node: { steps } } } })
+      );
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'text' },
+        { homeDirectory: root }
+      );
+      assert.strictEqual(result.exitCode, 0, result.stderr || result.stdout);
+      assert.strictEqual(result.report?.readiness.status, 'DEGRADED');
+      assert.strictEqual(
+        result.report?.readiness.entries.filter((entry) => entry.status === 'WAIVED').length,
+        5
+      );
+      assert.ok(result.report?.results.every((entry) => entry.status === 'waived'));
+      assert.match(result.stdout, /WAIVED node node:type-check/);
+      assert.match(result.stdout, /VERDICT PASS \(DEGRADED\)/);
+      assert.strictEqual(fs.existsSync(path.join(root, 'spawned')), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('D-64: markerless bootstrap and single-stack node retain the historical full ladder', () => {
-    withProject({}, (dir) => {
-      const plan = resolveVerifyPlan(dir);
-      assert.strictEqual(plan.stack, 'node');
-      assert.deepEqual(plan.stacks, ['node']);
-      assert.deepEqual(
-        plan.gates.map(({ name, blocking }) => ({ name, blocking })),
-        ['type-check', 'test:coverage', 'lint', 'format', 'yagni'].map((name) => ({
-          name,
-          blocking: true,
-        }))
+  it('maps cooperative SIGTERM to exit 143 after restoration and a non-pass report', async () => {
+    const root = createNodeRepo();
+    try {
+      const abort = new AbortController();
+      abort.abort('SIGTERM');
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'json' },
+        { homeDirectory: root, signal: abort.signal }
       );
-    });
-  });
-
-  it('D-64 makes Go primary and blocking once V-09 supplies its preset', () => {
-    withProject({ 'go.mod': 'module example.com/x\n\ngo 1.22\n' }, (dir) => {
-      const plan = resolveVerifyPlan(dir);
-      assert.equal(plan.stack, 'golang');
-      assert.deepEqual(plan.stacks, ['golang']);
-      assert.deepEqual(
-        plan.gates.map((gate) => gate.name),
-        ['generate', 'build', 'vet', 'fmt', 'lint', 'test']
+      assert.strictEqual(result.exitCode, 143);
+      assert.strictEqual(result.report?.results[0]?.status, 'cancelled');
+      assert.strictEqual(result.report?.verdict, 'violation');
+      assert.strictEqual(
+        fs.existsSync(path.join(root, '.git', 'gennady-workspace-guard.lock')),
+        false
       );
-      assert.ok(plan.gates.every((gate) => gate.blocking));
-    });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

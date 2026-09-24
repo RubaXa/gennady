@@ -1,5 +1,5 @@
 // @file: Node target VerifyPreset, config materialization, phase planning and readiness.
-// @consumers: node-plugin, UV-04 target planning tests, future unified planner
+// @consumers: node-plugin, unified multistack planner
 // @spec: CLI-VERIFY
 
 import { provenanceOf } from '../../services/config/config-loader.ts';
@@ -65,7 +65,7 @@ function repairScopeRequirement(stepId: NodeStepId, source: string): Requirement
     kind: 'config',
     description: `node:${stepId} has explicit Target Files appended after --`,
     required: true,
-    fix: 'provide explicit targetFiles to Node planning; automatic scope materialization arrives in UV-07',
+    fix: 'select at least one existing Node source file, or disable/override this repair step for the phase',
   };
 }
 

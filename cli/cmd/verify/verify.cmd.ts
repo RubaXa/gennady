@@ -1,38 +1,95 @@
-// @file: VerifyCommand — the read-only `gennady verify` planner/CI-reporter (V-16a, D-13). Never
-//   runs a gate; reports the exact same dispatch `sdd-verify --profile full` would run today.
+// @file: Unified public verify planning, local execution and report composition facade.
 // @spec: CLI-VERIFY
 // @consumers: gennady.ts
 
-import type { StackConfig } from '../../../shared/verify/verify.types.ts';
-import { resolveAssembledFullProfile } from '../sdd-verify/full-profile-plan.ts';
-import type { VerifyPlanDocument, VerifyPlanGate } from './verify.types.ts';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
+import type { VerifyRunReport } from '../../../shared/verify/model/verify-report.type.ts';
+import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/resolve-multistack.ts';
+import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
+import { renderVerifyJson } from '../../../shared/verify/reporting/json-reporter.ts';
+import { renderVerifyText } from '../../../shared/verify/reporting/text-reporter.ts';
+import type { VerifyInvocation } from './verify.types.ts';
+
+function headSha(root: string): string {
+  const sha = execFileSync('git', ['-C', root, 'rev-parse', '--verify', 'HEAD'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+  if (!/^[0-9a-f]{40,64}$/.test(sha)) {
+    throw new Error(`git returned an invalid HEAD identity: ${JSON.stringify(sha)}`);
+  }
+  return sha;
+}
+
+function exitCodeFor(report: VerifyRunReport): number {
+  return report.verdict === 'pass' ? 0 : 1;
+}
+
+function errorMessage(cause: unknown): string {
+  if (cause instanceof Error) return `[verify] ${cause.message}`;
+  return `[verify] ${String(cause)}`;
+}
 
 /**
- * @purpose Resolve the read-only `full` profile plan for one repository — no execution, no mutation.
- * @invariant Uses the exact D-64 assembled model that `sdd-verify --profile full` executes.
- * @param root Absolute repository root.
- * @param [config] Valid merged stack configuration, or null.
- * @returns The plan document, in canonical ladder order.
+ * @purpose Resolve, optionally execute, and project one target VerifyRunReport.
+ * @param root Repository root selected by the process cwd.
+ * @param invocation Strict normalized CLI invocation.
+ * @param [options] Embedding-only cancellation and personal-config isolation inputs.
+ * @returns Complete stdout/stderr/exit outcome without writing process globals.
  */
-export function resolveVerifyPlan(
+export async function runVerifyCommand(
   root: string,
-  config: StackConfig | null = null
-): VerifyPlanDocument {
-  const full = resolveAssembledFullProfile(root, config);
-  return {
-    kind: 'plan',
-    evidence: false,
-    profile: 'full',
-    stack: full.primary,
-    stacks: full.detection.stacks,
-    gates: full.gates.map(
-      (gate): VerifyPlanGate => ({
-        name: gate.name,
-        stack: gate.stack,
-        command: gate.command,
-        required: gate.required,
-        blocking: !gate.nonBlocking,
-      })
-    ),
-  };
+  invocation: VerifyInvocation,
+  options: {
+    readonly signal?: AbortSignal;
+    readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
+    readonly homeDirectory?: string;
+  } = {}
+): Promise<{
+  /** @purpose Deterministic process exit status. */
+  readonly exitCode: number;
+  /** @purpose Complete selected text or JSON report, including trailing newline. */
+  readonly stdout: string;
+  /** @purpose Actionable invocation/planning diagnostic, otherwise empty. */
+  readonly stderr: string;
+  /** @purpose Immutable internal report when planning reached a terminal product. */
+  readonly report?: VerifyRunReport;
+}> {
+  try {
+    const canonicalRoot = fs.realpathSync(root);
+    const planning = resolveMultistackVerifyPlan(canonicalRoot, invocation.phase, {
+      scope: { mode: 'all', files: [] },
+      ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
+    });
+    const plannedHeadSha = headSha(canonicalRoot);
+    const execution = invocation.planOnly
+      ? undefined
+      : await runLocalVerifyPlan(canonicalRoot, planning.plan, planning.readiness, {
+          signal: options.signal,
+          cancellationSignal: options.cancellationSignal,
+          signalHandlers: false,
+        });
+    const report = buildVerifyRunReport({
+      root: canonicalRoot,
+      phase: invocation.phase,
+      headSha: plannedHeadSha,
+      planning,
+      execution,
+    });
+    const stdout =
+      invocation.format === 'json'
+        ? renderVerifyJson(report, canonicalRoot, invocation.planOnly)
+        : renderVerifyText(report, canonicalRoot, invocation.planOnly);
+    return {
+      exitCode:
+        execution?.cancellation?.exitCode ?? (invocation.planOnly ? 0 : exitCodeFor(report)),
+      stdout: `${stdout}\n`,
+      stderr: '',
+      report,
+    };
+  } catch (cause) {
+    return { exitCode: 4, stdout: '', stderr: `${errorMessage(cause)}\n` };
+  }
 }

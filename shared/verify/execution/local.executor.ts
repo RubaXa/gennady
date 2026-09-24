@@ -689,9 +689,11 @@ export async function executeLocalStep(
   const environment = compileEnvironmentRules(step);
   if ('problem' in environment) return blocked(environment.problem);
 
-  const cancellationSignal = options.cancellationSignal ?? 'SIGINT';
+  const cancellationSignal = (): 'SIGINT' | 'SIGTERM' =>
+    options.cancellationSignal ?? (options.signal?.reason === 'SIGTERM' ? 'SIGTERM' : 'SIGINT');
   if (options.signal?.aborted === true) {
-    const cancelled = guard.cancel(cancellationSignal);
+    const signal = cancellationSignal();
+    const cancelled = guard.cancel(signal);
     if (cancelled.kind === 'error') {
       const problem = {
         code: 'VERIFY_LOCAL_WORKSPACE_VIOLATION',
@@ -720,15 +722,15 @@ export async function executeLocalStep(
         status: 'cancelled',
         exitCode: null,
         durationMs: Date.now() - startedAt,
-        output: `cancelled by ${cancellationSignal}`,
+        output: `cancelled by ${signal}`,
       },
       mutations: [],
       evidence: [],
       problem: {
         code: 'VERIFY_LOCAL_CANCELLED',
-        message: `step ${step.id} cancelled before spawn by ${cancellationSignal}`,
+        message: `step ${step.id} cancelled before spawn by ${signal}`,
       },
-      cancellation: { signal: cancellationSignal, exitCode: cancelled.exitCode },
+      cancellation: { signal, exitCode: cancelled.exitCode },
     };
   }
 
@@ -779,11 +781,12 @@ export async function executeLocalStep(
       message: `step ${step.id} exceeded ${Math.min(step.timeoutMs, step.command.timeoutMs)}ms`,
     };
   } else if (processOutcome.termination === 'cancelled') {
+    const signal = cancellationSignal();
     status = 'cancelled';
     verdict = 'cancelled';
     problem = {
       code: 'VERIFY_LOCAL_CANCELLED',
-      message: `step ${step.id} cancelled by ${cancellationSignal}`,
+      message: `step ${step.id} cancelled by ${signal}`,
     };
   } else if (processOutcome.spawnError !== undefined) {
     status = 'env-fail';
@@ -845,7 +848,8 @@ export async function executeLocalStep(
   let mutations: readonly VerifyMutation[] = [];
   let cancellation: LocalStepExecution['cancellation'];
   if (status === 'cancelled') {
-    const cancelled = guard.cancel(cancellationSignal);
+    const signal = cancellationSignal();
+    const cancelled = guard.cancel(signal);
     if (cancelled.kind === 'error') {
       status = 'violation';
       verdict = 'violation';
@@ -854,7 +858,7 @@ export async function executeLocalStep(
         message: cancelled.error.message,
       };
     } else {
-      cancellation = { signal: cancellationSignal, exitCode: cancelled.exitCode };
+      cancellation = { signal, exitCode: cancelled.exitCode };
     }
   } else {
     const workspace = guard.finishStep(step.id, { succeeded: status === 'pass' });

@@ -45,7 +45,7 @@ console.info('  sdd-check         Run mechanical integrity checks over SDD artif
 console.info('  sdd-extract       Extract one anchored section from an SDD artifact');
 console.info('  sdd-new           Scaffold one SDD v2 artifact');
 console.info('  sdd-verify        Run the ticket or profile verification ladder');
-console.info('  verify            Print the read-only D-64 full-profile plan as JSON');
+console.info('  verify            Run one unified Verify phase; text or stable JSON report');
 console.info('  sdd-log           Append an event or atomically complete a verified ticket phase');
 console.info('  sdd-sync          Propagate ticket status into task trackers');
 console.info('  sdd-task          Show the execution map or one ticket phase context');

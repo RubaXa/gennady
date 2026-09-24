@@ -1,34 +1,40 @@
-// @file: Invocation shape and result types for the read-only `gennady verify` facade (V-16a, D-13).
+// @file: Strict invocation contract for the unified `gennady verify` command.
 // @spec: CLI-VERIFY
 // @consumers: VerifyCommand
 
 import { parseArgs } from '../../../shared/common/parse-args.ts';
-import type { StackId } from '../../../shared/verify/verify.types.ts';
 
-/** @purpose CLI invocation carried an extra positional path, or a flag other than `--plan --json` — verify never silently narrows or ignores. */
 const ERR_CLI_VERIFY_BAD_INVOCATION = 'ERR_CLI_VERIFY_BAD_INVOCATION' as const;
 
-/**
- * @purpose Build the bad-invocation diagnostic — tool-teaches: names the problem and the one usage.
- * @param detail What was wrong with the invocation.
- * @returns The full multi-line message, ready to print (exit code 4).
- */
+/** @purpose Normalized public verify invocation; CLI selects a phase and presentation only. */
+export type VerifyInvocation = {
+  /** @purpose Exact preset phase selected by the operator. */
+  readonly phase: string;
+  /** @purpose True only for the strict no-spawn projection path. */
+  readonly planOnly: boolean;
+  /** @purpose Explicit JSON or default operator text presentation. */
+  readonly format: 'text' | 'json';
+};
+
+/** @purpose Return either a complete invocation or an actionable exit-4 diagnostic. */
+export type VerifyInvocationResult =
+  | { readonly ok: true; readonly invocation: VerifyInvocation }
+  | { readonly ok: false; readonly message: string };
+
 function badInvocationMessage(detail: string): string {
   return [
     `[verify] ${ERR_CLI_VERIFY_BAD_INVOCATION}: ${detail}`,
-    '  gennady verify is a read-only planner/CI-reporter (D-13) — it never runs a gate.',
-    '  usage: npx gennady verify --plan --json',
+    '  usage: npx gennady verify --phase=<phase> [--json]',
+    '         npx gennady verify --plan --json [--phase=<phase>]',
+    '  --plan is read-only and never spawns a verification step.',
   ].join('\n');
 }
 
-/** @purpose Strict CLI shape: always both `--plan` and `--json` together — the one public form (D-13). */
-type VerifyInvocationResult = { ok: true } | { ok: false; message: string };
-
 /**
- * @purpose Parse `gennady verify` strictly: only the exact `--plan --json` form is public.
- * @param argv Full `process.argv` — the shape `parseArgs` expects.
- * @returns Ok once `--plan` and `--json` are both present with no extra argument, else a
- *   ready-to-print bad-invocation message (exit code 4).
+ * @purpose Parse the target verify facade without inventing pipeline or scope defaults.
+ * @param argv Full process argv accepted by the shared parser.
+ * @returns A target phase invocation; legacy `--plan --json` defaults only that compatibility form
+ *   to `full`.
  */
 export function parseVerifyInvocation(argv: string[]): VerifyInvocationResult {
   let parsed: Record<string, unknown> & { _: string[] };
@@ -36,18 +42,19 @@ export function parseVerifyInvocation(argv: string[]): VerifyInvocationResult {
     parsed = parseArgs(
       argv,
       {
+        phase: { aliases: ['phase'], takesValue: true },
         plan: { aliases: ['plan'] },
         json: { aliases: ['json'] },
       },
       { strict: true }
     );
   } catch (cause) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    return { ok: false, message: badInvocationMessage(detail) };
+    return {
+      ok: false,
+      message: badInvocationMessage(cause instanceof Error ? cause.message : String(cause)),
+    };
   }
 
-  // parseArgs keeps the command token itself (argv[2], e.g. "verify") in `_` alongside any real
-  // positional — drop it before judging whether the caller passed an actual extra argument.
   const positional = parsed._.slice(1);
   if (positional.length > 0) {
     return {
@@ -55,47 +62,37 @@ export function parseVerifyInvocation(argv: string[]): VerifyInvocationResult {
       message: badInvocationMessage(`unexpected path argument(s): ${positional.join(' ')}`),
     };
   }
-  if (parsed.plan !== true || parsed.json !== true) {
+  if (Array.isArray(parsed.phase) || Array.isArray(parsed.plan) || Array.isArray(parsed.json)) {
+    return { ok: false, message: badInvocationMessage('flags may be provided only once') };
+  }
+  if (parsed.plan !== undefined && parsed.plan !== true) {
+    return { ok: false, message: badInvocationMessage('--plan does not accept a value') };
+  }
+  if (parsed.json !== undefined && parsed.json !== true) {
+    return { ok: false, message: badInvocationMessage('--json does not accept a value') };
+  }
+
+  const planOnly = parsed.plan === true;
+  if (planOnly && parsed.json !== true) {
     return {
       ok: false,
-      message: badInvocationMessage(
-        `both --plan and --json are required (got: ${JSON.stringify({ plan: parsed.plan, json: parsed.json })})`
-      ),
+      message: badInvocationMessage('--plan requires --json so plan output stays machine-explicit'),
     };
   }
-  return { ok: true };
+  const phase = planOnly && parsed.phase === undefined ? 'full' : parsed.phase;
+  if (typeof phase !== 'string' || phase.length === 0 || phase !== phase.trim()) {
+    return {
+      ok: false,
+      message: badInvocationMessage('a non-empty --phase is required for execution'),
+    };
+  }
+
+  return {
+    ok: true,
+    invocation: {
+      phase,
+      planOnly,
+      format: parsed.json === true ? 'json' : 'text',
+    },
+  };
 }
-
-/** @purpose One gate's read-only plan entry — name, exact runnable command, and required flag. */
-export type VerifyPlanGate = {
-  /** @purpose Canonical full-profile gate name (e.g. `type-check`, `lint`, `yagni`). */
-  readonly name: string;
-  /** @purpose Exact command this gate would run, or null until a real script/dispatch exists. */
-  readonly command: string | null;
-  /** @purpose Whether an absent/vacuous script would fail the full-profile ladder. */
-  readonly required: boolean;
-  /** @purpose Stack owning this gate; tail names are qualified as `stack:gate`. */
-  readonly stack: StackId;
-  /** @purpose False only for D-64 extra-stack tail gates. */
-  readonly blocking: boolean;
-};
-
-/**
- * @purpose The whole read-only plan document `gennady verify --plan --json` prints.
- * @invariant `kind` is always `'plan'`, `evidence` always `false` — never a `SDD_PHASE_RECEIPT`
- *   nor proof a gate ran (D-13, V-16). A JSON-only CI reader must still see this marker.
- */
-export type VerifyPlanDocument = {
-  /** @purpose Always `'plan'` — machine-readable marker that this is a plan document, not a receipt. */
-  readonly kind: 'plan';
-  /** @purpose Always `false` — this output is never evidence a gate ran; see `@invariant` above. */
-  readonly evidence: false;
-  /** @purpose Always `'full'` — the one profile this read-only facade reports (D-13). */
-  readonly profile: 'full';
-  /** @purpose Resolved D-64 primary stack after marker detection and stack.use intersection. */
-  readonly stack: StackId;
-  /** @purpose Every actually detected stack in primary-then-tail order. */
-  readonly stacks: readonly StackId[];
-  /** @purpose Gates in canonical ladder order. */
-  readonly gates: readonly VerifyPlanGate[];
-};
