@@ -2,7 +2,12 @@
 
 ## 1. Module Vision
 
-`StackPlugin` для Go-репозиториев: детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, fixer `generate` (материализация кодогенерации через `gennady fix`). Термины (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Clean-tree guard) — [stack.spec.md §2](../../../specs/stack/stack.spec.md).
+Эта спека одновременно фиксирует два контракта на время миграции:
+
+- **Legacy compatibility path (заморожен до U4):** действующий `StackPlugin` для Go-репозиториев, детекция по `go.mod` в корне, скоуп по изменённым пакетам, гейты `generate → build → vet → fmt → lint → test`, fixer `generate` через `gennady fix`. Исторические §§3–7 и E2E-матрица описывают этот путь и не являются целевым устройством unified verify.
+- **UV-05 target contract:** Go регистрируется как обычный target `StackPlugin` и отдаёт один `VerifyPreset` DAG `generate → build → vet → lint-fix → lint → format-fix → fmt → test → integration → coverage`. Фазы — только slices этого DAG по тегам и dependency closure; отдельного target `fix` нет, repair-узлы принадлежат одному verify-прогону. UV-05 материализует только данные плана и readiness; исполнение — U3, переключение с legacy runtime — U4.
+
+Термины legacy-модели (Gate, Scope, Capability, ENV_FAIL, VIOLATION, Clean-tree guard) — [stack.spec.md §2](../../../specs/stack/stack.spec.md). Target-модель (`VerifyPreset`, phase slicing, readiness, provenance) — [verify.spec.md](../../../specs/cli/verify/verify.spec.md).
 
 **Parent scope:** [`stack`](../../../specs/stack/stack.spec.md) · **E2E-механизм:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) · **Доктрина E2E:** [`infra-e2e`](../../../specs/infra-e2e/infra-e2e.spec.md)
 
@@ -10,13 +15,16 @@
 
 ## 2. Capability Support
 
-| Фасет        | Статус                | Комментарий                                                                                                                                                    |
-| ------------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `verify`     | ✅ обязательный       | `resolveScope` (§4) + `planGates` (§5)                                                                                                                         |
-| `fix`        | ✅ через `gate.fixer` | отдельного фасета на плагине нет — fixer живёт полем гейта (stack.spec §4.4); гейт `generate` несёт fixer: материализация кодогенерации в реальном дереве (§6) |
-| `testcov`    | ⛔ post-v1            | покрытие: `go test -coverprofile`; дизайн отложен (stack.spec §4.3)                                                                                            |
-| `dbc-lint`   | ⛔ post-v1            | собственный DbC-линтер «Геннадии» сегодня умеет только `.ts`/`.tsx`                                                                                            |
-| `directives` | ⛔ post-v1            | per-stack директивы для агента (stack.spec §4.3)                                                                                                               |
+| Поверхность                     | Статус                          | Комментарий                                                                                                            |
+| ------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| legacy `verify`                 | ✅ frozen compatibility до U4   | `resolveScope` (§4) + `planGates` (§5); семантика и receipts не меняются в UV-05                                       |
+| target `verify`                 | ✅ UV-05 contract               | `createPreset` + `evaluateReadiness`; один DAG, phase slicing и config overlay из shared verify                        |
+| legacy `fix`                    | ✅ frozen compatibility до U4   | fixer живёт полем legacy-гейта; `generate` материализуется через `gennady fix` (§6)                                    |
+| target repair                   | ✅ как шаги единого прогона     | `lint-fix` и `format-fix` имеют `effect: repair`, bounded `writes` и `invalidates`; отдельной target-команды `fix` нет |
+| legacy `testcov`                | ⛔ post-v1                      | исторически отложенная отдельная capability; это утверждение не ограничивает target DAG                                |
+| target `integration`/`coverage` | ✅ explicit config, fail-closed | commandless built-ins; выбранный slice без override — `BLOCKED` (§5.3)                                                 |
+| `dbc-lint`                      | ⛔ post-v1                      | собственный DbC-линтер «Геннадии» сегодня умеет только `.ts`/`.tsx`                                                    |
+| `directives`                    | ⛔ post-v1                      | per-stack директивы для агента (stack.spec §4.3)                                                                       |
 
 ## 3. Detection
 
@@ -36,11 +44,11 @@
 
 Две ловушки, на которых это уже ломалось: (1) отбрасывание по любому `.Error` превращало свежий import cycle в `ALL_GATES_PASS` с пропущенными `build`/`vet`; (2) сравнение путей `go list` с путями плана без `realpath` — на macOS `go` печатает `/tmp/x`, а план держит `/private/tmp/x`, и при «отбрасывать по умолчанию» это роняло все пакеты, при «оставлять по умолчанию» — ни одного.
 
-| Режим     | Что берётся                                                                                                                                       | `note`                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `all`     | весь репозиторий, `./...`                                                                                                                         | `whole repository (./...)`                                               |
-| `files`   | явные цели → пакеты, содержащие эти файлы                                                                                                         | `N file(s) from M target(s)`                                             |
-| `changed` | `.go`-файлы, изменённые от базовой ветки, → их **собираемые** пакеты (по умолчанию); правка `go.mod`/`.golangci.*`/`vendor/` расширяет до `./...` | `N Go file(s) changed vs <baseRef>` (+ отброшенное / причина расширения) |
+| Режим     | Что берётся                                                          | `note`                                                                   |
+| --------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `all`     | весь репозиторий, `./...`                                            | `whole repository (./...)`                                               |
+| `files`   | явные цели → пакеты, содержащие эти файлы                            | `N file(s) from M target(s)`                                             |
+| `changed` | изменённые `.go` → **собираемые** пакеты; metadata changes → `./...` | `N Go file(s) changed vs <baseRef>` (+ отброшенное / причина расширения) |
 
 **Фильтр собираемости (один `go list -e` перед планированием).** Пакет из изменённого файла попадает в план только если тулчейн его собирает. Отбрасывается тот же набор из четырёх структурных классов, что и в фильтре непакетов выше (один список ошибок `go list -e`), каждый из которых иначе даёт красный про окружение, а не про код: (1) файл внутри **вложенного модуля** — корневой модуль его не содержит (`main module does not contain package`); (2) каталог, все Go-файлы которого исключены **build-констрейнтами** (`build constraints exclude all Go files`); (3) каталог без Go-файлов (`no Go files in`); (4) несуществующий путь. Отброшенное **перечисляется в `note`** — молчаливый пропуск читается как полное покрытие. Фильтр **fails open**: паттерн выбрасывается только когда `go list` назвал проблему именно для него; если листинг не запустился вовсе, остаются все паттерны — «проверить лишнее» безопаснее, чем «молча не проверить».
 
@@ -50,18 +58,22 @@
 
 Базовая ветка: `origin/HEAD` предпочитается устаревшему `origin/master`. Пути от git берутся `--relative`, иначе при `--root=<subdir>` скоуп пустеет. Пустой скоуп — не ошибка: гейты репортятся как `skipped` с причиной, а прогон в целом даёт `ZERO_GATES` (exit 1) — «ничего не проверили» не является успехом.
 
-## 5. Gates
+## 5. Legacy Gates (frozen compatibility path до U4)
+
+Этот раздел описывает только действующий legacy runner. UV-05 не меняет его порядок, argv, вердикты или receipts; target DAG определён отдельно в §5.3.
 
 Порядок фиксирован: **кодогенерация — пререквизит сборки**, поэтому `generate` стоит до `build` (D-STACK-011).
 
-| Гейт       | argv                                       | Таймаут | Контракт вывода               | `envFail`                                       | Особенности                                                                                                                                                                                 |
-| ---------- | ------------------------------------------ | ------- | ----------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `generate` | `go generate <flags> <packages>`           | 5m      | drift clean-tree guard = FAIL | module-fetch + `executable file not found`↦hint | `driftMeansFailure: true`; skip без `//go:generate` в скоупе                                                                                                                                |
-| `build`    | `go build -o /dev/null <flags> <packages>` | 5m      | exit-код                      | panic + module-fetch                            | `-o /dev/null` (§5.1)                                                                                                                                                                       |
-| `vet`      | `go vet <flags> <packages>`                | 5m      | exit-код                      | panic + module-fetch                            | —                                                                                                                                                                                           |
-| `fmt`      | `gofmt -l <files>`                         | 1m      | **exit 0 + stdout = FAIL**    | —                                               | никогда `go fmt` (мутирует, D-STACK-005); цели обходятся с отсечением `vendor`/`testdata`/`node_modules` на **любой** глубине — каталог отдаётся целиком только когда ниже нет исключённого |
-| `lint`     | `golangci-lint run -c <config> <packages>` | 5m      | exit-код                      | `exit > 1` + panic + module-fetch               | конфиг ищется автоматически, передаётся через `-c`                                                                                                                                          |
-| `test`     | `go test -timeout=<t> <flags> <packages>`  | 10m     | exit-код                      | module-fetch **без** panic-предиката            | `-timeout` рендерится из эффективного `timeoutMs`                                                                                                                                           |
+| Гейт       | argv                                       | Таймаут | Контракт вывода               | `envFail`                                       | Особенности                                                  |
+| ---------- | ------------------------------------------ | ------- | ----------------------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| `generate` | `go generate <flags> <packages>`           | 5m      | drift clean-tree guard = FAIL | module-fetch + `executable file not found`↦hint | `driftMeansFailure: true`; skip без `//go:generate` в скоупе |
+| `build`    | `go build -o /dev/null <flags> <packages>` | 5m      | exit-код                      | panic + module-fetch                            | `-o /dev/null` (§5.1)                                        |
+| `vet`      | `go vet <flags> <packages>`                | 5m      | exit-код                      | panic + module-fetch                            | —                                                            |
+| `fmt`      | `gofmt -l <files>`                         | 1m      | **exit 0 + stdout = FAIL**    | —                                               | read-only; правила обхода — ниже                             |
+| `lint`     | `golangci-lint run -c <config> <packages>` | 5m      | exit-код                      | `exit > 1` + panic + module-fetch               | конфиг ищется автоматически, передаётся через `-c`           |
+| `test`     | `go test -timeout=<t> <flags> <packages>`  | 10m     | exit-код                      | module-fetch **без** panic-предиката            | `-timeout` рендерится из эффективного `timeoutMs`            |
+
+**Обход файлов для legacy `fmt`.** Никогда не используется мутирующий `go fmt` (D-STACK-005). Цели для `gofmt -l` обходятся с отсечением `vendor`/`testdata`/`node_modules` на любой глубине; каталог передаётся целиком только когда ниже нет исключённого пути.
 
 ### 5.1 Почему `build` обязан отбрасывать вывод
 
@@ -89,15 +101,34 @@ Go сообщает об одной и той же причине то стро�
 
 **`go test -timeout` рендерится ниже дедлайна гейта (90%).** При равенстве убийство раннером гоняется наперегонки с собственным дедлайном Go, а единственный полезный артефакт подвисшего теста — это goroutine-дамп самого Go. 90% гарантирует, что дамп успевает.
 
-## 6. Fix Facet
+### 5.3 UV-05 target DAG and readiness
+
+Target plugin возвращает один детерминированный DAG, а не набор команд по фазам:
+
+`generate → build → vet → lint-fix → lint → format-fix → fmt → test → integration → coverage`.
+
+- `code`, `unit`, `integration`, `coverage` и `full` выбирают tagged seeds и получают транзитивное dependency closure. Команды не копируются между фазами.
+- Обычный `go.mod`-проект без YAML готов к `code` и `unit`, когда передан честный exact-file scope. `integration` и `coverage` встроены как commandless steps: выбранный slice получает actionable `BLOCKED`, пока проект не задаст прямой argv override. Невыбранные commandless steps не блокируют `code`/`unit`.
+- Target-команды — только direct argv, без shell. Для read-only coverage пригодна форма `go test -cover <packages>`; `-coverprofile` без объявленного bounded artifact write запрещён.
+- Readiness вычисляется по уже выбранному slice. Отсутствующий `go`, `gofmt`, required `golangci-lint`, упомянутый конфиг линтера или команда selected commandless step даёт typed `BLOCKED` с исправлением. Явный waiver сохраняется в плане и понижает итог до `DEGRADED`, а не превращает пропуск в скрытый успех.
+- `generate` — observe/drift-signal: кодогенерация запускается в изолированной проверке и не становится молчаливым repair. Материализация generate target-моделью не обещана.
+- `lint-fix` и `format-fix` — repair-узлы. `lint-fix` ограничивает `writes.include` выбранными package patterns (`pkg/*.go`; `**/*.go` только для явного `./...`). `format-fix` получает только существующие regular non-symlink `.go` Target Files; директории, glob, absolute/escaping/missing пути и symlink отвергаются fail-closed.
+- После repair обязательны observe-проверки `lint` и `fmt` (`gofmt -l`). `invalidates` выражает повторную проверку предшествующих наблюдений (`generate`, `build`, `vet`), не создавая копий команд.
+- Плагин не хардкодит rule ids: динамический `RuleResolver` принадлежит U6.
+
+## 6. Legacy Fix Facet (frozen compatibility path до U4)
 
 Единственный fixer `generate`: та же команда, что у гейта, но в **реальном** дереве. Вызов — `gennady fix golang:generate`. Скипается с причиной при отсутствии тулчейна, пустом скоупе или отсутствии директив. Цикл: `verify` → `generate` FAIL со списком разошедшихся файлов → `fix` → коммит → `verify` зелёный.
 
 Открытая недоработка (находка ревью): у fixer'а нет `envFail`, хотя он исполняет ту же команду, что гейт с тремя предикатами — отсутствующий генератор в `fix` сегодня даёт FAIL вместо ENV_FAIL с подсказкой. Закрывается в цикле; фикстура `go-fix-missing-tool`.
 
-## 7. Use Cases to Test (E2E-матрица)
+### 6.1 UV-05 target repair
 
-Механизм фикстур, схема `expect.yaml` и материализация — [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md). Здесь — **что** обязано быть покрыто для Go. Столбец «Флаги» фиксирует покрытие CLI-поверхности (infra-e2e §7).
+Target-модель не переносит отдельную команду `gennady fix`: `lint-fix` и `format-fix` — шаги одного verify-прогона. UV-05 лишь описывает их команды, `writes` и `invalidates`; безопасный executor появится в U3. Repair никогда не расширяет область записи относительно scope: линтер ограничен выбранными package patterns, а `gofmt -w` — только нормализованным exact-file списком. Пустой scope делает repair commandless и readiness `BLOCKED`, а не запускает инструмент по всему репозиторию.
+
+## 7. Use Cases to Test
+
+§§7.1–7.6 — legacy E2E-матрица, замороженная до cutover U4. Механизм фикстур, схема `expect.yaml` и материализация — [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md). Здесь — **что** обязано быть покрыто для legacy Go. Столбец «Флаги» фиксирует покрытие CLI-поверхности (infra-e2e §7).
 
 ### 7.1 Базовая линия и находки по коду
 
@@ -167,20 +198,32 @@ Go сообщает об одной и той же причине то стро�
 
 Замкнутый мир §7 включает и то, что появилось по ходу реализации:
 
-| Фикстура                                                        | Что закрывает                                                                                                                         |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `go-envfail-rules`, `-streams`, `-catchall`, `-hint-precedence` | Правила ENV_FAIL в конфиге: срабатывание, разделение потоков, catch-all → exit 4, приоритет hint'а конфига                            |
-| `go-hang`, `go-hang-envfail`, `go-violation-envfail`            | Порядок вердиктов D-STACK-015: TIMEOUT с note, правило старше таймаута, окружение старше VIOLATION                                    |
-| `go-extra-requires-missing`, `-ok`, `go-requires-config-error`  | `requires`-предусловия (stack.spec §4.7) и обязательность их `hint`                                                                   |
-| `go-gate-fixer`, `go-generate-fix-loop`                         | `fixer` как поле гейта: цикл verify → fix → verify в реальном дереве                                                                  |
-| `go-skip-flag`, `go-full-output`, `go-changed-scope`            | Покрытие флагов `--skip`, `--full-output` и режима `changed` по умолчанию                                                             |
-| `go-generate-new-directive`                                     | §7.1.1 — untracked-файл с директивой                                                                                                  |
-| `go-scope-nested-module`, `go-scope-build-constraints`          | Фильтр собираемости §4: вложенный модуль и build-констрейнты отбрасываются, причина попадает в `note`                                 |
-| `go-broken-package-not-dropped`                                 | Фильтр §4 fails open: пакет, сломанный самим изменением, остаётся в скоупе — иначе прогон был бы зелёным при красном `go build ./...` |
-| `go-scope-widen-on-gomod`                                       | Расширение скоупа §4: правка одного `go.mod` расширяет план до `./...` с причиной в `note`                                            |
-| `go-fmt-excludes-nested-testdata`                               | §5, гейт `fmt`: `vendor`/`testdata`/`node_modules` отсекаются на любой глубине, а не только на верхнем уровне                         |
+| Фикстура                                                        | Что закрывает                                                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `go-envfail-rules`, `-streams`, `-catchall`, `-hint-precedence` | Правила ENV_FAIL в конфиге: срабатывание, разделение потоков, catch-all → exit 4, приоритет hint'а конфига    |
+| `go-hang`, `go-hang-envfail`, `go-violation-envfail`            | Порядок вердиктов D-STACK-015: TIMEOUT с note, правило старше таймаута, окружение старше VIOLATION            |
+| `go-extra-requires-missing`, `-ok`, `go-requires-config-error`  | `requires`-предусловия (stack.spec §4.7) и обязательность их `hint`                                           |
+| `go-gate-fixer`, `go-generate-fix-loop`                         | `fixer` как поле гейта: цикл verify → fix → verify в реальном дереве                                          |
+| `go-skip-flag`, `go-full-output`, `go-changed-scope`            | Покрытие флагов `--skip`, `--full-output` и режима `changed` по умолчанию                                     |
+| `go-generate-new-directive`                                     | §7.1.1 — untracked-файл с директивой                                                                          |
+| `go-scope-nested-module`, `go-scope-build-constraints`          | Фильтр собираемости §4: вложенный модуль и build-констрейнты отбрасываются, причина попадает в `note`         |
+| `go-broken-package-not-dropped`                                 | Фильтр §4 fails open для ошибок кода                                                                          |
+| `go-scope-widen-on-gomod`                                       | Расширение скоупа §4: правка одного `go.mod` расширяет план до `./...` с причиной в `note`                    |
+| `go-fmt-excludes-nested-testdata`                               | §5, гейт `fmt`: `vendor`/`testdata`/`node_modules` отсекаются на любой глубине, а не только на верхнем уровне |
+
+### 7.7 UV-05 target acceptance
+
+- Go-плагин одновременно публикует target preset/readiness и сохраняет legacy `resolvePreset`/gate behavior byte- и семантически неизменным до U4.
+- Zero-YAML fixture с `go.mod` и exact `.go` Target File даёт `READY` для `code` и `unit`; оба slice получаются из одного DAG через dependency closure.
+- Невыбранные `integration`/`coverage` не влияют на readiness `code`/`unit`; выбранные slices без override получают actionable `BLOCKED`. Explicit coverage fixture использует read-only `go test -cover ./...`, не скрытую запись `coverage.out`.
+- Отсутствующие выбранные tools/config/commands fail closed. Waiver остаётся видимым как `DEGRADED` с причиной.
+- Target Files нормализуются относительно repository root, дедуплицируются и сортируются. Missing, directory, special, absolute, escaping, glob и symlink (включая symlink наружу) отвергаются typed-ошибкой до планирования repair.
+- Package-scoped `lint-fix` не объявляет writes для соседних пакетов. Repo-wide `**/*.go` допустим только при явном all-scope `./...`; exact `format-fix` никогда не расширяется до directory scope.
+- Legacy `skipGates.fmt/lint` losslessly переносится на observe+repair пару. Legacy lint argv override сохраняет observe override и явно waives `lint-fix`; legacy fmt argv override отклоняется typed migration error, потому что разделить его на mutating/read-only команды без догадки нельзя.
 
 ## 8. Feature Requests
+
+FR ниже относится к legacy changed-scope и остаётся открытым после UV-05. Target exact-file/package planning не объявляет reverse-dependency closure выполненным и не использует этот FR как скрытый default.
 
 ### FR-GO-01 — обратное замыкание по зависимостям для `test` в режиме `changed`
 
@@ -195,11 +238,13 @@ Go сообщает об одной и той же причине то стро�
 - **Depends on:** [`stack`](../../../specs/stack/stack.spec.md) (типы, раннер, реестр), `shared/common/exec` (probe-вызовы), git (скоуп и clean-tree guard)
 - **Sibling:** [`plugins/node`](../../node/specs/node.spec.md) — независимая зона ответственности; общее только в scope-спеке
 - **Verified by:** [`stack/e2e`](../../../specs/stack/e2e/e2e.spec.md) по матрице §7
-- **External:** `go` (обязателен, кроме гейта `fmt`), `gofmt`, `golangci-lint` (опционален — без него `lint` скипается с причиной)
+- **External, legacy path:** `go` (обязателен, кроме гейта `fmt`), `gofmt`, `golangci-lint` (опционален — без него legacy `lint` скипается с причиной)
+- **External, target path:** требования вычисляются только для selected slice; `go`, `gofmt` и `golangci-lint` обязательны для шагов, которые их используют. Отсутствие required tool даёт `BLOCKED`; только явный waiver с причиной делает шаг пропущенным и итог `DEGRADED`.
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files (существуют):** `golang-plugin.ts`, `golang-detect.logic.ts`, `golang-scope.logic.ts`, `golang-plan.logic.ts`
+- **Legacy implementation files (frozen до U4):** `golang-plugin.ts`, `golang-detect.logic.ts`, `golang-scope.logic.ts`, `golang-plan.logic.ts`
+- **UV-05 target files:** `golang-target.logic.ts`, `golang-planner.ts`, `__tests__/golang-target.test.ts`, `__tests__/fixtures/zero-yaml/**`; shared exact-file normalization — `shared/verify/planning/normalize-target-files.ts`
 - **Изменения по находкам ревью (цикл реализации):** субтрактивная форма `envFail` и неунаследование exit-code-предикатов при `override.argv` (§5); `envFail` у fixer'а `generate` (§6); `requires` на гейте; `fixer` как поле гейта
 - **Fixtures (существуют):** `plugins/golang/e2e/fixtures/go-*` по §7 — 49 фикстур; матрица §7 замкнута, каждая фикстура на диске описана в §7.1–§7.6
 - **Open risks:**

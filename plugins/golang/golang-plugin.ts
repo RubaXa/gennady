@@ -8,6 +8,7 @@ import type { StackDetection, StackPlugin } from 'gennady/stack';
 import { detectGoProject, type GoProject } from './golang-detect.logic.ts';
 import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
 import { GO_GATE_ORDER, planGoGates } from './golang-plan.logic.ts';
+import { createGolangVerifyPreset, evaluateGolangReadiness } from './golang-target.logic.ts';
 
 /**
  * @purpose Build the `key: value` summary lines shown by `verify --plan` for a Go project.
@@ -77,5 +78,9 @@ export const golangPlugin: StackPlugin = {
     planGates(detection, scope, options) {
       return planGoGates(detection.details as GoProject, scope.details as GoScope, options);
     },
+  },
+  target: {
+    createPreset: createGolangVerifyPreset,
+    evaluateReadiness: evaluateGolangReadiness,
   },
 };

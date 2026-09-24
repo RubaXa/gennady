@@ -47,7 +47,8 @@ authored local ids remain local in a `VerifyPreset`, while the validated plan qu
 and reference. UV-03 adds the strict `verify:` loader, deterministic overlay/provenance and a
 temporary lossless `stack:` migration adapter. UV-04 registers Node as a symmetric `StackPlugin`,
 materializes its complete target DAG and selected-slice script readiness without switching the
-legacy runner. Go/Swift conversion (UV-05/06), execution (U3), SDD cutover (U4), remote execution
+legacy runner. UV-05 does the same for Go while preserving its legacy preset/receipts. Swift
+conversion (UV-06), execution (U3), SDD cutover (U4), remote execution
 (U5) and rule resolution/CLI (U6) remain outside this boundary.
 
 ### Target call chain
@@ -263,11 +264,33 @@ Repair nodes объявляют bounded writes и invalidation ранее вып
 scripts и package-manager argv являются detected facts; missing selected script даёт actionable
 `BLOCKED`. Node materialization добавляет `-- <Target Files>` как к package-script, так и к direct
 repair argv prefix; prefix обязан быть target-free и не может содержать baked operands. Target Files
-нормализуются как unique, code-unit-sorted repo-relative exact paths; absolute/escape/glob/ambiguous
-separator input даёт typed fail-closed error. Direct `lint` обязан быть read-only и вызывать Gennady,
+нормализуются как unique, code-unit-sorted repo-relative existing regular non-symlink files;
+missing/absolute/escape/glob/ambiguous separator либо symlink traversal дают typed fail-closed error.
+Direct `lint` обязан быть read-only и вызывать Gennady,
 direct `format` обязан быть read-only. Prefix без explicit Target Files остаётся `BLOCKED`, а не
 runnable/READY. Waived steps не создают package-manager requirement; Node preset не hardcode-ит rule
 ids до U6 resolver. Refines D-66/D-67.
+
+### VER-REQ-10 [должен]
+
+**Когда** Go plugin строит target phase, **то он должен** использовать один DAG
+`generate → build → vet → lint-fix → lint → format-fix → fmt → test → integration → coverage`.
+`generate` имеет только `drift-signal` effect; repair не материализует generated output. `lint-fix`
+и `format-fix` объявляют bounded writes и invalidation предыдущих build/vet observations, после них
+остаются read-only `golangci-lint run` и `gofmt -l`. `format-fix` получает только нормализованные
+exact `.go` Target Files и без них `BLOCKED`; команды всегда direct argv, без shell. Missing
+selected toolchain/linter/referenced lint config даёт actionable `BLOCKED`, а waiver исключает
+capability только waived шага. Go не угадывает integration identity либо coverage threshold:
+эти steps commandless и блокируют только выбранные `integration`/`coverage`/`full` slices до явного
+`command.argv`. `code`/`unit` остаются zero-YAML для обычного `go.mod`; rule ids не hardcode-ятся до
+U6 resolver. Legacy `resolveGolangPreset`, gate order и receipt source остаются неизменны до U4.
+`lint-fix` write boundary выводится из selected package patterns (`./...` разрешает repo-wide Go
+boundary только для явного all scope); пустой package/exact-file scope не оставляет runnable repair
+prefix. Authored `gofmt` repair допускает только target-free `-w` и optional `-s`, чтобы value-taking
+flag не поглотил appended file. Legacy skip `fmt`/`lint` также visibly waives соответствующий repair;
+legacy lint argv остаётся observe override и waives `lint-fix`, а legacy fmt argv fail-closed как
+невыразимый одновременно через target repair+observe split.
+Refines D-66/D-67.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -345,9 +368,9 @@ UV-11 consumes that sidecar for visible `WAIVED/DEGRADED` reporting (VERIFY-DL-7
 
 ### `VerifyPreset` — closed by UV-04
 
-The registered Node plugin now contributes a real target preset and the Node planning entrypoint
-composes and slices it. UV-05/06 still owe Go/Swift conversion, but `VerifyPreset` itself is no
-longer an unused exported contract (VERIFY-DL-6).
+The registered Node and Go plugins now contribute real target presets and their planning entrypoints
+compose and slice them. UV-06 still owes Swift, but `VerifyPreset` itself is no longer an unused
+exported contract (VERIFY-DL-6).
 
 ### `VerifyRunReport`
 
@@ -357,8 +380,8 @@ longer an unused exported contract (VERIFY-DL-6).
 
 ### `selectPhase` — closed by UV-04
 
-`resolveNodeVerifyPlan` calls the shared phase slicer over the composed Node preset. UV-05/06 reuse
-the same path for Go/Swift, while UV-11 projects the selected plan in the report (VERIFY-DL-6).
+`resolveNodeVerifyPlan` and `resolveGolangVerifyPlan` call the shared phase slicer. UV-06 reuses the
+same path for Swift, while UV-11 projects the selected plan in the report (VERIFY-DL-6).
 
 ### `composePresets` — closed by UV-04
 
@@ -371,14 +394,20 @@ The Node target planning path loads and materializes `verify.presets.node` befor
 
 ### `adaptLegacyStackConfig` — closed by UV-04
 
-The Node target planning path translates `stack.node` against exact target step ids. UV-05/06 add
-their stack consumers and UV-24 removes the adapter after migration evidence.
+The Node and Go target planning paths translate their `stack:` compatibility fields against exact
+target step ids. UV-06 adds Swift and UV-24 removes the adapter after migration evidence.
 
 ### `resolveNodeVerifyPlan`
 
 - **Usage Waiver:** UV-04 deliberately provides the first target-only planning entrypoint before the
   scope-aware multistack orchestrator. UV-07 consumes it through the common affected-stack planner;
   U3 later executes its data, but UV-04 remains read-only (VERIFY-DL-6/8).
+
+### `resolveGolangVerifyPlan`
+
+- **Usage Waiver:** UV-05 exposes the Go target-only planning entrypoint before the common
+  scope-aware multistack orchestrator. UV-07 consumes it; U3 executes the selected data, while the
+  legacy Go preset remains the active SDD path through U4 parity (VERIFY-DL-6/8).
 
 <details>
 <summary>Развёрнутые поверхности сущностей</summary>
@@ -393,10 +422,10 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. В нём осталось **18** записей. UV-01 добавил выше ещё **8** bounded target-model waivers; UV-02 добавил `selectPhase`; UV-03 снял `VerifyStepOverride`/`enabled` и добавил `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`. UV-04 снял пять реально подключённых target waivers (`VerifyPreset`, `selectPhase`, `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`) и добавил bounded `resolveNodeVerifyPlan`. Итого открыто **24**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. UV-05 снимает `scopeHasGoGenerate`: target preset реально использует его для применимости drift-signal. В историческом списке осталось **17** записей. UV-01 добавил выше ещё **8** bounded target-model waivers; UV-02 добавил `selectPhase`; UV-03 снял `VerifyStepOverride`/`enabled` и добавил `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`. UV-04 снял пять реально подключённых target waivers (`VerifyPreset`, `selectPhase`, `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`) и добавил bounded `resolveNodeVerifyPlan`; UV-05 добавил bounded `resolveGolangVerifyPlan`. Итого открыто **24**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
-<summary>Usage Waiver — 18 символов open: 16 унаследованных после снятия `applyStackConfig` и 2 D-64 test seam. По владельцу: V-09 — 5 (`C`, `I`, `Bad`, `scopeHasGoGenerate`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
+<summary>Usage Waiver — 17 символов open: 15 унаследованных после снятия `applyStackConfig`/`scopeHasGoGenerate` и 2 D-64 test seam. По владельцу: V-09 — 4 (`C`, `I`, `Bad`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
 
 ### `C`
 
@@ -409,10 +438,6 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 ### `Bad`
 
 - **Usage Waiver:** тот же класс ложноположительного, фикстура `go-fmt-excludes-nested-testdata/internal/testdata/golden.go` — снимается в V-09 (см. запись `C`).
-
-### `scopeHasGoGenerate`
-
-- **Usage Waiver:** единственный вызов сегодня — внутри своего же файла (`golang-plan.logic.ts`); второй — из golang-пресета, переносящего `driftMeansFailure` (`go generate`) в ладдер (`30-TRACK-VERIFY.md` §6, V-09) — снимается в V-09.
 
 ### `isStructuralListError`
 
@@ -489,6 +514,14 @@ package-script capability. Custom step and phase declarations remain UV-22.
 Node repair scripts are argument-forwarding prefixes. They become readiness `READY` only when the
 caller supplies explicit Target Files, which are appended after `--`; UV-07 owns automatic scope
 materialization. An unscoped repair prefix is `BLOCKED`, never an implicit whole-repository command.
+
+Go uses the same overlay/home priority; direct argv replaces that step's built-in tool capability.
+`format-fix` accepts only target-free `gofmt` switches `-w` and optional `-s`, then existing exact
+`.go` Target Files. `lint-fix` appends selected packages and bounds writes to them; empty/non-exact
+scope omits repair commands and stays `BLOCKED`. Observe steps reject write flags. Integration and
+coverage have no default argv or guessed identity/threshold. Legacy skip `fmt`/`lint` waives both
+observe and repair; lint argv preserves observe and waives repair; fmt argv is a typed non-lossless
+error. The active legacy runtime remains unchanged.
 
 Target file priority is personal `~/.gennadyrc` > project `.gennadyrc` > `gennady.yaml`; detected
 facts and builtins are lower layers. Objects deep-merge and arrays replace whole. The default generic
@@ -595,7 +628,7 @@ plugins/
 
 ### VERIFY-DL-6 / D-66 — Preset является одним DAG, phase является срезом
 
-- **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03, Node target preset by UV-04.
+- **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03, Node target preset by UV-04, Go target preset by UV-05.
 - **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Встроенные и
   project-defined phases выбирают tags + dependency closure, а config перегружает preset вместо
   полного повторного описания pipeline. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist
@@ -617,6 +650,12 @@ plugins/
   prefixes require normalized explicit target files until UV-07 supplies common scope. The target
   planner passes its explicit home directory to both target and legacy loaders, while default legacy
   priority remains unchanged. `resolvePreset`/`sdd-verify` stay on the frozen compatibility path.
+- **UV-05 Go:** the registered plugin owns one DAG with generate drift-signal, build/vet,
+  bounded lint/gofmt repairs, post-repair read-only convergence checks and unit test. Exact `.go`
+  Target Files bound `gofmt -w`; toolchain, linter and referenced-config readiness is evaluated only
+  for the selected non-waived slice. Integration/coverage remain explicit project-owned argv rather
+  than guessed tags or thresholds. Target config/home/provenance use the shared overlay; the legacy
+  Go preset, gate behavior and receipt source remain unchanged through U4.
 
 ### VERIFY-DL-7 / D-67 — Repair и readiness остаются честными
 
