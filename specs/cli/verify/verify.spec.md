@@ -12,6 +12,49 @@ CLI-VERIFY
 
 ## 1. Module Vision
 
+> **Target/cutover contract (ACK U0, 2026-09-24):** this section and VERIFY-DL-5..10 are the
+> normative release contract. The V-02..V-19 material below remains historical evidence for the
+> currently shipped compatibility runtime; it must not be read as the target architecture. Cutover
+> proceeds through UV-01..17 and UV-22..26, and publication stays blocked through U8 plus exact
+> Swift E-18 evidence.
+
+The target module owns one public engine, `gennady verify --phase <phase>`. A stack plugin has an
+open runtime `PluginId` and supplies detection plus a declarative `VerifyPreset`: one immutable DAG
+of `VerifyStep` values, phase selectors, selected-slice readiness requirements and rule ids. A phase
+selects tags and dependency closure from that DAG; it never copies an independent command ladder.
+
+The terminal `VerifyRunReport` is the single data product for standalone CLI output and the optional
+SDD receipt sink. It contains the resolved `VerificationContext`, selected plan, `CapabilityMatrix`,
+terminal step results, attributed mutations, evidence and the exact immutable rules snapshot.
+`sdd-verify` remains only as a compatibility runner until golden receipt parity is proven; it is not
+a second target engine.
+
+### Accepted target data contract (UV-01)
+
+| Contract              | Normative obligation                                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `PluginId`            | Open `string`; built-in registration stays static until UV-23.                                                          |
+| `VerifyStep`          | Immutable DAG node with execution, dependency, effect and policy data.                                                  |
+| `VerifyPreset`        | Immutable plugin-owned DAG plus named phase selectors, selected-slice requirements and contributed rule ids.            |
+| `VerificationContext` | Immutable request, scope, detected plugins/frameworks, exact HEAD and one rules snapshot.                               |
+| `CapabilityMatrix`    | Per-plugin/per-phase readiness with terminal `READY`, `DEGRADED` or `BLOCKED`; explicit disable is visible as `WAIVED`. |
+| `VerifyRunReport`     | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
+
+UV-01 materializes these types only. DAG validation and phase slicing (UV-02), config overlay
+(UV-03), preset conversion (U2), execution/repair (U3), SDD cutover (U4), remote execution (U5) and
+rule resolution/CLI (U6) are deliberately outside this change.
+
+### Target call chain
+
+| Step | Participant          | Action                                                 | Data                                      |
+| ---- | -------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| 1    | Caller               | submits one phase and scope                            | `VerifyRequest`                           |
+| 2    | Planner              | detects plugins and composes their presets             | `VerificationContext`, `VerifyPreset[]`   |
+| 3    | Planner              | selects dependency closure for the phase               | `VerifyPlan`                              |
+| 4    | Readiness            | checks only selected requirements                      | `CapabilityMatrix`                        |
+| 5    | Runner               | executes selected steps and attributes writes/evidence | `VerifyStepResult[]`, mutations, evidence |
+| 6    | Reporters / SDD sink | project the same terminal result                       | `VerifyRunReport`                         |
+
 `verify` — стек-движок, перенесённый из MAIN и расширенный literal-плагинами `plugins/{anystack,golang,swift}/**` в рамках пачки «Verify считает окружение и гейты как данные» (`ai/drafts/research/sdd-v1-to-v2-transfer/30-TRACK-VERIFY.md` §6, задачи V-02..V-11). Перенос идёт волнами: каждая задача добавляет РЕАЛЬНЫЙ вызов очередному примитиву, подключая его к существующему ладдеру `sdd-verify` (`cli/cmd/sdd-verify/**`), который в это же время не меняется в поведении (golden V-01, инварианты И-1/И-2). До своего подключения перенесённый примитив по определению имеет 0-1 продакшн-вызовов — это фиксирует гейт `yagni`, и единственный штатный способ унять находку — `Usage Waiver` (`cli/cmd/yagni/yagni.cmd.ts:228`), записанный здесь, в контракте модуля-получателя, с явной ссылкой на задачу, которая присоединит вызов.
 
 **Key properties:**
@@ -137,6 +180,35 @@ preset!.commandForGate('syntax', {}, []); // extraGate argv, shell-quoted
 
 <!--/SECTION:MODULE_USAGE_EXAMPLE-->
 
+<!--SECTION:MODULE_REQUIREMENTS-->
+
+## Requirements
+
+### VER-REQ-1 [должен]
+
+**Когда** core принимает stack plugin или target Verify model, **то он должен** принимать любой
+runtime `PluginId` string без closed built-in union. Refines D-66 and keeps external-code loading
+separately gated by UV-23.
+
+### VER-REQ-2 [должен]
+
+**Когда** plugin declares verification behavior, **то он должен** represent it as one immutable
+`VerifyPreset` DAG of immutable `VerifyStep` values and named phase selectors. Refines D-66.
+
+### VER-REQ-3 [должен]
+
+**Когда** a run reaches a terminal state, **то он должен** expose one `VerifyRunReport` containing
+context, selected plan, readiness, terminal step results, attributed mutations, evidence and the
+exact rules snapshot. Refines D-65 and D-67.
+
+### VER-REQ-4 [должен · нештатная]
+
+**Если** a required selected-slice capability is missing, a write escapes its boundary, or a step
+never reaches a valid terminal result, **то verify должен** produce `BLOCKED`, `VIOLATION` or another
+non-pass verdict; it must not convert the condition to implicit success. Refines D-67 and D-69.
+
+<!--/SECTION:MODULE_REQUIREMENTS-->
+
 <!--SECTION:ENTITY_INVENTORY-->
 
 ## 4. Entity Inventory (Closed-World)
@@ -160,6 +232,7 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/presets/anystack.ts` | Service  | `resolveAnystackPreset` — config-authored gates, fixed order, never required (V-08)                |
 | `shared/verify/presets/swift.ts`    | Service  | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                       |
 | `shared/verify/stack-detection.ts`  | Service  | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05) |
+| `shared/verify/model/**`            | Types    | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -168,6 +241,57 @@ _Полный список файлов-сущностей, перенесённ
 ## 5. Entity Surfaces
 
 Поверхности перенесённых сущностей раскрываются по мере подключения (V-05/V-07/V-08/V-09); до этого — только `Module Contracts` (§8) с записями `Usage Waiver`.
+
+Target model UV-01 deliberately lands before its planner/executor consumers. The following waivers
+are bounded by the task that must establish the second production use or remove the field.
+
+### `changedFrom`
+
+- **Usage Waiver:** exact diff-base identity is part of the approved `VerifyScope` contract but its
+  planner consumer arrives in UV-02; remove this waiver in UV-02 when phase slicing resolves changed
+  scope (VERIFY-DL-6).
+
+### `sddPhase`
+
+- **Usage Waiver:** SDD phase identity is required by the approved one-engine/optional-sink contract;
+  its adapter consumer arrives in UV-12. Remove this waiver during UV-12 SDD context integration
+  (VERIFY-DL-5).
+
+### `frameworks`
+
+- **Usage Waiver:** detected frameworks are an approved deterministic input to dynamic rule
+  selection, whose resolver arrives in UV-19. Remove this waiver when UV-19 consumes the context
+  (VERIFY-DL-10).
+
+### `suggested`
+
+- **Usage Waiver:** explained semantic candidates are required by D-70 but their snapshot producer
+  arrives in UV-20. Remove this waiver when UV-20 connects task-intent candidates to the shared
+  snapshot (VERIFY-DL-10).
+
+### `VerifyStepOverride`
+
+- **Usage Waiver:** target config overlay is intentionally staged after the model; UV-03 is the
+  owner that must consume this type or remove it before closing the compatibility adapter
+  (VERIFY-DL-6).
+
+### `enabled`
+
+- **Usage Waiver:** explicit step disable/waiver must remain distinguishable from an implicit skip;
+  UV-03 consumes it while implementing overlay provenance and UV-11 reports it as degraded/waived
+  (VERIFY-DL-7).
+
+### `VerifyPreset`
+
+- **Usage Waiver (external: stack plugin authors):** this exported target API is materialized by
+  UV-01 before built-ins convert in U2. UV-04..06 must replace this waiver with real Node/Go/Swift
+  production consumers (VERIFY-DL-6).
+
+### `VerifyRunReport`
+
+- **Usage Waiver:** the approved single terminal product precedes its reporters and SDD sink;
+  UV-11/UV-12 must connect those production consumers before the compatibility runner is removed
+  (VERIFY-DL-5, VERIFY-DL-7).
 
 <details>
 <summary>Развёрнутые поверхности сущностей</summary>
@@ -182,7 +306,7 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 6. Module Contracts (DbC)
 
-Реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. Итого открыто **18** записей. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. В нём осталось **18** записей. UV-01 добавляет выше ещё **8** bounded target-model waivers с конкретными задачами снятия, итого открыто **26**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 18 символов open: 16 унаследованных после снятия `applyStackConfig` и 2 D-64 test seam. По владельцу: V-09 — 5 (`C`, `I`, `Bad`, `scopeHasGoGenerate`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -290,7 +414,14 @@ shared/verify/
 ├── stack-registry.ts
 ├── plugin-api.ts
 ├── stack-config.ts
-└── presets/            <!-- V-04 node, V-08 anystack, V-09 golang, V-11 swift -->
+├── model/
+│   ├── plugin-id.type.ts
+│   ├── verify-step.type.ts
+│   ├── verify-preset.type.ts
+│   ├── verify-context.type.ts
+│   ├── verify-readiness.type.ts
+│   └── verify-report.type.ts
+└── presets/
 services/config/
 └── config-loader.ts
 plugins/
@@ -308,7 +439,7 @@ plugins/
 
 ## 9. Module Decision Log
 
-Четыре записи: узкий waiver L-21, мультистек-контракт D-64, граница Go repair V-09 и Swift runtime boundary V-11.
+Десять записей: четыре исторических переходных решения и принятый target-контракт D-65..D-70.
 
 <details>
 <summary>Полные записи Decision Log</summary>
@@ -339,6 +470,49 @@ plugins/
 - **Why:** generic Xcode argv неизбежно угадывает project identity, полный hash DerivedData неприемлем на реальном cloud-ios, а новый JSON mtime после экспорта скрывал бы stale source относительно старого test bundle. Эти границы сохраняют ownership проекта, производительность и fail-closed evidence одновременно.
 - **Eval fixture:** опубликованный cloud-ios commit `d9de0f7c16824aff043be8332818154d9ed00960` остаётся immutable; обязательный V-19 scope для долгих legacy build/test gates добавляется только deterministic overlay внутри isolated eval worktree перед переносом literals в Swift overrides.
 - **Runtime validation: DEFERRED / UNVERIFIED IN REAL XCODE.** По решению оператора release validation должна проверить exact `xccov` argv и JSON shape, duplicate source paths across targets, bundle-mtime freshness, единый active Xcode/`DEVELOPER_DIR`, реальные workspace/scheme/destination/runtime и resource cost. Unit/contract tests зелёные, а parser фейлится closed, но это не является runtime proof E-18.
+
+### VERIFY-DL-5 / D-65 — Один Verify вместо двух движков и отдельного fix
+
+- **Status:** accepted; cutover in progress through U1..U4.
+- **Decision:** `gennady verify --phase <phase>` выполняет observe, разрешённые repair и selective
+  recheck и возвращает один typed report. Отдельного публичного `gennady fix` нет; `sdd-verify`
+  становится adapter + receipt sink и удаляется после golden parity.
+
+### VERIFY-DL-6 / D-66 — Preset является одним DAG, phase является срезом
+
+- **Status:** accepted; model materialized by UV-01, planner deferred to UV-02.
+- **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Встроенные и
+  project-defined phases выбирают tags + dependency closure, а config перегружает preset вместо
+  полного повторного описания pipeline. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist
+  задаёт только project identity.
+
+### VERIFY-DL-7 / D-67 — Repair и readiness остаются честными
+
+- **Status:** accepted; execution deferred to U3.
+- **Decision:** каждый пишущий шаг объявляет effect, write boundary и invalidation; неожиданный write
+  является `VIOLATION`, repair bounded и повторяет только инвалидированные проверки. Missing required
+  capability даёт `BLOCKED`, explicit disable — видимый `WAIVED/DEGRADED`, не pass.
+
+### VERIFY-DL-8 / D-68 — Scope-aware multistack замещает D-64 tail
+
+- **Status:** accepted; D-64 остаётся только историческим описанием compatibility runtime.
+- **Decision:** блокируют все обнаруженные стеки, затронутые scope; non-blocking разрешён только явной
+  project policy. `stack.use` фильтрует/упорядочивает detection и не назначает отсутствующий стек.
+
+### VERIFY-DL-9 / D-69 — Remote Verify закрепляет pipeline exact SHA
+
+- **Status:** accepted; implementation deferred to U5.
+- **Decision:** `phase=ci` доказывает pushed HEAD, находит pipeline exact SHA, закрепляет immutable
+  pipeline id, ждёт terminal state и сохраняет jobs/log evidence. Автоматический rollback/force-push
+  не входит в контракт. Dirty source переносится через manifest + tests, не raw cherry-pick.
+
+### VERIFY-DL-10 / D-70 — Динамические правила имеют один resolver и read-only CLI
+
+- **Status:** accepted; canonical CLI/rules contract lives in [rules.spec.md](../rules/rules.spec.md),
+  implementation deferred to U6.
+- **Decision:** colocated `*.rule.yaml` sidecars и один `RuleResolver` заменяют `knowledge.xml` после
+  equivalence proof. `gennady rules list/show/resolve` не запускает steps и не пишет receipts;
+  `resolve`, `verify --plan`, фактический report и SDD sink разделяют один snapshot digest.
 
 </details>
 

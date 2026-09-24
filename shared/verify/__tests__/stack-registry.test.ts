@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { StackDetection, StackId, StackPlugin } from '../verify.types.ts';
+import type { StackDetection, StackPlugin } from '../verify.types.ts';
 
 const { detectStacks, BUILTIN_STACK_PLUGINS, BUILTIN_GATE_IDS } =
   await import('../stack-registry.ts');
@@ -12,12 +12,12 @@ const { detectStacks, BUILTIN_STACK_PLUGINS, BUILTIN_GATE_IDS } =
 /** @purpose A plugin recognizing either everything or nothing. */
 function plugin(id: string, matches: boolean): StackPlugin {
   return {
-    id: id as StackId,
+    id,
     marker: 'any',
     description: id,
     gateIds: [],
     detect: (root: string): StackDetection | null =>
-      matches ? { stack: id as StackId, root, summary: [], diagnostics: [], details: null } : null,
+      matches ? { stack: id, root, summary: [], diagnostics: [], details: null } : null,
     verify: {
       resolveScope: (_detection, request) => ({ mode: request.mode, note: '', details: null }),
       planGates: () => [],
@@ -49,6 +49,19 @@ describe('detectStacks', () => {
       detectStacks('/repo', { use: ['golang'] }, registry),
       [],
       'an empty active set is what verify turns into exit 5'
+    );
+  });
+
+  it('accepts a non-built-in plugin id without a compatibility cast', () => {
+    const registry = [plugin('acme-rust', true)];
+    const active = detectStacks('/repo', { use: ['acme-rust'] }, registry);
+
+    assert.deepStrictEqual(
+      active.map(({ plugin: activePlugin, detection }) => ({
+        plugin: activePlugin.id,
+        detection: detection.stack,
+      })),
+      [{ plugin: 'acme-rust', detection: 'acme-rust' }]
     );
   });
 });

@@ -60,7 +60,7 @@ export function orderDetectedStacks(
 ): StackId[] {
   const detectedSet = new Set(detected);
   const priority = use ?? DEFAULT_STACK_PRIORITY;
-  return priority.filter((stack): stack is StackId => detectedSet.has(stack as StackId));
+  return priority.filter((stack) => detectedSet.has(stack));
 }
 
 /**

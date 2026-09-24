@@ -1,9 +1,13 @@
-// @file: Closed-world types of the stack plugin system — plugin interface, gates, config, report.
+// @file: Compatibility types of the legacy stack plugin system — plugin interface, gates, config, report.
 // @spec: SHARED
 // @consumers: stack-registry, stack-config, gate-runner, node-plugin, golang-plugin, verify.cmd
 
-/** Identifier of a built-in stack plugin. */
-export type StackId = 'swift' | 'golang' | 'node' | 'anystack';
+import type { PluginId } from './model/plugin-id.type.ts';
+
+export type { PluginId } from './model/plugin-id.type.ts';
+
+/** @purpose Preserve the legacy name while accepting every runtime plugin identifier. | @deprecated Use PluginId. */
+export type StackId = PluginId;
 
 /**
  * @purpose An environment problem surfaced before any gate runs — actionable, never silent.
@@ -30,7 +34,7 @@ export type StackDiagnostic = {
  */
 export type StackDetection = {
   /** @purpose Which plugin produced this detection. */
-  readonly stack: StackId;
+  readonly stack: PluginId;
   /** @purpose Absolute repository root the detection applies to. */
   readonly root: string;
   /** @purpose Human-readable `key: value` lines shown by `verify --plan`. */
@@ -135,7 +139,7 @@ export type Gate = {
   /** @purpose Gate identifier, unique within its stack (e.g. `build`, `lint`). */
   readonly id: string;
   /** @purpose Stack the gate belongs to; qualified name in reports and CLI: `stack:id`. */
-  readonly stack: StackId;
+  readonly stack: PluginId;
   /** @purpose Short human label shown in reports. */
   readonly label: string;
   /** @purpose argv, executed without a shell. Empty when skipped. */
@@ -320,7 +324,7 @@ export type StackVerifyCapability = {
  */
 export type StackPlugin = {
   /** @purpose Unique plugin identifier. */
-  readonly id: StackId;
+  readonly id: PluginId;
   /** @purpose Root marker file the detection checks (e.g. `go.mod`) — rendered in rosters. */
   readonly marker: string;
   /** @purpose One-line human description rendered in help and error rosters. */
