@@ -5,6 +5,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type {
+  PlannedVerifyStep,
   VerificationContext,
   VerifyPreset,
   VerifyRunReport,
@@ -47,6 +48,12 @@ const step: VerifyStep = {
   onFailure: 'stop-phase',
 };
 
+const plannedStep: PlannedVerifyStep = {
+  ...step,
+  id: 'acme-rust:type-check',
+  needs: [],
+};
+
 describe('unified verify model', () => {
   it('represents a non-built-in plugin preset as immutable data', () => {
     const preset: VerifyPreset = {
@@ -84,7 +91,7 @@ describe('unified verify model', () => {
     const report: VerifyRunReport = {
       context,
       readiness: { status: 'READY', entries: [] },
-      plan: { phase: 'code', steps: [step] },
+      plan: { phase: 'code', steps: [plannedStep] },
       results: [
         {
           stepId: 'acme-rust:type-check',

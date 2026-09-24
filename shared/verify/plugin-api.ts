@@ -20,6 +20,8 @@ export type {
 export type { PluginId } from './model/plugin-id.type.ts';
 export type {
   LocalCommand,
+  PlannedVerifyStep,
+  QualifiedStepId,
   Requirement,
   VerifyStep,
   WriteBoundary,
@@ -49,6 +51,13 @@ export type {
   VerifyStepResult,
   VerifyStepStatus,
 } from './model/verify-report.type.ts';
+
+export { selectPhase } from './planning/select-phase.ts';
+export { resolveDependencies } from './planning/resolve-dependencies.ts';
+export { validatePlan } from './planning/validate-plan.ts';
+export type { ValidatedVerifyPlan, ValidatedVerifyPreset } from './planning/validate-plan.ts';
+export { VerifyPlanError } from './planning/verify-plan.error.ts';
+export type { VerifyPlanErrorCode, VerifyPlanErrorDetails } from './planning/verify-plan.error.ts';
 
 export { allOf, exitCodeMatches, outputMatches, streamMatches } from './env-fail.ts';
 export { parseDuration } from '../../services/config/config-loader.ts';

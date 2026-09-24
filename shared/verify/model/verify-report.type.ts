@@ -5,7 +5,7 @@
 import type { PluginId } from './plugin-id.type.ts';
 import type { VerificationContext, VerifyRuleSnapshot } from './verify-context.type.ts';
 import type { CapabilityMatrix } from './verify-readiness.type.ts';
-import type { VerifyStep } from './verify-step.type.ts';
+import type { PlannedVerifyStep, QualifiedStepId } from './verify-step.type.ts';
 
 /** @purpose Classify every terminal step outcome across local and remote executors. */
 export type VerifyStepStatus =
@@ -21,7 +21,7 @@ export type VerifyStepStatus =
 /** @purpose Record the terminal result of one selected verify step. */
 export type VerifyStepResult = {
   /** @purpose Qualified step id used by dependency and report consumers. */
-  readonly stepId: string;
+  readonly stepId: QualifiedStepId;
   /** @purpose Plugin that owns the step. */
   readonly plugin: PluginId;
   /** @purpose Terminal status; pending and running never count as success. */
@@ -39,7 +39,7 @@ export type VerifyMutation = {
   /** @purpose Repository-relative changed path. */
   readonly path: string;
   /** @purpose Qualified id of the mutating step. */
-  readonly stepId: string;
+  readonly stepId: QualifiedStepId;
   /** @purpose Observed filesystem change kind. */
   readonly kind: 'created' | 'modified' | 'deleted' | 'renamed';
   /** @purpose Whether the change fell within the step's declared write boundary. */
@@ -61,7 +61,7 @@ export type VerifyPlan = {
   /** @purpose Selected phase name. */
   readonly phase: string;
   /** @purpose Dependency-ordered selected steps. */
-  readonly steps: readonly VerifyStep[];
+  readonly steps: readonly PlannedVerifyStep[];
 };
 
 /** @purpose Return one honest terminal result for standalone and SDD verification consumers. */

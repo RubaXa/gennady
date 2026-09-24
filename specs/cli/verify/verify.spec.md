@@ -29,20 +29,22 @@ terminal step results, attributed mutations, evidence and the exact immutable ru
 `sdd-verify` remains only as a compatibility runner until golden receipt parity is proven; it is not
 a second target engine.
 
-### Accepted target data contract (UV-01)
+### Accepted target data and planning contract (UV-01..02)
 
 | Contract              | Normative obligation                                                                                                    |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `PluginId`            | Open `string`; built-in registration stays static until UV-23.                                                          |
 | `VerifyStep`          | Immutable DAG node with execution, dependency, effect and policy data.                                                  |
+| `PlannedVerifyStep`   | Validated node whose id, dependencies and invalidation targets use `<plugin>:<local-id>`.                               |
 | `VerifyPreset`        | Immutable plugin-owned DAG plus named phase selectors, selected-slice requirements and contributed rule ids.            |
 | `VerificationContext` | Immutable request, scope, detected plugins/frameworks, exact HEAD and one rules snapshot.                               |
 | `CapabilityMatrix`    | Per-plugin/per-phase readiness with terminal `READY`, `DEGRADED` or `BLOCKED`; explicit disable is visible as `WAIVED`. |
 | `VerifyRunReport`     | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
-UV-01 materializes these types only. DAG validation and phase slicing (UV-02), config overlay
-(UV-03), preset conversion (U2), execution/repair (U3), SDD cutover (U4), remote execution (U5) and
-rule resolution/CLI (U6) are deliberately outside this change.
+UV-01 materializes the authored model. UV-02 adds only pure DAG validation and phase slicing:
+authored local ids remain local in a `VerifyPreset`, while the validated plan qualifies every node
+and reference. Config overlay (UV-03), preset conversion (U2), execution/repair (U3), SDD cutover
+(U4), remote execution (U5) and rule resolution/CLI (U6) remain outside this boundary.
 
 ### Target call chain
 
@@ -50,7 +52,7 @@ rule resolution/CLI (U6) are deliberately outside this change.
 | ---- | -------------------- | ------------------------------------------------------ | ----------------------------------------- |
 | 1    | Caller               | submits one phase and scope                            | `VerifyRequest`                           |
 | 2    | Planner              | detects plugins and composes their presets             | `VerificationContext`, `VerifyPreset[]`   |
-| 3    | Planner              | selects dependency closure for the phase               | `VerifyPlan`                              |
+| 3    | Planner              | validates the DAG and selects phase dependency closure | `VerifyPlan`                              |
 | 4    | Readiness            | checks only selected requirements                      | `CapabilityMatrix`                        |
 | 5    | Runner               | executes selected steps and attributes writes/evidence | `VerifyStepResult[]`, mutations, evidence |
 | 6    | Reporters / SDD sink | project the same terminal result                       | `VerifyRunReport`                         |
@@ -207,6 +209,24 @@ exact rules snapshot. Refines D-65 and D-67.
 never reaches a valid terminal result, **то verify должен** produce `BLOCKED`, `VIOLATION` or another
 non-pass verdict; it must not convert the condition to implicit success. Refines D-67 and D-69.
 
+### VER-REQ-5 [должен]
+
+**Когда** planner принимает plugin-owned presets, **то он должен** квалифицировать authored local id
+как `<plugin>:<local-id>`, нормализовать unqualified `needs` относительно owning plugin, сохранить
+explicit qualified references и вернуть tag-selected seeds плюс полное transitive dependency closure
+в детерминированном topological order. Refines D-66.
+
+`exclude` применяется после `include` и выигрывает при пересечении; он удаляет только seed-кандидата:
+если такой шаг нужен выбранному seed, dependency closure обязана вернуть его. Порядок входных presets
+не меняет итоговый план, а globally ready steps упорядочиваются по qualified id.
+
+### VER-REQ-6 [должен · нештатная]
+
+**Если** composed preset содержит malformed/duplicate id, duplicate plugin contribution, plugin
+ownership mismatch, missing dependency/invalidation target, dependency cycle, unknown phase либо
+unknown include/exclude tag, **то planner должен** fail closed typed `VerifyPlanError` с actionable
+qualified context; частичный план запрещён. Refines D-66.
+
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:ENTITY_INVENTORY-->
@@ -233,6 +253,7 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/presets/swift.ts`    | Service  | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                       |
 | `shared/verify/stack-detection.ts`  | Service  | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05) |
 | `shared/verify/model/**`            | Types    | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
+| `shared/verify/planning/**`         | Service  | Pure fail-closed DAG validation, qualified references, dependency closure and phase slicing        |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -248,8 +269,10 @@ are bounded by the task that must establish the second production use or remove 
 ### `changedFrom`
 
 - **Usage Waiver:** exact diff-base identity is part of the approved `VerifyScope` contract but its
-  planner consumer arrives in UV-02; remove this waiver in UV-02 when phase slicing resolves changed
-  scope (VERIFY-DL-6).
+  consumer arrives in UV-07. **Пересмотрено в UV-02:** phase slicing deliberately accepts already
+  composed presets and is scope-agnostic; pretending it consumes `changedFrom` would couple DAG
+  mechanics to multistack detection. UV-07 must consume the exact diff base while selecting affected
+  stacks/files and remove this waiver (VERIFY-DL-8).
 
 ### `sddPhase`
 
@@ -293,6 +316,12 @@ are bounded by the task that must establish the second production use or remove 
   UV-11/UV-12 must connect those production consumers before the compatibility runner is removed
   (VERIFY-DL-5, VERIFY-DL-7).
 
+### `selectPhase`
+
+- **Usage Waiver:** UV-02 deliberately lands the pure fail-closed planner before built-in presets
+  migrate to `VerifyPreset`. UV-04..06 must call this entry point from the Node/Go/Swift planning
+  path, and UV-11 must expose its selected plan through the unified report (VERIFY-DL-6).
+
 <details>
 <summary>Развёрнутые поверхности сущностей</summary>
 
@@ -306,7 +335,7 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. В нём осталось **18** записей. UV-01 добавляет выше ещё **8** bounded target-model waivers с конкретными задачами снятия, итого открыто **26**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. В нём осталось **18** записей. UV-01 добавил выше ещё **8** bounded target-model waivers с конкретными задачами снятия; UV-02 добавляет временную запись `selectPhase`. Итого открыто **27**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 18 символов open: 16 унаследованных после снятия `applyStackConfig` и 2 D-64 test seam. По владельцу: V-09 — 5 (`C`, `I`, `Bad`, `scopeHasGoGenerate`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -421,6 +450,11 @@ shared/verify/
 │   ├── verify-context.type.ts
 │   ├── verify-readiness.type.ts
 │   └── verify-report.type.ts
+├── planning/
+│   ├── verify-plan.error.ts
+│   ├── validate-plan.ts
+│   ├── resolve-dependencies.ts
+│   └── select-phase.ts
 └── presets/
 services/config/
 └── config-loader.ts
@@ -480,11 +514,17 @@ plugins/
 
 ### VERIFY-DL-6 / D-66 — Preset является одним DAG, phase является срезом
 
-- **Status:** accepted; model materialized by UV-01, planner deferred to UV-02.
+- **Status:** accepted; model materialized by UV-01, pure planner materialized by UV-02.
 - **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Встроенные и
   project-defined phases выбирают tags + dependency closure, а config перегружает preset вместо
   полного повторного описания pipeline. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist
   задаёт только project identity.
+- **UV-02 semantics:** authored step ids local внутри preset; planner выдаёт deterministic qualified
+  ids `<plugin>:<local-id>`. Unqualified dependency резолвится внутри owning plugin, explicit
+  qualified dependency сохраняет target. Include/exclude выбирают seeds, затем dependency closure
+  возвращает полный topological slice (dependency может пережить exclude). Malformed/duplicate ids,
+  plugin mismatch, missing references, cycles и unknown selector tags дают typed fail-closed error.
+  Planner ничего не исполняет и не выбирает скрытый default pipeline.
 
 ### VERIFY-DL-7 / D-67 — Repair и readiness остаются честными
 
@@ -543,8 +583,10 @@ _Кто подключит `verify` к своему ладдеру и какая
 
 ## 11. Handoff to Tasks
 
-- **Implementation files to be created:** `shared/verify/presets/golang.ts` (V-09) — `presets/{node,anystack}.ts` (V-04/V-08) and `shared/verify/stack-detection.ts` (V-05) already exist
-- **Test files to be created:** по каждой задаче-владельцу — см. `30-TRACK-VERIFY.md` §6, колонка «тесты, которые добавляются»
+- **Target planner files created by UV-02:** `shared/verify/planning/{validate-plan,resolve-dependencies,select-phase}.ts`
+  plus typed `verify-plan.error.ts`; no executor/config/preset conversion is part of this task.
+- **Planner contract tests:** `shared/verify/__tests__/verify-planning.test.ts`; later preset tasks
+  UV-04..06 must supply their own zero-YAML slice fixtures.
 - **Stack dependencies:**
   - Language: `typescript` (резолвится в `ai/directives/coding/typescript-rules.xml`)
   - Test framework: `node:test` (резолвится в `ai/directives/testing/baseline-testing.xml`)

@@ -69,3 +69,16 @@ export type VerifyStep = {
   /** @purpose Planner policy after this step reaches a failing terminal state. */
   readonly onFailure: 'stop-phase' | 'block-dependents' | 'continue';
 };
+
+/** @purpose Identify one normalized step across all composed plugins. */
+export type QualifiedStepId = `${string}:${string}`;
+
+/** @purpose Represent a validated planner node with normalized cross-plugin references. */
+export type PlannedVerifyStep = Omit<VerifyStep, 'id' | 'needs' | 'invalidates'> & {
+  /** @purpose Canonical `<plugin>:<local-id>` identity. */
+  readonly id: QualifiedStepId;
+  /** @purpose Canonical qualified dependency identities. */
+  readonly needs: readonly QualifiedStepId[];
+  /** @purpose Canonical qualified invalidation identities. */
+  readonly invalidates?: readonly QualifiedStepId[];
+};
