@@ -38,6 +38,8 @@ export type VerifyStepResult = {
 export type VerifyMutation = {
   /** @purpose Repository-relative changed path. */
   readonly path: string;
+  /** @purpose Previous repository-relative path when kind is `renamed`. */
+  readonly previousPath?: string;
   /** @purpose Qualified id of the mutating step. */
   readonly stepId: QualifiedStepId;
   /** @purpose Observed filesystem change kind. */

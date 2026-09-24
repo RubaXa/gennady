@@ -177,6 +177,7 @@ describe('Go target StackPlugin', () => {
         (step) => step.id === 'golang:lint-fix'
       );
       assert.deepStrictEqual(lintFix?.writes?.include, ['pkg/*.go']);
+      assert.ok(lintFix?.writes?.exclude.includes('.git/**'));
       assert.ok(!lintFix?.writes?.include.some((pattern) => pattern.includes('unrelated')));
     });
   });

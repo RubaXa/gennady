@@ -190,12 +190,12 @@ export function createNodeVerifyPreset(detection: StackDetection): VerifyPreset 
   const sourceWrites = {
     root: facts.root,
     include: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
-    exclude: ['node_modules/**', 'dist/**', 'build/**', 'coverage/**'],
+    exclude: ['.git/**', 'node_modules/**', 'dist/**', 'build/**', 'coverage/**'],
   } as const;
   const formatWrites = {
     root: facts.root,
     include: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,json,jsonc,md,mdx,yaml,yml,css,scss,html}'],
-    exclude: ['node_modules/**', 'dist/**', 'build/**', 'coverage/**'],
+    exclude: ['.git/**', 'node_modules/**', 'dist/**', 'build/**', 'coverage/**'],
   } as const;
   return {
     plugin: 'node',

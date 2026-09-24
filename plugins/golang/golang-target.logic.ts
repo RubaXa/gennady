@@ -219,12 +219,12 @@ export function createGolangVerifyPreset(
   const sourceWrites = {
     root: project.root,
     include: packageWritePatterns(scope),
-    exclude: ['vendor/**', '**/testdata/**', 'node_modules/**'],
+    exclude: ['.git/**', 'vendor/**', '**/testdata/**', 'node_modules/**'],
   } as const;
   const exactWrites = {
     root: project.root,
     include: exactFormatTargets,
-    exclude: ['vendor/**', '**/testdata/**', 'node_modules/**'],
+    exclude: ['.git/**', 'vendor/**', '**/testdata/**', 'node_modules/**'],
   } as const;
 
   return {
