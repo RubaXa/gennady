@@ -16,6 +16,24 @@ export type LocalCommand = {
   readonly timeoutMs: number;
 };
 
+/** @purpose Describe one serializable rule that reclassifies a process outcome as environmental. */
+export type VerifyEnvironmentFailureRule = {
+  /** @purpose Exit-code comparisons ANDed within this rule. */
+  readonly exitCodeMatches?: string | number | readonly (string | number)[];
+  /** @purpose Multiline regular expression matched against stdout. */
+  readonly stdoutMatches?: string;
+  /** @purpose Multiline regular expression matched against stderr. */
+  readonly stderrMatches?: string;
+  /** @purpose Multiline regular expression matched against stdout followed by stderr. */
+  readonly outputMatches?: string;
+  /** @purpose Enable the only additional accepted regex flag: case-insensitive matching. */
+  readonly caseInsensitive?: boolean;
+  /** @purpose Required remediation that distinguishes environment repair from product repair. */
+  readonly hint: string;
+  /** @purpose Optional config or plugin source retained in failure evidence. */
+  readonly source?: string;
+};
+
 /** @purpose Declare one capability a verify step needs before execution. */
 export type Requirement = {
   /** @purpose Stable requirement identifier within its plugin. */
@@ -60,6 +78,10 @@ export type VerifyStep = {
   readonly command?: LocalCommand;
   /** @purpose Capabilities that must be evaluated for the selected step. */
   readonly requires: readonly Requirement[];
+  /** @purpose Whether non-empty stdout turns exit zero into a product failure. */
+  readonly outputMeansFailure?: boolean;
+  /** @purpose Serializable environmental failure rules evaluated after process completion. */
+  readonly envFail?: readonly VerifyEnvironmentFailureRule[];
   /** @purpose Allowed mutation surface for effects that may write. */
   readonly writes?: WriteBoundary;
   /** @purpose Step ids whose successful observations become stale after this step writes. */

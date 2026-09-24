@@ -24,6 +24,7 @@ export type {
   PlannedVerifyStep,
   QualifiedStepId,
   Requirement,
+  VerifyEnvironmentFailureRule,
   VerifyStep,
   WriteBoundary,
 } from './model/verify-step.type.ts';

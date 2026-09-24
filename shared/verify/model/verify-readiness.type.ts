@@ -3,6 +3,7 @@
 // @spec: CLI-VERIFY
 
 import type { PluginId } from './plugin-id.type.ts';
+import type { QualifiedStepId } from './verify-step.type.ts';
 
 /** @purpose Classify whether a selected phase may execute honestly. */
 export type VerifyReadinessStatus = 'READY' | 'DEGRADED' | 'BLOCKED';
@@ -15,6 +16,10 @@ export type VerifyReadiness = {
   readonly phase: string;
   /** @purpose Stable requirement identifier from the preset. */
   readonly requirementId: string;
+  /** @purpose Exact selected step this fact governs; omitted only for plugin-wide capabilities. */
+  readonly stepId?: QualifiedStepId;
+  /** @purpose Explicit reason a selected node must not spawn despite non-blocking readiness. */
+  readonly disposition?: 'waived' | 'not-applicable' | 'optional-unavailable';
   /** @purpose Capability outcome visible to planners and operators. */
   readonly status: VerifyReadinessStatus | 'WAIVED';
   /** @purpose Human-readable outcome explanation. */

@@ -473,12 +473,16 @@ function readinessEntry(
   phase: string,
   requirement: Requirement,
   status: VerifyReadiness['status'],
-  message: string
+  message: string,
+  stepId?: `${string}:${string}`,
+  disposition?: VerifyReadiness['disposition']
 ): VerifyReadiness {
   return {
     plugin: 'node',
     phase,
     requirementId: requirement.id,
+    ...(stepId === undefined ? {} : { stepId }),
+    ...(disposition === undefined ? {} : { disposition }),
     status,
     message,
     ...(status === 'READY' ? {} : { fix: requirement.fix }),
@@ -533,8 +537,13 @@ export function evaluateNodeReadiness(
         plugin: 'node',
         phase: plan.phase,
         requirementId: `node:waiver:${planned.id}`,
+        stepId: planned.id,
+        disposition: 'waived',
         status: 'WAIVED',
         message: `${planned.id} disabled by ${waiver.source}: ${waiver.reason}`,
+        blocking: false,
+        policyReason: waiver.reason,
+        policySource: waiver.source,
       });
       continue;
     }
@@ -567,7 +576,11 @@ export function evaluateNodeReadiness(
           plan.phase,
           requirement,
           ready ? 'READY' : requirement.required ? 'BLOCKED' : 'DEGRADED',
-          ready ? `${requirement.description}: ready` : requirement.description
+          ready ? `${requirement.description}: ready` : requirement.description,
+          planned.id,
+          !ready && !requirement.required && authored?.command === undefined
+            ? 'optional-unavailable'
+            : undefined
         )
       );
     }

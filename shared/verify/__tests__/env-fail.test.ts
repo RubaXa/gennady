@@ -77,6 +77,27 @@ describe('compileEnvFailRules', () => {
     assert.equal(predicates[0]!.hint, 'start docker');
   });
 
+  it('supports explicit case-insensitive matching without accepting arbitrary flags', () => {
+    const { predicates, errors } = compileEnvFailRules(
+      [{ outputMatches: 'Cannot Find Simulator', caseInsensitive: true, hint: 'install runtime' }],
+      'cfg'
+    );
+    assert.deepEqual(errors, []);
+    assert.equal(predicates[0]!(outcome({ output: 'cannot find simulator' })), true);
+    assert.equal(
+      compileEnvFailRules(
+        [{ outputMatches: 'x', caseInsensitive: 'i', hint: 'h' }],
+        'cfg'
+      ).errors.some((error) => error.path === 'cfg[0].caseInsensitive'),
+      true
+    );
+    assert.ok(
+      compileEnvFailRules([{ outputMatches: 'x', flags: 'is', hint: 'h' }], 'cfg').errors.some(
+        (error) => error.path === 'cfg[0].flags'
+      )
+    );
+  });
+
   it('requires a hint — an ENV_FAIL without remediation tells an agent nothing', () => {
     const { errors } = compileEnvFailRules([{ stderrMatches: 'x' }], 'cfg');
     assert.ok(errors.some((error) => error.path === 'cfg[0].hint'));

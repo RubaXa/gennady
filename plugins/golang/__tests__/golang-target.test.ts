@@ -9,7 +9,9 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { BUILTIN_PLUGINS } from '../../index.ts';
 import { VerifyConfigError } from '../../../shared/verify/config/verify-config.error.ts';
+import { compileEnvFailRules } from '../../../shared/verify/env-fail.ts';
 import { resolveGolangPreset } from '../../../shared/verify/presets/golang.ts';
+import { planGoGates } from '../golang-plan.logic.ts';
 import { golangPlugin } from '../golang-plugin.ts';
 import { resolveGolangVerifyPlan } from '../golang-planner.ts';
 
@@ -115,11 +117,11 @@ describe('Go target StackPlugin', () => {
       );
       assert.strictEqual(code.readiness.status, 'READY');
       assert.strictEqual(unit.readiness.status, 'READY');
-      assert.ok(
-        code.readiness.entries.some(
-          (entry) => entry.requirementId === 'golang:generate:not-applicable'
-        )
+      const notApplicable = code.readiness.entries.find(
+        (entry) => entry.requirementId === 'golang:generate:not-applicable'
       );
+      assert.strictEqual(notApplicable?.stepId, 'golang:generate');
+      assert.strictEqual(notApplicable?.disposition, 'not-applicable');
       assert.ok(
         code.plan.steps
           .filter((step) => step.command !== undefined)
@@ -166,6 +168,39 @@ describe('Go target StackPlugin', () => {
       ]);
       assert.deepStrictEqual(lint?.command?.argv.includes('--fix'), false);
       assert.deepStrictEqual(fmt?.command?.argv.slice(-2), ['-l', 'pkg/owned.go']);
+      assert.strictEqual(fmt?.outputMeansFailure, true);
+      assert.ok(
+        result.plan.steps
+          .find((step) => step.id === 'golang:build')
+          ?.envFail?.some((rule) => rule.outputMatches?.includes('proxy\\.golang\\.org'))
+      );
+      assert.ok(lint?.envFail?.some((rule) => rule.exitCodeMatches === '>1'));
+    });
+  });
+
+  it('preserves representative Go environment classification from the legacy preset', () => {
+    withGoProject((root) => {
+      const result = resolve(root, 'code');
+      const targetRules =
+        result.plan.steps.find((step) => step.id === 'golang:build')?.envFail ?? [];
+      const targetPredicates = targetRules.map((rule, index) => {
+        const { source: _source, ...serializable } = rule;
+        const compiled = compileEnvFailRules([serializable], `target[${index}]`);
+        assert.deepStrictEqual(compiled.errors, []);
+        return compiled.predicates[0]!;
+      });
+      const legacyPredicates =
+        planGoGates(result.project, result.scope, { pluginConfig: null }).find(
+          (gate) => gate.id === 'build'
+        )?.envFail ?? [];
+      for (const output of ['panic: tool crash', 'go: module: dial tcp refused', 'compile error']) {
+        const outcome = { exitCode: 1, timedOut: false, stdout: '', stderr: output, output };
+        assert.strictEqual(
+          targetPredicates.some((predicate) => predicate(outcome)),
+          legacyPredicates.some((predicate) => predicate(outcome)),
+          output
+        );
+      }
     });
   });
 

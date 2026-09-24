@@ -9,8 +9,10 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { BUILTIN_PLUGINS } from '../../index.ts';
 import { VerifyConfigError } from '../../../shared/verify/config/verify-config.error.ts';
+import { compileEnvFailRules } from '../../../shared/verify/env-fail.ts';
 import { resolveSwiftPreset } from '../../../shared/verify/presets/swift.ts';
 import { swiftPlugin } from '../swift-plugin.ts';
+import { planSwiftGates } from '../swift-plan.logic.ts';
 import { resolveSwiftVerifyPlan } from '../swift-planner.ts';
 
 const ZERO_YAML = path.resolve('plugins/swift/__tests__/fixtures/zero-yaml');
@@ -149,6 +151,43 @@ describe('Swift target StackPlugin', () => {
         unit.plan.steps.find((step) => step.id === 'swift:test')?.command?.argv.slice(-1),
         ['test']
       );
+      assert.ok(
+        unit.plan.steps
+          .find((step) => step.id === 'swift:test')
+          ?.envFail?.some((rule) => rule.outputMatches?.includes('package dependencies'))
+      );
+    });
+  });
+
+  it('preserves case-insensitive Xcode environment classification from the legacy preset', () => {
+    withSwiftProject(xcodeFiles(), (root, home) => {
+      const result = resolve(root, home, 'code');
+      const targetRules =
+        result.plan.steps.find((step) => step.id === 'swift:build')?.envFail ?? [];
+      assert.ok(targetRules.length > 0);
+      assert.ok(targetRules.every((rule) => rule.caseInsensitive === true));
+      const targetPredicates = targetRules.map((rule, index) => {
+        const { source: _source, ...serializable } = rule;
+        const compiled = compileEnvFailRules([serializable], `target[${index}]`);
+        assert.deepStrictEqual(compiled.errors, []);
+        return compiled.predicates[0]!;
+      });
+      const legacyPredicates =
+        planSwiftGates(result.project, result.scope, { pluginConfig: null }).find(
+          (gate) => gate.id === 'build'
+        )?.envFail ?? [];
+      for (const output of [
+        'cannot find simulator',
+        'COULD NOT RESOLVE PACKAGE DEPENDENCIES',
+        'ordinary compile failure',
+      ]) {
+        const outcome = { exitCode: 1, timedOut: false, stdout: '', stderr: output, output };
+        assert.strictEqual(
+          targetPredicates.some((predicate) => predicate(outcome)),
+          legacyPredicates.some((predicate) => predicate(outcome)),
+          output
+        );
+      }
     });
   });
 
@@ -283,6 +322,25 @@ describe('Swift target StackPlugin', () => {
           '',
         ].join('\n'),
       }
+    );
+  });
+
+  it('marks an unavailable optional Swift lint step as explicitly non-runnable', () => {
+    withSwiftProject(
+      packageFiles(),
+      (root, home) => {
+        const result = resolve(root, home, 'code');
+        assert.strictEqual(
+          result.plan.steps.find((step) => step.id === 'swift:lint')?.command,
+          undefined
+        );
+        const lint = result.readiness.entries.find(
+          (entry) => entry.stepId === 'swift:lint' && entry.disposition !== undefined
+        );
+        assert.strictEqual(lint?.status, 'DEGRADED');
+        assert.strictEqual(lint?.disposition, 'optional-unavailable');
+      },
+      { tools: ['swift', 'swiftformat'] }
     );
   });
 
