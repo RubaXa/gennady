@@ -16,8 +16,8 @@ import type {
   Cmd,
   Gate,
   GateSpec,
+  PluginId,
   StackConfig,
-  StackId,
   StackPluginConfig,
 } from './verify.types.ts';
 
@@ -278,7 +278,7 @@ function validateGateSpec(
  */
 export function validateStackConfig(
   config: StackConfig,
-  builtinGateIds: Readonly<Record<StackId, readonly string[]>>
+  builtinGateIds: Readonly<Partial<Record<PluginId, readonly string[]>>>
 ): ConfigError[] {
   const errors: ConfigError[] = [];
   const pluginIds = Object.keys(builtinGateIds);
@@ -308,7 +308,7 @@ export function validateStackConfig(
       continue;
     }
 
-    const gateIds = builtinGateIds[key as StackId]!;
+    const gateIds = builtinGateIds[key] ?? [];
     const section = value as StackPluginConfig;
 
     for (const sectionKey of Object.keys(value)) {
@@ -382,7 +382,7 @@ export function validateStackConfig(
  */
 export function loadStackConfig(
   root: string,
-  builtinGateIds: Readonly<Record<StackId, readonly string[]>>
+  builtinGateIds: Readonly<Partial<Record<PluginId, readonly string[]>>>
 ): StackConfigLoad {
   // Discovery, merge and provenance are the config scope's job; this function owns only
   // the `stack` section's schema (config.spec §3).
@@ -412,7 +412,7 @@ export function loadStackConfig(
  */
 export function pluginConfigOf(
   config: StackConfig | null,
-  pluginId: StackId
+  pluginId: PluginId
 ): StackPluginConfig | null {
   const slice = config?.[pluginId];
   return isPlainObject(slice) ? (slice as StackPluginConfig) : null;
@@ -502,7 +502,7 @@ export function gateInScope(
 export function unmatchedGateOverrides(
   gates: readonly Gate[],
   pluginConfig: StackPluginConfig | null,
-  stack: StackId
+  stack: PluginId
 ): ConfigError[] {
   const overrides = pluginConfig?.overrideGates ?? {};
   const planned = new Set(gates.map((gate) => gate.id));
@@ -535,7 +535,7 @@ export function unmatchedGateOverrides(
 export function applyStackConfig(
   gates: readonly Gate[],
   pluginConfig: StackPluginConfig | null,
-  stack: StackId,
+  stack: PluginId,
   root: string,
   provenance: ReadonlyMap<string, string>,
   unskipIds?: readonly string[],

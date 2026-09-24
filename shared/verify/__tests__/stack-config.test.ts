@@ -7,12 +7,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { Gate, StackId, StackPluginConfig } from '../verify.types.ts';
+import type { Gate, PluginId, StackPluginConfig } from '../verify.types.ts';
 
 const { loadStackConfig, applyStackConfig, pluginConfigOf } = await import('../stack-config.ts');
 
 /** Gate-id vocabulary used by validation in these tests. */
-const GATE_IDS: Readonly<Record<StackId, readonly string[]>> = {
+const GATE_IDS: Readonly<Partial<Record<PluginId, readonly string[]>>> = {
   node: ['typecheck', 'gennady', 'lint', 'test', 'format'],
   golang: ['build', 'vet', 'fmt', 'lint', 'test'],
 };

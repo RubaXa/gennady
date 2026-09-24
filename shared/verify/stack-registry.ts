@@ -2,7 +2,7 @@
 // @spec: SHARED
 // @consumers: verify.cmd
 
-import type { StackConfig, StackDetection, StackId, StackPlugin } from './verify.types.ts';
+import type { PluginId, StackConfig, StackDetection, StackPlugin } from './verify.types.ts';
 import { BUILTIN_PLUGINS } from '../../plugins/index.ts';
 
 /**
@@ -19,13 +19,13 @@ export const BUILTIN_STACK_PLUGINS: readonly StackPlugin[] = [...BUILTIN_PLUGINS
  */
 const PLUGIN_GATE_IDS = Object.fromEntries(
   BUILTIN_STACK_PLUGINS.map((plugin) => [plugin.id, plugin.gateIds])
-) as Partial<Record<StackId, readonly string[]>>;
+) as Partial<Record<PluginId, readonly string[]>>;
 
 /**
  * Closed config vocabulary also includes the RC-native node preset. Plugin gate vocabularies are
  * derived from their literal implementations, including Swift (V-11).
  */
-export const BUILTIN_GATE_IDS: Readonly<Record<StackId, readonly string[]>> = {
+export const BUILTIN_GATE_IDS: Readonly<Partial<Record<PluginId, readonly string[]>>> = {
   swift: PLUGIN_GATE_IDS.swift ?? [],
   golang: PLUGIN_GATE_IDS.golang ?? [],
   // Node's RC-native preset is not a StackPlugin: `use` may name it, while plugin-style
