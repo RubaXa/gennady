@@ -46,8 +46,7 @@ a second target engine.
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing with qualified plan ids. UV-03
 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds
 Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG. Execution, cutover, remote verification and dynamic
-rules remain owned by U3, U4, U5 and U6.
+UV-07 composes one scope-aware multistack DAG; UV-08 adds the target-only workspace transaction. Local execution/verdict/repair-loop remain UV-09/10, while cutover, remote verification and dynamic rules remain owned by U4/U5/U6.
 
 ### Target call chain
 
@@ -305,6 +304,10 @@ zero-step pass. Порядок не зависит от registration/map inserti
 по умолчанию; `blocking: false` требует project reason и visible provenance. Legacy tail остаётся
 compatibility runtime до U4. Refines D-68.
 
+### VER-REQ-12 [должен · нештатная]
+
+**Когда** target executor захватывает workspace, **то `WorkspaceGuard` должен** сохранить dirty tracked/staged/unstaged/untracked non-ignored files и index без stash/refs/reset/clean; запрещать writes для non-repair effects; ограничивать repair include минус exclude внутри canonical root без symlink/escape/index mutation, применяя детерминированную glob-семантику `**`, `*`, `?`, braces и exclude-after-include; детерминированно атрибутировать create/modify/delete/rename (`previousPath`); продвигать checkpoint только после успешного repair; восстанавливать последний valid checkpoint при failure/violation/SIGINT/SIGTERM (130/143) только после integrity preflight всех blobs/index/HEAD, сохраняя lock+checkpoint при restore error для retry и восстанавливая stale dead owner до новой выдачи. Concurrent live owner блокирует. `HEAD`/ref drift никогда не откатывается автоматически: guard возвращает typed `VERIFY_WORKSPACE_REPOSITORY_MUTATION`, не трогает workspace/index и удерживает checkpoint для operator recovery; actual gitdir запрещён как root, effective `.git` writes всегда запрещены, а любой include, способный адресовать `.git`, требует явный `.git/**` exclude. Untracked gitignored output имеет explicit `preserve-and-exclude`, но tracked ignored drift остаётся наблюдаемым. UV-09/10 потребляют guard; legacy runtime не переключается до U4. Refines D-67.
+
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:ENTITY_INVENTORY-->
@@ -333,6 +336,7 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/model/**`            | Types    | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
 | `shared/verify/planning/**`         | Service  | DAG validation/slicing and deterministic scope-aware multistack orchestration                      |
 | `shared/verify/config/**`           | Service  | Strict target loader, provenance contracts and temporary lossless legacy adapter                   |
+| `shared/verify/execution/**`        | Service  | Target-only dirty-safe workspace checkpoint, write enforcement, restore and mutation attribution   |
 | `plugins/node/**`                   | Plugin   | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner |
 
 <!--/SECTION:ENTITY_INVENTORY-->
@@ -421,9 +425,11 @@ exact target step ids. UV-24 removes the adapter after migration evidence.
   UV-09 must consume its single composed plan/readiness product; legacy stays frozen until U4.
 
 <details>
-<summary>Развёрнутые поверхности сущностей</summary>
+<summary>UV-08 target workspace transaction surface</summary>
 
-TODO(V-05, V-07, V-08, V-09): наполняется задачей, которая реально подключает соответствующий файл (см. Entity Inventory, §4, и Overview, §2).
+### `WorkspaceGuard` / `acquireWorkspaceGuard`
+
+- **Usage Waiver:** UV-08 lands the target transaction before its executor; UV-09 consumes it. Adversarial tests own the interim dirty/restore proof; legacy `TreeGuard` stays frozen until U4.
 
 </details>
 
@@ -433,7 +439,7 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`. Итого открыто **25**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`; UV-08 добавил target-only `WorkspaceGuard`/acquisition pair. Итого открыто **27**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 17 символов open: 15 унаследованных после снятия `applyStackConfig`/`scopeHasGoGenerate` и 2 D-64 test seam. По владельцу: V-09 — 4 (`C`, `I`, `Bad`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -652,7 +658,7 @@ plugins/
 
 ### VERIFY-DL-7 / D-67 — Repair и readiness остаются честными
 
-- **Status:** accepted; execution deferred to U3.
+- **Status:** accepted; WorkspaceGuard implemented by UV-08, execution/verdict/repair loop continue in UV-09/10.
 - **Decision:** каждый пишущий шаг объявляет effect, write boundary и invalidation; неожиданный write
   является `VIOLATION`, repair bounded и повторяет только инвалидированные проверки. Missing required
   capability даёт `BLOCKED`, explicit disable — видимый `WAIVED/DEGRADED`, не pass.

@@ -194,6 +194,7 @@ describe('Node target StackPlugin', () => {
     assert.deepStrictEqual(lintFix?.invalidates, ['node:type-check']);
     assert.deepStrictEqual(lintFix?.command?.argv.slice(-3), ['--', ...TARGETS]);
     assert.ok(lintFix?.writes?.include.some((glob) => glob.includes('ts')));
+    assert.ok(lintFix?.writes?.exclude.includes('.git/**'));
     assert.ok(lintFix?.writes?.exclude.includes('node_modules/**'));
     assert.strictEqual(formatFix?.effect, 'repair');
     assert.deepStrictEqual(formatFix?.invalidates, ['node:type-check', 'node:lint']);
