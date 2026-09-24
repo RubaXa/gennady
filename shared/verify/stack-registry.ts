@@ -22,15 +22,13 @@ const PLUGIN_GATE_IDS = Object.fromEntries(
 ) as Partial<Record<PluginId, readonly string[]>>;
 
 /**
- * Closed config vocabulary also includes the RC-native node preset. Plugin gate vocabularies are
- * derived from their literal implementations, including Swift (V-11).
+ * Legacy config vocabulary remains byte-compatible: the registered Node plugin exposes no legacy
+ * gates until U4 cutover; its target DAG is a separate facet introduced by UV-04.
  */
 export const BUILTIN_GATE_IDS: Readonly<Partial<Record<PluginId, readonly string[]>>> = {
   swift: PLUGIN_GATE_IDS.swift ?? [],
   golang: PLUGIN_GATE_IDS.golang ?? [],
-  // Node's RC-native preset is not a StackPlugin: `use` may name it, while plugin-style
-  // override/skip of its blocking ladder stays outside D-64/Variant-C convergence.
-  node: [],
+  node: PLUGIN_GATE_IDS.node ?? [],
   anystack: PLUGIN_GATE_IDS.anystack ?? [],
 };
 

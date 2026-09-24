@@ -130,6 +130,29 @@ describe('loadStackConfig — discovery and merge', () => {
       }
     );
   });
+
+  it('accepts an explicit home directory without changing legacy source priority', () => {
+    const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'stack-config-home-'));
+    const root = path.join(parent, 'repo');
+    const home = path.join(parent, 'home');
+    fs.mkdirSync(root);
+    fs.mkdirSync(home);
+    try {
+      fs.writeFileSync(
+        path.join(home, '.gennadyrc'),
+        JSON.stringify({ stack: { golang: { skipGates: ['lint'] } } })
+      );
+      fs.writeFileSync(
+        path.join(root, 'gennady.yaml'),
+        'stack:\n  golang:\n    skipGates: [test]\n'
+      );
+      const load = loadStackConfig(root, GATE_IDS, { homeDirectory: home });
+      assert.deepStrictEqual(pluginConfigOf(load.config, 'golang')?.skipGates, ['test']);
+      assert.strictEqual(load.provenance.get('golang.skipGates'), 'gennady.yaml');
+    } finally {
+      fs.rmSync(parent, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('loadStackConfig — strict validation (fatal errors)', () => {

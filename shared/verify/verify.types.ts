@@ -3,6 +3,10 @@
 // @consumers: stack-registry, stack-config, gate-runner, node-plugin, golang-plugin, verify.cmd
 
 import type { PluginId } from './model/plugin-id.type.ts';
+import type { VerifyPreset } from './model/verify-preset.type.ts';
+import type { CapabilityMatrix } from './model/verify-readiness.type.ts';
+import type { VerifyPlan } from './model/verify-report.type.ts';
+import type { VerifyStepWaiver } from './config/verify-config.type.ts';
 
 export type { PluginId } from './model/plugin-id.type.ts';
 
@@ -313,6 +317,22 @@ export type StackVerifyCapability = {
 };
 
 /**
+ * @purpose Target Verify facet contributed by a stack plugin during the U2 migration.
+ * @invariant It only builds immutable plan/readiness data; execution remains owned by U3.
+ */
+export type StackTargetVerifyCapability = {
+  /** @purpose Build one plugin-owned target DAG from facts gathered by detect(). | @param detection Plugin detection with immutable project facts. | @returns Complete plugin-owned target preset. */
+  createPreset(detection: StackDetection): VerifyPreset;
+  /** @purpose Evaluate capabilities for one already-selected slice without executing its steps. | @param detection Plugin detection with immutable project facts. | @param preset Composed plugin preset. | @param plan Selected phase slice. | @param waivers Explicit disabled-step facts. | @returns Selected-slice capability matrix. */
+  evaluateReadiness(
+    detection: StackDetection,
+    preset: VerifyPreset,
+    plan: VerifyPlan,
+    waivers: readonly VerifyStepWaiver[]
+  ): CapabilityMatrix;
+};
+
+/**
  * @purpose The fix facet: mutating operations executed in the REAL tree by `gennady fix` (§4.4).
  * @consumer fix.cmd, plugins
  */
@@ -342,4 +362,6 @@ export type StackPlugin = {
   readonly gateIds: readonly string[];
   /** @purpose The mandatory verify facet. */
   readonly verify: StackVerifyCapability;
+  /** @purpose Declarative target DAG/readiness facet; optional until each U2 plugin converts. */
+  readonly target?: StackTargetVerifyCapability;
 };

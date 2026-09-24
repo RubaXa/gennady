@@ -29,7 +29,7 @@ terminal step results, attributed mutations, evidence and the exact immutable ru
 `sdd-verify` remains only as a compatibility runner until golden receipt parity is proven; it is not
 a second target engine.
 
-### Accepted target data, planning and config contract (UV-01..03)
+### Accepted target data, planning, config and Node preset contract (UV-01..04)
 
 | Contract                | Normative obligation                                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -45,8 +45,10 @@ a second target engine.
 UV-01 materializes the authored model. UV-02 adds only pure DAG validation and phase slicing:
 authored local ids remain local in a `VerifyPreset`, while the validated plan qualifies every node
 and reference. UV-03 adds the strict `verify:` loader, deterministic overlay/provenance and a
-temporary lossless `stack:` migration adapter. Preset conversion (U2), execution/repair (U3), SDD
-cutover (U4), remote execution (U5) and rule resolution/CLI (U6) remain outside this boundary.
+temporary lossless `stack:` migration adapter. UV-04 registers Node as a symmetric `StackPlugin`,
+materializes its complete target DAG and selected-slice script readiness without switching the
+legacy runner. Go/Swift conversion (UV-05/06), execution (U3), SDD cutover (U4), remote execution
+(U5) and rule resolution/CLI (U6) remain outside this boundary.
 
 ### Target call chain
 
@@ -252,6 +254,21 @@ Legacy `skipGates` и basic `argv/cwd/env/timeout` переводятся с mig
 `when`, `envFail`, `requires`, `fixer`, output/drift policy и любой иной неэквивалентный field дают
 точный `VERIFY_CONFIG_LEGACY_UNSUPPORTED`; молчаливое удаление запрещено. Refines D-66/D-67.
 
+### VER-REQ-9 [должен]
+
+**Когда** Node plugin строит target phase, **то он должен** использовать один DAG
+`type-check → lint-fix → lint → format-fix → format → unit`, где `integration` и `coverage`
+ветвятся от `unit`; `code`, `unit`, `integration`, `coverage`, `full` являются только tag slices.
+Repair nodes объявляют bounded writes и invalidation ранее выполненных observations. Exact package
+scripts и package-manager argv являются detected facts; missing selected script даёт actionable
+`BLOCKED`. Node materialization добавляет `-- <Target Files>` как к package-script, так и к direct
+repair argv prefix; prefix обязан быть target-free и не может содержать baked operands. Target Files
+нормализуются как unique, code-unit-sorted repo-relative exact paths; absolute/escape/glob/ambiguous
+separator input даёт typed fail-closed error. Direct `lint` обязан быть read-only и вызывать Gennady,
+direct `format` обязан быть read-only. Prefix без explicit Target Files остаётся `BLOCKED`, а не
+runnable/READY. Waived steps не создают package-manager requirement; Node preset не hardcode-ит rule
+ids до U6 resolver. Refines D-66/D-67.
+
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:ENTITY_INVENTORY-->
@@ -280,6 +297,7 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/model/**`            | Types    | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
 | `shared/verify/planning/**`         | Service  | Pure fail-closed DAG validation, qualified references, dependency closure and phase slicing        |
 | `shared/verify/config/**`           | Service  | Strict target loader, provenance contracts and temporary lossless legacy adapter                   |
+| `plugins/node/**`                   | Plugin   | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -325,11 +343,11 @@ are bounded by the task that must establish the second production use or remove 
 qualified `VerifyStepWaiver { stepId, reason, source }`; a higher layer's `enabled: true` removes it.
 UV-11 consumes that sidecar for visible `WAIVED/DEGRADED` reporting (VERIFY-DL-7).
 
-### `VerifyPreset`
+### `VerifyPreset` — closed by UV-04
 
-- **Usage Waiver (external: stack plugin authors):** this exported target API is materialized by
-  UV-01 before built-ins convert in U2. UV-04..06 must replace this waiver with real Node/Go/Swift
-  production consumers (VERIFY-DL-6).
+The registered Node plugin now contributes a real target preset and the Node planning entrypoint
+composes and slices it. UV-05/06 still owe Go/Swift conversion, but `VerifyPreset` itself is no
+longer an unused exported contract (VERIFY-DL-6).
 
 ### `VerifyRunReport`
 
@@ -337,29 +355,30 @@ UV-11 consumes that sidecar for visible `WAIVED/DEGRADED` reporting (VERIFY-DL-7
   UV-11/UV-12 must connect those production consumers before the compatibility runner is removed
   (VERIFY-DL-5, VERIFY-DL-7).
 
-### `selectPhase`
+### `selectPhase` — closed by UV-04
 
-- **Usage Waiver:** UV-02 deliberately lands the pure fail-closed planner before built-in presets
-  migrate to `VerifyPreset`. UV-04..06 must call this entry point from the Node/Go/Swift planning
-  path, and UV-11 must expose its selected plan through the unified report (VERIFY-DL-6).
+`resolveNodeVerifyPlan` calls the shared phase slicer over the composed Node preset. UV-05/06 reuse
+the same path for Go/Swift, while UV-11 projects the selected plan in the report (VERIFY-DL-6).
 
-### `composePresets`
+### `composePresets` — closed by UV-04
 
-- **Usage Waiver:** UV-03 lands deterministic target composition before built-in target presets.
-  UV-04..06 must call it with Node/Go/Swift preset and detected-fact layers; UV-24 removes the legacy
-  adapter after migration evidence (VERIFY-DL-6).
+The Node target planning path composes builtin preset, package facts, lossless legacy translation
+and target files before slicing. UV-24 still removes compatibility after migration evidence.
 
-### `loadVerifyConfig`
+### `loadVerifyConfig` — closed by UV-04
 
-- **Usage Waiver:** UV-03 must establish and test the strict target config boundary before the first
-  target preset exists. UV-04 connects this loader to the Node planning path; UV-05/UV-06 add Go and
-  Swift consumers, then this waiver must be removed (VERIFY-DL-6).
+The Node target planning path loads and materializes `verify.presets.node` before composition.
 
-### `adaptLegacyStackConfig`
+### `adaptLegacyStackConfig` — closed by UV-04
 
-- **Usage Waiver:** UV-03 must prove lossless legacy translation and actionable rejection before any
-  target preset consumes `stack:` compatibility data. UV-04..06 connect the adapter to the converted
-  presets; UV-24 removes it after migration evidence (VERIFY-DL-6).
+The Node target planning path translates `stack.node` against exact target step ids. UV-05/06 add
+their stack consumers and UV-24 removes the adapter after migration evidence.
+
+### `resolveNodeVerifyPlan`
+
+- **Usage Waiver:** UV-04 deliberately provides the first target-only planning entrypoint before the
+  scope-aware multistack orchestrator. UV-07 consumes it through the common affected-stack planner;
+  U3 later executes its data, but UV-04 remains read-only (VERIFY-DL-6/8).
 
 <details>
 <summary>Развёрнутые поверхности сущностей</summary>
@@ -374,7 +393,7 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. В нём осталось **18** записей. UV-01 добавил выше ещё **8** bounded target-model waivers; UV-02 добавил `selectPhase`; UV-03 снял `VerifyStepOverride`/`enabled` и добавил `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`. Итого открыто **28**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. В нём осталось **18** записей. UV-01 добавил выше ещё **8** bounded target-model waivers; UV-02 добавил `selectPhase`; UV-03 снял `VerifyStepOverride`/`enabled` и добавил `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`. UV-04 снял пять реально подключённых target waivers (`VerifyPreset`, `selectPhase`, `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`) и добавил bounded `resolveNodeVerifyPlan`. Итого открыто **24**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 18 символов open: 16 унаследованных после снятия `applyStackConfig` и 2 D-64 test seam. По владельцу: V-09 — 5 (`C`, `I`, `Bad`, `scopeHasGoGenerate`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -459,12 +478,17 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 7. Public Options & Policies
 
-**`verify:` target overlay (UV-03):** only `presets.<plugin>.steps.<existing-step>` is accepted in
-U1. Step fields are `enabled`, `reason`, `tags`, `needs`, `command`, `requires`, `writes`,
+**`verify:` target overlay (UV-03/04):** only `presets.<plugin>.steps.<existing-step>` is accepted at
+this cutover stage. Step fields are `enabled`, `reason`, `tags`, `needs`, `command`, `requires`, `writes`,
 `invalidates`, `timeout`, `onFailure`; `command` accepts generic `argv/cwd/env` and the acknowledged
-Node-owned `npmScript` shorthand. Until UV-04 supplies package-manager facts, `npmScript` loads as a
-typed plugin-owned value but composition stops with `VERIFY_CONFIG_PLUGIN_COMMAND_UNRESOLVED` and an
-argv/UV-04 hint. Custom step and phase declarations remain UV-22, not implicit UV-03 defaults.
+Node-owned `npmScript` shorthand. Node target planning now resolves `npmScript` through explicit
+package-manager facts to direct argv (never a shell), attributes derived argv to the authored file,
+and reports an absent selected script as `BLOCKED`. Generic `argv` intentionally replaces the
+package-script capability. Custom step and phase declarations remain UV-22.
+
+Node repair scripts are argument-forwarding prefixes. They become readiness `READY` only when the
+caller supplies explicit Target Files, which are appended after `--`; UV-07 owns automatic scope
+materialization. An unscoped repair prefix is `BLOCKED`, never an implicit whole-repository command.
 
 Target file priority is personal `~/.gennadyrc` > project `.gennadyrc` > `gennady.yaml`; detected
 facts and builtins are lower layers. Objects deep-merge and arrays replace whole. The default generic
@@ -518,6 +542,7 @@ plugins/
 ├── index.ts
 ├── anystack/**
 ├── golang/**
+├── node/**
 └── swift/**
 ```
 
@@ -570,7 +595,7 @@ plugins/
 
 ### VERIFY-DL-6 / D-66 — Preset является одним DAG, phase является срезом
 
-- **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03.
+- **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03, Node target preset by UV-04.
 - **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Встроенные и
   project-defined phases выбирают tags + dependency closure, а config перегружает preset вместо
   полного повторного описания pipeline. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist
@@ -585,6 +610,13 @@ plugins/
   files, where personal rc wins. File objects deep-merge, arrays replace, cwd becomes repo-absolute,
   and final target leaves retain winning provenance. Unknown schema/ref and non-lossless legacy fields
   reject the entire overlay. CLI phase/scope is not a pipeline layer; custom steps/phases remain UV-22.
+- **UV-04 Node:** the registered plugin owns one DAG with observe, bounded repair and integration /
+  coverage branches. Package-manager and exact script facts materialize commands without shell;
+  selected missing scripts block. Unknown managers never produce guessed argv, including authored
+  `npmScript`; direct argv is accepted only when its Node semantic safety can be proven. Repair
+  prefixes require normalized explicit target files until UV-07 supplies common scope. The target
+  planner passes its explicit home directory to both target and legacy loaders, while default legacy
+  priority remains unchanged. `resolvePreset`/`sdd-verify` stay on the frozen compatibility path.
 
 ### VERIFY-DL-7 / D-67 — Repair и readiness остаются честными
 
@@ -646,6 +678,9 @@ _Кто подключит `verify` к своему ладдеру и какая
 
 ## 11. Handoff to Tasks
 
+- **Node target files created by UV-04:** `plugins/node/{node-project.logic,node-script.logic,node-target.logic,node-plugin,node-planner}.ts`
+  plus zero-YAML contract tests. UV-07 connects the planner to automatic multistack scope; U3 owns
+  execution and selective invalidation; the legacy Node preset remains unchanged through U4 parity.
 - **Target config files created by UV-03:** `shared/verify/config/**` and
   `shared/verify/planning/compose-presets.ts`; the existing stack loader/runtime is unchanged.
 - **Config contract tests:** `shared/verify/__tests__/{verify-config,legacy-verify-config}.test.ts`;

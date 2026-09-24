@@ -14,6 +14,7 @@ export type {
   StackDiagnostic,
   StackPlugin,
   StackScope,
+  StackTargetVerifyCapability,
   StackVerifyCapability,
 } from './verify.types.ts';
 

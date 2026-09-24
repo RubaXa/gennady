@@ -3,32 +3,8 @@
 // @spec: SHARED
 // @consumers: sdd-state.cmd, sdd-task.cmd, sdd-verify/phase-context
 
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { detectStacks, BUILTIN_STACK_PLUGINS } from './stack-registry.ts';
 import type { StackConfig, StackDetection, StackId } from './verify.types.ts';
-
-/** @purpose Root marker file that recognizes the (RC-native, non-plugin) node stack. */
-const NODE_MARKER = 'package.json';
-
-/**
- * @purpose Detect the RC-native node stack — not a `StackPlugin` (it keeps its own V-04
- *   preset), but still owed a place in the one shared `StackDetection` fact.
- * @param root Absolute repository root.
- * @param use `stack.use` restriction from config, or undefined for unrestricted auto-detection.
- * @returns Detection payload, or null when node is excluded by `use` or `package.json` is absent.
- */
-function detectNode(root: string, use: readonly string[] | undefined): StackDetection | null {
-  if (use && !use.includes('node')) return null;
-  if (!existsSync(join(root, NODE_MARKER))) return null;
-  return {
-    stack: 'node',
-    root,
-    summary: [`marker:     ${NODE_MARKER}`],
-    diagnostics: [],
-    details: null,
-  };
-}
 
 /**
  * @purpose One repository's resolved stack detection — the fact every caller on the same root must
@@ -73,13 +49,11 @@ export function orderDetectedStacks(
  * @returns The repo's resolved stack detection.
  */
 export function detectRepoStack(root: string, config: StackConfig | null): RepoStackDetection {
-  const node = detectNode(root, config?.use);
   const active = detectStacks(root, config, BUILTIN_STACK_PLUGINS);
   const nonAnystack = active.filter((entry) => entry.plugin.id !== 'anystack');
   const anystack = active.find((entry) => entry.plugin.id === 'anystack');
 
   const matched: { detection: StackDetection; marker: string }[] = [
-    ...(node ? [{ detection: node, marker: NODE_MARKER }] : []),
     ...nonAnystack.map((entry) => ({ detection: entry.detection, marker: entry.plugin.marker })),
   ];
   const bootstrapNode =
