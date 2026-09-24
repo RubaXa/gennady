@@ -29,7 +29,7 @@ terminal step results, attributed mutations, evidence and the exact immutable ru
 `sdd-verify` remains only as a compatibility runner until golden receipt parity is proven; it is not
 a second target engine.
 
-### Accepted target data, planning, config and Node preset contract (UV-01..04)
+### Accepted target data, planning, config and built-in preset contract (UV-01..06)
 
 | Contract                | Normative obligation                                                                                                    |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -42,14 +42,10 @@ a second target engine.
 | `CapabilityMatrix`      | Per-plugin/per-phase readiness with terminal `READY`, `DEGRADED` or `BLOCKED`; explicit disable is visible as `WAIVED`. |
 | `VerifyRunReport`       | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
-UV-01 materializes the authored model. UV-02 adds only pure DAG validation and phase slicing:
-authored local ids remain local in a `VerifyPreset`, while the validated plan qualifies every node
-and reference. UV-03 adds the strict `verify:` loader, deterministic overlay/provenance and a
-temporary lossless `stack:` migration adapter. UV-04 registers Node as a symmetric `StackPlugin`,
-materializes its complete target DAG and selected-slice script readiness without switching the
-legacy runner. UV-05 does the same for Go while preserving its legacy preset/receipts. Swift
-conversion (UV-06), execution (U3), SDD cutover (U4), remote execution
-(U5) and rule resolution/CLI (U6) remain outside this boundary.
+UV-01 materializes the model; UV-02 adds pure DAG validation/slicing with qualified plan ids. UV-03
+adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds
+Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
+Execution, cutover, remote verification and dynamic rules remain owned by U3, U4, U5 and U6.
 
 ### Target call chain
 
@@ -312,7 +308,7 @@ _Полный список файлов-сущностей, перенесённ
 | `plugins/index.ts`                  | Registry | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                                |
 | `plugins/anystack/**`               | Adapter  | Read-only стек-плагин для произвольных гейтов из `gennady.yaml`                                    |
 | `plugins/golang/**`                 | Adapter  | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                             |
-| `plugins/swift/**`                  | Adapter  | SwiftPM/Xcode/Tuist: root-marker detection, scope, literal format/build/test/lint plan             |
+| `plugins/swift/**`                  | Plugin   | SwiftPM/Xcode/Tuist legacy adapter plus target DAG, identity readiness and read-only planner       |
 | `shared/verify/presets/node.ts`     | Service  | `resolvePreset(stack, …)` — dispatcher; node inline, anystack delegated (V-04/V-08)                |
 | `shared/verify/presets/anystack.ts` | Service  | `resolveAnystackPreset` — config-authored gates, fixed order, never required (V-08)                |
 | `shared/verify/presets/swift.ts`    | Service  | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                       |
@@ -368,9 +364,9 @@ UV-11 consumes that sidecar for visible `WAIVED/DEGRADED` reporting (VERIFY-DL-7
 
 ### `VerifyPreset` — closed by UV-04
 
-The registered Node and Go plugins now contribute real target presets and their planning entrypoints
-compose and slice them. UV-06 still owes Swift, but `VerifyPreset` itself is no longer an unused
-exported contract (VERIFY-DL-6).
+The registered Node, Go and Swift plugins now contribute real target presets and their planning
+entrypoints compose and slice them. `VerifyPreset` is no longer an unused exported contract
+(VERIFY-DL-6).
 
 ### `VerifyRunReport`
 
@@ -380,8 +376,8 @@ exported contract (VERIFY-DL-6).
 
 ### `selectPhase` — closed by UV-04
 
-`resolveNodeVerifyPlan` and `resolveGolangVerifyPlan` call the shared phase slicer. UV-06 reuses the
-same path for Swift, while UV-11 projects the selected plan in the report (VERIFY-DL-6).
+`resolveNodeVerifyPlan`, `resolveGolangVerifyPlan` and `resolveSwiftVerifyPlan` call the same shared
+phase slicer. UV-11 projects the selected plan in the report (VERIFY-DL-6).
 
 ### `composePresets` — closed by UV-04
 
@@ -394,8 +390,8 @@ The Node target planning path loads and materializes `verify.presets.node` befor
 
 ### `adaptLegacyStackConfig` — closed by UV-04
 
-The Node and Go target planning paths translate their `stack:` compatibility fields against exact
-target step ids. UV-06 adds Swift and UV-24 removes the adapter after migration evidence.
+The Node, Go and Swift target planning paths translate their `stack:` compatibility fields against
+exact target step ids. UV-24 removes the adapter after migration evidence.
 
 ### `resolveNodeVerifyPlan`
 
@@ -408,6 +404,11 @@ target step ids. UV-06 adds Swift and UV-24 removes the adapter after migration 
 - **Usage Waiver:** UV-05 exposes the Go target-only planning entrypoint before the common
   scope-aware multistack orchestrator. UV-07 consumes it; U3 executes the selected data, while the
   legacy Go preset remains the active SDD path through U4 parity (VERIFY-DL-6/8).
+
+### `resolveSwiftVerifyPlan`
+
+- **Usage Waiver:** UV-06's target-only planner waits for UV-07 orchestration; legacy stays through
+  U4 and exact Xcode runtime proof stays E-18/UV-26 (VERIFY-DL-4/6/8).
 
 <details>
 <summary>Развёрнутые поверхности сущностей</summary>
@@ -422,7 +423,7 @@ TODO(V-05, V-07, V-08, V-09): наполняется задачей, котор�
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. UV-05 снимает `scopeHasGoGenerate`: target preset реально использует его для применимости drift-signal. В историческом списке осталось **17** записей. UV-01 добавил выше ещё **8** bounded target-model waivers; UV-02 добавил `selectPhase`; UV-03 снял `VerifyStepOverride`/`enabled` и добавил `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`. UV-04 снял пять реально подключённых target waivers (`VerifyPreset`, `selectPhase`, `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`) и добавил bounded `resolveNodeVerifyPlan`; UV-05 добавил bounded `resolveGolangVerifyPlan`. Итого открыто **24**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` реальным full-profile вызовом и добавил 2 экспортированных test seam для проверки priority. UV-05 снимает `scopeHasGoGenerate`: target preset реально использует его для применимости drift-signal. В историческом списке осталось **17** записей. UV-01 добавил выше ещё **8** bounded target-model waivers; UV-02 добавил `selectPhase`; UV-03 снял `VerifyStepOverride`/`enabled` и добавил `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`. UV-04 снял пять реально подключённых target waivers (`VerifyPreset`, `selectPhase`, `composePresets`, `loadVerifyConfig`, `adaptLegacyStackConfig`) и добавил bounded `resolveNodeVerifyPlan`; UV-05 добавил bounded `resolveGolangVerifyPlan`; UV-06 добавил bounded `resolveSwiftVerifyPlan`. Итого открыто **25**. Каждая запись объясняет необходимость символа при 0–1 production usage; форма — по прецеденту `specs/shared/shared.spec.md`, `specs/cli/sdd-check/sdd-check.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 17 символов open: 15 унаследованных после снятия `applyStackConfig`/`scopeHasGoGenerate` и 2 D-64 test seam. По владельцу: V-09 — 4 (`C`, `I`, `Bad`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -628,7 +629,7 @@ plugins/
 
 ### VERIFY-DL-6 / D-66 — Preset является одним DAG, phase является срезом
 
-- **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03, Node target preset by UV-04, Go target preset by UV-05.
+- **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03, Node target preset by UV-04, Go target preset by UV-05, Swift target preset by UV-06.
 - **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Встроенные и
   project-defined phases выбирают tags + dependency closure, а config перегружает preset вместо
   полного повторного описания pipeline. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist

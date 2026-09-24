@@ -34,17 +34,25 @@ export type SwiftToolId = 'swift' | 'swiftformat' | 'swiftlint' | 'xcodebuild';
 
 /** One resolved Swift tool without executing repository code. */
 export type SwiftTool = {
+  /** @purpose Stable tool identity used by readiness and environment diagnostics. */
   readonly id: SwiftToolId;
+  /** @purpose Resolved executable path, or null when the tool is unavailable. */
   readonly bin: string | null;
 };
 
 /** Deterministic facts shared by Swift planning, readiness, and receipts. */
 export type SwiftProject = {
+  /** @purpose Absolute repository root used to resolve project-owned paths. */
   readonly root: string;
+  /** @purpose Detected command family without guessing Xcode project identity. */
   readonly kind: 'package' | 'xcode';
+  /** @purpose Canonical root or checked-in Xcode markers that assigned the plugin. */
   readonly markers: readonly string[];
+  /** @purpose Sorted build-definition inputs used by environment receipts. */
   readonly manifests: readonly string[];
+  /** @purpose Resolved local executables used by selected-slice readiness. */
   readonly tools: Readonly<Record<SwiftToolId, SwiftTool>>;
+  /** @purpose Detection-time actionable environment diagnostics. */
   readonly diagnostics: readonly StackDiagnostic[];
 };
 
@@ -142,8 +150,8 @@ export function detectSwiftProject(root: string): SwiftProject | null {
   const packageAtRoot = markers.includes('Package.swift');
   const xcodeMarker = markers.some(
     (file) =>
-      file.endsWith('Project.swift') ||
-      file.endsWith('Workspace.swift') ||
+      file === 'Project.swift' ||
+      file === 'Workspace.swift' ||
       file.includes('.xcodeproj/') ||
       file.includes('.xcworkspace/')
   );
