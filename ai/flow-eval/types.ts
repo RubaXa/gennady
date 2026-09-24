@@ -174,6 +174,8 @@ export type SddEvalConfig = {
   tailLimit: number;
   /** @purpose Optional compact progress sink; receives bounded observations only. */
   onObservation?: (scenarioId: string, observation: SddEvalObservation) => void | Promise<void>;
+  /** @purpose Cooperative process-lifecycle cancellation, including SIGINT/SIGTERM teardown. */
+  signal?: AbortSignal;
 };
 
 /** @purpose A bounded, external view of an OpenCode message part. */

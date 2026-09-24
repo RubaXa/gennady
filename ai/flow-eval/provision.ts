@@ -10,6 +10,7 @@ import {
   readdir,
   readFile,
   realpath,
+  rm,
   writeFile,
 } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -18,6 +19,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { TEMPLATES } from '../../shared/sdd/templates.ts';
+import {
+  bindEvalDependencies,
+  prepareEvalDependencyStore,
+  type EvalDependencyStore,
+} from './dependency-store.ts';
 import type { SddEvalFixtureId, SddEvalScenario } from './types.ts';
 
 const execFileAsync = promisify(execFile);
@@ -1338,11 +1344,28 @@ export function assertUniqueScenarioDirectories(
 }
 
 /** @purpose Options for installing the current SDD flow and local CLI into a sandbox. */
-type SddEvalProvisionOptions = {
+export type SddEvalProvisionOptions = {
   rootDirectory?: string;
   /** @purpose Source repository containing the assembled directives, skills, and dist CLI. */
   gennadyRoot?: string;
+  /** @purpose Cooperative setup cancellation; checked between every bounded filesystem operation. */
+  signal?: AbortSignal;
+  /** @purpose Called immediately after an owned mkdtemp succeeds, before any provisioning writes. */
+  onOwnedDirectory?: (scenarioId: string, directory: string) => void | Promise<void>;
+  /** @purpose Run identity used to keep the shared dependency contract active until finalization. */
+  dependencyLeaseId?: string;
+  /** @purpose Pass the exact lease file to the lifecycle owner for release after cleanup. */
+  onDependencyLease?: (leaseFile: string) => void | Promise<void>;
+  /** @purpose Leave registered paths intact so an outer lifecycle can compact evidence first. */
+  lifecycleOwnsCleanup?: boolean;
 };
+
+function throwIfProvisioningAborted(signal: AbortSignal | undefined): void {
+  if (!signal?.aborted) return;
+  throw signal.reason instanceof Error
+    ? signal.reason
+    : new Error('flow-eval provisioning aborted');
+}
 
 function findGennadyRoot(explicit?: string): string {
   const repoRoot = resolve(import.meta.dirname, '../..');
@@ -1366,19 +1389,27 @@ function findGennadyRoot(explicit?: string): string {
   return resolve(source);
 }
 
-async function materializeFlow(directory: string, gennadyRoot: string): Promise<void> {
+async function materializeFlow(
+  directory: string,
+  gennadyRoot: string,
+  signal?: AbortSignal
+): Promise<void> {
+  throwIfProvisioningAborted(signal);
   const skillSource = join(gennadyRoot, 'ai/skills/sdd');
   const skillTarget = join(directory, 'ai/skills/sdd');
   await cp(skillSource, skillTarget, { recursive: true });
+  throwIfProvisioningAborted(signal);
   const directivesSource = join(gennadyRoot, 'ai/directives');
   const directivesTarget = join(directory, 'ai/directives');
   await cp(directivesSource, directivesTarget, { recursive: true });
+  throwIfProvisioningAborted(signal);
   const skillsSource = join(gennadyRoot, 'ai/skills');
   const skillsTarget = join(directory, '.claude/skills');
   await mkdir(skillsTarget, { recursive: true });
   for (const entry of await readdir(skillsSource, { withFileTypes: true })) {
     if (!entry.name.startsWith('sdd')) continue;
     await cp(join(skillsSource, entry.name), join(skillsTarget, entry.name), { recursive: true });
+    throwIfProvisioningAborted(signal);
   }
 }
 
@@ -1406,64 +1437,14 @@ async function commitFixtureBaseline(directory: string): Promise<void> {
   );
 }
 
-/** @purpose Enqueue every dependency declared by a package and its nested package tree. */
-async function enqueuePackageTreeDependencies(
-  packageDirectory: string,
-  dependencyQueue: string[],
-  copied: ReadonlySet<string>,
-  scanned: Set<string>
-): Promise<void> {
-  const canonicalDirectory = resolve(packageDirectory);
-  if (scanned.has(canonicalDirectory)) return;
-  scanned.add(canonicalDirectory);
-  try {
-    const manifest = JSON.parse(
-      await readFile(join(canonicalDirectory, 'package.json'), 'utf8')
-    ) as {
-      dependencies?: Record<string, string>;
-      optionalDependencies?: Record<string, string>;
-    };
-    for (const child of Object.keys({
-      ...manifest.dependencies,
-      ...manifest.optionalDependencies,
-    })) {
-      if (!copied.has(child) && !dependencyQueue.includes(child)) dependencyQueue.push(child);
-    }
-  } catch {
-    return;
-  }
-  const nestedRoot = join(canonicalDirectory, 'node_modules');
-  if (!existsSync(nestedRoot)) return;
-  for (const entry of await readdir(nestedRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name === '.bin') continue;
-    if (entry.name.startsWith('@')) {
-      const scope = join(nestedRoot, entry.name);
-      for (const scopedEntry of await readdir(scope, { withFileTypes: true })) {
-        if (scopedEntry.isDirectory())
-          await enqueuePackageTreeDependencies(
-            join(scope, scopedEntry.name),
-            dependencyQueue,
-            copied,
-            scanned
-          );
-      }
-      continue;
-    }
-    await enqueuePackageTreeDependencies(
-      join(nestedRoot, entry.name),
-      dependencyQueue,
-      copied,
-      scanned
-    );
-  }
-}
-
 /** @purpose Bind the built local CLI without package installation or network access. */
 async function materializeLocalCli(
   directory: string,
   gennadyRoot: string,
-  includeCoverageProducer: boolean
+  dependencyStore: EvalDependencyStore,
+  signal?: AbortSignal
 ): Promise<void> {
+  throwIfProvisioningAborted(signal);
   const packageTarget = join(directory, 'node_modules/gennady');
   const binTarget = join(directory, 'node_modules/.bin/gennady');
   await mkdir(dirname(packageTarget), { recursive: true });
@@ -1480,39 +1461,13 @@ async function materializeLocalCli(
     recursive: true,
     force: true,
   });
+  throwIfProvisioningAborted(signal);
   await cp(join(gennadyRoot, 'ai'), join(packageTarget, 'ai'), { recursive: true, force: true });
-  // `sdd-check --all` loads the bundled XML/HTML checker, whose runtime dependency is jsdom. Copy
-  // its local dependency closure from the already-installed checkout; no registry/network access
-  // and no symlinks into the mutable source tree are allowed.
-  const dependencyQueue = [
-    'jsdom',
-    'mermaid',
-    'tree-sitter',
-    'tree-sitter-typescript',
-    'typescript',
-    'prettier',
-    '@types/node',
-    ...(includeCoverageProducer ? ['c8'] : []),
-  ];
-  const copied = new Set<string>();
-  const scanned = new Set<string>();
-  while (dependencyQueue.length > 0) {
-    const dependency = dependencyQueue.shift();
-    if (!dependency || copied.has(dependency)) continue;
-    copied.add(dependency);
-    const sourcePackage = join(gennadyRoot, 'node_modules', dependency);
-    const targetPackage = join(directory, 'node_modules', dependency);
-    if (!existsSync(sourcePackage))
-      throw new Error(`required local dependency is missing: ${dependency}`);
-    // Idempotent: a dependency already materialized in a reused sandbox is left as-is — re-copying
-    // over its nested symlinks (e.g. mermaid's marked .bin) fails with cp EINVAL. Still walk its tree.
-    if (existsSync(targetPackage)) {
-      await enqueuePackageTreeDependencies(sourcePackage, dependencyQueue, copied, scanned);
-      continue;
-    }
-    await cp(sourcePackage, targetPackage, { recursive: true });
-    await enqueuePackageTreeDependencies(sourcePackage, dependencyQueue, copied, scanned);
-  }
+  throwIfProvisioningAborted(signal);
+  // The dependency tree is never copied per scenario. The content-addressed store validates the
+  // package-lock + installed-lock contract and exposes only verified symlink entries.
+  await bindEvalDependencies(directory, dependencyStore);
+  throwIfProvisioningAborted(signal);
   // The checked-in dist entrypoint is intentionally not executable in this checkout. Use a tiny
   // executable npm bin shim that invokes the immutable sandbox copy.
   await writeFile(
@@ -1537,6 +1492,13 @@ export async function provisionScenarioDirectories(
   rootDirectoryOrOptions: string | SddEvalProvisionOptions = tmpdir(),
   gennadyRootOption?: string
 ): Promise<Array<SddEvalScenario & { directory: string }>> {
+  if (
+    typeof rootDirectoryOrOptions !== 'string' &&
+    rootDirectoryOrOptions.dependencyLeaseId &&
+    !rootDirectoryOrOptions.onDependencyLease
+  ) {
+    throw new Error('dependencyLeaseId requires onDependencyLease to accept lease ownership');
+  }
   const requestedRootDirectory =
     typeof rootDirectoryOrOptions === 'string'
       ? rootDirectoryOrOptions
@@ -1549,39 +1511,87 @@ export async function provisionScenarioDirectories(
       : rootDirectoryOrOptions.gennadyRoot;
   const sourceRoot = findGennadyRoot(gennadyRoot);
   const provisioned: Array<SddEvalScenario & { directory: string }> = [];
-  for (const scenario of scenarios) {
-    if (scenario.fixture && scenario.directory) {
-      throw new Error(`fixture scenario ${scenario.id} must use an auto-provisioned directory`);
-    }
-    const generatedDirectory = !scenario.directory;
-    const directory = scenario.directory
-      ? resolve(scenario.directory)
-      : await mkdtemp(join(resolve(rootDirectory), 'sdd-flow-eval-'));
-    if (generatedDirectory) await initGitRepository(directory);
-    if (scenario.fixture) {
-      const files = FIXTURE_FILES[scenario.fixture];
-      if (!files) throw new Error(`unknown SDD eval fixture: ${scenario.fixture}`);
-      for (const [relativePath, contents] of Object.entries(files)) {
-        const target = join(directory, relativePath);
-        await mkdir(dirname(target), { recursive: true });
-        await writeFile(target, contents, 'utf8');
-        // Provisioned shell scripts (a brownfield tool's baseline, a golden verifier) ship with the
-        // executable bit so the fixture is a faithful working repo — plain writeFile drops it.
-        if (relativePath.startsWith('bin/') || relativePath.endsWith('.sh')) {
-          await chmod(target, 0o755);
-        }
+  const ownedDirectories: string[] = [];
+  const transferredDirectories = new Set<string>();
+  let dependencyStore: EvalDependencyStore | undefined;
+  let dependencyLeaseTransferred = false;
+  try {
+    throwIfProvisioningAborted(
+      typeof rootDirectoryOrOptions === 'string' ? undefined : rootDirectoryOrOptions.signal
+    );
+    if (scenarios.length > 0) {
+      dependencyStore = await prepareEvalDependencyStore({
+        sourceRoot,
+        storeRoot: join(rootDirectory, '.sdd-flow-eval-dependencies'),
+        leaseId:
+          typeof rootDirectoryOrOptions === 'string'
+            ? undefined
+            : rootDirectoryOrOptions.dependencyLeaseId,
+      });
+      if (
+        dependencyStore.leaseFile &&
+        typeof rootDirectoryOrOptions !== 'string' &&
+        rootDirectoryOrOptions.onDependencyLease
+      ) {
+        await rootDirectoryOrOptions.onDependencyLease(dependencyStore.leaseFile);
+        dependencyLeaseTransferred = true;
       }
     }
-    await materializeFlow(directory, sourceRoot);
-    // Every fixture ships the c8-based coverage runner (scripts/test-coverage.mjs) and a scaffold
-    // whose coverage policy is `required`, so the coverage producer (c8 + its closure) must be
-    // present for all of them — not just slugify-toolchain. Without c8 the declared `npm run
-    // test:coverage` never writes coverage-final.json and the `gennady testcov` gate is
-    // structurally unsatisfiable offline, so execute fails through no fault of the worker.
-    await materializeLocalCli(directory, sourceRoot, true);
-    if (generatedDirectory) await commitFixtureBaseline(directory);
-    provisioned.push({ ...scenario, directory });
+    for (const scenario of scenarios) {
+      const options =
+        typeof rootDirectoryOrOptions === 'string' ? undefined : rootDirectoryOrOptions;
+      throwIfProvisioningAborted(options?.signal);
+      if (scenario.fixture && scenario.directory) {
+        throw new Error(`fixture scenario ${scenario.id} must use an auto-provisioned directory`);
+      }
+      const generatedDirectory = !scenario.directory;
+      const directory = scenario.directory
+        ? resolve(scenario.directory)
+        : await mkdtemp(join(rootDirectory, 'sdd-flow-eval-'));
+      if (generatedDirectory) {
+        ownedDirectories.push(directory);
+        if (options?.onOwnedDirectory) {
+          await options.onOwnedDirectory(scenario.id, directory);
+          if (options.lifecycleOwnsCleanup) transferredDirectories.add(directory);
+        }
+      }
+      throwIfProvisioningAborted(options?.signal);
+      if (generatedDirectory) await initGitRepository(directory);
+      if (scenario.fixture) {
+        const files = FIXTURE_FILES[scenario.fixture];
+        if (!files) throw new Error(`unknown SDD eval fixture: ${scenario.fixture}`);
+        for (const [relativePath, contents] of Object.entries(files)) {
+          throwIfProvisioningAborted(options?.signal);
+          const target = join(directory, relativePath);
+          await mkdir(dirname(target), { recursive: true });
+          await writeFile(target, contents, 'utf8');
+          // Provisioned shell scripts (a brownfield tool's baseline, a golden verifier) ship with the
+          // executable bit so the fixture is a faithful working repo — plain writeFile drops it.
+          if (relativePath.startsWith('bin/') || relativePath.endsWith('.sh')) {
+            await chmod(target, 0o755);
+          }
+        }
+      }
+      await materializeFlow(directory, sourceRoot, options?.signal);
+      throwIfProvisioningAborted(options?.signal);
+      if (!dependencyStore) throw new Error('flow-eval dependency store was not prepared');
+      await materializeLocalCli(directory, sourceRoot, dependencyStore, options?.signal);
+      if (generatedDirectory) await commitFixtureBaseline(directory);
+      provisioned.push({ ...scenario, directory });
+    }
+    assertUniqueScenarioDirectories(provisioned);
+    return provisioned;
+  } catch (cause) {
+    const lifecycleOwnsCleanup =
+      typeof rootDirectoryOrOptions !== 'string' && rootDirectoryOrOptions.lifecycleOwnsCleanup;
+    await Promise.all(
+      ownedDirectories
+        .filter((directory) => !lifecycleOwnsCleanup || !transferredDirectories.has(directory))
+        .map((directory) => rm(directory, { recursive: true, force: true }))
+    );
+    if (dependencyStore?.leaseFile && (!lifecycleOwnsCleanup || !dependencyLeaseTransferred)) {
+      await rm(dependencyStore.leaseFile, { force: true });
+    }
+    throw cause;
   }
-  assertUniqueScenarioDirectories(provisioned);
-  return provisioned;
 }

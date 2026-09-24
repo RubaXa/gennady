@@ -24,6 +24,14 @@ class SddEvalWallClockBudgetError extends Error {
   }
 }
 
+/** @purpose Typed cooperative lifecycle stop that unwinds all batches into the CLI finalizer. */
+class SddEvalAbortError extends Error {
+  constructor(reason: unknown) {
+    super(reason instanceof Error ? reason.message : 'flow-eval run aborted');
+    this.name = 'SddEvalAbortError';
+  }
+}
+
 /** @purpose One scenario result with an optional independent judge result. */
 export type SddEvalResult = {
   worker: SddEvalWorkerResult;
@@ -73,6 +81,11 @@ export class SddEvalRunner {
     this.#judge = new SddEvalJudge(runtime, this.#config.judgeModel);
   }
 
+  #throwIfAborted(): void {
+    if (!this.#config.signal?.aborted) return;
+    throw new SddEvalAbortError(this.#config.signal.reason);
+  }
+
   /**
    * @purpose Enforce the hard wall-clock budget: race the worker work against a deadline; if it fires
    * first, abort the worker session and throw the typed E-17 budget signal — a thrashing worker is
@@ -86,24 +99,41 @@ export class SddEvalRunner {
     sessionId: string,
     ms: number | undefined
   ): Promise<SddEvalObservation[]> {
-    if (!ms || ms <= 0) return work;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const deadline = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new SddEvalWallClockBudgetError(ms)), ms);
-    });
+    let onAbort: (() => void) | undefined;
+    const boundaries: Array<Promise<SddEvalObservation[]>> = [work];
+    if (ms && ms > 0) {
+      boundaries.push(
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new SddEvalWallClockBudgetError(ms)), ms);
+        })
+      );
+    }
+    if (this.#config.signal) {
+      boundaries.push(
+        new Promise<never>((_, reject) => {
+          onAbort = () => reject(new SddEvalAbortError(this.#config.signal?.reason));
+          if (this.#config.signal?.aborted) onAbort();
+          else this.#config.signal?.addEventListener('abort', onAbort, { once: true });
+        })
+      );
+    }
+    if (boundaries.length === 1) return work;
     try {
-      return await Promise.race([work, deadline]);
+      return await Promise.race(boundaries);
     } catch (cause) {
       await this.#runtime.abort?.(sessionId).catch(() => undefined);
       throw cause;
     } finally {
       if (timer) clearTimeout(timer);
+      if (onAbort) this.#config.signal?.removeEventListener('abort', onAbort);
     }
   }
 
   /** @purpose Launch one worker session, then observe only through the external evidence source. */
   async runScenario(scenario: SddEvalScenario): Promise<SddEvalResult> {
     if (!scenario.directory) throw new Error(`scenario ${scenario.id} has no isolated directory`);
+    this.#throwIfAborted();
     const session = await this.#runtime.createSession({
       title: `sdd-eval:${scenario.id}`,
       directory: scenario.directory,
@@ -115,6 +145,7 @@ export class SddEvalRunner {
     let budgetExhausted: SddEvalWorkerResult['budgetExhausted'];
     try {
       const work = (async (): Promise<SddEvalObservation[]> => {
+        this.#throwIfAborted();
         await this.#runtime.prompt({
           sessionId: session.id,
           directory: scenario.directory,
@@ -156,6 +187,7 @@ export class SddEvalRunner {
         };
       }
     } catch (cause) {
+      if (cause instanceof SddEvalAbortError) throw cause;
       if (cause instanceof SddEvalWallClockBudgetError) {
         budgetExhausted = { kind: 'wall-clock', detail: cause.message };
       } else {

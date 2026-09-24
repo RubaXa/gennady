@@ -1,8 +1,9 @@
 # ai/flow-eval
 
-Код eval-харнесса (`cli.ts`, `runner.ts`, `provision.ts`, `observer.ts`, `judge.ts`, `quality-gate.ts`,
-`migration-grade.ts`, `results-archive.ts` и др.) — прогоняет реальную модель через одну фазу SDD в
-одноразовой песочнице, чтобы узнать, доводит ли флоу разработчика-агента до правильного артефакта.
+Код eval-харнесса (`cli.ts`, `runner.ts`, `provision.ts`, `dependency-store.ts`,
+`sandbox-lifecycle.ts`, `observer.ts`, `judge.ts`, `quality-gate.ts`, `migration-grade.ts`,
+`results-archive.ts` и др.) — прогоняет реальную модель через одну фазу SDD в одноразовой песочнице,
+чтобы узнать, доводит ли флоу разработчика-агента до правильного артефакта.
 
 ## Документация (GAP-E-5, D-46) — два обязательных файла + именованные разборы
 
@@ -44,5 +45,12 @@ flow-eval отвечает «может ли модель пройти флоу�
 
 - **[`results/`](./results/README.md)** (GAP-E-6, постоянно, в git) — одна директория на
   `(дата, сценарий)`: `summary.json` + `judge.md`. Источник таблицы в `docs/journal/RESULTS.md`.
-- **`.results/`** (транзиентно, gitignore) — весь батч текущего запуска; удаляется/переписывается
-  между прогонами, не предназначен жить дольше одной сессии расследования.
+- **`.results/`** (транзиентно, gitignore) — компактные доказательства всего батча; автоматически
+  ограничены 10 последними каталогами и возрастом 7 дней. Постоянный `results/` lifecycle не трогает.
+
+Каждый запуск проходит обязательный lifecycle `setup → run → compact evidence → cleanup`. По умолчанию
+retention песочниц равен нулю; `--keep` — только bounded debug-retention (не более 2 каталогов и 24
+часов). `SIGINT`/`SIGTERM` кооперативно останавливают runtime, сохраняют частичные доказательства,
+чистят owned-пути и завершаются кодами 130/143. Зависимости сценариев не копируются: они доступны через
+symlink из общего content-addressed store только после совпадения `package-lock.json`, installed-lock,
+allowlist, Node ABI, platform и arch; несовпадение закрывает запуск без install/copy fallback.

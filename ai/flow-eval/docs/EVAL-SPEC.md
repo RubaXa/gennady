@@ -31,7 +31,8 @@
   scaffold, `slugify-toolchain` и `golang-slugify` execute, `broken-specs-repair` repair, три
   `infra-*` task).
 - **Прогон** — один сценарий = одна сессия OpenCode в своей песочнице `sdd-flow-eval-*` с бюджетом
-  наблюдений; после прогона песочница удаляется (если не передан `--keep`).
+  наблюдений; после прогона песочница удаляется. `--keep` включает только bounded debug-retention:
+  максимум 2 песочницы на корень и 24 часа, а не бессрочное хранение.
 - **Evidence** — ограниченный срез, который видят наблюдатель и судья: хвост сообщений, статус сессии,
   diff (≤6000 симв. на файл, ≤24000 всего, ≤24 untracked-файла), **и живые события** OpenCode (SSE-подписка
   `client.event.subscribe`, `evidence.ts` — с GAP-E-1b это реальный канал, а не всегда пустой массив):
@@ -44,8 +45,8 @@
 - **Durable результат (GAP-E-6, D-62)** — каждый прогон пишет ОДНУ постоянную запись на сценарий:
   `ai/flow-eval/results/<YYYY-MM-DD>-<scenario-id>[-N]/summary.json` (+ `judge.md`), никогда не
   gitignore'ится. Это НЕ то же самое, что `ai/flow-eval/.results/run-<ISO>/` — транзиентные артефакты
-  ВСЕГО батча текущего прогона (`sandbox-lifecycle.ts`), которые остаются только до следующего
-  `sandbox.ts clean`. Сводная таблица по durable-результатам — генерируемый блок в
+  ВСЕГО батча текущего прогона (`sandbox-lifecycle.ts`), автоматически ограниченные 10 каталогами и
+  возрастом 7 дней. Сводная таблица по durable-результатам — генерируемый блок в
   [`journal/RESULTS.md`](./journal/RESULTS.md); запись-заготовка на каждый прогон — в
   [`journal/EXPERIMENTS-LOG.md`](./journal/EXPERIMENTS-LOG.md).
 
@@ -56,11 +57,14 @@
 2. Поднять сервер модели и проверить окружение — процедура целиком в
    [RUNBOOK «Предпосылки»](./RUNBOOK.md#предпосылки).
 3. Проверить харнесс на фейках: `npm run test:sdd-flow-eval` (без живого сервера/модели).
-4. Взять корень для песочниц: `node --import tsx ai/flow-eval/scripts/sandbox.ts prepare`.
+4. Взять корень для песочниц: `node --import tsx ai/flow-eval/scripts/sandbox.ts prepare`. Сам запуск
+   затем соблюдает `setup → run → compact evidence → cleanup`: сигнал обрабатывается до provisioning,
+   а compact выполняется до удаления даже при setup failure, runtime failure, `SIGINT` и `SIGTERM`.
 5. Запустить один сценарий или весь `scenarios.json` — точная команда и таблица бюджетов по фазам в
    [RUNBOOK «Живой прогон»](./RUNBOOK.md#живой-прогон).
 6. Прочитать результат (см. ниже «Как читать результат»).
-7. Убрать за собой: `kill <PID сервера>`, затем `node --import tsx ai/flow-eval/scripts/sandbox.ts clean`.
+7. Остановить собственный сервер: `kill <PID сервера>`. `sandbox.ts clean` остаётся ручным recovery
+   для старых/чужих orphan-путей; owned-песочницы текущего запуска очищает обязательный finalizer.
 
 ### Как читать результат
 
@@ -77,12 +81,12 @@ PASS|FAIL — …`), затем `usage: total=… cost=…`, затем (GAP-E-6
   `SddEvalDurableSummary` в `ai/flow-eval/results-archive.ts`), `judge.md` (обоснование судьи, если
   судья вызывался).
 - **`ai/flow-eval/.results/run-<ISO>/`** (транзиентно, gitignore) — то же самое для ВСЕГО батча этого
-  запуска, плюс копии написанных `*.spec.md`; исчезает при следующем `sandbox.ts clean` и не
-  предназначен жить дольше одной сессии расследования.
+  запуска, плюс копии написанных `*.spec.md`; хранится не более 7 дней и 10 каталогов. Это compact
+  evidence, а не полная песочница.
 
 Путь `judge rationale → <песочница>/…`, который печатает прогон, живёт только до конца прогона
 (песочница удаляется); две долгоживущие копии — `results/<дата>-<сценарий>/judge.md` (постоянно) и
-`.results/run-…/<id>/judge.md` (до следующей очистки).
+`.results/run-…/<id>/judge.md` (в пределах транзиентной retention-политики).
 
 ### Когда eval пройден
 
@@ -110,20 +114,20 @@ audit/review receipts при этом записываются до единст
 
 ### Таблица команд
 
-| Команда                                                                 | Что делает                                                                                        | Что оставляет на диске                                                                                                                                     |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run build`                                                         | собирает CLI (`vite build`), который попадёт в песочницу                                          | `dist/gennady.js`                                                                                                                                          |
-| `npm run test:sdd-flow-eval`                                            | юнит-тесты харнесса на фейках + shell-селфтесты (нужен собранный `dist`)                          | ничего                                                                                                                                                     |
-| `node --import tsx ai/flow-eval/scripts/sandbox.ts prepare`             | создаёт корень для песочниц                                                                       | `$TMPDIR/sdd-flow-eval-root.*`                                                                                                                             |
-| `npm run sdd-flow-eval -- …`                                            | прогон: песочницы, воркер, судья, гейты                                                           | `.results/run-<ISO>/{summary.json,<id>/judge.md,*.spec.md}` (транзиент) + `results/<дата>-<сценарий>/` (постоянно, GAP-E-6); песочницы — только с `--keep` |
-| `npm run results:table`                                                 | регенерирует таблицу в `journal/RESULTS.md` из `results/**/summary.json`                          | правит `journal/RESULTS.md`                                                                                                                                |
-| `npm run results:table:check`                                           | та же регенерация, но только проверка (freshness-гейт, exit 1 при дифф)                           | ничего                                                                                                                                                     |
-| `ai/flow-eval/operator-approve.sh <sandbox>`                            | симулирует полное одобрение оператора (портал + Decision Log)                                     | правки в `<sandbox>/specs/**`                                                                                                                              |
-| `python3 ai/flow-eval/scripts/session-metrics.py record\|gate\|compare` | детерминированные метрики сессии и completion-гейт                                                | `ai/flow-eval/results/metrics-ledger.jsonl`                                                                                                                |
-| `python3 ai/flow-eval/scripts/session-telemetry.py <session>`           | разбор траектории воркера постфактум (только чтение)                                              | ничего                                                                                                                                                     |
-| `node --import tsx ai/flow-eval/scripts/sandbox.ts clean [--dry]`       | подчищает осиротевшие песочницы                                                                   | удаляет `sdd-flow-eval-*`, `gen-*`, `diag-*`                                                                                                               |
-| `ai/flow-eval/scripts/check-fixture-hygiene.sh <fixture>`               | E-16: воспроизводимость + отсутствие файлов класса секретов во внешней фикстуре                   | ничего (диагностика)                                                                                                                                       |
-| `node --import tsx ai/flow-eval/scripts/verify-eval-docs.ts`            | GAP-E-5: считает пометки непроверенности в этой спеке/RUNBOOK и проверяет упомянутые команды/пути | ничего                                                                                                                                                     |
+| Команда                                                                 | Что делает                                                                                        | Что оставляет на диске                                                                                                                                          |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run build`                                                         | собирает CLI (`vite build`), который попадёт в песочницу                                          | `dist/gennady.js`                                                                                                                                               |
+| `npm run test:sdd-flow-eval`                                            | юнит-тесты харнесса на фейках + shell-селфтесты (нужен собранный `dist`)                          | ничего                                                                                                                                                          |
+| `node --import tsx ai/flow-eval/scripts/sandbox.ts prepare`             | создаёт корень для песочниц                                                                       | `$TMPDIR/sdd-flow-eval-root.*`                                                                                                                                  |
+| `npm run sdd-flow-eval -- …`                                            | обязательный lifecycle: setup, run, compact evidence, cleanup                                     | `.results/run-<ISO>/{summary.json,lifecycle.json,<id>/judge.md,*.spec.md}` (≤10/7 дней) + `results/<дата>-<сценарий>/` (постоянно); песочницы с `--keep` ≤2/24ч |
+| `npm run results:table`                                                 | регенерирует таблицу в `journal/RESULTS.md` из `results/**/summary.json`                          | правит `journal/RESULTS.md`                                                                                                                                     |
+| `npm run results:table:check`                                           | та же регенерация, но только проверка (freshness-гейт, exit 1 при дифф)                           | ничего                                                                                                                                                          |
+| `ai/flow-eval/operator-approve.sh <sandbox>`                            | симулирует полное одобрение оператора (портал + Decision Log)                                     | правки в `<sandbox>/specs/**`                                                                                                                                   |
+| `python3 ai/flow-eval/scripts/session-metrics.py record\|gate\|compare` | детерминированные метрики сессии и completion-гейт                                                | `ai/flow-eval/results/metrics-ledger.jsonl`                                                                                                                     |
+| `python3 ai/flow-eval/scripts/session-telemetry.py <session>`           | разбор траектории воркера постфактум (только чтение)                                              | ничего                                                                                                                                                          |
+| `node --import tsx ai/flow-eval/scripts/sandbox.ts clean [--dry]`       | подчищает осиротевшие песочницы                                                                   | удаляет `sdd-flow-eval-*`, `gen-*`, `diag-*`                                                                                                                    |
+| `ai/flow-eval/scripts/check-fixture-hygiene.sh <fixture>`               | E-16: воспроизводимость + отсутствие файлов класса секретов во внешней фикстуре                   | ничего (диагностика)                                                                                                                                            |
+| `node --import tsx ai/flow-eval/scripts/verify-eval-docs.ts`            | GAP-E-5: считает пометки непроверенности в этой спеке/RUNBOOK и проверяет упомянутые команды/пути | ничего                                                                                                                                                          |
 
 ### Архитектура: пайплайн и роли модулей
 
@@ -133,7 +137,8 @@ flowchart TD
   B -->|"FIXTURE_FILES (встроенная фикстура)"| B1["изолированный git-sandbox"]
   B -->|"pre-set directory (внешний репо, round-trip)"| B1
   B1 --> B2["materializeLocalCli: свежий dist + ai + bin-shim"]
-  B2 --> C["runner.ts: worker-сессия OpenCode на сценарий"]
+  B2 --> B3["dependency-store.ts: verified shared symlinks"]
+  B3 --> C["runner.ts: worker-сессия OpenCode на сценарий"]
   C --> D["observer.ts (каждый интервал)"]
   D -->|"bounded tail + status + events(SSE) + diff"| D
   D --> E{"progress? repeat? stuck?"}
@@ -148,14 +153,15 @@ flowchart TD
   H --> K["cli.ts: отчёт"]
   J --> K
   K --> L["results-archive.ts: results/<дата>-<сценарий>/ (постоянно)"]
-  K --> M["sandbox-lifecycle.ts: .results/run-ISO/ (транзиент) + teardown"]
+  K --> M["sandbox-lifecycle.ts: compact evidence → retryable cleanup"]
   K -->|"opt-in: scenario.checkpoints"| N["trajectory.ts: .sdd-eval-trajectory.<id>.json (для *.trajectory.test.ts)"]
 ```
 
 | Модуль                 | Ответственность                                                                                                                                                                                                                                                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `cli.ts`               | Парсит флаги, провижнит сценарии, запускает пакет, печатает отчёт, вызывает архив результатов.                                                                                                                                                                                                                                             |
-| `provision.ts`         | Строит sandbox: встроенная фикстура (`FIXTURE_FILES`) или готовый каталог; кладёт свежий CLI (`materializeLocalCli`).                                                                                                                                                                                                                      |
+| `provision.ts`         | Строит sandbox: встроенная фикстура (`FIXTURE_FILES`) или готовый каталог; немедленно регистрирует owned-путь, кладёт свежий CLI и использует cooperative abort между bounded filesystem-операциями.                                                                                                                                       |
+| `dependency-store.ts`  | Проверяет root/installed lock, allowlist, Node ABI, platform и arch; создаёт один content-addressed symlink store без install/copy fallback. Неактивные stores ограничены 2 каталогами и 7 днями, active lease не удаляется; третья одновременно active contract lease запрещена fail-closed.                                              |
 | `runner.ts`            | Одна worker-сессия OpenCode на сценарий; ограничивает параллелизм и бюджет наблюдений.                                                                                                                                                                                                                                                     |
 | `observer.ts`          | Раз в интервал читает bounded evidence (включая живые события), решает progress/repeat/stuck, при stuck сам абортит сессию. Детекторы политики (`:36-63`) мгновенно ставят `stuck` при чтении `node_modules/gennady/**`/`dist/chunks/**` или `--help`/`--version`/`2>/dev/null` — это нарушение headless-контракта, а не «модель зависла». |
 | `judge.ts`             | Отдельная сессия с узкой evidence; парсит `VERDICT:` из первой строки ответа.                                                                                                                                                                                                                                                              |
@@ -164,7 +170,7 @@ flowchart TD
 | `trajectory.ts`        | Опционально (`scenario.checkpoints`): модель траектории + эмиссия `.sdd-eval-trajectory.<id>.json` (tool-события + checkpoint-вердикты) из `cli.ts`, сразу после judge. Матчеры для `*.trajectory.test.ts` — в `ai/flow-eval/__tests__/trajectory-assert.ts`. Подробности — «Траектория» ниже.                                             |
 | `migration-grade.ts`   | `MIGRATION` — baseline до воркера + `sdd-state`/`sdd-check` после; см. словарь правил ниже.                                                                                                                                                                                                                                                |
 | `results-archive.ts`   | GAP-E-6: пишет постоянную `results/<дата>-<сценарий>/summary.json`+`judge.md`, дописывает `EXPERIMENTS-LOG.md`.                                                                                                                                                                                                                            |
-| `sandbox-lifecycle.ts` | Транзиентные `.results/run-<ISO>/` + teardown песочниц (`--keep` отключает).                                                                                                                                                                                                                                                               |
+| `sandbox-lifecycle.ts` | Exact owned-path tracker и идемпотентный retryable finalizer: compact partial evidence до cleanup; при ошибке compact sandbox остаётся pending и retry снова пишет evidence до cleanup/retention. Default sandbox retention 0; `--keep` ≤2/24ч; `.results` ≤10/7 дней. Постоянный `results/` не удаляет.                                   |
 | `opencode-runtime.ts`  | Единственный адаптер к `@opencode-ai/sdk` — создание сессий, prompt, abort, SSE; никакого субпроцесса `codex`/`opencode`.                                                                                                                                                                                                                  |
 | `types.ts`             | Источник истины для типов сценария/фазы/режима/фикстуры/judge-контракта.                                                                                                                                                                                                                                                                   |
 
@@ -293,9 +299,9 @@ Authoring batches run sequentially (`--concurrency 1`) — parallel authoring wo
 **Files to read to judge the result, in this order.**
 
 1. `ai/flow-eval/results/<дата>-<scenario-id>[-N]/summary.json` (GAP-E-6, durable) — `verdict`,
-   `status`, `outcome`, `usage`, `quality {rule, pass, detail}`, `specFiles`. If the run used `--keep`,
-   also `ai/flow-eval/.results/run-<ISO>/summary.json` (transient, same shape, disappears on next
-   `sandbox.ts clean`).
+   `status`, `outcome`, `usage`, `quality {rule, pass, detail}`, `specFiles`. Каждый запуск также пишет
+   `ai/flow-eval/.results/run-<ISO>/{summary.json,lifecycle.json}` и копии частичных `*.spec.md` до
+   cleanup; этот transient-набор ограничен 10 каталогами и 7 днями независимо от `--keep`.
 2. `<results-dir>/<scenario-id>/judge.md` (or the transient `.results/run-<ISO>/<id>/judge.md`) — the
    judge's rationale (diagnosis only, never the bar).
 3. In the kept sandbox: the declared `completion.artifact`; `completion.ticket` (`**Status:**` line and

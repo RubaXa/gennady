@@ -3,7 +3,7 @@
 // @consumers: npm run sdd-flow-eval; intentionally uses SDK only, never a provider binary.
 
 import { execSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
@@ -30,8 +30,9 @@ import {
   collectSpecFiles,
   countPendingOperatorDeviations,
   formatBudgetExhausted,
-  persistRunArtifacts,
-  teardownSandboxDirectories,
+  pruneRetainedSandboxes,
+  SddEvalSandboxLifecycle,
+  type SddEvalLifecycleReason,
   type SddEvalRunArtifact,
 } from './sandbox-lifecycle.ts';
 import {
@@ -50,7 +51,7 @@ type SddEvalCliOptions = {
   scenarioFile: string;
   directory: string;
   gennadyRoot?: string;
-  /** Keep the sandboxes on disk after the run (debugging). Default: tear them down. */
+  /** Keep bounded debug sandboxes (at most two for 24h). Default: retention zero. */
   keep: boolean;
   /** Where to persist durable artifacts (specs/judge/summary); default under gennadyRoot/cwd. */
   artifactsDir?: string;
@@ -241,6 +242,22 @@ export function computeAggregateExitCode(artifacts: readonly SddEvalRunArtifact[
 /** @purpose Execute the CLI; results are human-readable lines and no trace/JSON file is written. */
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const options = parseSddEvalCliArgs(argv);
+  const artifactsRoot =
+    options.artifactsDir ?? join(options.gennadyRoot ?? process.cwd(), 'ai/flow-eval/.results');
+  const permanentResultsRoot =
+    options.resultsDir ?? join(options.gennadyRoot ?? process.cwd(), 'ai/flow-eval/results');
+  const runStamp = `run-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+  const sandboxRoot = await realpath(options.directory).catch(() => resolve(options.directory));
+  const lifecycle = new SddEvalSandboxLifecycle({
+    sandboxRoot,
+    artifactsRoot,
+    protectedArtifactsRoot: permanentResultsRoot,
+    runId: runStamp,
+    keep: options.keep,
+  });
+  const abortController = new AbortController();
+  const signalBoundary = lifecycle.installSignalHandlers(abortController);
+  options.config.signal = abortController.signal;
   options.config.onObservation = (scenarioId, observation) => {
     const last = observation.tail.at(-1);
     const activity = last
@@ -255,57 +272,58 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
         `repeat=${observation.repeatCount} stuck=${observation.stuck} tail=${activity}`
     );
   };
-  const scenarios = await loadScenarios(options.scenarioFile);
-  // Only sandboxes THIS run provisioned (scenario had no pre-set directory) are ours to tear down;
-  // a caller-supplied scenario.directory is the caller's to manage.
-  const generatedIds = new Set(
-    scenarios.filter((scenario) => !scenario.directory).map((s) => s.id)
-  );
-  const isolated = await provisionScenarioDirectories(scenarios, {
-    rootDirectory: options.directory,
-    gennadyRoot: options.gennadyRoot,
-  });
-  const teardownDirs = isolated
-    .filter((scenario) => generatedIds.has(scenario.id))
-    .map((scenario) => scenario.directory);
-  // Best-effort teardown must also run if the process is interrupted mid-run, so a Ctrl-C can never
-  // leak ~500MB sandboxes. Guarded so the finally and a signal cannot both remove the same dirs.
-  let toreDown = false;
-  const teardown = async (): Promise<void> => {
-    if (toreDown || options.keep) return;
-    toreDown = true;
-    await teardownSandboxDirectories(teardownDirs);
-  };
-  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.once(signal, () => {
-      void teardown().finally(() => process.exit(130));
-    });
-  }
-  // Migration is graded by literal A1 baseline-diff: capture each pre-worker code+file+severity
-  // identity NOW, on the freshly provisioned v1 repo.
-  const migrationBaselines = new Map<string, MigrationFindingBaseline>();
-  for (const scenario of isolated) {
-    if (scenario.phase === 'migration')
-      migrationBaselines.set(scenario.id, await captureBaseline(scenario.directory));
-  }
   const artifacts: SddEvalRunArtifact[] = [];
+  let failure: unknown;
+  let reason: SddEvalLifecycleReason = 'success';
+  let lifecycleFailed = false;
+  let setupComplete = false;
   try {
+    await pruneRetainedSandboxes(sandboxRoot);
+    const scenarios = await loadScenarios(options.scenarioFile);
+    const isolated = await provisionScenarioDirectories(scenarios, {
+      rootDirectory: sandboxRoot,
+      gennadyRoot: options.gennadyRoot,
+      signal: abortController.signal,
+      dependencyLeaseId: runStamp,
+      lifecycleOwnsCleanup: true,
+      onOwnedDirectory: (scenarioId, directory) =>
+        lifecycle.registerOwnedDirectory(scenarioId, directory),
+      onDependencyLease: (leaseFile) => lifecycle.registerDependencyLease(leaseFile),
+    });
+    setupComplete = true;
+    // Migration is graded by literal A1 baseline-diff: capture each pre-worker code+file+severity
+    // identity NOW, on the freshly provisioned v1 repo.
+    const migrationBaselines = new Map<string, MigrationFindingBaseline>();
+    for (const scenario of isolated) {
+      if (scenario.phase === 'migration')
+        migrationBaselines.set(scenario.id, await captureBaseline(scenario.directory));
+    }
     await runAndReport(options, isolated, artifacts, migrationBaselines);
-    const artifactsRoot =
-      options.artifactsDir ?? join(options.gennadyRoot ?? process.cwd(), 'ai/flow-eval/.results');
-    const runStamp = `run-${new Date().toISOString().replace(/[:.]/g, '-')}`;
-    const runDir = await persistRunArtifacts(artifactsRoot, runStamp, artifacts);
-    console.log(`artifacts → ${runDir}`);
-    // Aggregate CI-suitable exit code (E-00): any worker-error or failed deterministic quality gate
-    // fails the batch. The judge's verdict never participates — see computeAggregateExitCode.
-    const exitCode = computeAggregateExitCode(artifacts);
-    console.log(`batch outcome: exit ${exitCode} (${artifacts.length} scenario(s) reported)`);
-    process.exitCode = exitCode;
+    reason = signalBoundary.received() ?? 'success';
+  } catch (cause) {
+    failure = cause;
+    reason = signalBoundary.received() ?? (setupComplete ? 'failure' : 'setup-failure');
   } finally {
-    await teardown();
-    if (!options.keep) console.log(`sandboxes removed: ${teardownDirs.length}`);
-    else console.log(`sandboxes kept (--keep): ${teardownDirs.length}`);
+    const finalized = await lifecycle.finalize(reason, artifacts);
+    signalBoundary.dispose();
+    if (finalized.runDirectory) console.log(`artifacts → ${finalized.runDirectory}`);
+    console.log(
+      `sandboxes: removed=${finalized.removed} retained=${finalized.retained} pending=${finalized.pending.length}`
+    );
+    for (const error of finalized.errors) console.error(`lifecycle: ${error}`);
+    lifecycleFailed = finalized.errors.length > 0 || finalized.pending.length > 0;
   }
+  const receivedSignal = signalBoundary.received();
+  if (receivedSignal) {
+    process.exitCode = receivedSignal === 'SIGINT' ? 130 : 143;
+    return;
+  }
+  if (failure) throw failure;
+  // Aggregate CI-suitable exit code (E-00): any worker-error or failed deterministic quality gate
+  // fails the batch. The judge's verdict never participates — see computeAggregateExitCode.
+  const exitCode = lifecycleFailed ? 1 : computeAggregateExitCode(artifacts);
+  console.log(`batch outcome: exit ${exitCode} (${artifacts.length} scenario(s) reported)`);
+  process.exitCode = exitCode;
 }
 
 /** @purpose Run every scenario, print the per-run report lines, and collect durable artifacts. */
