@@ -10,6 +10,7 @@ import type {
   ComposedVerifyPresets,
   ComposeVerifyPresetsInput,
   VerifyConfig,
+  VerifyPluginPolicy,
   VerifyStepConfig,
   VerifyStepWaiver,
 } from '../config/verify-config.type.ts';
@@ -199,7 +200,8 @@ function applyLayer(
   presets: Map<string, VerifyPreset>,
   layer: OverlayLayer,
   provenance: Map<string, string>,
-  waivers: Map<string, VerifyStepWaiver>
+  waivers: Map<string, VerifyStepWaiver>,
+  policies: Map<string, VerifyPluginPolicy>
 ): void {
   for (const plugin of Object.keys(layer.config.presets).sort(compareText)) {
     const preset = presets.get(plugin);
@@ -212,6 +214,24 @@ function applyLayer(
         `compose only detected/built-in presets; custom presets arrive in UV-22`,
         layerSource(layer, `verify.presets.${plugin}`)
       );
+    }
+
+    if (pluginConfig.blocking !== undefined) {
+      const blockingPath = `verify.presets.${plugin}.blocking`;
+      const reasonPath = `verify.presets.${plugin}.reason`;
+      const source = layerSource(layer, blockingPath);
+      const reasonSource =
+        pluginConfig.reason === undefined ? undefined : layerSource(layer, reasonPath);
+      policies.set(plugin, {
+        plugin,
+        blocking: pluginConfig.blocking,
+        ...(pluginConfig.reason === undefined ? {} : { reason: pluginConfig.reason }),
+        source,
+        ...(reasonSource === undefined ? {} : { reasonSource }),
+      });
+      provenance.set(blockingPath, source);
+      if (reasonSource !== undefined) provenance.set(reasonPath, reasonSource);
+      else provenance.delete(reasonPath);
     }
 
     const steps = new Map(preset.steps.map((step) => [step.id, step]));
@@ -316,6 +336,7 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
       .map((preset) => [preset.plugin, clonePreset(preset)])
   );
   const provenance = new Map<string, string>();
+  const policies = new Map<string, VerifyPluginPolicy>();
   for (const preset of presets.values()) {
     recordLeafProvenance(
       preset,
@@ -323,6 +344,11 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
       `builtin:${preset.plugin}`,
       provenance
     );
+    policies.set(preset.plugin, {
+      plugin: preset.plugin,
+      blocking: true,
+      source: `builtin:${preset.plugin}`,
+    });
   }
 
   const layers: OverlayLayer[] = [];
@@ -358,7 +384,7 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
   }
 
   const waivers = new Map<string, VerifyStepWaiver>();
-  for (const layer of layers) applyLayer(presets, layer, provenance, waivers);
+  for (const layer of layers) applyLayer(presets, layer, provenance, waivers, policies);
 
   const composedPresets = [...presets.values()];
   try {
@@ -381,5 +407,6 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
     provenance,
     waivers: [...waivers.values()].sort((left, right) => compareText(left.stepId, right.stepId)),
     migrationDiagnostics: [...(input.legacy?.diagnostics ?? [])],
+    policies: [...policies.values()].sort((left, right) => compareText(left.plugin, right.plugin)),
   };
 }

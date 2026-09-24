@@ -47,6 +47,24 @@ export type VerifyStepConfig = {
 export type VerifyPluginConfig = {
   /** @purpose Overrides keyed by existing local step id. */
   readonly steps: Readonly<Record<string, VerifyStepConfig>>;
+  /** @purpose Whether failures from this plugin contribute to the terminal blocking verdict. */
+  readonly blocking?: boolean;
+  /** @purpose Mandatory project explanation when blocking is explicitly disabled. */
+  readonly reason?: string;
+};
+
+/** @purpose Preserve one plugin's effective blocking policy with exact file provenance. */
+export type VerifyPluginPolicy = {
+  /** @purpose Plugin governed by this policy. */
+  readonly plugin: PluginId;
+  /** @purpose True unless project configuration explicitly opts out with a reason. */
+  readonly blocking: boolean;
+  /** @purpose Project-authored explanation for an explicit non-blocking exception. */
+  readonly reason?: string;
+  /** @purpose Winning source of the blocking value. */
+  readonly source: string;
+  /** @purpose Winning source of the reason when it differs from the blocking source. */
+  readonly reasonSource?: string;
 };
 
 /** @purpose Represent the normalized top-level `verify:` section. */
@@ -133,4 +151,6 @@ export type ComposedVerifyPresets = {
   readonly waivers: readonly VerifyStepWaiver[];
   /** @purpose Lossless legacy translations that still need operator migration. */
   readonly migrationDiagnostics: readonly VerifyMigrationDiagnostic[];
+  /** @purpose Effective per-plugin blocking policy, including explicit reason/provenance. */
+  readonly policies: readonly VerifyPluginPolicy[];
 };

@@ -299,6 +299,64 @@ describe('target verify config', () => {
     }
   });
 
+  it('rejects orphan policy reasons but accepts a higher-layer reason over lower blocking false', () => {
+    const context = createVerifyConfigContext();
+    try {
+      context.writeProject(
+        'gennady.yaml',
+        'verify:\n  presets:\n    node:\n      reason: orphan explanation\n'
+      );
+      expectLoadError(
+        loadVerifyConfig(context.root, context.presets, context.home).errors,
+        'VERIFY_CONFIG_INVALID_TYPE',
+        'verify.presets.node.reason'
+      );
+
+      context.writeProject(
+        'gennady.yaml',
+        'verify:\n  presets:\n    node:\n      blocking: true\n      reason: contradictory explanation\n'
+      );
+      expectLoadError(
+        loadVerifyConfig(context.root, context.presets, context.home).errors,
+        'VERIFY_CONFIG_INVALID_TYPE',
+        'verify.presets.node.reason'
+      );
+
+      context.writeProject(
+        'gennady.yaml',
+        ['verify:', '  presets:', '    node:', '      blocking: false', ''].join('\n')
+      );
+      context.writeProject(
+        '.gennadyrc',
+        JSON.stringify({
+          verify: { presets: { node: { reason: 'project-specific explanation' } } },
+        })
+      );
+
+      const loaded = loadVerifyConfig(context.root, context.presets, context.home);
+      assert.deepStrictEqual(loaded.errors, []);
+      assert.deepStrictEqual(loaded.config?.presets.node, {
+        steps: {},
+        blocking: false,
+        reason: 'project-specific explanation',
+      });
+      const composed = composePresets({ presets: context.presets, files: loaded });
+      assert.deepStrictEqual(composed.policies, [
+        {
+          plugin: 'node',
+          blocking: false,
+          reason: 'project-specific explanation',
+          source: 'gennady.yaml',
+          reasonSource: '.gennadyrc',
+        },
+      ]);
+      assert.strictEqual(composed.provenance.get('verify.presets.node.blocking'), 'gennady.yaml');
+      assert.strictEqual(composed.provenance.get('verify.presets.node.reason'), '.gennadyrc');
+    } finally {
+      context.cleanup();
+    }
+  });
+
   it('fails closed on unknown plugin, step and field without returning a partial config', () => {
     const context = createVerifyConfigContext();
     try {

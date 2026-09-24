@@ -21,7 +21,7 @@ import type {
 } from './verify-config.type.ts';
 
 const TOP_LEVEL_KEYS = ['presets'] as const;
-const PLUGIN_KEYS = ['steps'] as const;
+const PLUGIN_KEYS = ['steps', 'blocking', 'reason'] as const;
 const STEP_KEYS = [
   'enabled',
   'reason',
@@ -726,7 +726,62 @@ export function loadVerifyConfig(
       );
       if (parsed !== undefined) steps[stepId] = parsed;
     }
-    normalized[plugin] = { steps };
+    const rawBlocking = rawPlugin['blocking'];
+    const rawReason = rawPlugin['reason'];
+    if (rawBlocking !== undefined && typeof rawBlocking !== 'boolean') {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${pluginPath}.blocking`,
+          'must be a boolean',
+          'omit it for the blocking default, or use false with a non-empty reason',
+          sourceAt(loaded.provenance, `${pluginPath}.blocking`)
+        )
+      );
+    }
+    if (
+      rawReason !== undefined &&
+      (typeof rawReason !== 'string' || rawReason.trim().length === 0)
+    ) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${pluginPath}.reason`,
+          'must be a non-empty string',
+          'explain why this plugin is explicitly non-blocking',
+          sourceAt(loaded.provenance, `${pluginPath}.reason`)
+        )
+      );
+    }
+    if (rawBlocking === false && (typeof rawReason !== 'string' || rawReason.trim().length === 0)) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_DISABLE_REASON_REQUIRED',
+          `${pluginPath}.reason`,
+          'explicit non-blocking policy requires a non-empty reason',
+          `add ${pluginPath}.reason or remove blocking: false`,
+          sourceAt(loaded.provenance, `${pluginPath}.blocking`)
+        )
+      );
+    }
+    if (rawReason !== undefined && rawBlocking !== false) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${pluginPath}.reason`,
+          'reason is only valid when effective blocking is false',
+          'remove reason or set blocking: false in the effective merged config',
+          sourceAt(loaded.provenance, `${pluginPath}.reason`)
+        )
+      );
+    }
+    normalized[plugin] = {
+      steps,
+      ...(typeof rawBlocking === 'boolean' ? { blocking: rawBlocking } : {}),
+      ...(rawBlocking === false && typeof rawReason === 'string' && rawReason.trim().length > 0
+        ? { reason: rawReason }
+        : {}),
+    };
   }
 
   const config: VerifyConfig = { presets: normalized };

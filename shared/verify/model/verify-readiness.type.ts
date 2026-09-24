@@ -21,6 +21,14 @@ export type VerifyReadiness = {
   readonly message: string;
   /** @purpose Actionable installation or configuration instruction when not ready. */
   readonly fix?: string;
+  /** @purpose Whether this entry contributes a blocking terminal readiness outcome. */
+  readonly blocking?: boolean;
+  /** @purpose Explicit project explanation when this plugin is informational. */
+  readonly policyReason?: string;
+  /** @purpose Config file that supplied the explicit blocking value. */
+  readonly policySource?: string;
+  /** @purpose Config file that supplied the explicit informational reason. */
+  readonly policyReasonSource?: string;
 };
 
 /** @purpose Aggregate selected-slice readiness without probing unrelated phases. */

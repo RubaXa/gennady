@@ -11,6 +11,7 @@ import path from 'node:path';
 import {
   DEFAULT_STACK_PRIORITY,
   detectRepoStack,
+  detectTargetStacks,
   orderDetectedStacks,
   primaryStackOf,
 } from '../stack-detection.ts';
@@ -134,5 +135,27 @@ describe('D-64 stack priority', () => {
 
   it('never assigns an absent stack from stack.use', () => {
     assert.deepEqual(orderDetectedStacks(['node', 'golang'], ['swift', 'node']), ['node']);
+  });
+});
+
+describe('UV-07 target stack detection', () => {
+  it('orders actual detected presets and never adds an absent stack', () => {
+    withRepo({ 'package.json': '{}', 'go.mod': 'module example.com/x\n\ngo 1.22\n' }, (dir) => {
+      assert.deepEqual(
+        detectTargetStacks(dir, { use: ['swift', 'node', 'golang'] }).map(
+          (entry) => entry.plugin.id
+        ),
+        ['node', 'golang']
+      );
+    });
+  });
+
+  it('uses blocked target anystack rather than the legacy node bootstrap on markerless roots', () => {
+    withRepo({}, (dir) => {
+      assert.deepEqual(
+        detectTargetStacks(dir, null).map((entry) => entry.plugin.id),
+        ['anystack']
+      );
+    });
   });
 });

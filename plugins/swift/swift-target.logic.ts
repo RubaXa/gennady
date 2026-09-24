@@ -418,7 +418,9 @@ export function materializeSwiftVerifyConfig(
   return {
     ...loaded,
     config:
-      errors.length === 0 ? { presets: { ...loaded.config.presets, swift: { steps } } } : null,
+      errors.length === 0
+        ? { presets: { ...loaded.config.presets, swift: { ...plugin, steps } } }
+        : null,
     errors,
   };
 }

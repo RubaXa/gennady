@@ -3,7 +3,11 @@
 // @consumers: stack-registry
 
 import type { StackDetection, StackPlugin } from 'gennady/stack';
-import { detectSwiftProject, type SwiftProject } from './swift-detect.logic.ts';
+import {
+  detectSwiftProject,
+  isSwiftBuildDefinitionPath,
+  type SwiftProject,
+} from './swift-detect.logic.ts';
 import { SWIFT_GATE_ORDER, planSwiftGates } from './swift-plan.logic.ts';
 import { resolveSwiftScope, type SwiftScope } from './swift-scope.logic.ts';
 import { createSwiftVerifyPreset, evaluateSwiftReadiness } from './swift-target.logic.ts';
@@ -44,6 +48,13 @@ export const swiftPlugin: StackPlugin = {
     },
   },
   target: {
+    affectsScope(_detection, scope) {
+      return (
+        scope.mode === 'all' ||
+        scope.files.length === 0 ||
+        scope.files.some((file) => file.endsWith('.swift') || isSwiftBuildDefinitionPath(file))
+      );
+    },
     createPreset: createSwiftVerifyPreset,
     evaluateReadiness: evaluateSwiftReadiness,
   },

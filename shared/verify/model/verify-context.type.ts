@@ -10,7 +10,7 @@ export type VerifyScope = {
   readonly mode: 'files' | 'changed' | 'all';
   /** @purpose Repository-relative files in the resolved scope. */
   readonly files: readonly string[];
-  /** @purpose VCS base ref when the scope came from a diff. */
+  /** @purpose Exact non-empty VCS base identity required when mode is changed. */
   readonly changedFrom?: string;
 };
 

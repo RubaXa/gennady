@@ -125,6 +125,15 @@ const WIDENING_RE =
   /^(?:go\.mod|go\.sum|go\.work|go\.work\.sum|\.golangci\.(?:yml|yaml|toml|json)|vendor\/)/;
 
 /**
+ * @purpose Identify a Go-owned source or build-definition path for multistack scope selection.
+ * @param relative Normalized repository-relative scope path.
+ * @returns True when the path belongs to Go source or project definition scope.
+ */
+export function isGolangScopePath(relative: string): boolean {
+  return relative.endsWith('.go') || WIDENING_RE.test(relative);
+}
+
+/**
  * @purpose Build the shared module-resolution flags so vendored repos never reach the network.
  * @param project Detected project.
  * @returns `-mod=vendor` when the repo vendors its dependencies, otherwise no flags.
