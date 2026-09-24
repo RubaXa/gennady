@@ -1162,3 +1162,20 @@ Swift-правил).
 | ВЫПОЛНЕНО | 2 |
 
 > Пересчитывать этим же способом при каждом обновлении доски; §5.5 не редактируется вручную.
+
+## 6. Post-migration track 2026-09-24 — Verify/Rules unification
+
+> Старые счётчики §5 описывают исходную миграционную доску и не переписываются задним числом.
+> Канонические формулировки, dependencies и acceptance новой очереди —
+> `64-VERIFY-RULES-UNIFICATION.md` §13. До ACK U0 все строки ниже `ПЛАН`, код не начинается.
+
+| Волна | ID | Смысл | Статус |
+|---|---|---|---|
+| U1 | UV-01..03 | model/DAG/config overlay + compatibility adapter | ПЛАН |
+| U2 | UV-04..07 | Node/Go/Swift/Anystack presets, readiness, multistack | ПЛАН |
+| U3 | UV-08..11 | WorkspaceGuard, local runner, repair/invalidation, reports | ПЛАН |
+| U4 | UV-12..14 | SDD context/receipt cutover, удалить второй runner | ПЛАН |
+| U5 | UV-15..17 | manifest dirty VCS source, exact-SHA watcher, `phase=ci` | ПЛАН |
+| U6 | UV-18..21 | sidecar rules, resolver/snapshot, удалить `knowledge.xml` | ПЛАН |
+| U7 | UV-22..23 | custom presets/phases, external-plugin security ADR | ПЛАН |
+| U8 | UV-24..26 | удалить compatibility, evidence pack, exact Swift E-18 | ПЛАН |
