@@ -377,16 +377,22 @@ export function validateStackConfig(
  * @invariant Priority: repo .gennadyrc > gennady.yaml > HOME .gennadyrc; objects merge, leaves replace.
  * @param root Absolute repository root.
  * @param builtinGateIds Built-in gate ids per plugin, for strict validation.
+ * @param [options] Optional deterministic home directory; omission preserves legacy discovery.
  * @returns Merged config with provenance; any error in `errors` is fatal for verify.
  * @sideEffect IO: reads config files.
  */
 export function loadStackConfig(
   root: string,
-  builtinGateIds: Readonly<Partial<Record<PluginId, readonly string[]>>>
+  builtinGateIds: Readonly<Partial<Record<PluginId, readonly string[]>>>,
+  options: { readonly homeDirectory?: string } = {}
 ): StackConfigLoad {
   // Discovery, merge and provenance are the config scope's job; this function owns only
   // the `stack` section's schema (config.spec §3).
-  const loaded = loadConfigSection(root, 'stack');
+  const loaded = loadConfigSection(
+    root,
+    'stack',
+    options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
+  );
   if (loaded.section === null) {
     return {
       config: null,
