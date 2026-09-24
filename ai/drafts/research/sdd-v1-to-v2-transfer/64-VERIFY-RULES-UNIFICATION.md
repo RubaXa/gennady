@@ -1,6 +1,6 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
-> Статус: **АРХИТЕКТУРА ПРИНЯТА, КОД НЕ НАЧАТ**. Основание: операторский разговор
+> Статус: **ГОТОВО К ACK U0, КОД НЕ НАЧАТ**. Основание: операторский разговор
 > 2026-09-24 после завершения самомиграции SDD v2. Этот документ **замещает** старые открытые
 > развилки O-1/O-2 и design-tail plugin↔preset convergence, но не переписывает исторические
 > отчёты 30/33. Публикация пакета запрещена до выполнения §12.
@@ -15,6 +15,19 @@
 ```text
 gennady verify --phase <phase> [--task <ticket> --sdd-phase <P>]
 ```
+
+У правил есть отдельная **read-only справочная поверхность**, но не второй resolver:
+
+```text
+gennady rules list [--stack <id>] [--phase <phase>]
+gennady rules show <rule-id>
+gennady rules resolve --phase <phase> (--files <glob...> | --changed-from <ref> | --task <ticket>)
+                      [--format text|json]
+```
+
+`rules list/show` отвечают «что доступно», а `rules resolve` — «что выбрано для этого контекста и
+почему». Последний вызывает ровно тот же `RuleResolver`, что и `verify`, и возвращает тот же digest
+snapshot. Он не запускает Verify steps, не меняет рабочее дерево и не записывает SDD receipt.
 
 Он обязан:
 
@@ -403,6 +416,25 @@ marker, phase, dependency) обязательны механически. Смы
 их выбор фиксируется в snapshot/receipt и проверяется аудитом, а не выдаётся за полностью
 формализованный человеческий смысл.
 
+### 10.1 Справочник как CLI-инструмент
+
+`gennady rules` — публичная проекция `RuleRegistry + RuleResolver`, а не статический help-файл и не
+копия логики Verify:
+
+- `list` выводит inventory с id, source, stack/framework/phase predicates и availability;
+- `show` печатает metadata и prompt-body одного правила вместе с provenance/dependencies;
+- `resolve` требует объяснимый scope: явные files, diff от ref или SDD ticket. Если scope нельзя
+  вывести однозначно, команда fail-closed просит один из этих входов, а не выбирает весь registry;
+- text-вывод ориентирован на агента/оператора; JSON стабилен и содержит `selected.required`,
+  `selected.suggested`, `skipped`, причины, dependency closure, provenance и snapshot digest;
+- `gennady verify --plan` встраивает этот же rules snapshot в план. Равные входы обязаны давать
+  равный digest у `rules resolve`, `verify --plan` и фактического `VerifyRunReport`;
+- команда всегда read-only. Запись snapshot/receipt происходит только владельцем workflow — Verify
+  run или SDD sink.
+
+Существующий `gennady agents-rules` — статическая инструкция по `orient`, не этот справочник. Его
+контракт не переиспользуется и не выдаётся за dynamic rules API.
+
 `knowledge.xml` удаляется только после эквивалентной миграции каждой записи, dependency closure
 proof и проверки project-local override. `shared/sdd/rules-cascade.ts` заменяется общим
 `RuleResolver`; SDD лишь сверяет freshness snapshot.
@@ -448,6 +480,16 @@ shared/rules/
   rule-snapshot.ts
   rule-config.ts
 
+cli/cmd/rules/
+  rules.cmd.ts
+  rules-list.ts
+  rules-show.ts
+  rules-resolve.ts
+  rules-report.ts
+
+specs/cli/verify/verify.spec.md
+specs/cli/rules/rules.spec.md
+
 plugins/node/
   node-plugin.ts
   node-detect.logic.ts
@@ -471,6 +513,7 @@ shared/sdd/verify/
 | `shared/verify/stack-config.ts` | `VerifyStepOverride`, phase schema, migration diagnostics |
 | `shared/verify/tree-guard.ts` | объединить с workspace mutation в `WorkspaceGuard` |
 | `cli/cmd/verify/**` | plan-only facade → настоящий executor + `--plan` diagnostic mode |
+| CLI dispatch/help/`cli/AGENTS.md` | добавить `gennady rules list/show/resolve`; не смешивать с `agents-rules` |
 | `plugins/golang/*-plan.logic.ts` | возвращает `VerifyPreset` DAG |
 | `plugins/swift/*-plan.logic.ts` | возвращает `VerifyPreset` DAG |
 | `plugins/anystack/anystack-plugin.ts` | пустой declarative preset |
@@ -511,7 +554,20 @@ shared/sdd/rules-cascade.ts
 ```
 
 `cli/cmd/sdd-verify/__tests__` удаляется не оптом: поведенческие сценарии переносятся в engine,
-preset и SDD sink tests; лишь после parity старые golden/files удаляются.
+preset и SDD sink tests; лишь после parity старые golden/files удаляются. Обязательный frozen
+golden corpus сравнивает старый runner и новый adapter на одинаковых входах по нормализованным
+`verdict`, exit code, diagnostic id/severity/location и receipt fields. В частности, A13/D-4
+(`SDD_GROUP_AUDIT_MISSING`/`SDD_GROUP_REVIEW_MISSING` = blocking error в v2), grandfathering V1,
+marker-only phase receipt validation и запрет фабрикации исторических receipts обязаны совпасть.
+
+### 11.6 Где живёт канон после ACK
+
+`64-VERIFY-RULES-UNIFICATION.md` остаётся research/decision evidence в PR #26 → `main`. Он не
+является runtime dependency и не должен читаться реализацией из gitignored `ai/drafts` release-
+ветки. В U1 принятый контракт материализуется в неигнорируемых
+`specs/cli/verify/verify.spec.md` и `specs/cli/rules/rules.spec.md`; task/Decision Log ко-лоцируются
+там по SDD v2. Эти specs становятся implementation source of truth, а 64 — трассировкой исходного
+ACK. Любое смысловое изменение после ACK сначала обновляет canonical spec + Decision Log.
 
 ### 11.5 Сохранить как проверенные примитивы
 
@@ -534,10 +590,10 @@ boundary.
 | Волна | Содержание | Выход | Остановка |
 |---|---|---|---|
 | U0 | этот документ, решения, acceptance, source manifest dirty VCS work | утверждённая архитектура | **да: ACK архитектуры** |
-| U1 | model + planner + config overlay + parity adapters | новый DAG строится, старый runtime не сломан | нет |
+| U1 | canonical specs + model + planner + config overlay + parity adapters | принятый контракт живёт в `specs/**`, новый DAG строится, старый runtime не сломан | нет |
 | U2 | Node/Go/Swift/Anystack presets + per-phase readiness + multistack | одинаковый план на трёх стеках | нет |
 | U3 | local executor + WorkspaceGuard + repair/invalidation | `gennady verify` реально исполняет phase slice | нет |
-| U4 | SDD adapter/receipt cutover; перенос golden; удаление второго runner | SDD использует тот же engine | нет |
+| U4 | SDD adapter/receipt cutover; frozen golden parity A13/D-4; удаление второго runner | SDD использует тот же engine без receipt regression | нет |
 | U5 | exact-SHA remote watcher; перенос лучших dirty VCS частей | `phase=ci` ждёт GitLab/GitHub pipeline | только перед remote mutation/rollback |
 | U6 | sidecar registry + resolver + snapshot; миграция `knowledge.xml` | правила выбираются динамически | только перед недетерминированным model-selector |
 | U7 | custom phases/presets, consumer fixtures, external-plugin contract | расширяемость доказана | перед исполнением внешнего кода |
@@ -547,7 +603,7 @@ boundary.
 
 | ID | Волна | Задача | Depends on | Acceptance |
 |---|---:|---|---|---|
-| UV-01 | U1 | split model и новый `VerifyStep`/`VerifyPreset` contract | U0 | type/API tests, closed `StackId` отсутствует |
+| UV-01 | U1 | материализовать canonical verify/rules specs; split model и новый `VerifyStep`/`VerifyPreset` contract | U0 | неигнорируемые specs связаны с D-65..D-70; type/API tests; closed `StackId` отсутствует |
 | UV-02 | U1 | DAG validation, phase slicing, qualified ids | UV-01 | cycles/missing deps/unknown tags fail closed |
 | UV-03 | U1 | config overlay + provenance + legacy adapter | UV-01 | deterministic merge, actionable migration errors |
 | UV-04 | U2 | Node plugin/preset и script readiness | UV-01..03 | zero-YAML fixture по code/unit/coverage |
@@ -559,14 +615,14 @@ boundary.
 | UV-10 | U3 | repair loop + selective invalidation | UV-09 | re-run only invalidated, non-convergence bounded |
 | UV-11 | U3 | text/json reports + readiness instructions | UV-04..10 | stable machine-readable report |
 | UV-12 | U4 | SDD context и receipt sink | UV-11 | same report powers standalone and SDD receipt |
-| UV-13 | U4 | migrate directives/skills/specs and parity golden | UV-12 | no behavioral receipt regression |
+| UV-13 | U4 | migrate directives/skills/specs and frozen receipt parity golden | UV-12 | old runner = new adapter по verdict/exit/diagnostic identity+severity+location/receipt fields; A13/D-4, V1 grandfathering и marker-only semantics неизменны |
 | UV-14 | U4 | remove independent `sdd-verify` runner | UV-13 | no runtime imports/references to old runner |
 | UV-15 | U5 | audit/manifest dirty VCS source | U0 | every source change classified A/B/C |
 | UV-16 | U5 | common pipeline watcher + typed evidence | UV-15, UV-09 | exact-SHA state sequence, timeout/API tests |
 | UV-17 | U5 | `remote.executor` + `phase=ci` | UV-16, UV-11 | pushed SHA proof, jobs/logs in report |
 | UV-18 | U6 | sidecar rule schema/registry | U0 | no directive XML parsing as registry |
 | UV-19 | U6 | deterministic rule resolver + dependency closure | UV-18, UV-02 | files/stack/phase/framework fixtures |
-| UV-20 | U6 | task-intent candidates + immutable snapshot | UV-19, UV-12 | reasons/provenance/freshness in receipt |
+| UV-20 | U6 | task-intent candidates + immutable snapshot + `gennady rules` facade | UV-19, UV-12 | list/show/resolve read-only; reasons/provenance/freshness/digest совпадают с verify plan/report |
 | UV-21 | U6 | migrate and delete `knowledge.xml` | UV-18..20 | entry-by-entry equivalence, local override proof |
 | UV-22 | U7 | declarative custom presets/phases | UV-03, UV-11 | custom integration/deploy fixture |
 | UV-23 | U7 | external plugin trust/version/isolation ADR | UV-01 | design decision before dynamic import |
@@ -587,7 +643,10 @@ boundary.
 - multistack блокирует все затронутые стеки;
 - `phase=ci` ждёт pipeline exact pushed SHA и сохраняет evidence;
 - SDD receipt строится из общего report;
-- rules собираются динамически без центрального `knowledge.xml`;
+- rules собираются динамически без центрального `knowledge.xml`, а `gennady rules` объясняет тот
+  же snapshot без запуска Verify;
+- frozen receipt parity сохраняет A13/D-4 severity, diagnostic identity/location, grandfathering и
+  marker-only semantics до удаления `sdd-verify`;
 - independent `sdd-verify` runner и compatibility adapters удалены;
 - dirty VCS source перенесён через manifest + tests, а не потерян;
 - exact Swift E-18 завершён в реальном release environment;

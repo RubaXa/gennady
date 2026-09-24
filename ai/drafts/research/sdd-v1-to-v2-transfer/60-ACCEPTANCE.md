@@ -43,13 +43,13 @@ RC (v2) становится единственным SDD: всё полезно
 
 | № | Критерий | Доказательство | Задачи |
 |---|---|---|---|
-| U-A1 | Один planner/runner для standalone и SDD; independent `sdd-verify` runtime отсутствует | import/CLI grep = 0; standalone и SDD parity report/receipt | UV-01..14, UV-24 |
+| U-A1 | Один planner/runner для standalone и SDD; independent `sdd-verify` runtime отсутствует; A13/D-4 receipt semantics сохранена | import/CLI grep = 0; frozen old-runner↔new-adapter golden: verdict/exit/diagnostic identity+severity+location/receipt fields, V1 grandfathering и marker-only parity | UV-01..14, UV-24 |
 | U-A2 | Node/Go/Swift presets выбираются autodection; zero-YAML для Node/Go/SwiftPM, Xcode — minimal identity | per-stack real fixtures по code/unit/integration/coverage | UV-04..07, UV-25..26 |
 | U-A3 | Phase selects DAG slice; custom phase/preset overlay deterministic и provenance-visible | plan goldens + cycle/missing-dependency fail-closed cases | UV-02..03, UV-22 |
 | U-A4 | Repair безопасен: write boundaries, diff, selective recheck, bounded convergence | both-way dirty-tree fixtures; unexpected write/non-convergence red | UV-08..11 |
 | U-A5 | Readiness честен по фазам: required missing = BLOCKED, explicit waiver = DEGRADED, нет 0/0 pass | Node/Go/Swift missing-tool/script matrices | UV-04..07, UV-11 |
 | U-A6 | Remote CI следит за exact pushed SHA, pin-ит pipeline id и сохраняет redacted evidence | fake-clock state sequences + GitLab/GitHub provider contracts + real smoke | UV-15..17, UV-25 |
-| U-A7 | Rules выбираются динамически без `knowledge.xml`; hard predicates/dependencies детерминированы, semantic candidates объяснены и snapshot-нуты | entry-by-entry migration proof + stack/file/phase/task fixtures | UV-18..21, UV-24..25 |
+| U-A7 | Rules выбираются динамически без `knowledge.xml`; hard predicates/dependencies детерминированы, semantic candidates объяснены и snapshot-нуты; `gennady rules` даёт read-only list/show/resolve | entry-by-entry migration proof + stack/file/phase/task fixtures + равный snapshot digest у rules resolve/verify plan/run | UV-18..21, UV-24..25 |
 | U-A8 | Compatibility удалена, exact E-18 завершён, evidence снят на одном clean commit; package до этого не публикуется | clean-tree evidence pack, `npm pack --dry-run` только как inspection, registry publication отсутствует | UV-24..26 |
 
 ## 3. Что НЕ входит в приёмку (зафиксировано)
