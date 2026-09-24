@@ -52,6 +52,25 @@ export type {
   VerifyStepStatus,
 } from './model/verify-report.type.ts';
 
+export { adaptLegacyStackConfig } from './config/adapt-legacy-stack-config.ts';
+export { loadVerifyConfig } from './config/load-verify-config.ts';
+export { VerifyConfigError } from './config/verify-config.error.ts';
+export type { VerifyConfigErrorCode } from './config/verify-config.error.ts';
+export type {
+  ComposedVerifyPresets,
+  ComposeVerifyPresetsInput,
+  DetectedVerifyConfigLayer,
+  LegacyVerifyConfigAdapter,
+  VerifyCommandConfig,
+  VerifyConfig,
+  VerifyConfigLoad,
+  VerifyMigrationDiagnostic,
+  VerifyPluginConfig,
+  VerifyStepConfig,
+  VerifyStepWaiver,
+} from './config/verify-config.type.ts';
+
+export { composePresets } from './planning/compose-presets.ts';
 export { selectPhase } from './planning/select-phase.ts';
 export { resolveDependencies } from './planning/resolve-dependencies.ts';
 export { validatePlan } from './planning/validate-plan.ts';

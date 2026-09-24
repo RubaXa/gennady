@@ -63,6 +63,14 @@ export type ConfigSectionLoad = {
   readonly provenance: ReadonlyMap<string, string>;
 };
 
+/** @purpose Select source priority without changing the legacy loader default. */
+type ConfigSectionLoadOptions = {
+  /** @purpose Personal rc priority; legacy sections default to `lowest`. */
+  readonly personalPriority?: 'lowest' | 'highest';
+  /** @purpose Explicit home directory for deterministic hosts and tests. */
+  readonly homeDirectory?: string;
+};
+
 /**
  * @purpose Parse a duration string into milliseconds.
  * @param value Duration such as `90s`, `5m`, `1h`.
@@ -271,22 +279,26 @@ export function provenanceOf(
 }
 /**
  * @purpose Discover, merge and attribute ONE top-level section of the per-repo config.
- * @invariant Priority: repo .gennadyrc > gennady.yaml > HOME .gennadyrc; objects merge, leaves replace.
+ * @invariant Default priority remains repo .gennadyrc > gennady.yaml > HOME .gennadyrc;
+ *   `personalPriority: 'highest'` opts a section into HOME > repo rc > yaml.
  * @invariant Knows nothing about any section's schema — validation belongs to the owning scope.
  * @param root Absolute repository root.
  * @param sectionName Top-level key to extract, e.g. `stack`.
+ * @param [options] Source-priority and home-directory policy; omitted preserves legacy semantics.
  * @returns Merged section with provenance; parse errors are fatal for the caller.
  * @sideEffect IO: reads up to three config files.
  */
-export function loadConfigSection(root: string, sectionName: string): ConfigSectionLoad {
-  const home = process.env.HOME ?? '';
-  const sources: RawSource[] = [
-    ...(home.length > 0 && home !== root
-      ? [readRcSource(home, `~/${RC_FILENAME}`, sectionName)]
-      : []),
-    readYamlSource(root, sectionName),
-    readRcSource(root, RC_FILENAME, sectionName),
-  ];
+export function loadConfigSection(
+  root: string,
+  sectionName: string,
+  options: ConfigSectionLoadOptions = {}
+): ConfigSectionLoad {
+  const home = options.homeDirectory ?? process.env.HOME ?? '';
+  const personal =
+    home.length > 0 && home !== root ? [readRcSource(home, `~/${RC_FILENAME}`, sectionName)] : [];
+  const project = [readYamlSource(root, sectionName), readRcSource(root, RC_FILENAME, sectionName)];
+  const sources: RawSource[] =
+    options.personalPriority === 'highest' ? [...project, ...personal] : [...personal, ...project];
 
   const errors = sources.map((source) => source.error).filter((error) => error !== null);
   const provenance = new Map<string, string>();
