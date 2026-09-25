@@ -20,9 +20,9 @@ CLI-VERIFY
 >
 > **2026-09-25 amendment:** SDD workflow phase kind and Verify phase selector are separate open
 > vocabularies. Built-in presets provide zero-YAML default mappings; project YAML overlays/overrides
-> them with provenance. UV-13 cutover is `BLOCKED` until declarative custom selectors/composed mapping
-> (UV-22) exist and the operator ACKs the Evidence/Receipt checkpoint below. This amendment does
-> not choose the pending receipt schema or local/remote trust model.
+> them with provenance. The operator ACKed the Evidence/Receipt contract below; UV-13 cutover remains
+> `BLOCKED` until declarative custom selectors/composed mapping (UV-22) and the concrete evidence
+> implementation (UV-12E) both land and pass review.
 
 The target module owns one public engine, `gennady verify --phase <selector>`. The selector value is
 an arbitrary declared preset/YAML-owned string; core assigns no semantics from its name. A stack plugin has an
@@ -51,7 +51,7 @@ a second target engine.
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object. UV-22 adds arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance) before cutover. UV-13 remains blocked until the Evidence/Receipt checkpoint is ACKed; runner deletion remains UV-14, remote verification U5 and dynamic rules U6.
+UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object. UV-22 moves before cutover to add arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance). U4-ER is ACKed; UV-12E must now implement the attempt journal, stats, freshness identities and trust projection. UV-13 depends on reviewed UV-22 + UV-12E; runner deletion remains UV-14, remote verification U5 and dynamic rules U6.
 
 ### Target call chain
 
@@ -347,8 +347,9 @@ default presentation, `--json` — versioned stable machine projection. `--plan 
 а не inference semantics из имени `full` или любого другого selector id.
 
 UV-12 SDD context/receipt sink, U5 remote executor и U6 dynamic rules остаются за этой задачей;
-UV-22 materializes arbitrary project selectors/mapping before UV-13; UV-13/14 perform SDD
-cutover и удаление compatibility runner только после Evidence/Receipt ACK. Refines D-65/D-67.
+UV-22 обязан материализовать arbitrary project selectors/mapping, а UV-12E — ACKed
+Evidence/Receipt contract до UV-13. UV-13/14 выполняют SDD cutover и удаление compatibility runner
+только после review обеих зависимостей. Refines D-65/D-67.
 
 ### VER-REQ-15 [должен · нештатная]
 
@@ -387,8 +388,8 @@ id/severity/location и не вызывает sink. `--plan` никогда не
 
 Legacy byte parity не применяется к no-overlay preset как universal default. UV-12 не переключает
 compatibility runner и не объявляет полную parity: conditional overlay mapping принадлежит UV-13,
-удаление runner — UV-14. Оба заблокированы до Evidence/Receipt ACK. Refines D-65; preserves A13/D-4
-до conditional parity gate.
+удаление runner — UV-14. UV-13 заблокирован до reviewed UV-22 + UV-12E. Refines D-65; preserves
+A13/D-4 до conditional parity gate.
 
 ### VER-REQ-18 [должен · нештатная]
 
@@ -419,26 +420,48 @@ Project-authored selector dispatch is governed by the selected target slice's re
 legacy npm readiness cannot block it. The frozen legacy infra gate remains only on a zero-YAML
 built-in mapping until its compatibility owner is removed.
 
-### Mandatory operator checkpoint: Evidence/Receipt (`U4-ER`, UV-13 BLOCKED)
+### ACKed operator checkpoint: Evidence/Receipt (`U4-ER`, implementation UV-12E)
 
-До UV-13 canonical Decision Log должен получить отдельный operator ACK. Этот документ намеренно не
-выбирает ответы вместо оператора. ACK обязан определить:
+Operator ACK задаёт следующий обязательный контракт. ACK сам по себе не является implementation
+evidence: directive/CLI cutover UV-13 начинается только после merge/review UV-22 и UV-12E.
 
-1. versioned machine-readable normalized test statistics (как минимум
-   executed/passed/failed/skipped + runner/protocol provenance) и обязательность полей по runner;
-2. proof actual runner invocation, не сводимый к authored command/script string: attempt/step/process
-   identity и наблюдаемые terminal facts;
-3. persistence failed/timeout/cancelled/violation attempt до retry, чтобы последующий pass не стирал
-   failure evidence;
-4. local vs remote trust model: HEAD/worktree/provider/exact-SHA identity, допустимый источник
-   release-grade proof и явный trust level в report;
-5. explicit legacy-overlay activation/provenance и механическую гарантию, что no-overlay path не
-   наследует legacy bytes/order.
+1. Каждый SDD Verify attempt создаёт одну compact structured entry в существующем ticket
+   `EXECUTION_LOG`. Та же entry атомарно обновляется
+   `RUNNING → PASS|FAIL|TIMEOUT|CANCELLED|VIOLATION`; recovery/следующий run детерминированно
+   переводит orphan `RUNNING` в `INTERRUPTED`. История append-only: поздний pass не стирает earlier
+   failed/interrupted attempts.
+2. Human line содержит только run id, SDD phase, selector, terminal state, steps `x/y`, минимальные
+   counts для каждого test step и duration. Full stdout/stderr и artifact warehouse в ticket
+   запрещены; detailed bounded/redacted diagnostics возвращаются агенту через CLI report.
+3. Structured payload той же entry содержит exact HEAD, deterministic worktree/scope digest,
+   покрывающий uncommitted state, plan digest, preset/config provenance digest, rules digest,
+   timestamps и run id. Любой relevant drift делает prior pass stale.
+4. Каждый test step объявляет stats policy `required|optional|none`; built-in `unit` и `integration`
+   defaults — `required`. Missing required capability блокирует readiness до spawn. Promised required
+   stats, отсутствующие или malformed после execution, дают `VIOLATION`. Versioned normalized
+   minimum: `executed/passed/failed/skipped` плюс protocol и runner provenance. Custom workflow kinds
+   и Verify selectors остаются open vocabulary.
+5. Trust задаётся selector-ом: ordinary local phases принимают `trust=local-runner`; final `ci`
+   требует remote provider exact pushed SHA и immutable pipeline identity. Local receipt runner-owned
+   и детерминированно валидируется, но явно не cryptographic/tamper-proof. Remote implementation
+   остаётся U5.
+6. Legacy byte parity активируется только explicit legacy overlay с provenance; no-overlay path не
+   наследует legacy command/order semantics.
 
-Checkpoint acceptance: ответы записаны в canonical Decision Log; versioning/migration и failure
-semantics определены; fixtures доказывают normalized stats, actual invocation, persisted failure,
-visible local/remote trust и обе стороны overlay on/off. До этого directive/CLI cutover UV-13 не
-начинается, а independent compatibility runner UV-14 не удаляется.
+UV-12E acceptance: adversarial recovery/atomic transition; append-only failed/interrupted history
+после нового pass; required/optional/none stats fixtures; deterministic identities/staleness;
+selector trust в report/ticket; overlay on/off остаются раздельными. UV-14 не удаляет independent
+compatibility runner до UV-13.
+
+### VER-REQ-19 [должен · нештатная]
+
+**Когда** SDD Verify attempt принят к исполнению после preflight, **то evidence owner должен** создать
+ровно одну UV-12E entry по ACKed contract выше до первого spawn, обновлять только её exact run id и
+атомарно завершить terminal state после runner/WorkspaceGuard outcome. Recovery не имеет права
+удалять историю или считать orphan `RUNNING` успешным. Stats policy проверяется и на readiness, и на
+post-execution boundary; required malformed/missing stats доминируют process success как
+`VIOLATION`. Freshness проверяет exact HEAD и все digest identities; trust не повышается с
+`local-runner` до remote по тексту selector-а без U5 provider evidence. Refines D-65/D-67/D-69.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -789,8 +812,8 @@ plugins/
 
 ## 9. Module Decision Log
 
-Одиннадцать принятых записей: четыре исторических переходных решения, target-контракт D-65..D-70
-и amendment open-vocabulary mapping; отдельно перечислен один pending operator checkpoint.
+Двенадцать принятых записей: четыре исторических переходных решения, target-контракт D-65..D-70,
+amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 
 <details>
 <summary>Полные записи Decision Log</summary>
@@ -886,12 +909,25 @@ plugins/
 
 ### VERIFY-CP-1 — Evidence/Receipt operator checkpoint
 
-- **Status:** **PENDING OPERATOR ACK; blocks UV-13/UV-14.**
-- **Open decisions:** normalized machine-readable test statistics; proof of actual runner
-  invocation; persistence of failed attempts; local vs remote trust; versioning/migration and exact
-  activation semantics of legacy overlay.
-- **No implicit decision:** this record deliberately does not choose a receipt schema or trust
-  policy. Acceptance is defined in `Mandatory operator checkpoint: Evidence/Receipt` above.
+- **Status:** **ACKED; implementation UV-12E blocks UV-13 together with UV-22.**
+- **Decision:** every SDD Verify attempt owns one append-only ticket `EXECUTION_LOG` entry with atomic
+  `RUNNING → PASS|FAIL|TIMEOUT|CANCELLED|VIOLATION`; deterministic recovery marks orphan `RUNNING`
+  as `INTERRUPTED`. The compact human line is limited to run/phase/selector/state, steps `x/y`,
+  per-test-step minimum counts and duration; bounded/redacted detail remains in the CLI report.
+- **Machine identity:** the structured entry contains run id/timestamps, exact HEAD,
+  uncommitted-state-aware worktree/scope digest, plan digest, preset/config provenance digest and
+  rules digest. Relevant drift invalidates a prior pass.
+- **Stats:** each test step declares `required|optional|none`; built-in unit/integration default to
+  required. Missing required capability blocks readiness; missing/malformed promised stats after
+  execution is a violation. Normalized minimum is executed/passed/failed/skipped plus
+  protocol/runner provenance.
+- **Trust:** ordinary local selectors accept explicit `local-runner`; final `ci` requires U5 remote
+  provider proof for exact pushed SHA and immutable pipeline identity. Local evidence is
+  deterministic runner-owned validation, not cryptographic/tamper-proof.
+- **Legacy boundary:** byte parity remains conditional on explicit legacy overlay/provenance and is
+  never inferred on the no-overlay path.
+- **Implementation gate:** UV-12E owns evidence model, local SDD journal, stats, freshness and trust
+  projection. UV-13 starts only after UV-22 and UV-12E land and pass review.
 
 </details>
 
@@ -927,6 +963,9 @@ _Кто подключит `verify` к своему ладдеру и какая
   `resolve-multistack.ts`; U3 owns execution and legacy remains unchanged through U4 parity.
 - **UV-07 planner tests:** `shared/verify/__tests__/multistack-planner.test.ts` cover conservative
   scope, detected intersection/order, cross-plugin closure, policy and anystack fallback.
+- **U4 batch queue:** UV-22 supplies declarative selectors/composed kind mapping; ACKed U4-ER is
+  implemented by UV-12E (attempt journal, stats, freshness identities, selector trust); only then
+  UV-13 may cut phase-agent/directive surfaces over, and UV-14 may remove the compatibility runner.
 - **Target config files created by UV-03:** `shared/verify/config/**` and
   `shared/verify/planning/compose-presets.ts`; the existing stack loader/runtime is unchanged.
 - **Config contract tests:** `shared/verify/__tests__/{verify-config,legacy-verify-config}.test.ts`;
