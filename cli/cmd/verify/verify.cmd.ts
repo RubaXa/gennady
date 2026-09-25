@@ -4,13 +4,22 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import {
+  emitSddReceipt,
+  type SddReceiptCommandBinding,
+} from '../../../shared/sdd/verify/sdd-receipt-sink.ts';
+import type { SddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
 import type { VerifyRunReport } from '../../../shared/verify/model/verify-report.type.ts';
 import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
 import { renderVerifyJson } from '../../../shared/verify/reporting/json-reporter.ts';
+import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.ts';
 import { renderVerifyText } from '../../../shared/verify/reporting/text-reporter.ts';
 import type { VerifyInvocation } from './verify.types.ts';
+
+type SddReceiptPersistence = NonNullable<Parameters<typeof emitSddReceipt>[4]>;
+type SddReceiptSinkResult = Awaited<ReturnType<typeof emitSddReceipt>>;
 
 function headSha(root: string): string {
   const sha = execFileSync('git', ['-C', root, 'rev-parse', '--verify', 'HEAD'], {
@@ -46,6 +55,11 @@ export async function runVerifyCommand(
     readonly signal?: AbortSignal;
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly homeDirectory?: string;
+    readonly sdd?: {
+      readonly context: SddVerifyContext;
+      readonly bindings: readonly SddReceiptCommandBinding[];
+      readonly persist?: SddReceiptPersistence;
+    };
   } = {}
 ): Promise<{
   /** @purpose Deterministic process exit status. */
@@ -56,11 +70,19 @@ export async function runVerifyCommand(
   readonly stderr: string;
   /** @purpose Immutable internal report when planning reached a terminal product. */
   readonly report?: VerifyRunReport;
+  /** @purpose Optional SDD sink outcome over the same report object. */
+  readonly receiptSink?: SddReceiptSinkResult;
 }> {
   try {
     const canonicalRoot = fs.realpathSync(root);
+    if (invocation.planOnly && options.sdd?.persist !== undefined) {
+      throw new Error('an SDD receipt sink cannot be enabled for read-only --plan output');
+    }
     const planning = resolveMultistackVerifyPlan(canonicalRoot, invocation.phase, {
-      scope: { mode: 'all', files: [] },
+      scope: options.sdd?.context.request.scope ?? { mode: 'all', files: [] },
+      ...(options.sdd === undefined
+        ? {}
+        : { knownDeletedFiles: options.sdd.context.request.deletedFiles }),
       ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
     });
     const plannedHeadSha = headSha(canonicalRoot);
@@ -77,17 +99,42 @@ export async function runVerifyCommand(
       headSha: plannedHeadSha,
       planning,
       execution,
+      ...(options.sdd === undefined
+        ? {}
+        : {
+            sdd: {
+              task: options.sdd.context.request.task,
+              phase: options.sdd.context.request.sddPhase,
+              deletedFiles: options.sdd.context.request.deletedFiles,
+            },
+          }),
     });
+    const receiptSink =
+      options.sdd === undefined
+        ? undefined
+        : await emitSddReceipt(
+            canonicalRoot,
+            report,
+            options.sdd.context,
+            options.sdd.bindings,
+            options.sdd.persist
+          );
     const stdout =
       invocation.format === 'json'
         ? renderVerifyJson(report, canonicalRoot, invocation.planOnly)
         : renderVerifyText(report, canonicalRoot, invocation.planOnly);
+    const receiptFailure = receiptSink?.ok === false ? receiptSink.diagnostic : undefined;
     return {
       exitCode:
-        execution?.cancellation?.exitCode ?? (invocation.planOnly ? 0 : exitCodeFor(report)),
+        execution?.cancellation?.exitCode ??
+        (receiptFailure === undefined ? (invocation.planOnly ? 0 : exitCodeFor(report)) : 1),
       stdout: `${stdout}\n`,
-      stderr: '',
+      stderr:
+        receiptFailure === undefined
+          ? ''
+          : `[verify] ${receiptFailure.id} at ${receiptFailure.location}: ${safeVerifyText(receiptFailure.message, canonicalRoot)}\n`,
       report,
+      ...(receiptSink === undefined ? {} : { receiptSink }),
     };
   } catch (cause) {
     return { exitCode: 4, stdout: '', stderr: `${errorMessage(cause)}\n` };

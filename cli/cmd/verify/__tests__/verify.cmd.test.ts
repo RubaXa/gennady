@@ -8,6 +8,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import type { PhaseReceipt } from '../../../../shared/sdd/phase-receipt.ts';
+import {
+  adaptSddVerifyContext,
+  type SddVerifyContext,
+} from '../../../../shared/sdd/verify/sdd-verify-context.ts';
 import type { VerifyRunReport } from '../../../../shared/verify/model/verify-report.type.ts';
 import { renderVerifyJson } from '../../../../shared/verify/reporting/json-reporter.ts';
 import { renderVerifyText } from '../../../../shared/verify/reporting/text-reporter.ts';
@@ -64,6 +69,43 @@ function createNodeRepo(options: { readonly sentinelTypecheck?: boolean } = {}):
   git(root, 'add', '.gitignore', 'package.json', 'src.ts');
   git(root, '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'fixture');
   return fs.realpathSync(root);
+}
+
+function sddContext(
+  root: string,
+  targets: readonly string[] = ['src.ts'],
+  deletedFiles: readonly string[] = []
+): SddVerifyContext {
+  const adapted = adaptSddVerifyContext(root, {
+    profile: 'code',
+    profileBasis: 'phase-kind',
+    targets,
+    deletedFiles,
+    taskPath: 'specs/app/app.task.UV-12.md',
+    phaseId: 'P1',
+    verification: [],
+    producesCoverage: false,
+    stack: 'node',
+    gatePlan: {
+      ticket: 'UV-12',
+      phase: 'P1',
+      profile: 'code',
+      producesCoverage: false,
+      gates: [
+        {
+          name: 'format',
+          state: 'CONFIGURED',
+          required: true,
+          command: 'npm run format',
+          prerequisites: [],
+          provider: null,
+          next: 'run npm run format',
+        },
+      ],
+    },
+  });
+  if (!adapted.ok) throw new Error(adapted.diagnostic.message);
+  return adapted.context;
 }
 
 function manualReport(root: string): VerifyRunReport {
@@ -313,6 +355,123 @@ describe('runVerifyCommand target integration', () => {
         []) {
         assert.deepStrictEqual(repair.command?.argv.slice(-2), ['--', 'src.ts']);
       }
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('feeds the exact terminal report to the optional SDD receipt sink', async () => {
+    const root = createNodeRepo();
+    try {
+      const context = sddContext(root);
+      let persistedReceipt: PhaseReceipt | undefined;
+      let persistedReport: VerifyRunReport | undefined;
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'json' },
+        {
+          homeDirectory: root,
+          sdd: {
+            context,
+            bindings: [{ stepId: 'node:format', source: 'gate', gate: 'format' }],
+            persist: (receipt, source) => {
+              persistedReceipt = receipt;
+              persistedReport = source;
+            },
+          },
+        }
+      );
+
+      assert.strictEqual(result.exitCode, 0, result.stderr || result.stdout);
+      assert.strictEqual(result.receiptSink?.ok, true);
+      assert.strictEqual(result.receiptSink?.status, 'written');
+      assert.strictEqual(persistedReport, result.report);
+      assert.strictEqual(persistedReceipt, result.receiptSink?.receipt);
+      assert.strictEqual(result.report?.context.request.task, context.request.task);
+      assert.strictEqual(result.report?.context.request.sddPhase, context.request.sddPhase);
+      assert.deepStrictEqual(result.report?.context.request.scope.files, ['src.ts']);
+      assert.deepStrictEqual(result.report?.context.request.deletedFiles, []);
+      assert.deepStrictEqual(JSON.parse(result.stdout).context.request, {
+        root: '.',
+        phase: 'code',
+        scope: { mode: 'files', files: ['src.ts'] },
+        task: 'specs/app/app.task.UV-12.md',
+        sddPhase: 'P1',
+        deletedFiles: [],
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects a configured receipt sink in plan-only mode before spawning or writing', async () => {
+    const root = createNodeRepo({ sentinelTypecheck: true });
+    try {
+      let persistenceCalls = 0;
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: true, format: 'json' },
+        {
+          homeDirectory: root,
+          sdd: {
+            context: sddContext(root),
+            bindings: [{ stepId: 'node:format', source: 'gate', gate: 'format' }],
+            persist: () => {
+              persistenceCalls += 1;
+            },
+          },
+        }
+      );
+      assert.strictEqual(result.exitCode, 4);
+      assert.match(result.stderr, /receipt sink cannot be enabled.*--plan/);
+      assert.strictEqual(persistenceCalls, 0);
+      assert.strictEqual(fs.existsSync(path.join(root, 'spawned')), false);
+      assert.deepStrictEqual(
+        fs.readdirSync(path.join(root, '.git')).filter((name) => name.startsWith('gennady-')),
+        []
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('uses existing targets plus deleted tombstones for exact affected-stack planning', async () => {
+    const root = createNodeRepo();
+    try {
+      fs.writeFileSync(path.join(root, 'go.mod'), 'module example.com/uv12\n\ngo 1.22\n');
+      const mixed = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: true, format: 'json' },
+        {
+          homeDirectory: root,
+          sdd: {
+            context: sddContext(root, ['src.ts'], ['pkg/removed.go']),
+            bindings: [],
+          },
+        }
+      );
+      assert.strictEqual(mixed.exitCode, 0, mixed.stderr);
+      assert.deepStrictEqual(mixed.report?.context.request.scope.files, [
+        'pkg/removed.go',
+        'src.ts',
+      ]);
+      assert.deepStrictEqual(mixed.report?.context.request.deletedFiles, ['pkg/removed.go']);
+      assert.deepStrictEqual(mixed.report?.context.plugins, ['golang', 'node']);
+
+      const deletedOnly = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: true, format: 'json' },
+        {
+          homeDirectory: root,
+          sdd: {
+            context: sddContext(root, [], ['pkg/removed.go']),
+            bindings: [],
+          },
+        }
+      );
+      assert.strictEqual(deletedOnly.exitCode, 0, deletedOnly.stderr);
+      assert.deepStrictEqual(deletedOnly.report?.context.request.scope.files, ['pkg/removed.go']);
+      assert.deepStrictEqual(deletedOnly.report?.context.plugins, ['golang']);
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

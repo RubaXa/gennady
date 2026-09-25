@@ -48,6 +48,8 @@ export type VerifyRequest = {
   readonly task?: string;
   /** @purpose SDD phase id when verify runs in task context. */
   readonly sddPhase?: string;
+  /** @purpose Exact SDD tombstones whose continued absence belongs to this report identity. */
+  readonly deletedFiles?: readonly string[];
 };
 
 /** @purpose Carry immutable facts resolved before readiness and execution. */
