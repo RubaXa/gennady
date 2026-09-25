@@ -154,6 +154,13 @@ export function projectVerifyReport(
         ...(report.context.request.sddPhase === undefined
           ? {}
           : { sddPhase: report.context.request.sddPhase }),
+        ...(report.context.request.deletedFiles === undefined
+          ? {}
+          : {
+              deletedFiles: report.context.request.deletedFiles.map((file) =>
+                safeVerifyText(file, root)
+              ),
+            }),
       },
       plugins: report.context.plugins,
       frameworks: report.context.frameworks,

@@ -28,6 +28,11 @@ _Обзор пути от контракта к реализации и пров
 
 Детерминированная верификация с двумя режимами. Фазовый вызов `--task ... --phase ...` структурно выводит профиль, Target Files, Deleted Files, owning spec и применимые строки Verification. Одна attempt ремонтирует только существующие targets, один раз запускает foundation, выполняет дополнительные команды под read-only boundary и затем атомарно пишет структурированный receipt. После исправления допустима новая attempt той же canonical командой. `setup` допускает отсутствие ещё создаваемой инфраструктуры. Профиль `full` отделён: глобальный `type-check → test:coverage → lint → format → yagni`, read-only по исходникам и принадлежит одному group-audit STEP_1.
 
+> **U4 transition:** UV-12 extracts immutable SDD context and a fail-closed optional receipt sink over
+> the unified `VerifyRunReport`, while this command's execution, command evidence and atomic writer
+> remain the frozen compatibility path. UV-13 owns directive/CLI cutover plus golden command/receipt
+> parity; UV-14 removes this runner. UV-12 therefore does not infer a target↔legacy command mapping.
+
 **Key properties:**
 
 - Repair-first phases — `fix → type-check → test/test:coverage`; `fix` упорядочивает formatter, project-linter и Gennady-contract adapters, фильтрует exact targets по capability и не дублирует Gennady leaf
@@ -243,6 +248,9 @@ cli/cmd/sdd-verify/
 └── __tests__/sdd-verify.cmd.test.ts
 
 shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state hashes
+shared/sdd/verify/
+├── sdd-verify-context.ts  # immutable task/phase/scope + compatibility receipt plan
+└── sdd-receipt-sink.ts    # optional report-driven sink; no UV-13 command guessing
 ```
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.

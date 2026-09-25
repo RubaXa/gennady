@@ -50,6 +50,12 @@ export function buildVerifyRunReport(input: {
   readonly planning: MultistackVerifyPlan;
   /** @purpose Local attempt product, absent only for no-spawn plan output. */
   readonly execution?: LocalVerifyExecution;
+  /** @purpose Optional workflow identity supplied only by the U4 SDD context adapter. */
+  readonly sdd?: {
+    readonly task: string;
+    readonly phase: string;
+    readonly deletedFiles: readonly string[];
+  };
 }): VerifyRunReport {
   const rules = emptyRuleSnapshot();
   const plugins = input.planning.stacks
@@ -60,6 +66,13 @@ export function buildVerifyRunReport(input: {
       root: input.root,
       phase: input.phase,
       scope: input.planning.scope,
+      ...(input.sdd === undefined
+        ? {}
+        : {
+            task: input.sdd.task,
+            sddPhase: input.sdd.phase,
+            deletedFiles: [...input.sdd.deletedFiles],
+          }),
     },
     plugins,
     frameworks: [],

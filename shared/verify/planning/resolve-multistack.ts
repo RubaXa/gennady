@@ -128,7 +128,11 @@ function changedBaseOf(scope: VerifyScope): string | undefined {
   return value;
 }
 
-function normalizeScope(root: string, scope: VerifyScope): VerifyScope {
+function normalizeScope(
+  root: string,
+  scope: VerifyScope,
+  knownDeletedFiles: readonly string[] = []
+): VerifyScope {
   const changedFrom = changedBaseOf(scope);
   if (scope.mode === 'all' || scope.files.length === 0) {
     return {
@@ -141,9 +145,6 @@ function normalizeScope(root: string, scope: VerifyScope): VerifyScope {
   const existing = values.filter((value) => fs.existsSync(path.resolve(root, value)));
   const normalizedExisting = normalizeTargetFiles(root, existing);
   const missing = values.filter((value) => !fs.existsSync(path.resolve(root, value)));
-  if (scope.mode === 'files' && missing.length > 0) {
-    normalizeTargetFiles(root, values);
-  }
   const normalizedMissing: string[] = [];
   for (const value of missing) {
     const absolute = path.resolve(root, value);
@@ -167,6 +168,37 @@ function normalizeScope(root: string, scope: VerifyScope): VerifyScope {
       );
     }
     normalizedMissing.push(relative.split(path.sep).join('/'));
+  }
+  const normalizedKnownDeleted = new Set(
+    knownDeletedFiles.map((value) => {
+      const absolute = path.resolve(root, value);
+      const relative = path.relative(root, absolute);
+      if (
+        value.length === 0 ||
+        value !== value.trim() ||
+        value.includes('\\') ||
+        value.includes('\0') ||
+        /[*?\[\]{}]/.test(value) ||
+        path.isAbsolute(value) ||
+        relative === '..' ||
+        relative.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relative)
+      ) {
+        throw new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          'scope.deletedFiles',
+          `deleted scope path ${JSON.stringify(value)} is not repo-relative`,
+          'use exact normalized tombstones from the resolved SDD phase'
+        );
+      }
+      return relative.split(path.sep).join('/');
+    })
+  );
+  if (
+    scope.mode === 'files' &&
+    normalizedMissing.some((value) => !normalizedKnownDeleted.has(value))
+  ) {
+    normalizeTargetFiles(root, values);
   }
   return {
     ...scope,
@@ -367,9 +399,14 @@ function stackConfigError(error: { readonly path: string; readonly message: stri
 export function resolveMultistackVerifyPlan(
   root: string,
   phase: string,
-  options: { readonly scope: VerifyScope; readonly homeDirectory?: string }
+  options: {
+    readonly scope: VerifyScope;
+    readonly homeDirectory?: string;
+    /** @purpose Exact SDD tombstones allowed to be absent while still affecting plugin scope. */
+    readonly knownDeletedFiles?: readonly string[];
+  }
 ): MultistackVerifyPlan {
-  const scope = normalizeScope(root, options.scope);
+  const scope = normalizeScope(root, options.scope, options.knownDeletedFiles);
   const targetFiles = existingTargetFiles(root, scope);
   const allDetected = detectStacks(root, null, BUILTIN_STACK_PLUGINS).filter(
     (entry) => entry.plugin.target !== undefined

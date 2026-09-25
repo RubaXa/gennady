@@ -44,7 +44,7 @@ a second target engine.
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. Cutover, remote verification and dynamic rules remain U4/U5/U6.
+UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object; directive/CLI cutover and frozen receipt parity remain UV-13, runner deletion UV-14, remote verification U5 and dynamic rules U6.
 
 ### Target call chain
 
@@ -325,7 +325,8 @@ default presentation, `--json` — versioned stable machine projection. `--plan 
 как строго read-only compatibility mode без исполнения verification steps; без explicit phase он
 выбирает `full`, маркирует `kind=plan` и `evidence=false`, но использует тот же target planner.
 
-U4 receipt sink, U5 remote executor и U6 dynamic rules остаются за этой задачей. Refines D-65/D-67.
+UV-12 SDD context/receipt sink, U5 remote executor и U6 dynamic rules остаются за этой задачей;
+UV-13/14 выполняют SDD cutover и удаление compatibility runner. Refines D-65/D-67.
 
 ### VER-REQ-15 [должен · нештатная]
 
@@ -338,6 +339,29 @@ repository path. `pass` даёт exit 0, любой terminal non-pass — exit 1
 error — exit 4, cooperative SIGINT/SIGTERM — 130/143 после WorkspaceGuard restoration. Cancellation
 сохраняется step result/evidence и проецируется в accepted run taxonomy как `violation`, не как
 pass/blocked. Refines D-65/D-67.
+
+### VER-REQ-16 [должен · нештатная]
+
+**Когда** unified Verify запускается с SDD context, **то adapter должен** до execution заморозить
+exact task path, SDD phase, existing Target Files, Deleted Files tombstones и legacy-compatible
+`PhaseReceiptPlan` с тем же `environmentState`, что compatibility runner. Эти facts входят в тот же
+`VerificationContext`/`VerifyRunReport`, который получает standalone reporter. Planning scope —
+детерминированный exact union Target Files + Deleted Files, поэтому tombstone участвует в
+affected-stack selection, оставаясь отдельной absence identity для receipt.
+
+### VER-REQ-17 [должен · нештатная]
+
+Optional receipt sink получает именно этот report object и ничего не пишет, когда persistence
+callback отсутствует. При активном sink только terminal `pass` с non-blocked readiness может создать
+receipt; root/task/SDD-phase/scope обязаны совпасть, каждый configured legacy gate и каждая
+Verification row обязаны ровно один раз ссылаться на реально passing runnable target step. Binding
+несёт только identities: exact receipt command/role берутся из frozen SDD context, а direct argv,
+root cwd и отсутствие скрытого env механически сверяются с этой командой; они не принимаются от
+caller как свободный текст. Ошибка identity/mapping/target-state/persistence возвращает typed
+id/severity/location и не вызывает sink. `--plan` никогда не пишет receipt.
+
+UV-12 не переключает compatibility runner и не объявляет полную parity: golden mapping принадлежит
+UV-13, удаление runner — UV-14. Refines D-65; preserves A13/D-4 до frozen parity gate.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -385,6 +409,10 @@ _Полный список файлов-сущностей, перенесённ
 | `VerifyInvocationResult`            | Value Object | Parsed invocation or actionable exit-4 diagnostic                                                  |
 | `parseVerifyInvocation`             | Service      | Strict phase/output/no-spawn invocation parser                                                     |
 | `runVerifyCommand`                  | Facade       | One public composition root for target plan, local execution and reporting                         |
+| `SddVerifyContext`                  | Value Object | Frozen task/phase/scope identity plus the legacy-compatible receipt plan                           |
+| `adaptSddVerifyContext`             | Adapter      | Derive SDD report identity and byte-compatible receipt inputs before execution                     |
+| `SddReceiptCommandBinding`          | Value Object | Explicit target-step to frozen legacy receipt-source identity; never free-form command text        |
+| `emitSddReceipt`                    | Service      | Optional fail-closed receipt projection from the exact terminal VerifyRunReport                    |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -404,11 +432,11 @@ preserves it beside the already-resolved deterministic file set. Different bases
 the planning product. Empty files retain their derivation mode but have conservative all-scope
 participation semantics. The pure planner does not rerun git/diff or replace resolved files.
 
-### `sddPhase`
+### `sddPhase` — closed by UV-12
 
-- **Usage Waiver:** SDD phase identity is required by the approved one-engine/optional-sink contract;
-  its adapter consumer arrives in UV-12. Remove this waiver during UV-12 SDD context integration
-  (VERIFY-DL-5).
+`adaptSddVerifyContext` freezes exact task/phase/scope identity and `runVerifyCommand` carries it
+through `buildVerifyRunReport` to the optional receipt sink. The same report object is rendered and
+passed to persistence; UV-13 owns compatibility command mapping and golden parity (VERIFY-DL-5).
 
 ### `frameworks`
 
@@ -489,7 +517,7 @@ no-spawn plan projection and real local execution. Legacy stays frozen until U4.
 
 ## 6. Module Contracts (DbC)
 
-Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`; UV-08 добавил workspace pair; UV-09 consumed `WorkspaceGuard`, retained acquisition and added two stream-policy fields plus the target executor; UV-10 consumed that executor and added its target execution product/facade; UV-11 connected and removed the four interim waivers for `VerifyRunReport`, `resolveMultistackVerifyPlan`, `LocalVerifyExecution` and `runLocalVerifyPlan`. Итого открыто **26**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
+Исторический реестр `Usage Waiver` начинался с **26** символов задачи V-02. После V-05/V-07/V-08 были сняты 9 записей; D-64 снял `applyStackConfig` и добавил 2 exported test seam. UV-05 снял `scopeHasGoGenerate`; осталось **17** historical записей. UV-01 добавил **8** target-model waivers; UV-02 — `selectPhase`; UV-03 снял три composition symbols; UV-04 снял пять connected waivers и добавил Node facade; UV-05/06 добавили Go/Swift facades; UV-07 снял `changedFrom` и добавил `resolveMultistackVerifyPlan`; UV-08 добавил workspace pair; UV-09 consumed `WorkspaceGuard`, retained acquisition and added two stream-policy fields plus the target executor; UV-10 consumed that executor and added its target execution product/facade; UV-11 connected and removed the four interim waivers for `VerifyRunReport`, `resolveMultistackVerifyPlan`, `LocalVerifyExecution` and `runLocalVerifyPlan`; UV-12 consumed `sddPhase`. Итого открыто **25**. Каждая запись объясняет 0–1 production usage по прецеденту `specs/shared/shared.spec.md` (`cli/cmd/yagni/yagni.cmd.ts:228`).
 
 <details>
 <summary>Usage Waiver — 17 символов open: 15 унаследованных после снятия `applyStackConfig`/`scopeHasGoGenerate` и 2 D-64 test seam. По владельцу: V-09 — 4 (`C`, `I`, `Bad`, `isStructuralListError`); V-18 — 4 (`TreeGuard`, `TreeGuardOptions`, `GuardAcquisition`, `acquireTreeGuard`); D-64 test seam — 2 (`DEFAULT_STACK_PRIORITY`, `orderDetectedStacks`); без твёрдого владельца — 7 (`ConfigSectionLoad`, `formatDuration`, `allOf`, `validateStackConfig`, `unmatchedGateOverrides`, `StackRun`, `VerifyReport`).</summary>
@@ -655,6 +683,9 @@ shared/verify/
 │   ├── text-reporter.ts
 │   └── json-reporter.ts
 └── presets/
+shared/sdd/verify/
+├── sdd-verify-context.ts
+└── sdd-receipt-sink.ts
 services/config/
 └── config-loader.ts
 plugins/

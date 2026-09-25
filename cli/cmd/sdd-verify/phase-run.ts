@@ -25,12 +25,11 @@ import {
   phaseReceiptPlanState,
   phaseReceiptTargetEvidence,
   phaseReceiptTargetState,
-  phaseVerificationEnvironmentState,
-  phaseVerificationPlanEnvironmentState,
   type PhaseReceipt,
   type PhaseReceiptCommand,
   type PhaseReceiptPlan,
 } from '../../../shared/sdd/phase-receipt.ts';
+import { adaptSddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { run, type CoverageProbe } from './sdd-verify.cmd.ts';
 import type { PhaseVerifyContext } from './phase-context.ts';
 import type { GateResult, GateRunResult, GateRunner, VerifyOutcome } from './sdd-verify.types.ts';
@@ -184,30 +183,8 @@ function updateReceipt(
 }
 
 function planFor(root: string, context: PhaseVerifyContext): PhaseReceiptPlan | string {
-  const stack = context.stack ?? 'node';
-  const environment = context.gatePlan
-    ? phaseVerificationPlanEnvironmentState(root, context.gatePlan, context.verification, stack)
-    : phaseVerificationEnvironmentState(
-        root,
-        context.profile,
-        context.producesCoverage,
-        context.verification,
-        context.targets.length > 0,
-        stack
-      );
-  if (!environment.ok) return environment.issue;
-  return {
-    ticket: context.taskPath,
-    phase: context.phaseId,
-    profile: context.profile,
-    profileBasis: context.profileBasis,
-    targets: [...context.targets],
-    deletedFiles: [...context.deletedFiles],
-    verification: context.verification.map((gate) => ({ ...gate })),
-    ...(context.coverageOwner ? { coverageOwner: context.coverageOwner } : {}),
-    producesCoverage: context.gatePlan?.producesCoverage ?? context.producesCoverage,
-    environmentState: environment.state,
-  };
+  const adapted = adaptSddVerifyContext(root, context);
+  return adapted.ok ? adapted.context.receiptPlan : adapted.diagnostic.message;
 }
 
 function ladderCommands(results: GateResult[]): PhaseReceiptCommand[] {
