@@ -636,11 +636,15 @@ boundary.
 Operator ACK принят. Он задаёт следующий обязательный контракт реализации UV-12E; сам текст ACK не
 считается implementation evidence, поэтому UV-13 остаётся `BLOCKED` до merge/review UV-12E и UV-22.
 
-1. **Append-only история attempts в существующем ticket.** Каждый SDD Verify attempt создаёт ровно
-   одну compact structured entry в существующем `EXECUTION_LOG`. Эта же entry атомарно переходит
-   `RUNNING → PASS|FAIL|TIMEOUT|CANCELLED|VIOLATION`. Recovery/следующий run детерминированно
-   переводит orphan `RUNNING` в `INTERRUPTED`. Attempts сохраняются: поздний pass не удаляет и не
-   переписывает предыдущие failed/interrupted entries.
+1. **Append-only история attempts в существующем ticket.** Сначала валидируются task identity и
+   точный writable `EXECUTION_LOG` target. После этого каждый SDD Verify attempt создаёт ровно одну
+   compact structured entry **до planning/readiness/spawn**. Эта же entry атомарно переходит из
+   промежуточного `RUNNING` в одну normalized terminal state:
+   `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`. Recovery/следующий run
+   детерминированно переводит orphan `RUNNING` в recovery-only `INTERRUPTED`. Attempts сохраняются:
+   поздний pass не удаляет и не переписывает предыдущие failed/blocked/interrupted entries. Failure
+   до получения valid task/log identity физически не может быть persisted и возвращается как CLI
+   diagnostic без attempt entry.
 2. **Микроскопическая human line.** Она содержит только run id, SDD phase, selector, terminal state,
    steps `x/y`, минимальные counts для каждого test step и duration. Ticket не становится warehouse:
    full stdout/stderr и artifacts туда не пишутся; detailed bounded/redacted diagnostics возвращает
@@ -661,11 +665,13 @@ Operator ACK принят. Он задаёт следующий обязател
 6. **Legacy overlay условен.** Byte parity включается только explicit legacy overlay с provenance;
    no-overlay path не наследует legacy command/order semantics, как уже определено выше.
 
-Acceptance UV-12E: recovery и atomic state transitions доказаны adversarial fixtures; append-only
-failure history переживает следующий pass; normalized stats/readiness/violation покрыты required,
-optional и none; exact local identity/digests и staleness детерминированы; report/ticket явно несут
-selector trust; overlay on/off остаются раздельными. Только после review UV-12E и UV-22 начинается
-UV-13 directive/CLI cutover; UV-14 по-прежнему не удаляет compatibility runner до UV-13.
+Acceptance UV-12E: invalid task/log identity даёт только CLI diagnostic и ноль entries; valid target
+создаёт одну entry до planning/readiness/spawn, поэтому `BLOCKED` и `ENV_FAIL` также сохраняются;
+recovery и все normalized terminal transitions доказаны adversarial fixtures; append-only history
+переживает следующий pass; normalized stats/readiness/violation покрыты required, optional и none;
+exact local identity/digests и staleness детерминированы; report/ticket явно несут selector trust;
+overlay on/off остаются раздельными. Только после review UV-12E и UV-22 начинается UV-13
+directive/CLI cutover; UV-14 по-прежнему не удаляет compatibility runner до UV-13.
 
 ## 13. Задачи новой очереди
 
@@ -685,7 +691,7 @@ UV-13 directive/CLI cutover; UV-14 по-прежнему не удаляет com
 | UV-12 | U4 | SDD context и receipt sink | UV-11 | same report powers standalone and SDD receipt |
 | UV-22 | U4 | declarative custom presets/selectors + composed SDD kind mapping | UV-03, UV-11 | built-in zero-YAML defaults + project overrides with provenance; arbitrary selector fixture; steps declared once; `sdd-task` emits one exact mapped Verify invocation |
 | U4-ER | U4 | **ACKED operator decision Evidence/Receipt (§12.1)** | UV-12 | canonical plan/spec фиксируют attempt journal, stats, freshness identities, selector trust и conditional legacy overlay |
-| UV-12E | U4 | evidence model + local SDD attempt log + stats/freshness/trust projection | UV-12, U4-ER ACK | atomic RUNNING→terminal/recovery; append-only failures; normalized per-test-step stats; HEAD/worktree/scope/plan/provenance/rules identities; local trust visible; no artifact warehouse |
+| UV-12E | U4 | evidence model + local SDD attempt log + stats/freshness/trust projection | UV-12, U4-ER ACK | task/log identity first; then one pre-planning entry; atomic RUNNING→PASS/FAIL/BLOCKED/ENV_FAIL/TIMEOUT/VIOLATION/CANCELLED and recovery-only INTERRUPTED; append-only history; normalized per-test-step stats; HEAD/worktree/scope/plan/provenance/rules identities; local trust visible; no artifact warehouse |
 | UV-13 | U4 | **BLOCKED до reviewed UV-22 + UV-12E:** migrate directives/skills/specs and conditional legacy-overlay parity golden | UV-22, UV-12E | overlay corpus preserves verdict/exit/diagnostic identity+severity+location/receipt fields, A13/D-4, V1 grandfathering and marker-only semantics; no-overlay path uses canonical evidence/receipt contract |
 | UV-14 | U4 | remove independent `sdd-verify` runner | UV-13 | no runtime imports/references to old runner |
 | UV-15 | U5 | audit/manifest dirty VCS source | U0 | every source change classified A/B/C |
