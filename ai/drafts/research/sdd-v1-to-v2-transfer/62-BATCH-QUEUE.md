@@ -457,10 +457,10 @@ Issue akkrat #21 и раздел D3 аудита: цикл ревью↔испр
 | U1 | UV-01..03: canonical specs + model/DAG/config | U0 | нет |
 | U2 | UV-04..07 | U1 | нет |
 | U3 | UV-08..11 | U1, U2 | нет |
-| U4 | UV-12..14: SDD cutover + frozen receipt parity A13/D-4 | U3 | нет |
+| U4 | UV-12, UV-22, U4-ER, UV-13..14: SDD adapter + arbitrary selectors/composed preset-default→project-override mapping; обязательный Evidence/Receipt ACK; затем conditional legacy-overlay parity/cutover | U3 | **перед UV-13: operator ACK Evidence/Receipt** |
 | U5 | UV-15..17 | U3 | только перед remote mutation/rollback |
 | U6 | UV-18..21: sidecars/resolver + read-only `gennady rules` | U1, U4 | только перед недетерминированным model-selector |
-| U7 | UV-22..23 | U2, U3 | перед исполнением внешнего plugin-кода |
+| U7 | UV-23: external-plugin trust/version/isolation | U2, U3 | перед исполнением внешнего plugin-кода |
 | U8 | UV-24..26 | U4, U5, U6, U7 | решение о публикации |
 
 Публикация запрещена до U8: exact Swift E-18, remote exact-SHA evidence, удаление `sdd-verify`

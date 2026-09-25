@@ -7,13 +7,19 @@
 >
 > Implementation baseline: `codex/sdd-v2-rc52-followup@8281a584`. Источник plan history:
 > PR #26 `sdd-v2-audit-migration-3b23b1@4e7b14a7`.
+>
+> **Amendment 2026-09-25:** workflow SDD phase kind и Verify phase selector разведены как две
+> открытые vocabulary. Built-in preset даёт zero-YAML default mapping между ними, project YAML
+> overlays/overrides его с provenance; UV-13 заблокирован до отдельного
+> operator ACK по Evidence/Receipt (§12.1). Этот amendment не выбирает receipt schema или trust
+> model и не разрешает cutover до такого ACK.
 
 ## 1. Решённая цель
 
 Остаётся один публичный движок:
 
 ```text
-gennady verify --phase <phase> [--task <ticket> --sdd-phase <P>]
+gennady verify --phase <selector> [--task <ticket> --sdd-phase <P>]
 ```
 
 У правил есть отдельная **read-only справочная поверхность**, но не второй resolver:
@@ -41,9 +47,15 @@ snapshot. Он не запускает Verify steps, не меняет рабо�
 8. вернуть один typed report: readiness, verdict, mutations, evidence, selected rules;
 9. при SDD-контексте передать тот же report в receipt sink.
 
+`--phase` принимает произвольный объявленный preset/YAML-owned selector id. Core не выводит
+pipeline из имени `code`, `test`, `full` или любого другого токена. Workflow SDD phase kind —
+отдельная открытая vocabulary; composed mapping `preset default → project override` переводит kind
+в selector до вызова Verify.
+
 `sdd-verify` перестаёт быть вторым движком. После переходного периода его CLI-фасад и отдельная
 лестница удаляются. Отдельной публичной команды `gennady fix` не будет: разрешённые ремонты — шаги
-того же фазового прогона.
+того же фазового прогона. Byte-parity legacy receipt не является универсальным default: она
+обязательна только для явно включённого legacy overlay с видимым provenance.
 
 ## 2. Целевой поток
 
@@ -88,7 +100,7 @@ VerifyRunReport
 | `driftMeansFailure` | `effect: drift-signal` | явный контракт codegen/генераторов |
 | `StackPlugin` | `StackPlugin` + `VerifyPreset` | plugin детектирует и поставляет готовый DAG/readiness/rules |
 | closed `StackId` union | runtime `PluginId` | убрать закрытый набор языков из core |
-| `PhaseVerificationPlan` | `PhaseSelector` | фаза выбирает теги общего DAG, не копирует команды |
+| `PhaseVerificationPlan` | `PhaseSelector` | opaque declared id выбирает теги общего DAG, не копирует команды и не получает semantics от имени |
 | глобальная Node-readiness | `CapabilityMatrix` | readiness по выбранной фазе и стеку |
 | `tree-guard` + `workspace-mutation` | `WorkspaceGuard` | единый checkpoint, write zones, diff и cleanup |
 | `GateResult` | `VerifyStepResult` | одна таксономия локальных и remote результатов |
@@ -120,9 +132,12 @@ type VerifyStep = {
 `pending/running` допустимы только как промежуточные состояния async executor, но не как финальный
 успех. Финальный run verdict: `pass | fail | blocked | env-fail | timeout | violation`.
 
-## 4. Pipeline и фазы
+## 4. Pipeline, workflow kinds и Verify selectors
 
-Preset описывает DAG один раз. Фазы выбирают его срез по тегам:
+Preset описывает gates/steps один раз. Verify phase selector выбирает seed-узлы по tags/selectors,
+а planner добавляет transitive `needs`; отдельная command ladder на фазу запрещена. Selector id —
+произвольная непустая строка, объявленная preset или project YAML. Следующий пример — built-in
+набор одного preset, а не закрытая vocabulary и не hardcoded semantics имён:
 
 ```yaml
 verify:
@@ -135,8 +150,22 @@ verify:
     ci:          { include: [remote-ci] }
 ```
 
-Это встроенные фазы. Проект может объявить `ui`, `device`, `deploy`, `acceptance` и другие. Ни одна
-фаза не означает «выполнить весь configured pipeline»: она всегда выбирает объяснимый DAG-срез.
+Проект может объявить `ui`, `device`, `deploy`, `acceptance` и любые другие selectors. Ни один
+selector не означает «выполнить весь configured pipeline» только из-за имени: он всегда выбирает
+объяснимый DAG-срез через declared tags/selectors + dependency closure.
+
+Единственное default-entry исключение: CLI-поверхность, которая явно разрешает опустить `--phase`,
+выбирает объявленный compatibility default selector `full`. Это свойство конкретного entrypoint,
+а не вывод semantics из строки `full` и не правило для других selector names.
+
+Workflow SDD phase kind (`implementation`, `migration`, `verification`, project-specific values и
+т. п.) живёт в другой open vocabulary. Каждый built-in preset обязан дать zero-YAML default
+mapping `SDD kind → Verify selector`; project YAML overlays/overrides этот mapping с per-key
+provenance. `sdd-task` обязан разрешить composed mapping и выдать агенту ровно одну точную команду
+`gennady verify --phase <resolved-selector> --task <ticket> --sdd-phase <P>`. Агент не выбирает
+individual gates/steps и не собирает несколько Verify invocations вручную. Mapping fail-closed до
+spawn только если kind остаётся unresolved после composition; diagnostic показывает preset source
+и actionable project override path.
 
 Fail policy задаётся шагом. Foundation (`type-check`, build, required test) обычно `stop-phase`;
 независимый quality-tail может `continue`, чтобы вернуть несколько дешёвых findings одним отчётом.
@@ -251,8 +280,10 @@ verify:
 5. personal `.gennadyrc`;
 6. CLI выбирает phase/scope, но не создаёт скрытый pipeline.
 
-Старые `skipGates/overrideGates/extraGates` принимаются только временным migration adapter. До
-релизного evidence все потребители переводятся на новую schema, adapter удаляется.
+Старые `skipGates/overrideGates/extraGates` принимаются только временным migration adapter. Legacy
+byte-parity включается только этим explicit overlay и сохраняет provenance источника; отсутствие
+overlay не навязывает новому preset старые имена, порядок или receipt bytes. До релизного evidence
+все потребители переводятся на новую schema, adapter удаляется.
 
 ## 7. Readiness
 
@@ -554,8 +585,9 @@ shared/sdd/rules-cascade.ts
 ```
 
 `cli/cmd/sdd-verify/__tests__` удаляется не оптом: поведенческие сценарии переносятся в engine,
-preset и SDD sink tests; лишь после parity старые golden/files удаляются. Обязательный frozen
-golden corpus сравнивает старый runner и новый adapter на одинаковых входах по нормализованным
+preset и SDD sink tests. Frozen old-runner↔new-adapter byte parity применяется только к fixture с
+явно включённым legacy overlay/provenance; новый preset без overlay проверяется по общему report и
+не обязан воспроизводить legacy command bytes/order. В overlay-corpus сравниваются нормализованные
 `verdict`, exit code, diagnostic id/severity/location и receipt fields. В частности, A13/D-4
 (`SDD_GROUP_AUDIT_MISSING`/`SDD_GROUP_REVIEW_MISSING` = blocking error в v2), grandfathering V1,
 marker-only phase receipt validation и запрет фабрикации исторических receipts обязаны совпасть.
@@ -593,11 +625,36 @@ boundary.
 | U1 | canonical specs + model + planner + config overlay + parity adapters | принятый контракт живёт в `specs/**`, новый DAG строится, старый runtime не сломан | нет |
 | U2 | Node/Go/Swift/Anystack presets + per-phase readiness + multistack | одинаковый план на трёх стеках | нет |
 | U3 | local executor + WorkspaceGuard + repair/invalidation | `gennady verify` реально исполняет phase slice | нет |
-| U4 | SDD adapter/receipt cutover; frozen golden parity A13/D-4; удаление второго runner | SDD использует тот же engine без receipt regression | нет |
+| U4 | SDD adapter; declarative custom selectors/presets; Evidence/Receipt ACK; затем receipt cutover и удаление второго runner | SDD mapping разрешается в один общий engine; cutover только после §12.1 | **да: перед UV-13, Evidence/Receipt ACK** |
 | U5 | exact-SHA remote watcher; перенос лучших dirty VCS частей | `phase=ci` ждёт GitLab/GitHub pipeline | только перед remote mutation/rollback |
 | U6 | sidecar registry + resolver + snapshot; миграция `knowledge.xml` | правила выбираются динамически | только перед недетерминированным model-selector |
-| U7 | custom phases/presets, consumer fixtures, external-plugin contract | расширяемость доказана | перед исполнением внешнего кода |
+| U7 | external-plugin trust/version/isolation contract и consumer fixture | граница внешнего кода доказана | перед исполнением внешнего кода |
 | U8 | удалить adapters/legacy; Node+Go+Swift evidence; exact E-18 | release evidence pack | **да: решение о публикации** |
+
+### 12.1 Обязательная остановка U4 — Evidence/Receipt
+
+UV-13 остаётся `BLOCKED` до отдельного operator ACK. На этой остановке нельзя молча выбрать новую
+receipt schema, приравнять локальный запуск к remote proof или считать текст команды доказательством
+исполнения. Решение обязано явно ответить:
+
+1. Какой versioned machine-readable shape хранит нормализованную test statistics (как минимум
+   executed/passed/failed/skipped и runner/protocol provenance) и какие поля обязательны для
+   различных runner-ов?
+2. Как механически доказать actual runner invocation, а не самодекларацию command string/script
+   name: какие attempt/step/process identities и наблюдаемые terminal facts входят в evidence?
+3. Как persist-ится failed/timeout/cancelled/violation attempt до retry, чтобы новый зелёный запуск
+   не стирал факт предыдущей попытки и failure-path не оставался без evidence?
+4. Где проходит trust boundary local vs remote: какие HEAD/worktree/provider/SHA identities
+   обязательны, какой источник может давать release-grade proof и как report обозначает уровень
+   доверия без неявного повышения?
+5. Как explicit legacy overlay/provenance включает byte-parity и как отсутствие overlay
+   механически исключает применение legacy command/order semantics по умолчанию?
+
+Acceptance самого checkpoint (не финальные ответы): оператор выбрал и записал ответы в canonical
+spec/Decision Log; зафиксированы versioning/migration и failure semantics; fixture доказывает
+machine-readable stats и actual invocation; failed attempt остаётся наблюдаемым; local/remote trust
+виден в report; overlay/on и overlay/off проверены обе стороны. До этого UV-13 не начинает
+directive/CLI cutover и UV-14 не удаляет compatibility runner.
 
 ## 13. Задачи новой очереди
 
@@ -615,7 +672,9 @@ boundary.
 | UV-10 | U3 | repair loop + selective invalidation | UV-09 | re-run only invalidated, non-convergence bounded |
 | UV-11 | U3 | text/json reports + readiness instructions | UV-04..10 | stable machine-readable report |
 | UV-12 | U4 | SDD context и receipt sink | UV-11 | same report powers standalone and SDD receipt |
-| UV-13 | U4 | migrate directives/skills/specs and frozen receipt parity golden | UV-12 | old runner = new adapter по verdict/exit/diagnostic identity+severity+location/receipt fields; A13/D-4, V1 grandfathering и marker-only semantics неизменны |
+| UV-22 | U4 | declarative custom presets/selectors + composed SDD kind mapping | UV-03, UV-11 | built-in zero-YAML defaults + project overrides with provenance; arbitrary selector fixture; steps declared once; `sdd-task` emits one exact mapped Verify invocation |
+| U4-ER | U4 | **operator decision checkpoint Evidence/Receipt (§12.1)** | UV-12, UV-22 | explicit ACK answers stats/invocation/failure persistence/trust/legacy-overlay questions; no implementation decision is inferred |
+| UV-13 | U4 | **BLOCKED до U4-ER ACK:** migrate directives/skills/specs and conditional legacy-overlay parity golden | UV-12, UV-22, U4-ER ACK | overlay corpus preserves verdict/exit/diagnostic identity+severity+location/receipt fields, A13/D-4, V1 grandfathering and marker-only semantics; no-overlay path uses canonical report contract |
 | UV-14 | U4 | remove independent `sdd-verify` runner | UV-13 | no runtime imports/references to old runner |
 | UV-15 | U5 | audit/manifest dirty VCS source | U0 | every source change classified A/B/C |
 | UV-16 | U5 | common pipeline watcher + typed evidence | UV-15, UV-09 | exact-SHA state sequence, timeout/API tests |
@@ -624,7 +683,6 @@ boundary.
 | UV-19 | U6 | deterministic rule resolver + dependency closure | UV-18, UV-02 | files/stack/phase/framework fixtures |
 | UV-20 | U6 | task-intent candidates + immutable snapshot + `gennady rules` facade | UV-19, UV-12 | list/show/resolve read-only; reasons/provenance/freshness/digest совпадают с verify plan/report |
 | UV-21 | U6 | migrate and delete `knowledge.xml` | UV-18..20 | entry-by-entry equivalence, local override proof |
-| UV-22 | U7 | declarative custom presets/phases | UV-03, UV-11 | custom integration/deploy fixture |
 | UV-23 | U7 | external plugin trust/version/isolation ADR | UV-01 | design decision before dynamic import |
 | UV-24 | U8 | delete compatibility and stale tests | UV-14, UV-17, UV-21, UV-22 | zero legacy references, fresh directives |
 | UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24 | all acceptance scenarios reproducible |
@@ -637,7 +695,9 @@ boundary.
 - Node, Go, Swift используют один planner/runner;
 - обычный Node/Go/SwiftPM проект не требует `gennady.yaml`;
 - Xcode требует project identity, а не копию argv;
-- phase выбирает только свой DAG-срез;
+- arbitrary declared selector выбирает только свой DAG-срез; core не выводит semantics из имени;
+- SDD kind разрешается composed mapping `preset default → project override` в одну exact Verify
+  invocation, без выбора gates агентом; unresolved fail-closed только после composition;
 - repair оставляет diff и повторяет инвалидированные проверки;
 - missing required capability не выдаёт зелёный skip;
 - multistack блокирует все затронутые стеки;
@@ -645,8 +705,11 @@ boundary.
 - SDD receipt строится из общего report;
 - rules собираются динамически без центрального `knowledge.xml`, а `gennady rules` объясняет тот
   же snapshot без запуска Verify;
-- frozen receipt parity сохраняет A13/D-4 severity, diagnostic identity/location, grandfathering и
-  marker-only semantics до удаления `sdd-verify`;
+- explicit legacy-overlay parity сохраняет A13/D-4 severity, diagnostic identity/location,
+  grandfathering и marker-only semantics до удаления `sdd-verify`; no-overlay не наследует legacy
+  bytes/order;
+- Evidence/Receipt checkpoint получил отдельный operator ACK с proof actual invocation,
+  machine-readable stats, failure-attempt persistence и явной local/remote trust boundary;
 - independent `sdd-verify` runner и compatibility adapters удалены;
 - dirty VCS source перенесён через manifest + tests, а не потерян;
 - exact Swift E-18 завершён в реальном release environment;
@@ -661,3 +724,4 @@ boundary.
 - не cherry-pick-им грязный `/Users/k.lebedev/Developer/gennady` целиком;
 - не сохраняем две публичные системы verify/fix;
 - не оставляем D-64 non-blocking tail как источник ложного зелёного verdict.
+- не начинаем UV-13 и не изобретаем receipt schema до Evidence/Receipt ACK §12.1.

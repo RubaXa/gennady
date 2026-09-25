@@ -39,18 +39,19 @@ RC (v2) становится единственным SDD: всё полезно
 ### 2.1 Post-migration acceptance — Verify/Rules unification (D-65..D-70)
 
 > A1–A24 доказывают исторический переход v1→v2. Они не доказывают новую единую систему Verify.
-> Публикация пакета теперь дополнительно требует **все** критерии U-A1…U-A8 из трека 64.
+> Публикация пакета теперь дополнительно требует **все** критерии U-A1…U-A9 из трека 64.
 
 | № | Критерий | Доказательство | Задачи |
 |---|---|---|---|
-| U-A1 | Один planner/runner для standalone и SDD; independent `sdd-verify` runtime отсутствует; A13/D-4 receipt semantics сохранена | import/CLI grep = 0; frozen old-runner↔new-adapter golden: verdict/exit/diagnostic identity+severity+location/receipt fields, V1 grandfathering и marker-only parity | UV-01..14, UV-24 |
+| U-A1 | Один planner/runner для standalone и SDD; independent `sdd-verify` runtime отсутствует; A13/D-4 receipt semantics сохранена для explicit legacy overlay, но legacy bytes/order не являются universal default | import/CLI grep = 0; overlay/on old-runner↔new-adapter golden по verdict/exit/diagnostic identity+severity+location/receipt fields, V1 grandfathering и marker-only parity; overlay/off доказывает canonical report без implicit legacy semantics | UV-01..14, UV-22, UV-24 |
 | U-A2 | Node/Go/Swift presets выбираются autodection; zero-YAML для Node/Go/SwiftPM, Xcode — minimal identity | per-stack real fixtures по code/unit/integration/coverage | UV-04..07, UV-25..26 |
-| U-A3 | Phase selects DAG slice; custom phase/preset overlay deterministic и provenance-visible | plan goldens + cycle/missing-dependency fail-closed cases | UV-02..03, UV-22 |
+| U-A3 | SDD phase kind и Verify selector — отдельные open vocabulary; arbitrary selector выбирает tags + DAG closure, built-in preset даёт zero-YAML default kind mapping, project YAML overrides его с provenance, а `sdd-task` выдаёт одну exact Verify invocation без выбора gates агентом | built-in default + project override fixtures, arbitrary integration/deploy fixtures and deterministic provenance; cycle/missing-dependency/unresolved-after-composition fail-closed cases; omitted `--phase` → `full` доказан только как explicit default-entry exception | UV-02..03, UV-22 |
 | U-A4 | Repair безопасен: write boundaries, diff, selective recheck, bounded convergence | both-way dirty-tree fixtures; unexpected write/non-convergence red | UV-08..11 |
 | U-A5 | Readiness честен по фазам: required missing = BLOCKED, explicit waiver = DEGRADED, нет 0/0 pass | Node/Go/Swift missing-tool/script matrices | UV-04..07, UV-11 |
 | U-A6 | Remote CI следит за exact pushed SHA, pin-ит pipeline id и сохраняет redacted evidence | fake-clock state sequences + GitLab/GitHub provider contracts + real smoke | UV-15..17, UV-25 |
 | U-A7 | Rules выбираются динамически без `knowledge.xml`; hard predicates/dependencies детерминированы, semantic candidates объяснены и snapshot-нуты; `gennady rules` даёт read-only list/show/resolve | entry-by-entry migration proof + stack/file/phase/task fixtures + равный snapshot digest у rules resolve/verify plan/run | UV-18..21, UV-24..25 |
 | U-A8 | Compatibility удалена, exact E-18 завершён, evidence снят на одном clean commit; package до этого не публикуется | clean-tree evidence pack, `npm pack --dry-run` только как inspection, registry publication отсутствует | UV-24..26 |
+| U-A9 | UV-13 cutover начат только после отдельного operator ACK Evidence/Receipt: machine-readable test stats, actual runner invocation proof, failure-attempt persistence и local/remote trust boundary определены явно | canonical Decision Log/ACK; versioned stats fixture; invocation evidence не сводится к command string; failed attempt переживает retry; report различает local/remote trust; UV-13 dependency содержит U4-ER ACK | U4-ER, UV-13, UV-25 |
 
 ## 3. Что НЕ входит в приёмку (зафиксировано)
 
