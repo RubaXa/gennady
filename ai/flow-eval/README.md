@@ -54,3 +54,7 @@ retention песочниц равен нулю; `--keep` — только bounde
 чистят owned-пути и завершаются кодами 130/143. Зависимости сценариев не копируются: они доступны через
 symlink из общего content-addressed store только после совпадения `package-lock.json`, installed-lock,
 allowlist, Node ABI, platform и arch; несовпадение закрывает запуск без install/copy fallback.
+Lease capability защищён exact owner token, host/PID+liveness и heartbeat (30 секунд; stale после 2 минут): dead/stale orphan
+очищается до active-cap и retention, а повреждённый lease quarantined и требует операторского
+разбора. Read-only отчёт: `node --import tsx ai/flow-eval/scripts/sandbox.ts dependencies --dry
+--root <sandbox-root>`; `--clean` удаляет только inactive stores, никогда active/quarantined.

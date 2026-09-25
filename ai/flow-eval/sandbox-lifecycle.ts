@@ -9,6 +9,12 @@ import { existsSync, lstatSync, realpathSync } from 'node:fs';
 import { cp, lstat, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { countOpenDeviations } from '../../shared/sdd/deviation.ts';
+import {
+  releaseEvalDependencyLease,
+  startEvalDependencyLeaseHeartbeat,
+  type EvalDependencyLeaseHandle,
+  type EvalDependencyLeaseHeartbeat,
+} from './dependency-store.ts';
 import { SDD_EVAL_RETENTION_POLICY } from './retention-policy.ts';
 
 export type SddEvalLifecycleReason = 'success' | 'failure' | 'setup-failure' | 'SIGINT' | 'SIGTERM';
@@ -272,7 +278,10 @@ export class SddEvalSandboxLifecycle {
   readonly #removeDirectory: (path: string) => Promise<void>;
   readonly #persistArtifacts: typeof persistRunArtifacts;
   readonly #owned = new Map<string, string>();
-  readonly #dependencyLeases = new Set<string>();
+  readonly #dependencyLeases = new Map<
+    string,
+    { readonly handle: EvalDependencyLeaseHandle; readonly heartbeat: EvalDependencyLeaseHeartbeat }
+  >();
   #runDirectory: string | undefined;
   #activeFinalization: Promise<SddEvalFinalizationResult> | undefined;
 
@@ -340,8 +349,14 @@ export class SddEvalSandboxLifecycle {
   }
 
   /** @purpose Retain the exact dependency-store lease until sandbox cleanup completes. */
-  registerDependencyLease(leaseFile: string): void {
-    this.#dependencyLeases.add(resolve(leaseFile));
+  registerDependencyLease(lease: EvalDependencyLeaseHandle): void {
+    const exact = resolve(lease.file);
+    if (this.#dependencyLeases.has(exact)) return;
+    const handle = { ...lease, file: exact };
+    this.#dependencyLeases.set(exact, {
+      handle,
+      heartbeat: startEvalDependencyLeaseHeartbeat(handle),
+    });
   }
 
   get ownedDirectories(): readonly string[] {
@@ -451,12 +466,18 @@ export class SddEvalSandboxLifecycle {
       }
     }
     if (this.#owned.size === 0) {
-      for (const lease of this.#dependencyLeases) {
-        await rm(lease, { force: true }).catch((cause: unknown) => {
-          errors.push(`${lease}: ${cause instanceof Error ? cause.message : String(cause)}`);
-        });
+      for (const [leaseFile, { handle, heartbeat }] of this.#dependencyLeases) {
+        await heartbeat.stop();
+        const heartbeatError = heartbeat.error();
+        if (heartbeatError)
+          errors.push(`${leaseFile}: heartbeat failed: ${heartbeatError.message}`);
+        try {
+          await releaseEvalDependencyLease(handle);
+          this.#dependencyLeases.delete(leaseFile);
+        } catch (cause) {
+          errors.push(`${leaseFile}: ${cause instanceof Error ? cause.message : String(cause)}`);
+        }
       }
-      if (errors.length === 0) this.#dependencyLeases.clear();
     }
     return { removed, errors };
   }
