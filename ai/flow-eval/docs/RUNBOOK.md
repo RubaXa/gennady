@@ -151,9 +151,13 @@ npm run sdd-flow-eval -- \
   evidence перед cleanup и дают exit 130/143. Повторный сигнал — аварийная граница.
 - `node_modules` не копируется в каждый сценарий. Shared content-addressed store допускает symlink
   только при совпадении `package-lock.json`, `node_modules/.package-lock.json`, allowlist, Node ABI,
-  platform и arch; mismatch завершает setup fail-closed, без install/copy fallback. Active lease
-  защищён; неактивные stores ограничены 2 каталогами/7 днями, третья одновременно active contract
-  lease завершается fail-closed.
+  platform и arch; mismatch завершает setup fail-closed, без install/copy fallback. Lease capability
+  хранит exact path+owner token; heartbeat/release сверяют token вместе с host/PID. Живой прогон
+  обновляет heartbeat каждые 30 секунд, same-host dead PID очищается
+  сразу, heartbeat старше 2 минут — после lock-protected повторной проверки. Corrupted lease не
+  удаляется автоматически: store quarantined и reuse завершается явной fail-closed диагностикой.
+  Неактивные stores ограничены 2 каталогами/7 днями, третья одновременно active contract lease
+  завершается fail-closed.
 - Если compact evidence не удался, finalizer не удаляет и не переводит sandbox в debug-retention:
   exact owned path остаётся pending для повторного finalization после устранения причины.
 
@@ -191,6 +195,10 @@ contract. Менял код между фазами — сначала `npm run 
 ### Завершение
 
 ```bash
+node --import tsx ai/flow-eval/scripts/sandbox.ts dependencies --dry --root "$SDD_EVAL_ROOT"
+# после проверки отчёта: удалить только inactive stores; active/quarantined остаются
+node --import tsx ai/flow-eval/scripts/sandbox.ts dependencies --clean --root "$SDD_EVAL_ROOT"
+# только после завершения всех eval-процессов: удалить оставшиеся sandbox roots
 node --import tsx ai/flow-eval/scripts/sandbox.ts clean
 kill "$OPENCODE_EVAL_SERVER_PID"
 ```

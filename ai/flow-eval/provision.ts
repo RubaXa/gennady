@@ -22,6 +22,8 @@ import { TEMPLATES } from '../../shared/sdd/templates.ts';
 import {
   bindEvalDependencies,
   prepareEvalDependencyStore,
+  releaseEvalDependencyLease,
+  type EvalDependencyLeaseHandle,
   type EvalDependencyStore,
 } from './dependency-store.ts';
 import type { SddEvalFixtureId, SddEvalScenario } from './types.ts';
@@ -1354,8 +1356,8 @@ export type SddEvalProvisionOptions = {
   onOwnedDirectory?: (scenarioId: string, directory: string) => void | Promise<void>;
   /** @purpose Run identity used to keep the shared dependency contract active until finalization. */
   dependencyLeaseId?: string;
-  /** @purpose Pass the exact lease file to the lifecycle owner for release after cleanup. */
-  onDependencyLease?: (leaseFile: string) => void | Promise<void>;
+  /** @purpose Pass the exact lease capability to the lifecycle owner for heartbeat and release. */
+  onDependencyLease?: (lease: EvalDependencyLeaseHandle) => void | Promise<void>;
   /** @purpose Leave registered paths intact so an outer lifecycle can compact evidence first. */
   lifecycleOwnsCleanup?: boolean;
 };
@@ -1529,11 +1531,11 @@ export async function provisionScenarioDirectories(
             : rootDirectoryOrOptions.dependencyLeaseId,
       });
       if (
-        dependencyStore.leaseFile &&
+        dependencyStore.lease &&
         typeof rootDirectoryOrOptions !== 'string' &&
         rootDirectoryOrOptions.onDependencyLease
       ) {
-        await rootDirectoryOrOptions.onDependencyLease(dependencyStore.leaseFile);
+        await rootDirectoryOrOptions.onDependencyLease(dependencyStore.lease);
         dependencyLeaseTransferred = true;
       }
     }
@@ -1589,8 +1591,8 @@ export async function provisionScenarioDirectories(
         .filter((directory) => !lifecycleOwnsCleanup || !transferredDirectories.has(directory))
         .map((directory) => rm(directory, { recursive: true, force: true }))
     );
-    if (dependencyStore?.leaseFile && (!lifecycleOwnsCleanup || !dependencyLeaseTransferred)) {
-      await rm(dependencyStore.leaseFile, { force: true });
+    if (dependencyStore?.lease && (!lifecycleOwnsCleanup || !dependencyLeaseTransferred)) {
+      await releaseEvalDependencyLease(dependencyStore.lease);
     }
     throw cause;
   }
