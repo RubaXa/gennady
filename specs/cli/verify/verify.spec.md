@@ -17,8 +17,15 @@ CLI-VERIFY
 > currently shipped compatibility runtime; it must not be read as the target architecture. Cutover
 > proceeds through UV-01..17 and UV-22..26, and publication stays blocked through U8 plus exact
 > Swift E-18 evidence.
+>
+> **2026-09-25 amendment:** SDD workflow phase kind and Verify phase selector are separate open
+> vocabularies. Built-in presets provide zero-YAML default mappings; project YAML overlays/overrides
+> them with provenance. UV-13 cutover is `BLOCKED` until declarative custom selectors/composed mapping
+> (UV-22) exist and the operator ACKs the Evidence/Receipt checkpoint below. This amendment does
+> not choose the pending receipt schema or local/remote trust model.
 
-The target module owns one public engine, `gennady verify --phase <phase>`. A stack plugin has an
+The target module owns one public engine, `gennady verify --phase <selector>`. The selector value is
+an arbitrary declared preset/YAML-owned string; core assigns no semantics from its name. A stack plugin has an
 open runtime `PluginId` and supplies detection plus a declarative `VerifyPreset`: one immutable DAG
 of `VerifyStep` values, phase selectors, selected-slice readiness requirements and rule ids. A phase
 selects tags and dependency closure from that DAG; it never copies an independent command ladder.
@@ -36,7 +43,7 @@ a second target engine.
 | `PluginId`                 | Open `string`; built-in registration stays static until UV-23.                                                          |
 | `VerifyStep`               | Immutable DAG node with execution, dependency, effect and policy data.                                                  |
 | `PlannedVerifyStep`        | Validated node whose id, dependencies and invalidation targets use `<plugin>:<local-id>`.                               |
-| `VerifyPreset`             | Immutable plugin-owned DAG plus named phase selectors, selected-slice requirements and contributed rule ids.            |
+| `VerifyPreset`             | Immutable plugin-owned DAG plus arbitrary declared selector ids, selected-slice requirements and contributed rule ids.  |
 | `ComposedVerifyPresets`    | Concrete presets plus winning per-key provenance, explicit waivers and migration diagnostics.                           |
 | `VerifyStackParticipation` | Scope/dependency participation plus explicit blocking policy and provenance.                                            |
 | `VerificationContext`      | Immutable request, scope, detected plugins/frameworks, exact HEAD and one rules snapshot.                               |
@@ -44,13 +51,13 @@ a second target engine.
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object; directive/CLI cutover and frozen receipt parity remain UV-13, runner deletion UV-14, remote verification U5 and dynamic rules U6.
+UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object. UV-22 moves before cutover to add arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance). UV-13 remains blocked until the Evidence/Receipt checkpoint is ACKed; runner deletion remains UV-14, remote verification U5 and dynamic rules U6.
 
 ### Target call chain
 
 | Step | Participant          | Action                                                 | Data                                      |
 | ---- | -------------------- | ------------------------------------------------------ | ----------------------------------------- |
-| 1    | Caller               | submits one phase and scope                            | `VerifyRequest`                           |
+| 1    | Caller               | submits one declared selector id and scope             | `VerifyRequest`                           |
 | 2    | Planner              | detects plugins and composes their presets             | `VerificationContext`, `VerifyPreset[]`   |
 | 3    | Planner              | validates the DAG and selects phase dependency closure | `VerifyPlan`                              |
 | 4    | Readiness            | checks only selected requirements                      | `CapabilityMatrix`                        |
@@ -58,6 +65,12 @@ UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transact
 | 6    | Reporters / SDD sink | project the same terminal result                       | `VerifyRunReport`                         |
 
 `verify` — стек-движок, перенесённый из MAIN и расширенный literal-плагинами `plugins/{anystack,golang,swift}/**` в рамках пачки «Verify считает окружение и гейты как данные» (`ai/drafts/research/sdd-v1-to-v2-transfer/30-TRACK-VERIFY.md` §6, задачи V-02..V-11). Перенос идёт волнами: каждая задача добавляет РЕАЛЬНЫЙ вызов очередному примитиву, подключая его к существующему ладдеру `sdd-verify` (`cli/cmd/sdd-verify/**`), который в это же время не меняется в поведении (golden V-01, инварианты И-1/И-2). До своего подключения перенесённый примитив по определению имеет 0-1 продакшн-вызовов — это фиксирует гейт `yagni`, и единственный штатный способ унять находку — `Usage Waiver` (`cli/cmd/yagni/yagni.cmd.ts:228`), записанный здесь, в контракте модуля-получателя, с явной ссылкой на задачу, которая присоединит вызов.
+
+Workflow SDD phase kind is a different open vocabulary. Every built-in preset provides a zero-YAML
+default mapping from kind to a declared Verify selector; project YAML overlays/overrides it with
+per-key provenance. `sdd-task` resolves the composed mapping and emits exactly one canonical Verify
+invocation; neither the agent nor `sdd-task` selects individual gates/steps. It fails closed only
+when the kind remains unresolved after composition.
 
 **Key properties:**
 
@@ -199,7 +212,9 @@ separately gated by UV-23.
 ### VER-REQ-2 [должен]
 
 **Когда** plugin declares verification behavior, **то он должен** represent it as one immutable
-`VerifyPreset` DAG of immutable `VerifyStep` values and named phase selectors. Refines D-66.
+`VerifyPreset` DAG of immutable `VerifyStep` values and arbitrary declared selector ids. Gates/steps
+are declared once; selector composition contains only tag/seed selection, while `needs` supplies the
+transitive DAG closure. Core must not hardcode semantics for selector names. Refines D-66.
 
 ### VER-REQ-3 [должен]
 
@@ -231,6 +246,9 @@ ownership mismatch, missing dependency/invalidation target, dependency cycle, un
 unknown include/exclude tag, **то planner должен** fail closed typed `VerifyPlanError` с actionable
 qualified context; частичный план запрещён. Refines D-66.
 
+`unknown phase` здесь означает selector id, не объявленный composed preset/project YAML; это не
+закрытый список известных core имён.
+
 ### VER-REQ-7 [должен]
 
 **Когда** concrete presets получают project configuration, **то composer должен** применить слои в
@@ -240,14 +258,14 @@ qualified context; частичный план запрещён. Refines D-66.
 provenance каждого leaf. Default
 `loadConfigSection` и действующий `stack:` runtime сохраняют legacy priority с personal config lowest.
 
-CLI выбирает только phase/scope и не является дополнительным pipeline layer. Refines D-66.
+CLI выбирает только declared selector/scope и не является дополнительным pipeline layer. Refines D-66.
 
 ### VER-REQ-8 [должен · нештатная]
 
 **Если** `verify:` содержит unknown plugin/step/field, неверный type/duration/reference или
 `enabled: false` без non-empty `reason`, **то loader должен** вернуть typed actionable errors и null
 config, не partial overlay. UV-03 разрешает overrides только существующих preset steps; custom
-steps/phases остаются UV-22. `command.npmScript` является признанным Node-owned syntax, но до UV-04
+steps/selectors остаются UV-22 и обязаны быть доступны до UV-13 cutover. `command.npmScript` является признанным Node-owned syntax, но до UV-04
 даёт typed actionable deferral, а не unknown-key ошибку и не guessed argv.
 
 Legacy `skipGates` и basic `argv/cwd/env/timeout` переводятся с migration provenance. `extraGates`,
@@ -317,16 +335,20 @@ runtime до U4. Refines D-68.
 
 ### VER-REQ-14 [должен]
 
-**Когда** оператор вызывает `gennady verify --phase=<phase>`, **то CLI должен** построить один
+**Когда** оператор вызывает `gennady verify --phase=<selector>`, где selector объявлен composed
+preset/project YAML, **то CLI должен** без интерпретации имени построить один
 immutable `VerificationContext` с normalized scope, participating plugin ids, exact pre-run HEAD,
 empty frameworks и явно пустым deterministic pre-U6 rule snapshot; затем выполнить ровно продукт
 `resolveMultistackVerifyPlan → runLocalVerifyPlan` и вернуть один `VerifyRunReport`. Text является
 default presentation, `--json` — versioned stable machine projection. `--plan --json` сохраняется
 как строго read-only compatibility mode без исполнения verification steps; без explicit phase он
-выбирает `full`, маркирует `kind=plan` и `evidence=false`, но использует тот же target planner.
+выбирает declared compatibility default selector `full`, маркирует `kind=plan` и `evidence=false`,
+но использует тот же target planner. Это explicit default-entry exception конкретного CLI surface,
+а не inference semantics из имени `full` или любого другого selector id.
 
 UV-12 SDD context/receipt sink, U5 remote executor и U6 dynamic rules остаются за этой задачей;
-UV-13/14 выполняют SDD cutover и удаление compatibility runner. Refines D-65/D-67.
+UV-22 обязан материализовать arbitrary project selectors/mapping до UV-13; UV-13/14 выполняют SDD
+cutover и удаление compatibility runner только после Evidence/Receipt ACK. Refines D-65/D-67.
 
 ### VER-REQ-15 [должен · нештатная]
 
@@ -343,8 +365,11 @@ pass/blocked. Refines D-65/D-67.
 ### VER-REQ-16 [должен · нештатная]
 
 **Когда** unified Verify запускается с SDD context, **то adapter должен** до execution заморозить
-exact task path, SDD phase, existing Target Files, Deleted Files tombstones и legacy-compatible
-`PhaseReceiptPlan` с тем же `environmentState`, что compatibility runner. Эти facts входят в тот же
+exact task path, open-vocabulary SDD phase kind, SDD phase identity, resolved Verify selector,
+existing Target Files и Deleted Files tombstones. Explicit legacy overlay дополнительно несёт
+legacy-compatible `PhaseReceiptPlan`, тот же `environmentState`, что compatibility runner, и
+provenance включения overlay; без overlay эти legacy bytes/order не выводятся и не считаются
+default contract. Эти facts входят в тот же
 `VerificationContext`/`VerifyRunReport`, который получает standalone reporter. Planning scope —
 детерминированный exact union Target Files + Deleted Files, поэтому tombstone участвует в
 affected-stack selection, оставаясь отдельной absence identity для receipt.
@@ -353,15 +378,48 @@ affected-stack selection, оставаясь отдельной absence identity
 
 Optional receipt sink получает именно этот report object и ничего не пишет, когда persistence
 callback отсутствует. При активном sink только terminal `pass` с non-blocked readiness может создать
-receipt; root/task/SDD-phase/scope обязаны совпасть, каждый configured legacy gate и каждая
-Verification row обязаны ровно один раз ссылаться на реально passing runnable target step. Binding
+receipt; root/task/SDD-phase/scope обязаны совпасть. Когда explicit legacy overlay активен, каждый
+configured legacy gate и каждая Verification row обязаны ровно один раз ссылаться на реально passing runnable target step. Binding
 несёт только identities: exact receipt command/role берутся из frozen SDD context, а direct argv,
 root cwd и отсутствие скрытого env механически сверяются с этой командой; они не принимаются от
 caller как свободный текст. Ошибка identity/mapping/target-state/persistence возвращает typed
 id/severity/location и не вызывает sink. `--plan` никогда не пишет receipt.
 
-UV-12 не переключает compatibility runner и не объявляет полную parity: golden mapping принадлежит
-UV-13, удаление runner — UV-14. Refines D-65; preserves A13/D-4 до frozen parity gate.
+Legacy byte parity не применяется к no-overlay preset как universal default. UV-12 не переключает
+compatibility runner и не объявляет полную parity: conditional overlay mapping принадлежит UV-13,
+удаление runner — UV-14. Оба заблокированы до Evidence/Receipt ACK. Refines D-65; preserves A13/D-4
+до conditional parity gate.
+
+### VER-REQ-18 [должен · нештатная]
+
+**Когда** `sdd-task` готовит workflow phase, **то он должен** принять open-vocabulary SDD phase kind,
+скомпоновать mapping `built-in preset zero-YAML default → project YAML override` с per-key provenance
+и выдать ровно одну exact invocation
+`gennady verify --phase=<selector> --task=<ticket> --sdd-phase=<P>`. Агент не выбирает individual
+gates/steps и не собирает несколько invocation. Resolver fail closed до spawn только когда kind
+остаётся unresolved после composition либо итоговый selector не объявлен; diagnostic показывает
+preset source и actionable project override location.
+
+### Mandatory operator checkpoint: Evidence/Receipt (`U4-ER`, UV-13 BLOCKED)
+
+До UV-13 canonical Decision Log должен получить отдельный operator ACK. Этот документ намеренно не
+выбирает ответы вместо оператора. ACK обязан определить:
+
+1. versioned machine-readable normalized test statistics (как минимум
+   executed/passed/failed/skipped + runner/protocol provenance) и обязательность полей по runner;
+2. proof actual runner invocation, не сводимый к authored command/script string: attempt/step/process
+   identity и наблюдаемые terminal facts;
+3. persistence failed/timeout/cancelled/violation attempt до retry, чтобы последующий pass не стирал
+   failure evidence;
+4. local vs remote trust model: HEAD/worktree/provider/exact-SHA identity, допустимый источник
+   release-grade proof и явный trust level в report;
+5. explicit legacy-overlay activation/provenance и механическую гарантию, что no-overlay path не
+   наследует legacy bytes/order.
+
+Checkpoint acceptance: ответы записаны в canonical Decision Log; versioning/migration и failure
+semantics определены; fixtures доказывают normalized stats, actual invocation, persisted failure,
+visible local/remote trust и обе стороны overlay on/off. До этого directive/CLI cutover UV-13 не
+начинается, а independent compatibility runner UV-14 не удаляется.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -704,7 +762,8 @@ plugins/
 
 ## 9. Module Decision Log
 
-Десять записей: четыре исторических переходных решения и принятый target-контракт D-65..D-70.
+Одиннадцать принятых записей: четыре исторических переходных решения, target-контракт D-65..D-70
+и amendment open-vocabulary mapping; отдельно перечислен один pending operator checkpoint.
 
 <details>
 <summary>Полные записи Decision Log</summary>
@@ -742,12 +801,12 @@ plugins/
 ### VERIFY-DL-5 / D-65 — Один Verify вместо двух движков и отдельного fix
 
 - **Status:** accepted; cutover in progress through U1..U4.
-- **Decision:** `gennady verify --phase <phase>` выполняет observe, repair, selective recheck и возвращает один typed report. Отдельного `gennady fix` нет; `sdd-verify` становится adapter + receipt sink до golden parity.
+- **Decision:** `gennady verify --phase <selector>` выполняет observe, repair, selective recheck и возвращает один typed report. Selector обязан быть объявлен preset/project YAML; core не выводит semantics из имени. Отдельного `gennady fix` нет; `sdd-verify` становится adapter + receipt sink до conditional legacy-overlay parity.
 
 ### VERIFY-DL-6 / D-66 — Preset является одним DAG, phase является срезом
 
 - **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03, Node target preset by UV-04, Go target preset by UV-05, Swift target preset by UV-06.
-- **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Phases выбирают tags + dependency closure; config перегружает preset. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist задаёт project identity.
+- **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Arbitrary declared selectors выбирают tags + dependency closure; config перегружает preset. Gates/steps объявляются один раз, а selector не копирует command ladder. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist задаёт project identity.
 - **UV-02 semantics:** local ids становятся `<plugin>:<local-id>`; unqualified refs остаются в plugin, qualified refs сохраняются. Include/exclude seeds получают полный deterministic dependency closure. Malformed/duplicate ids, mismatch, missing refs, cycles и unknown tags fail closed; planner ничего не исполняет.
 - **UV-03 overlay:** builtin → detected facts → lossless legacy → target files, personal rc wins. Objects deep-merge, arrays replace, cwd repo-absolute, leaves retain provenance. Unknown schema/ref и non-lossless legacy reject overlay; custom steps/phases остаются UV-22.
 - **UV-04 Node:** one DAG has observe, bounded repair, integration/coverage. Package-manager/script facts materialize direct argv; missing/unknown blocks without guessing. Repair requires normalized target files. Home isolation matches target+legacy loaders; runtime remains frozen.
@@ -784,6 +843,28 @@ plugins/
 - **Decision:** colocated `*.rule.yaml` sidecars и один `RuleResolver` заменяют `knowledge.xml` после
   equivalence proof. `gennady rules list/show/resolve` не запускает steps и не пишет receipts;
   `resolve`, `verify --plan`, фактический report и SDD sink разделяют один snapshot digest.
+
+### VERIFY-DL-11 — SDD kind и Verify selector являются разными open vocabulary
+
+- **Status:** accepted amendment; UV-22 moved before UV-13.
+- **Decision:** every built-in preset maps arbitrary SDD phase kinds to declared Verify selectors as
+  zero-YAML defaults; project YAML overlays/overrides those entries with per-key provenance. Core
+  assigns no semantics from selector spelling. `sdd-task` resolves the composed mapping and emits one
+  exact Verify invocation; agent never chooses individual gates/steps. Unresolved fails only after
+  composition. UV-22 owns default/override/arbitrary-selector fixtures and becomes a dependency of
+  UV-13. Omitted `--phase` selecting `full` is an explicit compatibility/default-entry rule, never
+  general name-based inference.
+- **Legacy boundary:** byte parity is conditional on explicit legacy overlay/provenance and is not a
+  universal default for new presets.
+
+### VERIFY-CP-1 — Evidence/Receipt operator checkpoint
+
+- **Status:** **PENDING OPERATOR ACK; blocks UV-13/UV-14.**
+- **Open decisions:** normalized machine-readable test statistics; proof of actual runner
+  invocation; persistence of failed attempts; local vs remote trust; versioning/migration and exact
+  activation semantics of legacy overlay.
+- **No implicit decision:** this record deliberately does not choose a receipt schema or trust
+  policy. Acceptance is defined in `Mandatory operator checkpoint: Evidence/Receipt` above.
 
 </details>
 
