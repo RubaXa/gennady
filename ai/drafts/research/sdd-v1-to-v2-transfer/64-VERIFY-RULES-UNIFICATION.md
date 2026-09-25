@@ -10,9 +10,9 @@
 >
 > **Amendment 2026-09-25:** workflow SDD phase kind и Verify phase selector разведены как две
 > открытые vocabulary. Built-in preset даёт zero-YAML default mapping между ними, project YAML
-> overlays/overrides его с provenance; UV-13 заблокирован до отдельного
-> operator ACK по Evidence/Receipt (§12.1). Этот amendment не выбирает receipt schema или trust
-> model и не разрешает cutover до такого ACK.
+> overlays/overrides его с provenance. Operator ACK по Evidence/Receipt (§12.1) принят; UV-13
+> остаётся заблокирован до реализации и review UV-12E вместе с UV-22. Этот amendment фиксирует
+> выбранный evidence contract, но не притворяется его реализацией и не разрешает ранний cutover.
 
 ## 1. Решённая цель
 
@@ -625,36 +625,47 @@ boundary.
 | U1 | canonical specs + model + planner + config overlay + parity adapters | принятый контракт живёт в `specs/**`, новый DAG строится, старый runtime не сломан | нет |
 | U2 | Node/Go/Swift/Anystack presets + per-phase readiness + multistack | одинаковый план на трёх стеках | нет |
 | U3 | local executor + WorkspaceGuard + repair/invalidation | `gennady verify` реально исполняет phase slice | нет |
-| U4 | SDD adapter; declarative custom selectors/presets; Evidence/Receipt ACK; затем receipt cutover и удаление второго runner | SDD mapping разрешается в один общий engine; cutover только после §12.1 | **да: перед UV-13, Evidence/Receipt ACK** |
+| U4 | SDD adapter; declarative custom selectors/presets; Evidence/Receipt model+journal; затем receipt cutover и удаление второго runner | SDD mapping разрешается в один общий engine; ACK §12.1 реализован в UV-12E до cutover | **ACK принят; UV-13 ждёт reviewed UV-12E + UV-22** |
 | U5 | exact-SHA remote watcher; перенос лучших dirty VCS частей | `phase=ci` ждёт GitLab/GitHub pipeline | только перед remote mutation/rollback |
 | U6 | sidecar registry + resolver + snapshot; миграция `knowledge.xml` | правила выбираются динамически | только перед недетерминированным model-selector |
 | U7 | external-plugin trust/version/isolation contract и consumer fixture | граница внешнего кода доказана | перед исполнением внешнего кода |
 | U8 | удалить adapters/legacy; Node+Go+Swift evidence; exact E-18 | release evidence pack | **да: решение о публикации** |
 
-### 12.1 Обязательная остановка U4 — Evidence/Receipt
+### 12.1 ACK U4-ER — Evidence/Receipt
 
-UV-13 остаётся `BLOCKED` до отдельного operator ACK. На этой остановке нельзя молча выбрать новую
-receipt schema, приравнять локальный запуск к remote proof или считать текст команды доказательством
-исполнения. Решение обязано явно ответить:
+Operator ACK принят. Он задаёт следующий обязательный контракт реализации UV-12E; сам текст ACK не
+считается implementation evidence, поэтому UV-13 остаётся `BLOCKED` до merge/review UV-12E и UV-22.
 
-1. Какой versioned machine-readable shape хранит нормализованную test statistics (как минимум
-   executed/passed/failed/skipped и runner/protocol provenance) и какие поля обязательны для
-   различных runner-ов?
-2. Как механически доказать actual runner invocation, а не самодекларацию command string/script
-   name: какие attempt/step/process identities и наблюдаемые terminal facts входят в evidence?
-3. Как persist-ится failed/timeout/cancelled/violation attempt до retry, чтобы новый зелёный запуск
-   не стирал факт предыдущей попытки и failure-path не оставался без evidence?
-4. Где проходит trust boundary local vs remote: какие HEAD/worktree/provider/SHA identities
-   обязательны, какой источник может давать release-grade proof и как report обозначает уровень
-   доверия без неявного повышения?
-5. Как explicit legacy overlay/provenance включает byte-parity и как отсутствие overlay
-   механически исключает применение legacy command/order semantics по умолчанию?
+1. **Append-only история attempts в существующем ticket.** Каждый SDD Verify attempt создаёт ровно
+   одну compact structured entry в существующем `EXECUTION_LOG`. Эта же entry атомарно переходит
+   `RUNNING → PASS|FAIL|TIMEOUT|CANCELLED|VIOLATION`. Recovery/следующий run детерминированно
+   переводит orphan `RUNNING` в `INTERRUPTED`. Attempts сохраняются: поздний pass не удаляет и не
+   переписывает предыдущие failed/interrupted entries.
+2. **Микроскопическая human line.** Она содержит только run id, SDD phase, selector, terminal state,
+   steps `x/y`, минимальные counts для каждого test step и duration. Ticket не становится warehouse:
+   full stdout/stderr и artifacts туда не пишутся; detailed bounded/redacted diagnostics возвращает
+   агенту CLI report.
+3. **Machine identity в той же entry.** Structured payload содержит exact HEAD, deterministic
+   worktree/scope digest, охватывающий uncommitted state, plan digest, preset/config provenance
+   digest, rules digest, timestamps и run id. Любой relevant drift делает prior pass stale.
+4. **Versioned normalized test statistics.** Каждый test step объявляет policy
+   `required|optional|none`; built-in `unit` и `integration` по умолчанию `required`. Readiness
+   блокирует missing required stats capability до spawn. После исполнения promised required stats,
+   которые отсутствуют или malformed, дают `VIOLATION`. Минимальный normalized payload:
+   `executed/passed/failed/skipped` плюс protocol и runner provenance. Workflow phase kinds и Verify
+   selectors при этом остаются open/custom vocabulary.
+5. **Trust принадлежит selector.** Обычные local selectors принимают `trust=local-runner`; final
+   `ci` требует remote-provider proof exact pushed SHA и immutable pipeline identity. Local receipt
+   runner-owned и детерминированно валидируется, но явно не является cryptographic/tamper-proof.
+   Remote implementation остаётся U5.
+6. **Legacy overlay условен.** Byte parity включается только explicit legacy overlay с provenance;
+   no-overlay path не наследует legacy command/order semantics, как уже определено выше.
 
-Acceptance самого checkpoint (не финальные ответы): оператор выбрал и записал ответы в canonical
-spec/Decision Log; зафиксированы versioning/migration и failure semantics; fixture доказывает
-machine-readable stats и actual invocation; failed attempt остаётся наблюдаемым; local/remote trust
-виден в report; overlay/on и overlay/off проверены обе стороны. До этого UV-13 не начинает
-directive/CLI cutover и UV-14 не удаляет compatibility runner.
+Acceptance UV-12E: recovery и atomic state transitions доказаны adversarial fixtures; append-only
+failure history переживает следующий pass; normalized stats/readiness/violation покрыты required,
+optional и none; exact local identity/digests и staleness детерминированы; report/ticket явно несут
+selector trust; overlay on/off остаются раздельными. Только после review UV-12E и UV-22 начинается
+UV-13 directive/CLI cutover; UV-14 по-прежнему не удаляет compatibility runner до UV-13.
 
 ## 13. Задачи новой очереди
 
@@ -673,8 +684,9 @@ directive/CLI cutover и UV-14 не удаляет compatibility runner.
 | UV-11 | U3 | text/json reports + readiness instructions | UV-04..10 | stable machine-readable report |
 | UV-12 | U4 | SDD context и receipt sink | UV-11 | same report powers standalone and SDD receipt |
 | UV-22 | U4 | declarative custom presets/selectors + composed SDD kind mapping | UV-03, UV-11 | built-in zero-YAML defaults + project overrides with provenance; arbitrary selector fixture; steps declared once; `sdd-task` emits one exact mapped Verify invocation |
-| U4-ER | U4 | **operator decision checkpoint Evidence/Receipt (§12.1)** | UV-12, UV-22 | explicit ACK answers stats/invocation/failure persistence/trust/legacy-overlay questions; no implementation decision is inferred |
-| UV-13 | U4 | **BLOCKED до U4-ER ACK:** migrate directives/skills/specs and conditional legacy-overlay parity golden | UV-12, UV-22, U4-ER ACK | overlay corpus preserves verdict/exit/diagnostic identity+severity+location/receipt fields, A13/D-4, V1 grandfathering and marker-only semantics; no-overlay path uses canonical report contract |
+| U4-ER | U4 | **ACKED operator decision Evidence/Receipt (§12.1)** | UV-12 | canonical plan/spec фиксируют attempt journal, stats, freshness identities, selector trust и conditional legacy overlay |
+| UV-12E | U4 | evidence model + local SDD attempt log + stats/freshness/trust projection | UV-12, U4-ER ACK | atomic RUNNING→terminal/recovery; append-only failures; normalized per-test-step stats; HEAD/worktree/scope/plan/provenance/rules identities; local trust visible; no artifact warehouse |
+| UV-13 | U4 | **BLOCKED до reviewed UV-22 + UV-12E:** migrate directives/skills/specs and conditional legacy-overlay parity golden | UV-22, UV-12E | overlay corpus preserves verdict/exit/diagnostic identity+severity+location/receipt fields, A13/D-4, V1 grandfathering and marker-only semantics; no-overlay path uses canonical evidence/receipt contract |
 | UV-14 | U4 | remove independent `sdd-verify` runner | UV-13 | no runtime imports/references to old runner |
 | UV-15 | U5 | audit/manifest dirty VCS source | U0 | every source change classified A/B/C |
 | UV-16 | U5 | common pipeline watcher + typed evidence | UV-15, UV-09 | exact-SHA state sequence, timeout/API tests |
@@ -708,8 +720,9 @@ directive/CLI cutover и UV-14 не удаляет compatibility runner.
 - explicit legacy-overlay parity сохраняет A13/D-4 severity, diagnostic identity/location,
   grandfathering и marker-only semantics до удаления `sdd-verify`; no-overlay не наследует legacy
   bytes/order;
-- Evidence/Receipt checkpoint получил отдельный operator ACK с proof actual invocation,
-  machine-readable stats, failure-attempt persistence и явной local/remote trust boundary;
+- Evidence/Receipt ACK реализован UV-12E: append-only attempt journal, proof actual invocation,
+  machine-readable stats, drift-sensitive identities и явная selector-owned local/remote trust
+  boundary;
 - independent `sdd-verify` runner и compatibility adapters удалены;
 - dirty VCS source перенесён через manifest + tests, а не потерян;
 - exact Swift E-18 завершён в реальном release environment;
@@ -724,4 +737,4 @@ directive/CLI cutover и UV-14 не удаляет compatibility runner.
 - не cherry-pick-им грязный `/Users/k.lebedev/Developer/gennady` целиком;
 - не сохраняем две публичные системы verify/fix;
 - не оставляем D-64 non-blocking tail как источник ложного зелёного verdict.
-- не начинаем UV-13 и не изобретаем receipt schema до Evidence/Receipt ACK §12.1.
+- не начинаем UV-13 до merge/review UV-22 и реализации ACK §12.1 в UV-12E.
