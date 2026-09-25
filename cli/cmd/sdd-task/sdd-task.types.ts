@@ -14,10 +14,7 @@ import type {
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 import type { AuditGroupResolution } from '../../../shared/sdd/audit-group.ts';
-import {
-  formatPhaseVerificationGatePlan,
-  type PhaseVerificationPlan,
-} from '../../../shared/sdd/phase-verification-plan.ts';
+import type { PhaseVerificationPlan } from '../../../shared/sdd/phase-verification-plan.ts';
 
 /**
  * @purpose Realpath a path when possible — resolves symlinks (macOS `/var` → `/private/var`) so
@@ -233,6 +230,7 @@ export function gateHint(command: string): string {
  *   (never audited, or every audit passed clean).
  * @param [fileLifecycle] Existing Target Files that may be read and absent exact Target Files reserved for creation.
  * @param [verificationPlan] Canonical gate states, providers, and next actions for this phase.
+ * @param [verifySelection] Composed SDD-kind selector and the one canonical worker invocation.
  * @returns The compact phase context, or a not-found failure when `phaseId` has no Phases Overview row.
  */
 export function formatPhase(
@@ -244,7 +242,12 @@ export function formatPhase(
   phaseId: string,
   auditRounds: string | null = null,
   fileLifecycle?: { readFiles: string[]; createFiles: string[] },
-  verificationPlan?: PhaseVerificationPlan
+  verificationPlan?: PhaseVerificationPlan,
+  verifySelection?: {
+    readonly invocation: string;
+    readonly selector: string;
+    readonly source: string;
+  }
 ): TaskOutcome {
   const idx = phases.findIndex((p) => p.id === phaseId);
   if (idx === -1) return phaseNotFound(phaseId, phases);
@@ -263,13 +266,15 @@ export function formatPhase(
   if (d.objective) lines.push(`objective:   ${d.objective}`);
 
   const pg = gatesForPhase(d, gates);
-  lines.push('', 'gates:');
-  if (pg.length === 0 && !verificationPlan) lines.push("  — (none required by this phase's rules)");
-  for (const g of pg) lines.push(`  ${g.command} — ${gateHint(g.command)}`);
-  if (verificationPlan) {
-    for (const gate of verificationPlan.gates) {
-      lines.push(`  ${formatPhaseVerificationGatePlan(gate)}`);
-    }
+  lines.push('', 'verification:');
+  if (verifySelection === undefined) {
+    lines.push('  — (Verify selector unresolved; caller must fail before dispatch)');
+  } else {
+    lines.push(`  selector: ${verifySelection.selector} ← ${verifySelection.source}`);
+    lines.push(`  command:  ${verifySelection.invocation}`);
+    lines.push(
+      `  capabilities: ${verificationPlan?.gates.length ?? pg.length} engine-owned; agent must not select individual gates`
+    );
   }
 
   lines.push('', `exit:        ${d.exit ?? '—'}`);
@@ -296,7 +301,7 @@ export function formatPhase(
     '  READ protocol: ai/directives/sdd-v2/phase-execution-protocol.directive.xml and its four step files',
     '  NEVER READ: node_modules/gennady/** · dist/** · CLI source or bundles',
     '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis, then return a typed blocker; no implementation archaeology',
-    '  TICKET: only the exact sdd-verify may append its receipt; never edit status/DONE/Handoff and never call sdd-log'
+    '  TICKET: only the exact unified Verify invocation above may own evidence/receipt; never edit status/DONE/Handoff and never call sdd-log'
   );
 
   const priorHandoffs = phases
@@ -322,7 +327,7 @@ export function formatPhase(
 
   lines.push(
     '',
-    'next: исполняй переданный worker contract без сокращений, запусти точный sdd-verify и верни typed Handoff оркестратору.'
+    'next: исполняй переданный worker contract без сокращений, запусти ровно unified Verify command above и верни typed Handoff оркестратору.'
   );
   return { ok: true, text: lines.join('\n') };
 }
@@ -389,8 +394,8 @@ export function fileError(ticket: string): TaskOutcome {
 export function infraExemptionLine(level: string, detail: string[]): string {
   return [
     `⚠️  [sdd-task] INFRA_QUEUE_EXEMPTION: readiness=${level} (${detail.join(', ')}), но этот тикет сам строит недостающие гейты —`,
-    '  фаза исполняется. На STEP_5 используй канонический `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`:',
-    '  он прочитает это исключение из той же GATE_QUEUE и сам выберет setup; профиль вручную не передавай.',
+    '  фаза исполняется. На STEP_5 используй ровно canonical unified Verify invocation из phase context ниже;',
+    '  selector уже разрешён из preset-default + project override — individual gates вручную не выбирай.',
     '  code/test потребуют те самые ступени, которых ещё нет, и вернут ⛔ — фаза встанет на том, что чинит.',
     '  В `ver`-строку запиши именно выполненную команду и добавь `discovery`-строку про это исключение.',
     '  Верификация здесь ЧАСТИЧНАЯ: перечисленные ступени пока ничего не проверяют. Не считай зелёный',
@@ -404,7 +409,7 @@ export function dependencyNotReadyError(phaseId: string, issue: string): TaskOut
     ok: false,
     code: ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY,
     exitCode: 1,
-    message: `[sdd-task] ${ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY}: phase ${phaseId} cannot be dispatched — ${issue}.\n  Rerun the stale dependency's canonical sdd-verify command, check it complete, then retry this exact sdd-task --phase call.`,
+    message: `[sdd-task] ${ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY}: phase ${phaseId} cannot be dispatched — ${issue}.\n  Rerun the stale dependency's recorded canonical unified Verify invocation, check it complete, then retry this exact sdd-task --phase call.`,
   };
 }
 
@@ -452,7 +457,7 @@ export function infraNotReadyError(
     exitCode: 1,
     message: [
       `[sdd-task] ${ERR_CLI_SDD_TASK_INFRA_NOT_READY}: фаза ${phaseId} (kind=${kind}) не может стартовать — ${cause}.`,
-      '  Зелёный sdd-verify на такой инфраструктуре не значит ничего: код прошёл бы фазу непроверенным.',
+      '  Зелёный Verify verdict на такой инфраструктуре не значит ничего: код прошёл бы фазу непроверенным.',
       '  next: выполни infra-очередь (npx gennady sdd-task → GATE_QUEUE), замени заглушки реальными инструментами,',
       '  затем повтори этот вызов. Bootstrap/config/doc-фазы этим гейтом не блокируются.',
     ].join('\n'),

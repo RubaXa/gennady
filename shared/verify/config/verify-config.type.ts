@@ -3,8 +3,13 @@
 // @spec: CLI-VERIFY
 
 import type { PluginId } from '../model/plugin-id.type.ts';
-import type { VerifyPreset } from '../model/verify-preset.type.ts';
-import type { Requirement, VerifyStep, WriteBoundary } from '../model/verify-step.type.ts';
+import type { PhaseSelector, VerifyPreset } from '../model/verify-preset.type.ts';
+import type {
+  Requirement,
+  VerifyEnvironmentFailureRule,
+  VerifyStep,
+  WriteBoundary,
+} from '../model/verify-step.type.ts';
 import type { VerifyConfigError } from './verify-config.error.ts';
 
 /** @purpose Describe the command fields a config layer may replace on an existing step. */
@@ -41,12 +46,22 @@ export type VerifyStepConfig = {
   readonly timeoutMs?: number;
   /** @purpose Replacement failure policy. */
   readonly onFailure?: VerifyStep['onFailure'];
+  /** @purpose Executor declaration required when this config adds a new step. */
+  readonly executor?: VerifyStep['executor'];
+  /** @purpose Effect declaration required when this config adds a new step. */
+  readonly effect?: VerifyStep['effect'];
+  /** @purpose Streaming exit-zero failure policy for a project-owned step. */
+  readonly outputMeansFailure?: boolean;
+  /** @purpose Serializable environmental failure rules for a project-owned step. */
+  readonly envFail?: readonly VerifyEnvironmentFailureRule[];
 };
 
 /** @purpose Group target overrides for one known plugin preset. */
 export type VerifyPluginConfig = {
-  /** @purpose Overrides keyed by existing local step id. */
+  /** @purpose Overrides or complete declarative additions keyed by local step id. */
   readonly steps: Readonly<Record<string, VerifyStepConfig>>;
+  /** @purpose Project-owned selectors over this preset's one shared DAG. */
+  readonly phases?: Readonly<Record<string, PhaseSelector>>;
   /** @purpose Whether failures from this plugin contribute to the terminal blocking verdict. */
   readonly blocking?: boolean;
   /** @purpose Mandatory project explanation when blocking is explicitly disabled. */
@@ -71,6 +86,10 @@ export type VerifyPluginPolicy = {
 export type VerifyConfig = {
   /** @purpose Plugin-specific overrides over built-in presets. */
   readonly presets: Readonly<Record<PluginId, VerifyPluginConfig>>;
+  /** @purpose Project overrides for the composed SDD-kind to Verify-selector mapping. */
+  readonly sdd?: {
+    readonly mapping: Readonly<Record<string, string>>;
+  };
 };
 
 /** @purpose Return an all-or-nothing target verify config load. */
@@ -153,4 +172,8 @@ export type ComposedVerifyPresets = {
   readonly migrationDiagnostics: readonly VerifyMigrationDiagnostic[];
   /** @purpose Effective per-plugin blocking policy, including explicit reason/provenance. */
   readonly policies: readonly VerifyPluginPolicy[];
+  /** @purpose Composed zero-YAML defaults plus project overrides, keyed by open SDD kind. */
+  readonly sddMapping: Readonly<Record<string, string>>;
+  /** @purpose Exact winning source for every composed SDD-kind mapping. */
+  readonly sddMappingProvenance: ReadonlyMap<string, string>;
 };

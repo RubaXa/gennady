@@ -521,11 +521,11 @@ describe('Swift target StackPlugin', () => {
     );
   });
 
-  it('fails unknown fields, malformed identity and unsafe repair config closed', () => {
+  it('fails incomplete custom steps, malformed identity and unsafe repair config closed', () => {
     const cases = [
       {
         yaml: 'verify:\n  presets:\n    swift:\n      steps:\n        missing: {}\n',
-        code: 'VERIFY_CONFIG_UNKNOWN_STEP',
+        code: 'VERIFY_CONFIG_INVALID_TYPE',
       },
       {
         yaml: 'stack:\n  swift:\n    xcode:\n      workspace: App.xcworkspace\n      scheme: App\n',

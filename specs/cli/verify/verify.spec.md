@@ -51,7 +51,7 @@ a second target engine.
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object. UV-22 moves before cutover to add arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance). UV-13 remains blocked until the Evidence/Receipt checkpoint is ACKed; runner deletion remains UV-14, remote verification U5 and dynamic rules U6.
+UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object. UV-22 adds arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance) before cutover. UV-13 remains blocked until the Evidence/Receipt checkpoint is ACKed; runner deletion remains UV-14, remote verification U5 and dynamic rules U6.
 
 ### Target call chain
 
@@ -347,7 +347,7 @@ default presentation, `--json` — versioned stable machine projection. `--plan 
 а не inference semantics из имени `full` или любого другого selector id.
 
 UV-12 SDD context/receipt sink, U5 remote executor и U6 dynamic rules остаются за этой задачей;
-UV-22 обязан материализовать arbitrary project selectors/mapping до UV-13; UV-13/14 выполняют SDD
+UV-22 materializes arbitrary project selectors/mapping before UV-13; UV-13/14 perform SDD
 cutover и удаление compatibility runner только после Evidence/Receipt ACK. Refines D-65/D-67.
 
 ### VER-REQ-15 [должен · нештатная]
@@ -400,6 +400,16 @@ gates/steps и не собирает несколько invocation. Resolver fai
 остаётся unresolved после composition либо итоговый selector не объявлен; diagnostic показывает
 preset source и actionable project override location.
 
+UV-22 materializes this contract as `VerifyPreset.sddKinds` plus
+`verify.sdd.mapping.<kind>: <selector>`. Scope ownership is evaluated from the phase's exact Target
+Files and Deleted Files: an unaffected detected plugin does not have to declare a selector that it
+will not run. The selected affected plugins must declare the selector. Project selectors live at
+`verify.presets.<plugin>.phases.<selector>` and select seeds only by `include`/optional `exclude`
+tags; dependency closure remains planner-owned. Project steps live once at
+`verify.presets.<plugin>.steps.<local-id>` and require explicit local direct `command.argv`, `cwd`,
+`effect`, `tags`, `timeout` and `onFailure` (plus bounded `writes` for repair). No project config can
+load executable plugin code; external code stays UV-23.
+
 ### Mandatory operator checkpoint: Evidence/Receipt (`U4-ER`, UV-13 BLOCKED)
 
 До UV-13 canonical Decision Log должен получить отдельный operator ACK. Этот документ намеренно не
@@ -439,7 +449,7 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/stack-config.ts`     | Service      | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                             |
 | `services/config/config-loader.ts`  | Service      | Универсальный загрузчик секции конфига + провенанс + форматирование                                |
 | `plugins/index.ts`                  | Registry     | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                                |
-| `plugins/anystack/**`               | Adapter      | Legacy config gates; target empty preset stays visibly blocked until UV-22                         |
+| `plugins/anystack/**`               | Adapter      | Legacy config gates plus config-only target selectors/steps; empty target stays visibly blocked    |
 | `plugins/golang/**`                 | Adapter      | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                             |
 | `plugins/swift/**`                  | Plugin       | SwiftPM/Xcode/Tuist legacy adapter plus target DAG, identity readiness and read-only planner       |
 | `shared/verify/presets/node.ts`     | Service      | `resolvePreset(stack, …)` — dispatcher; node inline, anystack delegated (V-04/V-08)                |
@@ -447,6 +457,7 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/presets/swift.ts`    | Service      | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                       |
 | `shared/verify/stack-detection.ts`  | Service      | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05) |
 | `shared/verify/model/**`            | Types        | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
+| `BUILTIN_SDD_KIND_SELECTORS`        | Constant     | Explicit zero-YAML SDD-kind defaults shared by built-in presets                                    |
 | `shared/verify/planning/**`         | Service      | DAG validation/slicing and deterministic scope-aware multistack orchestration                      |
 | `shared/verify/config/**`           | Service      | Strict target loader, provenance contracts and temporary lossless legacy adapter                   |
 | `shared/verify/execution/**`        | Service      | Dirty-safe workspace transaction plus direct-argv local step execution and bounded evidence        |
@@ -458,6 +469,8 @@ _Полный список файлов-сущностей, перенесённ
 | `LocalVerifyExecution`              | Value Object | Ordered local phase attempts, mutations, evidence and aggregate terminal state                     |
 | `runLocalVerifyPlan`                | Service      | Bounded repair convergence and selective invalidation over one selected local phase                |
 | `resolveMultistackVerifyPlan`       | Service      | One scope-aware detected composition, phase slice and readiness product                            |
+| `resolveProjectSddVerifySelector`   | Service      | Scope-aware built-in/project SDD-kind mapping resolution for phase dispatch                        |
+| `resolveSddVerifySelector`          | Service      | Fail-closed projection of one composed kind to a declared selector                                 |
 | `buildVerifyRunReport`              | Service      | Join planning/execution with honest pre-U6 rule and framework facts                                |
 | `projectVerifyReport`               | Service      | Redacted repo-relative versioned machine projection                                                |
 | `safeVerifyText`                    | Utility      | Remove repository roots and common secret forms from presentation strings                          |
@@ -660,13 +673,18 @@ no-spawn plan projection and real local execution. Legacy stays frozen until U4.
 
 ## 7. Public Options & Policies
 
-**`verify:` target overlay (UV-03..07):** existing-step overrides plus plugin-level
-`blocking`/`reason` are accepted at this cutover stage. Step fields are `enabled`, `reason`, `tags`, `needs`, `command`, `requires`, `writes`,
-`invalidates`, `timeout`, `onFailure`; `command` accepts generic `argv/cwd/env` and the acknowledged
+**`verify:` target overlay (UV-03..07, UV-22):** existing-step overrides plus plugin-level
+`blocking`/`reason`, arbitrary selectors and config-only local steps are accepted. Selector fields
+are `include` and optional `exclude` tags. Step fields are `enabled`, `reason`, `tags`, `needs`,
+`executor`, `effect`, `command`, `requires`, `writes`, `invalidates`, `timeout`, `onFailure`;
+`command` accepts generic `argv/cwd/env` and the acknowledged
 Node-owned `npmScript` shorthand. Node target planning now resolves `npmScript` through explicit
 package-manager facts to direct argv (never a shell), attributes derived argv to the authored file,
 and reports an absent selected script as `BLOCKED`. Generic `argv` intentionally replaces the
-package-script capability. Custom step and phase declarations remain UV-22.
+package-script capability. New config-owned steps require `executor: local`, direct argv and an
+explicit effect; repair additionally requires a bounded write policy. `verify.sdd.mapping` overlays
+the presets' zero-YAML kind mappings with per-key file provenance. Unknown fields, tags, refs,
+plugins, kinds or selected undeclared selectors fail closed before spawn.
 
 Node repair scripts are argument-forwarding prefixes. They become readiness `READY` only when the
 caller supplies explicit Target Files, which are appended after `--`; UV-07 owns automatic scope
@@ -808,7 +826,7 @@ plugins/
 - **Status:** accepted; model materialized by UV-01, pure planner by UV-02, config composition by UV-03, Node target preset by UV-04, Go target preset by UV-05, Swift target preset by UV-06.
 - **Decision:** plugin поставляет detector + `VerifyPreset` DAG + readiness/rule inputs. Arbitrary declared selectors выбирают tags + dependency closure; config перегружает preset. Gates/steps объявляются один раз, а selector не копирует command ladder. Zero-YAML обязателен для Node, Go и SwiftPM; Xcode/Tuist задаёт project identity.
 - **UV-02 semantics:** local ids становятся `<plugin>:<local-id>`; unqualified refs остаются в plugin, qualified refs сохраняются. Include/exclude seeds получают полный deterministic dependency closure. Malformed/duplicate ids, mismatch, missing refs, cycles и unknown tags fail closed; planner ничего не исполняет.
-- **UV-03 overlay:** builtin → detected facts → lossless legacy → target files, personal rc wins. Objects deep-merge, arrays replace, cwd repo-absolute, leaves retain provenance. Unknown schema/ref и non-lossless legacy reject overlay; custom steps/phases остаются UV-22.
+- **UV-03/22 overlay:** builtin → detected facts → lossless legacy → target files, personal rc wins. Objects deep-merge, arrays replace, cwd repo-absolute, leaves retain provenance. Unknown schema/ref and non-lossless legacy reject overlay. UV-22 adds strict config-owned local steps, arbitrary tag selectors and composed SDD-kind mapping without external code loading.
 - **UV-04 Node:** one DAG has observe, bounded repair, integration/coverage. Package-manager/script facts materialize direct argv; missing/unknown blocks without guessing. Repair requires normalized target files. Home isolation matches target+legacy loaders; runtime remains frozen.
 - **UV-05 Go:** one DAG has generate drift-signal, build/vet, bounded lint/gofmt repair, convergence checks and unit. Exact `.go` targets bound `gofmt -w`; readiness covers only selected non-waived steps. Integration/coverage stay project-owned; legacy remains unchanged through U4.
 
@@ -846,12 +864,12 @@ plugins/
 
 ### VERIFY-DL-11 — SDD kind и Verify selector являются разными open vocabulary
 
-- **Status:** accepted amendment; UV-22 moved before UV-13.
+- **Status:** accepted amendment; implemented by UV-22 before UV-13.
 - **Decision:** every built-in preset maps arbitrary SDD phase kinds to declared Verify selectors as
   zero-YAML defaults; project YAML overlays/overrides those entries with per-key provenance. Core
   assigns no semantics from selector spelling. `sdd-task` resolves the composed mapping and emits one
   exact Verify invocation; agent never chooses individual gates/steps. Unresolved fails only after
-  composition. UV-22 owns default/override/arbitrary-selector fixtures and becomes a dependency of
+  composition. UV-22 supplies default/override/arbitrary-selector fixtures and is a dependency of
   UV-13. Omitted `--phase` selecting `full` is an explicit compatibility/default-entry rule, never
   general name-based inference.
 - **Legacy boundary:** byte parity is conditional on explicit legacy overlay/provenance and is not a
@@ -903,8 +921,8 @@ _Кто подключит `verify` к своему ладдеру и какая
 - **Target config files created by UV-03:** `shared/verify/config/**` and
   `shared/verify/planning/compose-presets.ts`; the existing stack loader/runtime is unchanged.
 - **Config contract tests:** `shared/verify/__tests__/{verify-config,legacy-verify-config}.test.ts`;
-  UV-04 owns `npmScript` materialization with detected package-manager facts, UV-22 owns custom
-  steps/phases, and UV-24 removes the migration adapter.
+  UV-04 owns `npmScript` materialization with detected package-manager facts, UV-22 connects custom
+  steps/selectors and SDD mapping, and UV-24 removes the migration adapter.
 - **Target planner files created by UV-02:** `shared/verify/planning/{validate-plan,resolve-dependencies,select-phase}.ts`
   plus typed `verify-plan.error.ts`; no executor/config/preset conversion is part of this task.
 - **Planner contract tests:** `shared/verify/__tests__/verify-planning.test.ts`; later preset tasks

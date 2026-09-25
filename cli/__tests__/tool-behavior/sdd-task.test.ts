@@ -134,7 +134,11 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       assert.match(result.stdout, /worker contract \(copy verbatim into dispatch\):/);
       assert.match(
         result.stdout,
-        /next: исполняй переданный worker contract без сокращений, запусти точный sdd-verify/
+        /next: исполняй переданный worker contract без сокращений, запусти ровно unified Verify command above/
+      );
+      assert.match(
+        result.stdout,
+        /npx gennady verify --phase=code --task=ticket\.md --sdd-phase=P1/
       );
     } finally {
       rmSync(root, { recursive: true, force: true });

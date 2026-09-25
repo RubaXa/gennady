@@ -77,7 +77,7 @@ export type {
   VerifyStepWaiver,
 } from './config/verify-config.type.ts';
 
-export { composePresets } from './planning/compose-presets.ts';
+export { composePresets, resolveSddVerifySelector } from './planning/compose-presets.ts';
 export { selectPhase } from './planning/select-phase.ts';
 export { resolveDependencies } from './planning/resolve-dependencies.ts';
 export { validatePlan } from './planning/validate-plan.ts';

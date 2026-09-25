@@ -41,6 +41,7 @@ function createLegacyConfigContext(): LegacyConfigContext {
           },
         ],
         phases: { code: { include: ['code'] } },
+        sddKinds: { impl: 'code' },
         requirements: [],
         rules: [],
       },

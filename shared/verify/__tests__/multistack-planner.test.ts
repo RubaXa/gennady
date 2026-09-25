@@ -344,6 +344,98 @@ describe('scope-aware multistack target planner', () => {
     );
   });
 
+  it('selects an arbitrary selector only for the affected plugin and keeps dependency closure', () => {
+    withRepo(
+      (root, home) => {
+        const result = resolveMultistackVerifyPlan(root, 'release-check', {
+          homeDirectory: home,
+          scope: { mode: 'files', files: ['src/app.ts'] },
+        });
+
+        assert.strictEqual(
+          result.stacks.find((stack) => stack.plugin === 'golang')?.participation,
+          'unaffected'
+        );
+        assert.deepStrictEqual(
+          result.plan.steps.map((step) => step.id),
+          [
+            'node:type-check',
+            'node:lint-fix',
+            'node:lint',
+            'node:format-fix',
+            'node:format',
+            'node:unit',
+            'node:release-proof',
+          ]
+        );
+      },
+      {
+        markers: 'node-go',
+        yaml: [
+          'verify:',
+          '  presets:',
+          '    node:',
+          '      phases:',
+          '        release-check:',
+          '          include: [release]',
+          '      steps:',
+          '        release-proof:',
+          '          tags: [release]',
+          '          needs: [unit]',
+          '          executor: local',
+          '          effect: observe',
+          '          command:',
+          '            argv: [node, verify-release.mjs]',
+          '            cwd: .',
+          '          timeout: 2m',
+          '          onFailure: stop-phase',
+          '',
+        ].join('\n'),
+      }
+    );
+  });
+
+  it('lets anystack provide config-only arbitrary selectors without loading external code', () => {
+    withRepo(
+      (root, home) => {
+        const result = resolveMultistackVerifyPlan(root, 'deploy', {
+          homeDirectory: home,
+          scope: { mode: 'files', files: ['main.exotic'] },
+        });
+
+        assert.deepStrictEqual(
+          result.plan.steps.map((step) => step.id),
+          ['anystack:deploy-proof']
+        );
+        assert.strictEqual(result.readiness.status, 'READY');
+      },
+      {
+        markers: 'none',
+        yaml: [
+          'stack:',
+          '  use: [anystack]',
+          'verify:',
+          '  presets:',
+          '    anystack:',
+          '      phases:',
+          '        deploy:',
+          '          include: [deploy]',
+          '      steps:',
+          '        deploy-proof:',
+          '          tags: [deploy]',
+          '          executor: local',
+          '          effect: observe',
+          '          command:',
+          '            argv: [node, verify-deploy.mjs]',
+          '            cwd: .',
+          '          timeout: 2m',
+          '          onFailure: stop-phase',
+          '',
+        ].join('\n'),
+      }
+    );
+  });
+
   it('routes an unowned target to a visible blocked anystack instead of a zero-step pass', () => {
     withRepo((root, home) => {
       const result = resolve(root, home, ['main.exotic']);

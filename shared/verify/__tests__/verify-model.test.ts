@@ -60,6 +60,7 @@ describe('unified verify model', () => {
       plugin: 'acme-rust',
       steps: [step],
       phases: { code: { include: ['code'] } },
+      sddKinds: { impl: 'code' },
       requirements: [],
       rules: ['rust'],
     };

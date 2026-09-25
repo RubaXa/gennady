@@ -10,7 +10,14 @@ import {
   provenanceOf,
 } from '../../../services/config/config-loader.ts';
 import type { VerifyPreset } from '../model/verify-preset.type.ts';
-import type { LocalCommand, Requirement, WriteBoundary } from '../model/verify-step.type.ts';
+import type { PhaseSelector } from '../model/verify-preset.type.ts';
+import type {
+  LocalCommand,
+  Requirement,
+  VerifyEnvironmentFailureRule,
+  WriteBoundary,
+} from '../model/verify-step.type.ts';
+import { compileEnvFailRules } from '../env-fail.ts';
 import { VerifyConfigError } from './verify-config.error.ts';
 import type {
   VerifyCommandConfig,
@@ -20,8 +27,8 @@ import type {
   VerifyStepConfig,
 } from './verify-config.type.ts';
 
-const TOP_LEVEL_KEYS = ['presets'] as const;
-const PLUGIN_KEYS = ['steps', 'blocking', 'reason'] as const;
+const TOP_LEVEL_KEYS = ['presets', 'sdd'] as const;
+const PLUGIN_KEYS = ['steps', 'phases', 'blocking', 'reason'] as const;
 const STEP_KEYS = [
   'enabled',
   'reason',
@@ -33,17 +40,35 @@ const STEP_KEYS = [
   'invalidates',
   'timeout',
   'onFailure',
+  'executor',
+  'effect',
+  'outputMeansFailure',
+  'envFail',
 ] as const;
+const PHASE_KEYS = ['include', 'exclude'] as const;
+const SDD_KEYS = ['mapping'] as const;
 const COMMAND_KEYS = ['npmScript', 'argv', 'cwd', 'env'] as const;
 const REQUIREMENT_KEYS = ['id', 'kind', 'description', 'required', 'fix', 'probe'] as const;
 const PROBE_KEYS = ['argv', 'cwd', 'env', 'timeout'] as const;
 const WRITE_KEYS = ['root', 'include', 'exclude'] as const;
 const REQUIREMENT_KINDS = ['command', 'script', 'file', 'config', 'credential', 'runtime'] as const;
 const FAILURE_POLICIES = ['stop-phase', 'block-dependents', 'continue'] as const;
+const EXECUTORS = ['local'] as const;
+const EFFECTS = ['observe', 'repair', 'drift-signal'] as const;
 
 /** @purpose Compare strings by locale-independent UTF-16 code-unit order. */
 function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** @purpose Add one authored open-vocabulary key without invoking Object.prototype setters. */
+function setOwn<T>(record: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
 }
 
 /** @purpose Resolve a full config path to its winning file source. */
@@ -141,6 +166,70 @@ function stringArray(
     return undefined;
   }
   return [...value] as readonly string[];
+}
+
+/** @purpose Validate one authored phase selector without assigning semantics to its id. */
+function phaseSelector(
+  value: unknown,
+  keyPath: string,
+  provenance: ReadonlyMap<string, string>,
+  errors: VerifyConfigError[]
+): PhaseSelector | undefined {
+  if (!isPlainObject(value)) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        keyPath,
+        'must be an object',
+        'declare include and optional exclude tag arrays',
+        sourceAt(provenance, keyPath)
+      )
+    );
+    return undefined;
+  }
+  rejectUnknownKeys(value, PHASE_KEYS, keyPath, provenance, errors);
+  const include = stringArray(value['include'], `${keyPath}.include`, provenance, errors);
+  const exclude =
+    value['exclude'] === undefined
+      ? undefined
+      : stringArray(value['exclude'], `${keyPath}.exclude`, provenance, errors);
+  if (include !== undefined && include.length === 0) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        `${keyPath}.include`,
+        'must select at least one declared tag',
+        'add a seed tag; dependency closure is supplied by needs',
+        sourceAt(provenance, `${keyPath}.include`)
+      )
+    );
+  }
+  if (include === undefined || include.length === 0) return undefined;
+  return { include, ...(exclude === undefined ? {} : { exclude }) };
+}
+
+/** @purpose Validate serializable target env-failure rules while preserving their data form. */
+function environmentFailureRules(
+  value: unknown,
+  keyPath: string,
+  provenance: ReadonlyMap<string, string>,
+  errors: VerifyConfigError[]
+): readonly VerifyEnvironmentFailureRule[] | undefined {
+  const validated = compileEnvFailRules(value, keyPath);
+  for (const issue of validated.errors) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        issue.path,
+        issue.message,
+        'declare a discriminating serializable envFail rule with a non-empty hint',
+        sourceAt(provenance, issue.path)
+      )
+    );
+  }
+  return validated.errors.length === 0
+    ? (value as readonly VerifyEnvironmentFailureRule[]).map((rule) => ({ ...rule }))
+    : undefined;
 }
 
 /** @purpose Validate a string-to-string environment map. */
@@ -445,6 +534,7 @@ function stepConfig(
   value: unknown,
   keyPath: string,
   knownStepIds: ReadonlySet<string>,
+  custom: boolean,
   provenance: ReadonlyMap<string, string>,
   errors: VerifyConfigError[]
 ): VerifyStepConfig | undefined {
@@ -472,6 +562,10 @@ function stepConfig(
     invalidates?: readonly string[];
     timeoutMs?: number;
     onFailure?: VerifyStepConfig['onFailure'];
+    executor?: VerifyStepConfig['executor'];
+    effect?: VerifyStepConfig['effect'];
+    outputMeansFailure?: boolean;
+    envFail?: readonly VerifyEnvironmentFailureRule[];
   } = {};
 
   if (value['enabled'] !== undefined) {
@@ -596,6 +690,191 @@ function stepConfig(
       result.onFailure = value['onFailure'] as VerifyStepConfig['onFailure'];
     }
   }
+  if (value['executor'] !== undefined) {
+    if (!(EXECUTORS as readonly unknown[]).includes(value['executor'])) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${keyPath}.executor`,
+          'UV-22 project-owned steps support only the local executor',
+          'use executor: local; remote executors are implemented by U5',
+          sourceAt(provenance, `${keyPath}.executor`)
+        )
+      );
+    } else {
+      result.executor = 'local';
+    }
+  }
+  if (value['effect'] !== undefined) {
+    if (!(EFFECTS as readonly unknown[]).includes(value['effect'])) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${keyPath}.effect`,
+          `must be one of: ${EFFECTS.join(', ')}`,
+          'remote-watch remains owned by U5',
+          sourceAt(provenance, `${keyPath}.effect`)
+        )
+      );
+    } else {
+      result.effect = value['effect'] as VerifyStepConfig['effect'];
+    }
+  }
+  if (value['outputMeansFailure'] !== undefined) {
+    if (typeof value['outputMeansFailure'] !== 'boolean') {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${keyPath}.outputMeansFailure`,
+          'must be a boolean',
+          'use true only when any non-whitespace output is a product finding',
+          sourceAt(provenance, `${keyPath}.outputMeansFailure`)
+        )
+      );
+    } else {
+      result.outputMeansFailure = value['outputMeansFailure'];
+    }
+  }
+  if (value['envFail'] !== undefined) {
+    const rules = environmentFailureRules(
+      value['envFail'],
+      `${keyPath}.envFail`,
+      provenance,
+      errors
+    );
+    if (rules !== undefined) result.envFail = rules;
+  }
+
+  if (custom) {
+    const required = [
+      ['tags', result.tags],
+      ['executor', result.executor],
+      ['effect', result.effect],
+      ['command', result.command],
+      ['timeout', result.timeoutMs],
+      ['onFailure', result.onFailure],
+    ] as const;
+    for (const [field, parsed] of required) {
+      if (parsed !== undefined) continue;
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${keyPath}.${field}`,
+          `custom step requires an explicit ${field}`,
+          'declare the complete no-shell local step contract instead of relying on hidden defaults',
+          sourceAt(provenance, keyPath)
+        )
+      );
+    }
+    if (
+      result.command !== undefined &&
+      (result.command.argv === undefined || result.command.cwd === undefined)
+    ) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_COMMAND_INCOMPLETE',
+          `${keyPath}.command`,
+          'custom step command requires both argv and cwd after plugin materialization',
+          'provide direct command.argv and repo-relative command.cwd',
+          sourceAt(provenance, `${keyPath}.command`)
+        )
+      );
+    }
+    if (result.effect === 'repair' && result.writes === undefined) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${keyPath}.writes`,
+          'repair step requires an explicit bounded write policy',
+          'declare writes.root/include and exclude .git/**',
+          sourceAt(provenance, keyPath)
+        )
+      );
+    }
+    if (result.effect !== undefined && result.effect !== 'repair' && result.writes !== undefined) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${keyPath}.writes`,
+          `${result.effect} step cannot declare a repair write boundary`,
+          'remove writes or use effect: repair',
+          sourceAt(provenance, `${keyPath}.writes`)
+        )
+      );
+    }
+  } else if (value['executor'] !== undefined || value['effect'] !== undefined) {
+    const field = value['executor'] !== undefined ? 'executor' : 'effect';
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        `${keyPath}.${field}`,
+        `built-in step ${field} is plugin-owned and cannot be reclassified by project config`,
+        'add a separate declarative custom step instead',
+        sourceAt(provenance, `${keyPath}.${field}`)
+      )
+    );
+  }
+  return result;
+}
+
+/** @purpose Parse the project-owned SDD-kind mapping overlay as deterministic string data. */
+function sddMapping(
+  value: unknown,
+  provenance: ReadonlyMap<string, string>,
+  errors: VerifyConfigError[]
+): Readonly<Record<string, string>> | undefined {
+  if (!isPlainObject(value)) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        'verify.sdd',
+        'must be an object',
+        'declare verify.sdd.mapping.<workflow-kind>: <selector>',
+        sourceAt(provenance, 'verify.sdd')
+      )
+    );
+    return undefined;
+  }
+  rejectUnknownKeys(value, SDD_KEYS, 'verify.sdd', provenance, errors);
+  const raw = value['mapping'];
+  if (!isPlainObject(raw)) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        'verify.sdd.mapping',
+        'must be a map from workflow kind to Verify selector id',
+        'declare each override as <kind>: <selector>',
+        sourceAt(provenance, 'verify.sdd.mapping')
+      )
+    );
+    return undefined;
+  }
+  const result: Record<string, string> = {};
+  for (const kind of Object.keys(raw).sort(compareText)) {
+    const selector = raw[kind];
+    const keyPath = `verify.sdd.mapping.${kind}`;
+    if (
+      kind.trim().length === 0 ||
+      kind !== kind.trim() ||
+      /\s/.test(kind) ||
+      typeof selector !== 'string' ||
+      selector.trim().length === 0 ||
+      selector !== selector.trim() ||
+      /\s/.test(selector)
+    ) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          keyPath,
+          'workflow kind and selector must be non-empty whitespace-free strings',
+          'use stable open-vocabulary ids such as integration, release-candidate or deploy',
+          sourceAt(provenance, keyPath)
+        )
+      );
+      continue;
+    }
+    setOwn(result, kind, selector);
+  }
   return result;
 }
 
@@ -630,16 +909,12 @@ export function loadVerifyConfig(
   }
 
   rejectUnknownKeys(loaded.section, TOP_LEVEL_KEYS, 'verify', loaded.provenance, errors);
-  const rawPresets = loaded.section['presets'];
-  if (rawPresets === undefined) {
-    return {
-      config: errors.length === 0 ? { presets: {} } : null,
-      errors,
-      sources: loaded.sources,
-      provenance: loaded.provenance,
-    };
-  }
-  if (!isPlainObject(rawPresets)) {
+  const parsedSddMapping =
+    loaded.section['sdd'] === undefined
+      ? undefined
+      : sddMapping(loaded.section['sdd'], loaded.provenance, errors);
+  const rawPresetsValue = loaded.section['presets'];
+  if (rawPresetsValue !== undefined && !isPlainObject(rawPresetsValue)) {
     errors.push(
       new VerifyConfigError(
         'VERIFY_CONFIG_INVALID_TYPE',
@@ -651,11 +926,22 @@ export function loadVerifyConfig(
     );
     return { config: null, errors, sources: loaded.sources, provenance: loaded.provenance };
   }
+  const rawPresets = (rawPresetsValue ?? {}) as Record<string, unknown>;
 
   const knownPresets = new Map(presets.map((preset) => [preset.plugin, preset]));
   const knownStepIds = new Set(
     presets.flatMap((preset) => preset.steps.map((step) => `${preset.plugin}:${step.id}`))
   );
+  for (const [plugin, rawPlugin] of Object.entries(rawPresets)) {
+    if (
+      !knownPresets.has(plugin) ||
+      !isPlainObject(rawPlugin) ||
+      !isPlainObject(rawPlugin['steps'])
+    ) {
+      continue;
+    }
+    for (const stepId of Object.keys(rawPlugin['steps'])) knownStepIds.add(`${plugin}:${stepId}`);
+  }
   const normalized: Record<string, VerifyPluginConfig> = {};
   for (const plugin of Object.keys(rawPresets).sort()) {
     const pluginPath = `verify.presets.${plugin}`;
@@ -703,28 +989,40 @@ export function loadVerifyConfig(
     const steps: Record<string, VerifyStepConfig> = {};
     for (const stepId of Object.keys(rawSteps ?? {}).sort()) {
       const stepPath = `${pluginPath}.steps.${stepId}`;
-      if (!knownLocalSteps.has(stepId)) {
-        errors.push(
-          new VerifyConfigError(
-            'VERIFY_CONFIG_UNKNOWN_STEP',
-            stepPath,
-            `unknown step "${stepId}" for plugin "${plugin}"`,
-            `known steps: ${[...knownLocalSteps].sort().join(', ') || 'none'}; custom steps arrive in UV-22`,
-            sourceAt(loaded.provenance, stepPath)
-          )
-        );
-        continue;
-      }
       const parsed = stepConfig(
         root,
         plugin,
         (rawSteps as Record<string, unknown>)[stepId],
         stepPath,
         knownStepIds,
+        !knownLocalSteps.has(stepId),
         loaded.provenance,
         errors
       );
-      if (parsed !== undefined) steps[stepId] = parsed;
+      if (parsed !== undefined) setOwn(steps, stepId, parsed);
+    }
+    const rawPhases = rawPlugin['phases'];
+    const phases: Record<string, PhaseSelector> = {};
+    if (rawPhases !== undefined && !isPlainObject(rawPhases)) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${pluginPath}.phases`,
+          'must be a map keyed by arbitrary selector id',
+          'declare each selector with include and optional exclude tags',
+          sourceAt(loaded.provenance, `${pluginPath}.phases`)
+        )
+      );
+    } else {
+      for (const selectorId of Object.keys(rawPhases ?? {}).sort(compareText)) {
+        const parsed = phaseSelector(
+          (rawPhases as Record<string, unknown>)[selectorId],
+          `${pluginPath}.phases.${selectorId}`,
+          loaded.provenance,
+          errors
+        );
+        if (parsed !== undefined) setOwn(phases, selectorId, parsed);
+      }
     }
     const rawBlocking = rawPlugin['blocking'];
     const rawReason = rawPlugin['reason'];
@@ -775,16 +1073,20 @@ export function loadVerifyConfig(
         )
       );
     }
-    normalized[plugin] = {
+    setOwn(normalized, plugin, {
       steps,
+      ...(Object.keys(phases).length === 0 ? {} : { phases }),
       ...(typeof rawBlocking === 'boolean' ? { blocking: rawBlocking } : {}),
       ...(rawBlocking === false && typeof rawReason === 'string' && rawReason.trim().length > 0
         ? { reason: rawReason }
         : {}),
-    };
+    });
   }
 
-  const config: VerifyConfig = { presets: normalized };
+  const config: VerifyConfig = {
+    presets: normalized,
+    ...(parsedSddMapping === undefined ? {} : { sdd: { mapping: parsedSddMapping } }),
+  };
   return {
     config: errors.length === 0 ? config : null,
     errors,

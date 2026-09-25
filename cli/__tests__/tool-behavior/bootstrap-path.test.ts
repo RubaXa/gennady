@@ -330,8 +330,12 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
       );
       assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
       assert.match(r.stdout, /INFRA_QUEUE_EXEMPTION/);
-      // It must also say HOW to verify — a code profile would ⛔ on the very scripts it builds.
-      assert.match(r.stdout, /--task <ticket-path> --phase <PhaseID>/);
+      // It must also say HOW to verify without asking the worker to choose the missing gates.
+      assert.match(
+        r.stdout,
+        /npx gennady verify --phase=code --task=specs\/infra-core\/infra-core\.task\.INFRA-1\.md --sdd-phase=P1/
+      );
+      assert.match(r.stdout, /agent must not select individual gates/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

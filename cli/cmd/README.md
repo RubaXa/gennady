@@ -135,6 +135,9 @@ npx gennady verify --phase=unit --json
 
 # Только спланировать, не запускать шаги и не менять workspace
 npx gennady verify --plan --json --phase=full
+
+# SDD phase получает selector из preset defaults + verify.sdd.mapping override
+npx gennady sdd-task CLI-example --phase P2
 ```
 
 ### 11. Визуализация покрытия тестами
@@ -210,7 +213,7 @@ npx gennady yagni /path/to/repo
 | `verify`            | Unified Verify phase: text/JSON report; `--plan` read-only |
 | `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения     |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами             |
-| `sdd-task`          | Карта исполнения и фазовый контекст тикета                 |
+| `sdd-task`          | Карта и фаза с одной mapped unified Verify invocation      |
 | `sdd-migrate`       | SDD v1 → v2: bootstrap, anchors, IDs, move и headers       |
 | `agents-rules`      | Инструкция по orient для AI-агентов                        |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)         |

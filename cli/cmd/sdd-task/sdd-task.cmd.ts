@@ -27,6 +27,7 @@ import {
   type ReadinessResult,
 } from '../../../shared/sdd/readiness.ts';
 import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
+import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { loadStackConfig } from '../../../shared/verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
 import { parseScopes } from '../../../shared/sdd/portal.ts';
@@ -539,10 +540,11 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
     // Allow-list, never a deny-list: `kind` is free text from the Phases Overview cell with no
     // vocabulary validation, so an unknown spelling (`implementation`, or the execution-time `fix`
     // kind, which writes production code) must fall on the GATED side, not slip through.
-    const phaseKind = phases.find((p) => p.id === phaseId)?.kind?.toLowerCase() ?? '';
+    const phaseKind = phases.find((p) => p.id === phaseId)?.kind ?? '';
+    const readinessKind = phaseKind.toLowerCase();
     const UNGATED_KINDS = ['bootstrap', 'config', 'doc'];
     const projectStack = resolveProjectStack(root);
-    if (!UNGATED_KINDS.includes(phaseKind)) {
+    if (!UNGATED_KINDS.includes(readinessKind)) {
       const readiness = resolveProjectReadiness(root, projectStack.stack);
       if (!readiness.executionReady) {
         // The infra tickets BUILDING the missing gates are exempt — they are the way out of this
@@ -607,6 +609,24 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         `phase '${phaseId}' verification plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
       );
     }
+    let verifySelection: ReturnType<typeof resolveProjectSddVerifySelector>;
+    try {
+      verifySelection = resolveProjectSddVerifySelector(root, phaseKind, {
+        scope: {
+          mode: 'files',
+          files: [...phasePaths.paths.targets, ...phasePaths.paths.deleted].sort((left, right) =>
+            left.localeCompare(right)
+          ),
+        },
+      });
+    } catch (cause) {
+      return phaseEvidenceError(
+        `phase '${phaseId}' Verify selector cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    }
+    const ticketPath = relative(realpathSync(root), realpathSync(resolved.path))
+      .split('\\')
+      .join('/');
     const phaseOutcome = formatPhase(
       meta,
       phases,
@@ -621,7 +641,12 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         ),
         createFiles: phasePaths.paths.createTargets,
       },
-      verificationPlan ?? undefined
+      verificationPlan ?? undefined,
+      {
+        invocation: `npx gennady verify --phase=${verifySelection.selector} --task=${ticketPath} --sdd-phase=${phaseId}`,
+        selector: verifySelection.selector,
+        source: verifySelection.source,
+      }
     );
     return withResolutionLine(
       infraExemptionNote && phaseOutcome.ok

@@ -3,6 +3,7 @@
 // @spec: CLI-VERIFY
 
 import { provenanceOf } from '../../../services/config/config-loader.ts';
+import type { PluginId } from '../model/plugin-id.type.ts';
 import type { VerifyPreset, VerifyStepOverride } from '../model/verify-preset.type.ts';
 import type { LocalCommand, VerifyStep } from '../model/verify-step.type.ts';
 import { VerifyConfigError } from '../config/verify-config.error.ts';
@@ -86,8 +87,73 @@ function clonePreset(preset: VerifyPreset): VerifyPreset {
           },
         ])
     ),
+    sddKinds: Object.fromEntries(
+      Object.entries(preset.sddKinds).sort(([left], [right]) => compareText(left, right))
+    ),
     requirements: preset.requirements.map((requirement) => ({ ...requirement })),
     rules: [...preset.rules],
+  };
+}
+
+/** @purpose Materialize a complete project-owned local step without hidden pipeline defaults. */
+function materializeCustomStep(
+  plugin: string,
+  stepId: string,
+  config: VerifyStepConfig,
+  keyPath: string,
+  layer: OverlayLayer
+): VerifyStep {
+  const command = config.command;
+  if (
+    config.tags === undefined ||
+    config.executor !== 'local' ||
+    config.effect === undefined ||
+    command?.argv === undefined ||
+    command.cwd === undefined ||
+    config.timeoutMs === undefined ||
+    config.onFailure === undefined
+  ) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_COMMAND_INCOMPLETE',
+      keyPath,
+      'custom step is not a complete direct-argv local step',
+      'declare tags, executor: local, effect, command.argv/cwd, timeout and onFailure',
+      layerSource(layer, keyPath)
+    );
+  }
+  if (command.npmScript !== undefined) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_PLUGIN_COMMAND_UNRESOLVED',
+      `${keyPath}.command.npmScript`,
+      'custom npmScript shorthand was not materialized by the owning plugin',
+      'use direct command.argv/cwd or let the Node planner materialize the script before composition',
+      layerSource(layer, `${keyPath}.command.npmScript`)
+    );
+  }
+  return {
+    id: stepId,
+    plugin,
+    tags: config.tags,
+    needs: config.needs ?? [],
+    executor: 'local',
+    effect: config.effect,
+    command: {
+      argv: command.argv,
+      cwd: command.cwd,
+      ...(command.env === undefined ? {} : { env: orderedStringMap(command.env) }),
+      timeoutMs: config.timeoutMs,
+    },
+    requires: config.requires ?? [],
+    ...(config.outputMeansFailure === undefined
+      ? {}
+      : { outputMeansFailure: config.outputMeansFailure }),
+    ...(config.envFail === undefined
+      ? {}
+      : { envFail: config.envFail.map((rule) => ({ ...rule })) }),
+    ...(config.writes === undefined ? {} : { writes: config.writes }),
+    ...(config.invalidates === undefined ? {} : { invalidates: config.invalidates }),
+    timeoutMs: config.timeoutMs,
+    onFailure: config.onFailure,
   };
 }
 
@@ -192,6 +258,10 @@ function materializeOverride(
     ...(config.invalidates === undefined ? {} : { invalidates: config.invalidates }),
     ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
     ...(config.onFailure === undefined ? {} : { onFailure: config.onFailure }),
+    ...(config.outputMeansFailure === undefined
+      ? {}
+      : { outputMeansFailure: config.outputMeansFailure }),
+    ...(config.envFail === undefined ? {} : { envFail: config.envFail }),
   };
 }
 
@@ -216,6 +286,23 @@ function applyLayer(
       );
     }
 
+    if (pluginConfig.phases !== undefined) {
+      const phases = { ...preset.phases };
+      for (const selectorId of Object.keys(pluginConfig.phases).sort(compareText)) {
+        const selector = pluginConfig.phases[selectorId]!;
+        phases[selectorId] = {
+          include: [...selector.include],
+          ...(selector.exclude === undefined ? {} : { exclude: [...selector.exclude] }),
+        };
+        const selectorPath = `verify.presets.${plugin}.phases.${selectorId}`;
+        provenance.set(`${selectorPath}.include`, layerSource(layer, `${selectorPath}.include`));
+        if (selector.exclude !== undefined) {
+          provenance.set(`${selectorPath}.exclude`, layerSource(layer, `${selectorPath}.exclude`));
+        }
+      }
+      presets.set(plugin, { ...preset, phases });
+    }
+
     if (pluginConfig.blocking !== undefined) {
       const blockingPath = `verify.presets.${plugin}.blocking`;
       const reasonPath = `verify.presets.${plugin}.reason`;
@@ -234,19 +321,26 @@ function applyLayer(
       else provenance.delete(reasonPath);
     }
 
-    const steps = new Map(preset.steps.map((step) => [step.id, step]));
+    const currentPreset = presets.get(plugin)!;
+    const steps = new Map(currentPreset.steps.map((step) => [step.id, step]));
     for (const stepId of Object.keys(pluginConfig.steps).sort(compareText)) {
       const step = steps.get(stepId);
       const config = pluginConfig.steps[stepId];
       const keyPath = `verify.presets.${plugin}.steps.${stepId}`;
-      if (step === undefined || config === undefined) {
-        throw new VerifyConfigError(
-          'VERIFY_CONFIG_UNKNOWN_STEP',
-          keyPath,
-          `overlay references unknown step "${plugin}:${stepId}"`,
-          `override an existing preset step; custom steps arrive in UV-22`,
-          layerSource(layer, keyPath)
-        );
+      if (config === undefined) continue;
+      if (step === undefined) {
+        const custom = materializeCustomStep(plugin, stepId, config, keyPath, layer);
+        steps.set(stepId, custom);
+        recordLeafProvenance(custom, keyPath, layerSource(layer, keyPath), provenance);
+        if (config.enabled === false) {
+          const source = layerSource(layer, `${keyPath}.enabled`);
+          waivers.set(`${plugin}:${stepId}`, {
+            stepId: `${plugin}:${stepId}`,
+            reason: config.reason!,
+            source,
+          });
+        }
+        continue;
       }
       const override = materializeOverride(step, config, keyPath, layer);
       const qualifiedId = `${plugin}:${stepId}` as const;
@@ -267,6 +361,10 @@ function applyLayer(
         ...(override.invalidates === undefined ? {} : { invalidates: override.invalidates }),
         ...(override.timeoutMs === undefined ? {} : { timeoutMs: override.timeoutMs }),
         ...(override.onFailure === undefined ? {} : { onFailure: override.onFailure }),
+        ...(override.outputMeansFailure === undefined
+          ? {}
+          : { outputMeansFailure: override.outputMeansFailure }),
+        ...(override.envFail === undefined ? {} : { envFail: override.envFail }),
       };
       steps.set(stepId, next);
 
@@ -279,6 +377,8 @@ function applyLayer(
         'invalidates',
         'timeoutMs',
         'onFailure',
+        'outputMeansFailure',
+        'envFail',
       ] as const) {
         if (override[field] === undefined) continue;
         provenance.set(
@@ -318,8 +418,8 @@ function applyLayer(
       }
     }
     presets.set(plugin, {
-      ...preset,
-      steps: preset.steps.map((step) => steps.get(step.id) ?? step),
+      ...currentPreset,
+      steps: [...steps.values()].sort((left, right) => compareText(left.id, right.id)),
     });
   }
 }
@@ -337,6 +437,9 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
   );
   const provenance = new Map<string, string>();
   const policies = new Map<string, VerifyPluginPolicy>();
+  const sddMapping = new Map<string, string>();
+  const sddMappingSources = new Map<string, string[]>();
+  const sddMappingConflicts = new Map<string, Set<string>>();
   for (const preset of presets.values()) {
     recordLeafProvenance(
       preset,
@@ -349,7 +452,24 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
       blocking: true,
       source: `builtin:${preset.plugin}`,
     });
+    for (const [kind, selector] of Object.entries(preset.sddKinds).sort(([left], [right]) =>
+      compareText(left, right)
+    )) {
+      const existing = sddMapping.get(kind);
+      if (existing !== undefined && existing !== selector) {
+        const conflict = sddMappingConflicts.get(kind) ?? new Set([existing]);
+        conflict.add(selector);
+        sddMappingConflicts.set(kind, conflict);
+      }
+      sddMapping.set(kind, selector);
+      const sources = sddMappingSources.get(kind) ?? [];
+      sources.push(`builtin:${preset.plugin}`);
+      sddMappingSources.set(kind, sources);
+    }
   }
+  const sddMappingProvenance = new Map(
+    [...sddMappingSources].map(([kind, sources]) => [kind, sources.sort(compareText).join('+')])
+  );
 
   const layers: OverlayLayer[] = [];
   for (const detected of [...(input.detected ?? [])].sort((left, right) =>
@@ -384,7 +504,31 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
   }
 
   const waivers = new Map<string, VerifyStepWaiver>();
-  for (const layer of layers) applyLayer(presets, layer, provenance, waivers, policies);
+  for (const layer of layers) {
+    applyLayer(presets, layer, provenance, waivers, policies);
+    for (const [kind, selector] of Object.entries(layer.config.sdd?.mapping ?? {}).sort(
+      ([left], [right]) => compareText(left, right)
+    )) {
+      const path = `verify.sdd.mapping.${kind}`;
+      sddMapping.set(kind, selector);
+      sddMappingConflicts.delete(kind);
+      sddMappingProvenance.set(kind, layerSource(layer, path));
+      provenance.set(path, layerSource(layer, path));
+    }
+  }
+
+  const unresolvedConflict = [...sddMappingConflicts].sort(([left], [right]) =>
+    compareText(left, right)
+  )[0];
+  if (unresolvedConflict !== undefined) {
+    const [kind, selectors] = unresolvedConflict;
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_CONFLICTING_SDD_DEFAULT',
+      `verify.sdd.mapping.${kind}`,
+      `built-in presets disagree: ${[...selectors].sort(compareText).join(', ')}`,
+      `set verify.sdd.mapping.${kind} to one selector declared by every participating preset`
+    );
+  }
 
   const composedPresets = [...presets.values()];
   try {
@@ -408,5 +552,50 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
     waivers: [...waivers.values()].sort((left, right) => compareText(left.stepId, right.stepId)),
     migrationDiagnostics: [...(input.legacy?.diagnostics ?? [])],
     policies: [...policies.values()].sort((left, right) => compareText(left.plugin, right.plugin)),
+    sddMapping: Object.fromEntries(
+      [...sddMapping].sort(([left], [right]) => compareText(left, right))
+    ),
+    sddMappingProvenance,
   };
+}
+
+/**
+ * @purpose Resolve one open workflow kind only after default and project mapping composition.
+ * @param composed Fully overlaid presets and mapping provenance.
+ * @param kind Exact open-vocabulary SDD workflow kind.
+ * @param [participatingPlugins] Scope-selected plugins that must declare the resolved selector.
+ * @returns Resolved kind, selector and its winning configuration source.
+ */
+export function resolveSddVerifySelector(
+  composed: ComposedVerifyPresets,
+  kind: string,
+  participatingPlugins: readonly PluginId[] = composed.presets.map((preset) => preset.plugin)
+): { readonly kind: string; readonly selector: string; readonly source: string } {
+  const selector = composed.sddMapping[kind];
+  const path = `verify.sdd.mapping.${kind}`;
+  if (selector === undefined) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_UNRESOLVED_SDD_KIND',
+      path,
+      `workflow kind "${kind}" remains unresolved after built-in defaults and project overrides`,
+      `set ${path}: <declared-selector>`
+    );
+  }
+  const participating = new Set(participatingPlugins);
+  const missing = composed.presets
+    .filter((preset) => participating.has(preset.plugin))
+    .filter((preset) => preset.phases[selector] === undefined)
+    .map((preset) => preset.plugin)
+    .sort(compareText);
+  const source = composed.sddMappingProvenance.get(kind) ?? 'unknown';
+  if (missing.length > 0) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_UNKNOWN_SELECTOR',
+      path,
+      `selector "${selector}" from ${source} is undeclared for preset(s): ${missing.join(', ')}`,
+      `declare verify.presets.<plugin>.phases.${selector} for every participating preset or override ${path}`,
+      source
+    );
+  }
+  return { kind, selector, source };
 }

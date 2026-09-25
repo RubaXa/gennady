@@ -59,6 +59,7 @@ function createPlanningContext(): PlanningContext {
       plugin: 'node',
       steps: nodeSteps,
       phases: { test: { include: ['test'], exclude: ['slow'] } },
+      sddKinds: { test: 'test' },
       requirements: [],
       rules: [],
     },
@@ -66,6 +67,7 @@ function createPlanningContext(): PlanningContext {
       plugin: 'golang',
       steps: golangSteps,
       phases: { test: { include: ['code'] } },
+      sddKinds: { test: 'test' },
       requirements: [],
       rules: [],
     },
@@ -139,6 +141,7 @@ describe('verify planning', () => {
     const ambiguous: VerifyPreset = {
       ...golang,
       phases: { test: { include: ['code'], exclude: ['code'] } },
+      sddKinds: { test: 'test' },
     };
 
     assert.deepStrictEqual(selectPhase([ambiguous], 'test').steps, []);
@@ -234,6 +237,7 @@ describe('verify planning', () => {
       ...node,
       steps: [{ ...node.steps[0]!, needs: ['absent'] }],
       phases: { test: { include: ['code'] } },
+      sddKinds: { test: 'test' },
     };
 
     expectPlanError(
@@ -268,6 +272,7 @@ describe('verify planning', () => {
         { ...node.steps[1]!, needs: ['type-check'] },
       ],
       phases: { test: { include: ['test'] } },
+      sddKinds: { test: 'test' },
     };
 
     expectPlanError(
@@ -282,6 +287,7 @@ describe('verify planning', () => {
     const unknown: VerifyPreset = {
       ...node,
       phases: { test: { include: ['security'] } },
+      sddKinds: { test: 'test' },
     };
 
     expectPlanError(
@@ -296,6 +302,7 @@ describe('verify planning', () => {
     const unknown: VerifyPreset = {
       ...node,
       phases: { test: { include: ['test'], exclude: ['generated'] } },
+      sddKinds: { test: 'test' },
     };
 
     expectPlanError(
