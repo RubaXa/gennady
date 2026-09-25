@@ -425,11 +425,13 @@ built-in mapping until its compatibility owner is removed.
 Operator ACK задаёт следующий обязательный контракт. ACK сам по себе не является implementation
 evidence: directive/CLI cutover UV-13 начинается только после merge/review UV-22 и UV-12E.
 
-1. Каждый SDD Verify attempt создаёт одну compact structured entry в существующем ticket
-   `EXECUTION_LOG`. Та же entry атомарно обновляется
-   `RUNNING → PASS|FAIL|TIMEOUT|CANCELLED|VIOLATION`; recovery/следующий run детерминированно
-   переводит orphan `RUNNING` в `INTERRUPTED`. История append-only: поздний pass не стирает earlier
-   failed/interrupted attempts.
+1. Сначала валидируются task identity и exact writable `EXECUTION_LOG` target. После этого каждый
+   SDD Verify attempt создаёт одну compact structured entry **до planning/readiness/spawn**. Та же
+   entry атомарно обновляется из промежуточного `RUNNING` в одну normalized terminal state:
+   `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`. Recovery/следующий run
+   детерминированно переводит orphan `RUNNING` в recovery-only `INTERRUPTED`. История append-only:
+   поздний pass не стирает earlier failed/blocked/interrupted attempts. Failure до valid task/log
+   identity не может быть persisted и возвращается как CLI diagnostic без attempt entry.
 2. Human line содержит только run id, SDD phase, selector, terminal state, steps `x/y`, минимальные
    counts для каждого test step и duration. Full stdout/stderr и artifact warehouse в ticket
    запрещены; detailed bounded/redacted diagnostics возвращаются агенту через CLI report.
@@ -448,20 +450,25 @@ evidence: directive/CLI cutover UV-13 начинается только посл
 6. Legacy byte parity активируется только explicit legacy overlay с provenance; no-overlay path не
    наследует legacy command/order semantics.
 
-UV-12E acceptance: adversarial recovery/atomic transition; append-only failed/interrupted history
-после нового pass; required/optional/none stats fixtures; deterministic identities/staleness;
-selector trust в report/ticket; overlay on/off остаются раздельными. UV-14 не удаляет independent
-compatibility runner до UV-13.
+UV-12E acceptance: invalid task/log identity возвращает CLI diagnostic и создаёт ноль entries;
+valid target получает одну entry до planning/readiness/spawn, включая `BLOCKED` и `ENV_FAIL` paths;
+adversarial recovery и все normalized terminal transitions; append-only failed/blocked/interrupted
+history после нового pass; required/optional/none stats fixtures; deterministic
+identities/staleness; selector trust в report/ticket; overlay on/off остаются раздельными. UV-14 не
+удаляет independent compatibility runner до UV-13.
 
 ### VER-REQ-19 [должен · нештатная]
 
-**Когда** SDD Verify attempt принят к исполнению после preflight, **то evidence owner должен** создать
-ровно одну UV-12E entry по ACKed contract выше до первого spawn, обновлять только её exact run id и
-атомарно завершить terminal state после runner/WorkspaceGuard outcome. Recovery не имеет права
-удалять историю или считать orphan `RUNNING` успешным. Stats policy проверяется и на readiness, и на
-post-execution boundary; required malformed/missing stats доминируют process success как
-`VIOLATION`. Freshness проверяет exact HEAD и все digest identities; trust не повышается с
-`local-runner` до remote по тексту selector-а без U5 provider evidence. Refines D-65/D-67/D-69.
+**Когда** SDD Verify invocation получил valid task identity и exact writable `EXECUTION_LOG` target,
+**то evidence owner должен** создать ровно одну UV-12E entry по ACKed contract выше до
+planning/readiness/первого spawn, обновлять только entry с этим exact run id и атомарно завершить её
+одной из `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`. Recovery не имеет права удалять
+историю или считать orphan `RUNNING` успешным: только recovery переводит его в `INTERRUPTED`.
+Failure до valid task/log identity возвращается как CLI diagnostic без ложного persistence claim.
+Stats policy проверяется и на readiness, и на post-execution boundary; required malformed/missing
+stats доминируют process success как `VIOLATION`. Freshness проверяет exact HEAD и все digest
+identities; trust не повышается с `local-runner` до remote по тексту selector-а без U5 provider
+evidence. Refines D-65/D-67/D-69.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -910,9 +917,12 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 ### VERIFY-CP-1 — Evidence/Receipt operator checkpoint
 
 - **Status:** **ACKED; implementation UV-12E blocks UV-13 together with UV-22.**
-- **Decision:** every SDD Verify attempt owns one append-only ticket `EXECUTION_LOG` entry with atomic
-  `RUNNING → PASS|FAIL|TIMEOUT|CANCELLED|VIOLATION`; deterministic recovery marks orphan `RUNNING`
-  as `INTERRUPTED`. The compact human line is limited to run/phase/selector/state, steps `x/y`,
+- **Decision:** after task identity and exact writable log target validation, every SDD Verify
+  attempt owns one append-only ticket `EXECUTION_LOG` entry created before planning/readiness/spawn.
+  It atomically moves from `RUNNING` to
+  `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`; deterministic recovery alone marks orphan
+  `RUNNING` as `INTERRUPTED`. Failure before a valid log identity is a CLI diagnostic with no false
+  persistence claim. The compact human line is limited to run/phase/selector/state, steps `x/y`,
   per-test-step minimum counts and duration; bounded/redacted detail remains in the CLI report.
 - **Machine identity:** the structured entry contains run id/timestamps, exact HEAD,
   uncommitted-state-aware worktree/scope digest, plan digest, preset/config provenance digest and
