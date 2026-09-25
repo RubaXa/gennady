@@ -1174,8 +1174,8 @@ Swift-правил).
 | U1 | UV-01..03 | canonical specs + model/DAG/config overlay + compatibility adapter | ПЛАН |
 | U2 | UV-04..07 | Node/Go/Swift/Anystack presets, readiness, multistack | ПЛАН |
 | U3 | UV-08..11 | WorkspaceGuard, local runner, repair/invalidation, reports | ПЛАН |
-| U4 | UV-12..14 | SDD context/receipt cutover, frozen parity A13/D-4, удалить второй runner | ПЛАН |
+| U4 | UV-12, UV-22, U4-ER, UV-13..14 | SDD context, arbitrary selectors + composed preset-default/project-override mapping, обязательный Evidence/Receipt ACK, затем conditional legacy-overlay parity и cutover | **UV-13 BLOCKED до U4-ER ACK** |
 | U5 | UV-15..17 | manifest dirty VCS source, exact-SHA watcher, `phase=ci` | ПЛАН |
 | U6 | UV-18..21 | sidecar rules, resolver/snapshot, read-only `gennady rules`, удалить `knowledge.xml` | ПЛАН |
-| U7 | UV-22..23 | custom presets/phases, external-plugin security ADR | ПЛАН |
+| U7 | UV-23 | external-plugin security/trust/version/isolation ADR | ПЛАН |
 | U8 | UV-24..26 | удалить compatibility, evidence pack, exact Swift E-18 | ПЛАН |
