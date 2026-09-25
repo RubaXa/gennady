@@ -86,6 +86,23 @@ import {
   type CoverageGate,
 } from './sdd-task.types.ts';
 
+function shellToken(value: string): string {
+  return /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function verifyInvocation(selector: string, ticket: string, phase: string): string {
+  return [
+    'npx',
+    'gennady',
+    'verify',
+    `--phase=${selector}`,
+    `--task=${ticket}`,
+    `--sdd-phase=${phase}`,
+  ]
+    .map(shellToken)
+    .join(' ');
+}
+
 /**
  * @purpose Resolve the primary stack and effective config shared by readiness and phase planning.
  * @invariant Bootstrap-sensitive: a missing `package.json` may mean a node project mid-bootstrap,
@@ -534,17 +551,30 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
       phaseReceiptIssue(root, receipt, dependencyPhase, resolved.path)
     );
     if (dependencyIssue) return dependencyNotReadyError(phaseId, dependencyIssue);
+    const phaseKind = phases[phaseIndex]?.kind ?? '';
+    let verifySelection: ReturnType<typeof resolveProjectSddVerifySelector>;
+    try {
+      verifySelection = resolveProjectSddVerifySelector(root, phaseKind, {
+        scope: {
+          mode: 'files',
+          files: [...phasePaths.paths.targets, ...phasePaths.paths.deleted].sort((left, right) =>
+            left.localeCompare(right)
+          ),
+        },
+      });
+    } catch (cause) {
+      return phaseEvidenceError(
+        `phase '${phaseId}' Verify selector cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    }
     let infraExemptionNote: string | null = null;
-    // Execution gate: an impl/refactor/test phase on stub (or absent) verification infrastructure
-    // would sail through sdd-verify without a single real check — refuse before any work starts.
-    // Allow-list, never a deny-list: `kind` is free text from the Phases Overview cell with no
-    // vocabulary validation, so an unknown spelling (`implementation`, or the execution-time `fix`
-    // kind, which writes production code) must fall on the GATED side, not slip through.
-    const phaseKind = phases.find((p) => p.id === phaseId)?.kind ?? '';
+    // Keep the frozen readiness gate only for zero-YAML builtin mapping. A project-authored
+    // selector owns its own target readiness and must not inherit unrelated legacy npm gates.
+    // Builtin setup kinds remain the explicit bootstrap exception.
     const readinessKind = phaseKind.toLowerCase();
     const UNGATED_KINDS = ['bootstrap', 'config', 'doc'];
     const projectStack = resolveProjectStack(root);
-    if (!UNGATED_KINDS.includes(readinessKind)) {
+    if (verifySelection.source.startsWith('builtin:') && !UNGATED_KINDS.includes(readinessKind)) {
       const readiness = resolveProjectReadiness(root, projectStack.stack);
       if (!readiness.executionReady) {
         // The infra tickets BUILDING the missing gates are exempt — they are the way out of this
@@ -609,21 +639,6 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         `phase '${phaseId}' verification plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
       );
     }
-    let verifySelection: ReturnType<typeof resolveProjectSddVerifySelector>;
-    try {
-      verifySelection = resolveProjectSddVerifySelector(root, phaseKind, {
-        scope: {
-          mode: 'files',
-          files: [...phasePaths.paths.targets, ...phasePaths.paths.deleted].sort((left, right) =>
-            left.localeCompare(right)
-          ),
-        },
-      });
-    } catch (cause) {
-      return phaseEvidenceError(
-        `phase '${phaseId}' Verify selector cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
-      );
-    }
     const ticketPath = relative(realpathSync(root), realpathSync(resolved.path))
       .split('\\')
       .join('/');
@@ -643,7 +658,7 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
       },
       verificationPlan ?? undefined,
       {
-        invocation: `npx gennady verify --phase=${verifySelection.selector} --task=${ticketPath} --sdd-phase=${phaseId}`,
+        invocation: verifyInvocation(verifySelection.selector, ticketPath, phaseId),
         selector: verifySelection.selector,
         source: verifySelection.source,
       }

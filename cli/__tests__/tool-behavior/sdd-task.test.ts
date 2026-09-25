@@ -4,10 +4,29 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { buildRepoFixture } from './fixture.ts';
-import { runCli } from './run-cli.ts';
+import { cleanTestChildEnv, runCli } from './run-cli.ts';
+
+const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
+
+function shellLiteral(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function installActualGennadyBin(root: string): void {
+  const bin = join(root, 'node_modules', '.bin', 'gennady');
+  const loader = join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'loader.mjs');
+  const entry = join(REPO_ROOT, 'cli', 'gennady.ts');
+  writeFileSync(
+    bin,
+    `#!/bin/sh\nexec ${shellLiteral(process.execPath)} --import ${shellLiteral(loader)} ${shellLiteral(entry)} "$@"\n`,
+    'utf-8'
+  );
+  chmodSync(bin, 0o755);
+}
 
 const PORTAL_WITH_INFRA_SCOPE = [
   '# Demo Project',
@@ -140,6 +159,114 @@ describe('sdd-task — live gate-queue diagnostic', () => {
         result.stdout,
         /npx gennady verify --phase=code --task=ticket\.md --sdd-phase=P1/
       );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('executes the exact quoted custom-selector command with ticket scope and fails closed when context disappears', () => {
+    const ticketPath = 'specs/app space;safe/app.task.APP-1.md';
+    const ticket = [
+      '# Task: APP-1 — Custom selector execution',
+      '<!--SECTION:META-->',
+      '- **Task-ID:** APP-1',
+      '- **Status:** [ ] TODO',
+      '- **Scope:** app',
+      '- **Dependencies:** None',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|---|---|---|---|',
+      '| P1 | ReleaseCandidate | — | [ ] |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      '- **Objective:** prove the custom selector',
+      '- **Rules:**',
+      '  - none',
+      '- **Target Files:**',
+      '  - src/current.ts',
+      '- **Deleted Files:**',
+      '  - none',
+      '- **Inputs:** none',
+      '- **Exit:** custom proof passes',
+      '<!--/SECTION:PHASE_P1-->',
+      '<!--SECTION:VERIFICATION-->',
+      '| Command | Required by | Role |',
+      '|---|---|---|',
+      '<!--/SECTION:VERIFICATION-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+    const config = [
+      'verify:',
+      '  sdd:',
+      '    mapping:',
+      '      ReleaseCandidate: release-check',
+      '  presets:',
+      '    node:',
+      '      phases:',
+      '        release-check: { include: [release] }',
+      '      steps:',
+      '        release-proof:',
+      '          tags: [release]',
+      '          needs: []',
+      '          executor: local',
+      '          effect: observe',
+      '          command:',
+      '            argv: [node, verify-custom.mjs]',
+      '            cwd: .',
+      '          timeout: 10s',
+      '          onFailure: stop-phase',
+      '',
+    ].join('\n');
+    const { root } = buildRepoFixture({
+      scripts: {},
+      gennadyInstalled: true,
+      files: {
+        [ticketPath]: ticket,
+        'specs/app space;safe/app.spec.md': '# App\n',
+        'src/current.ts': 'export const current = true;\n',
+        'verify-custom.mjs': 'process.exit(0);\n',
+        'gennady.yaml': config,
+      },
+    });
+    try {
+      installActualGennadyBin(root);
+      const dispatched = runCli(['sdd-task', ticketPath, '--phase', 'P1'], root);
+      assert.strictEqual(dispatched.exitCode, 0, dispatched.stdout + dispatched.stderr);
+      const command = /command:\s+([^\n]+)/.exec(dispatched.stdout)?.[1]?.trim();
+      assert.ok(command);
+      assert.match(command, /--phase=release-check/);
+      assert.match(command, /'--task=specs\/app space;safe\/app\.task\.APP-1\.md'/);
+      assert.match(command, /--sdd-phase=P1/);
+
+      const executed = spawnSync(command, {
+        cwd: root,
+        encoding: 'utf-8',
+        env: cleanTestChildEnv(process.env),
+        shell: '/bin/sh',
+        timeout: 30_000,
+      });
+      assert.strictEqual(executed.status, 0, `${executed.stdout ?? ''}${executed.stderr ?? ''}`);
+      assert.match(executed.stdout ?? '', /VERIFY phase=release-check/);
+      assert.match(executed.stdout ?? '', /scope=files files=src\/current\.ts/);
+      assert.match(executed.stdout ?? '', /sdd=specs\/app space;safe\/app\.task\.APP-1\.md#P1/);
+      assert.match(executed.stdout ?? '', /PASS node:release-proof/);
+      assert.match(executed.stdout ?? '', /VERDICT PASS/);
+
+      writeFileSync(join(root, 'verify-custom.mjs'), 'process.exit(23);\n', 'utf-8');
+      rmSync(join(root, 'src', 'current.ts'));
+      const missing = spawnSync(command, {
+        cwd: root,
+        encoding: 'utf-8',
+        env: cleanTestChildEnv(process.env),
+        shell: '/bin/sh',
+        timeout: 30_000,
+      });
+      assert.strictEqual(missing.status, 4, `${missing.stdout ?? ''}${missing.stderr ?? ''}`);
+      assert.match(missing.stderr ?? '', /ERR_CLI_VERIFY_SDD_CONTEXT/);
+      assert.match(missing.stderr ?? '', /Target File path is missing/);
+      assert.doesNotMatch(missing.stdout ?? '', /PASS node:release-proof|VERDICT PASS/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -257,7 +257,7 @@ function materializeOverride(
     ...(config.writes === undefined ? {} : { writes: config.writes }),
     ...(config.invalidates === undefined ? {} : { invalidates: config.invalidates }),
     ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
-    ...(config.onFailure === undefined ? {} : { onFailure: config.onFailure }),
+    onFailure: config.onFailure,
     ...(config.outputMeansFailure === undefined
       ? {}
       : { outputMeansFailure: config.outputMeansFailure }),
@@ -281,7 +281,7 @@ function applyLayer(
         'VERIFY_CONFIG_UNKNOWN_PLUGIN',
         `verify.presets.${plugin}`,
         `overlay references unknown plugin "${plugin}"`,
-        `compose only detected/built-in presets; custom presets arrive in UV-22`,
+        'configure steps only for a detected or registered plugin',
         layerSource(layer, `verify.presets.${plugin}`)
       );
     }

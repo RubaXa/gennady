@@ -182,8 +182,9 @@ read-манифест (rules · specs · ticket-секции · target-файл�
 provide zero-YAML mappings and `verify.sdd.mapping` overrides them with provenance. The exact phase
 Target/Deleted scope decides which detected presets participate; unresolved kind or undeclared
 selector fails before emitting a worker command. The agent never selects individual gates. Output
-ends with `next:` directing the worker to execute exactly that invocation. Неизвестный `--phase` →
-exit 2 с перечнем известных фаз.
+renders every invocation token with deterministic POSIX-shell quoting, so a valid ticket path with
+spaces or metacharacters remains one exact `--task` argument. It ends with `next:` directing the
+worker to execute exactly that invocation. Неизвестный `--phase` → exit 2 с перечнем известных фаз.
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 

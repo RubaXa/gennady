@@ -953,7 +953,7 @@ export function loadVerifyConfig(
           'VERIFY_CONFIG_UNKNOWN_PLUGIN',
           pluginPath,
           `unknown plugin "${plugin}"`,
-          `known detected/built-in plugins: ${[...knownPresets.keys()].sort().join(', ') || 'none'}; custom presets arrive in UV-22`,
+          `use a detected/registered plugin (${[...knownPresets.keys()].sort().join(', ') || 'none'}) or install its plugin before configuring steps`,
           sourceAt(loaded.provenance, pluginPath)
         )
       );
@@ -979,7 +979,7 @@ export function loadVerifyConfig(
           'VERIFY_CONFIG_INVALID_TYPE',
           `${pluginPath}.steps`,
           'must be a map keyed by existing local step id',
-          'custom steps arrive in UV-22; override an existing preset step here',
+          `declare ${pluginPath}.steps.<id> as a complete local step or built-in override`,
           sourceAt(loaded.provenance, `${pluginPath}.steps`)
         )
       );

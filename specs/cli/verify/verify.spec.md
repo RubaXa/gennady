@@ -410,6 +410,15 @@ tags; dependency closure remains planner-owned. Project steps live once at
 `effect`, `tags`, `timeout` and `onFailure` (plus bounded `writes` for repair). No project config can
 load executable plugin code; external code stays UV-23.
 
+The public Verify parser accepts `--task` only together with `--sdd-phase`. Before planning it
+resolves the ticket safely, validates the exact existing Target Files plus tracked Deleted Files,
+recomposes the open kind mapping, and rejects a selector mismatch. This transitional UV-22 request
+identity is carried into the unified report but does not persist a legacy receipt; the optional
+legacy receipt overlay remains UV-13 and the attempt journal remains UV-12E.
+Project-authored selector dispatch is governed by the selected target slice's readiness; unrelated
+legacy npm readiness cannot block it. The frozen legacy infra gate remains only on a zero-YAML
+built-in mapping until its compatibility owner is removed.
+
 ### Mandatory operator checkpoint: Evidence/Receipt (`U4-ER`, UV-13 BLOCKED)
 
 До UV-13 canonical Decision Log должен получить отдельный operator ACK. Этот документ намеренно не

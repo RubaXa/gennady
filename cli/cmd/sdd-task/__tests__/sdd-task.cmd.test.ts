@@ -952,8 +952,12 @@ describe('SddTaskCommand', () => {
       const customTicket = join(customRoot, 'custom.task.cli-foo.md');
       try {
         markLegacyFlow(customRoot);
-        writeExecutionReadyInfra(customRoot);
         writeDeclaredPhaseTargets(customRoot);
+        writeFileSync(
+          join(customRoot, 'package.json'),
+          JSON.stringify({ name: 'custom-selector-fixture', scripts: {} }),
+          'utf-8'
+        );
         writeFileSync(
           join(customRoot, 'go.mod'),
           'module example.com/unaffected\n\ngo 1.22\n',
