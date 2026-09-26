@@ -1,6 +1,6 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
-> Статус: **ACK U0 ПРИНЯТ 2026-09-24, КОД НЕ НАЧАТ**. Основание: операторский разговор
+> Статус: **ACK U0 ПРИНЯТ 2026-09-24; РЕАЛИЗАЦИЯ ИДЁТ; UV-13 BLOCKED**. Основание: операторский разговор
 > 2026-09-24 после завершения самомиграции SDD v2. Этот документ **замещает** старые открытые
 > развилки O-1/O-2 и design-tail plugin↔preset convergence, но не переписывает исторические
 > отчёты 30/33. Публикация пакета запрещена до выполнения §12.
@@ -11,15 +11,21 @@
 > **Amendment 2026-09-25:** workflow SDD phase kind и Verify phase selector разведены как две
 > открытые vocabulary. Built-in preset даёт zero-YAML default mapping между ними, project YAML
 > overlays/overrides его с provenance. Operator ACK по Evidence/Receipt (§12.1) принят; UV-13
-> остаётся заблокирован до реализации и review UV-12E вместе с UV-22. Этот amendment фиксирует
+> остаётся заблокирован до реализации и review UV-22C, embedded-rules chain и UV-12E. Этот amendment фиксирует
 > выбранный evidence contract, но не притворяется его реализацией и не разрешает ранний cutover.
+>
+> **Task/Rules/Verify ACK 2026-09-26:** standalone Verify остаётся universal и SDD-agnostic;
+> существующий `sdd-verify --task … --phase …` становится thin facade над тем же engine и владеет
+> SDD state/sinks. Rules metadata embedded в prompt header и читается custom lexical parser-ом, не
+> XML parser-ом и не sidecar. RuleRegistry + PhaseFacts + RuleResolver + pre-dispatch RuleSnapshot
+> integration теперь обязательны до UV-12E/UV-13.
 
 ## 1. Решённая цель
 
 Остаётся один публичный движок:
 
 ```text
-gennady verify --phase <selector> [--task <ticket> --sdd-phase <P>]
+gennady verify --phase <selector>
 ```
 
 У правил есть отдельная **read-only справочная поверхность**, но не второй resolver:
@@ -45,27 +51,36 @@ snapshot. Он не запускает Verify steps, не меняет рабо�
 6. выполнить локальные observe/repair/drift шаги и удалённые async/watch шаги;
 7. повторить только проверки, инвалидированные автоматическими repair;
 8. вернуть один typed report: readiness, verdict, mutations, evidence, selected rules;
-9. при SDD-контексте передать тот же report в receipt sink.
+9. не читать и не писать SDD task/EXECUTION_LOG metadata.
+
+SDD владеет отдельная thin facade с фактической существующей surface:
+
+```text
+gennady sdd-verify --task <ticket> --phase <P>
+```
+
+Она строит exact phase scope/facts, замораживает rules, вызывает **тот же** Verify engine один раз и
+передаёт тот же report в SDD-owned journal/optional legacy receipt sink. Это не второй planner/runner.
 
 `--phase` принимает произвольный объявленный preset/YAML-owned selector id. Core не выводит
 pipeline из имени `code`, `test`, `full` или любого другого токена. Workflow SDD phase kind —
 отдельная открытая vocabulary; composed mapping `preset default → project override` переводит kind
 в selector до вызова Verify.
 
-`sdd-verify` перестаёт быть вторым движком. После переходного периода его CLI-фасад и отдельная
-лестница удаляются. Отдельной публичной команды `gennady fix` не будет: разрешённые ремонты — шаги
+`sdd-verify` перестаёт быть вторым движком. После переходного периода сохраняется thin SDD facade,
+а отдельная лестница удаляется. Отдельной публичной команды `gennady fix` не будет: разрешённые ремонты — шаги
 того же фазового прогона. Byte-parity legacy receipt не является универсальным default: она
 обязательна только для явно включённого legacy overlay с видимым provenance.
 
 ## 2. Целевой поток
 
 ```text
-VerifyRequest
-  root + phase + scope/files + task/spec + HEAD/VCS
+Standalone VerifyRequest
+  root + selector + scope/files + HEAD/VCS
         │
         ▼
 VerificationContext
-        ├─ stack detection
+        ├─ provider detection from PhaseFacts/project facts
         ├─ project capabilities
         ├─ rule resolution
         └─ VCS identity
@@ -85,8 +100,12 @@ Selected DAG slice
         ▼
 VerifyRunReport
   verdict + step results + changed files/diff + evidence + rules snapshot
-        ├─ text/json reporter
-        └─ optional SDD receipt sink
+        └─ text/json reporter (no SDD persistence)
+
+SDD dispatch
+  task + SDD phase → PhaseFacts → frozen RuleSnapshot → composed selector
+        │
+        └─ thin sdd-verify facade → same Verify engine/report → SDD journal/receipt sinks
 ```
 
 ## 3. Целевые сущности
@@ -106,7 +125,7 @@ VerifyRunReport
 | `GateResult` | `VerifyStepResult` | одна таксономия локальных и remote результатов |
 | `VerifyReport` | `VerifyRunReport` | readiness + plan + results + mutations + evidence |
 | `vcs-pipeline` | `RemoteExecutor` + CLI facade | один watcher для standalone CLI и verify |
-| `knowledge.xml` | colocated `*.rule.yaml` | центральный реестр удаляется после эквивалентной миграции |
+| `knowledge.xml` | embedded prompt `<Meta>` headers | центральный реестр удаляется после entry-by-entry metadata/equivalence migration |
 | `rules-cascade` | `RuleResolver` | динамический snapshot правил под фазу/задачу |
 
 ### 3.1 `VerifyStep`
@@ -162,10 +181,11 @@ Workflow SDD phase kind (`implementation`, `migration`, `verification`, project-
 т. п.) живёт в другой open vocabulary. Каждый built-in preset обязан дать zero-YAML default
 mapping `SDD kind → Verify selector`; project YAML overlays/overrides этот mapping с per-key
 provenance. `sdd-task` обязан разрешить composed mapping и выдать агенту ровно одну точную команду
-`gennady verify --phase <resolved-selector> --task <ticket> --sdd-phase <P>`. Агент не выбирает
+существующей facade `gennady sdd-verify --task <ticket> --phase <P>`. Facade повторно доказывает
+composed selector/scope и вызывает universal engine с `<resolved-selector>`. Агент не выбирает
 individual gates/steps и не собирает несколько Verify invocations вручную. Mapping fail-closed до
 spawn только если kind остаётся unresolved после composition; diagnostic показывает preset source
-и actionable project override path.
+и actionable project override path. Standalone `gennady verify` не принимает task flags.
 
 Fail policy задаётся шагом. Foundation (`type-check`, build, required test) обычно `stop-phase`;
 независимый quality-tail может `continue`, чтобы вернуть несколько дешёвых findings одним отчётом.
@@ -411,48 +431,56 @@ release API, а не cherry-pick-ится из старой ветки.
 
 ## 10. Динамические правила без `knowledge.xml`
 
-Prompt-файлы не являются XML-документами и не используются как metadata registry. Metadata живёт
-рядом, отдельным sidecar:
+Metadata embedded в самом rule prompt file; sidecar YAML запрещён. Prompt **не XML-документ** и
+никогда не передаётся XML parser/validator. Custom lexical header parser читает только:
+
+1. первый literal root tag с обязательными quoted attributes `rule-id`, `rule-schema`, `type`, `ver`;
+2. ровно один strict `<Meta>` block непосредственно в header;
+3. matching final literal root close в конце файла.
+
+Внутри `Meta` разрешены только self-closing predicates:
 
 ```text
-ai/directives/coding/typescript-rules.xml
-ai/directives/coding/typescript-rules.rule.yaml
-
-plugins/golang/directives/infra/golang-setup.xml
-plugins/golang/directives/infra/golang-setup.rule.yaml
+<When language="typescript" role="source"/>
+<When framework="vitest" role="test"/>
+<Unless operation="generated"/>
+<DependsOn rule="baseline-coding"/>
 ```
 
-```yaml
-id: typescript
-applies:
-  stacks: [node]
-  phases: [code, unit, integration]
-  files: ['**/*.ts', '**/*.tsx']
-dependsOn: []
-priority: required
-```
+Несколько `When` — OR; attributes внутри одного `When` — AND; comma-values одного attribute — OR;
+любой matching `Unless` veto-ит rule. `DependsOn` образует deterministic dependency closure. Vocab
+predicate attributes открытый; initial supported set: `language`, `role`, `framework`, `pattern`,
+`operation`, `intent`, `platform`, `tool`. Имена — lowercase ASCII tokens. Quoted values декодируют
+только `&quot;`, `&apos;`, `&amp;`, `&lt;`, `&gt;`; outer whitespace trim, comma lists trim/dedupe/sort.
+Empty members, duplicate attributes, unknown entities/control chars, unknown/malformed metadata,
+лишний Meta или mismatched root fail closed. Всё между header и final close — opaque arbitrary
+markdown/HTML-like prompt body; parser не нормализует и не экранирует его.
 
-Rule sources:
+`PhaseFacts` — open-vocabulary immutable input: exact target/planned files; artifacts with
+language/role/framework; operations; intents; platform/tool/project facts. Selection происходит по
+artifacts каждой фазы, не primary stack. Rules layered отдельно: TypeScript core, strict production,
+test-light/testing/framework rules. Vitest test artifact исключает strict production TS, но получает
+TS core + testing + Vitest. Mixed TS+Go+CSS/Bash phase получает union применимых rules.
 
-1. generic built-ins;
-2. active stack plugins;
-3. detected frameworks;
-4. task/spec intent candidates;
-5. project-local rules;
-6. explicit phase additions.
+Project/phase explicit add/skip всегда несёт provenance + непустую reason; skip required dependency
+fail closed. Resolver выдаёт immutable `RuleSnapshot`: required/suggested/skipped с reasons,
+dependencies, provenance, exact prompt bodies и digest. Snapshot замораживается **до agent work** в
+SDD dispatch, exact bodies передаются агенту, а тот же digest проходит в Verify report и SDD sink;
+любой registry/facts/override drift делает phase evidence stale.
 
-Resolver получает phase, Target Files, stack detections, frameworks, task goal и spec refs. Выход —
-immutable snapshot с `required` и объяснёнными `suggested`. Hard predicates (расширение файла,
-marker, phase, dependency) обязательны механически. Смысловые кандидаты предлагаются с причиной;
-их выбор фиксируется в snapshot/receipt и проверяется аудитом, а не выдаётся за полностью
-формализованный человеческий смысл.
+`PhaseFacts` порождает два независимых продукта: `RuleResolver` instruction snapshot и
+`VerifyPlanner` executable provider selection. Rule files не являются command registry. Providers
+имеют собственные DAG/default selectors; один selector может выбрать разные slices per provider.
+Node/Go/Swift zero-YAML сохраняется; project YAML extends/overrides per provider и может добавить
+config-only language/tool steps. Exact affected providers выбираются facts/scope, все блокируют;
+missing required provider видим как BLOCKED, без primary-stack tail.
 
 ### 10.1 Справочник как CLI-инструмент
 
 `gennady rules` — публичная проекция `RuleRegistry + RuleResolver`, а не статический help-файл и не
 копия логики Verify:
 
-- `list` выводит inventory с id, source, stack/framework/phase predicates и availability;
+- `list` выводит inventory с id, source, embedded predicates/dependencies и availability;
 - `show` печатает metadata и prompt-body одного правила вместе с provenance/dependencies;
 - `resolve` требует объяснимый scope: явные files, diff от ref или SDD ticket. Если scope нельзя
   вывести однозначно, команда fail-closed просит один из этих входов, а не выбирает весь registry;
@@ -466,9 +494,10 @@ marker, phase, dependency) обязательны механически. Смы
 Существующий `gennady agents-rules` — статическая инструкция по `orient`, не этот справочник. Его
 контракт не переиспользуется и не выдаётся за dynamic rules API.
 
-`knowledge.xml` удаляется только после эквивалентной миграции каждой записи, dependency closure
-proof и проверки project-local override. `shared/sdd/rules-cascade.ts` заменяется общим
-`RuleResolver`; SDD лишь сверяет freshness snapshot.
+`knowledge.xml` удаляется только после entry-by-entry embedded metadata migration, equivalence,
+dependency closure и project-local override proof. После миграции consumer grep обязан быть нулём.
+`shared/sdd/rules-cascade.ts` заменяется общим `RuleResolver`; SDD замораживает snapshot до dispatch
+и сверяет freshness digest.
 
 ## 11. Карта файлов
 
@@ -544,6 +573,7 @@ shared/sdd/verify/
 | `shared/verify/stack-config.ts` | `VerifyStepOverride`, phase schema, migration diagnostics |
 | `shared/verify/tree-guard.ts` | объединить с workspace mutation в `WorkspaceGuard` |
 | `cli/cmd/verify/**` | plan-only facade → настоящий executor + `--plan` diagnostic mode |
+| `cli/cmd/sdd-verify/{index,help}.ts` | сохранить command surface, переписать на thin SDD facade над shared engine + sinks |
 | CLI dispatch/help/`cli/AGENTS.md` | добавить `gennady rules list/show/resolve`; не смешивать с `agents-rules` |
 | `plugins/golang/*-plan.logic.ts` | возвращает `VerifyPreset` DAG |
 | `plugins/swift/*-plan.logic.ts` | возвращает `VerifyPreset` DAG |
@@ -551,7 +581,7 @@ shared/sdd/verify/
 | `cli/cmd/vcs-pipeline/**` | facade над общим watcher |
 | `services/vcs-client/**pipeline**` | exact-SHA polling, terminal states, typed evidence |
 | `shared/sdd/readiness.ts` | facade над общим `CapabilityMatrix` |
-| SDD directives/skills/specs | `sdd-verify` → `verify --task ... --sdd-phase ...` |
+| SDD directives/skills/specs | phase dispatch сохраняет `sdd-verify --task ... --phase ...` как thin facade; standalone Verify task flags запрещены |
 
 ### 11.3 Перенести, затем удалить старое место
 
@@ -577,8 +607,6 @@ cli/cmd/sdd-verify/repair-adapters.ts
 cli/cmd/sdd-verify/workspace-mutation.ts
 cli/cmd/sdd-verify/sdd-verify.cmd.ts
 cli/cmd/sdd-verify/sdd-verify.types.ts
-cli/cmd/sdd-verify/help.ts
-cli/cmd/sdd-verify/index.ts
 
 ai/directives/knowledge.xml
 shared/sdd/rules-cascade.ts
@@ -625,20 +653,23 @@ boundary.
 | U1 | canonical specs + model + planner + config overlay + parity adapters | принятый контракт живёт в `specs/**`, новый DAG строится, старый runtime не сломан | нет |
 | U2 | Node/Go/Swift/Anystack presets + per-phase readiness + multistack | одинаковый план на трёх стеках | нет |
 | U3 | local executor + WorkspaceGuard + repair/invalidation | `gennady verify` реально исполняет phase slice | нет |
-| U4 | SDD adapter; declarative custom selectors/presets; Evidence/Receipt model+journal; затем receipt cutover и удаление второго runner | SDD mapping разрешается в один общий engine; ACK §12.1 реализован в UV-12E до cutover | **ACK принят; UV-13 ждёт reviewed UV-12E + UV-22** |
+| U4 | SDD adapter + arbitrary selectors; затем embedded RuleRegistry, PhaseFacts, resolver и pre-dispatch RuleSnapshot; SDD-facade Evidence/Receipt; затем cutover второго runner | thin facade вызывает общий engine; snapshot frozen до agent work; ACK §12.1 реализован в UV-12E | **UV-13 ждёт reviewed UV-22C + UV-18A/B + UV-19 + UV-20S + UV-12E** |
 | U5 | exact-SHA remote watcher; перенос лучших dirty VCS частей | `phase=ci` ждёт GitLab/GitHub pipeline | только перед remote mutation/rollback |
-| U6 | sidecar registry + resolver + snapshot; миграция `knowledge.xml` | правила выбираются динамически | только перед недетерминированным model-selector |
+| U6 | remaining rules CLI/migration: `gennady rules` facade + entry migration/delete `knowledge.xml` | справочник и удаление legacy registry | только перед недетерминированным model-selector |
 | U7 | external-plugin trust/version/isolation contract и consumer fixture | граница внешнего кода доказана | перед исполнением внешнего кода |
 | U8 | удалить adapters/legacy; Node+Go+Swift evidence; exact E-18 | release evidence pack | **да: решение о публикации** |
 
 ### 12.1 ACK U4-ER — Evidence/Receipt
 
 Operator ACK принят. Он задаёт следующий обязательный контракт реализации UV-12E; сам текст ACK не
-считается implementation evidence, поэтому UV-13 остаётся `BLOCKED` до merge/review UV-12E и UV-22.
+считается implementation evidence, поэтому UV-13 остаётся `BLOCKED` до reviewed corrective UV-22C,
+embedded RuleRegistry/PhaseFacts/RuleSnapshot integration и UV-12E.
 
 1. **Append-only история attempts в существующем ticket.** Сначала валидируются task identity и
    точный writable `EXECUTION_LOG` target. После этого каждый SDD Verify attempt создаёт ровно одну
-   compact structured entry **до planning/readiness/spawn**. Эта же entry атомарно переходит из
+   compact structured entry **до mapping/planning/readiness/spawn**. Ticket-scoped runner owner
+   сериализует attempts: live owner блокирует новый run без изменения первой entry; только proven
+   dead/stale owner восстанавливается как `INTERRUPTED`. Эта же entry атомарно переходит из
    промежуточного `RUNNING` в одну normalized terminal state:
    `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`. Recovery/следующий run
    детерминированно переводит orphan `RUNNING` в recovery-only `INTERRUPTED`. Attempts сохраняются:
@@ -651,7 +682,8 @@ Operator ACK принят. Он задаёт следующий обязател
    агенту CLI report.
 3. **Machine identity в той же entry.** Structured payload содержит exact HEAD, deterministic
    worktree/scope digest, охватывающий uncommitted state, plan digest, preset/config provenance
-   digest, rules digest, timestamps и run id. Любой relevant drift делает prior pass stale.
+   digest, frozen pre-dispatch RuleSnapshot digest, timestamps и run id. Один rules digest проходит
+   через dispatch, Verify report и SDD sink. Любой relevant drift делает prior pass stale.
 4. **Versioned normalized test statistics.** Каждый test step объявляет policy
    `required|optional|none`; built-in `unit` и `integration` по умолчанию `required`. Readiness
    блокирует missing required stats capability до spawn. После исполнения promised required stats,
@@ -665,12 +697,15 @@ Operator ACK принят. Он задаёт следующий обязател
 6. **Legacy overlay условен.** Byte parity включается только explicit legacy overlay с provenance;
    no-overlay path не наследует legacy command/order semantics, как уже определено выше.
 
-Acceptance UV-12E: invalid task/log identity даёт только CLI diagnostic и ноль entries; valid target
-создаёт одну entry до planning/readiness/spawn, поэтому `BLOCKED` и `ENV_FAIL` также сохраняются;
-recovery и все normalized terminal transitions доказаны adversarial fixtures; append-only history
+Acceptance UV-12E: standalone Verify отвергает SDD flags и оставляет ticket byte-identical. SDD
+facade invalid task/log identity даёт только CLI diagnostic и ноль entries; valid target создаёт
+одну entry до mapping/planning/readiness/spawn, поэтому `BLOCKED` и `ENV_FAIL` также сохраняются;
+live concurrent owner блокируется unchanged, proven orphan recovery и все terminal transitions
+доказаны adversarial fixtures; append-only history
 переживает следующий pass; normalized stats/readiness/violation покрыты required, optional и none;
 exact local identity/digests и staleness детерминированы; report/ticket явно несут selector trust;
-overlay on/off остаются раздельными. Только после review UV-12E и UV-22 начинается UV-13
+overlay on/off остаются раздельными. Только после review embedded rules/snapshot dependencies,
+UV-12E и corrective UV-22C начинается UV-13
 directive/CLI cutover; UV-14 по-прежнему не удаляет compatibility runner до UV-13.
 
 ## 13. Задачи новой очереди
@@ -689,18 +724,21 @@ directive/CLI cutover; UV-14 по-прежнему не удаляет compatibi
 | UV-10 | U3 | repair loop + selective invalidation | UV-09 | re-run only invalidated, non-convergence bounded |
 | UV-11 | U3 | text/json reports + readiness instructions | UV-04..10 | stable machine-readable report |
 | UV-12 | U4 | SDD context и receipt sink | UV-11 | same report powers standalone and SDD receipt |
-| UV-22 | U4 | declarative custom presets/selectors + composed SDD kind mapping | UV-03, UV-11 | built-in zero-YAML defaults + project overrides with provenance; arbitrary selector fixture; steps declared once; `sdd-task` emits one exact mapped Verify invocation |
+| UV-22 | U4 | declarative custom presets/selectors + composed SDD kind mapping | UV-03, UV-11 | built-in zero-YAML defaults + project overrides with provenance; arbitrary selector fixture; steps declared once |
+| UV-22C | U4 | corrective ownership boundary for UV-22 | UV-22 | standalone Verify rejects task flags/ticket mutation; `sdd-task` emits one exact existing SDD facade invocation; facade resolves the mapped selector and uses the shared engine |
 | U4-ER | U4 | **ACKED operator decision Evidence/Receipt (§12.1)** | UV-12 | canonical plan/spec фиксируют attempt journal, stats, freshness identities, selector trust и conditional legacy overlay |
-| UV-12E | U4 | evidence model + local SDD attempt log + stats/freshness/trust projection | UV-12, U4-ER ACK | task/log identity first; then one pre-planning entry; atomic RUNNING→PASS/FAIL/BLOCKED/ENV_FAIL/TIMEOUT/VIOLATION/CANCELLED and recovery-only INTERRUPTED; append-only history; normalized per-test-step stats; HEAD/worktree/scope/plan/provenance/rules identities; local trust visible; no artifact warehouse |
-| UV-13 | U4 | **BLOCKED до reviewed UV-22 + UV-12E:** migrate directives/skills/specs and conditional legacy-overlay parity golden | UV-22, UV-12E | overlay corpus preserves verdict/exit/diagnostic identity+severity+location/receipt fields, A13/D-4, V1 grandfathering and marker-only semantics; no-overlay path uses canonical evidence/receipt contract |
+| UV-18A | U4R | embedded lexical rule header parser + deterministic RuleRegistry | U0 | adversarial body remains byte-identical despite invalid XML-ish text; root/Meta/escaping/unknown metadata fail closed; no XML parser/sidecar |
+| UV-18B | U4R | PhaseFacts/artifact classifier + Verify provider facts | UV-18A, UV-07 | TS source vs Vitest test-light; mixed TS+Go+CSS/Bash union; all affected available providers block, missing required provider visible BLOCKED |
+| UV-19 | U4R | deterministic RuleResolver + When/Unless/dependency/override closure | UV-18A, UV-18B, UV-02 | OR/AND/comma/veto semantics; add/skip provenance/reason; required dependency skip fail closed; deterministic snapshot |
+| UV-20S | U4R | SDD pre-dispatch RuleSnapshot integration | UV-19, UV-12, UV-22C | exact bodies supplied before agent work; same digest across rules resolve/dispatch/Verify report/sink; drift stale |
+| UV-12E | U4 | evidence model + SDD-facade attempt log + stats/freshness/trust projection | UV-12, UV-22C, UV-20S, U4-ER ACK | standalone Verify ticket-byte-identical/rejects SDD flags; facade task/log identity first; live owner blocks unchanged, proven orphan→INTERRUPTED; atomic terminal states; append-only history; normalized stats; HEAD/worktree/scope/plan/provenance/rules identities; local trust visible |
+| UV-13 | U4 | **BLOCKED до reviewed UV-22C + UV-18A/B + UV-19 + UV-20S + UV-12E:** migrate directives/skills/specs and conditional legacy-overlay parity golden | UV-22C, UV-18A, UV-18B, UV-19, UV-20S, UV-12E | overlay corpus preserves verdict/exit/diagnostic identity+severity+location/receipt fields, A13/D-4, V1 grandfathering and marker-only semantics; no-overlay path uses canonical evidence/receipt contract |
 | UV-14 | U4 | remove independent `sdd-verify` runner | UV-13 | no runtime imports/references to old runner |
 | UV-15 | U5 | audit/manifest dirty VCS source | U0 | every source change classified A/B/C |
 | UV-16 | U5 | common pipeline watcher + typed evidence | UV-15, UV-09 | exact-SHA state sequence, timeout/API tests |
 | UV-17 | U5 | `remote.executor` + `phase=ci` | UV-16, UV-11 | pushed SHA proof, jobs/logs in report |
-| UV-18 | U6 | sidecar rule schema/registry | U0 | no directive XML parsing as registry |
-| UV-19 | U6 | deterministic rule resolver + dependency closure | UV-18, UV-02 | files/stack/phase/framework fixtures |
-| UV-20 | U6 | task-intent candidates + immutable snapshot + `gennady rules` facade | UV-19, UV-12 | list/show/resolve read-only; reasons/provenance/freshness/digest совпадают с verify plan/report |
-| UV-21 | U6 | migrate and delete `knowledge.xml` | UV-18..20 | entry-by-entry equivalence, local override proof |
+| UV-20 | U6 | read-only `gennady rules` facade over UV-20S snapshot | UV-20S | list/show/resolve read-only; reasons/provenance/bodies/digest match dispatch/report |
+| UV-21 | U6 | entry-by-entry embedded metadata migration and delete `knowledge.xml` | UV-18A..20 | equivalence + local override proof; zero consumer grep before deletion |
 | UV-23 | U7 | external plugin trust/version/isolation ADR | UV-01 | design decision before dynamic import |
 | UV-24 | U8 | delete compatibility and stale tests | UV-14, UV-17, UV-21, UV-22 | zero legacy references, fresh directives |
 | UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24 | all acceptance scenarios reproducible |
@@ -743,4 +781,4 @@ directive/CLI cutover; UV-14 по-прежнему не удаляет compatibi
 - не cherry-pick-им грязный `/Users/k.lebedev/Developer/gennady` целиком;
 - не сохраняем две публичные системы verify/fix;
 - не оставляем D-64 non-blocking tail как источник ложного зелёного verdict.
-- не начинаем UV-13 до merge/review UV-22 и реализации ACK §12.1 в UV-12E.
+- не начинаем UV-13 до review UV-22C, UV-18A/B, UV-19, UV-20S и реализации ACK §12.1 в UV-12E.

@@ -1174,8 +1174,8 @@ Swift-правил).
 | U1 | UV-01..03 | canonical specs + model/DAG/config overlay + compatibility adapter | ПЛАН |
 | U2 | UV-04..07 | Node/Go/Swift/Anystack presets, readiness, multistack | ПЛАН |
 | U3 | UV-08..11 | WorkspaceGuard, local runner, repair/invalidation, reports | ПЛАН |
-| U4 | UV-12, UV-22, U4-ER, UV-12E, UV-13..14 | SDD context; arbitrary selectors + composed preset-default/project-override mapping; ACKed Evidence/Receipt implementation: compact append-only attempt journal, normalized stats, freshness identities and selector trust; затем conditional legacy-overlay parity и cutover | **U4-ER ACKED; UV-13 BLOCKED до merge/review UV-22 + UV-12E** |
+| U4 | UV-12, UV-22, UV-22C, UV-18A/B, UV-19, UV-20S, U4-ER, UV-12E, UV-13..14 | Universal Verify остаётся SDD-agnostic; thin `sdd-verify` facade владеет task/scope/journal; arbitrary selectors; embedded lexical RuleRegistry → PhaseFacts → deterministic resolver → frozen pre-dispatch RuleSnapshot; затем SDD-owned Evidence/Receipt и conditional legacy-overlay cutover | **U4-ER ACKED; UV-13 BLOCKED до reviewed UV-22C + UV-18A/B + UV-19 + UV-20S + UV-12E** |
 | U5 | UV-15..17 | manifest dirty VCS source, exact-SHA watcher, `phase=ci` | ПЛАН |
-| U6 | UV-18..21 | sidecar rules, resolver/snapshot, read-only `gennady rules`, удалить `knowledge.xml` | ПЛАН |
+| U6 | UV-20..21 | read-only `gennady rules` facade; entry-by-entry embedded metadata migration/equivalence; удалить `knowledge.xml` только при zero consumers | ПЛАН; parser/facts/resolver/snapshot moved before UV-12E/UV-13 |
 | U7 | UV-23 | external-plugin security/trust/version/isolation ADR | ПЛАН |
 | U8 | UV-24..26 | удалить compatibility, evidence pack, exact Swift E-18 | ПЛАН |
