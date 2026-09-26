@@ -4,11 +4,6 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import { relative } from 'node:path';
-import { validateTicketReviewPaths } from '../../../shared/sdd/audit-group.ts';
-import { extractSection } from '../../../shared/sdd/section.ts';
-import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
-import { resolveTicketArg } from '../../../shared/sdd/ticket-resolve.ts';
 import {
   emitSddReceipt,
   type SddReceiptCommandBinding,
@@ -17,10 +12,7 @@ import type { SddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-con
 import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
 import type { VerifyScope } from '../../../shared/verify/model/verify-context.type.ts';
 import type { VerifyRunReport } from '../../../shared/verify/model/verify-report.type.ts';
-import {
-  resolveMultistackVerifyPlan,
-  resolveProjectSddVerifySelector,
-} from '../../../shared/verify/planning/resolve-multistack.ts';
+import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
 import { renderVerifyJson } from '../../../shared/verify/reporting/json-reporter.ts';
 import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.ts';
@@ -29,11 +21,15 @@ import type { VerifyInvocation } from './verify.types.ts';
 
 type SddReceiptPersistence = NonNullable<Parameters<typeof emitSddReceipt>[4]>;
 type SddReceiptSinkResult = Awaited<ReturnType<typeof emitSddReceipt>>;
-type SddRequest = {
-  readonly task: string;
-  readonly sddPhase: string;
+/** @purpose Caller-resolved planning scope; standalone CLI never derives it from SDD state. */
+type VerifyCommandRequest = {
   readonly scope: VerifyScope;
-  readonly deletedFiles: readonly string[];
+  readonly knownDeletedFiles?: readonly string[];
+  /** @purpose Optional workflow identity projected into the report without reading its source. */
+  readonly workflow?: {
+    readonly task: string;
+    readonly phase: string;
+  };
 };
 
 function headSha(root: string): string {
@@ -56,59 +52,6 @@ function errorMessage(cause: unknown): string {
   return `[verify] ${String(cause)}`;
 }
 
-function resolveInvocationSddRequest(
-  root: string,
-  invocation: VerifyInvocation
-): SddRequest | undefined {
-  if (invocation.sdd === undefined) return undefined;
-  const resolved = resolveTicketArg(invocation.sdd.task, root);
-  if (!resolved.ok) {
-    const detail = 'detail' in resolved ? resolved.detail : resolved.reason;
-    throw new Error(
-      `ERR_CLI_VERIFY_SDD_CONTEXT: cannot resolve ticket ${JSON.stringify(invocation.sdd.task)}: ${detail}`
-    );
-  }
-  const overview = extractSection(resolved.content, 'PHASES_OVERVIEW');
-  if (overview.status !== 'ok') {
-    throw new Error('ERR_CLI_VERIFY_SDD_CONTEXT: ticket has no readable PHASES_OVERVIEW');
-  }
-  const phases = parsePhasesOverview(overview.content);
-  const phaseIndex = phases.findIndex((phase) => phase.id === invocation.sdd?.phase);
-  const phase = phases[phaseIndex];
-  if (phase === undefined) {
-    throw new Error(
-      `ERR_CLI_VERIFY_SDD_CONTEXT: phase ${JSON.stringify(invocation.sdd.phase)} is absent from the ticket`
-    );
-  }
-  const paths = validateTicketReviewPaths(root, resolved.content, {
-    phaseIds: [phase.id],
-    targetExpectation: 'existing',
-    deletedPhaseIds: phases.slice(0, phaseIndex + 1).map((candidate) => candidate.id),
-    handoffPhaseIds: [],
-  });
-  if (!paths.ok) {
-    throw new Error(
-      `ERR_CLI_VERIFY_SDD_CONTEXT: ${relative(root, resolved.path)} declares invalid path ${JSON.stringify(paths.path)}: ${paths.detail}`
-    );
-  }
-  const scope = {
-    mode: 'files' as const,
-    files: [...new Set([...paths.paths.targets, ...paths.paths.deleted])].sort(),
-  };
-  const selection = resolveProjectSddVerifySelector(root, phase.kind, { scope });
-  if (selection.selector !== invocation.phase) {
-    throw new Error(
-      `ERR_CLI_VERIFY_SDD_CONTEXT: workflow kind ${JSON.stringify(phase.kind)} resolves to selector ${JSON.stringify(selection.selector)} from ${selection.source}, not requested ${JSON.stringify(invocation.phase)}; rerun sdd-task for the canonical invocation`
-    );
-  }
-  return {
-    task: relative(root, resolved.path).split('\\').join('/'),
-    sddPhase: phase.id,
-    scope,
-    deletedFiles: [...paths.paths.deleted],
-  };
-}
-
 /**
  * @purpose Resolve, optionally execute, and project one target VerifyRunReport.
  * @param root Repository root selected by the process cwd.
@@ -123,6 +66,8 @@ export async function runVerifyCommand(
     readonly signal?: AbortSignal;
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly homeDirectory?: string;
+    /** @purpose Optional scope already resolved by a trusted caller such as the SDD facade. */
+    readonly request?: VerifyCommandRequest;
     readonly sdd?: {
       readonly context: SddVerifyContext;
       readonly bindings: readonly SddReceiptCommandBinding[];
@@ -146,14 +91,23 @@ export async function runVerifyCommand(
     if (invocation.planOnly && options.sdd?.persist !== undefined) {
       throw new Error('an SDD receipt sink cannot be enabled for read-only --plan output');
     }
-    if (invocation.sdd !== undefined && options.sdd !== undefined) {
-      throw new Error('SDD request identity must come from either CLI flags or a receipt context');
-    }
-    const sddRequest =
-      resolveInvocationSddRequest(canonicalRoot, invocation) ?? options.sdd?.context.request;
+    const receiptRequest = options.sdd?.context.request;
+    const request =
+      options.request ??
+      (receiptRequest === undefined
+        ? undefined
+        : {
+            scope: receiptRequest.scope,
+            knownDeletedFiles: receiptRequest.deletedFiles ?? [],
+            ...(receiptRequest.task === undefined || receiptRequest.sddPhase === undefined
+              ? {}
+              : { workflow: { task: receiptRequest.task, phase: receiptRequest.sddPhase } }),
+          });
     const planning = resolveMultistackVerifyPlan(canonicalRoot, invocation.phase, {
-      scope: sddRequest?.scope ?? { mode: 'all', files: [] },
-      ...(sddRequest === undefined ? {} : { knownDeletedFiles: sddRequest.deletedFiles }),
+      scope: request?.scope ?? { mode: 'all', files: [] },
+      ...(request?.knownDeletedFiles === undefined
+        ? {}
+        : { knownDeletedFiles: request.knownDeletedFiles }),
       ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
     });
     const plannedHeadSha = headSha(canonicalRoot);
@@ -170,13 +124,13 @@ export async function runVerifyCommand(
       headSha: plannedHeadSha,
       planning,
       execution,
-      ...(sddRequest === undefined
+      ...(request?.workflow === undefined
         ? {}
         : {
             sdd: {
-              task: sddRequest.task,
-              phase: sddRequest.sddPhase,
-              deletedFiles: sddRequest.deletedFiles,
+              task: request.workflow.task,
+              phase: request.workflow.phase,
+              deletedFiles: request.knownDeletedFiles ?? [],
             },
           }),
     });

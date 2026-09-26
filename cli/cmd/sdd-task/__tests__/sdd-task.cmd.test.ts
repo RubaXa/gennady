@@ -911,7 +911,7 @@ describe('SddTaskCommand', () => {
         assert.match(outcome.text, /selector: code ← builtin:golang/);
         assert.match(
           outcome.text,
-          /command:\s+npx gennady verify --phase=code --task=specs\/cli\/core\/core\.task\.cli-foo\.md --sdd-phase=P1/
+          /command:\s+npx gennady sdd-verify --task=specs\/cli\/core\/core\.task\.cli-foo\.md --phase=P1/
         );
         assert.doesNotMatch(outcome.text, /gate-state:|next=run .*go/);
       } finally {
@@ -929,12 +929,9 @@ describe('SddTaskCommand', () => {
       assert.match(text, /\[sdd-task\] cli-foo — P2 test  status=\[ \]/);
       assert.match(text, /objective:   test foo/);
       assert.match(text, /verification:\n {2}selector: unit ← builtin:node/);
-      assert.match(
-        text,
-        /command:\s+npx gennady verify --phase=unit --task=phased\.md --sdd-phase=P2/
-      );
+      assert.match(text, /command:\s+npx gennady sdd-verify --task=phased\.md --phase=P2/);
       assert.match(text, /agent must not select individual gates/);
-      assert.strictEqual((text.match(/npx gennady verify/g) ?? []).length, 1);
+      assert.strictEqual((text.match(/npx gennady sdd-verify/g) ?? []).length, 1);
       assert.doesNotMatch(text, /gate-state:|npm run test —/);
       assert.match(text, /exit:        all scenarios pass/);
       assert.match(text, /READ rules:  ai\/directives\/testing\/node-test\.xml/);
@@ -1001,10 +998,10 @@ describe('SddTaskCommand', () => {
         assert.match(outcome.text, /selector: release-check ← gennady\.yaml/);
         assert.match(
           outcome.text,
-          /npx gennady verify --phase=release-check --task=custom\.task\.cli-foo\.md --sdd-phase=P1/
+          /npx gennady sdd-verify --task=custom\.task\.cli-foo\.md --phase=P1/
         );
-        assert.strictEqual((outcome.text.match(/npx gennady verify/g) ?? []).length, 1);
-        assert.doesNotMatch(outcome.text, /sdd-verify|npm run type-check —|npm run test —/);
+        assert.strictEqual((outcome.text.match(/npx gennady sdd-verify/g) ?? []).length, 1);
+        assert.doesNotMatch(outcome.text, /npm run type-check —|npm run test —/);
       } finally {
         rmSync(customRoot, { recursive: true, force: true });
       }

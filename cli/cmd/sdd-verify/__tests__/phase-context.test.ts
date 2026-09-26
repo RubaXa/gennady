@@ -79,6 +79,21 @@ function fixture(
 }
 
 describe('resolvePhaseContext', () => {
+  it('distinguishes an open-vocabulary kind from an invalid legacy context for typed dispatch', () => {
+    const f = fixture('ReleaseCandidate', ['src/thing.ts']);
+    try {
+      const openKind = resolvePhaseContext(f.ticket, 'P1', f.root);
+      assert.strictEqual(openKind.ok, false);
+      if (!openKind.ok) assert.strictEqual(openKind.reason, 'unsupported-kind');
+
+      const missingPhase = resolvePhaseContext(f.ticket, 'P9', f.root);
+      assert.strictEqual(missingPhase.ok, false);
+      if (!missingPhase.ok) assert.strictEqual(missingPhase.reason, 'invalid-context');
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
   it('auto-detects golang without stack.use and resolves the V-09 setup plan', () => {
     const f = fixture('config', ['src/thing.ts']);
     rmSync(join(f.root, 'package.json'));

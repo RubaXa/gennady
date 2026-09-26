@@ -8,7 +8,6 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady verify --phase=<phase> [--json]');
-  console.info('  npx gennady verify --phase=<phase> --task=<ticket> --sdd-phase=<P> [--json]');
   console.info('  npx gennady verify --plan --json [--phase=<phase>]');
   console.info('');
   console.info('  Text is the default execution report; --json emits the stable machine report.');
@@ -18,9 +17,7 @@ export function printHelp(): void {
   console.info(
     '  Normal runs may apply only preset-declared bounded repair steps; there is no fix command.'
   );
-  console.info(
-    '  Standalone scope is the complete repository; SDD scope is the ticket phase Target/Deleted Files.'
-  );
+  console.info('  Scope is the complete repository; SDD task scope belongs to gennady sdd-verify.');
   console.info('');
   console.info(
     'Exit codes: 0 pass/plan · 1 terminal non-pass · 4 invocation/planning/config error'

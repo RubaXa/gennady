@@ -68,7 +68,12 @@ export type PhaseVerifyContext = {
 /** @purpose Valid phase context, or a ready-to-print teaching failure. */
 export type PhaseContextResult =
   | { ok: true; context: PhaseVerifyContext }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      /** @purpose Typed dispatch boundary for open-vocabulary kinds owned by the target facade. */
+      reason: 'invalid-context' | 'unsupported-kind';
+    };
 
 function inside(root: string, path: string): boolean {
   const rel = relative(root, path);
@@ -83,9 +88,13 @@ function canonicallyInside(root: string, path: string): boolean {
   }
 }
 
-function failure(detail: string): PhaseContextResult {
+function failure(
+  detail: string,
+  reason: 'invalid-context' | 'unsupported-kind' = 'invalid-context'
+): PhaseContextResult {
   return {
     ok: false,
+    reason,
     message: `[sdd-verify] ERR_CLI_SDD_VERIFY_PHASE_CONTEXT: ${detail}\n  Fix the ticket phase, then rerun: npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`,
   };
 }
@@ -136,7 +145,8 @@ export function resolvePhaseContext(
   if (!phase) return failure(`phase '${phaseId}' is absent from ${taskArg}`);
   let profile = phaseProfileForKind(phase.kind);
   let profileBasis: PhaseVerifyContext['profileBasis'] = 'phase-kind';
-  if (!profile) return failure(`phase '${phaseId}' has unsupported kind '${phase.kind}'`);
+  if (!profile)
+    return failure(`phase '${phaseId}' has unsupported kind '${phase.kind}'`, 'unsupported-kind');
   const verification = extractSection(content, 'VERIFICATION');
   const verificationTable =
     verification.status === 'ok'

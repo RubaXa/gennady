@@ -226,20 +226,6 @@ describe('parseVerifyInvocation', () => {
       ok: true,
       invocation: { phase: 'unit', planOnly: false, format: 'json' },
     });
-    assert.deepStrictEqual(
-      parseVerifyInvocation(
-        argv('--phase=release-check', '--task=specs/app space/app.task.APP-1.md', '--sdd-phase=P1')
-      ),
-      {
-        ok: true,
-        invocation: {
-          phase: 'release-check',
-          planOnly: false,
-          format: 'text',
-          sdd: { task: 'specs/app space/app.task.APP-1.md', phase: 'P1' },
-        },
-      }
-    );
   });
 
   it('keeps --plan --json compatibility read-only and defaults only it to full', () => {
@@ -259,6 +245,7 @@ describe('parseVerifyInvocation', () => {
       ['--phase=code', '--fix'],
       ['--phase=code', '--task=ticket.md'],
       ['--phase=code', '--sdd-phase=P1'],
+      ['--phase=code', '--task=ticket.md', '--sdd-phase=P1'],
     ]) {
       const parsed = parseVerifyInvocation(argv(...args));
       assert.strictEqual(parsed.ok, false, args.join(' '));
