@@ -22,6 +22,13 @@ _Обзор пути от контракта к реализации и пров
 
 **Module:** sdd-verify · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
+> **Target ownership amendment (2026-09-26):** public phase surface remains
+> `gennady sdd-verify --task <ticket> --phase <PhaseID>`, but its independent gate ladder is frozen
+> compatibility only. The target implementation is a thin SDD facade: it owns task/phase/scope,
+> pre-dispatch `RuleSnapshot`, attempt journal and optional legacy receipt overlay; it invokes the
+> same universal Verify planner/runner used by standalone `gennady verify`. The standalone command
+> accepts no task flags and never reads/writes EXECUTION_LOG.
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision
@@ -378,6 +385,17 @@ shared/sdd/verify/
 
 - **Status:** active · **Supersedes:** D-SV017 (в части public phase invocation и project-wide fix)
 - **Why:** ручные `--profile` и повторяемые `--target` заставляли агента реконструировать уже записанные данные, допускали неверный профиль и раздували команды. Теперь канонический phase-вызов — `sdd-verify --task <ticket> --phase <ID>`: parser читает kind и Target Files из секций тикета, проверяет каждый путь (существующий обычный файл внутри проекта, без glob) и выводит owning spec из конвенции имени тикета.
+
+### D-SV038 — Phase command becomes a thin SDD facade over the universal Verify engine
+
+- **Status:** accepted target; compatibility ladder retained only until UV-13/14 cutover.
+- **Decision:** `sdd-verify --task … --phase …` validates task/log identity, builds exact PhaseFacts,
+  freezes rule snapshot and composed selector, opens runner-owned attempt evidence, calls the shared
+  Verify engine once, then passes the same `VerifyRunReport` to SDD-owned journal/receipt sinks.
+  It has no second planner/runner. Active ticket owner blocks a concurrent attempt unchanged; only a
+  proven dead/stale owner recovers RUNNING as INTERRUPTED.
+- **Standalone boundary:** `gennady verify --phase …` is persistence-free and rejects task/SDD
+  context flags. Project-code repair remains allowed only through declared Verify write boundaries.
 - **Repair:** проектные `format:fix` и `lint:fix` получают один и тот же точный, option-safe target-set. Поэтому новый test-файл проверяется, а чужие production/test/negative fixtures не мутируются и не блокируют фазу. Успех lint означает reread post-state и полный набор применимых read-only проверок. Для code/test owning spec обязателен; setup может временно обходиться без него в bootstrap.
 - **Profiles:** bootstrap/config/doc→setup; impl/refactor/fix→code; test→test. Единственное механическое исключение: active ticket из той же infra `GATE_QUEUE`, которая строит отсутствующие gates, временно получает setup без ручного выбора профиля. Foundation выполняется один раз после repair. `--profile full` остаётся отдельным глобальным read-only режимом.
 - **Rejected:** глобальный `--include-tests` — intentional negative fixtures делают его заведомо красным; ручные repeated targets/profile — дублирование ticket context и источник drift.

@@ -51,7 +51,7 @@ a second target engine.
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multistack DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds immutable SDD context plus an optional receipt sink over that exact report object. UV-22 moves before cutover to add arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance). U4-ER is ACKed; UV-12E must now implement the attempt journal, stats, freshness identities and trust projection. UV-13 depends on reviewed UV-22 + UV-12E; runner deletion remains UV-14, remote verification U5 and dynamic rules U6.
+UV-07 composes one scope-aware multi-provider DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds an SDD adapter over that exact report object. UV-22 adds arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance), while its standalone task-flag path is corrective work owned by the SDD facade. Embedded RuleRegistry + PhaseFacts + RuleResolver + SDD RuleSnapshot integration now precede UV-12E. U4-ER is ACKed but belongs to the SDD facade; UV-13 depends on the corrective UV-22 boundary, rule-snapshot integration and UV-12E. Runner deletion remains UV-14 and remote verification U5.
 
 ### Target call chain
 
@@ -346,10 +346,11 @@ default presentation, `--json` — versioned stable machine projection. `--plan 
 но использует тот же target planner. Это explicit default-entry exception конкретного CLI surface,
 а не inference semantics из имени `full` или любого другого selector id.
 
-UV-12 SDD context/receipt sink, U5 remote executor и U6 dynamic rules остаются за этой задачей;
-UV-22 обязан материализовать arbitrary project selectors/mapping, а UV-12E — ACKed
-Evidence/Receipt contract до UV-13. UV-13/14 выполняют SDD cutover и удаление compatibility runner
-только после review обеих зависимостей. Refines D-65/D-67.
+UV-12 SDD adapter, U5 remote executor и embedded dynamic rules остаются за этой задачей; UV-22
+материализует arbitrary selectors/mapping, но task flags/context принадлежат только corrective SDD
+facade. RuleRegistry + PhaseFacts + RuleResolver + SDD RuleSnapshot integration теперь обязательны
+до UV-12E. UV-13/14 выполняют cutover и удаление compatibility runner только после review этих
+dependencies. Refines D-65/D-67.
 
 ### VER-REQ-15 [должен · нештатная]
 
@@ -365,9 +366,12 @@ pass/blocked. Refines D-65/D-67.
 
 ### VER-REQ-16 [должен · нештатная]
 
-**Когда** unified Verify запускается с SDD context, **то adapter должен** до execution заморозить
-exact task path, open-vocabulary SDD phase kind, SDD phase identity, resolved Verify selector,
-existing Target Files и Deleted Files tombstones. Explicit legacy overlay дополнительно несёт
+**Когда** standalone `gennady verify --phase=<selector>` запускается, **то command должен** быть
+SDD-agnostic: parser отвергает task/SDD-phase flags, engine не читает и не пишет ticket/EXECUTION_LOG
+и возвращает один `VerifyRunReport`. Declared repair steps могут менять project code только внутри
+WorkspaceGuard write boundaries. SDD facade отдельно замораживает exact task path,
+open-vocabulary SDD phase kind/identity, resolved selector, Target Files и tombstones, вызывает тот
+же planner/runner и только затем передаёт тот же report SDD-owned sink. Explicit legacy overlay несёт
 legacy-compatible `PhaseReceiptPlan`, тот же `environmentState`, что compatibility runner, и
 provenance включения overlay; без overlay эти legacy bytes/order не выводятся и не считаются
 default contract. Эти facts входят в тот же
@@ -377,8 +381,9 @@ affected-stack selection, оставаясь отдельной absence identity
 
 ### VER-REQ-17 [должен · нештатная]
 
-Optional receipt sink получает именно этот report object и ничего не пишет, когда persistence
-callback отсутствует. При активном sink только terminal `pass` с non-blocked readiness может создать
+SDD-owned receipt/journal sink получает именно этот report object; standalone Verify не имеет
+persistence callback или SDD control-state side effect. При active legacy receipt sink только
+terminal `pass` с non-blocked readiness может создать
 receipt; root/task/SDD-phase/scope обязаны совпасть. Когда explicit legacy overlay активен, каждый
 configured legacy gate и каждая Verification row обязаны ровно один раз ссылаться на реально passing runnable target step. Binding
 несёт только identities: exact receipt command/role берутся из frozen SDD context, а direct argv,
@@ -388,16 +393,18 @@ id/severity/location и не вызывает sink. `--plan` никогда не
 
 Legacy byte parity не применяется к no-overlay preset как universal default. UV-12 не переключает
 compatibility runner и не объявляет полную parity: conditional overlay mapping принадлежит UV-13,
-удаление runner — UV-14. UV-13 заблокирован до reviewed UV-22 + UV-12E. Refines D-65; preserves
+удаление runner — UV-14. UV-13 заблокирован до reviewed UV-22 corrective boundary, embedded
+RuleRegistry/PhaseFacts/RuleResolver/SDD RuleSnapshot chain и UV-12E. Refines D-65; preserves
 A13/D-4 до conditional parity gate.
 
 ### VER-REQ-18 [должен · нештатная]
 
 **Когда** `sdd-task` готовит workflow phase, **то он должен** принять open-vocabulary SDD phase kind,
 скомпоновать mapping `built-in preset zero-YAML default → project YAML override` с per-key provenance
-и выдать ровно одну exact invocation
-`gennady verify --phase=<selector> --task=<ticket> --sdd-phase=<P>`. Агент не выбирает individual
-gates/steps и не собирает несколько invocation. Resolver fail closed до spawn только когда kind
+и выдать ровно одну exact invocation существующей thin facade:
+`gennady sdd-verify --task=<ticket> --phase=<P>`. Facade повторно проверяет composed selector и exact
+scope, вызывает universal engine с этим selector и не имеет собственного planner/runner. Агент не
+выбирает individual gates/steps и не собирает несколько invocation. Resolver fail closed до spawn только когда kind
 остаётся unresolved после composition либо итоговый selector не объявлен; diagnostic показывает
 preset source и actionable project override location.
 
@@ -411,22 +418,24 @@ tags; dependency closure remains planner-owned. Project steps live once at
 `effect`, `tags`, `timeout` and `onFailure` (plus bounded `writes` for repair). No project config can
 load executable plugin code; external code stays UV-23.
 
-The public Verify parser accepts `--task` only together with `--sdd-phase`. Before planning it
-resolves the ticket safely, validates the exact existing Target Files plus tracked Deleted Files,
-recomposes the open kind mapping, and rejects a selector mismatch. This transitional UV-22 request
-identity is carried into the unified report but does not persist a legacy receipt; the optional
-legacy receipt overlay remains UV-13 and the attempt journal remains UV-12E.
+The SDD facade validates the exact existing Target Files plus tracked Deleted Files, recomposes the
+open kind mapping, and rejects a selector mismatch before invoking universal Verify. Standalone
+Verify accepts no task/SDD-phase flags or request identity and has no receipt/journal side effect;
+the optional legacy receipt overlay remains UV-13 and the attempt journal remains UV-12E.
 Project-authored selector dispatch is governed by the selected target slice's readiness; unrelated
 legacy npm readiness cannot block it. The frozen legacy infra gate remains only on a zero-YAML
 built-in mapping until its compatibility owner is removed.
 
 ### ACKed operator checkpoint: Evidence/Receipt (`U4-ER`, implementation UV-12E)
 
-Operator ACK задаёт следующий обязательный контракт. ACK сам по себе не является implementation
-evidence: directive/CLI cutover UV-13 начинается только после merge/review UV-22 и UV-12E.
+Operator ACK задаёт контракт SDD facade. ACK сам по себе не является implementation evidence:
+directive/CLI cutover UV-13 начинается только после embedded rules/PhaseFacts/RuleSnapshot
+integration, corrective UV-22 boundary и UV-12E.
 
 1. Сначала валидируются task identity и exact writable `EXECUTION_LOG` target. После этого каждый
-   SDD Verify attempt создаёт одну compact structured entry **до planning/readiness/spawn**. Та же
+   SDD facade attempt создаёт одну compact structured entry **до mapping/planning/readiness/spawn**.
+   Runner-owned owner identity сериализует ticket: живой owner блокирует конкурентный attempt без
+   изменения его entry; только доказанно dead/stale owner становится `INTERRUPTED`. Та же
    entry атомарно обновляется из промежуточного `RUNNING` в одну normalized terminal state:
    `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`. Recovery/следующий run
    детерминированно переводит orphan `RUNNING` в recovery-only `INTERRUPTED`. История append-only:
@@ -437,7 +446,8 @@ evidence: directive/CLI cutover UV-13 начинается только посл
    запрещены; detailed bounded/redacted diagnostics возвращаются агенту через CLI report.
 3. Structured payload той же entry содержит exact HEAD, deterministic worktree/scope digest,
    покрывающий uncommitted state, plan digest, preset/config provenance digest, rules digest,
-   timestamps и run id. Любой relevant drift делает prior pass stale.
+   timestamps и run id. Rules digest принадлежит frozen pre-dispatch `RuleSnapshot`; один digest
+   проходит через dispatch, Verify report и SDD sink. Любой relevant drift делает prior pass stale.
 4. Каждый test step объявляет stats policy `required|optional|none`; built-in `unit` и `integration`
    defaults — `required`. Missing required capability блокирует readiness до spawn. Promised required
    stats, отсутствующие или malformed после execution, дают `VIOLATION`. Versioned normalized
@@ -450,16 +460,18 @@ evidence: directive/CLI cutover UV-13 начинается только посл
 6. Legacy byte parity активируется только explicit legacy overlay с provenance; no-overlay path не
    наследует legacy command/order semantics.
 
-UV-12E acceptance: invalid task/log identity возвращает CLI diagnostic и создаёт ноль entries;
-valid target получает одну entry до planning/readiness/spawn, включая `BLOCKED` и `ENV_FAIL` paths;
-adversarial recovery и все normalized terminal transitions; append-only failed/blocked/interrupted
+UV-12E acceptance: standalone Verify оставляет ticket byte-identical и отвергает SDD flags. SDD
+facade invalid task/log identity возвращает CLI diagnostic и создаёт ноль entries; valid target
+получает одну entry до mapping/planning/readiness/spawn, включая `BLOCKED` и `ENV_FAIL` paths; live
+concurrent owner блокируется без изменения первой entry; proven-orphan recovery и все normalized
+terminal transitions; append-only failed/blocked/interrupted
 history после нового pass; required/optional/none stats fixtures; deterministic
 identities/staleness; selector trust в report/ticket; overlay on/off остаются раздельными. UV-14 не
 удаляет independent compatibility runner до UV-13.
 
 ### VER-REQ-19 [должен · нештатная]
 
-**Когда** SDD Verify invocation получил valid task identity и exact writable `EXECUTION_LOG` target,
+**Когда** SDD facade получила valid task identity и exact writable `EXECUTION_LOG` target,
 **то evidence owner должен** создать ровно одну UV-12E entry по ACKed contract выше до
 planning/readiness/первого spawn, обновлять только entry с этим exact run id и атомарно завершить её
 одной из `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`. Recovery не имеет права удалять
@@ -469,6 +481,19 @@ Stats policy проверяется и на readiness, и на post-execution bo
 stats доминируют process success как `VIOLATION`. Freshness проверяет exact HEAD и все digest
 identities; trust не повышается с `local-runner` до remote по тексту selector-а без U5 provider
 evidence. Refines D-65/D-67/D-69.
+
+### VER-REQ-20 [должен · нештатная]
+
+**Когда** SDD phase dispatch классифицировал `PhaseFacts`, **то facts должны** породить два
+независимых продукта: immutable `RuleSnapshot` с exact prompt bodies для agent instructions и
+scope-aware Verify plan из executable providers. Rule metadata не является command registry.
+Provider selection идёт по exact phase artifacts/facts, не по primary stack: mixed TypeScript + Go
+
+- CSS/Bash scope выбирает union доступных rules/providers, и каждый affected provider блокирует
+  verdict. Один selector может выбрать разные declared DAG slices у разных providers. Project YAML
+  extends/overrides per-provider presets и может добавить config-only language/tool step; missing
+  required provider остаётся visible `BLOCKED`. Одинаковый RuleSnapshot digest проходит без
+  пересчёта через dispatch, Verify report и SDD sink; drift делает phase stale.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
@@ -858,7 +883,7 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 ### VERIFY-DL-5 / D-65 — Один Verify вместо двух движков и отдельного fix
 
 - **Status:** accepted; cutover in progress through U1..U4.
-- **Decision:** `gennady verify --phase <selector>` выполняет observe, repair, selective recheck и возвращает один typed report. Selector обязан быть объявлен preset/project YAML; core не выводит semantics из имени. Отдельного `gennady fix` нет; `sdd-verify` становится adapter + receipt sink до conditional legacy-overlay parity.
+- **Decision:** `gennady verify --phase <selector>` выполняет observe, repair, selective recheck и возвращает один typed report. Это universal SDD-agnostic surface: task flags, ticket reads/writes и EXECUTION_LOG persistence запрещены. Selector обязан быть объявлен preset/project YAML; core не выводит semantics из имени. Отдельного `gennady fix` нет; существующий `sdd-verify --task … --phase …` становится thin SDD facade, вызывает тот же engine и владеет SDD sinks.
 
 ### VERIFY-DL-6 / D-66 — Preset является одним DAG, phase является срезом
 
@@ -883,8 +908,10 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 
 - **Status:** implemented by UV-07 target planner; D-64 остаётся compatibility runtime до U4.
 - **Decision:** блокируют все обнаруженные стеки, затронутые scope; non-blocking разрешён только явной
-  reasoned project policy. Empty target = all-scope; root config affects all selected stacks;
-  unowned scope never passes vacuously. `stack.use` filters/orders detection without assignment.
+  reasoned project policy. Target architecture выбирает affected providers по `PhaseFacts`/artifacts,
+  не primary stack; один selector может дать разные slices provider DAG. Empty target = all-scope;
+  root config affects all selected providers; unowned scope never passes vacuously. `stack.use`
+  остаётся compatibility detection filter и не назначает отсутствующий provider.
 
 ### VERIFY-DL-9 / D-69 — Remote Verify закрепляет pipeline exact SHA
 
@@ -897,8 +924,9 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 
 - **Status:** accepted; canonical CLI/rules contract lives in [rules.spec.md](../rules/rules.spec.md),
   implementation deferred to U6.
-- **Decision:** colocated `*.rule.yaml` sidecars и один `RuleResolver` заменяют `knowledge.xml` после
-  equivalence proof. `gennady rules list/show/resolve` не запускает steps и не пишет receipts;
+- **Decision:** embedded lexical `<Meta>` headers в самих prompt files и один `RuleResolver` заменяют
+  `knowledge.xml` после entry-by-entry metadata/equivalence proof. Prompt не XML; XML validators
+  запрещены. `gennady rules list/show/resolve` не запускает steps и не пишет receipts;
   `resolve`, `verify --plan`, фактический report и SDD sink разделяют один snapshot digest.
 
 ### VERIFY-DL-11 — SDD kind и Verify selector являются разными open vocabulary
@@ -907,22 +935,38 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 - **Decision:** every built-in preset maps arbitrary SDD phase kinds to declared Verify selectors as
   zero-YAML defaults; project YAML overlays/overrides those entries with per-key provenance. Core
   assigns no semantics from selector spelling. `sdd-task` resolves the composed mapping and emits one
-  exact Verify invocation; agent never chooses individual gates/steps. Unresolved fails only after
-  composition. UV-22 supplies default/override/arbitrary-selector fixtures and is a dependency of
+  exact SDD facade invocation; facade invokes the universal engine; agent never chooses individual
+  gates/steps. Unresolved fails only after composition. UV-22 owns
+  default/override/arbitrary-selector fixtures and becomes a dependency of
   UV-13. Omitted `--phase` selecting `full` is an explicit compatibility/default-entry rule, never
   general name-based inference.
+
+### VERIFY-DL-12 — PhaseFacts freezes rules before work and independently selects Verify providers
+
+- **Status:** accepted by operator 2026-09-26; implementation precedes UV-12E/UV-13.
+- **Decision:** SDD dispatch classifies open-vocabulary `PhaseFacts`, resolves and freezes exact rule
+  bodies/snapshot before agent work, and passes the same digest to Verify and SDD evidence. The same
+  facts independently select executable providers; rule files never register commands. Mixed
+  language/tool scope selects the union, every affected provider blocks, and missing required
+  provider is visible `BLOCKED`.
+- **Ordering:** embedded RuleRegistry/header parser → PhaseFacts/classifier → deterministic resolver
+  → SDD RuleSnapshot integration → UV-12E journal → UV-13 cutover. `knowledge.xml` deletion remains
+  after entry-by-entry migration/equivalence, not before resolver integration.
 - **Legacy boundary:** byte parity is conditional on explicit legacy overlay/provenance and is not a
   universal default for new presets.
 
 ### VERIFY-CP-1 — Evidence/Receipt operator checkpoint
 
-- **Status:** **ACKED; implementation UV-12E blocks UV-13 together with UV-22.**
+- **Status:** **ACKED; embedded rules/snapshot integration and corrective UV-22 boundary precede
+  UV-12E, then all three block UV-13.**
 - **Decision:** after task identity and exact writable log target validation, every SDD Verify
   attempt owns one append-only ticket `EXECUTION_LOG` entry created before planning/readiness/spawn.
   It atomically moves from `RUNNING` to
   `PASS|FAIL|BLOCKED|ENV_FAIL|TIMEOUT|VIOLATION|CANCELLED`; deterministic recovery alone marks orphan
   `RUNNING` as `INTERRUPTED`. Failure before a valid log identity is a CLI diagnostic with no false
-  persistence claim. The compact human line is limited to run/phase/selector/state, steps `x/y`,
+  persistence claim. Active runner ownership blocks a second attempt without changing the first;
+  only proven dead/stale ownership permits INTERRUPTED recovery. The compact human line is limited
+  to run/phase/selector/state, steps `x/y`,
   per-test-step minimum counts and duration; bounded/redacted detail remains in the CLI report.
 - **Machine identity:** the structured entry contains run id/timestamps, exact HEAD,
   uncommitted-state-aware worktree/scope digest, plan digest, preset/config provenance digest and
@@ -936,8 +980,9 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
   deterministic runner-owned validation, not cryptographic/tamper-proof.
 - **Legacy boundary:** byte parity remains conditional on explicit legacy overlay/provenance and is
   never inferred on the no-overlay path.
-- **Implementation gate:** UV-12E owns evidence model, local SDD journal, stats, freshness and trust
-  projection. UV-13 starts only after UV-22 and UV-12E land and pass review.
+- **Implementation gate:** UV-12E owns evidence model, local SDD facade journal, stats, freshness and
+  trust projection. UV-13 starts only after embedded RuleRegistry/PhaseFacts/RuleSnapshot integration,
+  corrective UV-22 boundary and UV-12E land and pass review.
 
 </details>
 
@@ -973,9 +1018,16 @@ _Кто подключит `verify` к своему ладдеру и какая
   `resolve-multistack.ts`; U3 owns execution and legacy remains unchanged through U4 parity.
 - **UV-07 planner tests:** `shared/verify/__tests__/multistack-planner.test.ts` cover conservative
   scope, detected intersection/order, cross-plugin closure, policy and anystack fallback.
-- **U4 batch queue:** UV-22 supplies declarative selectors/composed kind mapping; ACKed U4-ER is
-  implemented by UV-12E (attempt journal, stats, freshness identities, selector trust); only then
-  UV-13 may cut phase-agent/directive surfaces over, and UV-14 may remove the compatibility runner.
+- **U4 batch queue:** corrective UV-22 keeps declarative selectors/mapping but moves task flags to
+  the SDD facade. Embedded RuleRegistry/header parser, PhaseFacts, deterministic RuleResolver and
+  SDD RuleSnapshot integration follow before UV-12E. UV-12E implements the facade-owned journal,
+  stats, freshness, trust and active-owner serialization; only then UV-13 may cut phase-agent/
+  directive surfaces over, and UV-14 may remove the compatibility ladder.
+- **Required boundary tests:** standalone Verify rejects `--task`/`--sdd-phase` and leaves a ticket
+  byte-identical; the SDD facade persists success, failure and retained attempt history from the
+  same report; live owner blocks unchanged and proven orphan alone becomes INTERRUPTED. Mixed
+  TS+Go+CSS/Bash facts select every available provider and visibly block a missing required one;
+  identical facts keep one RuleSnapshot digest across rules resolve, dispatch, report and sink.
 - **Target config files created by UV-03:** `shared/verify/config/**` and
   `shared/verify/planning/compose-presets.ts`; the existing stack loader/runtime is unchanged.
 - **Config contract tests:** `shared/verify/__tests__/{verify-config,legacy-verify-config}.test.ts`;
