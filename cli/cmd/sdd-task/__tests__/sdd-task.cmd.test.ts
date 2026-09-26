@@ -908,26 +908,18 @@ describe('SddTaskCommand', () => {
         assert.strictEqual(outcome.ok, true);
         if (!outcome.ok) return;
         assert.match(outcome.text, /\[sdd-task\] cli-foo — P1 impl  status=\[ \]/);
-        const fix = outcome.text.match(
-          /^ {2}gate-state: fix CONFIGURED provider=none next=run .*gofmt -w .*\/src\/foo\.go$/m
+        assert.match(outcome.text, /selector: code ← builtin:golang/);
+        assert.match(
+          outcome.text,
+          /command:\s+npx gennady verify --phase=code --task=specs\/cli\/core\/core\.task\.cli-foo\.md --sdd-phase=P1/
         );
-        const types = outcome.text.match(
-          /^ {2}gate-state: type-check CONFIGURED provider=none next=run .*go build -o \/dev\/null \.\/src && .*go vet \.\/src$/m
-        );
-        const test = outcome.text.match(
-          /^ {2}gate-state: test CONFIGURED provider=none next=run .*go test -timeout=540s \.\/src$/m
-        );
-        assert.ok(fix, outcome.text);
-        assert.ok(types, outcome.text);
-        assert.ok(test, outcome.text);
-        assert.ok((fix.index ?? -1) < (types.index ?? -1));
-        assert.ok((types.index ?? -1) < (test.index ?? -1));
+        assert.doesNotMatch(outcome.text, /gate-state:|next=run .*go/);
       } finally {
         rmSync(goRoot, { recursive: true, force: true });
       }
     });
 
-    it('emits a compact single-phase context: objective, gates+hint, exit, filtered read-manifest', async () => {
+    it('emits a compact single-phase context with one mapped Verify invocation', async () => {
       const t = join(dir, 'phased.md');
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
@@ -936,12 +928,14 @@ describe('SddTaskCommand', () => {
       const text = outcome.text;
       assert.match(text, /\[sdd-task\] cli-foo — P2 test  status=\[ \]/);
       assert.match(text, /objective:   test foo/);
-      assert.match(text, /gates:\n {2}npm run test — /);
-      assert.doesNotMatch(text, /^ {2}npm run type-check — /m);
+      assert.match(text, /verification:\n {2}selector: unit ← builtin:node/);
       assert.match(
         text,
-        /^ {2}gate-state: type-check CONFIGURED provider=none next=run npm run type-check$/m
+        /command:\s+npx gennady verify --phase=unit --task=phased\.md --sdd-phase=P2/
       );
+      assert.match(text, /agent must not select individual gates/);
+      assert.strictEqual((text.match(/npx gennady verify/g) ?? []).length, 1);
+      assert.doesNotMatch(text, /gate-state:|npm run test —/);
       assert.match(text, /exit:        all scenarios pass/);
       assert.match(text, /READ rules:  ai\/directives\/testing\/node-test\.xml/);
       assert.match(text, /READ ticket: PHASE_P2, BDD, VERIFICATION, TEST_COVERAGE/);
@@ -951,6 +945,94 @@ describe('SddTaskCommand', () => {
       assert.ok(text.includes(`TMP_DIR=${join(dir, '.tmp')}`));
       assert.match(text, /обязательные к запоминанию поля: WORKING_DIR, TMP_DIR/);
       assert.match(text, /искать примеры вне них запрещено\.$/);
+    });
+
+    it('resolves a project-owned workflow kind to an arbitrary selector and emits one command', async () => {
+      const customRoot = mkdtempSync(join(tmpdir(), 'sdd-task-custom-selector-'));
+      const customTicket = join(customRoot, 'custom.task.cli-foo.md');
+      try {
+        markLegacyFlow(customRoot);
+        writeDeclaredPhaseTargets(customRoot);
+        writeFileSync(
+          join(customRoot, 'package.json'),
+          JSON.stringify({ name: 'custom-selector-fixture', scripts: {} }),
+          'utf-8'
+        );
+        writeFileSync(
+          join(customRoot, 'go.mod'),
+          'module example.com/unaffected\n\ngo 1.22\n',
+          'utf-8'
+        );
+        writeFileSync(
+          join(customRoot, 'gennady.yaml'),
+          [
+            'verify:',
+            '  sdd:',
+            '    mapping:',
+            '      ReleaseCandidate: release-check',
+            '  presets:',
+            '    node:',
+            '      phases:',
+            '        release-check: { include: [release] }',
+            '      steps:',
+            '        release-proof:',
+            '          tags: [release]',
+            '          needs: [unit]',
+            '          executor: local',
+            '          effect: observe',
+            '          command:',
+            '            argv: [node, verify-deploy.mjs]',
+            '            cwd: .',
+            '          timeout: 2m',
+            '          onFailure: stop-phase',
+            '',
+          ].join('\n'),
+          'utf-8'
+        );
+        writeFileSync(
+          customTicket,
+          PHASED_TICKET.replace('| P1 | impl | — | [x] |', '| P1 | ReleaseCandidate | — | [ ] |'),
+          'utf-8'
+        );
+
+        const outcome = await mod.run(argv(customTicket, '--phase', 'P1'));
+        assert.strictEqual(outcome.ok, true);
+        if (!outcome.ok) return;
+        assert.match(outcome.text, /selector: release-check ← gennady\.yaml/);
+        assert.match(
+          outcome.text,
+          /npx gennady verify --phase=release-check --task=custom\.task\.cli-foo\.md --sdd-phase=P1/
+        );
+        assert.strictEqual((outcome.text.match(/npx gennady verify/g) ?? []).length, 1);
+        assert.doesNotMatch(outcome.text, /sdd-verify|npm run type-check —|npm run test —/);
+      } finally {
+        rmSync(customRoot, { recursive: true, force: true });
+      }
+    });
+
+    it('fails closed after composition when an open workflow kind remains unmapped', async () => {
+      const customRoot = mkdtempSync(join(tmpdir(), 'sdd-task-unmapped-selector-'));
+      const customTicket = join(customRoot, 'custom.task.cli-foo.md');
+      try {
+        markLegacyFlow(customRoot);
+        writeExecutionReadyInfra(customRoot);
+        writeDeclaredPhaseTargets(customRoot);
+        writeFileSync(
+          customTicket,
+          PHASED_TICKET.replace('| P1 | impl | — | [x] |', '| P1 | deploy | — | [ ] |'),
+          'utf-8'
+        );
+
+        const outcome = await mod.run(argv(customTicket, '--phase', 'P1'));
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_TASK_PHASE_EVIDENCE');
+        assert.match(outcome.message, /VERIFY_CONFIG_UNRESOLVED_SDD_KIND/);
+        assert.match(outcome.message, /verify\.sdd\.mapping\.deploy/);
+        assert.doesNotMatch(outcome.message, /npx gennady verify|npm run test/);
+      } finally {
+        rmSync(customRoot, { recursive: true, force: true });
+      }
     });
 
     it('rejects a raw pipeline/extra Verification cell before emitting phase context', async () => {
@@ -1083,12 +1165,15 @@ describe('SddTaskCommand', () => {
       if (!outcome.ok) return;
       assert.match(
         outcome.text,
-        /исполняй переданный worker contract без сокращений, запусти точный sdd-verify и верни typed Handoff оркестратору\./
+        /исполняй переданный worker contract без сокращений, запусти ровно unified Verify command above/
       );
       assert.match(outcome.text, /worker contract \(copy verbatim into dispatch\)/);
       assert.match(outcome.text, /NEVER READ: node_modules\/gennady\/\*\* · dist\/\*\*/);
       assert.match(outcome.text, /at most one target-local hypothesis/);
-      assert.match(outcome.text, /only the exact sdd-verify may append its receipt/);
+      assert.match(
+        outcome.text,
+        /only the exact unified Verify invocation above may own evidence\/receipt/
+      );
       assert.doesNotMatch(outcome.text, /по завершении sdd-log/);
     });
 

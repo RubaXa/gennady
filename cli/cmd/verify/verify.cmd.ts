@@ -4,14 +4,23 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import { relative } from 'node:path';
+import { validateTicketReviewPaths } from '../../../shared/sdd/audit-group.ts';
+import { extractSection } from '../../../shared/sdd/section.ts';
+import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
+import { resolveTicketArg } from '../../../shared/sdd/ticket-resolve.ts';
 import {
   emitSddReceipt,
   type SddReceiptCommandBinding,
 } from '../../../shared/sdd/verify/sdd-receipt-sink.ts';
 import type { SddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
+import type { VerifyScope } from '../../../shared/verify/model/verify-context.type.ts';
 import type { VerifyRunReport } from '../../../shared/verify/model/verify-report.type.ts';
-import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/resolve-multistack.ts';
+import {
+  resolveMultistackVerifyPlan,
+  resolveProjectSddVerifySelector,
+} from '../../../shared/verify/planning/resolve-multistack.ts';
 import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
 import { renderVerifyJson } from '../../../shared/verify/reporting/json-reporter.ts';
 import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.ts';
@@ -20,6 +29,12 @@ import type { VerifyInvocation } from './verify.types.ts';
 
 type SddReceiptPersistence = NonNullable<Parameters<typeof emitSddReceipt>[4]>;
 type SddReceiptSinkResult = Awaited<ReturnType<typeof emitSddReceipt>>;
+type SddRequest = {
+  readonly task: string;
+  readonly sddPhase: string;
+  readonly scope: VerifyScope;
+  readonly deletedFiles: readonly string[];
+};
 
 function headSha(root: string): string {
   const sha = execFileSync('git', ['-C', root, 'rev-parse', '--verify', 'HEAD'], {
@@ -39,6 +54,59 @@ function exitCodeFor(report: VerifyRunReport): number {
 function errorMessage(cause: unknown): string {
   if (cause instanceof Error) return `[verify] ${cause.message}`;
   return `[verify] ${String(cause)}`;
+}
+
+function resolveInvocationSddRequest(
+  root: string,
+  invocation: VerifyInvocation
+): SddRequest | undefined {
+  if (invocation.sdd === undefined) return undefined;
+  const resolved = resolveTicketArg(invocation.sdd.task, root);
+  if (!resolved.ok) {
+    const detail = 'detail' in resolved ? resolved.detail : resolved.reason;
+    throw new Error(
+      `ERR_CLI_VERIFY_SDD_CONTEXT: cannot resolve ticket ${JSON.stringify(invocation.sdd.task)}: ${detail}`
+    );
+  }
+  const overview = extractSection(resolved.content, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') {
+    throw new Error('ERR_CLI_VERIFY_SDD_CONTEXT: ticket has no readable PHASES_OVERVIEW');
+  }
+  const phases = parsePhasesOverview(overview.content);
+  const phaseIndex = phases.findIndex((phase) => phase.id === invocation.sdd?.phase);
+  const phase = phases[phaseIndex];
+  if (phase === undefined) {
+    throw new Error(
+      `ERR_CLI_VERIFY_SDD_CONTEXT: phase ${JSON.stringify(invocation.sdd.phase)} is absent from the ticket`
+    );
+  }
+  const paths = validateTicketReviewPaths(root, resolved.content, {
+    phaseIds: [phase.id],
+    targetExpectation: 'existing',
+    deletedPhaseIds: phases.slice(0, phaseIndex + 1).map((candidate) => candidate.id),
+    handoffPhaseIds: [],
+  });
+  if (!paths.ok) {
+    throw new Error(
+      `ERR_CLI_VERIFY_SDD_CONTEXT: ${relative(root, resolved.path)} declares invalid path ${JSON.stringify(paths.path)}: ${paths.detail}`
+    );
+  }
+  const scope = {
+    mode: 'files' as const,
+    files: [...new Set([...paths.paths.targets, ...paths.paths.deleted])].sort(),
+  };
+  const selection = resolveProjectSddVerifySelector(root, phase.kind, { scope });
+  if (selection.selector !== invocation.phase) {
+    throw new Error(
+      `ERR_CLI_VERIFY_SDD_CONTEXT: workflow kind ${JSON.stringify(phase.kind)} resolves to selector ${JSON.stringify(selection.selector)} from ${selection.source}, not requested ${JSON.stringify(invocation.phase)}; rerun sdd-task for the canonical invocation`
+    );
+  }
+  return {
+    task: relative(root, resolved.path).split('\\').join('/'),
+    sddPhase: phase.id,
+    scope,
+    deletedFiles: [...paths.paths.deleted],
+  };
 }
 
 /**
@@ -78,11 +146,14 @@ export async function runVerifyCommand(
     if (invocation.planOnly && options.sdd?.persist !== undefined) {
       throw new Error('an SDD receipt sink cannot be enabled for read-only --plan output');
     }
+    if (invocation.sdd !== undefined && options.sdd !== undefined) {
+      throw new Error('SDD request identity must come from either CLI flags or a receipt context');
+    }
+    const sddRequest =
+      resolveInvocationSddRequest(canonicalRoot, invocation) ?? options.sdd?.context.request;
     const planning = resolveMultistackVerifyPlan(canonicalRoot, invocation.phase, {
-      scope: options.sdd?.context.request.scope ?? { mode: 'all', files: [] },
-      ...(options.sdd === undefined
-        ? {}
-        : { knownDeletedFiles: options.sdd.context.request.deletedFiles }),
+      scope: sddRequest?.scope ?? { mode: 'all', files: [] },
+      ...(sddRequest === undefined ? {} : { knownDeletedFiles: sddRequest.deletedFiles }),
       ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
     });
     const plannedHeadSha = headSha(canonicalRoot);
@@ -99,13 +170,13 @@ export async function runVerifyCommand(
       headSha: plannedHeadSha,
       planning,
       execution,
-      ...(options.sdd === undefined
+      ...(sddRequest === undefined
         ? {}
         : {
             sdd: {
-              task: options.sdd.context.request.task,
-              phase: options.sdd.context.request.sddPhase,
-              deletedFiles: options.sdd.context.request.deletedFiles,
+              task: sddRequest.task,
+              phase: sddRequest.sddPhase,
+              deletedFiles: sddRequest.deletedFiles,
             },
           }),
     });

@@ -13,6 +13,11 @@ export function renderVerifyText(report: VerifyRunReport, root: string, planOnly
   lines.push(
     `scope=${scope.mode}${scope.changedFrom === undefined ? '' : ` from=${scope.changedFrom}`} files=${scope.files.length === 0 ? '<all>' : scope.files.join(',')}`
   );
+  if (report.context.request.task !== undefined) {
+    lines.push(
+      `sdd=${safeVerifyText(report.context.request.task, root)}#${safeVerifyText(report.context.request.sddPhase ?? '<unknown>', root)}`
+    );
+  }
   lines.push(`plugins=${report.context.plugins.join(',') || '<none>'}`);
   lines.push(`head=${report.context.headSha}`);
   lines.push(`rules=pre-resolver ${report.rules.digest}`);

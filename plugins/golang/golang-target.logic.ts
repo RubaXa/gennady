@@ -12,7 +12,10 @@ import type {
   VerifyStepWaiver,
 } from '../../shared/verify/config/verify-config.type.ts';
 import { VerifyConfigError } from '../../shared/verify/config/verify-config.error.ts';
-import type { VerifyPreset } from '../../shared/verify/model/verify-preset.type.ts';
+import {
+  BUILTIN_SDD_KIND_SELECTORS,
+  type VerifyPreset,
+} from '../../shared/verify/model/verify-preset.type.ts';
 import type {
   CapabilityMatrix,
   VerifyReadiness,
@@ -388,6 +391,7 @@ export function createGolangVerifyPreset(
       coverage: { include: ['code', 'unit', 'integration', 'coverage'] },
       full: { include: ['code', 'unit', 'integration', 'coverage'] },
     },
+    sddKinds: BUILTIN_SDD_KIND_SELECTORS,
     requirements: [
       {
         id: 'golang:go-mod',
@@ -590,7 +594,10 @@ export function materializeGolangVerifyConfig(
     ...loaded,
     config:
       errors.length === 0
-        ? { presets: { ...loaded.config.presets, golang: { ...plugin, steps } } }
+        ? {
+            ...loaded.config,
+            presets: { ...loaded.config.presets, golang: { ...plugin, steps } },
+          }
         : null,
     errors,
     provenance,

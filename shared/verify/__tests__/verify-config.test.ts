@@ -8,7 +8,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { DetectedVerifyConfigLayer, VerifyConfigError, VerifyPreset } from '../plugin-api.ts';
-import { composePresets, loadVerifyConfig } from '../plugin-api.ts';
+import {
+  composePresets,
+  loadVerifyConfig,
+  resolveSddVerifySelector,
+  selectPhase,
+} from '../plugin-api.ts';
 import { loadConfigSection } from '../../../services/config/config-loader.ts';
 
 type VerifyConfigContext = {
@@ -69,6 +74,7 @@ function createVerifyConfigContext(): VerifyConfigContext {
       code: { include: ['code'] },
       test: { include: ['test'] },
     },
+    sddKinds: { impl: 'code', test: 'test' },
     requirements: [],
     rules: [],
   };
@@ -98,12 +104,18 @@ describe('target verify config', () => {
       context.writeProject(
         '.gennadyrc',
         JSON.stringify({
-          verify: { presets: { node: { steps: { unit: { tags: ['project'] } } } } },
+          verify: {
+            sdd: { mapping: { impl: 'test' } },
+            presets: { node: { steps: { unit: { tags: ['project'] } } } },
+          },
         })
       );
       context.writePersonal(
         JSON.stringify({
-          verify: { presets: { node: { steps: { unit: { tags: ['personal'] } } } } },
+          verify: {
+            sdd: { mapping: { impl: 'code' } },
+            presets: { node: { steps: { unit: { tags: ['test', 'personal'] } } } },
+          },
         })
       );
 
@@ -123,8 +135,16 @@ describe('target verify config', () => {
         )['unit']?.['tags'],
         ['project']
       );
-      assert.deepStrictEqual(target.config?.presets.node?.steps.unit?.tags, ['personal']);
+      assert.deepStrictEqual(target.config?.presets.node?.steps.unit?.tags, ['test', 'personal']);
+      assert.strictEqual(target.config?.sdd?.mapping.impl, 'code');
       assert.strictEqual(target.provenance.get('presets.node.steps.unit.tags'), '~/.gennadyrc');
+      assert.strictEqual(target.provenance.get('sdd.mapping.impl'), '~/.gennadyrc');
+      const composed = composePresets({ presets: context.presets, files: target });
+      assert.deepStrictEqual(resolveSddVerifySelector(composed, 'impl'), {
+        kind: 'impl',
+        selector: 'code',
+        source: '~/.gennadyrc',
+      });
       assert.deepStrictEqual(target.sources, ['~/.gennadyrc', '.gennadyrc']);
     } finally {
       context.cleanup();
@@ -357,7 +377,7 @@ describe('target verify config', () => {
     }
   });
 
-  it('fails closed on unknown plugin, step and field without returning a partial config', () => {
+  it('fails closed on unknown plugin, incomplete custom step and field without partial config', () => {
     const context = createVerifyConfigContext();
     try {
       context.writeProject(
@@ -379,8 +399,8 @@ describe('target verify config', () => {
       expectLoadError(loaded.errors, 'VERIFY_CONFIG_UNKNOWN_PLUGIN', 'verify.presets.rust');
       expectLoadError(
         loaded.errors,
-        'VERIFY_CONFIG_UNKNOWN_STEP',
-        'verify.presets.node.steps.absent'
+        'VERIFY_CONFIG_INVALID_TYPE',
+        'verify.presets.node.steps.absent.tags'
       );
       expectLoadError(
         loaded.errors,
@@ -388,6 +408,134 @@ describe('target verify config', () => {
         'verify.presets.node.steps.unit.timeot'
       );
       assert.strictEqual(loaded.config, null);
+    } finally {
+      context.cleanup();
+    }
+  });
+
+  it('adds one declarative step, selects it by an arbitrary id and composes SDD mapping provenance', () => {
+    const context = createVerifyConfigContext();
+    try {
+      context.writeProject(
+        'gennady.yaml',
+        [
+          'verify:',
+          '  sdd:',
+          '    mapping:',
+          '      release-candidate: deploy',
+          '  presets:',
+          '    node:',
+          '      phases:',
+          '        deploy: { include: [deploy] }',
+          '      steps:',
+          '        deploy:',
+          '          tags: [deploy]',
+          '          needs: [unit]',
+          '          executor: local',
+          '          effect: observe',
+          '          command:',
+          '            argv: [node, verify-deploy.mjs]',
+          '            cwd: .',
+          '          timeout: 2m',
+          '          onFailure: stop-phase',
+          '',
+        ].join('\n')
+      );
+
+      const loaded = loadVerifyConfig(context.root, context.presets, context.home);
+      assert.deepStrictEqual(loaded.errors, []);
+      const composed = composePresets({ presets: context.presets, files: loaded });
+      const mapping = resolveSddVerifySelector(composed, 'release-candidate');
+      const plan = selectPhase(composed.presets, mapping.selector);
+
+      assert.deepStrictEqual(mapping, {
+        kind: 'release-candidate',
+        selector: 'deploy',
+        source: 'gennady.yaml',
+      });
+      assert.deepStrictEqual(
+        plan.steps.map((step) => step.id),
+        ['node:type-check', 'node:unit', 'node:deploy'],
+        'the selector contributes one seed while needs supplies the complete dependency closure'
+      );
+      assert.strictEqual(
+        composed.provenance.get('verify.presets.node.phases.deploy.include'),
+        'gennady.yaml'
+      );
+      assert.strictEqual(
+        composed.provenance.get('verify.sdd.mapping.release-candidate'),
+        'gennady.yaml'
+      );
+    } finally {
+      context.cleanup();
+    }
+  });
+
+  it('fails only after mapping composition when kind is unresolved or selector is undeclared', () => {
+    const context = createVerifyConfigContext();
+    try {
+      const defaults = composePresets({ presets: context.presets });
+      assert.throws(
+        () => resolveSddVerifySelector(defaults, 'deploy'),
+        (error: unknown) => {
+          const typed = error as VerifyConfigError;
+          assert.strictEqual(typed.code, 'VERIFY_CONFIG_UNRESOLVED_SDD_KIND');
+          assert.strictEqual(typed.path, 'verify.sdd.mapping.deploy');
+          return true;
+        }
+      );
+
+      context.writeProject(
+        'gennady.yaml',
+        'verify:\n  sdd:\n    mapping:\n      deploy: missing-selector\n'
+      );
+      const composed = composePresets({
+        presets: context.presets,
+        files: loadVerifyConfig(context.root, context.presets, context.home),
+      });
+      assert.throws(
+        () => resolveSddVerifySelector(composed, 'deploy'),
+        (error: unknown) => {
+          const typed = error as VerifyConfigError;
+          assert.strictEqual(typed.code, 'VERIFY_CONFIG_UNKNOWN_SELECTOR');
+          assert.strictEqual(typed.source, 'gennady.yaml');
+          assert.match(typed.hint, /verify\.presets\.<plugin>\.phases\.missing-selector/);
+          return true;
+        }
+      );
+    } finally {
+      context.cleanup();
+    }
+  });
+
+  it('lets an explicit project mapping resolve disagreeing built-in defaults', () => {
+    const context = createVerifyConfigContext();
+    try {
+      const node = context.presets[0]!;
+      const golang: VerifyPreset = {
+        ...node,
+        plugin: 'golang',
+        steps: node.steps.map((step) => ({ ...step, plugin: 'golang' })),
+        sddKinds: { impl: 'test' },
+      };
+      assert.throws(
+        () => composePresets({ presets: [node, golang] }),
+        (error: unknown) => {
+          const typed = error as VerifyConfigError;
+          assert.strictEqual(typed.code, 'VERIFY_CONFIG_CONFLICTING_SDD_DEFAULT');
+          assert.strictEqual(typed.path, 'verify.sdd.mapping.impl');
+          return true;
+        }
+      );
+
+      context.writeProject('gennady.yaml', 'verify:\n  sdd:\n    mapping:\n      impl: code\n');
+      const loaded = loadVerifyConfig(context.root, [node, golang], context.home);
+      const composed = composePresets({ presets: [node, golang], files: loaded });
+      assert.deepStrictEqual(resolveSddVerifySelector(composed, 'impl'), {
+        kind: 'impl',
+        selector: 'code',
+        source: 'gennady.yaml',
+      });
     } finally {
       context.cleanup();
     }

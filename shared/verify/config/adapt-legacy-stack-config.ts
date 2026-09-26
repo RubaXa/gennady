@@ -201,7 +201,7 @@ export function adaptLegacyStackConfig(
           'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
           legacyPath,
           'extraGates cannot be converted without inventing tags, dependencies, effect and failure policy',
-          'keep the legacy runtime until declarative custom steps ship in UV-22, then migrate each gate explicitly',
+          'migrate each gate explicitly to verify.presets.<plugin>.steps before removing the legacy runtime',
           legacySource(provenance, legacyPath)
         )
       );

@@ -49,7 +49,7 @@ import {
   type ActiveStack,
 } from '../stack-registry.ts';
 import type { StackConfig } from '../verify.types.ts';
-import { composePresets } from './compose-presets.ts';
+import { composePresets, resolveSddVerifySelector } from './compose-presets.ts';
 import { normalizeTargetFiles } from './normalize-target-files.ts';
 import { selectPhase } from './select-phase.ts';
 
@@ -314,6 +314,7 @@ function filterConfigLoad(
   return {
     ...load,
     config: {
+      ...load.config,
       presets: Object.fromEntries(
         Object.entries(load.config.presets).filter(([plugin]) => plugins.has(plugin))
       ),
@@ -386,6 +387,82 @@ function stackConfigError(error: { readonly path: string; readonly message: stri
     error.path,
     error.message,
     'fix the strict stack config before target multistack planning'
+  );
+}
+
+/**
+ * @purpose Resolve an SDD workflow kind through detected built-in defaults and project overrides.
+ * @param root Absolute repository root used for stack detection and config loading.
+ * @param kind Exact open-vocabulary SDD workflow kind.
+ * @param [options] Target scope and optional isolated personal-config directory.
+ * @returns One selector and the winning default or project provenance source.
+ */
+export function resolveProjectSddVerifySelector(
+  root: string,
+  kind: string,
+  options: { readonly homeDirectory?: string; readonly scope?: VerifyScope } = {}
+): { readonly kind: string; readonly selector: string; readonly source: string } {
+  const scope = options.scope ?? { mode: 'all', files: [] };
+  const allDetected = detectStacks(root, null, BUILTIN_STACK_PLUGINS).filter(
+    (entry) => entry.plugin.target !== undefined
+  );
+  const vocabulary = allDetected.map((active) =>
+    prepareStack(active, { mode: 'all', files: [] }, [])
+  );
+  const gateIds = {
+    ...BUILTIN_GATE_IDS,
+    ...Object.fromEntries(
+      vocabulary.map((stack) => [stack.active.plugin.id, stack.preset.steps.map((step) => step.id)])
+    ),
+  };
+  const stackLoad = loadStackConfig(
+    root,
+    gateIds,
+    options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
+  );
+  if (stackLoad.errors[0] !== undefined) stackConfigError(stackLoad.errors[0]);
+  const selected = [...detectTargetStacks(root, stackLoad.config)];
+  const globalScope = scope.mode === 'all' || scope.files.length === 0 || rootConfigInScope(scope);
+  let participating = selected.filter(
+    ({ plugin, detection }) => globalScope || plugin.target?.affectsScope(detection, scope) === true
+  );
+  if (participating.length === 0 && scope.files.length > 0 && stackLoad.config?.use === undefined) {
+    const fallback = allDetected.find((entry) => entry.plugin.id === anystackPlugin.id);
+    if (
+      fallback !== undefined &&
+      !selected.some((entry) => entry.plugin.id === fallback.plugin.id)
+    ) {
+      selected.push(fallback);
+      participating = [fallback];
+    }
+  }
+  if (selected.length === 0) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_UNKNOWN_PLUGIN',
+      'stack.use',
+      'no target plugin participates in SDD selector mapping',
+      'remove absent stack.use ids or configure the detected anystack preset'
+    );
+  }
+  const prepared = selected.map((active) => prepareStack(active, { mode: 'all', files: [] }, []));
+  const selectedIds = new Set(selected.map((entry) => entry.plugin.id));
+  let files = loadVerifyConfig(
+    root,
+    vocabulary.map((stack) => stack.preset),
+    options.homeDirectory
+  );
+  if (files.errors[0] !== undefined) throw files.errors[0];
+  files = filterConfigLoad(materializeFiles(files, prepared), selectedIds);
+  if (files.errors[0] !== undefined) throw files.errors[0];
+  const composed = composePresets({
+    presets: prepared.map((stack) => stack.preset),
+    detected: prepared.flatMap((stack) => (stack.detected === undefined ? [] : [stack.detected])),
+    files,
+  });
+  return resolveSddVerifySelector(
+    composed,
+    kind,
+    participating.map((entry) => entry.plugin.id)
   );
 }
 

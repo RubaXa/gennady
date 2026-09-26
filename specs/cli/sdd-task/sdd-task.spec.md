@@ -102,7 +102,7 @@ Gates (all):
 | --------------------------------------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run`                                                                                                           | Command      | Точка входа CLI: извлечение планировочных секций, сборка, формат (или `--phase`)                                                                                                             |
 | `formatPlan`                                                                                                    | Utility      | Рендер планировочной поверхности + per-phase manifest + DO-NOT-READ                                                                                                                          |
-| `formatPhase`                                                                                                   | Utility      | Рендер компактного контекста одной фазы (`--phase`): gates+hint, exit, READ/CREATE lifecycle manifest, `[HANDOFF]`                                                                           |
+| `formatPhase`                                                                                                   | Utility      | Рендер одной фазы: resolved Verify selector/source, one canonical invocation, exit, READ/CREATE manifest, `[HANDOFF]`                                                                        |
 | `gateHint`                                                                                                      | Utility      | Однострочник «как удовлетворить» для gate-команды, по ключевому слову                                                                                                                        |
 | `phaseNotFound`                                                                                                 | Utility      | Билдер диагностики: неизвестный `--phase`, exit 2                                                                                                                                            |
 | `ruleId`                                                                                                        | Utility      | rule-link → rule-id (basename без `.xml`) для матчинга gate                                                                                                                                  |
@@ -123,6 +123,7 @@ Gates (all):
 | `badInvocation` / `fileError` / `notATicket` / `unknownIdError` / `ambiguousIdError` / `verificationTableError` | Utility      | Билдеры диагностик, включая fail-before-context malformed Verification                                                                                                                       |
 | `MetaInfo` / `SpecRef` / `PhaseOverview` / `PhaseDetail` / `Gate`                                               | Value Object | Структуры тикета (`shared/sdd/ticket`)                                                                                                                                                       |
 | `TicketCoveragePolicy` / `CoverageGate`                                                                         | Value Object | Пер-тикет политика покрытия и её task-scoped транспорт без реконструкции                                                                                                                     |
+| `resolveProjectSddVerifySelector`                                                                               | Service      | Composed zero-YAML/project mapping from open SDD kind to a selector declared by scope-participating presets                                                                                  |
 | `TaskOutcome`                                                                                                   | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                                                                                                     |
 
 <!--/SECTION:ENTITY_INVENTORY-->
@@ -171,7 +172,19 @@ Gates (all):
 
 ### 5.1 `--phase P<n>` — компактный контекст одной фазы
 
-Печатает только то, что фаза читает: `objective`, `gates` (каждый — с однострочником «как удовлетворить»), `exit`, read-манифест (rules · specs · ticket-секции · target-файлы), и, если это не первая фаза, `[HANDOFF]` — дословные `**Handoff →**`-строки из `EXECUTION_LOG` предыдущих завершённых (`[x]`) фаз, с префиксом `Handoff ←P<k>:`. `READ specs` берёт фазовое поле `Spec Refs` (см. `PHASE_P<n>` в task-ticket-structure), если оно объявлено; иначе — весь список Meta Spec References (обратная совместимость со старыми тикетами без этого поля). Завершается строкой `next:` — прочитать перечисленное, исполнить фазу по протоколу, залогировать `sdd-log` + Handoff-строку. Неизвестный `--phase` → exit 2 с перечнем известных фаз.
+Печатает только то, что фаза читает: `objective`, composed Verify `selector` и provenance, ровно одну
+canonical invocation `gennady verify --phase=<selector> --task=<ticket> --sdd-phase=<P>`, `exit`,
+read-манифест (rules · specs · ticket-секции · target-файлы), и, если это не первая фаза,
+`[HANDOFF]` — дословные `**Handoff →**`-строки из `EXECUTION_LOG` предыдущих завершённых (`[x]`)
+фаз, с префиксом `Handoff ←P<k>:`. `READ specs` берёт фазовое поле `Spec Refs` (см.
+`PHASE_P<n>` в task-ticket-structure), если оно объявлено; иначе — весь список Meta Spec References
+(обратная совместимость со старыми тикетами без этого поля). SDD kind is open vocabulary: presets
+provide zero-YAML mappings and `verify.sdd.mapping` overrides them with provenance. The exact phase
+Target/Deleted scope decides which detected presets participate; unresolved kind or undeclared
+selector fails before emitting a worker command. The agent never selects individual gates. Output
+renders every invocation token with deterministic POSIX-shell quoting, so a valid ticket path with
+spaces or metacharacters remains one exact `--task` argument. It ends with `next:` directing the
+worker to execute exactly that invocation. Неизвестный `--phase` → exit 2 с перечнем известных фаз.
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 

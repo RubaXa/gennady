@@ -165,39 +165,36 @@ function draft60Repo(): { root: string } {
 }
 
 describe('draft.60 Node infrastructure boundary', { concurrency: true }, () => {
-  it('does not call a future-config typecheck after sdd-task declared no P1 gate', () => {
+  it('maps the phase once while the compatibility runner still blocks a future-config gate', () => {
     const { root } = draft60Repo();
     try {
       const phase = runCli(['sdd-task', INSTALL_TICKET, '--phase', 'P1'], root);
       const verify = runCli(['sdd-verify', '--task', INSTALL_TICKET, '--phase', 'P1'], root);
       const verifyOutput = `${verify.stdout}${verify.stderr}`;
-      const taskStateLine = phase.stdout.match(/^\s*gate-state: type-check .+$/m)?.[0]?.trim();
       const verifyStateLine = verifyOutput.match(/^\s*gate-state: type-check .+$/m)?.[0]?.trim();
       assert.deepStrictEqual(
         {
           phaseExitCode: phase.exitCode,
-          taskGateState: /none required by this phase's rules/.test(phase.stdout)
-            ? 'NONE'
-            : phase.stdout.includes('PREREQUISITE_PENDING')
-              ? 'PREREQUISITE_PENDING'
-              : 'OTHER',
+          phaseSelectorMapped: phase.stdout.includes('selector: code ← builtin:node'),
+          phaseVerifyCommands: (phase.stdout.match(/npx gennady verify/g) ?? []).length,
+          phaseLeaksGateState: /^\s*gate-state:/m.test(phase.stdout),
           verifyTypeCheckStarted: verifyOutput.includes('DRAFT60_TYPECHECK_RAN'),
           verifyPrerequisiteState: verifyStateLine?.includes('PREREQUISITE_PENDING')
             ? 'PREREQUISITE_PENDING'
             : 'ORDINARY_GATE_RESULT',
-          sharedStateLine: taskStateLine === verifyStateLine,
           structuralReceipt: verifyOutput.includes('receipt recorded:'),
         },
         {
           phaseExitCode: 0,
-          taskGateState: 'PREREQUISITE_PENDING',
+          phaseSelectorMapped: true,
+          phaseVerifyCommands: 1,
+          phaseLeaksGateState: false,
           verifyTypeCheckStarted: false,
           verifyPrerequisiteState: 'PREREQUISITE_PENDING',
-          sharedStateLine: true,
           structuralReceipt: true,
         }
       );
-      assert.ok(taskStateLine);
+      assert.ok(verifyStateLine);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

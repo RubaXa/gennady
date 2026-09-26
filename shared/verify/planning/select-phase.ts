@@ -28,6 +28,7 @@ export function selectPhase(
   const allowedPlugins = seedPlugins === undefined ? null : new Set(seedPlugins);
 
   for (const preset of plan.presets) {
+    if (allowedPlugins !== null && !allowedPlugins.has(preset.plugin)) continue;
     const selector = preset.phases[phase];
     if (selector === undefined) {
       throw new VerifyPlanError(
@@ -38,8 +39,6 @@ export function selectPhase(
         { plugin: preset.plugin, phase, knownPhases: Object.keys(preset.phases).sort() }
       );
     }
-
-    if (allowedPlugins !== null && !allowedPlugins.has(preset.plugin)) continue;
 
     const excluded = new Set(selector.exclude ?? []);
     for (const step of preset.steps) {

@@ -10,7 +10,10 @@ import type {
   VerifyStepConfig,
 } from '../../shared/verify/config/verify-config.type.ts';
 import type { StackDetection } from '../../shared/verify/verify.types.ts';
-import type { VerifyPreset } from '../../shared/verify/model/verify-preset.type.ts';
+import {
+  BUILTIN_SDD_KIND_SELECTORS,
+  type VerifyPreset,
+} from '../../shared/verify/model/verify-preset.type.ts';
 import type {
   CapabilityMatrix,
   VerifyReadiness,
@@ -222,6 +225,7 @@ export function createNodeVerifyPreset(detection: StackDetection): VerifyPreset 
       coverage: { include: ['code', 'unit', 'coverage'] },
       full: { include: ['code', 'unit', 'integration', 'coverage'] },
     },
+    sddKinds: BUILTIN_SDD_KIND_SELECTORS,
     requirements: [
       {
         id: 'node:package-json',
@@ -405,6 +409,7 @@ export function materializeNodeVerifyConfig(
     config:
       errors.length === 0
         ? {
+            ...loaded.config,
             presets: {
               ...loaded.config.presets,
               node: { ...plugin, steps },

@@ -135,6 +135,12 @@ npx gennady verify --phase=unit --json
 
 # Только спланировать, не запускать шаги и не менять workspace
 npx gennady verify --plan --json --phase=full
+
+# SDD phase получает selector из preset defaults + verify.sdd.mapping override
+npx gennady sdd-task CLI-example --phase P2
+
+# Worker исполняет ровно выданную команду; Verify повторно доказывает ticket/phase/scope/selector
+npx gennady verify --phase=unit --task=specs/app/app.task.CLI-example.md --sdd-phase=P2
 ```
 
 ### 11. Визуализация покрытия тестами
@@ -174,47 +180,47 @@ npx gennady yagni /path/to/repo
 
 ## Все команды
 
-| Команда             | Назначение                                                 |
-| ------------------- | ---------------------------------------------------------- |
-| `commit`            | Генерация commit message из staged-изменений через AI      |
-| `cat`               | Вывод файлов в XML/Markdown для AI-контекста               |
-| `review`            | AI-ревью staged изменений                                  |
-| `review-verify`     | Сборка промпта для верификации MR/PR discussions           |
-| `review-issues`     | XML-артефакт issues из MR/PR                               |
-| `vcs-reply`         | Постинг ответов в GitLab MR discussions                    |
-| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR           |
-| `vcs-approve`       | Approve / отзыв approve GitLab MR через API                |
-| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR         |
-| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)              |
-| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших             |
-| `vcs-job`           | Управление джобой (status/play/cancel/retry)               |
-| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна                |
-| `vcs-worktree`      | Подготовка read-only git worktree для MR review            |
-| `inbox`             | Интерактивный разбор входящих GitLab MR                    |
-| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads)   |
-| `run`               | Запуск задания через AI-движок (opencode)                  |
-| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                  |
-| `remote-console`    | Зеркалирование браузерной консоли в stdout                 |
-| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants    |
-| `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности       |
-| `sync`              | V2-синхронизация `ai/directives/`; V1 отказывает до записи |
-| `sync-skills`       | V2-навыки в `.claude/skills/`; V1 отказывает до записи     |
-| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов               |
-| `orient`            | File-header/DBC навигация и V2 `@spec` ownership relations |
-| `sdd-orient`        | Окрестность спеки или scope в SDD-графе                    |
-| `sdd-state`         | Детерминированный снимок SDD-состояния проекта             |
-| `sdd-check`         | Структурная проверка SDD; authoring авто-фиксит мелочи     |
-| `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта             |
-| `sdd-new`           | Scaffold одного SDD v2 артефакта                           |
-| `sdd-verify`        | Запуск verification ladder для тикета или профиля          |
-| `verify`            | Unified Verify phase: text/JSON report; `--plan` read-only |
-| `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения     |
-| `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами             |
-| `sdd-task`          | Карта исполнения и фазовый контекст тикета                 |
-| `sdd-migrate`       | SDD v1 → v2: bootstrap, anchors, IDs, move и headers       |
-| `agents-rules`      | Инструкция по orient для AI-агентов                        |
-| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)         |
-| `yagni`             | Символы диффа с < 2 использований, гейт по Usage Waiver    |
+| Команда             | Назначение                                                                |
+| ------------------- | ------------------------------------------------------------------------- |
+| `commit`            | Генерация commit message из staged-изменений через AI                     |
+| `cat`               | Вывод файлов в XML/Markdown для AI-контекста                              |
+| `review`            | AI-ревью staged изменений                                                 |
+| `review-verify`     | Сборка промпта для верификации MR/PR discussions                          |
+| `review-issues`     | XML-артефакт issues из MR/PR                                              |
+| `vcs-reply`         | Постинг ответов в GitLab MR discussions                                   |
+| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR                          |
+| `vcs-approve`       | Approve / отзыв approve GitLab MR через API                               |
+| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR                        |
+| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)                             |
+| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших                            |
+| `vcs-job`           | Управление джобой (status/play/cancel/retry)                              |
+| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна                               |
+| `vcs-worktree`      | Подготовка read-only git worktree для MR review                           |
+| `inbox`             | Интерактивный разбор входящих GitLab MR                                   |
+| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads)                  |
+| `run`               | Запуск задания через AI-движок (opencode)                                 |
+| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                                 |
+| `remote-console`    | Зеркалирование браузерной консоли в stdout                                |
+| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants                   |
+| `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности                      |
+| `sync`              | V2-синхронизация `ai/directives/`; V1 отказывает до записи                |
+| `sync-skills`       | V2-навыки в `.claude/skills/`; V1 отказывает до записи                    |
+| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов                              |
+| `orient`            | File-header/DBC навигация и V2 `@spec` ownership relations                |
+| `sdd-orient`        | Окрестность спеки или scope в SDD-графе                                   |
+| `sdd-state`         | Детерминированный снимок SDD-состояния проекта                            |
+| `sdd-check`         | Структурная проверка SDD; authoring авто-фиксит мелочи                    |
+| `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                            |
+| `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
+| `sdd-verify`        | Запуск verification ladder для тикета или профиля                         |
+| `verify`            | Unified Verify phase; standalone или exact `--task` + `--sdd-phase` scope |
+| `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения                    |
+| `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами                            |
+| `sdd-task`          | Карта и фаза с одной mapped unified Verify invocation                     |
+| `sdd-migrate`       | SDD v1 → v2: bootstrap, anchors, IDs, move и headers                      |
+| `agents-rules`      | Инструкция по orient для AI-агентов                                       |
+| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)                        |
+| `yagni`             | Символы диффа с < 2 использований, гейт по Usage Waiver                   |
 
 ---
 
