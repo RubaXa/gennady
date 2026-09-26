@@ -11,6 +11,7 @@ import {
   type CoverageProbe,
 } from './sdd-verify.cmd.ts';
 import { parseInvocation, stackConfigError } from './sdd-verify.types.ts';
+import { runSddVerifyFacade } from './sdd-verify.facade.ts';
 import { resolvePhaseContext } from './phase-context.ts';
 import { runPhaseVerification } from './phase-run.ts';
 import { selectCoverageAdapter } from '../testcov/coverage-adapter-registry.ts';
@@ -35,6 +36,36 @@ if (!invocation.ok) {
 // dormant teaching failure until a test:coverage rung actually needs the probe; setup/code profiles
 // do not acquire an irrelevant coverage dependency.
 const projectRoot = resolve('.');
+
+let legacyPhaseContext: ReturnType<typeof resolvePhaseContext> | undefined;
+if (invocation.mode === 'phase') {
+  legacyPhaseContext = resolvePhaseContext(invocation.task, invocation.phase);
+  if (!legacyPhaseContext.ok && legacyPhaseContext.reason !== 'unsupported-kind') {
+    console.error(legacyPhaseContext.message);
+    process.exit(1);
+  }
+  if (!legacyPhaseContext.ok) {
+    const abort = new AbortController();
+    let cancellationSignal: 'SIGINT' | 'SIGTERM' | undefined;
+    const handlers = new Map<'SIGINT' | 'SIGTERM', () => void>();
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+      const handler = () => {
+        cancellationSignal ??= signal;
+        abort.abort(signal);
+      };
+      handlers.set(signal, handler);
+      process.once(signal, handler);
+    }
+    const result = await runSddVerifyFacade(projectRoot, invocation.task, invocation.phase, {
+      signal: abort.signal,
+      ...(cancellationSignal === undefined ? {} : { cancellationSignal }),
+    });
+    for (const [signal, handler] of handlers) process.off(signal, handler);
+    if (result.stdout !== '') process.stdout.write(result.stdout);
+    if (result.stderr !== '') process.stderr.write(result.stderr);
+    process.exit(result.exitCode);
+  }
+}
 
 // V-07: the `stack:` config section is a real gate here, ahead of any gate execution — a
 // malformed gennady.yaml/.gennadyrc must never let verify run on a config it cannot trust
@@ -79,14 +110,13 @@ const coverageProbe: CoverageProbe = {
 
 let outcome;
 if (invocation.mode === 'phase') {
-  const context = resolvePhaseContext(invocation.task, invocation.phase);
-  if (!context.ok) {
-    console.error(context.message);
+  if (legacyPhaseContext === undefined || !legacyPhaseContext.ok) {
+    console.error('[sdd-verify] internal phase dispatch error');
     process.exit(1);
   }
   outcome = await runPhaseVerification(
     resolve('.'),
-    context.context,
+    legacyPhaseContext.context,
     defaultAsyncRunner,
     (command) => {
       const result = spawnSync(command, {

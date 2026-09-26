@@ -394,9 +394,9 @@ compatibility runner и не объявляет полную parity: conditional
 
 **Когда** `sdd-task` готовит workflow phase, **то он должен** принять open-vocabulary SDD phase kind,
 скомпоновать mapping `built-in preset zero-YAML default → project YAML override` с per-key provenance
-и выдать ровно одну exact invocation
-`gennady verify --phase=<selector> --task=<ticket> --sdd-phase=<P>`. Агент не выбирает individual
-gates/steps и не собирает несколько invocation. Resolver fail closed до spawn только когда kind
+и выдать ровно одну exact invocation существующей SDD facade
+`gennady sdd-verify --task=<ticket> --phase=<P>`. Facade повторно резолвит selector/scope и вызывает
+тот же Verify planner/runner. Агент не выбирает individual gates/steps и не собирает несколько invocation. Resolver fail closed до spawn только когда kind
 остаётся unresolved после composition либо итоговый selector не объявлен; diagnostic показывает
 preset source и actionable project override location.
 
@@ -410,11 +410,11 @@ tags; dependency closure remains planner-owned. Project steps live once at
 `effect`, `tags`, `timeout` and `onFailure` (plus bounded `writes` for repair). No project config can
 load executable plugin code; external code stays UV-23.
 
-The public Verify parser accepts `--task` only together with `--sdd-phase`. Before planning it
-resolves the ticket safely, validates the exact existing Target Files plus tracked Deleted Files,
-recomposes the open kind mapping, and rejects a selector mismatch. This transitional UV-22 request
-identity is carried into the unified report but does not persist a legacy receipt; the optional
-legacy receipt overlay remains UV-13 and the attempt journal remains UV-12E.
+The public Verify parser rejects `--task` and `--sdd-phase`; standalone Verify never reads or writes
+ticket/EXECUTION_LOG state. The SDD facade safely resolves the ticket, validates exact existing
+Target Files plus tracked Deleted Files, recomposes the open kind mapping and passes only the
+resolved selector/scope/identity into the universal engine. UV-22C does not persist a legacy receipt;
+the optional legacy receipt overlay remains UV-13 and the attempt journal remains UV-12E.
 Project-authored selector dispatch is governed by the selected target slice's readiness; unrelated
 legacy npm readiness cannot block it. The frozen legacy infra gate remains only on a zero-YAML
 built-in mapping until its compatibility owner is removed.

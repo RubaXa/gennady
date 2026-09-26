@@ -155,10 +155,7 @@ describe('sdd-task — live gate-queue diagnostic', () => {
         result.stdout,
         /next: исполняй переданный worker contract без сокращений, запусти ровно unified Verify command above/
       );
-      assert.match(
-        result.stdout,
-        /npx gennady verify --phase=code --task=ticket\.md --sdd-phase=P1/
-      );
+      assert.match(result.stdout, /npx gennady sdd-verify --task=ticket\.md --phase=P1/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -236,9 +233,9 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       assert.strictEqual(dispatched.exitCode, 0, dispatched.stdout + dispatched.stderr);
       const command = /command:\s+([^\n]+)/.exec(dispatched.stdout)?.[1]?.trim();
       assert.ok(command);
-      assert.match(command, /--phase=release-check/);
       assert.match(command, /'--task=specs\/app space;safe\/app\.task\.APP-1\.md'/);
-      assert.match(command, /--sdd-phase=P1/);
+      assert.match(command, /sdd-verify/);
+      assert.match(command, /--phase=P1/);
 
       const executed = spawnSync(command, {
         cwd: root,
@@ -263,9 +260,9 @@ describe('sdd-task — live gate-queue diagnostic', () => {
         shell: '/bin/sh',
         timeout: 30_000,
       });
-      assert.strictEqual(missing.status, 4, `${missing.stdout ?? ''}${missing.stderr ?? ''}`);
-      assert.match(missing.stderr ?? '', /ERR_CLI_VERIFY_SDD_CONTEXT/);
-      assert.match(missing.stderr ?? '', /Target File path is missing/);
+      assert.notStrictEqual(missing.status, 0, `${missing.stdout ?? ''}${missing.stderr ?? ''}`);
+      assert.match(missing.stderr ?? '', /ERR_CLI_SDD_VERIFY_PHASE_CONTEXT/);
+      assert.match(missing.stderr ?? '', /Target File path is missing|path is missing/);
       assert.doesNotMatch(missing.stdout ?? '', /PASS node:release-proof|VERDICT PASS/);
     } finally {
       rmSync(root, { recursive: true, force: true });

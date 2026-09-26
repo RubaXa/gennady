@@ -333,7 +333,7 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
       // It must also say HOW to verify without asking the worker to choose the missing gates.
       assert.match(
         r.stdout,
-        /npx gennady verify --phase=code --task=specs\/infra-core\/infra-core\.task\.INFRA-1\.md --sdd-phase=P1/
+        /npx gennady sdd-verify --task=specs\/infra-core\/infra-core\.task\.INFRA-1\.md --phase=P1/
       );
       assert.match(r.stdout, /agent must not select individual gates/);
     } finally {
