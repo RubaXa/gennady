@@ -126,6 +126,7 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 | Name                                  | Type         | Purpose                                                                                                                                                                             |
 | ------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run`                                 | Command      | Прогон фиксированного repair-first phase либо read-only full профиля, тайминг и вердикт                                                                                             |
+| `runSddVerifyFacade`                  | Command      | Resolve exact task/phase scope and mapped selector, then invoke the universal Verify engine once                                                                                    |
 | `runPhaseVerification`                | Command      | Одна фазовая транзакция: ladder + applicable Verification rows + atomic receipt                                                                                                     |
 | `createRepairMutationBoundary`        | Utility      | Before/after workspace proof: actual repair writes остаются внутри canonical Target Files                                                                                           |
 | `planTargetRepair`                    | Utility      | Extensible adapter registry: formatter → project linter → Gennady contract linter, exact capability-filtered targets и named skips                                                  |
@@ -239,7 +240,8 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 
 ```
 cli/cmd/sdd-verify/
-├── index.ts             # entry: global full or complete phase transaction
+├── index.ts             # dispatch: open kind → target facade; frozen kinds/full → compatibility
+├── sdd-verify.facade.ts # task/phase/scope owner over the universal Verify engine
 ├── phase-context.ts     # structural ticket/phase/profile/target/Verification resolver
 ├── phase-run.ts         # complete phase transaction and atomic receipt write
 ├── sdd-verify.cmd.ts    # defaultRunner + run(runner)  (без tail)
@@ -252,6 +254,10 @@ shared/sdd/verify/
 ├── sdd-verify-context.ts  # immutable task/phase/scope + compatibility receipt plan
 └── sdd-receipt-sink.ts    # optional report-driven sink; no UV-13 command guessing
 ```
+
+The frozen `phase-context.ts`/`phase-run.ts` ladder remains the compatibility path for legacy
+setup/code/test kinds until UV-13/14. UV-22C sends open-vocabulary kinds through
+`sdd-verify.facade.ts`; both surfaces retain one public `sdd-verify --task … --phase …` invocation.
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **Вызывается из:** `phase-execution-protocol` (STEP_5, профиль по kind); dispatched audit STEP_1 (единственный владелец group `full`); `reconcile` (`code`); `npm run check` для человека/CI/pre-commit (`full`). Execute-orchestrator сам `full` не запускает.
@@ -514,6 +520,19 @@ shared/sdd/verify/
 - **Phase:** Go maps `fix` to `gofmt -w` over exact `.go` Target Files, `type-check` to the literal plugin's `go build` then `go vet`, and `test` to `go test`. No package.json/npm readiness is inferred. Receipt environment state binds Go manifests and the preset-named Makefile recipes.
 - **Full:** `generate`, `build`, `vet`, `fmt`, `lint`, `test` come from the unchanged Go plugin after the standard stack-config transform. The runner honors plugin cwd/env/timeout/ENV_FAIL; `gofmt -l` output is a failure. Full verification takes one D-STACK-017 clean-tree guard per git toplevel, runs gates sequentially in the real tree, ignores gitignored output, and rolls back exact non-ignored drift before the next gate; `generate` drift is a FAIL with file list/fixer hint, while an undeclared mutation is a VIOLATION. Public invocation always uses HEAD and refuses a dirty tree. The pre-commit hook alone selects an internal index baseline after both hook and guard independently prove worktree equals index; gate drift is then restored to that captured index without changing staged bytes, and crash recovery is forbidden from resetting staged work. There is no public dirty/staged flag.
 - **Eval:** Go acceptance uses isolated migrated/V2 fixtures. Judge/LLM verdict remains diagnostic and cannot change aggregate exit code; no live LLM is required for mechanical acceptance.
+
+### D-SV040 — Public task/phase invocation is a thin facade over universal Verify
+
+- **Status:** active target boundary from UV-22C; frozen legacy-kind ladder remains until UV-13/14.
+- **Decision:** `sdd-verify --task … --phase …` alone owns SDD task/phase dispatch. Open-vocabulary
+  kinds resolve exact Target/Deleted scope and the composed selector, then pass those data into the
+  same `runVerifyCommand` planner/runner used by standalone Verify. Legacy setup/code/test kinds
+  retain the frozen receipt-compatible runner until UV-13; this is a compatibility branch, not a
+  second target planner. `gennady verify` rejects SDD flags and cannot read or mutate
+  ticket/EXECUTION_LOG state.
+- **Persistence boundary:** UV-22C writes no SDD journal or receipt. UV-12E owns attempt persistence;
+  UV-13 owns the conditional legacy receipt overlay. Project-code repair remains governed by the
+  universal engine's declared write boundaries.
 
 </details>
 

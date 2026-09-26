@@ -90,15 +90,8 @@ function shellToken(value: string): string {
   return /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-function verifyInvocation(selector: string, ticket: string, phase: string): string {
-  return [
-    'npx',
-    'gennady',
-    'verify',
-    `--phase=${selector}`,
-    `--task=${ticket}`,
-    `--sdd-phase=${phase}`,
-  ]
+function verifyInvocation(ticket: string, phase: string): string {
+  return ['npx', 'gennady', 'sdd-verify', `--task=${ticket}`, `--phase=${phase}`]
     .map(shellToken)
     .join(' ');
 }
@@ -658,7 +651,7 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
       },
       verificationPlan ?? undefined,
       {
-        invocation: verifyInvocation(verifySelection.selector, ticketPath, phaseId),
+        invocation: verifyInvocation(ticketPath, phaseId),
         selector: verifySelection.selector,
         source: verifySelection.source,
       }

@@ -139,8 +139,8 @@ npx gennady verify --plan --json --phase=full
 # SDD phase получает selector из preset defaults + verify.sdd.mapping override
 npx gennady sdd-task CLI-example --phase P2
 
-# Worker исполняет ровно выданную команду; Verify повторно доказывает ticket/phase/scope/selector
-npx gennady verify --phase=unit --task=specs/app/app.task.CLI-example.md --sdd-phase=P2
+# Worker исполняет ровно выданную SDD-facade команду; facade доказывает ticket/phase/scope/selector
+npx gennady sdd-verify --task=specs/app/app.task.CLI-example.md --phase=P2
 ```
 
 ### 11. Визуализация покрытия тестами
@@ -212,8 +212,8 @@ npx gennady yagni /path/to/repo
 | `sdd-check`         | Структурная проверка SDD; authoring авто-фиксит мелочи                    |
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                            |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
-| `sdd-verify`        | Запуск verification ladder для тикета или профиля                         |
-| `verify`            | Unified Verify phase; standalone или exact `--task` + `--sdd-phase` scope |
+| `sdd-verify`        | Thin SDD task/phase facade; legacy read-only full compatibility profile   |
+| `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
 | `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения                    |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами                            |
 | `sdd-task`          | Карта и фаза с одной mapped unified Verify invocation                     |

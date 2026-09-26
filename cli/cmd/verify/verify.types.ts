@@ -14,11 +14,6 @@ export type VerifyInvocation = {
   readonly planOnly: boolean;
   /** @purpose Explicit JSON or default operator text presentation. */
   readonly format: 'text' | 'json';
-  /** @purpose Optional exact SDD ticket/phase identity resolved before target planning. */
-  readonly sdd?: {
-    readonly task: string;
-    readonly phase: string;
-  };
 };
 
 /** @purpose Return either a complete invocation or an actionable exit-4 diagnostic. */
@@ -29,7 +24,7 @@ export type VerifyInvocationResult =
 function badInvocationMessage(detail: string): string {
   return [
     `[verify] ${ERR_CLI_VERIFY_BAD_INVOCATION}: ${detail}`,
-    '  usage: npx gennady verify --phase=<phase> [--task=<ticket> --sdd-phase=<P>] [--json]',
+    '  usage: npx gennady verify --phase=<phase> [--json]',
     '         npx gennady verify --plan --json [--phase=<phase>]',
     '  --plan is read-only and never spawns a verification step.',
   ].join('\n');
@@ -50,8 +45,6 @@ export function parseVerifyInvocation(argv: string[]): VerifyInvocationResult {
         phase: { aliases: ['phase'], takesValue: true },
         plan: { aliases: ['plan'] },
         json: { aliases: ['json'] },
-        task: { aliases: ['task'], takesValue: true },
-        'sdd-phase': { aliases: ['sdd-phase'], takesValue: true },
       },
       { strict: true }
     );
@@ -69,13 +62,7 @@ export function parseVerifyInvocation(argv: string[]): VerifyInvocationResult {
       message: badInvocationMessage(`unexpected path argument(s): ${positional.join(' ')}`),
     };
   }
-  if (
-    Array.isArray(parsed.phase) ||
-    Array.isArray(parsed.plan) ||
-    Array.isArray(parsed.json) ||
-    Array.isArray(parsed.task) ||
-    Array.isArray(parsed['sdd-phase'])
-  ) {
+  if (Array.isArray(parsed.phase) || Array.isArray(parsed.plan) || Array.isArray(parsed.json)) {
     return { ok: false, message: badInvocationMessage('flags may be provided only once') };
   }
   if (parsed.plan !== undefined && parsed.plan !== true) {
@@ -99,35 +86,12 @@ export function parseVerifyInvocation(argv: string[]): VerifyInvocationResult {
       message: badInvocationMessage('a non-empty --phase is required for execution'),
     };
   }
-  const task = parsed.task;
-  const sddPhase = parsed['sdd-phase'];
-  if ((task === undefined) !== (sddPhase === undefined)) {
-    return {
-      ok: false,
-      message: badInvocationMessage('--task and --sdd-phase must be provided together'),
-    };
-  }
-  if (
-    (task !== undefined &&
-      (typeof task !== 'string' || task.length === 0 || task.includes('\0'))) ||
-    (sddPhase !== undefined &&
-      (typeof sddPhase !== 'string' || sddPhase.length === 0 || sddPhase !== sddPhase.trim()))
-  ) {
-    return {
-      ok: false,
-      message: badInvocationMessage('--task and --sdd-phase require non-empty scalar values'),
-    };
-  }
-
   return {
     ok: true,
     invocation: {
       phase,
       planOnly,
       format: parsed.json === true ? 'json' : 'text',
-      ...(typeof task === 'string' && typeof sddPhase === 'string'
-        ? { sdd: { task, phase: sddPhase } }
-        : {}),
     },
   };
 }
