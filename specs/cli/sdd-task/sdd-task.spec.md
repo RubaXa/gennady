@@ -28,6 +28,12 @@ _Обзор пути от контракта к реализации и пров
 
 Планировочная поверхность тикета для оркестратора `execute`. `sdd-task <ticket-path|Task-ID>` извлекает ТОЛЬКО планировочные секции (Meta + Phases Overview + тело каждой фазы + Verification), машинно поверхностит `[BLOCKERS]` и `[DEVIATIONS]` (`pending-operator` из ticket-local Decision Log) и собирает per-phase read-manifest (`AX_READ_PER_MANIFEST`): что фаза читает (rules / specs / ticket-секции / target-файлы / gates) и **что НЕ читает**. В `--phase` этот manifest становится lifecycle-aware: существующие targets остаются в `READ files`, а отсутствующие exact repo-local targets отделяются в `CREATE files`. Аргумент — путь ИЛИ голый Task-ID (резолвится сканом по Meta, `AX_TASK_RESOLUTION`, D-TK006). Оркестратор читает этот вывод вместо всего тикета и не лезет в тела фаз, BDD, спеки, код. **Без Task-ID** `sdd-task` отдаёт **карту исполнения** — детерминированный pickable-набор + заблокированные + строка `root:`. При `EXECUTION_READY=yes` pickable совпадает с graph-ready (`pickableTasks`); при `no` он fail-closed сужается до dependency-ready exact active owners из единого `GATE_QUEUE`, поэтому unrelated graph-ready ticket не может стать `next` (D-TK019). Карта печатает все `GATE_QUEUE_DIAG`, включая отсутствующий/неоднозначный owner и неполный Bootstrap contract. Парсеры тикета вынесены в `shared/sdd/ticket.ts` (переиспользует `sdd-check`).
 
+Target dispatch дополнительно строит open-vocabulary `PhaseFacts`, до agent work разрешает и
+замораживает exact `RuleSnapshot` (prompt bodies + digest), затем печатает одну существующую SDD
+facade invocation: `npx gennady sdd-verify --task <ticket> --phase <PhaseID>`. Agent не выбирает
+individual gates. Facade повторно проверяет selector/scope, вызывает universal SDD-agnostic Verify
+engine и владеет SDD journal/receipt sinks; standalone `gennady verify` task flags не принимает.
+
 По D-21/B2-13 V2 cross-spec dependency считается graph-ready только после валидной текущей групповой audit-квитанции владеющей спеки. Та же зависимость в V1 остаётся status-only до самомиграции; same-spec dependency не требует групповой квитанции между тикетами одной группы.
 
 `--group-scope <Task-ID>` выдаёт готовый review-context всей sibling-группы (ровно тикеты одного
@@ -332,6 +338,19 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 - **Why:** `[x] DONE` in V2 is the mechanical close before group audit. Treating it as sufficient let another spec consume an unaudited result, contradicting `AX_AUDIT_HOOK`. The map now resolves exact owning specs, re-derives the dependency group from the same immutable ticket snapshot, and accepts only the same structurally valid, non-stale `SDD_AUDIT_RECEIPT` used by `sdd-check`.
 - **Fail-closed ownership:** with audit context, every V2 candidate must have a resolvable owning spec. A DONE V2 dependency without one blocks as `<Task-ID> (owning spec)`; when both owners resolve, same-spec remains status-only and cross-spec requires the dependency owner's current receipt. An unresolved owner is never evidence that the dependency is satisfied.
 - **Grandfathering:** the shared per-ticket flow classifier applies this only to V2 candidates and V2 dependencies. V1 remains status-only until self-migration; no current V1 ticket or baseline is rewritten or newly graded.
+
+### D-TK022 — Dispatch freezes rules and emits one SDD facade invocation
+
+- **Status:** accepted target contract; implementation ordered before UV-12E/UV-13.
+- **Why:** standalone `gennady verify` must not own task flags or SDD persistence. `sdd-task --phase`
+  classifies exact target/planned artifacts, operations, intents, platform/tool/project facts;
+  resolves composed preset-default → project selector mapping and one immutable `RuleSnapshot`; then
+  emits `npx gennady sdd-verify --task <ticket> --phase <PhaseID>`. The facade invokes the same Verify
+  planner/runner and owns EXECUTION_LOG sinks. Agent receives exact selected rule bodies and never
+  reconstructs individual gates.
+- **Freshness:** snapshot digest passes unchanged through Verify report and SDD journal. Rule/config/
+  scope drift invalidates prior phase evidence. Unresolved selector, malformed embedded metadata,
+  skipped required dependency or missing required provider fails before agent work.
 
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->
