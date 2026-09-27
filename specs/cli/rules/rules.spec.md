@@ -136,17 +136,20 @@ _The rules module supplies one immutable snapshot to Verify and its optional SDD
 
 ## Entity Inventory
 
-| Name             | Type         | Purpose                                                                | Implementation owner |
-| ---------------- | ------------ | ---------------------------------------------------------------------- | -------------------- |
-| `RuleHeader`     | Type         | Strict embedded Meta mini-language plus opaque prompt-body identity    | UV-18A               |
-| `RuleDescriptor` | Type         | Parsed predicates/dependencies and exact prompt-body identity          | UV-18A               |
-| `RuleRegistry`   | Service      | Deterministic embedded-header inventory across built-in/project rules  | UV-18A               |
-| `PhaseFacts`     | Value Object | Open-vocabulary phase artifacts, operations, intents and project facts | UV-18B               |
-| `RuleResolver`   | Service      | Per-artifact selection, vetoes, overrides and dependency closure       | UV-19                |
-| `RuleSnapshot`   | Value Object | Immutable selections, skips, reasons, provenance and digest            | UV-19, UV-20         |
-| `rules list`     | CLI Command  | Read-only filtered inventory                                           | UV-20                |
-| `rules show`     | CLI Command  | Read-only metadata and prompt-body projection                          | UV-20                |
-| `rules resolve`  | CLI Command  | Read-only explainable resolver projection                              | UV-20                |
+| Name                 | Type         | Purpose                                                                | Implementation owner |
+| -------------------- | ------------ | ---------------------------------------------------------------------- | -------------------- |
+| `RuleHeader`         | Type         | Strict embedded Meta mini-language plus opaque prompt-body identity    | UV-18A               |
+| `RuleDescriptor`     | Type         | Parsed predicates/dependencies and exact prompt-body identity          | UV-18A               |
+| `parseRuleHeader`    | Service      | Lexically parses only the embedded header and final literal close      | UV-18A               |
+| `RuleRegistry`       | Service      | Deterministic embedded-header inventory across built-in/project rules  | UV-18A               |
+| `createRuleRegistry` | Service      | Loads required sources with stable ordering and duplicate-id rejection | UV-18A               |
+| `PhaseFacts`         | Value Object | Open-vocabulary phase artifacts, operations, intents and project facts | UV-18B               |
+| `classifyPhaseFacts` | Service      | Classifies exact scope artifacts and independent provider facts        | UV-18B               |
+| `RuleResolver`       | Service      | Per-artifact selection, vetoes, overrides and dependency closure       | UV-19                |
+| `RuleSnapshot`       | Value Object | Immutable selections, skips, reasons, provenance and digest            | UV-19, UV-20         |
+| `rules list`         | CLI Command  | Read-only filtered inventory                                           | UV-20                |
+| `rules show`         | CLI Command  | Read-only metadata and prompt-body projection                          | UV-20                |
+| `rules resolve`      | CLI Command  | Read-only explainable resolver projection                              | UV-20                |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -179,6 +182,15 @@ observable boundaries.
 - **Public Operations:** list descriptors; retrieve one descriptor by id; load generic/plugin/local
   sources deterministically.
 - **Errors & Degradation:** unavailable required source is an error; prompt XML is never metadata.
+- **Usage Waiver:** UV-18A intentionally lands the immutable registry contract before
+  UV-19 connects its second production consumer, `RuleResolver`; UV-20 then connects the CLI
+  projection.
+
+#### `createRuleRegistry`
+
+- **Usage Waiver:** UV-19 consumes this deterministic UV-18A composition boundary when
+  it constructs the resolver input; keeping source discovery outside the registry prevents a hidden
+  filesystem policy.
 
 ### `PhaseFacts`, `RuleResolver` and `RuleSnapshot`
 
@@ -187,6 +199,11 @@ observable boundaries.
   dependencies; normalize and digest exact selected bodies.
 - **Errors & Degradation:** missing/cyclic dependency and ambiguous scope fail closed; semantic
   candidates remain suggested with reasons rather than pretending to be hard predicates.
+
+#### `classifyPhaseFacts`
+
+- **Usage Waiver:** UV-18B lands the classifier before UV-19 consumes it for rule
+  resolution and UV-20S connects the same frozen facts to SDD dispatch and Verify planning.
 
 ### `rules list/show/resolve`
 
