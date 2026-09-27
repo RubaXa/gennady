@@ -176,7 +176,7 @@ describe('draft.60 Node infrastructure boundary', { concurrency: true }, () => {
         {
           phaseExitCode: phase.exitCode,
           phaseSelectorMapped: phase.stdout.includes('selector: code ← builtin:node'),
-          phaseVerifyCommands: (phase.stdout.match(/npx gennady verify/g) ?? []).length,
+          phaseFacadeCommands: (phase.stdout.match(/npx gennady sdd-verify/g) ?? []).length,
           phaseLeaksGateState: /^\s*gate-state:/m.test(phase.stdout),
           verifyTypeCheckStarted: verifyOutput.includes('DRAFT60_TYPECHECK_RAN'),
           verifyPrerequisiteState: verifyStateLine?.includes('PREREQUISITE_PENDING')
@@ -187,7 +187,7 @@ describe('draft.60 Node infrastructure boundary', { concurrency: true }, () => {
         {
           phaseExitCode: 0,
           phaseSelectorMapped: true,
-          phaseVerifyCommands: 1,
+          phaseFacadeCommands: 1,
           phaseLeaksGateState: false,
           verifyTypeCheckStarted: false,
           verifyPrerequisiteState: 'PREREQUISITE_PENDING',

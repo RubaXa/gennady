@@ -166,6 +166,30 @@ describe('gennady verify target CLI', () => {
     }
   });
 
+  it('rejects SDD flags and leaves the ticket byte-identical', async () => {
+    const root = createProject();
+    const ticket = path.join(root, 'ticket.md');
+    const bytes = '<!--SECTION:EXECUTION_LOG-->\noriginal\n<!--/SECTION:EXECUTION_LOG-->\n';
+    try {
+      fs.writeFileSync(ticket, bytes);
+      const result = await runVerifyCli(
+        ['verify', '--phase=code', '--task=ticket.md', '--sdd-phase=P1'],
+        root
+      );
+      assert.strictEqual(result.exitCode, 4);
+      assert.strictEqual(result.stdout, '');
+      assert.match(result.stderr, /ERR_CLI_VERIFY_BAD_INVOCATION/);
+      assert.match(result.stderr, /unknown flag:\s+-?task/i);
+      assert.strictEqual(fs.readFileSync(ticket, 'utf8'), bytes);
+      assert.strictEqual(
+        fs.existsSync(path.join(root, '.git', 'gennady-workspace-guard.lock')),
+        false
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an invalid stack config before planning or execution', async () => {
     const root = createProject();
     try {
