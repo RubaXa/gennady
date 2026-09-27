@@ -182,15 +182,12 @@ observable boundaries.
 - **Public Operations:** list descriptors; retrieve one descriptor by id; load generic/plugin/local
   sources deterministically.
 - **Errors & Degradation:** unavailable required source is an error; prompt XML is never metadata.
-- **Usage Waiver:** UV-18A intentionally lands the immutable registry contract before
-  UV-19 connects its second production consumer, `RuleResolver`; UV-20 then connects the CLI
-  projection.
 
 #### `createRuleRegistry`
 
-- **Usage Waiver:** UV-19 consumes this deterministic UV-18A composition boundary when
-  it constructs the resolver input; keeping source discovery outside the registry prevents a hidden
-  filesystem policy.
+- **Usage Waiver:** UV-20S consumes this deterministic composition boundary when it builds the
+  frozen pre-dispatch resolver input; keeping source discovery outside the registry prevents a
+  hidden filesystem policy.
 
 ### `PhaseFacts`, `RuleResolver` and `RuleSnapshot`
 
@@ -202,8 +199,14 @@ observable boundaries.
 
 #### `classifyPhaseFacts`
 
-- **Usage Waiver:** UV-18B lands the classifier before UV-19 consumes it for rule
-  resolution and UV-20S connects the same frozen facts to SDD dispatch and Verify planning.
+- **Usage Waiver:** UV-20S connects the classifier to SDD dispatch and passes the same frozen facts
+  to `RuleResolver` and Verify planning; UV-19 deliberately consumes the immutable value rather than
+  reclassifying it.
+
+#### `RuleResolver`
+
+- **Usage Waiver:** UV-20S is the first production composition root for this pure UV-19 service;
+  until then focused contract tests prove selection and closure without introducing a second caller.
 
 ### `rules list/show/resolve`
 
@@ -229,7 +232,8 @@ owns read-only projection and stable JSON.
 
 - **Preconditions:** phase and exactly one explainable scope source are present; registry is valid.
 - **Postconditions:** output is immutable and includes required/suggested/skipped, reasons,
-  dependency closure, provenance and deterministic digest.
+  dependency closure, provenance and exact descriptor/body identity. UV-19 deliberately emits no
+  digest; UV-20S freezes this resolution as `RuleSnapshot` and owns its deterministic digest.
 - **Failure:** invalid scope, dependency graph or required source returns a typed diagnostic; no
   partial green snapshot is emitted.
 
