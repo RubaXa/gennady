@@ -92,7 +92,11 @@ describe('unified verify model', () => {
     const report: VerifyRunReport = {
       context,
       readiness: { status: 'READY', entries: [] },
-      plan: { phase: 'code', steps: [plannedStep] },
+      plan: {
+        phase: 'code',
+        trust: { level: 'local-runner', source: 'fixture' },
+        steps: [plannedStep],
+      },
       results: [
         {
           stepId: 'acme-rust:type-check',

@@ -20,6 +20,7 @@ import type {
   CapabilityMatrix,
   VerifyReadiness,
 } from '../../shared/verify/model/verify-readiness.type.ts';
+import { verifyPlanPolicyReadiness } from '../../shared/verify/test-stats.ts';
 import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts';
 import type {
   Requirement,
@@ -182,7 +183,10 @@ function step(
   argv: readonly string[] | null,
   project: GoProject,
   requires: readonly Requirement[],
-  options: Pick<VerifyStep, 'writes' | 'invalidates' | 'outputMeansFailure' | 'envFail'> = {}
+  options: Pick<
+    VerifyStep,
+    'writes' | 'invalidates' | 'outputMeansFailure' | 'envFail' | 'testStats'
+  > = {}
 ): VerifyStep {
   return {
     id,
@@ -222,7 +226,7 @@ function lintArgv(project: GoProject, scope: GoScope, repair: boolean): readonly
 function goTestArgv(project: GoProject, scope: GoScope): readonly string[] | null {
   const go = project.tools.go.bin;
   if (go === null || scope.packages.length === 0) return null;
-  return [go, 'test', '-timeout=540s', ...moduleFlags(project), ...scope.packages];
+  return [go, 'test', '-json', '-timeout=540s', ...moduleFlags(project), ...scope.packages];
 }
 
 function packageWritePatterns(scope: GoScope): readonly string[] {
@@ -375,11 +379,31 @@ export function createGolangVerifyPreset(
         goTestArgv(project, scope),
         project,
         [...goRequirements('test')],
-        { envFail: GO_MODULE_ENV_FAIL }
+        {
+          envFail: GO_MODULE_ENV_FAIL,
+          testStats: {
+            policy: 'required',
+            protocol: 'go-test-json-v1',
+            runner: 'go-test',
+            source: 'builtin:golang.steps.test.testStats',
+          },
+        }
       ),
-      step('integration', ['integration'], ['test'], 'observe', null, project, [
-        explicitCommandRequirement('integration'),
-      ]),
+      step(
+        'integration',
+        ['integration'],
+        ['test'],
+        'observe',
+        null,
+        project,
+        [explicitCommandRequirement('integration')],
+        {
+          testStats: {
+            policy: 'required',
+            source: 'builtin:golang.steps.integration.testStats',
+          },
+        }
+      ),
       step('coverage', ['coverage'], ['integration'], 'observe', null, project, [
         explicitCommandRequirement('coverage'),
       ]),
@@ -421,6 +445,7 @@ export function golangDetectedConfig(
       {
         ...(candidate.command === undefined ? {} : { command: candidate.command }),
         ...(candidate.writes === undefined ? {} : { writes: candidate.writes }),
+        ...(candidate.testStats === undefined ? {} : { testStats: candidate.testStats }),
       },
     ])
   );
@@ -437,6 +462,12 @@ export function golangDetectedConfig(
       provenance.set(
         `verify.presets.golang.steps.${candidate.id}.writes.include`,
         `go-scope:${scope.note}`
+      );
+    }
+    if (candidate.testStats !== undefined) {
+      provenance.set(
+        `verify.presets.golang.steps.${candidate.id}.testStats`,
+        candidate.testStats.source
       );
     }
   }
@@ -808,6 +839,7 @@ export function evaluateGolangReadiness(
       );
     }
   }
+  entries.push(...verifyPlanPolicyReadiness(plan).filter((entry) => entry.plugin === 'golang'));
 
   const status = entries.some((entry) => entry.status === 'BLOCKED')
     ? 'BLOCKED'

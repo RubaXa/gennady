@@ -76,7 +76,7 @@ function step(
 }
 
 function plan(steps: readonly PlannedVerifyStep[]): VerifyPlan {
-  return { phase: 'code', steps };
+  return { phase: 'code', trust: { level: 'local-runner', source: 'fixture' }, steps };
 }
 
 const ready: CapabilityMatrix = { status: 'READY', entries: [] };

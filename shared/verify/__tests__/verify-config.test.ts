@@ -717,4 +717,53 @@ describe('target verify config', () => {
       context.cleanup();
     }
   });
+
+  it('validates explicit required, optional and none stats policies plus selector trust', () => {
+    const context = createVerifyConfigContext();
+    try {
+      context.writeProject(
+        'gennady.yaml',
+        [
+          'verify:',
+          '  presets:',
+          '    node:',
+          '      phases:',
+          '        test:',
+          '          include: [test]',
+          '          trust: remote-provider',
+          '      steps:',
+          '        type-check:',
+          '          testStats: { policy: optional }',
+          '        unit:',
+          '          testStats:',
+          '            policy: required',
+          '            protocol: vitest-json-v1',
+          '            runner: vitest',
+          '',
+        ].join('\n')
+      );
+      const loaded = loadVerifyConfig(context.root, context.presets, context.home);
+      assert.deepStrictEqual(loaded.errors, []);
+      assert.strictEqual(loaded.config?.presets.node?.steps.unit?.testStats?.policy, 'required');
+      assert.strictEqual(loaded.config?.presets.node?.steps.unit?.testStats?.runner, 'vitest');
+      assert.strictEqual(
+        loaded.config?.presets.node?.steps['type-check']?.testStats?.policy,
+        'optional'
+      );
+      assert.strictEqual(loaded.config?.presets.node?.phases.test?.trust, 'remote-provider');
+
+      context.writeProject(
+        'gennady.yaml',
+        'verify:\n  presets:\n    node:\n      steps:\n        unit:\n          testStats: { policy: none, runner: node:test }\n'
+      );
+      const invalid = loadVerifyConfig(context.root, context.presets, context.home);
+      expectLoadError(
+        invalid.errors,
+        'VERIFY_CONFIG_INVALID_TYPE',
+        'verify.presets.node.steps.unit.testStats'
+      );
+    } finally {
+      context.cleanup();
+    }
+  });
 });

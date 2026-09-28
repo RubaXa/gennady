@@ -9,6 +9,7 @@ import { extractSection } from '../../../shared/sdd/section.ts';
 import { parsePhaseDetail, parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
 import { resolveTicketArg } from '../../../shared/sdd/ticket-resolve.ts';
 import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
+import { runWithSddAttemptJournal } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { runVerifyCommand } from '../verify/verify.cmd.ts';
 
@@ -64,76 +65,96 @@ export async function runSddVerifyFacade(
   if (phase === undefined) {
     return failure(`phase ${JSON.stringify(phaseId)} is absent from the ticket`);
   }
-  const paths = validateTicketReviewPaths(canonicalRoot, resolved.content, {
-    phaseIds: [phase.id],
-    targetExpectation: 'existing',
-    deletedPhaseIds: phases.slice(0, phaseIndex + 1).map((candidate) => candidate.id),
-    handoffPhaseIds: [],
-  });
-  if (!paths.ok) {
-    return failure(
-      `${relative(canonicalRoot, resolved.path)} declares invalid path ${JSON.stringify(paths.path)}: ${paths.detail}`
-    );
-  }
-  const deletedFiles = [...paths.paths.deleted].sort((left, right) => left.localeCompare(right));
-  const scope = {
-    mode: 'files' as const,
-    files: [...new Set([...paths.paths.targets, ...deletedFiles])].sort((left, right) =>
-      left.localeCompare(right)
-    ),
-  };
   const phaseSection = extractSection(resolved.content, `PHASE_${phase.id}`);
   if (phaseSection.status !== 'ok') {
     return failure(`phase ${JSON.stringify(phase.id)} has no readable PHASE_${phase.id} section`);
   }
-  let ruleDispatch: ReturnType<typeof resolveSddRuleSnapshot>;
+  const executionLog = extractSection(resolved.content, 'EXECUTION_LOG');
+  if (executionLog.status !== 'ok' && executionLog.status !== 'empty') {
+    return failure('ticket has no unique readable EXECUTION_LOG');
+  }
+
   try {
-    const detail = parsePhaseDetail(phaseSection.content);
-    const ticketPath = relative(canonicalRoot, fs.realpathSync(resolved.path))
-      .split('\\')
-      .join('/');
-    ruleDispatch = resolveSddRuleSnapshot({
+    return await runWithSddAttemptJournal({
       root: canonicalRoot,
-      declaredSources: detail.rules,
-      declarationFile: ticketPath,
-      declarationProvenance: `${ticketPath}#PHASE_${phase.id}.Rules`,
-      targetFiles: paths.paths.targets,
-      plannedFiles: paths.paths.targets,
-      tombstoneFiles: deletedFiles,
-      intents: [phase.kind],
-    });
-  } catch (cause) {
-    return failure(
-      `phase ${JSON.stringify(phase.id)} RuleSnapshot cannot be resolved before Verify: ${cause instanceof Error ? cause.message : String(cause)}`
-    );
-  }
+      ticketPath: resolved.path,
+      sddPhase: phase.id,
+      run: async () => {
+        const paths = validateTicketReviewPaths(canonicalRoot, resolved.content, {
+          phaseIds: [phase.id],
+          targetExpectation: 'existing',
+          deletedPhaseIds: phases.slice(0, phaseIndex + 1).map((candidate) => candidate.id),
+          handoffPhaseIds: [],
+        });
+        if (!paths.ok) {
+          return failure(
+            `${relative(canonicalRoot, resolved.path)} declares invalid path ${JSON.stringify(paths.path)}: ${paths.detail}`
+          );
+        }
+        const deletedFiles = [...paths.paths.deleted].sort((left, right) =>
+          left.localeCompare(right)
+        );
+        const scope = {
+          mode: 'files' as const,
+          files: [...new Set([...paths.paths.targets, ...deletedFiles])].sort((left, right) =>
+            left.localeCompare(right)
+          ),
+        };
+        let ruleDispatch: ReturnType<typeof resolveSddRuleSnapshot>;
+        try {
+          const detail = parsePhaseDetail(phaseSection.content);
+          const ticketPath = relative(canonicalRoot, fs.realpathSync(resolved.path))
+            .split('\\')
+            .join('/');
+          ruleDispatch = resolveSddRuleSnapshot({
+            root: canonicalRoot,
+            declaredSources: detail.rules,
+            declarationFile: ticketPath,
+            declarationProvenance: `${ticketPath}#PHASE_${phase.id}.Rules`,
+            targetFiles: paths.paths.targets,
+            plannedFiles: paths.paths.targets,
+            tombstoneFiles: deletedFiles,
+            intents: [phase.kind],
+          });
+        } catch (cause) {
+          return failure(
+            `phase ${JSON.stringify(phase.id)} RuleSnapshot cannot be resolved before Verify: ${cause instanceof Error ? cause.message : String(cause)}`
+          );
+        }
 
-  let selection: ReturnType<typeof resolveProjectSddVerifySelector>;
-  try {
-    selection = resolveProjectSddVerifySelector(canonicalRoot, phase.kind, {
-      scope,
-      ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
-    });
-  } catch (cause) {
-    return failure(
-      `phase ${JSON.stringify(phase.id)} Verify selector cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
-    );
-  }
+        let selection: ReturnType<typeof resolveProjectSddVerifySelector>;
+        try {
+          selection = resolveProjectSddVerifySelector(canonicalRoot, phase.kind, {
+            scope,
+            ...(options.homeDirectory === undefined
+              ? {}
+              : { homeDirectory: options.homeDirectory }),
+          });
+        } catch (cause) {
+          return failure(
+            `phase ${JSON.stringify(phase.id)} Verify selector cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+          );
+        }
 
-  return runVerifyCommand(
-    canonicalRoot,
-    { phase: selection.selector, planOnly: false, format: 'text' },
-    {
-      ...options,
-      request: {
-        scope,
-        knownDeletedFiles: deletedFiles,
-        rules: ruleDispatch.snapshot,
-        workflow: {
-          task: relative(canonicalRoot, resolved.path).split('\\').join('/'),
-          phase: phase.id,
-        },
+        return runVerifyCommand(
+          canonicalRoot,
+          { phase: selection.selector, planOnly: false, format: 'text' },
+          {
+            ...options,
+            request: {
+              scope,
+              knownDeletedFiles: deletedFiles,
+              rules: ruleDispatch.snapshot,
+              workflow: {
+                task: relative(canonicalRoot, resolved.path).split('\\').join('/'),
+                phase: phase.id,
+              },
+            },
+          }
+        );
       },
-    }
-  );
+    });
+  } catch (cause) {
+    return failure(cause instanceof Error ? cause.message : String(cause));
+  }
 }

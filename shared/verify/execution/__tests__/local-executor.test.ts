@@ -90,6 +90,9 @@ describe('target local executor', () => {
       assert.equal(passed.verdict, 'pass');
       assert.equal(passed.result?.status, 'pass');
       assert.equal(passed.result?.exitCode, 0);
+      assert.equal(passed.result?.process?.schema, 'gennady.verify-process.v1');
+      assert.match(passed.result?.process?.identity ?? '', /^local-process:[0-9a-f-]+$/);
+      assert.equal(passed.result?.testStats, undefined);
       assert.ok(passed.evidence.some((item) => item.summary.includes('status pass')));
       assert.ok(!passed.evidence.some((item) => item.identity.endsWith(':stdout')));
       assert.ok(!passed.evidence.some((item) => item.summary.includes('secret-like')));
@@ -98,6 +101,77 @@ describe('target local executor', () => {
       assert.equal(failed.verdict, 'fail');
       assert.equal(failed.result?.status, 'fail');
       assert.equal(failed.result?.exitCode, 7);
+      assert.notEqual(failed.result?.process?.identity, passed.result?.process?.identity);
+      assert.deepEqual(guard.release(), { kind: 'released' });
+    });
+  });
+
+  it('emits stats only from a declared runner protocol and fails malformed required proof', async () => {
+    await withRepo(async (root) => {
+      const guard = acquire(root);
+      const policy = {
+        policy: 'required' as const,
+        protocol: 'node-test-summary-v1' as const,
+        runner: 'node:test' as const,
+        source: 'fixture:node-test',
+      };
+      const real = await executeLocalStep(
+        step(
+          root,
+          "process.stdout.write('ℹ tests 1\\nℹ pass 1\\nℹ fail 0\\nℹ skipped 0\\nℹ todo 0\\nℹ cancelled 0\\n')",
+          { testStats: policy }
+        ),
+        guard
+      );
+      assert.equal(real.verdict, 'pass', JSON.stringify(real));
+      assert.deepEqual(real.result?.testStats, {
+        schema: 'gennady.verify-test-stats.v1',
+        ...policy,
+        executed: 1,
+        passed: 1,
+        failed: 0,
+        skipped: 0,
+      });
+
+      const vitestPolicy = {
+        policy: 'required' as const,
+        protocol: 'vitest-json-v1' as const,
+        runner: 'vitest' as const,
+        source: 'detected:package.json#devDependencies.vitest',
+      };
+      const vitest = await executeLocalStep(
+        step(
+          root,
+          `process.stdout.write(${JSON.stringify(
+            JSON.stringify({
+              numTotalTests: 2,
+              numPassedTests: 1,
+              numFailedTests: 0,
+              numPendingTests: 1,
+              numTodoTests: 0,
+            })
+          )})`,
+          { testStats: vitestPolicy }
+        ),
+        guard
+      );
+      assert.equal(vitest.verdict, 'pass', JSON.stringify(vitest));
+      assert.deepEqual(vitest.result?.testStats, {
+        schema: 'gennady.verify-test-stats.v1',
+        ...vitestPolicy,
+        executed: 2,
+        passed: 1,
+        failed: 0,
+        skipped: 1,
+      });
+
+      const malformed = await executeLocalStep(
+        step(root, "process.stdout.write('not TAP')", { testStats: policy }),
+        guard
+      );
+      assert.equal(malformed.verdict, 'violation');
+      assert.equal(malformed.problem?.code, 'VERIFY_LOCAL_TEST_STATS_INVALID');
+      assert.equal(malformed.result?.testStats, undefined);
       assert.deepEqual(guard.release(), { kind: 'released' });
     });
   });

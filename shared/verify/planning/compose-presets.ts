@@ -84,6 +84,8 @@ function clonePreset(preset: VerifyPreset): VerifyPreset {
           {
             include: [...selector.include],
             exclude: selector.exclude === undefined ? undefined : [...selector.exclude],
+            ...(selector.trust === undefined ? {} : { trust: selector.trust }),
+            ...(selector.trustSource === undefined ? {} : { trustSource: selector.trustSource }),
           },
         ])
     ),
@@ -144,6 +146,7 @@ function materializeCustomStep(
       timeoutMs: config.timeoutMs,
     },
     requires: config.requires ?? [],
+    ...(config.testStats === undefined ? {} : { testStats: config.testStats }),
     ...(config.outputMeansFailure === undefined
       ? {}
       : { outputMeansFailure: config.outputMeansFailure }),
@@ -219,6 +222,19 @@ function materializeOverride(
       layerSource(layer, `${keyPath}.command.npmScript`)
     );
   }
+  if (
+    config.command !== undefined &&
+    step.testStats?.policy === 'required' &&
+    config.testStats === undefined
+  ) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_INVALID_TYPE',
+      `${keyPath}.testStats`,
+      'a command override cannot inherit a required runner protocol implicitly',
+      'redeclare testStats with the protocol proven by the replacement command',
+      layerSource(layer, `${keyPath}.command`)
+    );
+  }
 
   let command: LocalCommand | undefined;
   if (config.command !== undefined || config.timeoutMs !== undefined) {
@@ -254,6 +270,7 @@ function materializeOverride(
     ...(config.needs === undefined ? {} : { needs: config.needs }),
     ...(command === undefined ? {} : { command }),
     ...(config.requires === undefined ? {} : { requires: config.requires }),
+    ...(config.testStats === undefined ? {} : { testStats: config.testStats }),
     ...(config.writes === undefined ? {} : { writes: config.writes }),
     ...(config.invalidates === undefined ? {} : { invalidates: config.invalidates }),
     ...(config.timeoutMs === undefined ? {} : { timeoutMs: config.timeoutMs }),
@@ -290,14 +307,29 @@ function applyLayer(
       const phases = { ...preset.phases };
       for (const selectorId of Object.keys(pluginConfig.phases).sort(compareText)) {
         const selector = pluginConfig.phases[selectorId]!;
+        const current = phases[selectorId];
         phases[selectorId] = {
           include: [...selector.include],
           ...(selector.exclude === undefined ? {} : { exclude: [...selector.exclude] }),
+          ...(selector.trust === undefined
+            ? current?.trust === undefined
+              ? {}
+              : { trust: current.trust, trustSource: current.trustSource }
+            : {
+                trust: selector.trust,
+                trustSource: layerSource(
+                  layer,
+                  `verify.presets.${plugin}.phases.${selectorId}.trust`
+                ),
+              }),
         };
         const selectorPath = `verify.presets.${plugin}.phases.${selectorId}`;
         provenance.set(`${selectorPath}.include`, layerSource(layer, `${selectorPath}.include`));
         if (selector.exclude !== undefined) {
           provenance.set(`${selectorPath}.exclude`, layerSource(layer, `${selectorPath}.exclude`));
+        }
+        if (selector.trust !== undefined) {
+          provenance.set(`${selectorPath}.trust`, layerSource(layer, `${selectorPath}.trust`));
         }
       }
       presets.set(plugin, { ...preset, phases });
@@ -357,6 +389,7 @@ function applyLayer(
         ...(override.needs === undefined ? {} : { needs: override.needs }),
         ...(override.command === undefined ? {} : { command: override.command }),
         ...(override.requires === undefined ? {} : { requires: override.requires }),
+        ...(override.testStats === undefined ? {} : { testStats: override.testStats }),
         ...(override.writes === undefined ? {} : { writes: override.writes }),
         ...(override.invalidates === undefined ? {} : { invalidates: override.invalidates }),
         ...(override.timeoutMs === undefined ? {} : { timeoutMs: override.timeoutMs }),
@@ -374,6 +407,7 @@ function applyLayer(
         'tags',
         'needs',
         'requires',
+        'testStats',
         'invalidates',
         'timeoutMs',
         'onFailure',

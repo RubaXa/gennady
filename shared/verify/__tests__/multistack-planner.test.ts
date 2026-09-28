@@ -436,6 +436,53 @@ describe('scope-aware multistack target planner', () => {
     );
   });
 
+  it('blocks remote-trust selectors before spawn until U5 provides exact provider evidence', () => {
+    withRepo(
+      (root, home) => {
+        const result = resolveMultistackVerifyPlan(root, 'deploy', {
+          homeDirectory: home,
+          scope: { mode: 'files', files: ['main.exotic'] },
+        });
+        assert.deepStrictEqual(result.plan.trust, {
+          level: 'remote-provider',
+          source: 'gennady.yaml',
+        });
+        assert.strictEqual(result.readiness.status, 'BLOCKED');
+        assert.ok(
+          result.readiness.entries.some(
+            (entry) =>
+              entry.requirementId === 'anystack:selector-trust' && entry.status === 'BLOCKED'
+          )
+        );
+      },
+      {
+        markers: 'none',
+        yaml: [
+          'stack:',
+          '  use: [anystack]',
+          'verify:',
+          '  presets:',
+          '    anystack:',
+          '      phases:',
+          '        deploy:',
+          '          include: [deploy]',
+          '          trust: remote-provider',
+          '      steps:',
+          '        deploy-proof:',
+          '          tags: [deploy]',
+          '          executor: local',
+          '          effect: observe',
+          '          command:',
+          '            argv: [node, verify-deploy.mjs]',
+          '            cwd: .',
+          '          timeout: 2m',
+          '          onFailure: stop-phase',
+          '',
+        ].join('\n'),
+      }
+    );
+  });
+
   it('routes an unowned target to a visible blocked anystack instead of a zero-step pass', () => {
     withRepo((root, home) => {
       const result = resolve(root, home, ['main.exotic']);

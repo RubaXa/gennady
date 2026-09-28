@@ -32,6 +32,27 @@ export type VerifyStepResult = {
   readonly durationMs: number;
   /** @purpose Bounded diagnostic output retained for non-passing outcomes. */
   readonly output: string;
+  /** @purpose Runner-owned proof that a process attempt, rather than authored argv text, existed. */
+  readonly process?: {
+    readonly schema: 'gennady.verify-process.v1';
+    readonly identity: string;
+    readonly startedAt: string;
+    readonly finishedAt: string;
+    readonly termination: 'completed' | 'timeout' | 'cancelled';
+    readonly signal: 'SIGINT' | 'SIGTERM' | null;
+  };
+  /** @purpose Versioned normalized counts emitted by a declared test runner protocol. */
+  readonly testStats?: {
+    readonly schema: 'gennady.verify-test-stats.v1';
+    readonly policy: 'required' | 'optional' | 'none';
+    readonly protocol: string;
+    readonly runner: string;
+    readonly source: string;
+    readonly executed: number;
+    readonly passed: number;
+    readonly failed: number;
+    readonly skipped: number;
+  };
 };
 
 /** @purpose Attribute one workspace change to the step that produced it. */
@@ -62,6 +83,11 @@ export type VerifyEvidence = {
 export type VerifyPlan = {
   /** @purpose Selected phase name. */
   readonly phase: string;
+  /** @purpose Composed selector-owned evidence trust and its exact provenance. */
+  readonly trust: {
+    readonly level: 'local-runner' | 'remote-provider';
+    readonly source: string;
+  };
   /** @purpose Dependency-ordered selected steps. */
   readonly steps: readonly PlannedVerifyStep[];
 };

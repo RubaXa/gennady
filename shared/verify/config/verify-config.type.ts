@@ -38,6 +38,8 @@ export type VerifyStepConfig = {
   readonly command?: VerifyCommandConfig;
   /** @purpose Replacement readiness requirements. */
   readonly requires?: readonly Requirement[];
+  /** @purpose Explicit required, optional or none normalized test-statistics contract. */
+  readonly testStats?: VerifyStep['testStats'];
   /** @purpose Replacement write boundary. */
   readonly writes?: WriteBoundary;
   /** @purpose Replacement invalidation references. */

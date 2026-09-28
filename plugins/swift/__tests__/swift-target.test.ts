@@ -427,6 +427,7 @@ describe('Swift target StackPlugin', () => {
                 steps: {
                   integration: {
                     command: { argv: ['swift', 'test', '--filter', 'Integration'], cwd: '.' },
+                    testStats: { policy: 'none' },
                   },
                   coverage: {
                     command: { argv: ['swift', 'test', '--enable-code-coverage'], cwd: '.' },
@@ -662,6 +663,7 @@ describe('Swift target StackPlugin', () => {
                       argv: ['swift', 'test', '--filter', 'ProjectIntegration'],
                       cwd: '.',
                     },
+                    testStats: { policy: 'none' },
                   },
                 },
               },
@@ -675,6 +677,7 @@ describe('Swift target StackPlugin', () => {
                 steps: {
                   integration: {
                     command: { argv: ['swift', 'test', '--filter', 'PersonalIntegration'] },
+                    testStats: { policy: 'none' },
                   },
                 },
               },

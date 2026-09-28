@@ -134,6 +134,7 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 | ------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run`                                 | Command      | Прогон фиксированного repair-first phase либо read-only full профиля, тайминг и вердикт                                                                                             |
 | `runSddVerifyFacade`                  | Command      | Resolve exact task/phase scope and mapped selector, then invoke the universal Verify engine once                                                                                    |
+| `runWithSddAttemptJournal`            | Sink         | Serialize one SDD-owned attempt, block live owners, recover only revalidated orphans, recompute normalized final freshness and atomically persist one compact terminal entry        |
 | `runPhaseVerification`                | Command      | Одна фазовая транзакция: ladder + applicable Verification rows + atomic receipt                                                                                                     |
 | `createRepairMutationBoundary`        | Utility      | Before/after workspace proof: actual repair writes остаются внутри canonical Target Files                                                                                           |
 | `planTargetRepair`                    | Utility      | Extensible adapter registry: formatter → project linter → Gennady contract linter, exact capability-filtered targets и named skips                                                  |
@@ -399,7 +400,17 @@ setup/code/test kinds until UV-13/14. UV-22C sends open-vocabulary kinds through
   freezes rule snapshot and composed selector, opens runner-owned attempt evidence, calls the shared
   Verify engine once, then passes the same `VerifyRunReport` to SDD-owned journal/receipt sinks.
   It has no second planner/runner. Active ticket owner blocks a concurrent attempt unchanged; only a
-  proven dead/stale owner recovers RUNNING as INTERRUPTED.
+  proven dead/stale owner revalidated immediately before deletion recovers RUNNING as INTERRUPTED.
+  Process attempts and test-runner statistics are distinct: only a step-owned supported protocol may
+  emit normalized case counts; exit zero alone never becomes synthetic test evidence. Selector trust
+  is composed into the plan, and remote-required selectors remain BLOCKED until U5 supplies exact-SHA
+  provider/pipeline evidence.
+- **Journal integrity:** each attempt write uses an unpredictable same-directory temp opened with
+  `O_CREAT|O_EXCL|O_WRONLY|O_NOFOLLOW`, descriptor `fstat`/`fsync`, immediate ticket dev/ino/content
+  revalidation, owned-temp post-rename proof and exact-inode-only cleanup. BEGIN/END markers must
+  carry the same unique run id. Every persisted caller/config scalar is non-empty, bounded,
+  control-free, non-secret and free of absolute paths; unsafe terminal evidence becomes VIOLATION
+  without persisting the authored value.
 - **Standalone boundary:** `gennady verify --phase …` is persistence-free and rejects task/SDD
   context flags. Project-code repair remains allowed only through declared Verify write boundaries.
 - **Repair:** проектные `format:fix` и `lint:fix` получают один и тот же точный, option-safe target-set. Поэтому новый test-файл проверяется, а чужие production/test/negative fixtures не мутируются и не блокируют фазу. Успех lint означает reread post-state и полный набор применимых read-only проверок. Для code/test owning spec обязателен; setup может временно обходиться без него в bootstrap.

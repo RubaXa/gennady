@@ -310,6 +310,44 @@ describe('Node target StackPlugin', () => {
     );
   });
 
+  it('materializes strict Vitest JSON stats only from proven package facts', () => {
+    const document = JSON.parse(fs.readFileSync(path.join(ZERO_YAML, 'package.json'), 'utf8'));
+    document.scripts.test = 'vitest run';
+    document.devDependencies = { vitest: '^3.2.0' };
+    withProject(document, (root) => {
+      const result = resolveNodeVerifyPlan(root, 'unit', {
+        homeDirectory: root,
+        targetFiles: TARGETS,
+      });
+      assert.strictEqual(result.readiness.status, 'READY');
+      const unit = result.plan.steps.find((step) => step.id === 'node:unit');
+      assert.deepStrictEqual(unit?.testStats, {
+        policy: 'required',
+        protocol: 'vitest-json-v1',
+        runner: 'vitest',
+        source: 'detected:package.json#devDependencies.vitest',
+      });
+      assert.deepStrictEqual(unit?.command?.argv.slice(-2), ['--', '--reporter=json']);
+    });
+  });
+
+  it('does not infer Vitest from arbitrary script text without package facts', () => {
+    const document = JSON.parse(fs.readFileSync(path.join(ZERO_YAML, 'package.json'), 'utf8'));
+    document.scripts.test = 'vitest run';
+    withProject(document, (root) => {
+      const result = resolveNodeVerifyPlan(root, 'unit', {
+        homeDirectory: root,
+        targetFiles: TARGETS,
+      });
+      assert.strictEqual(result.readiness.status, 'BLOCKED');
+      assert.ok(
+        result.readiness.entries.some(
+          (entry) => entry.requirementId === 'node:unit:test-stats' && entry.status === 'BLOCKED'
+        )
+      );
+    });
+  });
+
   it('materializes npmScript through package-manager facts and keeps file provenance', () => {
     withProject(
       {
