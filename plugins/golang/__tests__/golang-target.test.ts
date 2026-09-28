@@ -267,6 +267,7 @@ describe('Go target StackPlugin', () => {
                 steps: {
                   integration: {
                     command: { argv: ['go', 'test', './integration/...'], cwd: '.' },
+                    testStats: { policy: 'none' },
                   },
                   coverage: {
                     command: {
@@ -447,7 +448,12 @@ describe('Go target StackPlugin', () => {
             verify: {
               presets: {
                 golang: {
-                  steps: { test: { command: { argv: ['go', 'test', value], cwd: '.' } } },
+                  steps: {
+                    test: {
+                      command: { argv: ['go', 'test', value], cwd: '.' },
+                      testStats: { policy: 'none' },
+                    },
+                  },
                 },
               },
             },

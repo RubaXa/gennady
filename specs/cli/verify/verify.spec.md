@@ -462,6 +462,18 @@ integration, corrective UV-22 boundary и UV-12E.
 6. Legacy byte parity активируется только explicit legacy overlay с provenance; no-overlay path не
    наследует legacy command/order semantics.
 
+UV-12E materializes this contract as `gennady.sdd-verify-attempt.v1`. The machine projection stores
+only digests, terminal facts, stable per-spawn process identities and normalized
+count/provenance fields; argv, env, stdout/stderr, RuleSnapshot prompt bodies and absolute repository
+paths are never ticket payload. Process-attempt proof is separate from test-runner statistics and
+never fabricates case counts from an exit code. Supported local adapters are versioned and strict:
+Node test summary (`node-test-summary-v1`/`node:test`), Vitest machine JSON
+(`vitest-json-v1`/`vitest`, only with proven package facts), Go JSON events (`go-test-json-v1`/`go-test`),
+Swift test summary (`swift-test-summary-v1`/`swift-test`) and XCTest summary
+(`xctest-summary-v1`/`xcodebuild`). Required policy without a supported adapter is BLOCKED
+before spawn; required malformed/missing adapter output is VIOLATION. Repeated repair/recheck results
+reduce to the latest terminal result per qualified step in deterministic plan order.
+
 UV-12E acceptance: standalone Verify оставляет ticket byte-identical и отвергает SDD flags. SDD
 facade invalid task/log identity возвращает CLI diagnostic и создаёт ноль entries; valid target
 получает одну entry до mapping/planning/readiness/spawn, включая `BLOCKED` и `ENV_FAIL` paths; live
@@ -550,6 +562,12 @@ _Полный список файлов-сущностей, перенесённ
 | `adaptSddVerifyContext`             | Adapter      | Derive SDD report identity and byte-compatible receipt inputs before execution                     |
 | `SddReceiptCommandBinding`          | Value Object | Explicit target-step to frozen legacy receipt-source identity; never free-form command text        |
 | `emitSddReceipt`                    | Service      | Optional fail-closed receipt projection from the exact terminal VerifyRunReport                    |
+| `VerifyStepResult.process`          | Value Object | Runner-owned spawned-process identity, timestamps, termination and signal without argv/env         |
+| `VerifyStepResult.testStats`        | Value Object | Versioned normalized per-test-step counts with explicit policy, runner and protocol provenance     |
+| `VerifyTestStatsPolicy`             | Value Object | Step-owned required/optional/none contract plus exact supported runner protocol                    |
+| `verifyTestStatsCapability`         | Service      | Readiness proof for one declared test-statistics protocol/runner pair                              |
+| `verifyPlanPolicyReadiness`         | Service      | Selected-slice readiness projection for step statistics and selector trust policies                |
+| `parseVerifyTestStats`              | Adapter      | Strict normalized counts from bounded output of the exact declared test runner                     |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -978,7 +996,9 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
   per-test-step minimum counts and duration; bounded/redacted detail remains in the CLI report.
 - **Machine identity:** the structured entry contains run id/timestamps, exact HEAD,
   uncommitted-state-aware worktree/scope digest, plan digest, preset/config provenance digest and
-  rules digest. Relevant drift invalidates a prior pass.
+  rules digest. Relevant drift invalidates a prior pass. Human/machine scalar projections are
+  bounded and fail closed on controls, absolute paths or secret-like material; the journal never
+  stores unsafe authored provenance while reporting a terminal VIOLATION.
 - **Stats:** each test step declares `required|optional|none`; built-in unit/integration default to
   required. Missing required capability blocks readiness; missing/malformed promised stats after
   execution is a violation. Normalized minimum is executed/passed/failed/skipped plus

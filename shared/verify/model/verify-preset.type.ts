@@ -11,6 +11,10 @@ export type PhaseSelector = {
   readonly include: readonly string[];
   /** @purpose Tags removed from the eligible set after inclusion. */
   readonly exclude?: readonly string[];
+  /** @purpose Required evidence trust for this selector; omission is explicit local compatibility. */
+  readonly trust?: 'local-runner' | 'remote-provider';
+  /** @purpose Builtin or composed config provenance for the trust decision. */
+  readonly trustSource?: string;
 };
 
 /** @purpose Zero-YAML workflow-kind mapping explicitly contributed by every built-in preset. */
@@ -41,6 +45,8 @@ export type VerifyStepOverride = {
   readonly command?: VerifyStep['command'];
   /** @purpose Replacement readiness requirements. */
   readonly requires?: readonly Requirement[];
+  /** @purpose Replacement normalized test-statistics policy. */
+  readonly testStats?: VerifyStep['testStats'];
   /** @purpose Replacement mutation boundary. */
   readonly writes?: WriteBoundary;
   /** @purpose Replacement invalidation set. */

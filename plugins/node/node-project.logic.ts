@@ -31,6 +31,10 @@ export type NodeProjectFacts = {
   readonly packageJsonError?: string;
   /** @purpose Exact non-empty-or-empty string script bodies keyed by declared name. */
   readonly scripts: Readonly<Record<string, string>>;
+  /** @purpose Sorted package names declared in dependency-bearing manifest sections. */
+  readonly packageNames: readonly string[];
+  /** @purpose First deterministic manifest section proving each declared package. */
+  readonly packageSources: Readonly<Record<string, string>>;
   /** @purpose Explicit package-manager command facts. */
   readonly packageManager: NodePackageManagerFacts;
 };
@@ -101,11 +105,28 @@ export function detectNodeProject(root: string): NodeProjectFacts | null {
               .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
           )
         : {};
+    const packageSources: Record<string, string> = Object.create(null) as Record<string, string>;
+    for (const key of [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ]) {
+      const value = document[key];
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
+      for (const name of Object.keys(value).sort()) {
+        if (packageSources[name] === undefined)
+          packageSources[name] = `package.json#${key}.${name}`;
+      }
+    }
+    const packageNames = Object.keys(packageSources).sort();
     return {
       root,
       packageJsonPath,
       packageJsonValid: true,
       scripts,
+      packageNames,
+      packageSources,
       packageManager: packageManager(root, document['packageManager']),
     };
   } catch (cause) {
@@ -115,6 +136,8 @@ export function detectNodeProject(root: string): NodeProjectFacts | null {
       packageJsonValid: false,
       packageJsonError: cause instanceof Error ? cause.message : String(cause),
       scripts: {},
+      packageNames: [],
+      packageSources: {},
       packageManager: packageManager(root, undefined),
     };
   }

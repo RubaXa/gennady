@@ -608,7 +608,7 @@ export function resolveMultistackVerifyPlan(
     entries.push(
       ...matrix.entries.map((entry) => ({
         ...entry,
-        blocking: participation.blocking,
+        blocking: entry.requirementId.endsWith(':selector-trust') ? true : participation.blocking,
         ...(participation.policyReason === undefined
           ? {}
           : {

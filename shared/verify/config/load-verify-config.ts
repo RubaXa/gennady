@@ -15,6 +15,7 @@ import type {
   LocalCommand,
   Requirement,
   VerifyEnvironmentFailureRule,
+  VerifyTestStatsPolicy,
   WriteBoundary,
 } from '../model/verify-step.type.ts';
 import { compileEnvFailRules } from '../env-fail.ts';
@@ -36,6 +37,7 @@ const STEP_KEYS = [
   'needs',
   'command',
   'requires',
+  'testStats',
   'writes',
   'invalidates',
   'timeout',
@@ -45,7 +47,8 @@ const STEP_KEYS = [
   'outputMeansFailure',
   'envFail',
 ] as const;
-const PHASE_KEYS = ['include', 'exclude'] as const;
+const PHASE_KEYS = ['include', 'exclude', 'trust'] as const;
+const TEST_STATS_KEYS = ['policy', 'protocol', 'runner'] as const;
 const SDD_KEYS = ['mapping'] as const;
 const COMMAND_KEYS = ['npmScript', 'argv', 'cwd', 'env'] as const;
 const REQUIREMENT_KEYS = ['id', 'kind', 'description', 'required', 'fix', 'probe'] as const;
@@ -55,6 +58,15 @@ const REQUIREMENT_KINDS = ['command', 'script', 'file', 'config', 'credential', 
 const FAILURE_POLICIES = ['stop-phase', 'block-dependents', 'continue'] as const;
 const EXECUTORS = ['local'] as const;
 const EFFECTS = ['observe', 'repair', 'drift-signal'] as const;
+const TEST_STATS_POLICIES = ['required', 'optional', 'none'] as const;
+const TEST_STATS_PROTOCOLS = [
+  'node-test-summary-v1',
+  'vitest-json-v1',
+  'go-test-json-v1',
+  'swift-test-summary-v1',
+  'xctest-summary-v1',
+] as const;
+const TEST_STATS_RUNNERS = ['node:test', 'vitest', 'go-test', 'swift-test', 'xcodebuild'] as const;
 
 /** @purpose Compare strings by locale-independent UTF-16 code-unit order. */
 function compareText(left: string, right: string): number {
@@ -193,6 +205,18 @@ function phaseSelector(
     value['exclude'] === undefined
       ? undefined
       : stringArray(value['exclude'], `${keyPath}.exclude`, provenance, errors);
+  const trust = value['trust'];
+  if (trust !== undefined && trust !== 'local-runner' && trust !== 'remote-provider') {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        `${keyPath}.trust`,
+        'must be local-runner or remote-provider',
+        'declare the evidence trust required by this selector',
+        sourceAt(provenance, `${keyPath}.trust`)
+      )
+    );
+  }
   if (include !== undefined && include.length === 0) {
     errors.push(
       new VerifyConfigError(
@@ -205,7 +229,98 @@ function phaseSelector(
     );
   }
   if (include === undefined || include.length === 0) return undefined;
-  return { include, ...(exclude === undefined ? {} : { exclude }) };
+  return {
+    include,
+    ...(exclude === undefined ? {} : { exclude }),
+    ...(trust === 'local-runner' || trust === 'remote-provider' ? { trust } : {}),
+  };
+}
+
+function testStatsPolicy(
+  value: unknown,
+  keyPath: string,
+  provenance: ReadonlyMap<string, string>,
+  errors: VerifyConfigError[]
+): VerifyTestStatsPolicy | undefined {
+  if (!isPlainObject(value)) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        keyPath,
+        'must be an object',
+        'declare policy plus a supported protocol/runner for required statistics',
+        sourceAt(provenance, keyPath)
+      )
+    );
+    return undefined;
+  }
+  rejectUnknownKeys(value, TEST_STATS_KEYS, keyPath, provenance, errors);
+  const policy = value['policy'];
+  const protocol = value['protocol'];
+  const runner = value['runner'];
+  const validPolicy = (TEST_STATS_POLICIES as readonly unknown[]).includes(policy);
+  const validProtocol =
+    protocol === undefined || (TEST_STATS_PROTOCOLS as readonly unknown[]).includes(protocol);
+  const validRunner =
+    runner === undefined || (TEST_STATS_RUNNERS as readonly unknown[]).includes(runner);
+  if (!validPolicy || !validProtocol || !validRunner) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        keyPath,
+        'contains an unknown stats policy, protocol or runner',
+        `use policy ${TEST_STATS_POLICIES.join('|')} and a supported protocol/runner pair`,
+        sourceAt(provenance, keyPath)
+      )
+    );
+    return undefined;
+  }
+  if (
+    (policy === 'required' && (protocol === undefined || runner === undefined)) ||
+    (policy === 'none' && (protocol !== undefined || runner !== undefined)) ||
+    (protocol === undefined) !== (runner === undefined)
+  ) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        keyPath,
+        'policy/protocol/runner combination is incomplete or contradictory',
+        'required needs protocol+runner; none forbids them; optional accepts both or neither',
+        sourceAt(provenance, keyPath)
+      )
+    );
+    return undefined;
+  }
+  const expectedRunner =
+    protocol === 'node-test-summary-v1'
+      ? 'node:test'
+      : protocol === 'vitest-json-v1'
+        ? 'vitest'
+        : protocol === 'go-test-json-v1'
+          ? 'go-test'
+          : protocol === 'swift-test-summary-v1'
+            ? 'swift-test'
+            : protocol === 'xctest-summary-v1'
+              ? 'xcodebuild'
+              : undefined;
+  if (expectedRunner !== undefined && runner !== expectedRunner) {
+    errors.push(
+      new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        keyPath,
+        `${protocol} requires runner ${expectedRunner}`,
+        'use the protocol-owned runner pair instead of authored free-form provenance',
+        sourceAt(provenance, keyPath)
+      )
+    );
+    return undefined;
+  }
+  return {
+    policy: policy as VerifyTestStatsPolicy['policy'],
+    ...(protocol === undefined ? {} : { protocol: protocol as VerifyTestStatsPolicy['protocol'] }),
+    ...(runner === undefined ? {} : { runner: runner as VerifyTestStatsPolicy['runner'] }),
+    source: sourceAt(provenance, keyPath) ?? 'verify config',
+  };
 }
 
 /** @purpose Validate serializable target env-failure rules while preserving their data form. */
@@ -558,6 +673,7 @@ function stepConfig(
     needs?: readonly string[];
     command?: VerifyCommandConfig;
     requires?: readonly Requirement[];
+    testStats?: VerifyTestStatsPolicy;
     writes?: WriteBoundary;
     invalidates?: readonly string[];
     timeoutMs?: number;
@@ -654,6 +770,10 @@ function stepConfig(
         result.requires = requirements as readonly Requirement[];
       }
     }
+  }
+  if (value['testStats'] !== undefined) {
+    const parsed = testStatsPolicy(value['testStats'], `${keyPath}.testStats`, provenance, errors);
+    if (parsed !== undefined) result.testStats = parsed;
   }
   if (value['writes'] !== undefined) {
     const writes = writeBoundary(root, value['writes'], `${keyPath}.writes`, provenance, errors);
@@ -787,6 +907,20 @@ function stepConfig(
           `${keyPath}.writes`,
           'repair step requires an explicit bounded write policy',
           'declare writes.root/include and exclude .git/**',
+          sourceAt(provenance, keyPath)
+        )
+      );
+    }
+    if (
+      result.tags?.some((tag) => tag === 'unit' || tag === 'integration') === true &&
+      result.testStats === undefined
+    ) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          `${keyPath}.testStats`,
+          'custom unit/integration step requires an explicit stats policy',
+          'declare required with a supported protocol, optional, or none',
           sourceAt(provenance, keyPath)
         )
       );

@@ -60,6 +60,23 @@ export type WriteBoundary = {
   readonly exclude?: readonly string[];
 };
 
+/** @purpose Declare whether and how a test step must produce normalized runner-owned statistics. */
+export type VerifyTestStatsPolicy = {
+  /** @purpose Required blocks before spawn without an adapter; optional degrades; none opts out. */
+  readonly policy: 'required' | 'optional' | 'none';
+  /** @purpose Executor-owned parser contract; absent only when policy is optional or none. */
+  readonly protocol?:
+    | 'node-test-summary-v1'
+    | 'vitest-json-v1'
+    | 'go-test-json-v1'
+    | 'swift-test-summary-v1'
+    | 'xctest-summary-v1';
+  /** @purpose Exact runner family whose output the protocol parses. */
+  readonly runner?: 'node:test' | 'vitest' | 'go-test' | 'swift-test' | 'xcodebuild';
+  /** @purpose Builtin, detected or config provenance for the declaration. */
+  readonly source: string;
+};
+
 /** @purpose Describe one immutable node in a plugin-owned verify DAG. */
 export type VerifyStep = {
   /** @purpose Identifier unique within the owning plugin. */
@@ -78,6 +95,8 @@ export type VerifyStep = {
   readonly command?: LocalCommand;
   /** @purpose Capabilities that must be evaluated for the selected step. */
   readonly requires: readonly Requirement[];
+  /** @purpose Explicit normalized test-statistics policy; never inferred from tags by a sink. */
+  readonly testStats?: VerifyTestStatsPolicy;
   /** @purpose Whether non-empty stdout turns exit zero into a product failure. */
   readonly outputMeansFailure?: boolean;
   /** @purpose Serializable environmental failure rules evaluated after process completion. */

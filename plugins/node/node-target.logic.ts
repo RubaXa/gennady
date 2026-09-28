@@ -18,6 +18,7 @@ import type {
   CapabilityMatrix,
   VerifyReadiness,
 } from '../../shared/verify/model/verify-readiness.type.ts';
+import { verifyPlanPolicyReadiness } from '../../shared/verify/test-stats.ts';
 import type { Requirement, VerifyStep } from '../../shared/verify/model/verify-step.type.ts';
 import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts';
 import type {
@@ -164,6 +165,12 @@ function step(
   const commandReady =
     facts.packageManager.supported &&
     (!repair || nodeRepairIsArgumentForwarding(facts.scripts, script));
+  const testStep = id === 'unit' || id === 'integration';
+  const scriptBody = facts.scripts[script] ?? '';
+  const nodeTestProtocol = /(^|\s)--test(?=\s|$)/.test(scriptBody);
+  const vitestProtocol =
+    facts.packageNames.includes('vitest') &&
+    (scriptBody.trim() === 'vitest' || scriptBody.trim() === 'vitest run');
   return {
     id,
     plugin: 'node',
@@ -174,13 +181,31 @@ function step(
     ...(commandReady
       ? {
           command: {
-            argv: nodeScriptArgv(facts, script),
+            argv: [
+              ...nodeScriptArgv(facts, script),
+              ...(testStep && vitestProtocol ? ['--', '--reporter=json'] : []),
+            ],
             cwd: facts.root,
             timeoutMs: id === 'integration' || id === 'coverage' ? 20 * 60_000 : 10 * 60_000,
           },
         }
       : {}),
     requires: scriptRequirements(id, script),
+    ...(testStep
+      ? {
+          testStats: {
+            policy: 'required' as const,
+            ...(nodeTestProtocol
+              ? { protocol: 'node-test-summary-v1' as const, runner: 'node:test' as const }
+              : vitestProtocol
+                ? { protocol: 'vitest-json-v1' as const, runner: 'vitest' as const }
+                : {}),
+            source: vitestProtocol
+              ? `detected:${facts.packageSources['vitest']}`
+              : `builtin:node.steps.${id}.testStats`,
+          },
+        }
+      : {}),
     ...options,
     timeoutMs: id === 'integration' || id === 'coverage' ? 20 * 60_000 : 10 * 60_000,
     onFailure: 'stop-phase',
@@ -265,6 +290,7 @@ export function nodeDetectedConfig(
                 : candidate.command.argv,
             cwd: facts.root,
           },
+          ...(candidate.testStats === undefined ? {} : { testStats: candidate.testStats }),
         },
       ];
     })
@@ -278,6 +304,12 @@ export function nodeDetectedConfig(
       `${facts.packageManager.source}+package.json#scripts.${script}`
     );
     provenance.set(`verify.presets.node.steps.${candidate.id}.command.cwd`, 'package.json#root');
+    if (candidate.testStats !== undefined) {
+      provenance.set(
+        `verify.presets.node.steps.${candidate.id}.testStats`,
+        candidate.testStats.source
+      );
+    }
   }
   return {
     source: 'node:package-facts',
@@ -590,6 +622,7 @@ export function evaluateNodeReadiness(
       );
     }
   }
+  entries.push(...verifyPlanPolicyReadiness(plan).filter((entry) => entry.plugin === 'node'));
 
   const status = entries.some((entry) => entry.status === 'BLOCKED')
     ? 'BLOCKED'

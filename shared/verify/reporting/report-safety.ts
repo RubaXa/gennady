@@ -70,6 +70,14 @@ function stepProjection(step: PlannedVerifyStep, root: string): Record<string, u
         ? {}
         : { probe: commandProjection(requirement.probe, root) }),
     })),
+    ...(step.testStats === undefined
+      ? {}
+      : {
+          testStats: {
+            ...step.testStats,
+            source: safeVerifyText(step.testStats.source, root),
+          },
+        }),
     ...(step.outputMeansFailure === undefined
       ? {}
       : { outputMeansFailure: step.outputMeansFailure }),
@@ -186,11 +194,23 @@ export function projectVerifyReport(
     },
     plan: {
       phase: report.plan.phase,
+      trust: {
+        level: report.plan.trust.level,
+        source: safeVerifyText(report.plan.trust.source, root),
+      },
       steps: report.plan.steps.map((step) => stepProjection(step, root)),
     },
     results: report.results.map((result) => ({
       ...result,
       output: safeVerifyText(result.output, root),
+      ...(result.testStats === undefined
+        ? {}
+        : {
+            testStats: {
+              ...result.testStats,
+              source: safeVerifyText(result.testStats.source, root),
+            },
+          }),
     })),
     mutations: report.mutations.map((mutation) => ({
       ...mutation,

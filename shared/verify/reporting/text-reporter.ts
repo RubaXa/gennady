@@ -19,6 +19,9 @@ export function renderVerifyText(report: VerifyRunReport, root: string, planOnly
     );
   }
   lines.push(`plugins=${report.context.plugins.join(',') || '<none>'}`);
+  lines.push(
+    `trust=${report.plan.trust.level} source=${safeVerifyText(report.plan.trust.source, root)}`
+  );
   lines.push(`head=${report.context.headSha}`);
   lines.push(
     `rules=${'schema' in report.rules ? 'resolved' : 'pre-resolver'} ${report.rules.digest}`
@@ -50,6 +53,11 @@ export function renderVerifyText(report: VerifyRunReport, root: string, planOnly
         `  ${result.status.toUpperCase()} ${result.stepId} exit=${result.exitCode ?? '-'} durationMs=${result.durationMs}`
       );
       if (result.output !== '') lines.push(`    ${safeVerifyText(result.output, root)}`);
+      if (result.testStats !== undefined) {
+        lines.push(
+          `    tests=${result.testStats.executed}/${result.testStats.passed}/${result.testStats.failed}/${result.testStats.skipped} protocol=${result.testStats.protocol} runner=${result.testStats.runner}`
+        );
+      }
     }
   }
   lines.push('mutations:');

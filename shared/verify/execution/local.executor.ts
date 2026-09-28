@@ -3,7 +3,7 @@
 // @consumers: target verify runner (UV-10), executor contract tests
 
 import { spawn, type ChildProcess } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
@@ -17,6 +17,7 @@ import type {
 import type { CapabilityMatrix } from '../model/verify-readiness.type.ts';
 import type { PlannedVerifyStep, VerifyEnvironmentFailureRule } from '../model/verify-step.type.ts';
 import type { WorkspaceGuard } from './workspace-guard.ts';
+import { parseVerifyTestStats, verifyTestStatsCapability } from '../test-stats.ts';
 
 const DEFAULT_EVIDENCE_BYTES = 64 * 1024;
 const DEFAULT_POLICY_OUTPUT_BYTES = 1024 * 1024;
@@ -33,6 +34,7 @@ type LocalExecutorProblemCode =
   | 'VERIFY_LOCAL_ENVIRONMENT_FAILURE'
   | 'VERIFY_LOCAL_SPAWN_FAILED'
   | 'VERIFY_LOCAL_OUTPUT_LIMIT'
+  | 'VERIFY_LOCAL_TEST_STATS_INVALID'
   | 'VERIFY_LOCAL_TIMEOUT'
   | 'VERIFY_LOCAL_CANCELLED'
   | 'VERIFY_LOCAL_WORKSPACE_VIOLATION';
@@ -63,6 +65,9 @@ export type LocalStepExecution = {
 };
 
 type ProcessOutcome = {
+  readonly identity: string;
+  readonly startedAt: string;
+  readonly finishedAt: string;
   readonly exitCode: number | null;
   /** Bounded process streams used only for verdict predicates; never serialized as evidence. */
   readonly policyStdout: string;
@@ -389,6 +394,8 @@ async function runProcess(
   const stdoutContent = new NonWhitespaceStdoutDetector();
   let spawnError: Error | undefined;
   let termination: ProcessOutcome['termination'] = 'completed';
+  const identity = `local-process:${randomUUID()}`;
+  const startedAt = new Date().toISOString();
 
   return await new Promise<ProcessOutcome>((resolve) => {
     let child: ChildProcess;
@@ -403,6 +410,9 @@ async function runProcess(
       });
     } catch (cause) {
       resolve({
+        identity,
+        startedAt,
+        finishedAt: new Date().toISOString(),
         exitCode: null,
         policyStdout: '',
         policyStderr: '',
@@ -452,6 +462,9 @@ async function runProcess(
       signal?.removeEventListener('abort', abort);
       const policyOutput = policy.finish();
       resolve({
+        identity,
+        startedAt,
+        finishedAt: new Date().toISOString(),
         exitCode,
         policyStdout: policyOutput.stdout,
         policyStderr: policyOutput.stderr,
@@ -688,6 +701,16 @@ export async function executeLocalStep(
   }
   const environment = compileEnvironmentRules(step);
   if ('problem' in environment) return blocked(environment.problem);
+  if (
+    step.testStats?.policy === 'required' &&
+    !verifyTestStatsCapability(step.testStats).supported
+  ) {
+    return blocked({
+      code: 'VERIFY_LOCAL_READINESS_BLOCKED',
+      message: `required test statistics for ${step.id} have no supported protocol/runner adapter`,
+      source: step.testStats.source,
+    });
+  }
 
   const cancellationSignal = (): 'SIGINT' | 'SIGTERM' =>
     options.cancellationSignal ?? (options.signal?.reason === 'SIGTERM' ? 'SIGTERM' : 'SIGINT');
@@ -760,7 +783,10 @@ export async function executeLocalStep(
     Math.min(step.timeoutMs, step.command.timeoutMs),
     maxEvidenceBytes,
     maxPolicyOutputBytes,
-    environment.streams,
+    new Set([
+      ...environment.streams,
+      ...(step.testStats?.protocol === undefined ? [] : (['stdout', 'stderr'] as const)),
+    ]),
     step.outputMeansFailure === true,
     options.signal
   );
@@ -845,6 +871,30 @@ export async function executeLocalStep(
             : 'fail';
   }
 
+  let testStats =
+    step.testStats === undefined
+      ? undefined
+      : (parseVerifyTestStats(
+          step.testStats,
+          processOutcome.policyStdout,
+          processOutcome.policyStderr
+        ) ?? undefined);
+  if (
+    step.testStats?.policy === 'required' &&
+    processOutcome.termination === 'completed' &&
+    processOutcome.spawnError === undefined &&
+    (processOutcome.policyOutputExceeded || testStats === undefined)
+  ) {
+    status = 'violation';
+    verdict = 'violation';
+    problem = {
+      code: 'VERIFY_LOCAL_TEST_STATS_INVALID',
+      message: `required ${step.testStats.protocol}/${step.testStats.runner} statistics for ${step.id} were missing, malformed, or exceeded the bounded parser input`,
+      source: step.testStats.source,
+    };
+    testStats = undefined;
+  }
+
   let mutations: readonly VerifyMutation[] = [];
   let cancellation: LocalStepExecution['cancellation'];
   if (status === 'cancelled') {
@@ -897,6 +947,15 @@ export async function executeLocalStep(
       exitCode: processOutcome.exitCode,
       durationMs: Date.now() - startedAt,
       output: status === 'pass' ? '' : output,
+      process: {
+        schema: 'gennady.verify-process.v1',
+        identity: processOutcome.identity,
+        startedAt: processOutcome.startedAt,
+        finishedAt: processOutcome.finishedAt,
+        termination: processOutcome.termination,
+        signal: processOutcome.termination === 'cancelled' ? cancellationSignal() : null,
+      },
+      ...(testStats === undefined ? {} : { testStats }),
     },
     mutations,
     evidence,

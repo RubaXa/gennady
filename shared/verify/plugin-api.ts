@@ -26,6 +26,7 @@ export type {
   Requirement,
   VerifyEnvironmentFailureRule,
   VerifyStep,
+  VerifyTestStatsPolicy,
   WriteBoundary,
 } from './model/verify-step.type.ts';
 export type {

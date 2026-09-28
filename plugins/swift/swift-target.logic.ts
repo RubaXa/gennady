@@ -22,6 +22,7 @@ import type {
   CapabilityMatrix,
   VerifyReadiness,
 } from '../../shared/verify/model/verify-readiness.type.ts';
+import { verifyPlanPolicyReadiness } from '../../shared/verify/test-stats.ts';
 import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts';
 import type {
   Requirement,
@@ -161,7 +162,10 @@ function step(
   argv: readonly string[] | null,
   project: SwiftProject,
   requires: readonly Requirement[],
-  options: Pick<VerifyStep, 'writes' | 'invalidates' | 'outputMeansFailure' | 'envFail'> = {}
+  options: Pick<
+    VerifyStep,
+    'writes' | 'invalidates' | 'outputMeansFailure' | 'envFail' | 'testStats'
+  > = {}
 ): VerifyStep {
   return {
     id,
@@ -281,10 +285,29 @@ export function createSwiftVerifyPreset(
       ),
       step('test', ['unit'], ['lint'], 'observe', testArgv, project, testRequirements, {
         envFail: XCODE_ENV_FAIL,
+        testStats: {
+          policy: 'required',
+          ...(project.kind === 'package'
+            ? { protocol: 'swift-test-summary-v1', runner: 'swift-test' }
+            : { protocol: 'xctest-summary-v1', runner: 'xcodebuild' }),
+          source: 'builtin:swift.steps.test.testStats',
+        },
       }),
-      step('integration', ['integration'], ['test'], 'observe', null, project, [
-        explicitCommandRequirement('integration'),
-      ]),
+      step(
+        'integration',
+        ['integration'],
+        ['test'],
+        'observe',
+        null,
+        project,
+        [explicitCommandRequirement('integration')],
+        {
+          testStats: {
+            policy: 'required',
+            source: 'builtin:swift.steps.integration.testStats',
+          },
+        }
+      ),
       step('coverage', ['coverage'], ['test'], 'observe', null, project, [
         explicitCommandRequirement('coverage'),
       ]),
@@ -326,6 +349,7 @@ export function swiftDetectedConfig(
       {
         ...(candidate.command === undefined ? {} : { command: candidate.command }),
         ...(candidate.writes === undefined ? {} : { writes: candidate.writes }),
+        ...(candidate.testStats === undefined ? {} : { testStats: candidate.testStats }),
       },
     ])
   );
@@ -345,6 +369,12 @@ export function swiftDetectedConfig(
       provenance.set(
         `verify.presets.swift.steps.${candidate.id}.writes.include`,
         `swift-target-files:${targetFiles.length}`
+      );
+    }
+    if (candidate.testStats !== undefined) {
+      provenance.set(
+        `verify.presets.swift.steps.${candidate.id}.testStats`,
+        candidate.testStats.source
       );
     }
   }
@@ -717,6 +747,16 @@ export function materializeLegacySwiftCommands(
       steps[stepId] = {
         ...(steps[stepId] ?? {}),
         ...(contextualized === undefined ? {} : { command: contextualized }),
+        ...(stepId === 'test' && contextualized !== undefined
+          ? {
+              testStats: {
+                policy: 'required' as const,
+                protocol: 'xctest-summary-v1' as const,
+                runner: 'xcodebuild' as const,
+                source: 'stack.swift.xcode',
+              },
+            }
+          : {}),
       };
       if (materialized !== undefined) {
         const identityPath = identity.workspace === undefined ? 'project' : 'workspace';
@@ -856,6 +896,7 @@ export function evaluateSwiftReadiness(
       );
     }
   }
+  entries.push(...verifyPlanPolicyReadiness(plan).filter((entry) => entry.plugin === 'swift'));
   const status = entries.some((entry) => entry.status === 'BLOCKED')
     ? 'BLOCKED'
     : entries.some((entry) => entry.status === 'DEGRADED' || entry.status === 'WAIVED')

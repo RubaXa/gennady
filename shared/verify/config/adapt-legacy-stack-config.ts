@@ -170,8 +170,29 @@ export function adaptLegacyStackConfig(
       steps[stepId] = {
         ...(steps[stepId] ?? {}),
         ...(hasCommand ? { command } : {}),
+        ...(hasCommand && step.testStats !== undefined
+          ? {
+              testStats: {
+                policy: 'none' as const,
+                source: `legacy:${legacySource(provenance, legacyPath)}`,
+              },
+            }
+          : {}),
         ...(timeoutMs === undefined ? {} : { timeoutMs }),
       };
+      if (hasCommand && step.testStats !== undefined) {
+        targetProvenance.set(
+          `${targetPath}.testStats`,
+          `legacy:${legacySource(provenance, legacyPath)}`
+        );
+        diagnostics.push({
+          path: legacyPath,
+          source: legacySource(provenance, legacyPath),
+          targetPath: `${targetPath}.testStats`,
+          message:
+            'legacy command override has no normalized runner-statistics protocol; explicit compatibility overlay records testStats.policy: none',
+        });
+      }
       for (const field of Object.keys(gate).sort(compareText)) {
         const targetField = field === 'timeout' ? 'timeoutMs' : `command.${field}`;
         const source = attribute(

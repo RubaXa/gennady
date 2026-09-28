@@ -11,6 +11,7 @@ import type {
   VerifyPreset,
 } from 'gennady/stack';
 import { BUILTIN_SDD_KIND_SELECTORS } from '../../shared/verify/model/verify-preset.type.ts';
+import { verifyPlanPolicyReadiness } from '../../shared/verify/test-stats.ts';
 
 /** No built-in gates: the whole gate list is authored as `extraGates` (spec §2). */
 export const ANYSTACK_GATE_IDS: readonly string[] = [];
@@ -86,7 +87,17 @@ export const anystackPlugin: StackPlugin = {
     },
     evaluateReadiness(_detection, preset, plan): CapabilityMatrix {
       if (plan.steps.some((step) => step.plugin === 'anystack')) {
-        return { status: 'READY', entries: [] };
+        const entries = verifyPlanPolicyReadiness(plan).filter(
+          (entry) => entry.plugin === 'anystack'
+        );
+        return {
+          status: entries.some((entry) => entry.status === 'BLOCKED')
+            ? 'BLOCKED'
+            : entries.some((entry) => entry.status !== 'READY')
+              ? 'DEGRADED'
+              : 'READY',
+          entries,
+        };
       }
       const requirement = preset.requirements[0]!;
       return {

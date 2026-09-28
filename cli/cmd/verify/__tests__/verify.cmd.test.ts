@@ -171,6 +171,7 @@ function manualReport(
     },
     plan: {
       phase: 'code',
+      trust: { level: 'local-runner', source: 'fixture:selector' },
       steps: [
         {
           id: 'node:lint',
@@ -407,6 +408,9 @@ describe('runVerifyCommand target integration', () => {
   it('runs a real Node code slice, applies bounded repair and reports it in text', async () => {
     const root = createNodeRepo();
     try {
+      const standaloneTicket = path.join(root, 'standalone.task.md');
+      const ticketBytes = Buffer.from('# ticket must remain byte-identical\n');
+      fs.writeFileSync(standaloneTicket, ticketBytes);
       const result = await runVerifyCommand(
         root,
         { phase: 'code', planOnly: false, format: 'text' },
@@ -426,6 +430,7 @@ describe('runVerifyCommand target integration', () => {
       assert.strictEqual(result.report?.context.headSha, git(root, 'rev-parse', 'HEAD'));
       assert.match(result.report?.rules.digest ?? '', /^sha256:/);
       assert.strictEqual(result.report?.context.rules, result.report?.rules);
+      assert.deepStrictEqual(fs.readFileSync(standaloneTicket), ticketBytes);
       for (const repair of result.report?.plan.steps.filter((step) => step.effect === 'repair') ??
         []) {
         assert.deepStrictEqual(repair.command?.argv.slice(-2), ['--', 'src.ts']);

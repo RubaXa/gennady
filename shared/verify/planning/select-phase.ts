@@ -26,6 +26,7 @@ export function selectPhase(
   const plan = validatePlan(presets);
   const selectedIds: QualifiedStepId[] = [];
   const allowedPlugins = seedPlugins === undefined ? null : new Set(seedPlugins);
+  const selectorTrust = new Map<string, string[]>();
 
   for (const preset of plan.presets) {
     if (allowedPlugins !== null && !allowedPlugins.has(preset.plugin)) continue;
@@ -39,6 +40,10 @@ export function selectPhase(
         { plugin: preset.plugin, phase, knownPhases: Object.keys(preset.phases).sort() }
       );
     }
+    const trust = selector.trust ?? 'local-runner';
+    const sources = selectorTrust.get(trust) ?? [];
+    sources.push(selector.trustSource ?? `builtin:${preset.plugin}.phases.${phase}`);
+    selectorTrust.set(trust, sources);
 
     const excluded = new Set(selector.exclude ?? []);
     for (const step of preset.steps) {
@@ -48,5 +53,21 @@ export function selectPhase(
     }
   }
 
-  return { phase, steps: resolveDependencies(plan.steps, selectedIds) };
+  if (selectorTrust.size > 1) {
+    throw new VerifyPlanError(
+      'VERIFY_PLAN_TRUST_CONFLICT',
+      `phase "${phase}" mixes incompatible selector trust: ${[...selectorTrust.keys()].sort().join(', ')}`,
+      { phase, trust: [...selectorTrust.keys()].sort() }
+    );
+  }
+  const [trust = 'local-runner', sources = ['compatibility:local-runner']] =
+    selectorTrust.entries().next().value ?? [];
+  return {
+    phase,
+    trust: {
+      level: trust as 'local-runner' | 'remote-provider',
+      source: sources.sort().join('+'),
+    },
+    steps: resolveDependencies(plan.steps, selectedIds),
+  };
 }
