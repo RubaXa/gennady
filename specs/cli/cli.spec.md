@@ -160,7 +160,6 @@ $ gennady lint src/foo.ts | tee report.txt
 $ gennady sync
 
 Sync: /Users/user/my-project
-  + ai/directives/knowledge.xml
   + ai/directives/coding/typescript-rules.xml
   + ai/directives/coding/result-conventions.xml
   + ai/directives/infra/eslint-setup.xml
@@ -175,7 +174,6 @@ Synced: 34 added, 0 updated, 0 skipped (unchanged)
 $ gennady sync
 
 Sync: /Users/user/my-project
-  = ai/directives/knowledge.xml                                   (unchanged)
   = ai/directives/coding/typescript-rules.xml                     (unchanged)
   ... (34 files unchanged)
 Synced: 0 added, 0 updated, 34 skipped (unchanged)
@@ -188,7 +186,7 @@ $ gennady sync
 Sync: /Users/user/my-project
   ~ ai/directives/sdd-v2/scope.directive.xml
   ~ ai/directives/sdd-v2/readiness.directive.xml
-  = ai/directives/knowledge.xml                                   (unchanged)
+  = ai/directives/coding/typescript-rules.xml                     (unchanged)
   ... (2 updated, 32 unchanged)
 Synced: 0 added, 2 updated, 32 skipped (unchanged)
 
@@ -198,7 +196,7 @@ Synced: 0 added, 2 updated, 32 skipped (unchanged)
 $ gennady sync --dry-run
 
 Sync (dry-run): /Users/user/my-project
-  + ai/directives/knowledge.xml                                   (would add)
+  + ai/directives/coding/typescript-rules.xml                     (would add)
   ~ ai/directives/sdd-v2/scope.directive.xml                      (would update)
   = ai/directives/testing/node-test.xml                           (unchanged, skip)
   ... (1 add, 1 update, 32 skip)

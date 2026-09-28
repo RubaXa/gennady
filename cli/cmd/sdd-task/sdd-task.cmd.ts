@@ -57,6 +57,7 @@ import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { deviationIsOpen, parseDeviationRecords } from '../../../shared/sdd/deviation.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
+import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
 import {
   phaseVerificationArtifactPaths,
   resolvePhaseVerificationPlan,
@@ -545,6 +546,30 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
     );
     if (dependencyIssue) return dependencyNotReadyError(phaseId, dependencyIssue);
     const phaseKind = phases[phaseIndex]?.kind ?? '';
+    const phaseDetail = detailsById[phaseId];
+    if (phaseDetail === undefined) {
+      return phaseEvidenceError(`phase '${phaseId}' has no readable phase detail`);
+    }
+    const ticketPath = relative(realpathSync(root), realpathSync(resolved.path))
+      .split('\\')
+      .join('/');
+    let ruleDispatch: ReturnType<typeof resolveSddRuleSnapshot>;
+    try {
+      ruleDispatch = resolveSddRuleSnapshot({
+        root,
+        declaredSources: phaseDetail.rules,
+        declarationFile: ticketPath,
+        declarationProvenance: `${ticketPath}#PHASE_${phaseId}.Rules`,
+        targetFiles: phasePaths.paths.targets,
+        plannedFiles: phasePaths.paths.targets,
+        tombstoneFiles: phasePaths.paths.deleted,
+        intents: [phaseKind],
+      });
+    } catch (cause) {
+      return phaseEvidenceError(
+        `phase '${phaseId}' RuleSnapshot cannot be resolved before dispatch: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    }
     let verifySelection: ReturnType<typeof resolveProjectSddVerifySelector>;
     try {
       verifySelection = resolveProjectSddVerifySelector(root, phaseKind, {
@@ -632,9 +657,6 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         `phase '${phaseId}' verification plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
       );
     }
-    const ticketPath = relative(realpathSync(root), realpathSync(resolved.path))
-      .split('\\')
-      .join('/');
     const phaseOutcome = formatPhase(
       meta,
       phases,
@@ -654,7 +676,8 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         invocation: verifyInvocation(ticketPath, phaseId),
         selector: verifySelection.selector,
         source: verifySelection.source,
-      }
+      },
+      ruleDispatch.snapshot
     );
     return withResolutionLine(
       infraExemptionNote && phaseOutcome.ok

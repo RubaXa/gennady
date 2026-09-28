@@ -1,4 +1,11 @@
-<SvelteTestingRules keywords="svelte, testing, vitest, svelte-testing-library, flushSync, effect-root, mount, unmount, jsdom" type="testing-rules" ver="2.0">
+<SvelteTestingRules rule-id="svelte-testing" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When framework="svelte" role="test"/>
+  <When pattern="**/*.svelte.test.*"/>
+  <DependsOn rule="node-test"/>
+  <DependsOn rule="svelte5-runes"/>
+  <DependsOn rule="vitest-rules"/>
+</Meta>
   <Mission>
     Canonical rules for testing Svelte 5 components on the Vitest runner with `@testing-library/svelte`. Every execution-agent MUST mount components through testing-library `render()`, flush pending effects via `flushSync()` before assertions, and unmount in cleanup so state cannot leak across cases.
 

@@ -140,6 +140,7 @@ describe('sdd-task — live gate-queue diagnostic', () => {
     const { root } = buildRepoFixture({
       scripts: EXECUTION_SCRIPTS,
       gennadyInstalled: true,
+      embeddedRules: true,
       files: {
         'src/current.ts': 'export const current = 1;\n',
         'src/current.test.ts': 'export const currentTest = 1;\n',
@@ -219,6 +220,7 @@ describe('sdd-task — live gate-queue diagnostic', () => {
     const { root } = buildRepoFixture({
       scripts: {},
       gennadyInstalled: true,
+      embeddedRules: true,
       files: {
         [ticketPath]: ticket,
         'specs/app space;safe/app.spec.md': '# App\n',
@@ -307,6 +309,7 @@ describe('sdd-task — live gate-queue diagnostic', () => {
     ].join('\n');
     const { root } = buildRepoFixture({
       scripts: {},
+      embeddedRules: true,
       files: {
         'src/existing.ts': 'export const existing = true;\n',
         'specs/app/app.spec.md': '# App\n',

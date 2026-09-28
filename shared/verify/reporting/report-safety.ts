@@ -109,7 +109,7 @@ function stepProjection(step: PlannedVerifyStep, root: string): Record<string, u
 function rulesProjection(rules: VerifyRuleSnapshot, root: string): Record<string, unknown> {
   const selections = (values: VerifyRuleSnapshot['required']) =>
     values.map((selection) => ({
-      ...selection,
+      id: selection.id,
       reason: safeVerifyText(selection.reason, root),
       provenance: safeVerifyText(selection.provenance, root),
     }));

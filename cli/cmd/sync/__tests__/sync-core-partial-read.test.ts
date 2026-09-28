@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os';
 
 // ── Fixture (real fs, built before the mock is registered — see below) ─────
 //
-// sourceDir/knowledge.xml     — unaffected, present in both
+// sourceDir/catalog.txt      — unaffected, present in both
 // sourceDir/sdd/discovery.xml — unaffected, present in both
 // sourceDir/testing/legacy.xml — readdirSync on this ONE directory is mocked to throw EACCES
 // targetDir mirrors all three, plus a genuine orphan `stale-root.xml` the package never shipped.
@@ -31,13 +31,13 @@ const _blockedSourceDir = join(_sourceDir, 'testing');
 
 mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
 mkdirSync(_blockedSourceDir, { recursive: true });
-writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
+writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
 writeFileSync(join(_sourceDir, 'sdd', 'discovery.xml'), '<d/>', 'utf-8');
 writeFileSync(join(_blockedSourceDir, 'legacy.xml'), '<legacy/>', 'utf-8');
 
 mkdirSync(join(_targetDir, 'sdd'), { recursive: true });
 mkdirSync(join(_targetDir, 'testing'), { recursive: true });
-writeFileSync(join(_targetDir, 'knowledge.xml'), '<k/>', 'utf-8');
+writeFileSync(join(_targetDir, 'catalog.txt'), 'catalog', 'utf-8');
 writeFileSync(join(_targetDir, 'sdd', 'discovery.xml'), '<d/>', 'utf-8');
 writeFileSync(join(_targetDir, 'testing', 'legacy.xml'), '<legacy/>', 'utf-8');
 writeFileSync(join(_targetDir, 'stale-root.xml'), '<stale/>', 'utf-8');
@@ -115,7 +115,7 @@ describe('collectAndCompare — partial source read (SO-7)', () => {
 
     // Unaffected files were compared normally — identical content on both sides, so 'unchanged'.
     assert.ok(
-      result.entries.some((e) => e.relativePath === 'knowledge.xml' && e.status === 'unchanged')
+      result.entries.some((e) => e.relativePath === 'catalog.txt' && e.status === 'unchanged')
     );
     assert.ok(
       result.entries.some((e) => e.relativePath === 'sdd/discovery.xml' && e.status === 'unchanged')

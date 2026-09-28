@@ -3,7 +3,6 @@
 // @spec: CLI-RULES
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { classifyPhaseFacts } from '../phase-facts.ts';
 import { createRuleRegistry } from '../rule-registry.ts';
@@ -370,18 +369,5 @@ describe('RuleResolver dependencies and overrides', () => {
         ]),
       /RULE_RESOLUTION_INVALID_OVERRIDE: base: action/
     );
-  });
-
-  it('does not read or mutate knowledge.xml while resolving', () => {
-    const path = 'ai/directives/knowledge.xml';
-    const before = readFileSync(path, 'utf8');
-    const rules = registry([
-      { id: 'typescript', children: [{ tag: 'When', attributes: { language: 'typescript' } }] },
-    ]);
-
-    RuleResolver.resolve(rules, typescriptProduction);
-
-    assert.equal(readFileSync(path, 'utf8'), before);
-    assert.doesNotMatch(readFileSync('shared/rules/rule-resolver.ts', 'utf8'), /knowledge\.xml/);
   });
 });

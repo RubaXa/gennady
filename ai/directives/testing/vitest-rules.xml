@@ -1,4 +1,8 @@
-<VitestRules keywords="vitest, runner, vi_mock, vi_fn, fake_timers, stub_env, vitest_run_not_watch, mock_confirm_gate, explicit_imports" type="testing-rules" ver="3.0">
+<VitestRules rule-id="vitest-rules" rule-schema="1" type="required" ver="3.0">
+<Meta>
+  <When framework="vitest" role="test"/>
+  <DependsOn rule="testing-common"/>
+</Meta>
   <Mission>
     Vitest runner (`vitest`) specifics on top of [`testing/common`](./common.xml). Only the deltas are stated here: one-shot vs watch invocation, `vi`-matcher API, `vi.mock` confirm-gate, mock hygiene, fake timers / env / global lifecycle, explicit imports, default isolation.
 

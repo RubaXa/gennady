@@ -96,14 +96,14 @@ describe('scanDirectives', () => {
   });
 
   it('scans all files without subdir filter', () => {
-    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<xml/>', 'utf-8');
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
     mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
     writeFileSync(join(_sourceDir, 'sdd', 'discovery.xml'), '<d/>', 'utf-8');
     mkdirSync(join(_sourceDir, 'coding'), { recursive: true });
     writeFileSync(join(_sourceDir, 'coding', 'typescript.xml'), '<t/>', 'utf-8');
 
     const files = scanDirectives(_sourceDir);
-    assert.deepStrictEqual(files, ['coding/typescript.xml', 'knowledge.xml', 'sdd/discovery.xml']);
+    assert.deepStrictEqual(files, ['catalog.txt', 'coding/typescript.xml', 'sdd/discovery.xml']);
   });
 
   it('scans only specified subdirectory', () => {
@@ -142,10 +142,10 @@ describe('scanDirectives', () => {
   it('excludes entries from EXCLUDED_ENTRIES set', () => {
     mkdirSync(join(_sourceDir, 'architecture'), { recursive: true });
     writeFileSync(join(_sourceDir, 'architecture', 'should-not-appear.xml'), '', 'utf-8');
-    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
 
     const files = scanDirectives(_sourceDir);
-    assert.deepStrictEqual(files, ['knowledge.xml']);
+    assert.deepStrictEqual(files, ['catalog.txt']);
     assert.ok(!files.some((f) => f.includes('architecture')));
   });
 
@@ -248,7 +248,7 @@ describe('collectAndCompare', () => {
   });
 
   it('leaves a target subdirectory the package does not own untouched, with a warning', () => {
-    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
     mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
     writeFileSync(join(_sourceDir, 'sdd', 'd.xml'), '<d/>', 'utf-8');
 

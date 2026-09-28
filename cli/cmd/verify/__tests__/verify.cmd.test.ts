@@ -9,6 +9,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import type { PhaseReceipt } from '../../../../shared/sdd/phase-receipt.ts';
+import { classifyPhaseFacts } from '../../../../shared/rules/phase-facts.ts';
+import { createRuleRegistry } from '../../../../shared/rules/rule-registry.ts';
+import { createRuleSnapshot } from '../../../../shared/rules/rule-snapshot.ts';
 import {
   adaptSddVerifyContext,
   type SddVerifyContext,
@@ -108,13 +111,15 @@ function sddContext(
   return adapted.context;
 }
 
-function manualReport(root: string): VerifyRunReport {
-  const rules = {
+function manualReport(
+  root: string,
+  rules: VerifyRunReport['rules'] = {
     digest: 'sha256:empty',
     required: [],
     suggested: [],
     skipped: [],
-  } as const;
+  }
+): VerifyRunReport {
   return {
     context: {
       request: { root, phase: 'code', scope: { mode: 'all', files: [] } },
@@ -216,6 +221,25 @@ function manualReport(root: string): VerifyRunReport {
   };
 }
 
+function frozenRuleSnapshot(body = '\nExact dispatched prompt.\n') {
+  const registry = createRuleRegistry([
+    {
+      source: 'ai/rules/typescript.prompt',
+      content: [
+        '<Rule rule-id="typescript" rule-schema="1" type="required" ver="1">',
+        '<Meta>',
+        '  <When language="typescript"/>',
+        '</Meta>',
+        body,
+        '</Rule>',
+        '',
+      ].join('\n'),
+    },
+  ]);
+  const facts = classifyPhaseFacts({ targetFiles: ['src.ts'], plannedFiles: [] });
+  return createRuleSnapshot(registry, facts);
+}
+
 describe('parseVerifyInvocation', () => {
   it('accepts target execution with text default and explicit JSON', () => {
     assert.deepStrictEqual(parseVerifyInvocation(argv('--phase=code')), {
@@ -274,6 +298,26 @@ describe('Verify report projection', () => {
     assert.doesNotMatch(first, /--token/);
   });
 
+  it('allowlists rule metadata without exposing or sizing output by exact prompt bodies', () => {
+    const root = '/private/tmp/private-repo';
+    const secret = 'RULE_BODY_SECRET_7f15';
+    const rules = frozenRuleSnapshot(`\n${secret}${'x'.repeat(256 * 1024)}\n`);
+    const json = renderVerifyJson(manualReport(root, rules), root);
+    const text = renderVerifyText(manualReport(root, rules), root);
+    const document = JSON.parse(json);
+
+    assert.strictEqual(document.rules.required[0].id, 'typescript');
+    assert.deepEqual(Object.keys(document.rules.required[0]).sort(), [
+      'id',
+      'provenance',
+      'reason',
+    ]);
+    assert.doesNotMatch(json, new RegExp(secret));
+    assert.doesNotMatch(text, new RegExp(secret));
+    assert.ok(Buffer.byteLength(json, 'utf8') < 16 * 1024);
+    assert.ok(Buffer.byteLength(text, 'utf8') < 8 * 1024);
+  });
+
   it('text shows all non-ready instructions, step outcome, mutation, evidence and final verdict', () => {
     const root = '/private/tmp/private-repo';
     const text = renderVerifyText(manualReport(root), root);
@@ -290,6 +334,32 @@ describe('Verify report projection', () => {
 });
 
 describe('runVerifyCommand target integration', () => {
+  it('passes one caller-frozen rule snapshot into the report without recomputation', async () => {
+    const root = createNodeRepo();
+    try {
+      const rules = frozenRuleSnapshot();
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: true, format: 'json' },
+        {
+          homeDirectory: root,
+          request: { scope: { mode: 'files', files: ['src.ts'] }, rules },
+        }
+      );
+
+      assert.strictEqual(result.exitCode, 0, result.stderr);
+      assert.strictEqual(result.report?.rules, rules);
+      assert.strictEqual(result.report?.context.rules, rules);
+      assert.equal(result.report?.rules.required[0]?.id, 'typescript');
+      assert.equal(
+        (result.report?.rules.required[0] as { readonly body?: string } | undefined)?.body,
+        '\n\nExact dispatched prompt.\n\n'
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('--plan builds a full target report but never spawns or mutates', async () => {
     const root = createNodeRepo({ sentinelTypecheck: true });
     try {
@@ -316,6 +386,8 @@ describe('runVerifyCommand target integration', () => {
         assert.deepStrictEqual(step.command?.argv.slice(-2), ['--', 'src.ts']);
       }
       assert.deepStrictEqual(document.results, []);
+      assert.equal('schema' in (result.report?.rules ?? {}), false);
+      assert.strictEqual(result.report?.rules, result.report?.context.rules);
       assert.strictEqual(fs.existsSync(path.join(root, 'spawned')), false);
       assert.strictEqual(fs.readFileSync(path.join(root, 'src.ts'), 'utf8'), before);
       assert.strictEqual(

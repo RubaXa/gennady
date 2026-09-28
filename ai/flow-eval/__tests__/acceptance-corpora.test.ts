@@ -65,6 +65,7 @@ type GoldenContract = {
     expectedFileCount: number;
   };
   baseline: string;
+  errorDelta: { newErrors: { code: string; file: string }[] };
   warningDelta: { new: BaselineFinding[]; resolved: BaselineFinding[] };
   deferred: string[];
 };
@@ -466,7 +467,7 @@ function specWithGroupReceipts(specFile: string, members: GroupMemberInput[]): s
 }
 
 describe('Batch 23A acceptance corpora', () => {
-  it('E-22: frozen golden-v1 has zero new error identity; expected red exit and warning movement stay explicit', () => {
+  it('E-22: frozen golden-v1 records the clean-sheet rule-registry error and warning movement explicitly', () => {
     assert.equal(goldenContract.schema, 'gennady.flow-eval.golden-v1.v1');
     assert.deepEqual(goldenContract.deferred, ['E-18']);
     withTempRoot('gennady-golden-v1-', (scratch) => {
@@ -482,9 +483,15 @@ describe('Batch 23A acceptance corpora', () => {
       assert.equal(run.payload.fileCount, goldenContract.source.expectedFileCount);
 
       const fresh = dedupeSortFindings(toBaselineFindings(run.payload.findings));
-      assert.deepEqual(zeroNewErrorVerdict(baseline, fresh), { ok: true });
+      assert.deepEqual(zeroNewErrorVerdict(baseline, fresh), {
+        ok: false,
+        newErrors: goldenContract.errorDelta.newErrors,
+      });
       assert.deepEqual(warningMovement(baseline, fresh), goldenContract.warningDelta);
-      assert.equal(run.payload.summary.errors, baseline.totals.errors);
+      assert.equal(
+        run.payload.summary.errors,
+        baseline.totals.errors + goldenContract.errorDelta.newErrors.length
+      );
       assert.equal(run.payload.summary.warnings, 432);
     });
   });

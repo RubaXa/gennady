@@ -1,4 +1,7 @@
-<EslintSetup keywords="eslint, binary_severity, error_or_off, no_warn_level, autofix_preferred, motivated_non_autofix, ai_friendly, lint_pipeline, mechanical_quality_gate, flat_config, prettier, unified_formatting, no_disable_comments, type_aware_delegation" type="infra-rules" ver="2.0">
+<EslintSetup rule-id="eslint-setup" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When operation="configure" tool="eslint"/>
+</Meta>
   <Mission>
     Define how ESLint is used so the lint stage is a binary, AI-friendly quality gate.
 

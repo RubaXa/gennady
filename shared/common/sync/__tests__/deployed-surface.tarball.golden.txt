@@ -25,7 +25,6 @@ ai/directives/infra/eslint-setup.xml
 ai/directives/infra/git-setup.xml
 ai/directives/infra/nodejs-npm-setup.xml
 ai/directives/infra/storybook-setup.xml
-ai/directives/knowledge.xml
 ai/directives/sdd-v2/agent-inbox/code-lens.directive.xml
 ai/directives/sdd-v2/agent-inbox/enrich.directive.xml
 ai/directives/sdd-v2/agent-inbox/security-lens.directive.xml

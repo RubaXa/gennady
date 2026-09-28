@@ -9,6 +9,14 @@
     "expectedFileCount": 212
   },
   "baseline": "ai/flow-eval/.baseline/sdd-check-227c03a8.json",
+  "errorDelta": {
+    "newErrors": [
+      {
+        "code": "SDD_RULE_REGISTRY_UNPARSEABLE",
+        "file": "ai/directives/coding/svelte5-runes.xml"
+      }
+    ]
+  },
   "warningDelta": {
     "new": [
       {

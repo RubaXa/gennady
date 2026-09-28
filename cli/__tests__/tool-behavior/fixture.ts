@@ -5,9 +5,12 @@
 // @consumers: tool-behavior/*.test.ts
 
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { BUILTIN_RULE_SOURCES } from '../../../shared/rules/builtin-rule-sources.ts';
+
+const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 
 /**
  * @purpose `git` (and any other) subprocess env, scrubbed of the vars git exports into hooks —
@@ -50,6 +53,8 @@ export type RepoFixtureState = {
   gennadyInstalled?: boolean;
   /** @purpose Stub the sdd-v2 key directive files sdd-state's install gate checks for (content is irrelevant, only existence is). */
   directives?: boolean;
+  /** @purpose Copy the complete exact embedded-rule corpus required by phase dispatch. */
+  embeddedRules?: boolean;
   /** @purpose Extra files to write verbatim, keyed by path relative to the fixture root (portal, tickets, coverage-final.json, source files, …). */
   files?: Record<string, string>;
   /** @purpose Whether to `git init` + commit everything — default true; set false when a scenario has no git-scoped tool in play. */
@@ -100,6 +105,14 @@ export function buildRepoFixture(state: RepoFixtureState = {}): { root: string }
       const target = join(root, 'ai', 'directives', 'sdd-v2', f);
       mkdirSync(dirname(target), { recursive: true });
       writeFileSync(target, '<Stub/>\n', 'utf-8');
+    }
+  }
+
+  if (state.embeddedRules) {
+    for (const source of BUILTIN_RULE_SOURCES) {
+      const target = join(root, source);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, readFileSync(join(REPO_ROOT, source), 'utf-8'), 'utf-8');
     }
   }
 

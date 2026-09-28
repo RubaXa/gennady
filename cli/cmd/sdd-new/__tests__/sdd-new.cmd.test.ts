@@ -718,11 +718,14 @@ describe('SddNewCommand', () => {
     }
   });
 
-  it('refuses task creation instead of guessing when the project rule registry is malformed', async () => {
+  it('refuses task creation instead of guessing when the embedded prompt corpus is incomplete', async () => {
     const root = join(tmpDir, 'malformed-rule-registry');
     writeScope(root, 'infra-base', 'infrastructure');
-    mkdirSync(join(root, 'ai', 'directives'), { recursive: true });
-    writeFileSync(join(root, 'ai', 'directives', 'knowledge.xml'), '<Rules></Rules>');
+    mkdirSync(join(root, 'ai', 'directives', 'coding'), { recursive: true });
+    writeFileSync(
+      join(root, 'ai', 'directives', 'coding', 'typescript-rules.xml'),
+      '<Rule rule-id="typescript" rule-schema="1" type="required" ver="1"><Meta></Meta></Rule>'
+    );
     const previous = process.cwd();
     process.chdir(root);
     try {

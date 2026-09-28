@@ -9,7 +9,6 @@ import { dirname, resolve } from 'node:path';
 import {
   DEFERRED_TEST_OWNERSHIP_LITERAL,
   loadRuleRegistry,
-  parseRuleRegistry,
   renderTaskAuthoringLiterals,
 } from '../task-authoring-literals.ts';
 import { parseTestCoverage } from '../bdd-coverage.ts';
@@ -75,18 +74,16 @@ describe('task authoring literals', () => {
     );
   });
 
-  it('takes testing-common from the registry and never invents common', () => {
-    const entries = parseRuleRegistry(
-      '<Rules><Rule id="testing-common"><File>ai/directives/testing/common.xml</File></Rule></Rules>'
+  it('takes testing-common from embedded metadata and never invents common', () => {
+    const entries = loadRuleRegistry(process.cwd());
+    assert.deepStrictEqual(
+      entries.filter((entry) => entry.id === 'testing-common'),
+      [{ id: 'testing-common', file: 'ai/directives/testing/common.xml' }]
     );
-    assert.deepStrictEqual(entries, [
-      { id: 'testing-common', file: 'ai/directives/testing/common.xml' },
-    ]);
     assert.equal(
       entries.some((entry) => entry.id === 'common'),
       false
     );
-    assert.throws(() => parseRuleRegistry('<Rules></Rules>'), /no complete/);
   });
 
   it('prints a complete Deferred Test Ownership literal accepted by the parser', () => {

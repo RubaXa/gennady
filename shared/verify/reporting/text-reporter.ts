@@ -20,7 +20,9 @@ export function renderVerifyText(report: VerifyRunReport, root: string, planOnly
   }
   lines.push(`plugins=${report.context.plugins.join(',') || '<none>'}`);
   lines.push(`head=${report.context.headSha}`);
-  lines.push(`rules=pre-resolver ${report.rules.digest}`);
+  lines.push(
+    `rules=${'schema' in report.rules ? 'resolved' : 'pre-resolver'} ${report.rules.digest}`
+  );
   lines.push(`readiness=${report.readiness.status}`);
   const nonReady = report.readiness.entries.filter((entry) => entry.status !== 'READY');
   if (nonReady.length === 0) lines.push('  READY: every selected capability is available');
