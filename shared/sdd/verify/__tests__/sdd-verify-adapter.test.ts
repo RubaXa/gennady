@@ -16,7 +16,11 @@ import {
 } from '../../phase-receipt.ts';
 import type { VerifyRunReport } from '../../../verify/model/verify-report.type.ts';
 import type { PlannedVerifyStep } from '../../../verify/model/verify-step.type.ts';
-import { emitSddReceipt, type SddReceiptCommandBinding } from '../sdd-receipt-sink.ts';
+import {
+  bindSddReceiptCommands,
+  emitSddReceipt,
+  type SddReceiptCommandBinding,
+} from '../sdd-receipt-sink.ts';
 import { adaptSddVerifyContext, type SddVerifyContext } from '../sdd-verify-context.ts';
 
 async function withProject<T>(run: (root: string) => T | Promise<T>): Promise<T> {
@@ -303,6 +307,83 @@ describe('UV-12 optional SDD receipt sink', () => {
         command: 'node verify-extra.js',
         exitCode: 0,
       });
+    }));
+
+  it('projects one frozen target-repair source from every passing primary repair step', () =>
+    withProject(async (root) => {
+      const base = context(root);
+      const sdd: SddVerifyContext = {
+        ...base,
+        gatePlan: {
+          ...gatePlan(),
+          gates: [
+            {
+              name: 'fix',
+              state: 'CONFIGURED',
+              required: true,
+              command: 'target-repair',
+              prerequisites: [],
+              provider: null,
+              next: 'run bounded target repairs',
+            },
+          ],
+        },
+      };
+      const repairSteps: readonly PlannedVerifyStep[] = [
+        {
+          ...step(root, 'node:lint', 'repair'),
+          id: 'node:lint-fix',
+          command: { argv: ['npm', 'run', 'lint:fix'], cwd: root, timeoutMs: 1_000 },
+        },
+        {
+          ...step(root, 'node:lint', 'repair'),
+          id: 'node:format-fix',
+          command: { argv: ['npm', 'run', 'format:fix'], cwd: root, timeoutMs: 1_000 },
+        },
+      ];
+      const plan = { phase: 'code', steps: repairSteps } as const;
+      const bound = bindSddReceiptCommands(root, plan, sdd, { status: 'READY', entries: [] });
+      assert.strictEqual(bound.ok, true);
+      if (!bound.ok) return;
+      assert.deepStrictEqual(bound.bindings, [
+        {
+          stepIds: ['node:lint-fix', 'node:format-fix'],
+          source: 'gate',
+          gate: 'fix',
+          projection: 'target-repair',
+        },
+      ]);
+      const incomplete = bindSddReceiptCommands(
+        root,
+        {
+          ...plan,
+          steps: repairSteps.map((planned, index) =>
+            index === 0 ? { ...planned, command: undefined } : planned
+          ),
+        },
+        sdd,
+        { status: 'DEGRADED', entries: [] }
+      );
+      assert.strictEqual(incomplete.ok, false);
+      if (!incomplete.ok) assert.match(incomplete.diagnostic.message, /every canonical.*runnable/);
+      const terminal: VerifyRunReport = {
+        ...report(root, sdd),
+        plan,
+        results: repairSteps.map((planned) => ({
+          stepId: planned.id,
+          plugin: planned.plugin,
+          status: 'pass',
+          exitCode: 0,
+          durationMs: 1,
+          output: '',
+        })),
+      };
+      const projected = await emitSddReceipt(root, terminal, sdd, bound.bindings, () => undefined);
+      assert.strictEqual(projected.ok, true);
+      if (!projected.ok || projected.status !== 'written') return;
+      assert.deepStrictEqual(projected.receipt.commands, [
+        { gate: 'fix', role: 'repair', command: 'target-repair', exitCode: 0 },
+      ]);
     }));
 
   it('fails closed before persistence on report identity, verdict or command-proof mismatch', () =>

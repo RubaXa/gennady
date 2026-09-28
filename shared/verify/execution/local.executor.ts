@@ -15,7 +15,12 @@ import type {
   VerifyStepResult,
 } from '../model/verify-report.type.ts';
 import type { CapabilityMatrix } from '../model/verify-readiness.type.ts';
-import type { PlannedVerifyStep, VerifyEnvironmentFailureRule } from '../model/verify-step.type.ts';
+import type {
+  PlannedVerifyStep,
+  QualifiedStepId,
+  VerifyEnvironmentFailureRule,
+  WriteBoundary,
+} from '../model/verify-step.type.ts';
 import type { WorkspaceGuard } from './workspace-guard.ts';
 import { parseVerifyTestStats, verifyTestStatsCapability } from '../test-stats.ts';
 
@@ -615,6 +620,11 @@ export async function executeLocalStep(
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly maxEvidenceBytes?: number;
     readonly maxPolicyOutputBytes?: number;
+    /** @purpose Guarded lifecycle mutation invoked after runnable preflight and before spawn. */
+    readonly beforeSpawn?: {
+      readonly run: () => void | Promise<void>;
+      readonly writes: WriteBoundary;
+    };
   } = {}
 ): Promise<LocalStepExecution> {
   const startedAt = Date.now();
@@ -755,6 +765,96 @@ export async function executeLocalStep(
       },
       cancellation: { signal, exitCode: cancelled.exitCode },
     };
+  }
+
+  const spawnBoundary = guard.preflightStep(step);
+  if (spawnBoundary.kind === 'error') {
+    const problem = { code: spawnBoundary.error.code, message: spawnBoundary.error.message };
+    return {
+      verdict: 'violation',
+      result: {
+        stepId: step.id,
+        plugin: step.plugin,
+        status: 'violation',
+        exitCode: null,
+        durationMs: Date.now() - startedAt,
+        output: problem.message,
+      },
+      mutations: [],
+      evidence: [],
+      problem,
+    };
+  }
+
+  if (options.beforeSpawn !== undefined) {
+    const lifecycleStep: PlannedVerifyStep = {
+      ...step,
+      id: `${step.id}:attempt-start` as QualifiedStepId,
+      needs: [],
+      effect: 'repair',
+      command: undefined,
+      writes: options.beforeSpawn.writes,
+      invalidates: [],
+    };
+    const lifecycleArmed = guard.beginStep(lifecycleStep);
+    if (lifecycleArmed.kind === 'error') {
+      const problem = { code: lifecycleArmed.error.code, message: lifecycleArmed.error.message };
+      return {
+        verdict: 'violation',
+        result: {
+          stepId: step.id,
+          plugin: step.plugin,
+          status: 'violation',
+          exitCode: null,
+          durationMs: Date.now() - startedAt,
+          output: problem.message,
+        },
+        mutations: [],
+        evidence: [],
+        problem,
+      };
+    }
+    let lifecycleCause: unknown;
+    try {
+      await options.beforeSpawn.run();
+    } catch (cause) {
+      lifecycleCause = cause;
+    }
+    const lifecycleWorkspace = guard.finishStep(lifecycleStep.id, {
+      succeeded: lifecycleCause === undefined,
+    });
+    if (lifecycleCause !== undefined || lifecycleWorkspace.kind === 'error') {
+      const detail =
+        lifecycleCause instanceof Error
+          ? lifecycleCause.message
+          : lifecycleCause === undefined
+            ? 'attempt-start mutation violated its declared write boundary'
+            : String(lifecycleCause);
+      const message =
+        lifecycleWorkspace.kind === 'error'
+          ? `${detail}; workspace restore failed: ${lifecycleWorkspace.error.message}`
+          : detail;
+      return {
+        verdict: 'violation',
+        result: {
+          stepId: step.id,
+          plugin: step.plugin,
+          status: 'violation',
+          exitCode: null,
+          durationMs: Date.now() - startedAt,
+          output: boundedText(message, maxEvidenceBytes),
+        },
+        mutations: lifecycleWorkspace.mutations,
+        evidence: [
+          {
+            kind: 'receipt',
+            identity: `local:${step.id}:attempt-start-failed`,
+            summary: boundedText(message, maxEvidenceBytes),
+          },
+        ],
+        problem: { code: 'VERIFY_LOCAL_ATTEMPT_START_FAILED', message },
+      };
+    }
   }
 
   const armed = guard.beginStep(step);

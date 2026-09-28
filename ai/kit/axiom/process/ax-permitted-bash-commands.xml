@@ -1,10 +1,11 @@
 <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       This role's bash commands stay within this list:
       - **Must run:** exact `sdd-verify --task <ticket-path> --phase <PhaseID>` exactly once per attempt at the phase
-        protocol's STEP_5. That step owns repair order, target derivation and foundation semantics;
+        protocol's STEP_5. That facade resolves the composed selector and delegates repair order,
+        target derivation and dependency semantics to the universal Verify planner/runner;
         this axiom only permits the invocation. Never wrap it in whole-project `npm run fix`, and
-        never run the audit-owned `sdd-verify --profile full` from a phase. Its receipt is the result;
-        do not copy it into prose log lines.
+        never run the audit-owned `sdd-verify --profile full` from a phase. Its terminal attempt entry is the result;
+        do not copy it into prose log lines or enable a legacy overlay unless the exact command explicitly requires one.
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
       - **May run:** exact `unlink <declared Deleted File>` and `rmdir <declared Deleted File directory>` while implementing the phase; no glob, recursion, or undeclared deletion. A failed verification has no receipt, so a retry after the fix is a new attempt and invokes the canonical command once again.
@@ -68,9 +69,9 @@
 
       Ticket §5 commands are not a phase-agent exemption, and the fixture-repository exception above
       does not create one: the one `sdd-verify --task ... --phase ...` invocation runs applicable
-      rows itself and owns their receipt (`AX_VERIFICATION_BEFORE_HANDOFF`); `sdd-verify` remains the
+      selected DAG itself and owns the attempt evidence (`AX_VERIFICATION_BEFORE_HANDOFF`); `sdd-verify` remains the
       sole self-initiated mutator through its exact-target repair rung; a standalone §5, format, lint
       or fix invocation remains forbidden. The fixture repo lets this role prove a guard script's own
       behavior on synthetic history it fully owns — it does not let this role run the ticket's own §5
-      commands, which stay `sdd-verify`'s alone to execute and receipt.
+      commands, which stay the facade/common engine's alone to select, execute and report.
     </Axiom>

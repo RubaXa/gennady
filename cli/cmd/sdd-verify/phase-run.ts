@@ -182,6 +182,25 @@ function updateReceipt(
   }
 }
 
+/**
+ * @purpose Apply one legacy-overlay receipt transition through the frozen atomic ticket writer.
+ * @invariant Callers supply only the exact ticket/phase already validated by the SDD facade.
+ * @param root Canonical repository root.
+ * @param taskPath Repository-relative ticket path.
+ * @param phase Exact SDD phase id.
+ * @param receipt Receipt to persist, or null to invalidate the prior proof before first spawn.
+ */
+export function persistLegacyPhaseReceipt(
+  root: string,
+  taskPath: string,
+  phase: string,
+  receipt: PhaseReceipt | null
+): void {
+  const containment = captureTicketContainment(root, taskPath);
+  const issue = updateReceipt(resolve(root, taskPath), phase, receipt, containment);
+  if (issue !== null) throw new Error(issue);
+}
+
 function planFor(root: string, context: PhaseVerifyContext): PhaseReceiptPlan | string {
   const adapted = adaptSddVerifyContext(root, context);
   return adapted.ok ? adapted.context.receiptPlan : adapted.diagnostic.message;

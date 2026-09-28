@@ -106,7 +106,7 @@
         Dispatch a fresh worker with the complete `phaseContext` output verbatim as the leading
         prompt block, followed by exact resolved spec/rule excerpts and current Git evidence. Never
         summarize, retype, or omit its lifecycle manifest and worker contract. The worker edits only its declared targets, runs the phase's real
-        verification, and returns a typed handoff. Apart from the receipt written by `sdd-verify`, the
+        verification, and returns a typed handoff. Apart from the runner-owned attempt evidence written by the `sdd-verify` facade, the
         worker never edits the ticket or invokes `sdd-log`.
 
         Evaluate the typed handoff per `AX_HANDOFF_TYPED` against repository evidence. Per

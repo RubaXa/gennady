@@ -49,6 +49,17 @@ const STEP_SCRIPTS = {
 
 type NodeStepId = keyof typeof STEP_SCRIPTS;
 
+function nodeRepairTargets(
+  facts: NodeProjectFacts,
+  stepId: NodeStepId,
+  script: string,
+  targetFiles: readonly string[]
+): readonly string[] {
+  return stepId === 'lint-fix' && nodeScriptReachesGennady(facts.scripts, script)
+    ? targetFiles.filter((file) => /\.tsx?$/i.test(file))
+    : targetFiles;
+}
+
 function factsOf(detection: StackDetection): NodeProjectFacts {
   return detection.details as NodeProjectFacts;
 }
@@ -280,16 +291,37 @@ export function nodeDetectedConfig(
   const steps = Object.fromEntries(
     preset.steps.map((candidate) => {
       if (candidate.command === undefined) return [candidate.id, {}];
+      const id = candidate.id as NodeStepId;
+      const script = STEP_SCRIPTS[id];
+      const repairTargets = nodeRepairTargets(facts, id, script, targetFiles);
+      if (candidate.effect === 'repair' && targetFiles.length > 0 && repairTargets.length === 0) {
+        return [
+          candidate.id,
+          {
+            enabled: false,
+            reason: 'no applicable .ts/.tsx Target Files for the Gennady contract repair',
+          },
+        ];
+      }
       return [
         candidate.id,
         {
           command: {
             argv:
-              candidate.effect === 'repair' && targetFiles.length > 0
-                ? [...candidate.command.argv, '--', ...targetFiles]
+              candidate.effect === 'repair' && repairTargets.length > 0
+                ? [...candidate.command.argv, '--', ...repairTargets]
                 : candidate.command.argv,
             cwd: facts.root,
           },
+          ...(candidate.effect === 'repair' && repairTargets.length > 0
+            ? {
+                writes: {
+                  root: facts.root,
+                  include: repairTargets,
+                  exclude: ['.git/**', 'node_modules/**', 'dist/**', 'build/**', 'coverage/**'],
+                },
+              }
+            : {}),
           ...(candidate.testStats === undefined ? {} : { testStats: candidate.testStats }),
         },
       ];
@@ -363,6 +395,10 @@ export function materializeNodeVerifyConfig(
       }
     }
     const selectedScript = command?.npmScript ?? STEP_SCRIPTS[id];
+    const repairTargets =
+      selectedScript === undefined
+        ? targetFiles
+        : nodeRepairTargets(facts, id, selectedScript, targetFiles);
     const directArgv = command?.argv !== undefined;
     const intrinsic = directArgv
       ? id === 'lint-fix' || id === 'format-fix'
@@ -396,15 +432,15 @@ export function materializeNodeVerifyConfig(
         ? undefined
         : [
             ...nodeScriptArgv(facts, command.npmScript),
-            ...((id === 'lint-fix' || id === 'format-fix') && targetFiles.length > 0
-              ? ['--', ...targetFiles]
+            ...((id === 'lint-fix' || id === 'format-fix') && repairTargets.length > 0
+              ? ['--', ...repairTargets]
               : []),
           ];
     const materializedDirectArgv =
       command?.argv !== undefined &&
       (id === 'lint-fix' || id === 'format-fix') &&
-      targetFiles.length > 0
-        ? [...command.argv, '--', ...targetFiles]
+      repairTargets.length > 0
+        ? [...command.argv, '--', ...repairTargets]
         : command?.argv;
     const nextCommand =
       command?.npmScript === undefined

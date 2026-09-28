@@ -4,8 +4,9 @@
 <PhaseExecutionProtocol keywords="sdd, phase, worker, implementation, verification" type="directive" ver="2.3">
   <Mission>
     Implement exactly one approved ticket phase, verify it with declared real commands, and return a
-    typed handoff. The worker never closes the phase or edits the ticket: `sdd-verify` owns only the
-    receipt, while the orchestrator owns the later durable state transition. The worker is disposable;
+    typed handoff. The worker never closes the phase or edits the ticket: the thin `sdd-verify` facade
+    owns its append-only attempt evidence from the universal Verify report, while the orchestrator owns
+    the later durable state transition. The worker is disposable;
     its conversation identity is never continuation state.
   </Mission>
   <BeliefState>
@@ -14,10 +15,11 @@
     <Axiom id="AX_PERMITTED_BASH_COMMANDS">
       This role's bash commands stay within this list:
       - **Must run:** exact `sdd-verify --task <ticket-path> --phase <PhaseID>` exactly once per attempt at the phase
-        protocol's STEP_5. That step owns repair order, target derivation and foundation semantics;
+        protocol's STEP_5. That facade resolves the composed selector and delegates repair order,
+        target derivation and dependency semantics to the universal Verify planner/runner;
         this axiom only permits the invocation. Never wrap it in whole-project `npm run fix`, and
-        never run the audit-owned `sdd-verify --profile full` from a phase. Its receipt is the result;
-        do not copy it into prose log lines.
+        never run the audit-owned `sdd-verify --profile full` from a phase. Its terminal attempt entry is the result;
+        do not copy it into prose log lines or enable a legacy overlay unless the exact command explicitly requires one.
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
       - **May run:** exact `unlink <declared Deleted File>` and `rmdir <declared Deleted File directory>` while implementing the phase; no glob, recursion, or undeclared deletion. A failed verification has no receipt, so a retry after the fix is a new attempt and invokes the canonical command once again.
@@ -81,11 +83,11 @@
 
       Ticket §5 commands are not a phase-agent exemption, and the fixture-repository exception above
       does not create one: the one `sdd-verify --task ... --phase ...` invocation runs applicable
-      rows itself and owns their receipt (`AX_VERIFICATION_BEFORE_HANDOFF`); `sdd-verify` remains the
+      selected DAG itself and owns the attempt evidence (`AX_VERIFICATION_BEFORE_HANDOFF`); `sdd-verify` remains the
       sole self-initiated mutator through its exact-target repair rung; a standalone §5, format, lint
       or fix invocation remains forbidden. The fixture repo lets this role prove a guard script's own
       behavior on synthetic history it fully owns — it does not let this role run the ticket's own §5
-      commands, which stay `sdd-verify`'s alone to execute and receipt.
+      commands, which stay the facade/common engine's alone to select, execute and report.
     </Axiom>
     <Axiom id="AX_TOOL_INVOCATION" cross-cutting="true">
       The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
@@ -135,7 +137,7 @@
     | ID | Trigger |
     |---|---|
     | `H_BLOCKED` | A trigger under `AX_BLOCKER_ESCALATION` fires: a rule file cited in phase Rules is missing, a prior-phase Handoff promised an artifact that doesn't exist, the spec contradicts itself or the ticket, the phase contract requires touching outside Target Files, a declared `Runtime Backing` cannot be honored in this environment, or a verification command cannot execute |
-    | `H_OUT_OF_PHASE_WRITE` | Per `AX_PHASE_SCOPE_LOCK`, the worker creates, edits, or deletes anything outside its declared `Target Files`/`Deleted Files`, or manually mutates the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line instead of leaving that one mutation to the exact `sdd-verify --task ... --phase ...` receipt |
+    | `H_OUT_OF_PHASE_WRITE` | Per `AX_PHASE_SCOPE_LOCK`, the worker creates, edits, or deletes anything outside its declared `Target Files`/`Deleted Files`, or manually mutates the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line instead of leaving SDD evidence persistence to the exact `sdd-verify --task ... --phase ...` facade |
   </HaltConditions>
   <ExecutionPlan>
     - **STEP_1_ORIENT** — Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution Log facts, and Git evidence. Verify targets still match the ticket. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml").

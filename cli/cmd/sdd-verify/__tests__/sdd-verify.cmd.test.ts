@@ -871,6 +871,35 @@ describe('parseInvocation', () => {
     );
   });
 
+  it('accepts legacy receipt projection only as an explicit provenance-bearing phase overlay', () => {
+    assert.deepStrictEqual(
+      parseInvocation(
+        argv(
+          '--task',
+          'specs/app/app.task.TSK-1.md',
+          '--phase',
+          'P2',
+          '--legacy-overlay',
+          'operator:uv13-parity'
+        )
+      ),
+      {
+        ok: true,
+        mode: 'phase',
+        task: 'specs/app/app.task.TSK-1.md',
+        phase: 'P2',
+        legacyOverlay: 'operator:uv13-parity',
+      }
+    );
+    for (const args of [
+      ['--legacy-overlay', 'operator:uv13-parity'],
+      ['--profile', 'full', '--legacy-overlay', 'operator:uv13-parity'],
+      ['--task', 'a.md', '--phase', 'P1', '--legacy-overlay='],
+    ]) {
+      assert.equal(parseInvocation(argv(...args)).ok, false, args.join(' '));
+    }
+  });
+
   it('partial phase context fails closed; full rejects phase context', () => {
     const partial = parseInvocation(argv('--task', 'specs/app/app.task.TSK-1.md'));
     assert.strictEqual(partial.ok, false);
@@ -954,6 +983,8 @@ describe('parseInvocation', () => {
       ['--phase'],
       ['--phase='],
       ['--task', 'a.md', '--phase', 'P1', '--phase', 'P2'],
+      ['--legacy-overlay'],
+      ['--legacy-overlay='],
     ];
     for (const args of invalid) {
       const result = parseInvocation(argv(...args));

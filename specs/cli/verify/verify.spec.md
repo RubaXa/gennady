@@ -383,21 +383,14 @@ affected-stack selection, оставаясь отдельной absence identity
 
 ### VER-REQ-17 [должен · нештатная]
 
-SDD-owned receipt/journal sink получает именно этот report object; standalone Verify не имеет
-persistence callback или SDD control-state side effect. При active legacy receipt sink только
-terminal `pass` с non-blocked readiness может создать
-receipt; root/task/SDD-phase/scope обязаны совпасть. Когда explicit legacy overlay активен, каждый
-configured legacy gate и каждая Verification row обязаны ровно один раз ссылаться на реально passing runnable target step. Binding
-несёт только identities: exact receipt command/role берутся из frozen SDD context, а direct argv,
-root cwd и отсутствие скрытого env механически сверяются с этой командой; они не принимаются от
-caller как свободный текст. Ошибка identity/mapping/target-state/persistence возвращает typed
-id/severity/location и не вызывает sink. `--plan` никогда не пишет receipt.
-
-Legacy byte parity не применяется к no-overlay preset как universal default. UV-12 не переключает
-compatibility runner и не объявляет полную parity: conditional overlay mapping принадлежит UV-13,
-удаление runner — UV-14. UV-13 заблокирован до reviewed UV-22 corrective boundary, embedded
-RuleRegistry/PhaseFacts/RuleResolver/SDD RuleSnapshot chain и UV-12E. Refines D-65; preserves
-A13/D-4 до conditional parity gate.
+**Когда** SDD facade включает sink, **то sink должен** получить тот же terminal
+`VerifyRunReport`, потребовать совпадение root/task/phase/scope и разрешить receipt только для
+non-blocked `pass`; любая ошибка возвращает typed id/severity/location без записи. Explicit legacy
+overlay до spawn связывает identities CONFIGURED gates/Verification rows с passing target steps,
+а receipt invalidation выполняет лишь после plan/readiness/WorkspaceGuard preflight непосредственно
+перед первой попыткой. `--plan`, standalone Verify и no-overlay path не создают legacy receipt
+bytes/order. Frozen A13/D-4 corpus сравнивает полный receipt и terminal diagnostic; подробный
+conditional-parity контракт задаёт D-SV038, удаление compatibility implementation — UV-14.
 
 ### VER-REQ-18 [должен · нештатная]
 
@@ -517,57 +510,58 @@ Provider selection идёт по exact phase artifacts/facts, не по primary 
 
 _Полный список файлов-сущностей, перенесённых задачей V-02. Функции/типы внутри них — в `Module Contracts` (§8), только там, где на них есть `Usage Waiver`._
 
-| Name                                | Type         | Purpose                                                                                            |
-| ----------------------------------- | ------------ | -------------------------------------------------------------------------------------------------- |
-| `shared/verify/verify.types.ts`     | Types        | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)                                     |
-| `shared/verify/env-fail.ts`         | Utility      | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)                                     |
-| `shared/verify/tree-guard.ts`       | Port         | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)                               |
-| `shared/verify/stack-registry.ts`   | Service      | Реестр builtin-стеков и их gate id, детект активных стеков                                         |
-| `shared/verify/plugin-api.ts`       | Port         | Публичная поверхность `gennady/stack` для авторов стек-плагинов                                    |
-| `shared/verify/stack-config.ts`     | Service      | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                             |
-| `services/config/config-loader.ts`  | Service      | Универсальный загрузчик секции конфига + провенанс + форматирование                                |
-| `plugins/index.ts`                  | Registry     | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                                |
-| `plugins/anystack/**`               | Adapter      | Legacy config gates plus config-only target selectors/steps; empty target stays visibly blocked    |
-| `plugins/golang/**`                 | Adapter      | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                             |
-| `plugins/swift/**`                  | Plugin       | SwiftPM/Xcode/Tuist legacy adapter plus target DAG, identity readiness and read-only planner       |
-| `shared/verify/presets/node.ts`     | Service      | `resolvePreset(stack, …)` — dispatcher; node inline, anystack delegated (V-04/V-08)                |
-| `shared/verify/presets/anystack.ts` | Service      | `resolveAnystackPreset` — config-authored gates, fixed order, never required (V-08)                |
-| `shared/verify/presets/swift.ts`    | Service      | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                       |
-| `shared/verify/stack-detection.ts`  | Service      | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05) |
-| `shared/verify/model/**`            | Types        | Target `PluginId`, step/preset/context/readiness/report data contracts                             |
-| `BUILTIN_SDD_KIND_SELECTORS`        | Constant     | Explicit zero-YAML SDD-kind defaults shared by built-in presets                                    |
-| `shared/verify/planning/**`         | Service      | DAG validation/slicing and deterministic scope-aware multistack orchestration                      |
-| `shared/verify/config/**`           | Service      | Strict target loader, provenance contracts and temporary lossless legacy adapter                   |
-| `shared/verify/execution/**`        | Service      | Dirty-safe workspace transaction plus direct-argv local step execution and bounded evidence        |
-| `shared/verify/reporting/**`        | Reporter     | Immutable report composition plus safe stable text/JSON projections                                |
-| `cli/cmd/verify/**`                 | Facade       | Public target phase runner and strict no-spawn plan compatibility mode                             |
-| `plugins/node/**`                   | Plugin       | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner |
-| `LocalStepExecution`                | Value Object | One terminal local-step product with typed non-runnable and cancellation outcomes                  |
-| `executeLocalStep`                  | Service      | Execute one validated local step under `WorkspaceGuard` with bounded evidence                      |
-| `LocalVerifyExecution`              | Value Object | Ordered local phase attempts, mutations, evidence and aggregate terminal state                     |
-| `runLocalVerifyPlan`                | Service      | Bounded repair convergence and selective invalidation over one selected local phase                |
-| `resolveMultistackVerifyPlan`       | Service      | One scope-aware detected composition, phase slice and readiness product                            |
-| `resolveProjectSddVerifySelector`   | Service      | Scope-aware built-in/project SDD-kind mapping resolution for phase dispatch                        |
-| `resolveSddVerifySelector`          | Service      | Fail-closed projection of one composed kind to a declared selector                                 |
-| `buildVerifyRunReport`              | Service      | Join planning/execution with honest pre-U6 rule and framework facts                                |
-| `projectVerifyReport`               | Service      | Redacted repo-relative versioned machine projection                                                |
-| `safeVerifyText`                    | Utility      | Remove repository roots and common secret forms from presentation strings                          |
-| `renderVerifyJson`                  | Reporter     | Stable JSON serializer over the safe public projection                                             |
-| `renderVerifyText`                  | Reporter     | Actionable operator view of readiness, attempts, mutations, evidence and verdict                   |
-| `VerifyInvocation`                  | Value Object | Strict phase/plan/output selection accepted by the public facade                                   |
-| `VerifyInvocationResult`            | Value Object | Parsed invocation or actionable exit-4 diagnostic                                                  |
-| `parseVerifyInvocation`             | Service      | Strict phase/output/no-spawn invocation parser                                                     |
-| `runVerifyCommand`                  | Facade       | One public composition root for target plan, local execution and reporting                         |
-| `SddVerifyContext`                  | Value Object | Frozen task/phase/scope identity plus the legacy-compatible receipt plan                           |
-| `adaptSddVerifyContext`             | Adapter      | Derive SDD report identity and byte-compatible receipt inputs before execution                     |
-| `SddReceiptCommandBinding`          | Value Object | Explicit target-step to frozen legacy receipt-source identity; never free-form command text        |
-| `emitSddReceipt`                    | Service      | Optional fail-closed receipt projection from the exact terminal VerifyRunReport                    |
-| `VerifyStepResult.process`          | Value Object | Runner-owned spawned-process identity, timestamps, termination and signal without argv/env         |
-| `VerifyStepResult.testStats`        | Value Object | Versioned normalized per-test-step counts with explicit policy, runner and protocol provenance     |
-| `VerifyTestStatsPolicy`             | Value Object | Step-owned required/optional/none contract plus exact supported runner protocol                    |
-| `verifyTestStatsCapability`         | Service      | Readiness proof for one declared test-statistics protocol/runner pair                              |
-| `verifyPlanPolicyReadiness`         | Service      | Selected-slice readiness projection for step statistics and selector trust policies                |
-| `parseVerifyTestStats`              | Adapter      | Strict normalized counts from bounded output of the exact declared test runner                     |
+| Name                                | Type         | Purpose                                                                                                                   |
+| ----------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `shared/verify/verify.types.ts`     | Types        | Общие типы стек-движка (`Gate`, `StackRun`, `VerifyReport`, …)                                                            |
+| `shared/verify/env-fail.ts`         | Utility      | Компилятор env-fail предикатов (`allOf`, `exitCodeMatches`, …)                                                            |
+| `shared/verify/tree-guard.ts`       | Port         | Лок рабочего дерева на время гейта (single-flight, ещё не подключён)                                                      |
+| `shared/verify/stack-registry.ts`   | Service      | Реестр builtin-стеков и их gate id, детект активных стеков                                                                |
+| `shared/verify/plugin-api.ts`       | Port         | Публичная поверхность `gennady/stack` для авторов стек-плагинов                                                           |
+| `shared/verify/stack-config.ts`     | Service      | Конфиг-контракт `gennady.yaml` секция `stack:` (deep-merge, провенанс)                                                    |
+| `services/config/config-loader.ts`  | Service      | Универсальный загрузчик секции конфига + провенанс + форматирование                                                       |
+| `plugins/index.ts`                  | Registry     | Список встроенных стек-плагинов (`BUILTIN_PLUGINS`)                                                                       |
+| `plugins/anystack/**`               | Adapter      | Legacy config gates plus config-only target selectors/steps; empty target stays visibly blocked                           |
+| `plugins/golang/**`                 | Adapter      | Стек-плагин Go: детект, scope, план (`gofmt`, `go vet`, `go generate`)                                                    |
+| `plugins/swift/**`                  | Plugin       | SwiftPM/Xcode/Tuist legacy adapter plus target DAG, identity readiness and read-only planner                              |
+| `shared/verify/presets/node.ts`     | Service      | `resolvePreset(stack, …)` — dispatcher; node inline, anystack delegated (V-04/V-08)                                       |
+| `shared/verify/presets/anystack.ts` | Service      | `resolveAnystackPreset` — config-authored gates, fixed order, never required (V-08)                                       |
+| `shared/verify/presets/swift.ts`    | Service      | Swift phase/full mapping and manifest+tool-version `environmentState` (V-11)                                              |
+| `shared/verify/stack-detection.ts`  | Service      | `detectRepoStack(root, config)` — один общий факт `StackDetection`, подключён к `sdd-state` (V-05)                        |
+| `shared/verify/model/**`            | Types        | Target `PluginId`, step/preset/context/readiness/report data contracts                                                    |
+| `BUILTIN_SDD_KIND_SELECTORS`        | Constant     | Explicit zero-YAML SDD-kind defaults shared by built-in presets                                                           |
+| `shared/verify/planning/**`         | Service      | DAG validation/slicing and deterministic scope-aware multistack orchestration                                             |
+| `shared/verify/config/**`           | Service      | Strict target loader, provenance contracts and temporary lossless legacy adapter                                          |
+| `shared/verify/execution/**`        | Service      | Dirty-safe workspace transaction plus direct-argv local step execution and bounded evidence                               |
+| `shared/verify/reporting/**`        | Reporter     | Immutable report composition plus safe stable text/JSON projections                                                       |
+| `cli/cmd/verify/**`                 | Facade       | Public target phase runner and strict no-spawn plan compatibility mode                                                    |
+| `plugins/node/**`                   | Plugin       | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner                        |
+| `LocalStepExecution`                | Value Object | One terminal local-step product with typed non-runnable and cancellation outcomes                                         |
+| `executeLocalStep`                  | Service      | Execute one validated local step under `WorkspaceGuard` with bounded evidence                                             |
+| `LocalVerifyExecution`              | Value Object | Ordered local phase attempts, mutations, evidence and aggregate terminal state                                            |
+| `runLocalVerifyPlan`                | Service      | Bounded repair convergence and selective invalidation over one selected local phase                                       |
+| `resolveMultistackVerifyPlan`       | Service      | One scope-aware detected composition, phase slice and readiness product                                                   |
+| `resolveProjectSddVerifySelector`   | Service      | Scope-aware built-in/project SDD-kind mapping resolution for phase dispatch                                               |
+| `resolveSddVerifySelector`          | Service      | Fail-closed projection of one composed kind to a declared selector                                                        |
+| `buildVerifyRunReport`              | Service      | Join planning/execution with honest pre-U6 rule and framework facts                                                       |
+| `projectVerifyReport`               | Service      | Redacted repo-relative versioned machine projection                                                                       |
+| `safeVerifyText`                    | Utility      | Remove repository roots and common secret forms from presentation strings                                                 |
+| `renderVerifyJson`                  | Reporter     | Stable JSON serializer over the safe public projection                                                                    |
+| `renderVerifyText`                  | Reporter     | Actionable operator view of readiness, attempts, mutations, evidence and verdict                                          |
+| `VerifyInvocation`                  | Value Object | Strict phase/plan/output selection accepted by the public facade                                                          |
+| `VerifyInvocationResult`            | Value Object | Parsed invocation or actionable exit-4 diagnostic                                                                         |
+| `parseVerifyInvocation`             | Service      | Strict phase/output/no-spawn invocation parser                                                                            |
+| `runVerifyCommand`                  | Facade       | One public composition root for target plan, local execution and reporting                                                |
+| `SddVerifyContext`                  | Value Object | Frozen task/phase/scope identity plus the legacy-compatible receipt plan                                                  |
+| `adaptSddVerifyContext`             | Adapter      | Derive SDD report identity and byte-compatible receipt inputs before execution                                            |
+| `SddReceiptCommandBinding`          | Value Object | Explicit target-step identity, or the bounded primary repair set for frozen `target-repair`; never free-form command text |
+| `bindSddReceiptCommands`            | Adapter      | Pre-spawn CONFIGURED binding plus PROVEN step/readiness overlay adaptation                                                |
+| `emitSddReceipt`                    | Service      | Optional fail-closed receipt projection from the exact terminal VerifyRunReport                                           |
+| `VerifyStepResult.process`          | Value Object | Runner-owned spawned-process identity, timestamps, termination and signal without argv/env                                |
+| `VerifyStepResult.testStats`        | Value Object | Versioned normalized per-test-step counts with explicit policy, runner and protocol provenance                            |
+| `VerifyTestStatsPolicy`             | Value Object | Step-owned required/optional/none contract plus exact supported runner protocol                                           |
+| `verifyTestStatsCapability`         | Service      | Readiness proof for one declared test-statistics protocol/runner pair                                                     |
+| `verifyPlanPolicyReadiness`         | Service      | Selected-slice readiness projection for step statistics and selector trust policies                                       |
+| `parseVerifyTestStats`              | Adapter      | Strict normalized counts from bounded output of the exact declared test runner                                            |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 

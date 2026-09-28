@@ -36,12 +36,14 @@ function commitFixtureState(root: string, message: string): void {
 
 function installRealGennady(root: string): void {
   const bin = join(root, 'node_modules', '.bin', 'gennady');
+  const prettier = join(root, 'node_modules', '.bin', 'prettier');
   mkdirSync(dirname(bin), { recursive: true });
   writeFileSync(
     bin,
     [
       '#!/usr/bin/env node',
       "const { spawnSync } = require('node:child_process');",
+      "if (process.argv[2] === 'lint') process.exit(0);",
       `const result = spawnSync(process.execPath, ['--import', ${JSON.stringify(TSX_LOADER)}, ${JSON.stringify(GENNADY_ENTRY)}, ...process.argv.slice(2)], { stdio: 'inherit' });`,
       'process.exit(result.status ?? 1);',
       '',
@@ -49,6 +51,8 @@ function installRealGennady(root: string): void {
     'utf8'
   );
   chmodSync(bin, 0o755);
+  writeFileSync(prettier, '#!/usr/bin/env node\nprocess.exit(0);\n', 'utf8');
+  chmodSync(prettier, 0o755);
 }
 
 function infraSpec(): string {
@@ -64,7 +68,7 @@ function infraSpec(): string {
     '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
     '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
     '|---|---|---|---|---|---|',
-    '| node commands | tool | this-scope-task | create | test, format, format:fix, lint, lint:fix, fix | package.json, package-lock.json, scripts/pass.mjs, scripts/fix.mjs |',
+    '| node commands | tool | this-scope-task | create | test, format, format:fix, lint, lint:fix, fix | gennady.yaml, package.json, package-lock.json, scripts/pass.mjs, scripts/fix.mjs, src/toolchain.ts |',
     '| coverage command | tool | this-scope-task | create | test:coverage | scripts/coverage.mjs |',
     '| compiler command | tool | this-scope-task | create | type-check | tsconfig.json, scripts/typecheck.mjs |',
     '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
@@ -105,6 +109,7 @@ function ticket(options: TicketOptions): string {
     '- **Rules:**',
     '  - [nodejs-npm-setup](../../ai/directives/infra/nodejs-npm-setup.xml)',
     '- **Target Files:**',
+    '  - gennady.yaml',
     '  - package.json',
     '  - package-lock.json',
     '  - .nvmrc',
@@ -112,6 +117,7 @@ function ticket(options: TicketOptions): string {
     '  - scripts/pass.mjs',
     '  - scripts/fix.mjs',
     '  - scripts/coverage.mjs',
+    '  - src/toolchain.ts',
     '- **Deleted Files:**',
     '  - none',
     '- **Inputs:** none',
@@ -124,6 +130,7 @@ function ticket(options: TicketOptions): string {
     '  - none',
     '- **Target Files:**',
     '  - tsconfig.json',
+    '  - src/config.ts',
     ...(options.typecheckTarget ? ['  - scripts/typecheck.mjs'] : []),
     '- **Deleted Files:**',
     '  - none',
@@ -139,6 +146,8 @@ function ticket(options: TicketOptions): string {
     '  - none',
     '- **Target Files:**',
     '  - package.json',
+    '  - scripts/verify-extra.mjs',
+    '  - src/test-support.ts',
     '  - test/toolchain-smoke.test.js',
     '- **Deleted Files:**',
     '  - none',
@@ -156,7 +165,7 @@ function ticket(options: TicketOptions): string {
     '',
     '**Scenario:** runs the selected smoke command [`integration`] `[IB-REQ-2]`',
     '- **Given** Node dependencies and TypeScript configuration exist',
-    '- **When** `npm test` runs',
+    '- **When** `node scripts/verify-extra.mjs` runs',
     '- **Then** it exits successfully',
     '',
     '**Scenario:** rejects a missing real readiness input [`unit`] `[IB-REQ-3]`',
@@ -172,12 +181,12 @@ function ticket(options: TicketOptions): string {
     '- **Coverage Reason:** this infrastructure ticket proves toolchain commands, not production behavior',
     '| Command | Required by | Role |',
     '|---|---|---|',
-    '| `npm test` | IB-REQ-2 | probe |',
+    '| `node scripts/verify-extra.mjs` | IB-REQ-2 | probe |',
     '<!--/SECTION:VERIFICATION-->',
     '<!--SECTION:TEST_COVERAGE-->',
     '## Test Scenario Coverage',
     '- exposes the toolchain contract → `test/toolchain-smoke.test.js` :: `[IB-REQ-1] exposes the toolchain contract`',
-    '- runs the selected smoke command → `test/toolchain-smoke.test.js` :: `[IB-REQ-2] runs the selected smoke command` :: command `npm test`',
+    '- runs the selected smoke command → `test/toolchain-smoke.test.js` :: `[IB-REQ-2] runs the selected smoke command` :: command `node scripts/verify-extra.mjs`',
     '- rejects a missing real readiness input → `test/toolchain-smoke.test.js` :: `[IB-REQ-3] rejects a missing real readiness input`',
     '<!--/SECTION:TEST_COVERAGE-->',
     '<!--SECTION:EXECUTION_LOG-->',
@@ -265,15 +274,33 @@ function buildCompositionFixture(): string {
       'type-check': 'node scripts/typecheck.mjs',
       test: 'node scripts/pass.mjs',
       'test:coverage': 'node scripts/coverage.mjs',
-      format: 'node scripts/pass.mjs',
-      'format:fix': 'node scripts/fix.mjs --write',
+      format: 'prettier --check',
+      'format:fix': 'prettier --write',
       lint: 'gennady lint',
-      'lint:fix': 'node scripts/fix.mjs --fix',
+      'lint:fix': 'gennady lint --autofix',
       fix: 'npm run format:fix && npm run lint:fix',
     },
     directives: true,
     files: {
       '.gitignore': 'node_modules/\n.claude/\n',
+      'gennady.yaml': [
+        'verify:',
+        '  presets:',
+        '    node:',
+        '      phases:',
+        '        unit: { include: [code, unit, verification-extra] }',
+        '        coverage: { include: [code, unit, coverage, verification-extra] }',
+        '      steps:',
+        '        legacy-verification:',
+        '          tags: [verification-extra]',
+        '          needs: []',
+        '          executor: local',
+        '          effect: observe',
+        '          command: { argv: [node, scripts/verify-extra.mjs], cwd: . }',
+        '          timeout: 10s',
+        '          onFailure: stop-phase',
+        '',
+      ].join('\n'),
       'package-lock.json': '{"name":"rc-composition","lockfileVersion":3,"packages":{}}\n',
       ...Object.fromEntries(
         BUILTIN_RULE_SOURCES.map((source) => [
@@ -289,8 +316,20 @@ function buildCompositionFixture(): string {
 }
 
 function verifyPhase(root: string, phase: string): void {
-  const output = runOk(root, ['sdd-verify', '--task', TICKET, '--phase', phase]);
-  assert.match(output, new RegExp(`receipt recorded: ${TICKET.replaceAll('.', '\\.')}#${phase}`));
+  const output = runOk(root, [
+    'sdd-verify',
+    '--task',
+    TICKET,
+    '--phase',
+    phase,
+    '--legacy-overlay=test:clean-repo-composition',
+  ]);
+  assert.match(output, new RegExp(`sdd=${TICKET.replaceAll('.', '\\.')}#${phase}`));
+  assert.match(output, /VERDICT PASS/);
+  assert.match(readFileSync(join(root, TICKET), 'utf8'), /<!--SDD_VERIFY_ATTEMPT:[^:]+:BEGIN-->/);
+  const receipts = parsePhaseReceipts(readFileSync(join(root, TICKET), 'utf8'));
+  assert.strictEqual(receipts.ok, true);
+  if (receipts.ok) assert.ok(receipts.receipts.some((receipt) => receipt.phase === phase));
 }
 
 function completePhase(root: string, phase: string, artifacts: string): void {
@@ -319,20 +358,24 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
         targetFiles: [
           '.npmrc',
           '.nvmrc',
+          'gennady.yaml',
           'package-lock.json',
           'package.json',
           'scripts/coverage.mjs',
           'scripts/fix.mjs',
           'scripts/pass.mjs',
+          'src/toolchain.ts',
         ],
         plannedFiles: [
           '.npmrc',
           '.nvmrc',
+          'gennady.yaml',
           'package-lock.json',
           'package.json',
           'scripts/coverage.mjs',
           'scripts/fix.mjs',
           'scripts/pass.mjs',
+          'src/toolchain.ts',
         ],
         intents: ['bootstrap'],
       });
@@ -371,10 +414,13 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       const pkg = JSON.parse(readFileSync(packagePath, 'utf8')) as Record<string, unknown>;
       pkg.engines = { node: '>=22' };
       pkg.devDependencies = { typescript: '5.9.2', vitest: '3.2.4' };
+      (pkg.scripts as Record<string, string>)['type-check'] = 'node scripts/pass.mjs';
       writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
       mkdirSync(join(root, 'scripts'), { recursive: true });
       writeFileSync(join(root, 'scripts/pass.mjs'), 'process.exit(0);\n', 'utf8');
       writeFileSync(join(root, 'scripts/fix.mjs'), 'process.exit(0);\n', 'utf8');
+      mkdirSync(join(root, 'src'), { recursive: true });
+      writeFileSync(join(root, 'src/toolchain.ts'), 'export const toolchain = true;\n', 'utf8');
       writeFileSync(
         join(root, 'scripts/coverage.mjs'),
         "import { mkdirSync, writeFileSync } from 'node:fs';\nmkdirSync('coverage', { recursive: true });\nwriteFileSync('coverage/coverage-final.json', '{}');\n",
@@ -384,17 +430,18 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       completePhase(
         root,
         'P1',
-        'package.json, package-lock.json, .nvmrc, .npmrc, scripts/pass.mjs, scripts/fix.mjs, scripts/coverage.mjs'
+        'package.json, package-lock.json, .nvmrc, .npmrc, scripts/pass.mjs, scripts/fix.mjs, scripts/coverage.mjs, src/toolchain.ts'
       );
 
-      assert.match(
-        runOk(root, ['sdd-task', TICKET, '--phase', 'P2']),
-        /CREATE files:[^\n]*tsconfig\.json[^\n]*scripts\/typecheck\.mjs/
-      );
+      const p2 = runOk(root, ['sdd-task', TICKET, '--phase', 'P2']);
+      assert.match(p2, /CREATE files:[^\n]*scripts\/typecheck\.mjs/);
+      assert.match(p2, /CREATE files:[^\n]*src\/config\.ts/);
+      assert.match(p2, /CREATE files:[^\n]*tsconfig\.json/);
       writeFileSync(join(root, 'tsconfig.json'), '{"compilerOptions":{"noEmit":true}}\n', 'utf8');
       writeFileSync(join(root, 'scripts/typecheck.mjs'), 'process.exit(0);\n', 'utf8');
+      writeFileSync(join(root, 'src/config.ts'), 'export const configured = true;\n', 'utf8');
       verifyPhase(root, 'P2');
-      completePhase(root, 'P2', 'tsconfig.json, scripts/typecheck.mjs');
+      completePhase(root, 'P2', 'tsconfig.json, scripts/typecheck.mjs, src/config.ts');
 
       assert.match(
         runOk(root, ['sdd-task', TICKET, '--phase', 'P3']),
@@ -409,6 +456,12 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       };
       writeFileSync(packagePath, `${JSON.stringify(withTest, null, 2)}\n`, 'utf8');
       mkdirSync(join(root, 'test'), { recursive: true });
+      writeFileSync(join(root, 'scripts/verify-extra.mjs'), 'process.exit(0);\n', 'utf8');
+      writeFileSync(
+        join(root, 'src/test-support.ts'),
+        'export const testSupport = true;\n',
+        'utf8'
+      );
       writeFileSync(
         join(root, 'test/toolchain-smoke.test.js'),
         [
@@ -423,7 +476,11 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
         'utf8'
       );
       verifyPhase(root, 'P3');
-      completePhase(root, 'P3', 'package.json, test/toolchain-smoke.test.js');
+      completePhase(
+        root,
+        'P3',
+        'package.json, scripts/verify-extra.mjs, src/test-support.ts, test/toolchain-smoke.test.js'
+      );
       runOk(root, ['sdd-log', TICKET, 'close']);
 
       const receipts = parsePhaseReceipts(readFileSync(join(root, TICKET), 'utf8'));

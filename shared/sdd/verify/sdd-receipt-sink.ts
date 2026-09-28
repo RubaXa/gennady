@@ -5,6 +5,8 @@
 import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { VerifyRunReport } from '../../verify/model/verify-report.type.ts';
+import type { VerifyPlan } from '../../verify/model/verify-report.type.ts';
+import type { CapabilityMatrix } from '../../verify/model/verify-readiness.type.ts';
 import type { QualifiedStepId } from '../../verify/model/verify-step.type.ts';
 import {
   phaseReceiptPlanState,
@@ -22,6 +24,13 @@ export type SddReceiptCommandBinding =
       readonly stepId: QualifiedStepId;
       readonly source: 'gate';
       readonly gate: string;
+      readonly projection?: undefined;
+    }
+  | {
+      readonly stepIds: readonly QualifiedStepId[];
+      readonly source: 'gate';
+      readonly gate: 'fix';
+      readonly projection: 'target-repair';
     }
   | {
       readonly stepId: QualifiedStepId;
@@ -56,7 +65,7 @@ function failure(
   id: SddReceiptSinkDiagnostic['id'],
   context: SddVerifyContext,
   message: string
-): SddReceiptSinkResult {
+): { readonly ok: false; readonly diagnostic: SddReceiptSinkDiagnostic } {
   return {
     ok: false,
     diagnostic: {
@@ -78,15 +87,200 @@ function bindingKey(binding: SddReceiptCommandBinding): string {
     : `verification:${binding.verificationIndex}`;
 }
 
+function bindingStepIds(binding: SddReceiptCommandBinding): readonly QualifiedStepId[] {
+  return 'stepIds' in binding ? binding.stepIds : [binding.stepId];
+}
+
 function expectedBindingKeys(context: SddVerifyContext): Set<string> {
   const expected = new Set<string>();
   for (const gate of context.gatePlan?.gates ?? []) {
-    if (gate.state === 'CONFIGURED' || gate.state === 'PROVEN') expected.add(`gate:${gate.name}`);
+    if (
+      gate.state === 'CONFIGURED' &&
+      !(gate.name === 'fix' && context.receiptPlan.targets.length === 0)
+    ) {
+      expected.add(`gate:${gate.name}`);
+    }
   }
   for (const [index] of context.receiptPlan.verification.entries()) {
     expected.add(`verification:${index}`);
   }
   return expected;
+}
+
+/**
+ * @purpose Resolve exact frozen legacy receipt sources to unique runnable target steps pre-spawn.
+ * @param root Canonical project root used to prove command cwd containment.
+ * @param plan Validated universal Verify plan whose runnable steps may prove legacy commands.
+ * @param context Frozen SDD receipt context containing the explicit overlay command sources.
+ * @param readiness Selected-slice readiness adapted with the same PROVEN step identities.
+ * @returns Either a complete one-to-one binding or a typed fail-closed diagnostic.
+ */
+export function bindSddReceiptCommands(
+  root: string,
+  plan: VerifyPlan,
+  context: SddVerifyContext,
+  readiness: CapabilityMatrix
+):
+  | {
+      readonly ok: true;
+      readonly bindings: readonly SddReceiptCommandBinding[];
+      readonly plan: VerifyPlan;
+      readonly readiness: CapabilityMatrix;
+    }
+  | { readonly ok: false; readonly diagnostic: SddReceiptSinkDiagnostic } {
+  let canonicalRoot: string;
+  try {
+    canonicalRoot = realpathSync(root);
+  } catch (cause) {
+    return failure(
+      'SDD_RECEIPT_COMMAND_UNPROVEN',
+      context,
+      `receipt root cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+    );
+  }
+  const candidates = plan.steps;
+  const used = new Set<QualifiedStepId>();
+  const provenSteps = new Set<QualifiedStepId>();
+  const bindings: SddReceiptCommandBinding[] = [];
+  const sources: readonly (
+    | { readonly source: 'gate'; readonly gate: string; readonly command: string }
+    | {
+        readonly source: 'verification';
+        readonly verificationIndex: number;
+        readonly command: string;
+      }
+  )[] = [
+    ...(context.gatePlan?.gates.flatMap((gate) => {
+      if (
+        gate.command === null ||
+        gate.state !== 'CONFIGURED' ||
+        (gate.name === 'fix' && context.receiptPlan.targets.length === 0)
+      ) {
+        return [];
+      }
+      return [{ source: 'gate' as const, gate: gate.name, command: gate.command }];
+    }) ?? []),
+    ...context.receiptPlan.verification.map((entry, verificationIndex) => ({
+      source: 'verification' as const,
+      verificationIndex,
+      command: entry.command,
+    })),
+  ];
+  for (const gate of context.gatePlan?.gates ?? []) {
+    if (
+      gate.state !== 'PROVEN' ||
+      gate.command === null ||
+      (gate.name === 'fix' && context.receiptPlan.targets.length === 0)
+    ) {
+      continue;
+    }
+    const matching = candidates.filter(
+      (step) =>
+        !used.has(step.id) &&
+        (step.command === undefined
+          ? step.id.slice(step.id.indexOf(':') + 1) === gate.name
+          : exactCommandIssue(canonicalRoot, step.command, gate.command!) === null)
+    );
+    if (matching.length !== 1) {
+      return failure(
+        'SDD_RECEIPT_COMMAND_UNPROVEN',
+        context,
+        `proven gate:${gate.name} must map to exactly one target step before compatibility execution; found ${matching.length}`
+      );
+    }
+    used.add(matching[0]!.id);
+    provenSteps.add(matching[0]!.id);
+  }
+  for (const source of sources) {
+    if (source.source === 'gate' && source.command === 'target-repair') {
+      const primaryRepairs = candidates.filter(
+        (step) =>
+          step.plugin === context.primaryPlugin && step.effect === 'repair' && !used.has(step.id)
+      );
+      if (
+        primaryRepairs.length === 0 ||
+        primaryRepairs.some((step) => step.command === undefined)
+      ) {
+        return failure(
+          'SDD_RECEIPT_COMMAND_UNPROVEN',
+          context,
+          'gate:fix target-repair requires every canonical primary-provider repair step to be runnable'
+        );
+      }
+      for (const step of primaryRepairs) used.add(step.id);
+      bindings.push({
+        stepIds: primaryRepairs.map((step) => step.id),
+        source: 'gate',
+        gate: 'fix',
+        projection: 'target-repair',
+      });
+      continue;
+    }
+    const matching = candidates.filter(
+      (step) =>
+        step.command !== undefined &&
+        !used.has(step.id) &&
+        exactCommandIssue(canonicalRoot, step.command, source.command) === null
+    );
+    if (matching.length !== 1) {
+      const key =
+        source.source === 'gate'
+          ? `gate:${source.gate}`
+          : `verification:${source.verificationIndex}`;
+      return failure(
+        'SDD_RECEIPT_COMMAND_UNPROVEN',
+        context,
+        `${key} must map to exactly one runnable target step before execution; found ${matching.length}`
+      );
+    }
+    const [step] = matching;
+    used.add(step!.id);
+    bindings.push(
+      source.source === 'gate'
+        ? { stepId: step!.id, source: 'gate', gate: source.gate }
+        : {
+            stepId: step!.id,
+            source: 'verification',
+            verificationIndex: source.verificationIndex,
+          }
+    );
+  }
+  const inheritedNeeds = (
+    stepId: QualifiedStepId,
+    visiting = new Set<QualifiedStepId>()
+  ): QualifiedStepId[] => {
+    if (visiting.has(stepId)) return [];
+    const step = plan.steps.find((candidate) => candidate.id === stepId);
+    if (step === undefined) return [];
+    if (!provenSteps.has(stepId)) return [stepId];
+    const next = new Set(visiting);
+    next.add(stepId);
+    return step.needs.flatMap((need) => inheritedNeeds(need, next));
+  };
+  const adaptedSteps = plan.steps
+    .filter((step) => !provenSteps.has(step.id))
+    .map((step) => ({
+      ...step,
+      needs: [...new Set(step.needs.flatMap((need) => inheritedNeeds(need)))].sort(),
+      invalidates: step.invalidates?.filter((id) => !provenSteps.has(id)),
+    }));
+  const adaptedEntries = readiness.entries.filter(
+    (entry) => entry.stepId === undefined || !provenSteps.has(entry.stepId)
+  );
+  const adaptedReadiness: CapabilityMatrix = {
+    status: adaptedEntries.some((entry) => entry.status === 'BLOCKED' && entry.blocking !== false)
+      ? 'BLOCKED'
+      : adaptedEntries.some((entry) => entry.status !== 'READY')
+        ? 'DEGRADED'
+        : 'READY',
+    entries: adaptedEntries,
+  };
+  return {
+    ok: true,
+    bindings,
+    plan: { ...plan, steps: adaptedSteps },
+    readiness: adaptedReadiness,
+  };
 }
 
 function contextIssue(context: SddVerifyContext): string | null {
@@ -155,33 +349,47 @@ function commandsFromBindings(
 
   for (const binding of bindings) {
     const key = bindingKey(binding);
-    if (!expected.has(key) || seenSources.has(key) || seenSteps.has(binding.stepId)) {
-      return `receipt binding is unknown or duplicated: ${key} -> ${binding.stepId}`;
-    }
-    const planned = report.plan.steps.find((step) => step.id === binding.stepId);
-    const results = report.results.filter((result) => result.stepId === binding.stepId);
+    const stepIds = bindingStepIds(binding);
     if (
-      planned?.command === undefined ||
-      results.length === 0 ||
+      !expected.has(key) ||
+      seenSources.has(key) ||
+      stepIds.length === 0 ||
+      stepIds.some((stepId) => seenSteps.has(stepId))
+    ) {
+      return `receipt binding is unknown or duplicated: ${key} -> ${stepIds.join(',')}`;
+    }
+    const planned = stepIds.map((stepId) => report.plan.steps.find((step) => step.id === stepId));
+    const results = stepIds.flatMap((stepId) =>
+      report.results.filter((result) => result.stepId === stepId)
+    );
+    if (
+      planned.some((step) => step?.command === undefined) ||
+      stepIds.some((stepId) => !results.some((result) => result.stepId === stepId)) ||
       results.some((result) => result.status !== 'pass')
     ) {
-      return `receipt source ${key} is not proven by a passing runnable step ${binding.stepId}`;
+      return `receipt source ${key} is not proven by passing runnable steps ${stepIds.join(',')}`;
     }
 
     if (binding.source === 'gate') {
       const gate = context.gatePlan?.gates.find((candidate) => candidate.name === binding.gate);
-      if (
-        gate?.command === null ||
-        gate === undefined ||
-        (gate.state !== 'CONFIGURED' && gate.state !== 'PROVEN')
-      ) {
+      if (gate?.command === null || gate === undefined || gate.state !== 'CONFIGURED') {
         return `legacy gate command is not frozen and configured: ${binding.gate}`;
       }
-      const commandIssue = exactCommandIssue(root, planned.command, gate.command);
-      if (commandIssue !== null) return `receipt source ${key} is unproven: ${commandIssue}`;
+      if (binding.projection === 'target-repair') {
+        if (
+          gate.name !== 'fix' ||
+          gate.command !== 'target-repair' ||
+          planned.some((step) => step?.effect !== 'repair')
+        ) {
+          return 'target-repair projection is not backed by canonical primary-provider repairs';
+        }
+      } else {
+        const commandIssue = exactCommandIssue(root, planned[0]!.command!, gate.command);
+        if (commandIssue !== null) return `receipt source ${key} is unproven: ${commandIssue}`;
+      }
       commands.push({
         gate: gate.name,
-        role: planned.effect === 'repair' ? 'repair' : 'foundation',
+        role: planned.some((step) => step?.effect === 'repair') ? 'repair' : 'foundation',
         command: gate.command,
         exitCode: 0,
       });
@@ -190,7 +398,7 @@ function commandsFromBindings(
       if (verification === undefined) {
         return `legacy verification command is not frozen: ${binding.verificationIndex}`;
       }
-      const commandIssue = exactCommandIssue(root, planned.command, verification.command);
+      const commandIssue = exactCommandIssue(root, planned[0]!.command!, verification.command);
       if (commandIssue !== null) return `receipt source ${key} is unproven: ${commandIssue}`;
       commands.push({
         gate: 'verification',
@@ -200,7 +408,7 @@ function commandsFromBindings(
       });
     }
     seenSources.add(key);
-    seenSteps.add(binding.stepId);
+    for (const stepId of stepIds) seenSteps.add(stepId);
   }
 
   const missing = [...expected].filter((key) => !seenSources.has(key));

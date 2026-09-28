@@ -163,7 +163,14 @@ function badInvocationMessage(detail: string): string {
 /** @purpose Strict CLI shape: a phase context, or the global read-only full gate. */
 export type InvocationResult =
   | { ok: true; mode: 'full'; profile: 'full'; only?: readonly string[]; skip?: readonly string[] }
-  | { ok: true; mode: 'phase'; task: string; phase: string }
+  | {
+      ok: true;
+      mode: 'phase';
+      task: string;
+      phase: string;
+      /** @purpose Explicit provenance for the temporary receipt-compatibility overlay. */
+      legacyOverlay?: string;
+    }
   | { ok: false; message: string };
 
 /**
@@ -180,6 +187,7 @@ export function parseInvocation(argv: string[]): InvocationResult {
         profile: { aliases: ['profile'], takesValue: true },
         task: { aliases: ['task'], takesValue: true },
         phase: { aliases: ['phase'], takesValue: true },
+        'legacy-overlay': { aliases: ['legacy-overlay'], takesValue: true },
         only: { aliases: ['only'], takesValue: true },
         skip: { aliases: ['skip'], takesValue: true },
       },
@@ -201,7 +209,7 @@ export function parseInvocation(argv: string[]): InvocationResult {
   }
 
   const scalar = (
-    key: 'profile' | 'task' | 'phase' | 'only' | 'skip'
+    key: 'profile' | 'task' | 'phase' | 'legacy-overlay' | 'only' | 'skip'
   ): { ok: true; value?: string } | { ok: false; message: string } => {
     const raw = parsed[key];
     if (raw === undefined) return { ok: true };
@@ -219,6 +227,8 @@ export function parseInvocation(argv: string[]): InvocationResult {
   if (!taskValue.ok) return taskValue;
   const phaseValue = scalar('phase');
   if (!phaseValue.ok) return phaseValue;
+  const legacyOverlayValue = scalar('legacy-overlay');
+  if (!legacyOverlayValue.ok) return legacyOverlayValue;
   const onlyValue = scalar('only');
   if (!onlyValue.ok) return onlyValue;
   const skipValue = scalar('skip');
@@ -226,6 +236,7 @@ export function parseInvocation(argv: string[]): InvocationResult {
   const rawProfile = profileValue.value;
   const task = taskValue.value;
   const phase = phaseValue.value;
+  const legacyOverlay = legacyOverlayValue.value;
   // V-13 (#20(iii)): `--only`/`--skip` select/exclude gates by name/glob — only meaningful on the
   // read-only full profile, which writes no phase receipt. A phase run's `phaseReceiptCommandIssue`
   // requires the ladder to exactly equal the canonical plan (И-2), so narrowing it here would break
@@ -262,15 +273,18 @@ export function parseInvocation(argv: string[]): InvocationResult {
     ...(skip !== undefined ? { skip } : {}),
   };
   if (rawProfile === 'full') {
-    if (task || phase) {
+    if (task || phase || legacyOverlay) {
       return {
         ok: false,
-        message: badInvocationMessage("'--profile full' cannot be combined with --task/--phase"),
+        message: badInvocationMessage(
+          "'--profile full' cannot be combined with --task/--phase/--legacy-overlay"
+        ),
       };
     }
     return { ok: true, mode: 'full', profile: 'full', ...selectors };
   }
-  if (!task && !phase) return { ok: true, mode: 'full', profile: 'full', ...selectors };
+  if (!task && !phase && !legacyOverlay)
+    return { ok: true, mode: 'full', profile: 'full', ...selectors };
   if (!task || !phase) {
     return {
       ok: false,
@@ -279,7 +293,13 @@ export function parseInvocation(argv: string[]): InvocationResult {
       ),
     };
   }
-  return { ok: true, mode: 'phase', task, phase };
+  return {
+    ok: true,
+    mode: 'phase',
+    task,
+    phase,
+    ...(legacyOverlay === undefined ? {} : { legacyOverlay }),
+  };
 }
 
 /**
