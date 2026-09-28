@@ -11,6 +11,7 @@ import type {
   Gate,
   TicketCoveragePolicy,
 } from '../../../shared/sdd/ticket.ts';
+import type { RuleSnapshot } from '../../../shared/rules/rule-snapshot.ts';
 import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 import type { AuditGroupResolution } from '../../../shared/sdd/audit-group.ts';
@@ -231,6 +232,7 @@ export function gateHint(command: string): string {
  * @param [fileLifecycle] Existing Target Files that may be read and absent exact Target Files reserved for creation.
  * @param [verificationPlan] Canonical gate states, providers, and next actions for this phase.
  * @param [verifySelection] Composed SDD-kind selector and the one canonical worker invocation.
+ * @param [ruleSnapshot] Exact immutable selected prompts and digest frozen before dispatch.
  * @returns The compact phase context, or a not-found failure when `phaseId` has no Phases Overview row.
  */
 export function formatPhase(
@@ -247,7 +249,8 @@ export function formatPhase(
     readonly invocation: string;
     readonly selector: string;
     readonly source: string;
-  }
+  },
+  ruleSnapshot?: RuleSnapshot
 ): TaskOutcome {
   const idx = phases.findIndex((p) => p.id === phaseId);
   if (idx === -1) return phaseNotFound(phaseId, phases);
@@ -282,8 +285,16 @@ export function formatPhase(
   const specAnchors = d.specRefs.length
     ? d.specRefs
     : meta.specRefs.map((s) => s.anchor || s.name).filter(Boolean);
+  const selectedRuleSources =
+    ruleSnapshot === undefined
+      ? d.rules
+      : [
+          ...new Set(
+            [...ruleSnapshot.required, ...ruleSnapshot.suggested].map(({ source }) => source)
+          ),
+        ].sort();
   lines.push('', 'lifecycle manifest (AX_READ_PER_MANIFEST):');
-  lines.push(`  READ rules:  ${d.rules.length ? d.rules.join(', ') : '—'}`);
+  lines.push(`  READ rules:  ${selectedRuleSources.length ? selectedRuleSources.join(', ') : '—'}`);
   lines.push(`  READ specs:  ${specAnchors.length ? specAnchors.join(', ') : '—'}`);
   lines.push(
     `  READ ticket: PHASE_${p.id}, BDD, VERIFICATION${p.kind.trim().toLowerCase() === 'test' ? ', TEST_COVERAGE' : ''}`
@@ -303,6 +314,24 @@ export function formatPhase(
     '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis, then return a typed blocker; no implementation archaeology',
     '  TICKET: only the exact unified Verify invocation above may own evidence/receipt; never edit status/DONE/Handoff and never call sdd-log'
   );
+
+  if (ruleSnapshot !== undefined) {
+    lines.push(
+      '',
+      `rule snapshot: ${ruleSnapshot.digest}`,
+      '  exact bodies: READ every selected source below before work; bodyDigest binds the bytes frozen in this snapshot'
+    );
+    for (const selected of [...ruleSnapshot.required, ...ruleSnapshot.suggested]) {
+      lines.push(
+        `  RULE_SELECTED id=${selected.id} type=${selected.type} source=${selected.source} bodyDigest=${selected.bodyDigest} provenance=${selected.provenance}`
+      );
+    }
+    for (const skipped of ruleSnapshot.skipped) {
+      lines.push(
+        `  RULE_SKIPPED id=${skipped.id} source=${skipped.source} bodyDigest=${skipped.bodyDigest} reason=${skipped.reason} provenance=${skipped.provenance}`
+      );
+    }
+  }
 
   const priorHandoffs = phases
     .slice(0, idx)

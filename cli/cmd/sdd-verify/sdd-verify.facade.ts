@@ -6,8 +6,9 @@ import fs from 'node:fs';
 import { relative } from 'node:path';
 import { validateTicketReviewPaths } from '../../../shared/sdd/audit-group.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
-import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
+import { parsePhaseDetail, parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
 import { resolveTicketArg } from '../../../shared/sdd/ticket-resolve.ts';
+import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
 import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { runVerifyCommand } from '../verify/verify.cmd.ts';
 
@@ -81,6 +82,31 @@ export async function runSddVerifyFacade(
       left.localeCompare(right)
     ),
   };
+  const phaseSection = extractSection(resolved.content, `PHASE_${phase.id}`);
+  if (phaseSection.status !== 'ok') {
+    return failure(`phase ${JSON.stringify(phase.id)} has no readable PHASE_${phase.id} section`);
+  }
+  let ruleDispatch: ReturnType<typeof resolveSddRuleSnapshot>;
+  try {
+    const detail = parsePhaseDetail(phaseSection.content);
+    const ticketPath = relative(canonicalRoot, fs.realpathSync(resolved.path))
+      .split('\\')
+      .join('/');
+    ruleDispatch = resolveSddRuleSnapshot({
+      root: canonicalRoot,
+      declaredSources: detail.rules,
+      declarationFile: ticketPath,
+      declarationProvenance: `${ticketPath}#PHASE_${phase.id}.Rules`,
+      targetFiles: paths.paths.targets,
+      plannedFiles: paths.paths.targets,
+      tombstoneFiles: deletedFiles,
+      intents: [phase.kind],
+    });
+  } catch (cause) {
+    return failure(
+      `phase ${JSON.stringify(phase.id)} RuleSnapshot cannot be resolved before Verify: ${cause instanceof Error ? cause.message : String(cause)}`
+    );
+  }
 
   let selection: ReturnType<typeof resolveProjectSddVerifySelector>;
   try {
@@ -102,6 +128,7 @@ export async function runSddVerifyFacade(
       request: {
         scope,
         knownDeletedFiles: deletedFiles,
+        rules: ruleDispatch.snapshot,
         workflow: {
           task: relative(canonicalRoot, resolved.path).split('\\').join('/'),
           phase: phase.id,

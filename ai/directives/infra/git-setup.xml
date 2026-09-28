@@ -1,4 +1,7 @@
-<GitSetup keywords="git, vcs, gitignore, branches, commits, hooks, history, tags, secrets, repo-bootstrap" type="infra-rules" ver="2.0">
+<GitSetup rule-id="git-setup" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When operation="configure" tool="git"/>
+</Meta>
   <Mission>
     Foundational git policy for every project: gitignore baseline, branch strategy, commit convention, history hygiene, tag/release semantics, hooks integration, secrets discipline, repo bootstrap.
 

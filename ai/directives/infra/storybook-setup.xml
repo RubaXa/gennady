@@ -1,4 +1,7 @@
-<StorybookSetupRules keywords="storybook, setup, mcp, agentic-init, install, addon-test, agents-md" type="infra-rules" ver="2.0">
+<StorybookSetupRules rule-id="storybook-setup" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When operation="configure" tool="storybook"/>
+</Meta>
   <Mission>
     Define how an execution-agent installs and configures Storybook for an agent-first project. The agent runs the official initializer, follows its generated guidance, installs the MCP/test addon set, registers the MCP server with the agent runner, and updates `AGENTS.md` so the integration is discoverable without chat context.
 

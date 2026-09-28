@@ -8,6 +8,8 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
+import { BUILTIN_RULE_SOURCES } from '../../../shared/rules/builtin-rule-sources.ts';
+import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
 import { buildRepoFixture } from './fixture.ts';
 import { runCli } from './run-cli.ts';
 
@@ -273,10 +275,11 @@ function buildCompositionFixture(): string {
     files: {
       '.gitignore': 'node_modules/\n.claude/\n',
       'package-lock.json': '{"name":"rc-composition","lockfileVersion":3,"packages":{}}\n',
-      [NODE_RULE]: '<Rule id="nodejs-npm-setup">Apply the Node/npm bootstrap order.</Rule>\n',
-      'ai/directives/knowledge.xml': readFileSync(
-        join(REPO_ROOT, 'ai/directives/knowledge.xml'),
-        'utf8'
+      ...Object.fromEntries(
+        BUILTIN_RULE_SOURCES.map((source) => [
+          source,
+          readFileSync(join(REPO_ROOT, source), 'utf8'),
+        ])
       ),
     },
   });
@@ -308,7 +311,47 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       assert.match(runOk(root, ['sdd-check', '--task', TICKET, '--authoring']), /clean/i);
 
       const future = runOk(root, ['sdd-task', TICKET, '--phase', 'P1']);
-      assert.match(future, /CREATE files:[^\n]*\.nvmrc[^\n]*\.npmrc/);
+      const expectedRules = resolveSddRuleSnapshot({
+        root,
+        declaredSources: ['../../ai/directives/infra/nodejs-npm-setup.xml'],
+        declarationFile: TICKET,
+        declarationProvenance: `${TICKET}#PHASE_P1.Rules`,
+        targetFiles: [
+          '.npmrc',
+          '.nvmrc',
+          'package-lock.json',
+          'package.json',
+          'scripts/coverage.mjs',
+          'scripts/fix.mjs',
+          'scripts/pass.mjs',
+        ],
+        plannedFiles: [
+          '.npmrc',
+          '.nvmrc',
+          'package-lock.json',
+          'package.json',
+          'scripts/coverage.mjs',
+          'scripts/fix.mjs',
+          'scripts/pass.mjs',
+        ],
+        intents: ['bootstrap'],
+      });
+      const typescriptRule = expectedRules.snapshot.required.find(
+        (entry) => entry.id === 'typescript-rules'
+      );
+      assert.ok(typescriptRule);
+      assert.match(future, /command:\s+npx gennady sdd-verify/);
+      assert.match(future, /CREATE files:[^\n]*\.nvmrc/);
+      assert.match(future, /CREATE files:[^\n]*\.npmrc/);
+      assert.match(future, new RegExp(`rule snapshot: ${expectedRules.snapshot.digest}`));
+      assert.ok(
+        future.includes(
+          `RULE_SELECTED id=typescript-rules type=required source=${typescriptRule.source} bodyDigest=${typescriptRule.bodyDigest}`
+        ),
+        'large real builtin projection retains the exact frozen snapshot identity'
+      );
+      assert.match(future, /exact bodies: READ every selected source below before work/);
+      assert.doesNotMatch(future, /RULE_BODY_BEGIN|RULE_BODY_END/);
       assert.doesNotMatch(future, /--help|search the repository|find an example/i);
 
       writeFileSync(

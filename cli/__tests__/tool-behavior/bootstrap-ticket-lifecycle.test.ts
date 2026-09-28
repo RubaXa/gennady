@@ -122,10 +122,9 @@ const TICKET = [
 describe('bootstrap ticket lifecycle', () => {
   it('is accepted by authoring, then exposes only existing P1 inputs to execute', () => {
     const { root } = buildRepoFixture({
+      embeddedRules: true,
       files: {
         'package-lock.json': '{"lockfileVersion":3}\n',
-        'ai/directives/infra/nodejs-npm-setup.xml':
-          '<Rule id="nodejs-npm-setup">Apply Node/npm bootstrap order.</Rule>\n',
         'specs/infra-base/infra-base.spec.md':
           '# Infra base\n\n<!--SECTION:SCOPE_TYPE-->\ninfrastructure\n<!--/SECTION:SCOPE_TYPE-->\n\n#### Service: `Toolchain`\n\nOwns the compiler contract.\n',
         [TICKET_PATH]: TICKET,

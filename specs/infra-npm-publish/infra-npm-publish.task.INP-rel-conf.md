@@ -38,7 +38,7 @@
 
 - **Objective:** создать `.release-it.json` с хуками `before:init` (lint + test), git commit/tag/push и npm publish. Без GitHub Release.
 - **Rules:**
-  - Правила отсутствуют — release-it не имеет rule-файла в knowledge.xml. Дефолтное поведение release-it является достаточной дисциплиной (D-001).
+  - Правила отсутствуют — release-it не имеет embedded rule prompt. Дефолтное поведение release-it является достаточной дисциплиной (D-001).
 - **Target Files:**
   - `.release-it.json`
 - **Inputs:** none

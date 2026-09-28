@@ -25,7 +25,7 @@
  * state, so an untracked stray file in ai/directives/ shows up exactly like a modified one.
  *
  * ai/directives/ also holds files build-directives.ts does NOT manage at all — not just whole
- * sibling directories (agent-inbox/, architecture/, infra/, testing/, knowledge.xml — no
+ * sibling directories (agent-inbox/, architecture/, infra/, testing/ — no
  * corresponding source under ai/kit/templates/) but individual hand-authored files SITTING INSIDE
  * a build-managed root too (e.g. ai/directives/coding/README.md and svelte5-runes.xml live next to
  * generated coding rule files, from a different source). Comparing whole directories against a

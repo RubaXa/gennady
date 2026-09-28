@@ -1,4 +1,6 @@
-<TestingCommon keywords="testing, ai_first_tests, contract_testing, case_flow, phase_anchors, unified_context, factory, mocks, bdd_mapping, snapshots, isolation" type="testing-rules" ver="1.0">
+<TestingCommon rule-id="testing-common" rule-schema="1" type="required" ver="1.0">
+<Meta>
+</Meta>
   <Mission>
     Shared testing core for every runner-specific directive (`testing/node-test`, `testing/vitest-rules`, future Jest/Pytest/Go directives). Defines: what a test must protect, how the case body is structured for the next agent to read, how dependencies are isolated, how BDD scenarios in a ticket map to `it` cases.
 

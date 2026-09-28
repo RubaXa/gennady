@@ -15,7 +15,7 @@ import {
   rmSync,
   statSync,
 } from 'node:fs';
-import { dirname, isAbsolute, join, relative } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 import {
@@ -27,6 +27,10 @@ import {
   type PhaseReceiptPlan,
 } from '../../../../shared/sdd/phase-receipt.ts';
 import { buildGroupReceipt, upsertGroupReceipt } from '../../../../shared/sdd/group-receipt.ts';
+import { resolveSddRuleSnapshot } from '../../../../shared/rules/sdd-rule-snapshot.ts';
+import { BUILTIN_RULE_SOURCES } from '../../../../shared/rules/builtin-rule-sources.ts';
+
+const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..');
 
 type TaskModule = typeof import('../sdd-task.cmd.ts');
 
@@ -62,6 +66,10 @@ function writeDeclaredPhaseTargets(root: string): void {
   writeFileSync(join(root, 'src', 'foo.ts'), 'export const foo = true;\n', 'utf-8');
   writeFileSync(join(root, 'src', 'foo.test.ts'), "import './foo.ts';\n", 'utf-8');
   writeFileSync(join(root, 'src', 'real.ts'), 'export const real = true;\n', 'utf-8');
+  for (const source of BUILTIN_RULE_SOURCES) {
+    mkdirSync(dirname(join(root, source)), { recursive: true });
+    writeFileSync(join(root, source), readFileSync(join(REPO_ROOT, source), 'utf8'));
+  }
 }
 
 /** @purpose Deny one read in hosts that enforce chmod; skip only the platform-sensitive assertion otherwise. */
@@ -890,6 +898,7 @@ describe('SddTaskCommand', () => {
       const goRoot = mkdtempSync(join(tmpdir(), 'sdd-task-go-stack-'));
       const goTicket = join(goRoot, 'specs', 'cli', 'core', 'core.task.cli-foo.md');
       try {
+        writeDeclaredPhaseTargets(goRoot);
         mkdirSync(join(goRoot, 'specs', 'cli', 'core'), { recursive: true });
         mkdirSync(join(goRoot, 'src'), { recursive: true });
         writeFileSync(join(goRoot, 'go.mod'), 'module example.com/fixture\n\ngo 1.22\n', 'utf-8');
@@ -932,9 +941,36 @@ describe('SddTaskCommand', () => {
       assert.match(text, /command:\s+npx gennady sdd-verify --task=phased\.md --phase=P2/);
       assert.match(text, /agent must not select individual gates/);
       assert.strictEqual((text.match(/npx gennady sdd-verify/g) ?? []).length, 1);
+      const expectedRules = resolveSddRuleSnapshot({
+        root: dir,
+        declaredSources: ['ai/directives/testing/node-test.xml'],
+        declarationProvenance: 'phased.md#PHASE_P2.Rules',
+        targetFiles: ['src/foo.test.ts'],
+        plannedFiles: ['src/foo.test.ts'],
+        intents: ['test'],
+      });
+      assert.match(text, new RegExp(`rule snapshot: ${expectedRules.snapshot.digest}`));
+      assert.match(
+        text,
+        new RegExp(
+          `RULE_SELECTED id=node-test type=required source=ai/directives/testing/node-test\\.xml bodyDigest=${expectedRules.snapshot.required.find((entry) => entry.id === 'node-test')?.bodyDigest}`
+        )
+      );
+      assert.match(text, /exact bodies: READ every selected source below before work/);
+      assert.doesNotMatch(text, /RULE_BODY_BEGIN|RULE_BODY_END/);
       assert.doesNotMatch(text, /gate-state:|npm run test —/);
       assert.match(text, /exit:        all scenarios pass/);
-      assert.match(text, /READ rules:  ai\/directives\/testing\/node-test\.xml/);
+      const selectedSources = expectedRules.snapshot.required.map(({ source }) => source).sort();
+      assert.match(
+        text,
+        new RegExp(`READ rules:  ${selectedSources.join(', ').replaceAll('.', '\\.')}`)
+      );
+      for (const source of selectedSources) {
+        assert.match(
+          text,
+          new RegExp(`RULE_SELECTED [^\n]*source=${source.replaceAll('.', '\\.')}`)
+        );
+      }
       assert.match(text, /READ ticket: PHASE_P2, BDD, VERIFICATION, TEST_COVERAGE/);
       assert.match(text, /READ files:  src\/foo\.test\.ts/);
       assert.match(text, /DO NOT READ/);

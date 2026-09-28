@@ -48,13 +48,15 @@ import {
   moduleGraphEdges,
   ticketRef,
   legacyTicketRef,
-  checkRuleRegistryFilesExist,
   type Finding,
   type TicketRef,
   type TrackerRowRef,
   type SpecEntry,
 } from '../../../shared/sdd/check.ts';
-import { parseRuleRegistry } from '../../../shared/sdd/task-authoring-literals.ts';
+import {
+  BUILTIN_RULE_SOURCES,
+  loadBuiltinRuleRegistry,
+} from '../../../shared/rules/builtin-rule-sources.ts';
 import { checkRequirementBudgetsAgainstBaseline } from '../../../shared/sdd/requirement-budget.ts';
 import type { GraphEdge } from '../../../shared/sdd/portal.ts';
 import { parseScopes, parseGraphEdges } from '../../../shared/sdd/portal.ts';
@@ -192,27 +194,23 @@ function addReadIssue(findings: Finding[], issue: ReadIssue): void {
 }
 
 /**
- * @purpose Load and check the project rule registry (SO-11); an unparseable registry warns
- *   (B2-24) instead of vanishing silently, so SDD_RULE_FILE_MISSING never reports a false-clean
- *   zero. Warning code is shared with T-3's own parse-failure reporting.
- * @param projectRegistryFile Absolute path to the project's `ai/directives/knowledge.xml`.
- * @param repoRoot Repository root, for resolving each registry entry's declared file.
- * @returns SDD_RULE_FILE_MISSING findings per dangling entry, or one SDD_RULE_REGISTRY_UNPARSEABLE warning.
+ * @purpose Validate a present embedded prompt corpus as one complete lexical registry.
+ * @param repoRoot Repository root containing zero or all built-in prompt sources.
+ * @returns Empty when absent/valid, otherwise one actionable blocking registry error.
  */
-function checkProjectRuleRegistry(projectRegistryFile: string, repoRoot: string): Finding[] {
-  if (!existsSync(projectRegistryFile)) return [];
+function checkProjectRuleRegistry(repoRoot: string): Finding[] {
+  const present = BUILTIN_RULE_SOURCES.filter((source) => existsSync(join(repoRoot, source)));
+  if (present.length === 0) return [];
   try {
-    const registryEntries = parseRuleRegistry(readFileSync(projectRegistryFile, 'utf-8'));
-    return checkRuleRegistryFilesExist(projectRegistryFile, registryEntries, (entry) =>
-      existsSync(join(repoRoot, entry.file))
-    );
+    loadBuiltinRuleRegistry(repoRoot);
+    return [];
   } catch (err) {
     return [
       {
-        severity: 'warn',
+        severity: 'error',
         code: 'SDD_RULE_REGISTRY_UNPARSEABLE',
-        file: projectRegistryFile,
-        message: `ai/directives/knowledge.xml could not be parsed as a rule registry: ${(err as Error).message}`,
+        file: present[0] ?? join(repoRoot, 'ai', 'directives'),
+        message: `Embedded rule prompt registry is incomplete or malformed: ${(err as Error).message}`,
       },
     ];
   }
@@ -1572,11 +1570,7 @@ export async function run(
     findings.push(...checkTrackers(ticketRefs, trackerRowRefs));
     findings.push(...checkSpecHierarchy(specEntries));
     findings.push(...checkResearchOrphans(researchFiles, referencedResearch, registeredResearch));
-    // #region START_RULE_REGISTRY — invariant: SO-11/B2-24, project registry only
-    findings.push(
-      ...checkProjectRuleRegistry(join(repoRoot, 'ai', 'directives', 'knowledge.xml'), repoRoot)
-    );
-    // #endregion END_RULE_REGISTRY
+    findings.push(...checkProjectRuleRegistry(repoRoot));
     for (const [scope, { edges, scopeFile }] of moduleEdgesByScope) {
       findings.push(...checkModuleGraph(scope, scopeFile, edges));
     }

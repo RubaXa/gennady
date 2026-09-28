@@ -1,4 +1,8 @@
-<NodeTestRules keywords="node-test, runner, assertions, native_mock_fn, http_mock_agent, snapshot_files" type="testing-rules" ver="3.0">
+<NodeTestRules rule-id="node-test" rule-schema="1" type="required" ver="3.0">
+<Meta>
+  <When framework="node-test" role="test"/>
+  <DependsOn rule="testing-common"/>
+</Meta>
   <Mission>
     Node.js built-in `node:test` runner (`node --test`) specifics on top of [`testing/common`](./common.xml). Only the deltas are stated here: assertion API mapping, native `mock.fn()` usage, HTTP mock-agent harness, snapshot file location.
 

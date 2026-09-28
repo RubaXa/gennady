@@ -5,9 +5,12 @@
 // @consumers: directive-tool-contract.test.ts
 
 import { execSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { BUILTIN_RULE_SOURCES } from '../../../shared/rules/builtin-rule-sources.ts';
+
+const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 
 /** @purpose Repo-root-relative paths of the fixture's key artifacts, for building CLI argv. */
 export type Fixture = {
@@ -248,18 +251,13 @@ export function buildFixture(): Fixture {
     writeFileSync(bin, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf-8');
     chmodSync(bin, 0o755);
   }
-  // Minimal but structurally real rule files — enough for each Rules: identity to pass the strict
-  // repo-local read boundary; content depth is not this fixture's concern.
-  writeFileSync(
-    join(root, 'ai', 'directives', 'coding', 'typescript-rules.xml'),
-    '<Rule id="typescript-rules"><Mission>stub</Mission></Rule>\n',
-    'utf-8'
-  );
-  writeFileSync(
-    join(root, 'ai', 'directives', 'testing', 'node-test.xml'),
-    '<Rule id="node-test"><Mission>stub</Mission></Rule>\n',
-    'utf-8'
-  );
+  // The embedded registry is atomic: a realistic consumer fixture carries the complete exact
+  // corpus instead of a partial pair that production correctly rejects before dispatch.
+  for (const source of BUILTIN_RULE_SOURCES) {
+    const target = join(root, source);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, readFileSync(join(REPO_ROOT, source), 'utf-8'), 'utf-8');
+  }
 
   // Stub key directive files — sdd-state only checks for their existence (SDD_V2_SUBDIR /
   // KEY_DIRECTIVE_FILES), never their content.

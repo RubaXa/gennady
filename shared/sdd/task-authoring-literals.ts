@@ -2,9 +2,10 @@
 // @spec: SHARED
 // @consumers: SddNewCommand
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { dirname, posix, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BUILTIN_RULE_SOURCES, loadBuiltinRuleRegistry } from '../rules/builtin-rule-sources.ts';
 import { collectHeadings, headingSlug } from './section.ts';
 
 /** @purpose Maximum copy-ready contract anchors emitted for one owning spec. */
@@ -43,7 +44,7 @@ function parseContractAnchors(content: string): ContractAnchor[] {
   return anchors;
 }
 
-/** @purpose One canonical rule ID/file tuple from ai/directives/knowledge.xml. */
+/** @purpose One canonical rule ID/file tuple derived from embedded prompt metadata. */
 export type RuleRegistryEntry = {
   /** @purpose Canonical rule identity used in ticket Rules lists. */
   id: string;
@@ -52,42 +53,19 @@ export type RuleRegistryEntry = {
 };
 
 /**
- * @purpose Parse rule ID/file tuples from the sole canonical knowledge registry.
- * @param content Full ai/directives/knowledge.xml text.
- * @returns Complete unique rule ID/file tuples in registry order.
- */
-export function parseRuleRegistry(content: string): RuleRegistryEntry[] {
-  const entries = [...content.matchAll(/<Rule\s+id="([^"]+)">([\s\S]*?)<\/Rule>/g)].flatMap(
-    (match) => {
-      const file = /<File>([^<]+)<\/File>/.exec(match[2] ?? '')?.[1]?.trim();
-      return file ? [{ id: match[1] as string, file }] : [];
-    }
-  );
-  if (entries.length === 0)
-    throw new Error('no complete <Rule id="…"><File>…</File></Rule> entries');
-  const ids = new Set<string>();
-  for (const entry of entries) {
-    if (ids.has(entry.id)) throw new Error(`duplicate rule id "${entry.id}"`);
-    ids.add(entry.id);
-  }
-  return entries;
-}
-
-/**
- * @purpose Load the canonical rule registry from one repository root.
- * @param repoRoot Repository whose synced registry should be preferred.
- * @returns Complete unique rule ID/file tuples from project or package registry.
+ * @purpose Load the complete embedded registry from one repository or this package.
+ * @param repoRoot Repository whose synced prompt corpus should be preferred.
+ * @returns Complete unique rule ID/file tuples in deterministic registry order.
  */
 export function loadRuleRegistry(repoRoot: string): RuleRegistryEntry[] {
-  const projectRegistry = posix.join(repoRoot.replace(/\\/g, '/'), 'ai/directives/knowledge.xml');
-  if (existsSync(projectRegistry)) {
-    return parseRuleRegistry(readFileSync(projectRegistry, 'utf-8'));
-  }
-  const packageRegistry = resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    '../../ai/directives/knowledge.xml'
+  const projectRoot = repoRoot.replace(/\\/g, '/');
+  const hasProjectCorpus = BUILTIN_RULE_SOURCES.some((source) =>
+    existsSync(posix.join(projectRoot, source))
   );
-  return parseRuleRegistry(readFileSync(packageRegistry, 'utf-8'));
+  const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  return loadBuiltinRuleRegistry(hasProjectCorpus ? repoRoot : packageRoot)
+    .list()
+    .map(({ ruleId, source }) => ({ id: ruleId, file: source }));
 }
 
 /**

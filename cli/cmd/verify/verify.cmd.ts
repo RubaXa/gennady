@@ -11,6 +11,7 @@ import {
 import type { SddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
 import type { VerifyScope } from '../../../shared/verify/model/verify-context.type.ts';
+import type { VerifyRuleSnapshot } from '../../../shared/verify/model/verify-context.type.ts';
 import type { VerifyRunReport } from '../../../shared/verify/model/verify-report.type.ts';
 import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
@@ -25,6 +26,8 @@ type SddReceiptSinkResult = Awaited<ReturnType<typeof emitSddReceipt>>;
 type VerifyCommandRequest = {
   readonly scope: VerifyScope;
   readonly knownDeletedFiles?: readonly string[];
+  /** @purpose Exact pre-dispatch snapshot supplied by a workflow owner; Verify never resolves it. */
+  readonly rules?: VerifyRuleSnapshot;
   /** @purpose Optional workflow identity projected into the report without reading its source. */
   readonly workflow?: {
     readonly task: string;
@@ -124,6 +127,7 @@ export async function runVerifyCommand(
       headSha: plannedHeadSha,
       planning,
       execution,
+      ...(request?.rules === undefined ? {} : { rules: request.rules }),
       ...(request?.workflow === undefined
         ? {}
         : {

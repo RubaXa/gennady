@@ -1,4 +1,7 @@
-<NodeJSNpmSetup keywords="nodejs, npm, package-manager, nvmrc, engines, module-system, esm, commonjs, node-builtins, lock-file, sandbox-registry, corp-registry" type="infra-rules" ver="2.0">
+<NodeJSNpmSetup rule-id="nodejs-npm-setup" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When pattern=".node-version,.npmrc,.nvmrc,package-lock.json,package.json"/>
+</Meta>
   <Mission>
     Canonical rules for the Node.js runtime environment: package manager discipline, version alignment, module system, project layout.
 

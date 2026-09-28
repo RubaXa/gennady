@@ -282,7 +282,7 @@ describe('collectStaticDirectiveFiles — T-B6-24 scope widening', () => {
     const { join } = await import('node:path');
     const root = mkdtempSync(join(tmpdir(), 'lint-axioms-static-'));
     try {
-      writeFileSync(join(root, 'knowledge.xml'), '<Directive>per `AX_ROOT`</Directive>\n');
+      writeFileSync(join(root, 'catalog.xml'), '<Directive>per `AX_ROOT`</Directive>\n');
       mkdirSync(join(root, 'future-tree', 'nested'), { recursive: true });
       writeFileSync(join(root, 'future-tree', 'nested', 'future.xml'), '<Directive>per `AX_FUTURE`</Directive>\n');
       mkdirSync(join(root, 'sdd-v2', 'nested'), { recursive: true });
@@ -292,11 +292,11 @@ describe('collectStaticDirectiveFiles — T-B6-24 scope widening', () => {
       const files = collectStaticDirectiveFiles(root);
       assert.deepEqual(
         files.map((f) => f.file),
-        ['future-tree/nested/future.xml', 'knowledge.xml']
+        ['catalog.xml', 'future-tree/nested/future.xml']
       );
       assert.deepEqual(
         lintUndefinedAxiomRefs(files).map((finding) => finding.id),
-        ['AX_FUTURE', 'AX_ROOT']
+        ['AX_ROOT', 'AX_FUTURE']
       );
     } finally {
       rmSync(root, { recursive: true, force: true });

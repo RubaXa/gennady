@@ -1,4 +1,8 @@
-<PlaywrightE2ERules keywords="playwright, e2e, aria-snapshot, role-locators, page-objects, fixture, storage-state, network-mock, route, visual-regression, render-evidence-screenshot, self-verify" type="testing-rules" ver="2.0">
+<PlaywrightE2ERules rule-id="playwright-e2e" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When framework="playwright" role="test"/>
+  <DependsOn rule="playwright-cli"/>
+</Meta>
   <Mission>
     Canonical rules for authoring Playwright E2E tests. Every execution-agent MUST perceive the page through `page.ariaSnapshot()`, locate elements via `getByRole()` only, and codify the observed contract into committed test files backed by fixture-based Page Objects.
 

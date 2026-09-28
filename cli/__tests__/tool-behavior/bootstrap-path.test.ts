@@ -123,6 +123,7 @@ function bootstrapFixture(scripts: Record<string, string>): string {
     scripts,
     gennadyInstalled: true,
     directives: true,
+    embeddedRules: true,
     files: {
       'specs/README.md': PORTAL,
       'specs/infra-core/infra-core.spec.md': [

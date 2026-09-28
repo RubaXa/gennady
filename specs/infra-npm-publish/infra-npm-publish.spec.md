@@ -66,7 +66,7 @@ npm run release
 │       │   ├── coding/
 │       │   ├── testing/
 │       │   ├── infra/
-│       │   └── knowledge.xml
+│       │   └── embedded rule prompts
 │       ├── agents/
 │       └── flow/
 └── scripts/
@@ -97,7 +97,7 @@ npm run release
 - **Status:** active
 - **Recorded:** session Discovery, infra-npm-publish
 - **Why:** Интерактивный bump (major/minor/patch), хуки до изменений (безопасно — при падении ничего не испорчено), OTP, git tag/push, публикация. При необходимости можно добавить CI позже (`--ci`).
-- **Risk accepted:** release-it пока отсутствует в knowledge.xml как rule — дефолтное поведение release-it является достаточной дисциплиной.
+- **Risk accepted:** release-it пока не имеет embedded rule prompt — дефолтное поведение release-it является достаточной дисциплиной.
 - **Rejected alternatives:** np (нет CI, нет хуков), bumpp + ручной npm publish (нет единого flow, нет OTP)
 
 ### D-002 — git как vcs

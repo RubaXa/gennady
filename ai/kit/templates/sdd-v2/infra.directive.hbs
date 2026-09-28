@@ -85,13 +85,10 @@
       <Action>
         State from the router gives the portal + scope-type (infrastructure). Resolve the scope name;
         stat the spec → `greenfield` or detect the mode per `AX_DIRECTIVE_MODE` /
-        `AX_MODE_AUTO_DETECT_OR_HALT`. The registry answers "what knowledge exists" in ONE
-        deterministic `Read ai/directives/knowledge.xml` — it is the sole index (`<Rules>` section)
-        and lists every rule file's exact path (`ai/directives/<category>/<rule>.xml`) with
-        `<Triggers>`; per `AX_SCOPE_RULES_DECLARATION` a category with no matching entry maps to
-        `ai/directives/<category>/<rule>.xml` directly. `ls`/`find` over `ai/directives/**` is not
-        needed — the registry already answers that in one read; a directory scan is a wasted turn
-        against a known index.
+        `AX_MODE_AUTO_DETECT_OR_HALT`. Rule discovery is owned by the deterministic embedded-source
+        manifest and lexical RuleRegistry; each prompt carries its identity and `<Meta>` predicates.
+        The phase RuleSnapshot supplies exact selected bodies and provenance. Agents do not scan
+        `ai/directives/**`, guess prompt paths, or parse prompt markup as XML.
       </Action>
     </Step>
     <Step id="STEP_1_CONFIRM">
@@ -159,7 +156,7 @@
         that into the proposed subset unchallenged.
 
         <LogicSwitch on="stack typicality">
-        - WHEN every still-unlocked proposed category resolves to an already-known registry rule (`ai/directives/knowledge.xml` names a matching `<Rules>` entry for each — no exotic / novel tool named by the operator, no operator request for a detailed pass) -> EXPRESS branch below replaces the full interview for STEP_2/STEP_3
+        - WHEN every still-unlocked proposed category resolves through embedded prompt metadata (no exotic / novel tool named by the operator, no operator request for a detailed pass) -> EXPRESS branch below replaces the full interview for STEP_2/STEP_3
         - WHEN a still-unlocked category has no registry match, or the operator asked for "подробно" / a detailed pass, or typicality is genuinely unclear -> run the full operator interview — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing scope-type `infrastructure` and the SCALE confirmed for this invocation: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the triage minimum; `product` → the full scope-type block. The interview IS the substance of the step; STEP_3 then runs in full, over the still-unlocked categories only. Uncertain typicality defaults to THIS branch — never a silent EXPRESS guess.
         </LogicSwitch>
 

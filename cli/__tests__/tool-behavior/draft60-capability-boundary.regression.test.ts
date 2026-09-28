@@ -131,6 +131,7 @@ const TA_DEPS = task({
 
 function draft60Repo(): { root: string } {
   return buildRepoFixture({
+    embeddedRules: true,
     files: {
       [INSTALL_TICKET]: IB_BOOT,
       [LATE_RUNTIME_TICKET]: TA_DEPS,
@@ -142,7 +143,6 @@ function draft60Repo(): { root: string } {
         '#### Service: `NodeCapability`',
         'Owns the ordered Node bootstrap contract.',
       ].join('\n'),
-      [NODE_RULE]: '<Rule id="nodejs-npm-setup"></Rule>\n',
       '.npmrc': 'fund=false\n',
       'package-lock.json': '{"lockfileVersion":3}\n',
       'scripts/type-check.mjs': [

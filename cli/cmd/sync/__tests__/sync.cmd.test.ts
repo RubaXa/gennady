@@ -306,7 +306,7 @@ describe('run (integration)', () => {
     // purpose: target has a project-added subdir the package never shipped (e.g. ai/directives/my-custom/)
     // contract: exit 0, files inside it untouched, stdout carries a "Warning:" line naming it
 
-    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
     mkdirSync(join(_targetDir, 'my-custom'), { recursive: true });
     writeFileSync(join(_targetDir, 'my-custom', 'notes.xml'), '<notes/>', 'utf-8');
 

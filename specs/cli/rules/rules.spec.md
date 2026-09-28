@@ -15,9 +15,9 @@ CLI-RULES
 rules apply to an explicit phase/scope with reasons and provenance. It is not static CLI help, does
 not reuse `agents-rules`, executes no verify step, mutates no workspace file and writes no receipt.
 
-This is the accepted D-70 target contract. UV-01 materializes the canonical non-ignored spec only;
-registry/parser/resolver/CLI implementation remains owned by UV-18A..20, and `knowledge.xml`
-removal remains owned by UV-21 after entry-by-entry metadata migration and equivalence proof.
+This is the accepted D-70 contract. UV-18A/B and UV-19 materialized the lexical registry, PhaseFacts
+and deterministic resolver; the atomic UV-20S+UV-21 cutover freezes snapshots, migrates every
+built-in prompt entry and removes the former central registry after equivalence proof.
 
 <!--/SECTION:MODULE_VISION-->
 
@@ -101,7 +101,10 @@ literal root close; всё между header и close остаётся opaque ar
 intents, platform/tool/project facts. `RuleResolver` выбирает rules по artifacts каждой фазы, а не
 по primary stack: несколько `<When .../>` образуют OR, attributes одного `When` — AND,
 comma-values — OR, любой matching `<Unless .../>` veto-ит rule; `<DependsOn rule="..."/>` закрывает
-dependencies детерминированно.
+dependencies детерминированно. Project detector без запуска project code читает только inert
+`package.json` dependency/script facts и exact known config markers; test artifact в Vitest project
+получает testing/Vitest layer, а production-strict TypeScript rule veto-ится `role=test`, если
+reasoned explicit add осознанно не вернул его.
 
 ### RUL-REQ-6 [должен · нештатная]
 
@@ -136,20 +139,26 @@ _The rules module supplies one immutable snapshot to Verify and its optional SDD
 
 ## Entity Inventory
 
-| Name                 | Type         | Purpose                                                                | Implementation owner |
-| -------------------- | ------------ | ---------------------------------------------------------------------- | -------------------- |
-| `RuleHeader`         | Type         | Strict embedded Meta mini-language plus opaque prompt-body identity    | UV-18A               |
-| `RuleDescriptor`     | Type         | Parsed predicates/dependencies and exact prompt-body identity          | UV-18A               |
-| `parseRuleHeader`    | Service      | Lexically parses only the embedded header and final literal close      | UV-18A               |
-| `RuleRegistry`       | Service      | Deterministic embedded-header inventory across built-in/project rules  | UV-18A               |
-| `createRuleRegistry` | Service      | Loads required sources with stable ordering and duplicate-id rejection | UV-18A               |
-| `PhaseFacts`         | Value Object | Open-vocabulary phase artifacts, operations, intents and project facts | UV-18B               |
-| `classifyPhaseFacts` | Service      | Classifies exact scope artifacts and independent provider facts        | UV-18B               |
-| `RuleResolver`       | Service      | Per-artifact selection, vetoes, overrides and dependency closure       | UV-19                |
-| `RuleSnapshot`       | Value Object | Immutable selections, skips, reasons, provenance and digest            | UV-19, UV-20         |
-| `rules list`         | CLI Command  | Read-only filtered inventory                                           | UV-20                |
-| `rules show`         | CLI Command  | Read-only metadata and prompt-body projection                          | UV-20                |
-| `rules resolve`      | CLI Command  | Read-only explainable resolver projection                              | UV-20                |
+| Name                      | Type         | Purpose                                                                | Implementation owner |
+| ------------------------- | ------------ | ---------------------------------------------------------------------- | -------------------- |
+| `RuleHeader`              | Type         | Strict embedded Meta mini-language plus opaque prompt-body identity    | UV-18A               |
+| `RuleDescriptor`          | Type         | Parsed predicates/dependencies and exact prompt-body identity          | UV-18A               |
+| `parseRuleHeader`         | Service      | Lexically parses only the embedded header and final literal close      | UV-18A               |
+| `RuleRegistry`            | Service      | Deterministic embedded-header inventory across built-in/project rules  | UV-18A               |
+| `createRuleRegistry`      | Service      | Loads required sources with stable ordering and duplicate-id rejection | UV-18A               |
+| `BUILTIN_RULE_SOURCES`    | Constant     | Complete deterministic built-in embedded prompt manifest               | UV-21                |
+| `loadBuiltinRuleRegistry` | Service      | Lexically loads the complete built-in manifest                         | UV-21                |
+| `loadRuleRegistry`        | Service      | Safely merges built-in and exact project/plugin embedded sources       | UV-21                |
+| `PhaseFacts`              | Value Object | Open-vocabulary phase artifacts, operations, intents and project facts | UV-18B               |
+| `classifyPhaseFacts`      | Service      | Classifies exact scope artifacts and independent provider facts        | UV-18B               |
+| `detectProjectRuleFacts`  | Service      | Detects inert package/config framework, tool and project facts         | UV-21                |
+| `RuleResolver`            | Service      | Per-artifact selection, vetoes, overrides and dependency closure       | UV-19                |
+| `RuleSnapshot`            | Value Object | Immutable selections, skips, reasons, provenance and digest            | UV-20S               |
+| `createRuleSnapshot`      | Service      | Validates resolution inputs and emits canonical versioned snapshot     | UV-20S               |
+| `resolveSddRuleSnapshot`  | Service      | Loads phase-declared embedded prompts and freezes pre-dispatch facts   | UV-20S               |
+| `rules list`              | CLI Command  | Read-only filtered inventory                                           | UV-20                |
+| `rules show`              | CLI Command  | Read-only metadata and prompt-body projection                          | UV-20                |
+| `rules resolve`           | CLI Command  | Read-only explainable resolver projection                              | UV-20                |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -181,7 +190,9 @@ observable boundaries.
 
 - **Public Operations:** list descriptors; retrieve one descriptor by id; load generic/plugin/local
   sources deterministically.
-- **Errors & Degradation:** unavailable required source is an error; prompt XML is never metadata.
+- **Errors & Degradation:** unavailable/malformed required source, repo escape, symlink component or
+  duplicate id across built-in/plugin/project layers is a blocking error; prompt XML is never
+  metadata. `sdd-check` reports an incomplete/malformed embedded registry as an error, not warning.
 
 #### `createRuleRegistry`
 
@@ -237,6 +248,32 @@ owns read-only projection and stable JSON.
 - **Failure:** invalid scope, dependency graph or required source returns a typed diagnostic; no
   partial green snapshot is emitted.
 
+### `createRuleSnapshot`
+
+- **Preconditions:** the registry is lexically validated; `PhaseFacts` are immutable; every
+  explicit add/skip carries a non-empty reason and portable provenance identity.
+- **Postconditions:** the function invokes the same `RuleResolver`, then freezes exact selected
+  prompt bodies, explanations, dependencies, source identities, facts and override provenance.
+  Its `gennady.rule-snapshot.v1` digest is SHA-256 over canonical JSON: object keys and unordered
+  clauses/sets use code-point order, registry ids are stable, and host locale, discovery order and
+  absolute filesystem paths cannot contribute.
+- **Failure:** non-portable source/provenance identity, malformed metadata, missing/cyclic
+  dependency or invalid override returns a typed error; no partial snapshot/digest is emitted.
+
+### `resolveSddRuleSnapshot`
+
+- **Preconditions:** SDD owns the exact phase sources and target/planned/tombstone facts. Source
+  discovery is never an implicit directive-tree scan: the complete built-in manifest is merged with
+  exact declared repo-local plugin/project sources after containment and no-symlink validation.
+- **Postconditions:** the merged embedded source set is read once through the lexical parser,
+  duplicate ids fail closed, detected inert project facts are classified, and resolution is frozen
+  before worker dispatch. Exact selected bodies and one digest are then passed as data to the facade
+  and universal Verify report without semantic recomputation in Verify. The bounded text dispatch
+  projects stable id/source/body digest/provenance and mandates reading those exact sources; it never
+  truncates a body while claiming inline delivery.
+- **Failure:** unavailable/malformed required embedded source fails before agent work or process
+  spawn. There is no legacy or partial compatibility mode.
+
 ### `rules` CLI
 
 - **Preconditions:** subcommand-specific arguments are valid.
@@ -283,8 +320,8 @@ cli/cmd/rules/
 └── rules-report.ts
 ```
 
-All listed runtime files are deferred to UV-18A..20. Entry-by-entry embedded-header migration and
-`knowledge.xml` deletion are deferred to UV-21.
+The runtime files are delivered by UV-18A..20S; the complete built-in source manifest and
+entry-by-entry migration/equivalence proof land atomically with UV-21.
 
 <!--/SECTION:FILE_STRUCTURE-->
 
@@ -298,7 +335,7 @@ All listed runtime files are deferred to UV-18A..20. Entry-by-entry embedded-hea
 ### RULES-DL-1 / D-70 — One resolver and read-only reference CLI
 
 - **Status:** accepted at U0 on 2026-09-24; implementation pending U6.
-- **Decision:** replace the central `knowledge.xml` registry with colocated rule metadata, resolve one
+- **Decision:** replace the former central registry with colocated rule metadata, resolve one
   immutable explained snapshot, and expose it through `list/show/resolve` without execution or
   receipt writes. `agents-rules` remains a separate static orient instruction.
 - **Rejected:** a second CLI-only resolver, parsing prompt markup as XML metadata, implicit whole
@@ -313,8 +350,11 @@ All listed runtime files are deferred to UV-18A..20. Entry-by-entry embedded-hea
   selection; rule files never become a command registry.
 - **Layering:** TypeScript core, strict production and test-light are separate descriptors. A Vitest
   test artifact can exclude strict production TS while selecting TypeScript core + testing + Vitest.
-- **Migration gate:** `knowledge.xml` remains until every entry has embedded metadata and equivalence
-  proof; then consumer grep must be zero before deletion.
+- **Migration gate:** all 14 former entries migrate atomically with full lexical contract equivalence
+  (`rule-schema`, `type`, `ver`, `When`, `Unless`, dependencies, source and body digest), an explicit
+  operator-approved delta for the strict-TypeScript test veto, and zero production consumers before
+  the central file is deleted; no compatibility mode remains. The frozen fixture is test evidence,
+  never a runtime registry input.
 
 </details>
 
@@ -324,12 +364,12 @@ All listed runtime files are deferred to UV-18A..20. Entry-by-entry embedded-hea
 
 ## Handoff to Tasks
 
-- **Implementation files to be created:** all files in File Structure by UV-18A..20.
+- **Implementation files:** all files in File Structure plus the complete built-in source manifest.
 - **Test files to be created:** lexical header adversarial fixtures whose bodies contain invalid
   XML-ish text unchanged; When/Unless/dependency/override determinism; TypeScript production versus
   Vitest test-light selection; mixed TS+Go+CSS/Bash PhaseFacts union; snapshot-digest parity across
   resolve/dispatch/Verify; registry/resolver/CLI read-only contracts by UV-18A..20; entry-equivalence
-  and zero-`knowledge.xml`-consumer fixtures by UV-21.
+  and former-registry entry-equivalence plus zero-consumer proof by UV-21.
 - **Stack dependencies:** TypeScript and `node:test`.
 - **Module Rules Additions:** directive prompt bodies are markup, never XML metadata.
 - **Open risks & validation needs:** lexical header grammar and PhaseFacts classifier (UV-18A/B); deterministic

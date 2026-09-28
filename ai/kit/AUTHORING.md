@@ -172,8 +172,8 @@ tool-invocation, progressive-disclosure — дом ChatProtocol/ChatOutput, см
 идёт после неё, не вместо неё.
 
 - Плохо: `ls` is forbidden.
-- Хорошо: the registry lives at `ai/directives/knowledge.xml` — one `Read` answers it; `ls`/`find`
-  over `ai/directives/**` is not needed, that path already has the answer.
+- Хорошо: the embedded-source manifest and RuleRegistry provide exact prompt identities and a
+  frozen RuleSnapshot — use that projection; `ls`/`find` over `ai/directives/**` is not needed.
 
 Если для запрета нет инструмента-замены (например, «не редактируй чужую спеку» — обхода тут нет,
 есть только эскалация оператору), запрет остаётся, но должен называть канал эскалации, а не просто

@@ -1,4 +1,8 @@
-<TypeScriptCodingRules keywords="typescript, executable_specification, design_by_contract, jsdoc, ai_to_ai, structural_anchors, log_driven_development, yagni, ts_native, modern_ts" type="coding-rules" ver="2.0">
+<TypeScriptCodingRules rule-id="typescript-rules" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When language="javascript,typescript"/>
+  <Unless role="test"/>
+</Meta>
   <Mission>
     Canonical rules for writing TypeScript (ES2025+, Node.js native TS) for every execution-agent in the project.
 

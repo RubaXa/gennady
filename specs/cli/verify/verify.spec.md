@@ -359,7 +359,9 @@ selected DAG slice, attempts, mutations, bounded evidence, rule snapshot и verd
 каждую non-ready instruction/fix и явно показывает `WAIVED`/`DEGRADED`; plan не называется execution
 proof. Machine projection заменяет executable argv/env values deterministic command digest, делает
 cwd/write roots repo-relative, редактирует common secret forms и никогда не публикует absolute
-repository path. `pass` даёт exit 0, любой terminal non-pass — exit 1, invocation/planning/config
+repository path. Rule projection использует explicit allowlist (`id`, bounded reason/provenance и
+snapshot digest): exact prompt bodies и внутренние selection fields остаются только в immutable
+in-process snapshot и никогда не попадают в text/JSON report. `pass` даёт exit 0, любой terminal non-pass — exit 1, invocation/planning/config
 error — exit 4, cooperative SIGINT/SIGTERM — 130/143 после WorkspaceGuard restoration. Cancellation
 сохраняется step result/evidence и проецируется в accepted run taxonomy как `violation`, не как
 pass/blocked. Refines D-65/D-67.
@@ -925,7 +927,7 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 - **Status:** accepted; canonical CLI/rules contract lives in [rules.spec.md](../rules/rules.spec.md),
   implementation deferred to U6.
 - **Decision:** embedded lexical `<Meta>` headers в самих prompt files и один `RuleResolver` заменяют
-  `knowledge.xml` после entry-by-entry metadata/equivalence proof. Prompt не XML; XML validators
+  former central registry после entry-by-entry metadata/equivalence proof. Prompt не XML; XML validators
   запрещены. `gennady rules list/show/resolve` не запускает steps и не пишет receipts;
   `resolve`, `verify --plan`, фактический report и SDD sink разделяют один snapshot digest.
 
@@ -950,10 +952,16 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
   language/tool scope selects the union, every affected provider blocks, and missing required
   provider is visible `BLOCKED`.
 - **Ordering:** embedded RuleRegistry/header parser → PhaseFacts/classifier → deterministic resolver
-  → SDD RuleSnapshot integration → UV-12E journal → UV-13 cutover. `knowledge.xml` deletion remains
-  after entry-by-entry migration/equivalence, not before resolver integration.
+  → atomic embedded-entry migration + SDD RuleSnapshot integration → UV-12E journal → UV-13 cutover.
+  No rules-layer legacy or partial compatibility mode exists.
 - **Legacy boundary:** byte parity is conditional on explicit legacy overlay/provenance and is not a
   universal default for new presets.
+- **UV-20S projection:** SDD dispatch owns the one `gennady.rule-snapshot.v1` object. Universal
+  Verify may receive that already-frozen object and must put the same object/digest in
+  `VerificationContext.rules` and `VerifyRunReport.rules`; it never reloads sources or reruns rule
+  semantics. Standalone Verify without SDD context keeps its deterministic empty pre-resolver
+  snapshot and remains persistence-free. Canonical serialization rejects absolute source identity
+  and is independent of locale, discovery order and map insertion.
 
 ### VERIFY-CP-1 — Evidence/Receipt operator checkpoint
 

@@ -20,7 +20,6 @@ infra/eslint-setup.xml
 infra/git-setup.xml
 infra/nodejs-npm-setup.xml
 infra/storybook-setup.xml
-knowledge.xml
 sdd-v2/agent-inbox/code-lens.directive.xml
 sdd-v2/agent-inbox/enrich.directive.xml
 sdd-v2/agent-inbox/security-lens.directive.xml

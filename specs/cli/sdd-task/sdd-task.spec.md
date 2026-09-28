@@ -346,11 +346,24 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
   classifies exact target/planned artifacts, operations, intents, platform/tool/project facts;
   resolves composed preset-default → project selector mapping and one immutable `RuleSnapshot`; then
   emits `npx gennady sdd-verify --task <ticket> --phase <PhaseID>`. The facade invokes the same Verify
-  planner/runner and owns EXECUTION_LOG sinks. Agent receives exact selected rule bodies and never
-  reconstructs individual gates.
+  planner/runner and owns EXECUTION_LOG sinks. The mandatory command, lifecycle manifest and worker
+  contract precede the bounded rule projection and cannot be displaced by large prompt bodies. That
+  projection contains stable rule id/source/body digest/provenance; the worker MUST read each exact
+  source before work, while the in-process immutable snapshot retains the exact selected body bytes.
+  It never reconstructs individual gates.
+- **READ identity:** `READ rules` is projected from the actual snapshot `required + suggested`
+  selections after dependency closure (stable unique source order), not copied from ticket-declared
+  additions. Therefore every `RULE_SELECTED` source and every transitive dependency source appears
+  in the same mandatory read manifest, with no unselected declaration presented as selected work.
 - **Freshness:** snapshot digest passes unchanged through Verify report and SDD journal. Rule/config/
   scope drift invalidates prior phase evidence. Unresolved selector, malformed embedded metadata,
   skipped required dependency or missing required provider fails before agent work.
+- **Atomic UV-20S+UV-21 boundary:** the complete embedded corpus produces one canonical snapshot and
+  exact selected bodies before every worker dispatch. Text dispatch does not inline or truncate
+  bodies: it identifies every selected source and digest and requires an exact-source read. Missing,
+  malformed, partial, unreadable, drifted or non-manifest sources fail closed; there is no
+  rules-layer compatibility mode. The thin facade passes the same frozen snapshot directly to
+  Verify; standalone Verify never reads these sources.
 
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->

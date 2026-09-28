@@ -3,7 +3,6 @@
 // @spec: CLI-RULES
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { createRuleRegistry } from '../rule-registry.ts';
 import { parseRuleHeader } from '../rule-header.parser.ts';
@@ -168,13 +167,5 @@ describe('RuleRegistry', () => {
         ]),
       /RULE_REGISTRY_DUPLICATE_SOURCE: same\.prompt/
     );
-  });
-
-  it('keeps knowledge.xml and its legacy consumer until the later equivalence migration', () => {
-    const knowledge = readFileSync('ai/directives/knowledge.xml', 'utf8');
-    const consumer = readFileSync('shared/sdd/task-authoring-literals.ts', 'utf8');
-
-    assert.match(knowledge, /<AiKnowledge/);
-    assert.match(consumer, /knowledge\.xml/);
   });
 });

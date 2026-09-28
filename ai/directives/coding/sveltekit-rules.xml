@@ -1,4 +1,9 @@
-<SvelteKitRules keywords="sveltekit, fullstack, routing, load-functions, form-actions, server-client-boundary, hooks, adapters, ssr" type="coding-rules" ver="2.0">
+<SvelteKitRules rule-id="sveltekit-rules" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When framework="sveltekit"/>
+  <When pattern="**/+layout.*,**/+page.*,**/+server.*,**/hooks.server.*"/>
+  <DependsOn rule="svelte5-runes"/>
+</Meta>
   <Mission>
     Canonical rules for building SvelteKit fullstack applications. Every execution-agent MUST respect the server/client boundary, fetch data via `load` functions, mutate via form `actions`, and use file-based routing.
 

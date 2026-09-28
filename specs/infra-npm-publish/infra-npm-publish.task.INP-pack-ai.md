@@ -55,7 +55,7 @@
 - **Given** `scripts/prepare-publish-artifacts.ts` содержит массив `copyPairs`
 - **When** добавляем `{ source: '<root>/ai', target: '<root>/dist/ai' }` в `copyPairs`
 - **Then** `npm run build:publish` создаёт `dist/ai/` со всеми поддиректориями (`directives/`, `agents/`, `flow/`)
-- **And** `dist/ai/directives/knowledge.xml` существует и совпадает с `ai/directives/knowledge.xml`
+- **And** `dist/ai/directives/coding/typescript-rules.xml` существует и совпадает с embedded-metadata source
 
 **Scenario:** Существующие `copyPairs` не сломаны [`contract`]
 
@@ -75,9 +75,9 @@
 
 ## 5. Verification
 
-| Command                                                                                                                               | Required by       | Role  |
-| ------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ----- |
-| `npm run build:publish && node -e "require('fs').existsSync('dist/ai/directives/knowledge.xml') ? process.exit(0) : process.exit(1)"` | ai-copied-to-dist | extra |
+| Command                                                                                                                                             | Required by       | Role  |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ----- |
+| `npm run build:publish && node -e "require('fs').existsSync('dist/ai/directives/coding/typescript-rules.xml') ? process.exit(0) : process.exit(1)"` | ai-copied-to-dist | extra |
 
 <!--/SECTION:VERIFICATION-->
 <!--SECTION:TEST_COVERAGE-->

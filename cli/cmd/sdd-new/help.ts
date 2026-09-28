@@ -89,7 +89,7 @@ export function printHelp(): void {
     '  Task success also prints copy-ready owning-spec, canonical rule ID+ticket-relative href'
   );
   console.info(
-    '  tuples from ai/directives/knowledge.xml, and the complete Deferred Test Ownership row.'
+    '  tuples from embedded prompt metadata, and the complete Deferred Test Ownership row.'
   );
   console.info(
     '  Its phase skeleton includes capability adapter/provides/requires and package ownership fields;'

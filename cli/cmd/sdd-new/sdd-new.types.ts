@@ -145,8 +145,8 @@ export function ruleRegistryInvalid(cause: unknown): NewOutcome {
     exitCode: 1,
     message: [
       `[sdd-new] ${ERR_CLI_SDD_NEW_RULE_REGISTRY_INVALID}: cannot derive canonical rule tuples.`,
-      `  ai/directives/knowledge.xml: ${detail}`,
-      '  Repair or resync the registry, then repeat the same sdd-new task call; do not guess rule IDs or hrefs.',
+      `  embedded prompt registry: ${detail}`,
+      '  Repair or resync the complete prompt corpus, then repeat the same sdd-new task call; do not guess rule IDs or hrefs.',
     ].join('\n'),
   };
 }
@@ -311,7 +311,7 @@ export function renderManifestReport(kind: ArtifactKind, sections: SectionManife
           'module | product/library | required',
           'No other task owner form is legal.',
           '',
-          'Create output is path-aware: it prints the owning-spec link, bounded typed contract-heading anchors, canonical rule ID+href tuples from ai/directives/knowledge.xml, and the complete Deferred Test Ownership row. This manifest is pathless and therefore does not invent those hrefs.',
+          'Create output is path-aware: it prints the owning-spec link, bounded typed contract-heading anchors, canonical rule ID+href tuples from embedded prompt metadata, and the complete Deferred Test Ownership row. This manifest is pathless and therefore does not invent those hrefs.',
         ]
       : [];
   return [
