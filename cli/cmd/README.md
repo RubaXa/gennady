@@ -54,6 +54,15 @@ npx gennady orient --file=path/to/file.ts
 npx gennady agents-rules
 ```
 
+`agents-rules` teaches agents how to navigate code entities. The separate `rules` command projects
+the embedded prompt-rule registry and resolver:
+
+```bash
+npx gennady rules list --format json
+npx gennady rules show typescript-rules --format text
+npx gennady rules resolve --phase code --files 'src/**/*.ts' --format json
+```
+
 ### 4. Ревью MR/PR
 
 ```bash
@@ -218,6 +227,7 @@ npx gennady yagni /path/to/repo
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
 | `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine               |
 | `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
+| `rules`             | Embedded rules: inventory/detail/explicit-scope resolve                   |
 | `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения                    |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами                            |
 | `sdd-task`          | Карта и фаза с одной mapped unified Verify invocation                     |
@@ -256,6 +266,7 @@ cli/cmd/<name>/
 - `specs/cli/sdd-extract/sdd-extract.spec.md` — sdd-extract
 - `specs/cli/sdd-new/sdd-new.spec.md` — sdd-new
 - `specs/cli/sdd-verify/sdd-verify.spec.md` — sdd-verify
+- `specs/cli/rules/rules.spec.md` — rules
 - `specs/cli/sdd-log/sdd-log.spec.md` — sdd-log
 - `specs/cli/sdd-sync/sdd-sync.spec.md` — sdd-sync
 - `specs/cli/sdd-task/sdd-task.spec.md` — sdd-task
