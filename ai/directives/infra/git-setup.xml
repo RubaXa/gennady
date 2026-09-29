@@ -132,8 +132,9 @@
 
     <Axiom id="AX_HOOKS_INTEGRATION">
       Hooks fire on every commit/push. `pre-commit` first requires working tree == index, then runs
-      whole-project read-only `sdd-verify --profile full` (types, coverage tests, production lint, format, yagni)
-      plus directive freshness/axiom/contract/halt/budget audits. It never repairs or re-stages bytes;
+      universal `verify --phase full` under the internal staged-candidate policy (types, coverage tests,
+      production lint, format, yagni) plus directive freshness/axiom/contract/halt/budget audits.
+      Repair nodes are omitted; read-only observations fail on unconverged bytes, and the guard restores any unexpected write. The hook never repairs or re-stages committed bytes;
       a repairable failure tells the author to run project `fix`, stage, and retry. Budget is honestly
       tens of seconds. `commit-msg` stays required. Optional: `prepare-commit-msg`, `post-merge`.
     </Axiom>
@@ -184,8 +185,9 @@
     </Step>
     <Step id="STEP_6_INSTALL_HOOKS">
       Install hooks runner per infrastructure scope decision. Commit its config and register with one
-      onboarding command. Configure per `AX_HOOKS_INTEGRATION`: index-equality guard, read-only full
-      project gate plus directive audits in `pre-commit`, and conventional `commit-msg` validation.
+      onboarding command. Configure per `AX_HOOKS_INTEGRATION`: index-equality guard, universal full
+      project gate under staged-candidate policy plus directive audits in `pre-commit`, and conventional
+      `commit-msg` validation.
     </Step>
     <Step id="STEP_7_VERIFY">
       Confirm: `git status` clean; `.gitignore` covers all tool-generated paths; hooks fire on test commit; remote branch protection active.

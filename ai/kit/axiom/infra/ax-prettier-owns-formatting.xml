@@ -9,7 +9,7 @@
       A phase gets that sequence privately from context-derived `sdd-verify`; humans may use the
       whole-project `fix` wrapper. Exit 0 means formatter completed and lint re-read the exact
       resulting bytes and found a clean post-state. `pre-commit` and CI never invoke repair: they run the
-      whole-project read-only `sdd-verify --profile full` and fail on drift (`AX_HOOKS_INTEGRATION`).
+      universal `verify --phase full`; pre-commit's internal staged-candidate policy omits repair nodes and lets the read-only observations reject unconverged bytes (`AX_HOOKS_INTEGRATION`).
 
       Choice of formatter is an architecture decision: Prettier recommended; alternatives (Biome, dprint) acceptable IF the project picks ONE. Two formatters or formatting rules duplicated between ESLint and the formatter = forbidden.
     </Axiom>

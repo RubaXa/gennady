@@ -1,6 +1,6 @@
-// @file: D-64 assembled full profile — one primary preset plus non-blocking extra-stack tails.
+// @file: Frozen D-64 assembled full-profile model retained for UV-24 migration proof.
 // @spec: CLI-SDD-VERIFY
-// @consumers: sdd-verify/index.ts, verify/verify.cmd.ts
+// @consumers: frozen compatibility tests only
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

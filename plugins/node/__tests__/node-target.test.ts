@@ -217,6 +217,114 @@ describe('Node target StackPlugin', () => {
     }
   });
 
+  it('bounds Gennady lint repair to the source policy declared by the read-only lint graph', () => {
+    withProject(
+      {
+        scripts: {
+          'type-check': 'tsc --noEmit',
+          'lint:fix': 'tsx cli/gennady.ts lint --autofix',
+          lint: 'npm run lint:contracts',
+          'lint:contracts':
+            'tsx cli/gennady.ts lint cli/ shared/ services/ --exclude=shared/generated/** --exclude services/generated.ts',
+          'format:fix': 'prettier --write',
+          format: 'prettier --check .',
+        },
+      },
+      (root) => {
+        const files = [
+          'cli/main.ts',
+          'shared/core.ts',
+          'services/api.ts',
+          'plugins/plugin.ts',
+          'shared/__tests__/core.test.ts',
+          'shared/fixtures/parser.ts',
+          'shared/tool.config.ts',
+          'shared/generated/one.ts',
+          'services/generated.ts',
+          'shared/dist/generated.ts',
+          'services/build/generated.ts',
+        ];
+        for (const file of files) {
+          fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+          fs.writeFileSync(path.join(root, file), 'export const value = 1;\n');
+        }
+
+        const result = resolveNodeVerifyPlan(root, 'code', {
+          homeDirectory: root,
+          targetFiles: files,
+        });
+        const lintFix = result.plan.steps.find((step) => step.id === 'node:lint-fix');
+        const formatFix = result.plan.steps.find((step) => step.id === 'node:format-fix');
+        const separator = lintFix?.command?.argv.indexOf('--') ?? -1;
+
+        assert.deepStrictEqual(lintFix?.command?.argv.slice(separator + 1), [
+          'cli/main.ts',
+          'services/api.ts',
+          'shared/core.ts',
+        ]);
+        assert.deepStrictEqual(formatFix?.command?.argv.slice(-(files.length + 1)), [
+          '--',
+          ...files.slice().sort(),
+        ]);
+        assert.strictEqual(result.readiness.status, 'READY');
+      }
+    );
+  });
+
+  it('fails readiness closed when Gennady lint declares no exact source operands', () => {
+    withProject(
+      {
+        scripts: {
+          'type-check': 'tsc --noEmit',
+          'lint:fix': 'gennady lint --autofix',
+          lint: 'gennady lint',
+          'format:fix': 'prettier --write',
+          format: 'prettier --check .',
+        },
+      },
+      (root) => {
+        const result = resolveNodeVerifyPlan(root, 'code', {
+          homeDirectory: root,
+          targetFiles: ['src/a.ts'],
+        });
+        assert.ok(
+          result.readiness.entries.some(
+            (entry) =>
+              entry.requirementId === 'node:lint-source-policy:lint' && entry.status === 'BLOCKED'
+          )
+        );
+      }
+    );
+  });
+
+  it('fails readiness closed for an unknown lint option instead of widening repair scope', () => {
+    withProject(
+      {
+        scripts: {
+          'type-check': 'tsc --noEmit',
+          'lint:fix': 'gennady lint --autofix',
+          lint: 'gennady lint src --future-source-mode=true',
+          'format:fix': 'prettier --write',
+          format: 'prettier --check .',
+        },
+      },
+      (root) => {
+        fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+        fs.writeFileSync(path.join(root, 'src/a.ts'), 'export const value = 1;\n');
+        const result = resolveNodeVerifyPlan(root, 'code', {
+          homeDirectory: root,
+          targetFiles: ['src/a.ts'],
+        });
+        assert.ok(
+          result.readiness.entries.some(
+            (entry) =>
+              entry.requirementId === 'node:lint-source-policy:lint' && entry.status === 'BLOCKED'
+          )
+        );
+      }
+    );
+  });
+
   it('rejects non-exact or escaping Target Files with a typed scope path', () => {
     for (const invalid of [
       '../escape.ts',
@@ -328,6 +436,24 @@ describe('Node target StackPlugin', () => {
         source: 'detected:package.json#devDependencies.vitest',
       });
       assert.deepStrictEqual(unit?.command?.argv.slice(-2), ['--', '--reporter=json']);
+    });
+  });
+
+  it('recognizes the repository-owned topology runner by its exact script contract', () => {
+    const document = JSON.parse(fs.readFileSync(path.join(ZERO_YAML, 'package.json'), 'utf8'));
+    document.scripts.test = 'node --import tsx scripts/test-topology.ts deterministic';
+    withProject(document, (root) => {
+      const result = resolveNodeVerifyPlan(root, 'unit', {
+        homeDirectory: root,
+        targetFiles: TARGETS,
+      });
+      assert.strictEqual(result.readiness.status, 'READY');
+      assert.deepStrictEqual(result.plan.steps.find((step) => step.id === 'node:unit')?.testStats, {
+        policy: 'required',
+        protocol: 'gennady-test-topology-v1',
+        runner: 'gennady-test-topology',
+        source: 'detected:package.json#scripts.test+scripts/test-topology.ts',
+      });
     });
   });
 
@@ -494,6 +620,7 @@ describe('Node target StackPlugin', () => {
       scripts: Record<string, string>;
     };
     document.scripts['lint:fix'] = 'tsx cli/gennady.ts lint --autofix';
+    document.scripts.lint = 'tsx cli/gennady.ts lint src';
     withProject(document, (root) => {
       const result = resolveNodeVerifyPlan(root, 'code', {
         homeDirectory: root,

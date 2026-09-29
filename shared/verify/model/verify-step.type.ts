@@ -67,12 +67,19 @@ export type VerifyTestStatsPolicy = {
   /** @purpose Executor-owned parser contract; absent only when policy is optional or none. */
   readonly protocol?:
     | 'node-test-summary-v1'
+    | 'gennady-test-topology-v1'
     | 'vitest-json-v1'
     | 'go-test-json-v1'
     | 'swift-test-summary-v1'
     | 'xctest-summary-v1';
   /** @purpose Exact runner family whose output the protocol parses. */
-  readonly runner?: 'node:test' | 'vitest' | 'go-test' | 'swift-test' | 'xcodebuild';
+  readonly runner?:
+    | 'node:test'
+    | 'gennady-test-topology'
+    | 'vitest'
+    | 'go-test'
+    | 'swift-test'
+    | 'xcodebuild';
   /** @purpose Builtin, detected or config provenance for the declaration. */
   readonly source: string;
 };

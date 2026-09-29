@@ -30,6 +30,7 @@ import {
   nodeArgvInvokesGennadyLint,
   nodeArgvIsReadOnly,
   nodeArgvIsReadOnlyFormat,
+  nodeGennadyLintRepairTargets,
   nodeRepairArgvIsSafePrefix,
   nodeRepairIsArgumentForwarding,
   nodeScriptIsReadOnly,
@@ -55,9 +56,14 @@ function nodeRepairTargets(
   script: string,
   targetFiles: readonly string[]
 ): readonly string[] {
-  return stepId === 'lint-fix' && nodeScriptReachesGennady(facts.scripts, script)
-    ? targetFiles.filter((file) => /\.tsx?$/i.test(file))
-    : targetFiles;
+  if (stepId !== 'lint-fix' || !nodeScriptReachesGennady(facts.scripts, script)) {
+    return targetFiles;
+  }
+  const typescriptTargets = targetFiles.filter((file) => /\.tsx?$/i.test(file));
+  return (
+    nodeGennadyLintRepairTargets(facts.scripts, STEP_SCRIPTS.lint, typescriptTargets) ??
+    typescriptTargets
+  );
 }
 
 function factsOf(detection: StackDetection): NodeProjectFacts {
@@ -84,7 +90,11 @@ function repairScopeRequirement(stepId: NodeStepId, source: string): Requirement
   };
 }
 
-function scriptRequirements(stepId: NodeStepId, script: string): readonly Requirement[] {
+function scriptRequirements(
+  facts: NodeProjectFacts,
+  stepId: NodeStepId,
+  script: string
+): readonly Requirement[] {
   const requirements: Requirement[] = [packageScriptRequirement(stepId, script)];
   if (stepId === 'lint') {
     requirements.push(
@@ -124,6 +134,15 @@ function scriptRequirements(stepId: NodeStepId, script: string): readonly Requir
       },
       repairScopeRequirement(stepId, script)
     );
+  }
+  if (stepId === 'lint-fix' && nodeScriptReachesGennady(facts.scripts, script)) {
+    requirements.push({
+      id: `node:lint-source-policy:${STEP_SCRIPTS.lint}`,
+      kind: 'config',
+      description: `the read-only "${STEP_SCRIPTS.lint}" script declares an exact Gennady lint source scope`,
+      required: true,
+      fix: `use repo-relative file/directory operands in the reachable gennady lint command; Verify applies that same source policy to lint repair`,
+    });
   }
   return requirements;
 }
@@ -179,6 +198,8 @@ function step(
   const testStep = id === 'unit' || id === 'integration';
   const scriptBody = facts.scripts[script] ?? '';
   const nodeTestProtocol = /(^|\s)--test(?=\s|$)/.test(scriptBody);
+  const gennadyTopologyProtocol =
+    scriptBody.trim() === 'node --import tsx scripts/test-topology.ts deterministic';
   const vitestProtocol =
     facts.packageNames.includes('vitest') &&
     (scriptBody.trim() === 'vitest' || scriptBody.trim() === 'vitest run');
@@ -201,19 +222,26 @@ function step(
           },
         }
       : {}),
-    requires: scriptRequirements(id, script),
+    requires: scriptRequirements(facts, id, script),
     ...(testStep
       ? {
           testStats: {
             policy: 'required' as const,
-            ...(nodeTestProtocol
-              ? { protocol: 'node-test-summary-v1' as const, runner: 'node:test' as const }
+            ...(gennadyTopologyProtocol
+              ? {
+                  protocol: 'gennady-test-topology-v1' as const,
+                  runner: 'gennady-test-topology' as const,
+                }
+              : nodeTestProtocol
+                ? { protocol: 'node-test-summary-v1' as const, runner: 'node:test' as const }
+                : vitestProtocol
+                  ? { protocol: 'vitest-json-v1' as const, runner: 'vitest' as const }
+                  : {}),
+            source: gennadyTopologyProtocol
+              ? 'detected:package.json#scripts.test+scripts/test-topology.ts'
               : vitestProtocol
-                ? { protocol: 'vitest-json-v1' as const, runner: 'vitest' as const }
-                : {}),
-            source: vitestProtocol
-              ? `detected:${facts.packageSources['vitest']}`
-              : `builtin:node.steps.${id}.testStats`,
+                ? `detected:${facts.packageSources['vitest']}`
+                : `builtin:node.steps.${id}.testStats`,
           },
         }
       : {}),
@@ -406,7 +434,7 @@ export function materializeNodeVerifyConfig(
         : []
       : selectedScript === undefined
         ? []
-        : scriptRequirements(id, selectedScript);
+        : scriptRequirements(facts, id, selectedScript);
     const shouldWriteRequirements =
       command?.npmScript !== undefined || directArgv || authored.requires !== undefined;
     const repairScriptSafe =
@@ -627,6 +655,7 @@ export function evaluateNodeReadiness(
       const readOnlyPrefix = 'node:read-only:';
       const repairPrefix = 'node:repair-prefix:';
       const repairScopePrefix = 'node:repair-scope:';
+      const lintSourcePolicyPrefix = 'node:lint-source-policy:';
       let ready = false;
       if (requirement.id.startsWith(scriptPrefix)) {
         const script = requirement.id.slice(scriptPrefix.length);
@@ -643,6 +672,13 @@ export function evaluateNodeReadiness(
       } else if (requirement.id.startsWith(repairScopePrefix)) {
         const separator = authored?.command?.argv.indexOf('--') ?? -1;
         ready = separator >= 0 && separator < (authored?.command?.argv.length ?? 0) - 1;
+      } else if (requirement.id.startsWith(lintSourcePolicyPrefix)) {
+        ready =
+          nodeGennadyLintRepairTargets(
+            facts.scripts,
+            requirement.id.slice(lintSourcePolicyPrefix.length),
+            []
+          ) !== null;
       }
       entries.push(
         readinessEntry(

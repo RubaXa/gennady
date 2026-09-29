@@ -47,7 +47,7 @@ const FULL = {
   lint: 'npm run format && npm run lint:contracts',
   'lint:contracts': 'gennady lint .',
   format: 'prettier --check .',
-  check: 'npm run type-check && npm test && npm run lint && npm run format',
+  check: 'tsx cli/gennady.ts verify --phase full',
   fix: 'npm run format:fix -- . && npm run lint:fix -- .',
   'format:fix': 'prettier --write',
   'lint:fix': 'eslint --fix',
@@ -84,14 +84,47 @@ describe('REQUIRED_SCRIPTS', () => {
     assert.strictEqual(r.ready, false);
   });
 
-  it('still applies the read-only check to a homemade `check` script even though it is no longer required', () => {
+  it('rejects a homemade `check` script that bypasses universal full verification', () => {
     const r = check({ ...FULL, check: 'npm run lint:fix && npm run type-check' });
-    assert.strictEqual(r.checkReadOnly, false);
-    assert.ok(r.missing.includes('check(read-only)'));
+    assert.strictEqual(r.checkUsesUniversalVerify, false);
+    assert.ok(r.missing.includes('check(must invoke gennady verify --phase full)'));
     assert.strictEqual(r.ready, false);
   });
 
-  it('stays ready without the optional read-only check wrapper', () => {
+  it('accepts only a pure alias chain ending in one universal full invocation', () => {
+    assert.equal(check(FULL).checkUsesUniversalVerify, true);
+    assert.equal(
+      check({
+        ...FULL,
+        check: 'npm run check:verify',
+        'check:verify': 'VERIFY_MODE=ci tsx cli/gennady.ts verify --phase=full',
+      }).checkUsesUniversalVerify,
+      true
+    );
+
+    for (const scripts of [
+      { ...FULL, check: 'node mutate.js && gennady verify --phase full' },
+      { ...FULL, check: 'gennady verify --phase full && node mutate.js' },
+      {
+        ...FULL,
+        check: 'npm run check:verify',
+        'check:verify': 'gennady verify --phase full && node mutate.js',
+      },
+      { ...FULL, check: 'npm run check:verify', 'check:verify': 'npm run check' },
+      {
+        ...FULL,
+        check: 'npm run check:verify -- --extra',
+        'check:verify': 'gennady verify --phase full',
+      },
+    ]) {
+      const result = check(scripts);
+      assert.equal(result.checkUsesUniversalVerify, false);
+      assert.ok(result.missing.includes('check(must invoke gennady verify --phase full)'));
+      assert.equal(result.ready, false);
+    }
+  });
+
+  it('stays ready without the optional universal check wrapper', () => {
     const withoutWrappers = Object.fromEntries(
       Object.entries(FULL).filter(([name]) => name !== 'check')
     );
@@ -210,7 +243,7 @@ describe('checkReadiness', () => {
     assert.strictEqual(r.lintHasGennady, true);
     assert.strictEqual(r.formatReadOnly, true);
     assert.strictEqual(r.lintReadOnly, true);
-    assert.strictEqual(r.checkReadOnly, true);
+    assert.strictEqual(r.checkUsesUniversalVerify, true);
     assert.strictEqual(r.formatFixMutates, true);
     assert.strictEqual(r.lintFixMutates, true);
     assert.strictEqual(r.packageJsonPresent, true);

@@ -33,9 +33,15 @@ function withRepo(
     fs.mkdirSync(root);
     fs.mkdirSync(home);
     fs.mkdirSync(path.join(root, 'src'));
+    fs.mkdirSync(path.join(root, 'src', '__tests__'));
+    fs.mkdirSync(path.join(root, 'src', 'fixtures'));
+    fs.mkdirSync(path.join(root, 'plugins'));
     fs.mkdirSync(path.join(root, 'pkg'));
     fs.mkdirSync(path.join(root, 'Sources'));
     fs.writeFileSync(path.join(root, 'src', 'app.ts'), 'export const app = 1;\n');
+    fs.writeFileSync(path.join(root, 'src', '__tests__', 'app.test.ts'), 'export {};\n');
+    fs.writeFileSync(path.join(root, 'src', 'fixtures', 'parser.ts'), 'export {};\n');
+    fs.writeFileSync(path.join(root, 'plugins', 'plugin.ts'), 'export {};\n');
     fs.writeFileSync(path.join(root, 'pkg', 'app.go'), 'package pkg\n');
     fs.writeFileSync(path.join(root, 'Sources', 'App.swift'), 'print("hello")\n');
     fs.writeFileSync(path.join(root, 'README.md'), '# repo\n');
@@ -46,8 +52,9 @@ function withRepo(
         JSON.stringify({
           scripts: {
             'type-check': 'tsc --noEmit',
-            'lint:fix': 'eslint --fix',
-            lint: 'gennady lint src',
+            'lint:fix': 'gennady lint --autofix',
+            lint: 'npm run lint:contracts',
+            'lint:contracts': 'gennady lint src',
             'format:fix': 'prettier --write',
             format: 'prettier --check src',
             unit: 'node --test',
@@ -141,6 +148,15 @@ describe('scope-aware multistack target planner', () => {
         ]
       );
       assert.ok(new Set(result.plan.steps.map((step) => step.plugin)).size === 3);
+    });
+  });
+
+  it('bounds all-scope Gennady repair to the project-declared read-only lint domain', () => {
+    withRepo((root, home) => {
+      const result = resolve(root, home, [], 'all');
+      const lintFix = result.plan.steps.find((step) => step.id === 'node:lint-fix');
+      const separator = lintFix?.command?.argv.indexOf('--') ?? -1;
+      assert.deepStrictEqual(lintFix?.command?.argv.slice(separator + 1), ['src/app.ts']);
     });
   });
 

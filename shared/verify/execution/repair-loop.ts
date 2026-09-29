@@ -163,6 +163,40 @@ function transitiveDependents(
   return closure;
 }
 
+function stagedCandidateProofs(plan: VerifyPlan):
+  | {
+      readonly kind: 'proofs';
+      readonly byRepair: ReadonlyMap<QualifiedStepId, readonly QualifiedStepId[]>;
+    }
+  | { readonly kind: 'problem'; readonly problem: RepairProblem } {
+  const dependents = dependentIndex(plan);
+  const byRepair = new Map<QualifiedStepId, readonly QualifiedStepId[]>();
+  for (const repair of plan.steps.filter((step) => step.effect === 'repair')) {
+    const closure = transitiveDependents([repair.id], dependents);
+    const proofs = plan.steps
+      .filter(
+        (step) =>
+          step.id !== repair.id &&
+          closure.has(step.id) &&
+          (step.effect === 'observe' || step.effect === 'drift-signal') &&
+          step.command !== undefined
+      )
+      .map((step) => step.id);
+    if (proofs.length === 0) {
+      return {
+        kind: 'problem',
+        problem: {
+          code: 'VERIFY_STAGED_REPAIR_UNPROVEN',
+          message: `staged-candidate plan cannot skip repair ${repair.id}: it has no selected dependency-linked read-only convergence step`,
+          stepId: repair.id,
+        },
+      };
+    }
+    byRepair.set(repair.id, proofs);
+  }
+  return { kind: 'proofs', byRepair };
+}
+
 function selectiveRechecks(
   plan: VerifyPlan,
   repair: PlannedVerifyStep,
@@ -206,6 +240,8 @@ export async function runLocalVerifyPlan(
     readonly signal?: AbortSignal;
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly signalHandlers?: boolean;
+    /** @purpose Verify the exact staged candidate read-only; mutating repair nodes are not spawned. */
+    readonly stagedCandidate?: boolean;
     /** @purpose Guarded lifecycle mutation run exactly once before the first real spawn. */
     readonly beforeFirstAttempt?: {
       readonly run: () => void | Promise<void>;
@@ -238,9 +274,16 @@ export async function runLocalVerifyPlan(
     initial.problem = planProblem;
     return immutableResult(initial);
   }
+  const stagedProof = options.stagedCandidate === true ? stagedCandidateProofs(plan) : null;
+  if (stagedProof?.kind === 'problem') {
+    initial.verdict = 'violation';
+    initial.problem = stagedProof.problem;
+    return immutableResult(initial);
+  }
 
   const acquired = acquireWorkspaceGuard(root, {
     signalHandlers: options.signalHandlers,
+    stagedCandidate: options.stagedCandidate,
   });
   if (acquired.kind === 'error') {
     initial.verdict =
@@ -348,6 +391,27 @@ export async function runLocalVerifyPlan(
 
   for (const step of plan.steps) {
     if (stopped) break;
+    if (options.stagedCandidate === true && step.effect === 'repair') {
+      const proofs =
+        stagedProof?.kind === 'proofs' ? (stagedProof.byRepair.get(step.id) ?? []) : [];
+      const message = `pre-commit staged-candidate policy does not spawn mutating repair step ${step.id}; downstream read-only convergence proof: ${proofs.join(', ')}`;
+      const result: VerifyStepResult = {
+        stepId: step.id,
+        plugin: step.plugin,
+        status: 'skipped',
+        exitCode: null,
+        durationMs: 0,
+        output: boundedText(message, maxEvidenceBytes),
+      };
+      state.results.push(result);
+      latest.set(step.id, result);
+      state.evidence.push({
+        kind: 'log',
+        identity: `local:${step.id}:staged-candidate-read-only`,
+        summary: boundedText(message, maxEvidenceBytes),
+      });
+      continue;
+    }
     if (blocked.has(step.id)) {
       const message = `step ${step.id} was not executed because a failed dependency blocked its path`;
       state.results.push({
@@ -415,6 +479,25 @@ export async function runLocalVerifyPlan(
         stopped = true;
         break;
       }
+    }
+  }
+
+  if (
+    options.stagedCandidate === true &&
+    state.verdict === 'pass' &&
+    stagedProof?.kind === 'proofs'
+  ) {
+    for (const [repairId, proofIds] of stagedProof.byRepair) {
+      if (proofIds.some((proofId) => latest.get(proofId)?.status === 'pass')) continue;
+      const message = `staged-candidate repair ${repairId} has no passing downstream read-only convergence proof`;
+      state.verdict = 'violation';
+      state.problem = { code: 'VERIFY_STAGED_REPAIR_UNPROVEN', message, stepId: repairId };
+      state.evidence.push({
+        kind: 'log',
+        identity: `local:${repairId}:staged-candidate-unproven`,
+        summary: boundedText(message, maxEvidenceBytes),
+      });
+      break;
     }
   }
 

@@ -133,7 +133,7 @@
         | Level | Checked by |
         |---|---|
         | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, V2 FILE_RELATIONS, legacy-only TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
-        | Code (types, format, contract lint, yagni usage) | `sdd-verify --profile full` |
+        | Code (types, format, contract lint, yagni usage) | `verify --phase full` |
         | Closed-world inventory + exact-target contract lint | `gennady lint --include-tests --spec=<module-spec> <AuditContext lint-files>` |
         | Test coverage policy | Per-ticket `coverage-gates:` from AuditContext: execute a `required` command verbatim; skip explicit `not-applicable` with its reason; legacy-unset is grandfathered and invents nothing; INVALID blocks audit |
         | Contract semantics, runtime-backing, drift — irreducibly semantic, no command runs this | STEP_2_SEMANTIC, this audit's own judgment |
@@ -215,7 +215,7 @@
         <ToolCall owner="audit-worker" result="ticketCheck">npx gennady sdd-check --task <ticket-path></ToolCall> Inputs <ticket-path>: <ticket-path>=each exact AuditContext.tickets item, one call per item. Use ticketCheck.
         <ToolCall owner="audit-worker" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
         <ToolCall owner="audit-worker" result="changedCheck">npx gennady sdd-check --changed .</ToolCall> Use changedCheck.
-        <ToolCall owner="audit-worker" result="verification">npx gennady sdd-verify --profile full</ToolCall> Use verification.
+        <ToolCall owner="audit-worker" result="verification">npx gennady verify --phase full</ToolCall> Use verification.
         <ToolCall owner="audit-worker" result="contractCheck">npx gennady lint --include-tests --spec=<spec-path> <lint-file> [lint-file...]</ToolCall> Inputs <spec-path>, <lint-file>, [lint-file...]: <spec-path>=literal AuditContext spec/audit-group field; each <lint-file>=ordered AuditContext lint-files item; zero files skips. Use contractCheck.
         Inputs <code-root>: `AuditContext.code-roots` above.
         <ToolCall owner="audit-worker" result="inventoryCheck">npx gennady lint --spec=<spec-path> --inventory-reverse <code-root></ToolCall> Use inventoryCheck.

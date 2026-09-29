@@ -71,6 +71,8 @@ export async function runVerifyCommand(
     readonly signal?: AbortSignal;
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly homeDirectory?: string;
+    /** @purpose Internal read-only pre-commit policy; never exposed as a public CLI flag. */
+    readonly stagedCandidate?: boolean;
     /** @purpose Optional scope already resolved by a trusted caller such as the SDD facade. */
     readonly request?: VerifyCommandRequest;
     readonly sdd?: {
@@ -172,6 +174,7 @@ export async function runVerifyCommand(
             signal: options.signal,
             cancellationSignal: options.cancellationSignal,
             signalHandlers: false,
+            stagedCandidate: options.stagedCandidate,
             ...(options.sdd?.beforeFirstAttempt === undefined
               ? {}
               : { beforeFirstAttempt: options.sdd.beforeFirstAttempt }),

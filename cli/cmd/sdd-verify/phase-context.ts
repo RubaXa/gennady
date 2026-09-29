@@ -33,13 +33,13 @@ import {
   phaseVerificationArtifactPaths,
   resolvePhaseVerificationPlan,
   type PhaseVerificationPlan,
+  type VerificationProfile,
 } from '../../../shared/sdd/phase-verification-plan.ts';
-import type { Profile } from './sdd-verify.types.ts';
 
 /** @purpose Mechanically derived phase profile, exact repair targets, and optional owning spec. */
 export type PhaseVerifyContext = {
   /** @purpose Profile derived from phase kind or the mechanical infra-queue exemption. */
-  profile: Exclude<Profile, 'full'>;
+  profile: Exclude<VerificationProfile, 'full'>;
   /** @purpose Stable reason for the selected profile, persisted with CLI evidence. */
   profileBasis: 'phase-kind' | 'infra-queue-exemption';
   /** @purpose Existing regular project files listed by the phase's Target Files field. */

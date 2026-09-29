@@ -216,7 +216,7 @@ npx gennady yagni /path/to/repo
 | `sdd-check`         | Структурная проверка SDD; authoring авто-фиксит мелочи                    |
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                            |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
-| `sdd-verify`        | Thin SDD task/phase facade; legacy read-only full compatibility profile   |
+| `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine               |
 | `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
 | `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения                    |
 | `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами                            |

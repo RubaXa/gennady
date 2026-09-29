@@ -1,6 +1,6 @@
-// @file: SddVerifyCommand — run the profile's verification ladder and summarize (brief on success, details on failure).
+// @file: Frozen pre-UV-14 ladder retained only for explicit-overlay parity proof through UV-24.
 // @spec: CLI-SDD-VERIFY
-// @consumers: gennady.ts
+// @consumers: frozen parity and migration tests only
 
 import { execFile, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';

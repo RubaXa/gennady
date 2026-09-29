@@ -119,7 +119,7 @@ export function formatSnapshot(s: StateSnapshot): string {
   ];
   for (const r of s.readiness.required) lines.push(`${r.name}\t${r.present ? '✔' : '✘'}`);
   lines.push(`lint→gennady\t${s.readiness.lintHasGennady ? '✔' : '✘'}`);
-  lines.push(`check→read-only\t${s.readiness.checkReadOnly ? '✔' : '✘'}`);
+  lines.push(`check→verify-full\t${s.readiness.checkUsesUniversalVerify ? '✔' : '✘'}`);
   lines.push(`gennady-installed\t${s.readiness.gennadyAvailable ? '✔' : '✘'}`);
   lines.push(
     s.readiness.level === 'ready'

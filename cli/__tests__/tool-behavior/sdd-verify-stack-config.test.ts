@@ -1,5 +1,5 @@
-// @file: Live-CLI behavior of sdd-verify's `stack:` config gate (V-07) — a real
-//   `tsx cli/gennady.ts sdd-verify` run against fixture repos whose gennady.yaml is valid or
+// @file: Live-CLI behavior of universal Verify's temporary `stack:` config adapter (V-07) — a real
+//   `tsx cli/gennady.ts verify` plan against fixture repos whose gennady.yaml is valid or
 //   deliberately malformed, proving deep-merge, provenance-carrying validation, and exit 4 end to
 //   end (not just at the loadStackConfig unit level already covered by
 //   shared/verify/__tests__/stack-config.test.ts).
@@ -21,8 +21,8 @@ function commitFixture(root: string): void {
   execFileSync('git', ['commit', '-qm', 'fixture state'], { cwd: root, env });
 }
 
-describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
-  it('a valid gennady.yaml with 3 extraGates (id/argv/envFail/requires/fixer) never trips the config gate', async () => {
+describe('verify — stack config adapter (V-07)', { concurrency: 4 }, () => {
+  it('fails closed on legacy extraGates instead of silently running the removed ladder', async () => {
     const { root } = buildRepoFixture({ scripts: {} });
     try {
       writeFileSync(
@@ -52,18 +52,10 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
         'utf-8'
       );
       commitFixture(root);
-      const result = await runCliAsync(['sdd-verify', '--profile', 'full'], root);
-      // The config gate must not be what stops this run — its own error code names it explicitly,
-      // so absence of that code is sufficient proof the 3 extraGates parsed clean.
-      assert.doesNotMatch(
-        result.stdout + result.stderr,
-        /ERR_CLI_SDD_VERIFY_STACK_CONFIG/,
-        result.stdout + result.stderr
-      );
-      assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      assert.match(result.stdout, /✅ syntax/);
-      assert.match(result.stdout, /✅ style/);
-      assert.match(result.stdout, /✅ build/);
+      const result = await runCliAsync(['verify', '--phase', 'full', '--plan', '--json'], root);
+      assert.strictEqual(result.exitCode, 4, result.stdout + result.stderr);
+      assert.match(result.stderr, /VERIFY_CONFIG_LEGACY_UNSUPPORTED/);
+      assert.match(result.stderr, /migrate each gate explicitly to verify\.presets/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -85,9 +77,8 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
         ].join('\n'),
         'utf-8'
       );
-      const result = await runCliAsync(['sdd-verify', '--profile', 'full'], root);
+      const result = await runCliAsync(['verify', '--phase', 'full', '--plan', '--json'], root);
       assert.strictEqual(result.exitCode, 4, result.stdout + result.stderr);
-      assert.match(result.stderr, /ERR_CLI_SDD_VERIFY_STACK_CONFIG/);
       assert.match(result.stderr, /anystack\.extraGates\[0\]\.typo/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -98,9 +89,8 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
     const { root } = buildRepoFixture({ scripts: {} });
     try {
       writeFileSync(join(root, 'gennady.yaml'), 'stack:\n  use: [not-a-real-stack]\n', 'utf-8');
-      const result = await runCliAsync(['sdd-verify', '--profile', 'full'], root);
+      const result = await runCliAsync(['verify', '--phase', 'full', '--plan', '--json'], root);
       assert.strictEqual(result.exitCode, 4, result.stdout + result.stderr);
-      assert.match(result.stderr, /ERR_CLI_SDD_VERIFY_STACK_CONFIG/);
       assert.match(result.stderr, /stack\.use\.not-a-real-stack/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -110,42 +100,12 @@ describe('sdd-verify — stack config gate (V-07)', { concurrency: 4 }, () => {
   it('no gennady.yaml at all is not an error — the config gate stays silent', async () => {
     const { root } = buildRepoFixture({ scripts: {} });
     try {
-      const result = await runCliAsync(['sdd-verify', '--profile', 'full'], root);
+      const result = await runCliAsync(['verify', '--phase', 'full', '--plan', '--json'], root);
       assert.doesNotMatch(
         result.stdout + result.stderr,
         /ERR_CLI_SDD_VERIFY_STACK_CONFIG/,
         result.stdout + result.stderr
       );
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  it('D-64: a selected extra-stack tail failure is executed and reported without blocking primary', async () => {
-    const { root } = buildRepoFixture({ scripts: {} });
-    try {
-      writeFileSync(
-        join(root, 'gennady.yaml'),
-        [
-          'stack:',
-          '  use: [node, golang]',
-          '  golang:',
-          '    extraGates:',
-          '      - id: tail-fail',
-          '        argv: [node, -e, "process.exit(7)"]',
-          '',
-        ].join('\n'),
-        'utf-8'
-      );
-      writeFileSync(join(root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n', 'utf-8');
-      commitFixture(root);
-      const result = await runCliAsync(
-        ['sdd-verify', '--profile', 'full', '--only=golang:tail-fail'],
-        root
-      );
-      assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      assert.match(result.stdout, /PRIMARY PASS/);
-      assert.match(result.stdout, /⚠ golang:tail-fail.*non-blocking/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

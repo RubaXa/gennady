@@ -922,6 +922,24 @@ describe('LintCommand', () => {
     );
   });
 
+  it('keeps generated system directories excluded even under --include-all', async () => {
+    const dir = join(tmpDir, 'system-excludes-mod');
+    for (const name of ['src', 'dist', 'build', 'coverage', 'out', 'node_modules/pkg']) {
+      mkdirSync(join(dir, name), { recursive: true });
+      writeFileSync(join(dir, name, 'broken.ts'), 'export const uncontracted = 1;\n', 'utf-8');
+    }
+
+    const report = await mod.run(['node', 'gennady', 'lint', '--include-all', dir]);
+
+    assert.ok(report.errors.some((error) => error.file.endsWith('src/broken.ts')));
+    assert.ok(
+      report.errors.every(
+        (error) => !/(?:dist|build|coverage|out|node_modules)\/.*broken\.ts$/.test(error.file)
+      ),
+      JSON.stringify(report.errors)
+    );
+  });
+
   it('the fixture mask is *.fixture.*, not *fixture* — a production `fixture-service.ts` IS linted', async () => {
     const dir = join(tmpDir, 'fixture-name-mod');
     mkdirSync(dir, { recursive: true });

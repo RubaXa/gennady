@@ -26,6 +26,7 @@ import { parseVerifyTestStats, verifyTestStatsCapability } from '../test-stats.t
 
 const DEFAULT_EVIDENCE_BYTES = 64 * 1024;
 const DEFAULT_POLICY_OUTPUT_BYTES = 1024 * 1024;
+const DEFAULT_STATS_TAIL_BYTES = 64 * 1024;
 const TERMINATION_GRACE_MS = 250;
 
 type LocalExecutorProblemCode =
@@ -78,6 +79,8 @@ type ProcessOutcome = {
   readonly policyStdout: string;
   readonly policyStderr: string;
   readonly policyOutputExceeded: boolean;
+  /** Bounded terminal stdout used only by an exact runner-owned trailing stats record. */
+  readonly statsTailStdout: string;
   readonly stdoutHasNonWhitespace: boolean;
   readonly stdout: string;
   readonly stderr: string;
@@ -130,6 +133,25 @@ class NonWhitespaceStdoutDetector {
   finish(): boolean {
     if (!this.#found && this.#decoder.end().trim() !== '') this.#found = true;
     return this.#found;
+  }
+}
+
+class BoundedUtf8TailCapture {
+  readonly #decoder = new StringDecoder('utf8');
+  readonly #maxBytes: number;
+  #suffix = '';
+
+  constructor(maxBytes: number) {
+    this.#maxBytes = maxBytes;
+  }
+
+  write(chunk: Buffer): void {
+    this.#suffix = utf8Suffix(`${this.#suffix}${this.#decoder.write(chunk)}`, this.#maxBytes);
+  }
+
+  finish(): string {
+    this.#suffix = utf8Suffix(`${this.#suffix}${this.#decoder.end()}`, this.#maxBytes);
+    return this.#suffix;
   }
 }
 
@@ -191,6 +213,21 @@ function utf8Prefix(value: string, maxBytes: number): string {
     bytes += size;
   }
   return result;
+}
+
+function utf8Suffix(value: string, maxBytes: number): string {
+  if (maxBytes <= 0) return '';
+  let bytes = 0;
+  const result: string[] = [];
+  const characters = [...value];
+  for (let index = characters.length - 1; index >= 0; index -= 1) {
+    const character = characters[index]!;
+    const size = Buffer.byteLength(character);
+    if (bytes + size > maxBytes) break;
+    result.push(character);
+    bytes += size;
+  }
+  return result.reverse().join('');
 }
 
 function boundedText(value: string, maxBytes: number): string {
@@ -391,11 +428,13 @@ async function runProcess(
   maxPolicyOutputBytes: number,
   policyStreams: ReadonlySet<'stdout' | 'stderr'>,
   detectStdoutContent: boolean,
+  captureStatsTail: boolean,
   signal: AbortSignal | undefined
 ): Promise<ProcessOutcome> {
   const stdout = new BoundedUtf8Capture(maxEvidenceBytes);
   const stderr = new BoundedUtf8Capture(maxEvidenceBytes);
   const policy = new PolicyOutputCapture(maxPolicyOutputBytes, policyStreams);
+  const statsTail = new BoundedUtf8TailCapture(captureStatsTail ? DEFAULT_STATS_TAIL_BYTES : 0);
   const stdoutContent = new NonWhitespaceStdoutDetector();
   let spawnError: Error | undefined;
   let termination: ProcessOutcome['termination'] = 'completed';
@@ -422,6 +461,7 @@ async function runProcess(
         policyStdout: '',
         policyStderr: '',
         policyOutputExceeded: false,
+        statsTailStdout: '',
         stdoutHasNonWhitespace: false,
         stdout: '',
         stderr: '',
@@ -445,6 +485,7 @@ async function runProcess(
       stdout.write(chunk);
       if (detectStdoutContent) stdoutContent.write(chunk);
       policy.write('stdout', chunk);
+      if (captureStatsTail) statsTail.write(chunk);
     });
     child.stderr?.on('data', (chunk: Buffer) => {
       stderr.write(chunk);
@@ -474,6 +515,7 @@ async function runProcess(
         policyStdout: policyOutput.stdout,
         policyStderr: policyOutput.stderr,
         policyOutputExceeded: policyOutput.exceeded,
+        statsTailStdout: captureStatsTail ? statsTail.finish() : '',
         stdoutHasNonWhitespace: detectStdoutContent ? stdoutContent.finish() : false,
         stdout: stdout.finish(),
         stderr: stderr.finish(),
@@ -888,6 +930,7 @@ export async function executeLocalStep(
       ...(step.testStats?.protocol === undefined ? [] : (['stdout', 'stderr'] as const)),
     ]),
     step.outputMeansFailure === true,
+    step.testStats?.protocol === 'gennady-test-topology-v1',
     options.signal
   );
   const combined = boundedText(
@@ -976,14 +1019,18 @@ export async function executeLocalStep(
       ? undefined
       : (parseVerifyTestStats(
           step.testStats,
-          processOutcome.policyStdout,
+          step.testStats.protocol === 'gennady-test-topology-v1'
+            ? processOutcome.statsTailStdout
+            : processOutcome.policyStdout,
           processOutcome.policyStderr
         ) ?? undefined);
   if (
     step.testStats?.policy === 'required' &&
     processOutcome.termination === 'completed' &&
     processOutcome.spawnError === undefined &&
-    (processOutcome.policyOutputExceeded || testStats === undefined)
+    ((processOutcome.policyOutputExceeded &&
+      step.testStats.protocol !== 'gennady-test-topology-v1') ||
+      testStats === undefined)
   ) {
     status = 'violation';
     verdict = 'violation';

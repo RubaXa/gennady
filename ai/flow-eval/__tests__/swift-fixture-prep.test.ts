@@ -171,7 +171,7 @@ describe('E-10 immutable legacy anystack compatibility', () => {
     assert.equal(readiness.evaluate(readiness.gather(root)).executionReady, true);
   });
 
-  it('keeps a when-scoped gate visible as skipped and rejects unknown config keys', () => {
+  it('keeps a frozen when-scoped gate visible in compatibility planning and rejects unknown config keys', () => {
     const root = rootWithConfig(
       E10_SCOPED_CONFIG.replace(
         '      - id: swiftlint',
@@ -190,10 +190,6 @@ describe('E-10 immutable legacy anystack compatibility', () => {
       ['README.md']
     );
     assert.equal(effective.find((gate) => gate.id === 'swiftlint')?.skipped, 'when (gennady.yaml)');
-    const skipped = runCli(root, 'sdd-verify', '--profile', 'full', '--only=swiftlint');
-    assert.equal(skipped.status, 0, skipped.output);
-    assert.match(skipped.output, /⏭ swiftlint .* пропущено/is);
-    assert.match(skipped.output, /when \(config\)/);
 
     fs.writeFileSync(
       path.join(root, 'gennady.yaml'),

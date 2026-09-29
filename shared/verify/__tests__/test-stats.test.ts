@@ -50,6 +50,40 @@ it('parses machine-readable Vitest JSON only when its complete count contract is
   );
 });
 
+it('accepts only one coherent runner-owned Gennady topology aggregate', () => {
+  const policy = {
+    policy: 'required' as const,
+    protocol: 'gennady-test-topology-v1' as const,
+    runner: 'gennady-test-topology' as const,
+    source: 'detected:package.json#scripts.test+scripts/test-topology.ts',
+  };
+  assert.deepEqual(
+    parseVerifyTestStats(
+      policy,
+      '[test-topology] local: 3 files\n' +
+        '[gennady-test-topology-stats] {"executed":12,"passed":10,"failed":1,"skipped":1}\n',
+      ''
+    ),
+    {
+      schema: 'gennady.verify-test-stats.v1',
+      ...policy,
+      executed: 12,
+      passed: 10,
+      failed: 1,
+      skipped: 1,
+    }
+  );
+  assert.equal(
+    parseVerifyTestStats(
+      policy,
+      '[gennady-test-topology-stats] {"executed":2,"passed":2,"failed":0,"skipped":0}\n' +
+        '[gennady-test-topology-stats] {"executed":2,"passed":2,"failed":0,"skipped":0}\n',
+      ''
+    ),
+    null
+  );
+});
+
 it('normalizes Go JSON and Swift/XCTest summaries without deriving counts from exit status', () => {
   const go = parseVerifyTestStats(
     {

@@ -165,6 +165,50 @@ describe('target local executor', () => {
         skipped: 1,
       });
 
+      const topologyPolicy = {
+        policy: 'required' as const,
+        protocol: 'gennady-test-topology-v1' as const,
+        runner: 'gennady-test-topology' as const,
+        source: 'detected:package.json#scripts.test+scripts/test-topology.ts',
+      };
+      const topology = await executeLocalStep(
+        step(
+          root,
+          'process.stdout.write(\'x\'.repeat(8192)); process.stdout.write(\'\\n[gennady-test-topology-stats] {"executed":3,"passed":2,"failed":0,"skipped":1}\\n\')',
+          { testStats: topologyPolicy }
+        ),
+        guard,
+        { maxPolicyOutputBytes: 512 }
+      );
+      assert.equal(topology.verdict, 'pass', JSON.stringify(topology));
+      assert.deepEqual(topology.result?.testStats, {
+        schema: 'gennady.verify-test-stats.v1',
+        ...topologyPolicy,
+        executed: 3,
+        passed: 2,
+        failed: 0,
+        skipped: 1,
+      });
+
+      const failingTopology = await executeLocalStep(
+        step(
+          root,
+          'process.stdout.write(\'[gennady-test-topology-stats] {"executed":3,"passed":2,"failed":1,"skipped":0}\\n\'); process.exit(1)',
+          { testStats: topologyPolicy }
+        ),
+        guard
+      );
+      assert.equal(failingTopology.verdict, 'fail', JSON.stringify(failingTopology));
+      assert.equal(failingTopology.result?.status, 'fail');
+      assert.deepEqual(failingTopology.result?.testStats, {
+        schema: 'gennady.verify-test-stats.v1',
+        ...topologyPolicy,
+        executed: 3,
+        passed: 2,
+        failed: 1,
+        skipped: 0,
+      });
+
       const malformed = await executeLocalStep(
         step(root, "process.stdout.write('not TAP')", { testStats: policy }),
         guard

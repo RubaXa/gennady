@@ -1,135 +1,42 @@
-// @file: Entry point for the gennady sdd-verify command — runs the gates and exits (kept out of cmd.ts so importing run() never executes gates).
+// @file: Process adapter for the thin SDD-owned facade over universal Verify.
 // @spec: CLI-SDD-VERIFY
 // @consumers: gennady.ts
 
 import { resolve } from 'node:path';
-import { run, defaultAsyncRunner, type CoverageProbe } from './sdd-verify.cmd.ts';
-import { parseInvocation, stackConfigError } from './sdd-verify.types.ts';
+import { parseSddVerifyInvocation } from './sdd-verify-invocation.ts';
 import { runSddVerifyFacade } from './sdd-verify.facade.ts';
-import { selectCoverageAdapter } from '../testcov/coverage-adapter-registry.ts';
-import { createCoverageArtifactBoundary } from '../testcov/coverage-artifact.ts';
-import { loadStackConfig, type StackConfigLoad } from '../../../shared/verify/stack-config.ts';
-import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
-import { resolveAssembledFullProfile } from './full-profile-plan.ts';
-import { resolveTreeGuard } from '../../../shared/verify/tree-guard.ts';
 
-// Consume this one-process hook channel before any gate subprocess is created. Nested commands and
-// tests must not inherit permission to select an index baseline in their own repositories.
-const preCommitIndexMode = process.env.GENNADY_INTERNAL_PRECOMMIT_INDEX === '1';
-delete process.env.GENNADY_INTERNAL_PRECOMMIT_INDEX;
-
-const invocation = parseInvocation(process.argv);
-if (!invocation.ok) {
-  console.error(invocation.message);
+const parsed = parseSddVerifyInvocation(process.argv);
+if (!parsed.ok) {
+  console.error(parsed.message);
   process.exit(4);
 }
 
-// The same registry entry drives testcov and sdd-verify. Unsupported/ambiguous platforms remain a
-// dormant teaching failure until a test:coverage rung actually needs the probe; setup/code profiles
-// do not acquire an irrelevant coverage dependency.
 const projectRoot = resolve('.');
-
-if (invocation.mode === 'phase') {
-  const abort = new AbortController();
-  let cancellationSignal: 'SIGINT' | 'SIGTERM' | undefined;
-  const handlers = new Map<'SIGINT' | 'SIGTERM', () => void>();
-  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    const handler = () => {
-      cancellationSignal ??= signal;
-      abort.abort(signal);
-    };
-    handlers.set(signal, handler);
-  }
-  process.once('SIGINT', handlers.get('SIGINT')!);
-  process.once('SIGTERM', handlers.get('SIGTERM')!);
-  const result = await runSddVerifyFacade(projectRoot, invocation.task, invocation.phase, {
+const abort = new AbortController();
+let cancellationSignal: 'SIGINT' | 'SIGTERM' | undefined;
+const handlers = new Map<'SIGINT' | 'SIGTERM', () => void>();
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  const handler = () => {
+    cancellationSignal ??= signal;
+    abort.abort(signal);
+  };
+  handlers.set(signal, handler);
+  process.once(signal, handler);
+}
+const result = await runSddVerifyFacade(
+  projectRoot,
+  parsed.invocation.task,
+  parsed.invocation.phase,
+  {
     signal: abort.signal,
     ...(cancellationSignal === undefined ? {} : { cancellationSignal }),
-    ...(invocation.legacyOverlay === undefined
+    ...(parsed.invocation.legacyOverlay === undefined
       ? {}
-      : { legacyOverlay: { provenance: invocation.legacyOverlay } }),
-  });
-  for (const [signal, handler] of handlers) process.off(signal, handler);
-  if (result.stdout !== '') process.stdout.write(result.stdout);
-  if (result.stderr !== '') process.stderr.write(result.stderr);
-  process.exit(result.exitCode);
-}
-
-// V-07: the `stack:` config section is a real gate here, ahead of any gate execution — a
-// malformed gennady.yaml/.gennadyrc must never let verify run on a config it cannot trust
-// (config.spec §4.1). No section present at all is not an error (config: null, errors: []).
-const stackConfigLoad: StackConfigLoad = loadStackConfig(projectRoot, BUILTIN_GATE_IDS);
-if (stackConfigLoad.errors.length > 0) {
-  const outcome = stackConfigError(stackConfigLoad.errors);
-  console.error(outcome.message);
-  process.exit(outcome.exitCode);
-}
-const coverageSelection = selectCoverageAdapter(projectRoot);
-const coverageBoundaryResult =
-  coverageSelection.kind === 'selected'
-    ? createCoverageArtifactBoundary(projectRoot, coverageSelection.adapter)
-    : null;
-const coverageBoundary = coverageBoundaryResult?.ok ? coverageBoundaryResult.boundary : null;
-const coverageIssue =
-  coverageSelection.kind === 'unsupported'
-    ? `no coverage adapter matches this project (available: ${coverageSelection.available.join(', ') || 'none'})`
-    : coverageSelection.kind === 'ambiguous'
-      ? `coverage adapter selection is ambiguous: ${coverageSelection.matches.map(({ id }) => id).join(', ')}`
-      : coverageBoundaryResult && !coverageBoundaryResult.ok
-        ? coverageBoundaryResult.detail
-        : null;
-const coverageProbe: CoverageProbe = {
-  writableArtifactDirectories: coverageBoundary?.writableDirectories ?? [],
-  clear: () =>
-    coverageIssue
-      ? { ok: false, detail: coverageIssue }
-      : coverageBoundary!.clearProducerArtifacts(),
-  wroteFresh: () => {
-    if (coverageIssue) return { ok: false, detail: coverageIssue };
-    const read = coverageBoundary!.readReport();
-    return read.ok
-      ? { ok: true }
-      : {
-          ok: false,
-          detail: `adapter=${coverageSelection.kind === 'selected' ? coverageSelection.adapter.id : 'unknown'} expected=${coverageBoundary!.reportRelative}: ${read.detail}`,
-        };
-  },
-};
-
-let outcome;
-let fullPlan;
-try {
-  fullPlan = resolveAssembledFullProfile(projectRoot, stackConfigLoad.config);
-} catch (cause) {
-  console.error(`[sdd-verify] ${cause instanceof Error ? cause.message : String(cause)}`);
-  process.exit(1);
-}
-// The hook proves and the guard independently re-proves that worktree == index. This internal
-// channel lets pre-commit verify the exact staged candidate; it is intentionally not a CLI flag.
-const tree = resolveTreeGuard(projectRoot, undefined, {
-  staged: preCommitIndexMode,
-});
-if (tree.kind === 'error') {
-  outcome = {
-    ok: false as const,
-    code: 'ERR_CLI_SDD_VERIFY_TREE_GUARD',
-    exitCode: 4 as const,
-    message: `[sdd-verify] ${tree.message}`,
-  };
-} else {
-  try {
-    outcome = await run(
-      defaultAsyncRunner,
-      'full',
-      coverageProbe,
-      { targets: [], only: invocation.only, skip: invocation.skip, fullPlan },
-      undefined,
-      undefined,
-      tree
-    );
-  } finally {
-    if (tree.kind === 'guard') tree.guard.release();
+      : { legacyOverlay: { provenance: parsed.invocation.legacyOverlay } }),
   }
-}
-console.log(outcome.ok ? outcome.text : outcome.message);
-process.exit(outcome.ok ? 0 : outcome.exitCode);
+);
+for (const [signal, handler] of handlers) process.off(signal, handler);
+if (result.stdout !== '') process.stdout.write(result.stdout);
+if (result.stderr !== '') process.stderr.write(result.stderr);
+process.exit(result.exitCode);

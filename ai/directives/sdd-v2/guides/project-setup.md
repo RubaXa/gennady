@@ -31,7 +31,7 @@ SDD v2 поддерживает только Node.js. Проект обязан 
     "format:fix": "prettier --write",
     "lint": "gennady lint src/",
     "lint:fix": "eslint --fix",
-    "check": "npx gennady sdd-verify --profile full",
+    "check": "npx gennady verify --phase full",
     "fix": "npm run format:fix -- . && npm run lint:fix -- src/"
   }
 }

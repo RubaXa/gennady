@@ -110,8 +110,8 @@
   gate nobody can run. It reads/checks the report produced by the platform's phase/full verifier and
   MUST NOT own a second test-suite run.
   `check-command` and `fix-command` are wrappers for humans, CI, and the pre-commit hook — with the
-  runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to the read-only
-  `npx gennady sdd-verify --profile full` and a whole-project wrapper that passes broad roots to the
+  runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to universal
+  `npx gennady verify --phase full` and a whole-project wrapper that passes broad roots to the
   declared argument-forwarding repair prefixes. The phase runtime boundary, not this static shape,
   enforces the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
   ladder line in §Verification either: STEP_5 already runs
