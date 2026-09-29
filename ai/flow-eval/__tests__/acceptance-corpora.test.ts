@@ -44,7 +44,15 @@ import {
 import { ambiguousIdError, formatFindings } from '../../../cli/cmd/sdd-check/sdd-check.types.ts';
 import { checkPhaseReceipts } from '../../../cli/cmd/sdd-check/phase-receipt-check.ts';
 import { resolvePhaseContext } from '../../../cli/cmd/sdd-verify/phase-context.ts';
-import { runPhaseVerification } from '../../../cli/cmd/sdd-verify/phase-run.ts';
+import {
+  formatPhaseReceipt,
+  phaseReceiptPlanState,
+  phaseReceiptTargetEvidence,
+  phaseReceiptTargetState,
+  phaseVerificationPlanEnvironmentState,
+  type PhaseReceipt,
+  type PhaseReceiptPlan,
+} from '../../../shared/sdd/phase-receipt.ts';
 import { checkCompletion } from '../quality-gate.ts';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '../../..');
@@ -709,7 +717,7 @@ describe('Batch 23A acceptance corpora', () => {
     });
   });
 
-  it('E-23: stale phase receipt fails closed; current receipt and unmarked V1 counterpart stay clean', async () => {
+  it('E-23: stale phase receipt fails closed; current receipt and unmarked V1 counterpart stay clean', () => {
     const contract = expectedCase('stale-phase-receipt');
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'gennady-adversarial-phase-receipt-')));
     try {
@@ -719,14 +727,71 @@ describe('Batch 23A acceptance corpora', () => {
       const context = resolvePhaseContext('specs/app/app.task.APP-one.md', 'P1', fixtureRoot);
       assert.equal(context.ok, true, context.ok ? '' : context.message);
       if (!context.ok) return;
-      const verified = await runPhaseVerification(
+      const gatePlan = context.context.gatePlan;
+      assert.ok(gatePlan);
+      const environment = phaseVerificationPlanEnvironmentState(
         fixtureRoot,
-        context.context,
-        (command, args) => ({ exitCode: 0, output: `${command} ${args.join(' ')}` }),
-        (command) => ({ exitCode: 0, output: command })
+        gatePlan!,
+        context.context.verification,
+        context.context.stack ?? 'node'
       );
-      assert.equal(verified.ok, true, verified.ok ? '' : verified.message);
-      const current = readFileSync(fixture.path, 'utf8');
+      assert.equal(environment.ok, true, environment.ok ? '' : environment.issue);
+      const targetState = phaseReceiptTargetState(
+        fixtureRoot,
+        context.context.targets,
+        context.context.deletedFiles
+      );
+      const targetEvidence = phaseReceiptTargetEvidence(
+        fixtureRoot,
+        context.context.targets,
+        context.context.deletedFiles
+      );
+      assert.equal(targetState.ok, true, targetState.ok ? '' : targetState.issue);
+      assert.equal(targetEvidence.ok, true, targetEvidence.ok ? '' : targetEvidence.issue);
+      const receiptPlan: PhaseReceiptPlan = {
+        ticket: context.context.taskPath,
+        phase: context.context.phaseId,
+        profile: context.context.profile,
+        profileBasis: context.context.profileBasis,
+        targets: context.context.targets,
+        deletedFiles: context.context.deletedFiles,
+        verification: context.context.verification,
+        ...(context.context.coverageOwner === undefined
+          ? {}
+          : { coverageOwner: context.context.coverageOwner }),
+        producesCoverage: gatePlan!.producesCoverage,
+        environmentState: environment.ok ? environment.state : '',
+      };
+      const receipt: PhaseReceipt = {
+        schema: 1,
+        ...receiptPlan,
+        planState: phaseReceiptPlanState(receiptPlan),
+        targetState: targetState.ok ? targetState.state : '',
+        targetEvidence: targetEvidence.ok ? targetEvidence.evidence : {},
+        commands: gatePlan!.gates.flatMap((gate) =>
+          gate.state === 'CONFIGURED' && gate.command !== null
+            ? [
+                {
+                  gate: gate.name,
+                  role: gate.name === 'fix' ? 'repair' : 'foundation',
+                  command: gate.command,
+                  exitCode: 0,
+                },
+              ]
+            : []
+        ),
+        gateEvidence: gatePlan!.gates.map((gate) => ({
+          name: gate.name,
+          state: gate.state === 'CONFIGURED' ? 'PROVEN' : gate.state,
+          command: gate.command,
+          provider: gate.provider,
+        })),
+      };
+      const current = readFileSync(fixture.path, 'utf8').replace(
+        '<!--PHASE_RECEIPTS:v1-->',
+        `<!--PHASE_RECEIPTS:v1-->\n${formatPhaseReceipt(receipt)}`
+      );
+      writeFileSync(fixture.path, current);
       assert.deepEqual(checkPhaseReceipts(fixture.path, fixture.path, current, fixtureRoot), []);
 
       const stale = current.replace('| P1 | impl | — | [x] |', '| P1 | test | — | [x] |');

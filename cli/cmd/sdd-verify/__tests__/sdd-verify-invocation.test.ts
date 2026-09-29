@@ -12,32 +12,12 @@ import {
 const argv = (...rest: string[]): string[] => ['node', 'gennady.ts', 'sdd-verify', ...rest];
 
 describe('UV-14 sdd-verify public invocation', () => {
-  it('accepts only complete task/phase identity and explicit overlay provenance', () => {
+  it('accepts only complete task/phase identity', () => {
     assert.deepEqual(
       parseSddVerifyInvocation(argv('--task', 'specs/app/task.md', '--phase', 'P2')),
       {
         ok: true,
         invocation: { task: 'specs/app/task.md', phase: 'P2' },
-      }
-    );
-    assert.deepEqual(
-      parseSddVerifyInvocation(
-        argv(
-          '--task',
-          'specs/app/task.md',
-          '--phase',
-          'P2',
-          '--legacy-overlay',
-          'operator:reviewed'
-        )
-      ),
-      {
-        ok: true,
-        invocation: {
-          task: 'specs/app/task.md',
-          phase: 'P2',
-          legacyOverlay: 'operator:reviewed',
-        },
       }
     );
   });
@@ -48,6 +28,7 @@ describe('UV-14 sdd-verify public invocation', () => {
       ['--profile', 'full'],
       ['--only', 'lint'],
       ['--skip', 'format'],
+      ['--task', 'specs/app/task.md', '--phase', 'P2', '--legacy-overlay', 'old-proof'],
       ['--task', 'specs/app/task.md'],
       ['--phase', 'P2'],
     ]) {

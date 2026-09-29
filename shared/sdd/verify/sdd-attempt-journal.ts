@@ -14,6 +14,8 @@ import {
   type RepoFileIdentity,
 } from '../../common/repo-file-identity.ts';
 import type { VerifyRunReport, VerifyStepResult } from '../../verify/model/verify-report.type.ts';
+import { extractSection } from '../section.ts';
+import { parsePhaseDetail, parsePhasesOverview } from '../ticket.ts';
 
 const ATTEMPT_SCHEMA = 'gennady.sdd-verify-attempt.v1';
 const LOCK_SCHEMA = 'gennady.sdd-verify-attempt-lock.v1';
@@ -77,7 +79,6 @@ type AttemptRecord = {
     readonly exactSha?: string;
     readonly pipelineId?: string;
   };
-  readonly legacyOverlay?: { readonly enabled: true; readonly provenance: string };
 };
 
 type LockOwner = {
@@ -358,10 +359,53 @@ function withoutAttemptJournal(content: Buffer): Buffer {
   return Buffer.from(normalized.replace(new RegExp(`(?:\\n?${marker}\\n?)+`, 'g'), '\n'));
 }
 
-function worktreeDigest(root: string, ticketPath: string): string {
+function downstreamOwnedFiles(
+  root: string,
+  ticketPath: string,
+  sddPhase: string
+): ReadonlySet<string> {
+  const ticket = fs.readFileSync(ticketPath, 'utf8');
+  const overview = extractSection(ticket, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok')
+    throw new Error('SDD_VERIFY_ATTEMPT_SCOPE_INVALID: PHASES_OVERVIEW');
+  const phases = parsePhasesOverview(overview.content);
+  const phaseIndex = phases.findIndex((phase) => phase.id === sddPhase);
+  if (phaseIndex < 0) {
+    throw new Error(`SDD_VERIFY_ATTEMPT_SCOPE_INVALID: phase ${sddPhase} is absent`);
+  }
+  const owned = new Set<string>();
+  for (const phase of phases.slice(phaseIndex + 1)) {
+    const section = extractSection(ticket, `PHASE_${phase.id}`);
+    if (section.status !== 'ok') {
+      throw new Error(`SDD_VERIFY_ATTEMPT_SCOPE_INVALID: PHASE_${phase.id}`);
+    }
+    const detail = parsePhaseDetail(section.content);
+    for (const raw of [...detail.targetFiles, ...detail.deletedFiles]) {
+      const absolute = path.resolve(root, raw);
+      const relative = path.relative(root, absolute).split(path.sep).join('/');
+      if (
+        raw.trim() !== raw ||
+        raw === '' ||
+        path.isAbsolute(raw) ||
+        relative === '' ||
+        relative === '..' ||
+        relative.startsWith('../') ||
+        /[*?[\]{}]/.test(raw)
+      ) {
+        throw new Error(
+          `SDD_VERIFY_ATTEMPT_SCOPE_INVALID: phase ${phase.id} path ${JSON.stringify(raw)}`
+        );
+      }
+      owned.add(relative);
+    }
+  }
+  return owned;
+}
+
+function worktreeDigest(root: string, ticketPath: string, sddPhase: string): string {
   const hash = createHash('sha256');
-  hash.update('index\0');
-  hash.update(exactGitDigest(root, ['ls-files', '--stage', '-z']));
+  const ticketRelative = path.relative(root, ticketPath).split(path.sep).join('/');
+  const downstream = downstreamOwnedFiles(root, ticketPath, sddPhase);
   const tracked = exactGitDigest(root, ['ls-files', '-z'])
     .toString('utf8')
     .split('\0')
@@ -370,27 +414,106 @@ function worktreeDigest(root: string, ticketPath: string): string {
     .toString('utf8')
     .split('\0')
     .filter(Boolean);
-  const ticketRelative = path.relative(root, ticketPath).split(path.sep).join('/');
   for (const file of [...new Set([...tracked, ...untracked])].sort((left, right) =>
     left.localeCompare(right)
   )) {
+    if (file !== ticketRelative && downstream.has(file)) continue;
     const absolute = path.join(root, file);
     let entry: fs.Stats;
     try {
       entry = fs.lstatSync(absolute);
     } catch (cause) {
       if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause;
-      hash.update(`missing\0${file}\0`);
+      // The digest describes exact present filesystem contents, not Git's staging/history state.
+      // A deletion is observed as removal of a previously hashed path, and remains byte-identical
+      // when that already-verified tombstone is staged and committed.
       continue;
     }
     hash.update(`path\0${file}\0${entry.mode}\0`);
     if (entry.isSymbolicLink()) hash.update(fs.readlinkSync(absolute));
     else if (entry.isFile()) {
       const content = fs.readFileSync(absolute);
-      hash.update(file === ticketRelative ? withoutAttemptJournal(content) : content);
+      hash.update(file === ticketRelative ? normalizedTicketForFreshness(content) : content);
     } else hash.update('non-file');
   }
   return `sha256:${hash.digest('hex')}`;
+}
+
+function remoteSourceMatches(
+  root: string,
+  ticketPath: string,
+  sddPhase: string,
+  exactSha: string
+): boolean {
+  if (!/^[0-9a-f]{40,64}$/.test(exactSha)) return false;
+  try {
+    const ticketRelative = path.relative(root, ticketPath).split(path.sep).join('/');
+    const downstream = downstreamOwnedFiles(root, ticketPath, sddPhase);
+    const changed = exactGitDigest(root, [
+      'diff',
+      '--name-only',
+      '-z',
+      '--no-ext-diff',
+      exactSha,
+      '--',
+    ])
+      .toString('utf8')
+      .split('\0')
+      .filter(Boolean);
+    const untracked = exactGitDigest(root, ['ls-files', '--others', '--exclude-standard', '-z'])
+      .toString('utf8')
+      .split('\0')
+      .filter(Boolean);
+    for (const file of new Set([...changed, ...untracked])) {
+      if (downstream.has(file)) continue;
+      if (file !== ticketRelative) return false;
+      const pushedTicket = exactGitDigest(root, ['show', `${exactSha}:${ticketRelative}`]);
+      if (
+        !normalizedTicketForFreshness(fs.readFileSync(ticketPath)).equals(
+          normalizedTicketForFreshness(pushedTicket)
+        )
+      ) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizedSection(
+  source: string,
+  name: string,
+  transform: (body: string) => string
+): string {
+  const open = `<!--SECTION:${name}-->`;
+  const close = `<!--/SECTION:${name}-->`;
+  const start = source.indexOf(open);
+  const end = source.indexOf(close, start + open.length);
+  if (start < 0 || end < 0) return source;
+  const bodyStart = start + open.length;
+  return `${source.slice(0, bodyStart)}${transform(source.slice(bodyStart, end))}${source.slice(end)}`;
+}
+
+/**
+ * @purpose Exclude only SDD-owned evidence/completion state from repository freshness identity.
+ * @invariant Phase declarations, targets, selectors, rules and every non-ticket project byte remain
+ * identity-bearing; terminalization, `sdd-log complete` and Round close cannot stale their own proof.
+ */
+function normalizedTicketForFreshness(content: Buffer): Buffer {
+  let source = withoutAttemptJournal(content).toString('utf8');
+  source = normalizedSection(source, 'EXECUTION_LOG', () => '\n<SDD_EXECUTION_LOG_STATE>\n');
+  source = normalizedSection(source, 'PHASES_OVERVIEW', (body) =>
+    body
+      .split('\n')
+      .map((line) => (line.trimStart().startsWith('|') ? line.replace(/\[[ x~]\]/g, '[?]') : line))
+      .join('\n')
+  );
+  source = normalizedSection(source, 'META', (body) =>
+    body.replace(/(\*\*Status:\*\*\s*)\[[^\]]\]\s*[A-Z_]+/g, '$1[?] <STATE>')
+  );
+  return Buffer.from(source);
 }
 
 function headSha(root: string): string {
@@ -462,6 +585,66 @@ function parseRecords(ticket: string): readonly AttemptRecord[] {
     }
   }
   return values;
+}
+
+/**
+ * @purpose Inspect the latest runner-owned attempt for one phase without accepting an older pass.
+ * @param ticket Exact ticket bytes containing the append-only attempt journal.
+ * @param sddPhase Exact phase identity selected by the SDD facade.
+ * @returns Latest terminal state, or one fail-closed malformed/missing reason.
+ */
+export function inspectSddPhaseAttempt(
+  ticket: string,
+  sddPhase: string
+):
+  | { readonly ok: true; readonly state: AttemptState }
+  | { readonly ok: false; readonly issue: string } {
+  try {
+    const records = parseRecords(ticket).filter((record) => record.sddPhase === sddPhase);
+    const latest = records.at(-1);
+    return latest === undefined
+      ? { ok: false, issue: `phase ${sddPhase} has no runner-owned Verify attempt` }
+      : { ok: true, state: latest.state };
+  } catch (cause) {
+    return { ok: false, issue: cause instanceof Error ? cause.message : String(cause) };
+  }
+}
+
+/**
+ * @purpose Prove that the latest PASS attempt still describes the current repository state.
+ * @invariant SDD-owned journal/status bytes and staging are normalized; project content remains
+ * identity-bearing. Remote proof retains exact SHA/pipeline provenance while content-identical
+ * evidence commits stay current.
+ * @param root Canonical repository root.
+ * @param ticketPath Exact regular ticket path owned by the SDD command.
+ * @param sddPhase Exact phase identity selected by the SDD facade.
+ * @returns Success only for one current complete PASS; otherwise an actionable stale/state reason.
+ */
+export function validateCurrentSddPhaseAttempt(
+  root: string,
+  ticketPath: string,
+  sddPhase: string
+): { readonly ok: true } | { readonly ok: false; readonly issue: string } {
+  try {
+    const ticket = fs.readFileSync(ticketPath, 'utf8');
+    const records = parseRecords(ticket).filter((record) => record.sddPhase === sddPhase);
+    const latest = records.at(-1);
+    if (latest === undefined) {
+      return { ok: false, issue: `phase ${sddPhase} has no runner-owned Verify attempt` };
+    }
+    if (latest.state !== 'PASS') {
+      return {
+        ok: false,
+        issue: `phase ${sddPhase} latest Verify attempt is ${latest.state}, not PASS`,
+      };
+    }
+    if (latest.identity.worktreeDigest !== worktreeDigest(root, ticketPath, sddPhase)) {
+      return { ok: false, issue: `phase ${sddPhase} PASS is stale after worktree changed` };
+    }
+    return { ok: true };
+  } catch (cause) {
+    return { ok: false, issue: cause instanceof Error ? cause.message : String(cause) };
+  }
 }
 
 function captureTicketIdentity(
@@ -791,7 +974,7 @@ function terminalRecord(
       ? running.identity
       : {
           headSha: scalarIssue === null ? report.context.headSha : running.identity.headSha,
-          worktreeDigest: worktreeDigest(root, ticketPath),
+          worktreeDigest: worktreeDigest(root, ticketPath, running.sddPhase),
           scopeDigest: sha256(canonical(report.context.request.scope)),
           planDigest: sha256(canonical(report.plan)),
           configDigest: sha256(
@@ -810,6 +993,13 @@ function terminalRecord(
     throw new Error('SDD_VERIFY_ATTEMPT_INCOMPLETE: PASS requires complete freshness identity');
   }
   const finishedAt = new Date();
+  const remoteTrustResolved =
+    report?.plan.trust.level === 'remote-provider' &&
+    report.remote !== undefined &&
+    report.remote.sourceSha === report.context.headSha &&
+    report.remote.pipelineSha === report.context.headSha &&
+    report.remote.terminalState === 'REMOTE_SUCCESS' &&
+    remoteSourceMatches(root, ticketPath, running.sddPhase, report.remote.sourceSha);
   return {
     ...running,
     selector: scalarIssue === null ? (report?.plan.phase ?? running.selector) : running.selector,
@@ -832,10 +1022,7 @@ function terminalRecord(
           ? { level: 'pending', source: 'pre-report', resolved: false }
           : report.plan.trust.level === 'local-runner'
             ? { level: 'local-runner', source: report.plan.trust.source, resolved: true }
-            : report.remote !== undefined &&
-                report.remote.sourceSha === report.context.headSha &&
-                report.remote.pipelineSha === report.context.headSha &&
-                report.remote.terminalState === 'REMOTE_SUCCESS'
+            : remoteTrustResolved
               ? {
                   level: 'remote-provider',
                   source: report.plan.trust.source,
@@ -857,7 +1044,6 @@ export async function runWithSddAttemptJournal(input: {
   readonly root: string;
   readonly ticketPath: string;
   readonly sddPhase: string;
-  readonly legacyOverlay?: { readonly enabled: true; readonly provenance: string };
   /** @internal Deterministic race seams used only by adversarial contract tests. */
   readonly runtime?: {
     readonly heartbeatMs?: number;
@@ -868,9 +1054,6 @@ export async function runWithSddAttemptJournal(input: {
   readonly run: () => Promise<SddAttemptOutcome>;
 }): Promise<SddAttemptOutcome> {
   assertPersistedScalar(input.sddPhase, 'sddPhase');
-  if (input.legacyOverlay !== undefined) {
-    assertPersistedScalar(input.legacyOverlay.provenance, 'legacyOverlay.provenance');
-  }
   const runId = randomUUID();
   const lock = acquireLock(
     input.root,
@@ -880,7 +1063,7 @@ export async function runWithSddAttemptJournal(input: {
   );
   const startedAt = new Date().toISOString();
   const initialHeadSha = headSha(input.root);
-  const initialWorktreeDigest = worktreeDigest(input.root, input.ticketPath);
+  const initialWorktreeDigest = worktreeDigest(input.root, input.ticketPath, input.sddPhase);
   const running: AttemptRecord = {
     schema: ATTEMPT_SCHEMA,
     runId,
@@ -904,7 +1087,6 @@ export async function runWithSddAttemptJournal(input: {
       rulesDigest: null,
     },
     trust: { level: 'pending', source: 'planning', resolved: false },
-    ...(input.legacyOverlay === undefined ? {} : { legacyOverlay: input.legacyOverlay }),
   };
   let heartbeatFailure: Error | undefined;
   const heartbeat = setInterval(() => {

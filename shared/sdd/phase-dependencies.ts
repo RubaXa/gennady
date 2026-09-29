@@ -5,15 +5,18 @@
 import { extractSection } from './section.ts';
 import { parsePhaseReceipts, type PhaseReceipt } from './phase-receipt.ts';
 import { parsePhasesOverview } from './ticket.ts';
-
 /** @purpose Validate one parsed dependency receipt against its current project context. */
 type DependencyReceiptValidator = (receipt: PhaseReceipt, phaseId: string) => string | null;
 
-/** @purpose Fail before dispatch or mutation unless the complete dependency closure is complete and currently attested. | @param content Ticket markdown. | @param phaseId Phase about to start. | @param validateReceipt Current-receipt validator owned by phase verification. | @returns Teaching issue, or null when dependencies are ready. */
+/** @purpose Validate the latest canonical Verify attempt against the current repository state. */
+type DependencyAttemptValidator = (phaseId: string) => string | null;
+
+/** @purpose Fail before dispatch or mutation unless the complete dependency closure is complete and currently attested. | @param content Ticket markdown. | @param phaseId Phase about to start. | @param validateReceipt Current historical-receipt validator owned by phase verification. | @param [validateAttempt] Repository-aware latest canonical-attempt currentness validator; omission fails closed. | @returns Teaching issue, or null when dependencies are ready. */
 export function checkPhaseDependencies(
   content: string,
   phaseId: string,
-  validateReceipt: DependencyReceiptValidator
+  validateReceipt: DependencyReceiptValidator,
+  validateAttempt: DependencyAttemptValidator = () => 'currentness was not validated'
 ): string | null {
   const overview = extractSection(content, 'PHASES_OVERVIEW');
   if (overview.status !== 'ok') return 'ticket has no readable PHASES_OVERVIEW';
@@ -47,8 +50,12 @@ export function checkPhaseDependencies(
     }
     visiting.pop();
     const receipt = receipts.get(dependencyId);
-    if (!receipt && schemaAware)
-      return `phase ${phaseId} dependency ${dependencyId} has no CLI-owned receipt`;
+    if (!receipt && schemaAware) {
+      const issue = validateAttempt(dependencyId);
+      if (issue) {
+        return `phase ${phaseId} dependency ${dependencyId} has no current PASS Verify attempt: ${issue}`;
+      }
+    }
     if (receipt) {
       const issue = validateReceipt(receipt, dependencyId);
       if (issue) return `phase ${phaseId} dependency ${dependencyId} is not current: ${issue}`;

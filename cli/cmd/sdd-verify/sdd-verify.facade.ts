@@ -10,17 +10,10 @@ import { parsePhaseDetail, parsePhasesOverview } from '../../../shared/sdd/ticke
 import { resolveTicketArg } from '../../../shared/sdd/ticket-resolve.ts';
 import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
 import { runWithSddAttemptJournal } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
-import {
-  bindSddReceiptCommands,
-  type SddReceiptCommandBinding,
-} from '../../../shared/sdd/verify/sdd-receipt-sink.ts';
-import { adaptSddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
 import type { RemotePipelineObserver } from '../../../shared/verify/execution/remote-watcher.ts';
 import { runVerifyCommand } from '../verify/verify.cmd.ts';
 import { resolveRemotePipelineObserver } from '../verify/remote-provider.ts';
-import { resolvePhaseContext } from './phase-context.ts';
-import { persistLegacyPhaseReceipt } from './legacy-receipt-persistence.ts';
 
 type SddFacadeOutcome = Awaited<ReturnType<typeof runVerifyCommand>>;
 
@@ -32,18 +25,10 @@ function failure(detail: string): SddFacadeOutcome {
   };
 }
 
-function diagnosticFailure(id: string, location: string, detail: string): SddFacadeOutcome {
-  return {
-    exitCode: 1,
-    stdout: '',
-    stderr: `[sdd-verify] ${id} severity=error location=${location}: ${detail}\n`,
-  };
-}
-
 /**
  * @purpose Resolve exact SDD task/phase scope and selector, then invoke the universal Verify engine.
- * @invariant This facade reads task state but does not persist journal/receipt state; UV-12E owns
- *   attempt persistence and UV-13 owns the conditional legacy receipt overlay.
+ * @invariant The SDD-owned attempt journal consumes the universal report; no compatibility
+ *   receipt projection or second runner is reachable.
  * @param root Repository root selected by the process cwd.
  * @param task Exact ticket path or Task-ID accepted by the SDD resolver.
  * @param phaseId Exact phase identity from the ticket.
@@ -58,7 +43,6 @@ export async function runSddVerifyFacade(
     readonly signal?: AbortSignal;
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly homeDirectory?: string;
-    readonly legacyOverlay?: { readonly provenance: string };
     /** @purpose Injectable exact-SHA observer used by deterministic facade contract tests. */
     readonly remoteObserver?: RemotePipelineObserver;
     readonly resolveRemoteObserver?: typeof resolveRemotePipelineObserver;
@@ -100,14 +84,6 @@ export async function runSddVerifyFacade(
       root: canonicalRoot,
       ticketPath: resolved.path,
       sddPhase: phase.id,
-      ...(options.legacyOverlay === undefined
-        ? {}
-        : {
-            legacyOverlay: {
-              enabled: true as const,
-              provenance: options.legacyOverlay.provenance,
-            },
-          }),
       run: async () => {
         const paths = validateTicketReviewPaths(canonicalRoot, resolved.content, {
           phaseIds: [phase.id],
@@ -165,41 +141,7 @@ export async function runSddVerifyFacade(
           );
         }
 
-        let legacyContext: ReturnType<typeof adaptSddVerifyContext> | undefined;
-        if (options.legacyOverlay !== undefined) {
-          const legacyPhase = resolvePhaseContext(
-            relative(canonicalRoot, resolved.path),
-            phase.id,
-            canonicalRoot
-          );
-          if (!legacyPhase.ok)
-            return diagnosticFailure(
-              'ERR_CLI_SDD_VERIFY_PHASE_CONTEXT',
-              `${relative(canonicalRoot, resolved.path)}#${phase.id}`,
-              legacyPhase.message
-            );
-          const required = legacyPhase.context.gatePlan?.gates.find(
-            (gate) => gate.required && gate.state !== 'CONFIGURED' && gate.state !== 'PROVEN'
-          );
-          if (required !== undefined) {
-            return diagnosticFailure(
-              'SDD_VERIFY_PHASE_PREREQUISITE_REQUIRED',
-              `${legacyPhase.context.taskPath}#${legacyPhase.context.phaseId}`,
-              `${required.name} ${required.state}`
-            );
-          }
-          legacyContext = adaptSddVerifyContext(canonicalRoot, legacyPhase.context);
-          if (!legacyContext.ok) {
-            return diagnosticFailure(
-              legacyContext.diagnostic.id,
-              legacyContext.diagnostic.location,
-              legacyContext.diagnostic.message
-            );
-          }
-        }
-
-        let legacyBindings: readonly SddReceiptCommandBinding[] = [];
-        const outcome = await runVerifyCommand(
+        return runVerifyCommand(
           canonicalRoot,
           { phase: selection.selector, planOnly: false, format: 'text' },
           {
@@ -213,69 +155,8 @@ export async function runSddVerifyFacade(
                 phase: phase.id,
               },
             },
-            ...(legacyContext === undefined || !legacyContext.ok
-              ? {}
-              : {
-                  sdd: {
-                    context: legacyContext.context,
-                    bindings: (
-                      plan: Parameters<typeof bindSddReceiptCommands>[1],
-                      readiness: Parameters<typeof bindSddReceiptCommands>[3]
-                    ) => {
-                      const bound = bindSddReceiptCommands(
-                        canonicalRoot,
-                        plan,
-                        legacyContext.context,
-                        readiness
-                      );
-                      if (bound.ok) legacyBindings = bound.bindings;
-                      return bound;
-                    },
-                    beforeFirstAttempt: {
-                      run: () =>
-                        persistLegacyPhaseReceipt(
-                          canonicalRoot,
-                          legacyContext.context.receiptPlan.ticket,
-                          legacyContext.context.receiptPlan.phase,
-                          null
-                        ),
-                      writes: {
-                        root: canonicalRoot,
-                        include: [legacyContext.context.receiptPlan.ticket],
-                        exclude: ['.git/**'],
-                      },
-                    },
-                    persist: (receipt: Parameters<typeof persistLegacyPhaseReceipt>[3]) =>
-                      persistLegacyPhaseReceipt(
-                        canonicalRoot,
-                        legacyContext.context.receiptPlan.ticket,
-                        legacyContext.context.receiptPlan.phase,
-                        receipt
-                      ),
-                  },
-                }),
           }
         );
-        if (legacyContext === undefined || !legacyContext.ok || outcome.report === undefined) {
-          return outcome;
-        }
-        const failed = legacyBindings.find((binding) =>
-          ('stepIds' in binding ? binding.stepIds : [binding.stepId]).some((stepId) =>
-            outcome.report!.results.some(
-              (result) => result.stepId === stepId && result.status !== 'pass'
-            )
-          )
-        );
-        if (failed === undefined) return outcome;
-        const id =
-          failed.source === 'verification'
-            ? 'ERR_CLI_SDD_VERIFY_EXTRA_FAILED'
-            : 'ERR_CLI_SDD_VERIFY_GATE_FAILED';
-        return {
-          ...outcome,
-          stdout: '',
-          stderr: `[sdd-verify] ${id} severity=error location=${legacyContext.context.receiptPlan.ticket}#${phase.id}: ${('stepIds' in failed ? failed.stepIds : [failed.stepId]).join(',')} did not pass\n`,
-        };
       },
     });
   } catch (cause) {

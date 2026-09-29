@@ -26,13 +26,14 @@ _Обзор пути от контракта к реализации и пров
 
 ## 1. Module Vision
 
-Запись событий в `EXECUTION_LOG` и единый переход проверенной фазы в завершённое состояние. `execute` открывает/закрывает Round через `sdd-log`; фазовый агент добавляет event-строки и форматные блоки. Append-режимы не меняют прошлые события. Режим `complete` после успешного `sdd-verify` проверяет CLI-owned receipt выбранной фазы, текущий Round, незакрытый skeleton и typed Handoff, затем одной записью: ставит реальный timestamp в DONE, заменяет Handoff-placeholder и отмечает только эту фазу `[x]` в `Phases Overview`. Так receipt и доступность зависимой фазы больше не расходятся из-за трёх ручных правок.
+Запись событий в `EXECUTION_LOG` и единый переход проверенной фазы в завершённое состояние. `execute` открывает/закрывает Round через `sdd-log`; фазовый агент добавляет event-строки и форматные блоки. Append-режимы не меняют прошлые события. Режим `complete` после успешного `sdd-verify` проверяет current PASS attempt выбранной фазы (или historical CLI-owned receipt), текущий Round, незакрытый skeleton и typed Handoff, затем одной записью: ставит реальный timestamp в DONE, заменяет Handoff-placeholder и отмечает только эту фазу `[x]` в `Phases Overview`. Так evidence и доступность зависимой фазы больше не расходятся из-за трёх ручных правок.
 
 **Key properties:**
 
 - Append-only event modes — `findSectionBounds` находит close-маркер, новые события вставляются перед ним; прошлые event-строки не меняются. `close` — отдельный структурный переход: заменяет подготовленный Round-close skeleton, а для динамически открытого Round добавляет блок ровно один раз
 - Atomic phase close — `complete` сначала валидирует все предусловия в памяти и только затем одной записью меняет три CLI-owned точки текущей фазы
-- Receipt before completion — без существующего `SDD_PHASE_RECEIPT:<PhaseID>` завершение отклоняется без изменения файла
+- Evidence before completion — без current PASS Verify attempt или historical `SDD_PHASE_RECEIPT:<PhaseID>` завершение отклоняется без изменения файла
+- Post-completion freshness — CLI-owned DONE/Handoff/overview/Meta transitions не self-stale attempt; любой последующий source/plan/rule drift либо latest non-PASS блокирует dependency dispatch/check/close
 - No fabricated DONE — `<…>`-плейсхолдер в контенте → отказ (exit 2); это audit-BLOCKER в ручном режиме
 - Timestamped where the format calls for it — `round`/`line`/`close`/`blocker` ставят реальное время; `phase`/`handoff` — без метки времени (формат этого не требует); часы инъектируются (детерминизм в тестах)
 - Human compatibility keeps positional content, but directives use one-shot `--content-file` / typed
@@ -190,7 +191,7 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 - Preconditions:
   - режим `complete` получил `--phase P<N>` и canonical typed Handoff: `artifacts`, `decisions`, `open`, `deviations`
-  - в тикете есть валидный CLI-owned `SDD_PHASE_RECEIPT` этой фазы
+  - в тикете есть current PASS Verify attempt этой фазы или валидный historical CLI-owned `SDD_PHASE_RECEIPT`
   - последний Round содержит ровно один блок фазы с незакрытыми DONE и Handoff skeleton
   - `Phases Overview` содержит ровно одну строку фазы со статусом `[ ]`
 - Postconditions:

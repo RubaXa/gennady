@@ -52,6 +52,7 @@ import {
 import { hasValidGroupReceipt } from '../../../shared/sdd/group-receipt.ts';
 import { getChangedFiles } from '../../../shared/common/changed-files.ts';
 import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.ts';
+import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { deviationIsOpen, parseDeviationRecords } from '../../../shared/sdd/deviation.ts';
@@ -541,8 +542,15 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         `${relative(root, resolved.path)} declares invalid path \`${phasePaths.path}\`: ${phasePaths.detail}`
       );
     }
-    const dependencyIssue = checkPhaseDependencies(content, phaseId, (receipt, dependencyPhase) =>
-      phaseReceiptIssue(root, receipt, dependencyPhase, resolved.path)
+    const dependencyIssue = checkPhaseDependencies(
+      content,
+      phaseId,
+      (receipt, dependencyPhase) =>
+        phaseReceiptIssue(root, receipt, dependencyPhase, resolved.path),
+      (dependencyPhase) => {
+        const proof = validateCurrentSddPhaseAttempt(root, resolved.path, dependencyPhase);
+        return proof.ok ? null : proof.issue;
+      }
     );
     if (dependencyIssue) return dependencyNotReadyError(phaseId, dependencyIssue);
     const phaseKind = phases[phaseIndex]?.kind ?? '';

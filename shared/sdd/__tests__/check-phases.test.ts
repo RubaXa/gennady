@@ -392,6 +392,30 @@ describe('checkTicket — SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE (B2-07)', () 
     assert.ok(!c.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), c.join(','));
   });
 
+  it('is clean only when the repository-aware canonical attempt validator proves current PASS', () => {
+    const content = ticket({
+      rows: [{ id: 'P1' }],
+      sections: ['P1'],
+      receiptAware: true,
+      executionLog: [
+        '### Round 1 — 2026-09-01, initial',
+        '#### P1',
+        '- [x] `2026-09-01T10:00:00.000Z` DONE',
+        '**Handoff →** artifacts: [src/P1.ts]; decisions: [none]; open: [none]',
+      ].join('\n'),
+    });
+    const current = checkTicket('t.md', content, 'v2', () => null).map((finding) => finding.code);
+    assert.ok(!current.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), current.join(','));
+
+    const stale = checkTicket(
+      't.md',
+      content,
+      'v2',
+      () => 'phase P1 PASS is stale after worktree changed'
+    ).map((finding) => finding.code);
+    assert.ok(stale.includes('SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE'), stale.join(','));
+  });
+
   it('does not misattribute a DONE line inside Round close to the previous phase', () => {
     const c = codes(
       't.md',

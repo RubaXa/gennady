@@ -316,12 +316,15 @@ export function checkBddNegativeScenario(
  * @param content Full ticket markdown.
  * @param [flowVersion] The ticket's owning scope flow version. Callers that know the repository
  *   layout must supply it; the v2 default preserves the standalone checker contract.
+ * @param [validateAttempt] Repository-aware canonical-attempt currentness proof. Pure callers that
+ *   omit it cannot accept an attempt as phase proof.
  * @returns Findings (possibly empty); errors fail the gate.
  */
 export function checkTicket(
   file: string,
   content: string,
-  flowVersion: FlowVersion = 'v2'
+  flowVersion: FlowVersion = 'v2',
+  validateAttempt?: (phaseId: string) => string | null
 ): Finding[] {
   const findings: Finding[] = [];
   // One migration boundary governs every journal/reopen/vocabulary rule introduced in #40/#48.
@@ -603,10 +606,13 @@ export function checkTicket(
       if (receipts.ok) {
         const receiptedPhases = new Set(receipts.receipts.map((r) => r.phase));
         for (const phase of phaseIdsWithMarkedDone(logSec.content)) {
-          if (!receiptedPhases.has(phase)) {
+          const attemptIssue = validateAttempt
+            ? validateAttempt(phase)
+            : 'currentness was not validated';
+          if (!receiptedPhases.has(phase) && attemptIssue) {
             warn(
               'SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE',
-              `Phase ${phase} has a checked DONE line in the Execution Log but no CLI-owned SDD_PHASE_RECEIPT. Run: npx gennady sdd-log <ticket> complete "…" --phase ${phase} (via sdd-verify + sdd-log complete, never a bare "line DONE").`
+              `Phase ${phase} has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (${attemptIssue}). Run: npx gennady sdd-log <ticket> complete "…" --phase ${phase} (via sdd-verify + sdd-log complete, never a bare "line DONE").`
             );
           }
         }

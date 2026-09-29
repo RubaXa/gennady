@@ -120,6 +120,7 @@ import {
   type CheckResult,
 } from './sdd-check.types.ts';
 import { checkPhaseReceipts } from './phase-receipt-check.ts';
+import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import { extractHeader } from '../orient/core/extract-header.ts';
 import {
   prepareOrientFileRelationsContext,
@@ -1274,7 +1275,15 @@ export async function run(
     } else {
       if (!authoringPhase)
         findings.push(
-          ...checkTicket(effectivePath, content, ticketFlowVersion(effectivePath, repoRoot))
+          ...checkTicket(
+            effectivePath,
+            content,
+            ticketFlowVersion(effectivePath, repoRoot),
+            (phase) => {
+              const proof = validateCurrentSddPhaseAttempt(repoRoot, resolved.path, phase);
+              return proof.ok ? null : proof.issue;
+            }
+          )
         );
       if (authoring)
         findings.push(...checkTicketAuthoringStructure(effectivePath, content, authoringPhase));
@@ -1514,7 +1523,12 @@ export async function run(
         fileCount++;
       } else if (isTicket(content)) {
         const flowVersion = ticketFlowVersion(file, repoRoot);
-        findings.push(...checkTicket(file, content, flowVersion));
+        findings.push(
+          ...checkTicket(file, content, flowVersion, (phase) => {
+            const proof = validateCurrentSddPhaseAttempt(repoRoot, file, phase);
+            return proof.ok ? null : proof.issue;
+          })
+        );
         findings.push(...checkPhaseReceipts(file, file, content, repoRoot));
         findings.push(...checkRuleLinks(file, content, repoRoot));
         findings.push(...checkSpecRefs(file, content));

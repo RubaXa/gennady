@@ -83,7 +83,7 @@ export const anystackPlugin: StackPlugin = {
             kind: 'config',
             description: 'anystack requires project-owned declarative target steps',
             required: true,
-            fix: 'keep the legacy extraGates runner until custom target steps ship in UV-22',
+            fix: 'declare project-owned steps and selectors under verify.presets.anystack',
           },
         ],
         rules: [],

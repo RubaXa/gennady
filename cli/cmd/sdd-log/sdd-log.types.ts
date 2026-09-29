@@ -169,7 +169,8 @@ function firstUnfinishedPhaseInRound(
   content: string,
   lines: string[],
   roundStart: number,
-  roundEnd: number
+  roundEnd: number,
+  validateAttempt: (phaseId: string) => string | null
 ): { phase: string; reason: string } | null {
   const overview = extractSection(content, 'PHASES_OVERVIEW');
   if (overview.status !== 'ok') return null; // legacy ticket — unchanged behavior
@@ -184,10 +185,12 @@ function firstUnfinishedPhaseInRound(
     if (hasMarkedDone) {
       const receipts = parsePhaseReceipts(content);
       const hasReceipt = receipts.ok && receipts.receipts.some((r) => r.phase === phaseId);
-      if (!hasReceipt) {
+      const attemptIssue = validateAttempt(phaseId);
+      const hasAttempt = attemptIssue === null;
+      if (!hasReceipt && !hasAttempt) {
         return {
           phase: phaseId,
-          reason: 'is marked DONE in the Execution Log but has no CLI-owned SDD_PHASE_RECEIPT',
+          reason: `is marked DONE but has neither a CLI-owned phase receipt nor a current PASS Verify attempt (${attemptIssue})`,
         };
       }
     }
@@ -203,11 +206,13 @@ function firstUnfinishedPhaseInRound(
  *   or is marked DONE with no CLI-owned receipt — closes `complete`'s bypass at the close boundary.
  * @param content Full ticket markdown, optionally with a scaffolded current-Round close block.
  * @param ts Real ISO timestamp owned by the CLI.
+ * @param [validateAttempt] Repository-aware latest canonical-attempt currentness validator; omission fails closed.
  * @returns Complete replacement content, or one fail-closed structural reason.
  */
 export function closeCurrentRound(
   content: string,
-  ts: string
+  ts: string,
+  validateAttempt: (phaseId: string) => string | null = () => 'currentness was not validated'
 ): { ok: true; content: string; closeBlock: string } | { ok: false; detail: string } {
   const log = findSectionBounds(content, 'EXECUTION_LOG');
   if (!log) return { ok: false, detail: 'ticket has no readable EXECUTION_LOG' };
@@ -234,7 +239,8 @@ export function closeCurrentRound(
     content,
     lines,
     searchStart,
-    closeHeads.length === 1 ? (closeHeads[0] as number) : log.closeLine
+    closeHeads.length === 1 ? (closeHeads[0] as number) : log.closeLine,
+    validateAttempt
   );
   if (unfinished) {
     return { ok: false, detail: `phase ${unfinished.phase} ${unfinished.reason}` };
@@ -397,20 +403,25 @@ export function isCompleteHandoffPayload(payload: string): boolean {
  * @param phaseId Exact phase selected by `--phase`.
  * @param payload Validated typed Handoff payload without its Markdown prefix.
  * @param ts Real ISO timestamp owned by the CLI.
+ * @param [currentAttemptProven] True only after the command validates the latest PASS freshness.
  * @returns Complete replacement content, or one fail-closed structural reason with no mutation.
  */
 export function completePhase(
   content: string,
   phaseId: string,
   payload: string,
-  ts: string
+  ts: string,
+  currentAttemptProven = false
 ):
   | { ok: true; content: string; doneLine: string; handoffLine: string }
   | { ok: false; detail: string } {
   const receipts = parsePhaseReceipts(content);
   if (!receipts.ok) return { ok: false, detail: receipts.issue };
-  if (!receipts.receipts.some((receipt) => receipt.phase === phaseId)) {
-    return { ok: false, detail: `phase ${phaseId} has no CLI-owned SDD_PHASE_RECEIPT` };
+  if (!receipts.receipts.some((receipt) => receipt.phase === phaseId) && !currentAttemptProven) {
+    return {
+      ok: false,
+      detail: `phase ${phaseId} has neither a current PASS Verify attempt nor a CLI-owned SDD_PHASE_RECEIPT`,
+    };
   }
 
   const overview = findSectionBounds(content, 'PHASES_OVERVIEW');

@@ -732,27 +732,30 @@ describe('Node target StackPlugin', () => {
     });
   });
 
-  it('connects the legacy adapter without changing the legacy runtime', () => {
+  it('rejects removed stack pipeline overrides instead of silently ignoring them', () => {
     const document = JSON.parse(fs.readFileSync(path.join(ZERO_YAML, 'package.json'), 'utf8'));
     withProject(
       document,
       (root) => {
-        const result = resolveNodeVerifyPlan(root, 'unit', {
-          homeDirectory: root,
-          targetFiles: TARGETS,
-        });
-        const unit = result.plan.steps.find((step) => step.id === 'node:unit');
-        assert.deepStrictEqual(unit?.command?.argv, ['node', 'custom-unit.mjs']);
-        assert.ok(result.composed.migrationDiagnostics.length > 0);
-        assert.ok(
-          !result.readiness.entries.some((entry) => entry.requirementId === 'node:script:test')
+        assert.throws(
+          () =>
+            resolveNodeVerifyPlan(root, 'unit', {
+              homeDirectory: root,
+              targetFiles: TARGETS,
+            }),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
+            assert.strictEqual(error.path, 'stack.node.overrideGates');
+            return true;
+          }
         );
       },
       'stack:\n  node:\n    overrideGates:\n      unit:\n        argv: [node, custom-unit.mjs]\n'
     );
   });
 
-  it('loads legacy compatibility only from the planner-provided home directory', () => {
+  it('rejects removed stack pipeline fields from the planner-provided home directory', () => {
     const document = JSON.parse(fs.readFileSync(path.join(ZERO_YAML, 'package.json'), 'utf8'));
     withProject(document, (root) => {
       const home = fs.mkdtempSync(path.join(os.tmpdir(), 'node-target-home-'));
@@ -765,16 +768,18 @@ describe('Node target StackPlugin', () => {
             },
           })
         );
-        const result = resolveNodeVerifyPlan(root, 'unit', {
-          homeDirectory: home,
-          targetFiles: TARGETS,
-        });
-        assert.deepStrictEqual(
-          result.plan.steps.find((step) => step.id === 'node:unit')?.command?.argv,
-          ['node', 'home-unit.mjs']
-        );
-        assert.ok(
-          result.composed.migrationDiagnostics.some((entry) => entry.source === '~/.gennadyrc')
+        assert.throws(
+          () =>
+            resolveNodeVerifyPlan(root, 'unit', {
+              homeDirectory: home,
+              targetFiles: TARGETS,
+            }),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
+            assert.strictEqual(error.path, 'stack.node.overrideGates');
+            return true;
+          }
         );
       } finally {
         fs.rmSync(home, { recursive: true, force: true });
@@ -796,7 +801,8 @@ describe('Node target StackPlugin', () => {
           (error: unknown) => {
             assert.ok(error instanceof VerifyConfigError);
             assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
-            assert.match(error.message, /target-free repair prefix/);
+            assert.strictEqual(error.path, 'stack.node.overrideGates');
+            assert.match(error.hint, /verify\.presets\.node/);
             return true;
           }
         );

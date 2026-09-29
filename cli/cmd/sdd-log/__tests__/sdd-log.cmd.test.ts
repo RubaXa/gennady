@@ -447,7 +447,10 @@ describe('SddLogCommand', () => {
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) {
         assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
-        assert.match(outcome.message, /phase P1 is marked DONE .* no CLI-owned SDD_PHASE_RECEIPT/);
+        assert.match(
+          outcome.message,
+          /phase P1 is marked DONE but has neither a CLI-owned phase receipt nor a current PASS Verify attempt/
+        );
       }
       assert.strictEqual(readFileSync(ticket, 'utf-8'), bypassed);
     });
@@ -693,7 +696,7 @@ describe('SddLogCommand', () => {
       assert.strictEqual(outcome.ok, false);
       if (!outcome.ok) {
         assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_COMPLETE_STATE');
-        assert.match(outcome.message, /P1 has no CLI-owned SDD_PHASE_RECEIPT/);
+        assert.match(outcome.message, /P1 has neither a current PASS Verify attempt nor/);
       }
       assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
     });
@@ -703,7 +706,8 @@ describe('SddLogCommand', () => {
       writeFileSync(ticket, original, 'utf-8');
       const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
       assert.strictEqual(outcome.ok, false);
-      if (!outcome.ok) assert.match(outcome.message, /P1 has no CLI-owned SDD_PHASE_RECEIPT/);
+      if (!outcome.ok)
+        assert.match(outcome.message, /P1 has neither a current PASS Verify attempt nor/);
       assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
     });
 

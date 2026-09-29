@@ -2,7 +2,6 @@
 // @consumers: unified affected-stack planner and UV-05 tests
 // @spec: CLI-VERIFY
 
-import { adaptLegacyStackConfig } from '../../shared/verify/config/adapt-legacy-stack-config.ts';
 import { loadVerifyConfig } from '../../shared/verify/config/load-verify-config.ts';
 import { VerifyConfigError } from '../../shared/verify/config/verify-config.error.ts';
 import type { ComposedVerifyPresets } from '../../shared/verify/config/verify-config.type.ts';
@@ -11,7 +10,7 @@ import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts
 import { composePresets } from '../../shared/verify/planning/compose-presets.ts';
 import { normalizeTargetFiles } from '../../shared/verify/planning/normalize-target-files.ts';
 import { selectPhase } from '../../shared/verify/planning/select-phase.ts';
-import { loadStackConfig } from '../../shared/verify/stack-config.ts';
+import { loadStackConfig, targetStackPipelineIssue } from '../../shared/verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../../shared/verify/stack-registry.ts';
 import type { StackDetection } from '../../shared/verify/verify.types.ts';
 import type { GoProject } from './golang-detect.logic.ts';
@@ -21,7 +20,6 @@ import {
   createGolangVerifyPreset,
   golangDetectedConfig,
   materializeGolangVerifyConfig,
-  materializeLegacyGolangCommands,
 } from './golang-target.logic.ts';
 
 /**
@@ -63,35 +61,38 @@ export function resolveGolangVerifyPlan(
     targets: goTargets,
   });
   const preset = createGolangVerifyPreset(detection, scope);
+  const stackLoad = loadStackConfig(
+    root,
+    BUILTIN_GATE_IDS,
+    options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
+  );
+  const pipelineIssue = targetStackPipelineIssue(stackLoad.config, ['golang']);
+  if (pipelineIssue !== null) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
+      pipelineIssue.path,
+      `${pipelineIssue.sourceField} belongs to the removed stack gate pipeline`,
+      'move executable steps and waivers to verify.presets.golang'
+    );
+  }
+  if (stackLoad.errors[0] !== undefined) {
+    const error = stackLoad.errors[0];
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
+      error.path,
+      error.message,
+      'move executable steps to verify.presets.golang.steps'
+    );
+  }
   const files = materializeGolangVerifyConfig(
     loadVerifyConfig(root, [preset], options.homeDirectory),
     scope
   );
   if (files.errors[0] !== undefined) throw files.errors[0];
 
-  const legacyLoad = loadStackConfig(
-    root,
-    BUILTIN_GATE_IDS,
-    options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
-  );
-  if (legacyLoad.errors[0] !== undefined) {
-    const error = legacyLoad.errors[0];
-    throw new VerifyConfigError(
-      'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
-      error.path,
-      error.message,
-      'migrate this stack.golang entry to verify.presets.golang before target planning'
-    );
-  }
-  const legacy = materializeLegacyGolangCommands(
-    adaptLegacyStackConfig(root, [preset], legacyLoad.config, legacyLoad.provenance)
-  );
-  if (legacy.errors[0] !== undefined) throw legacy.errors[0];
-
   const composed = composePresets({
     presets: [preset],
     detected: [golangDetectedConfig(preset, scope)],
-    legacy,
     files,
   });
   const composedPreset = composed.presets[0]!;

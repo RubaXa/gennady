@@ -460,7 +460,7 @@ function applyLayer(
 }
 
 /**
- * @purpose Compose builtins, detected facts, legacy translation and target files in fixed precedence.
+ * @purpose Compose builtins, detected facts and target files in fixed precedence.
  * @param input Explicitly ranked composition inputs.
  * @returns Concrete presets with per-key provenance, waivers and migration diagnostics.
  */
@@ -515,17 +515,6 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
       defaultSource: `detected:${detected.source}`,
       provenance: detected.provenance ?? new Map(),
     });
-  }
-  if (input.legacy !== undefined) {
-    if (input.legacy.errors.length > 0 || input.legacy.config === null) {
-      if (input.legacy.errors[0] !== undefined) throw input.legacy.errors[0];
-    } else {
-      layers.push({
-        config: input.legacy.config,
-        defaultSource: 'legacy:stack',
-        provenance: input.legacy.provenance,
-      });
-    }
   }
   if (input.files !== undefined) {
     if (input.files.errors.length > 0) throw input.files.errors[0]!;
@@ -585,7 +574,6 @@ export function composePresets(input: ComposeVerifyPresetsInput): ComposedVerify
     presets: composedPresets,
     provenance,
     waivers: [...waivers.values()].sort((left, right) => compareText(left.stepId, right.stepId)),
-    migrationDiagnostics: [...(input.legacy?.diagnostics ?? [])],
     policies: [...policies.values()].sort((left, right) => compareText(left.plugin, right.plugin)),
     sddMapping: Object.fromEntries(
       [...sddMapping].sort(([left], [right]) => compareText(left, right))

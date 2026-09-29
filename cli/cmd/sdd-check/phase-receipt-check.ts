@@ -6,6 +6,7 @@ import { relative } from 'node:path';
 import { extractSection } from '../../../shared/sdd/section.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
+import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import type { Finding } from '../../../shared/sdd/check.ts';
 import { PHASE_RECEIPTS_SCHEMA_MARKER as SCHEMA_MARKER } from '../../../shared/sdd/execution-log.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
@@ -60,13 +61,22 @@ export function checkPhaseReceipts(
     if (!phase.status.includes('[x]')) continue;
     if (!schemaAware && !receipts.has(phase.id)) continue;
     if (!receipts.has(phase.id)) {
-      findings.push(
-        finding(
-          file,
-          'SDD_PHASE_RECEIPT_MISSING',
-          `Phase ${phase.id} is checked but has no CLI receipt. Rerun: npx gennady sdd-verify --task ${relative(root, ticketPath)} --phase ${phase.id}`
-        )
-      );
+      const attempt = validateCurrentSddPhaseAttempt(root, ticketPath, phase.id);
+      if (!attempt.ok) {
+        const stale = /stale after/.test(attempt.issue);
+        const nonPass = /latest Verify attempt is .*not PASS/.test(attempt.issue);
+        findings.push(
+          finding(
+            file,
+            stale
+              ? 'SDD_PHASE_ATTEMPT_STALE'
+              : nonPass
+                ? 'SDD_PHASE_ATTEMPT_NOT_PASS'
+                : 'SDD_PHASE_RECEIPT_MISSING',
+            `Phase ${phase.id} has no current canonical Verify proof: ${attempt.issue}. Rerun: npx gennady sdd-verify --task ${relative(root, ticketPath)} --phase ${phase.id}`
+          )
+        );
+      }
     }
   }
 

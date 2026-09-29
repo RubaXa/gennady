@@ -2,7 +2,6 @@
 // @consumers: affected-stack planner and UV-06 tests
 // @spec: CLI-VERIFY
 
-import { adaptLegacyStackConfig } from '../../shared/verify/config/adapt-legacy-stack-config.ts';
 import { loadVerifyConfig } from '../../shared/verify/config/load-verify-config.ts';
 import { VerifyConfigError } from '../../shared/verify/config/verify-config.error.ts';
 import type { ComposedVerifyPresets } from '../../shared/verify/config/verify-config.type.ts';
@@ -11,7 +10,7 @@ import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts
 import { composePresets } from '../../shared/verify/planning/compose-presets.ts';
 import { normalizeTargetFiles } from '../../shared/verify/planning/normalize-target-files.ts';
 import { selectPhase } from '../../shared/verify/planning/select-phase.ts';
-import { loadStackConfig } from '../../shared/verify/stack-config.ts';
+import { loadStackConfig, targetStackPipelineIssue } from '../../shared/verify/stack-config.ts';
 import { BUILTIN_GATE_IDS } from '../../shared/verify/stack-registry.ts';
 import type { StackDetection } from '../../shared/verify/verify.types.ts';
 import type { SwiftProject } from './swift-detect.logic.ts';
@@ -19,8 +18,8 @@ import { swiftPlugin } from './swift-plugin.ts';
 import { resolveSwiftScope, type SwiftScope } from './swift-scope.logic.ts';
 import {
   createSwiftVerifyPreset,
-  materializeLegacySwiftCommands,
   materializeSwiftVerifyConfig,
+  materializeSwiftXcodeIdentity,
   swiftDetectedConfig,
 } from './swift-target.logic.ts';
 
@@ -63,39 +62,41 @@ export function resolveSwiftVerifyPlan(
     targets: swiftTargets,
   });
   const preset = createSwiftVerifyPreset(detection, swiftTargets);
-  const files = materializeSwiftVerifyConfig(
+  let files = materializeSwiftVerifyConfig(
     loadVerifyConfig(root, [preset], options.homeDirectory),
     project,
     swiftTargets
   );
   if (files.errors[0] !== undefined) throw files.errors[0];
-
-  const legacyLoad = loadStackConfig(
+  const stackLoad = loadStackConfig(
     root,
     BUILTIN_GATE_IDS,
     options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
   );
-  if (legacyLoad.errors[0] !== undefined) {
-    const error = legacyLoad.errors[0];
+  const pipelineIssue = targetStackPipelineIssue(stackLoad.config, ['swift']);
+  if (pipelineIssue !== null) {
     throw new VerifyConfigError(
       'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
-      error.path,
-      error.message,
-      'fix stack.swift or migrate pipeline overrides to verify.presets.swift'
+      pipelineIssue.path,
+      `${pipelineIssue.sourceField} belongs to the removed stack gate pipeline`,
+      'move executable steps and waivers to verify.presets.swift; keep stack.swift.xcode only for project identity'
     );
   }
-  const legacy = materializeLegacySwiftCommands(
-    adaptLegacyStackConfig(root, [preset], legacyLoad.config, legacyLoad.provenance),
-    project,
-    legacyLoad.config,
-    legacyLoad.provenance
-  );
-  if (legacy.errors[0] !== undefined) throw legacy.errors[0];
+  if (stackLoad.errors[0] !== undefined) {
+    const error = stackLoad.errors[0];
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_INVALID_TYPE',
+      error.path,
+      error.message,
+      'keep stack.swift only for project detection/Xcode identity; move steps to verify.presets.swift'
+    );
+  }
+  files = materializeSwiftXcodeIdentity(files, project, stackLoad.config, stackLoad.provenance);
+  if (files.errors[0] !== undefined) throw files.errors[0];
 
   const composed = composePresets({
     presets: [preset],
     detected: [swiftDetectedConfig(preset, swiftTargets)],
-    legacy,
     files,
   });
   const composedPreset = composed.presets[0]!;

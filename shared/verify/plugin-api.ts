@@ -60,7 +60,6 @@ export type {
   VerifyStepStatus,
 } from './model/verify-report.type.ts';
 
-export { adaptLegacyStackConfig } from './config/adapt-legacy-stack-config.ts';
 export { loadVerifyConfig } from './config/load-verify-config.ts';
 export { VerifyConfigError } from './config/verify-config.error.ts';
 export type { VerifyConfigErrorCode } from './config/verify-config.error.ts';
@@ -68,12 +67,10 @@ export type {
   ComposedVerifyPresets,
   ComposeVerifyPresetsInput,
   DetectedVerifyConfigLayer,
-  LegacyVerifyConfigAdapter,
   VerifyPluginPolicy,
   VerifyCommandConfig,
   VerifyConfig,
   VerifyConfigLoad,
-  VerifyMigrationDiagnostic,
   VerifyPluginConfig,
   VerifyStepConfig,
   VerifyStepWaiver,

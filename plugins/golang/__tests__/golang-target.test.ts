@@ -479,17 +479,18 @@ describe('Go target StackPlugin', () => {
     });
   });
 
-  it('mirrors legacy fmt/lint skips to their target repair steps visibly', () => {
+  it('rejects removed stack gate skips instead of silently ignoring them', () => {
     withGoProject(
       (root) => {
-        const result = resolve(root, 'code');
-        assert.deepStrictEqual(result.composed.waivers.map((waiver) => waiver.stepId).sort(), [
-          'golang:fmt',
-          'golang:format-fix',
-          'golang:lint',
-          'golang:lint-fix',
-        ]);
-        assert.strictEqual(result.readiness.status, 'DEGRADED');
+        assert.throws(
+          () => resolve(root, 'code'),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
+            assert.strictEqual(error.path, 'stack.golang.skipGates');
+            return true;
+          }
+        );
       },
       {
         yaml: JSON.stringify({
@@ -499,16 +500,18 @@ describe('Go target StackPlugin', () => {
     );
   });
 
-  it('preserves a legacy lint argv as observe-only and visibly waives lint repair', () => {
+  it('rejects removed stack gate overrides before target composition', () => {
     withGoProject(
       (root) => {
-        const result = resolve(root, 'code');
-        assert.deepStrictEqual(
-          result.plan.steps.find((step) => step.id === 'golang:lint')?.command?.argv,
-          ['custom-lint', 'check']
+        assert.throws(
+          () => resolve(root, 'code'),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
+            assert.strictEqual(error.path, 'stack.golang.overrideGates');
+            return true;
+          }
         );
-        assert.ok(result.composed.waivers.some((waiver) => waiver.stepId === 'golang:lint-fix'));
-        assert.strictEqual(result.readiness.status, 'DEGRADED');
       },
       {
         yaml: JSON.stringify({
@@ -528,8 +531,8 @@ describe('Go target StackPlugin', () => {
           (error: unknown) => {
             assert.ok(error instanceof VerifyConfigError);
             assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
-            assert.strictEqual(error.path, 'stack.golang.overrideGates.fmt.argv');
-            assert.match(error.hint, /format-fix.*\.fmt/);
+            assert.strictEqual(error.path, 'stack.golang.overrideGates');
+            assert.match(error.hint, /verify\.presets\.golang/);
             return true;
           }
         );
