@@ -46,7 +46,9 @@ export function renderVerifyText(report: VerifyRunReport, root: string, planOnly
   lines.push('plan:');
   for (const step of report.plan.steps) {
     lines.push(
-      `  ${step.id} [${step.effect}/${step.executor}] needs=${step.needs.join(',') || '-'}`
+      `  ${step.id} [${step.effect}/${step.executor}] needs=${step.needs.join(',') || '-'}${
+        step.provenance === undefined ? '' : ` source=${safeVerifyText(step.provenance, root)}`
+      }`
     );
   }
   lines.push('results:');

@@ -40,8 +40,8 @@ the provenance-bearing legacy receipt overlay remains a bounded compatibility pr
 
 | Contract                   | Normative obligation                                                                                                    |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `PluginId`                 | Open `string`; built-in registration stays static until UV-23.                                                          |
-| `VerifyStep`               | Immutable DAG node with execution, dependency, effect and policy data.                                                  |
+| `PluginId`                 | Open `string`; bundled built-ins are trusted code, while project extensions are data-only (VERIFY-DL-13).               |
+| `VerifyStep`               | Immutable DAG node with execution, dependency, effect, policy and optional declarative-source provenance.               |
 | `PlannedVerifyStep`        | Validated node whose id, dependencies and invalidation targets use `<plugin>:<local-id>`.                               |
 | `VerifyPreset`             | Immutable plugin-owned DAG plus arbitrary declared selector ids, selected-slice requirements and contributed rule ids.  |
 | `ComposedVerifyPresets`    | Concrete presets plus winning per-key provenance, explicit waivers and migration diagnostics.                           |
@@ -206,8 +206,9 @@ preset!.commandForGate('syntax', {}, []); // extraGate argv, shell-quoted
 ### VER-REQ-1 [должен]
 
 **Когда** core принимает stack plugin или target Verify model, **то он должен** принимать любой
-runtime `PluginId` string без closed built-in union. Refines D-66 and keeps external-code loading
-separately gated by UV-23.
+runtime `PluginId` string без closed built-in union. Refines D-66. Open ids do not authorize an
+external executable-plugin runtime: built-ins are bundled trusted code and project extensions are
+strict declarative data under VERIFY-DL-13.
 
 ### VER-REQ-2 [должен]
 
@@ -421,8 +422,10 @@ will not run. The selected affected plugins must declare the selector. Project s
 `verify.presets.<plugin>.phases.<selector>` and select seeds only by `include`/optional `exclude`
 tags; dependency closure remains planner-owned. Project steps live once at
 `verify.presets.<plugin>.steps.<local-id>` and require explicit local direct `command.argv`, `cwd`,
-`effect`, `tags`, `timeout` and `onFailure` (plus bounded `writes` for repair). No project config can
-load executable plugin code; external code stays UV-23.
+`effect`, `tags`, `timeout` and `onFailure` (plus bounded `writes` for repair). A materialized custom
+step retains its winning file provenance in the plan/report. No project config may declare or load
+executable plugin code by path, package, URL, loader or dynamic import; VERIFY-DL-13 resolves UV-23
+as a permanent data-only boundary.
 
 The SDD facade validates the exact existing Target Files plus tracked Deleted Files, recomposes the
 open kind mapping, and rejects a selector mismatch before invoking universal Verify. Standalone
@@ -1015,6 +1018,24 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
   semantics. Standalone Verify without SDD context keeps its deterministic empty pre-resolver
   snapshot and remains persistence-free. Canonical serialization rejects absolute source identity
   and is independent of locale, discovery order and map insertion.
+
+### VERIFY-DL-13 — Project Verify extensions are data-only
+
+- **Status:** accepted by operator 2026-09-29; implemented by UV-23.
+- **Decision:** built-in `StackPlugin` implementations remain bundled trusted code. Project config
+  may add arbitrary selectors and complete declarative `VerifyStep` values, including direct argv
+  for arbitrary CLI commands. Those commands become executable only after strict config validation,
+  preset composition and common-plan validation, and run only through the common executor with
+  `shell:false`, readiness, timeout, WorkspaceGuard/write boundaries and bounded evidence.
+- **Forbidden surface:** `verify:` declarations for executable plugin paths, packages, URLs,
+  loaders, modules, entry points or dynamic imports fail closed before import or spawn. Core has no
+  project/npm/URL plugin discovery fallback and no second plugin-specific runtime.
+- **Evidence:** the selected plan/report identifies the qualified custom step and its safe winning
+  config provenance. Raw argv/env remain redacted or represented by bounded identities under the
+  existing report-safety contract.
+- **Rejected alternatives:** npm-installed executable plugins, project-code dynamic import and a
+  parallel trust/version/isolation runtime. Future extension work may expand the declarative schema,
+  but cannot bypass the common planner/executor boundary without a new operator decision.
 
 ### VERIFY-CP-1 — Evidence/Receipt operator checkpoint
 

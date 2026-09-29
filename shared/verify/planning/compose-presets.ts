@@ -135,6 +135,7 @@ function materializeCustomStep(
   return {
     id: stepId,
     plugin,
+    provenance: layerSource(layer, `${keyPath}.command.argv`),
     tags: config.tags,
     needs: config.needs ?? [],
     executor: 'local',
