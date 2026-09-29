@@ -15,9 +15,9 @@
     </Step>
 
 <Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
-      Phase cannot emit Handoff without one successful `sdd-verify --task <ticket-path> --phase <PhaseID>`. The CLI, not the phase agent, structurally selects and runs the ladder plus every applicable ticket §5 command verbatim, then atomically writes their exact command/role/exit evidence and Target File state as the phase receipt. Any failure writes no reusable receipt and keeps the phase `[~] IN_PROGRESS` until resolved or escalated.
+      Phase cannot emit Handoff without one successful `sdd-verify --task <ticket-path> --phase <PhaseID>`. The SDD facade, not the phase agent, freezes scope/rules/selector, invokes the universal Verify engine once, and atomically terminalizes its runner-owned attempt evidence from the exact `VerifyRunReport`. Failed, blocked, interrupted, timed-out, cancelled, environment-failed and violation attempts remain in append-only history; the phase stays `[~] IN_PROGRESS` until resolved or escalated.
 
-      **MANDATORY (PROTOCOL) — Canonical Gate Rule:** Ticket §5 commands are CANONICAL and CANNOT be substituted. Diagnostics may run while fixing, but only the canonical phase command can create completion evidence; a hand-written `ver` line is not evidence.
+      **MANDATORY (PROTOCOL) — Canonical Gate Rule:** The ticket kind resolves one composed selector and the preset/config owns its steps; the agent never chooses or substitutes individual gates. Diagnostics may run while fixing, but only the canonical phase command can create completion evidence; a hand-written `ver` line is not evidence. A frozen legacy receipt is produced only by an explicitly provenance-bearing compatibility overlay whose commands bind exactly before spawn; it is never the no-overlay default.
 
       The canon covers the script's BODY, not just its name in §5. Editing what a §5 script actually runs
       (e.g. rewriting `"typecheck"` in `package.json` so it does less, or points elsewhere) while logging the
@@ -28,7 +28,7 @@
       script) — then the edit is legitimate work, not a gate dodge, and MUST be recorded as its own decision
       line in the Execution Log (`<ts> decision <script> rewritten ← <reason>`) before the gate runs.
 
-      `sdd-verify --task <ticket-path> --phase <PhaseID>` is NOT supplemental — it owns STEP_5, including §5 extras (see `AX_PERMITTED_BASH_COMMANDS`). §5 therefore holds only EXTRA commands beyond the standard ladder and never repeats `sdd-verify`.
+      `sdd-verify --task <ticket-path> --phase <PhaseID>` is NOT supplemental — it owns STEP_5 through the same Verify planner/runner as standalone `verify` (see `AX_PERMITTED_BASH_COMMANDS`). The ticket does not copy a static gate ladder and never repeats `sdd-verify`.
 
       Phase kind `doc` typically has no verification — empty section is acceptable.
     </Axiom>

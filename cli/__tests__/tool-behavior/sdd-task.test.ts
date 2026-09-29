@@ -311,6 +311,23 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       scripts: {},
       embeddedRules: true,
       files: {
+        'gennady.yaml': [
+          'verify:',
+          '  sdd:',
+          '    mapping: { config: create-check }',
+          '  presets:',
+          '    node:',
+          '      phases: { create-check: { include: [create-check] } }',
+          '      steps:',
+          '        create-proof:',
+          '          tags: [create-check]',
+          '          needs: []',
+          '          executor: local',
+          '          effect: observe',
+          '          command: { argv: [node, -e, "process.exit(0)"], cwd: . }',
+          '          timeout: 10s',
+          '          onFailure: stop-phase',
+        ].join('\n'),
         'src/existing.ts': 'export const existing = true;\n',
         'specs/app/app.spec.md': '# App\n',
         'specs/app/app.task.APP-create.md': ticket,
@@ -333,12 +350,15 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       ];
       const missing = runCli(verifyArgs, root);
       assert.notStrictEqual(missing.exitCode, 0, missing.stdout + missing.stderr);
-      assert.match(missing.stderr, /Target File path is missing: src\/new\.ts/);
+      assert.match(
+        missing.stderr,
+        /declares invalid path "src\/new\.ts": Target File path is missing/
+      );
 
       writeFileSync(join(root, 'src', 'new.ts'), 'export const created = true;\n', 'utf-8');
       const verified = runCli(verifyArgs, root);
       assert.strictEqual(verified.exitCode, 0, verified.stdout + verified.stderr);
-      assert.match(verified.stdout, /ALL PASS/);
+      assert.match(verified.stdout, /VERDICT PASS/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

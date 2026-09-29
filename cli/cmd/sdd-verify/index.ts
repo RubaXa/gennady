@@ -2,18 +2,10 @@
 // @spec: CLI-SDD-VERIFY
 // @consumers: gennady.ts
 
-import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import {
-  run,
-  defaultAsyncRunner,
-  GATE_MAX_BUFFER_BYTES,
-  type CoverageProbe,
-} from './sdd-verify.cmd.ts';
+import { run, defaultAsyncRunner, type CoverageProbe } from './sdd-verify.cmd.ts';
 import { parseInvocation, stackConfigError } from './sdd-verify.types.ts';
 import { runSddVerifyFacade } from './sdd-verify.facade.ts';
-import { resolvePhaseContext } from './phase-context.ts';
-import { runPhaseVerification } from './phase-run.ts';
 import { selectCoverageAdapter } from '../testcov/coverage-adapter-registry.ts';
 import { createCoverageArtifactBoundary } from '../testcov/coverage-artifact.ts';
 import { loadStackConfig, type StackConfigLoad } from '../../../shared/verify/stack-config.ts';
@@ -37,34 +29,30 @@ if (!invocation.ok) {
 // do not acquire an irrelevant coverage dependency.
 const projectRoot = resolve('.');
 
-let legacyPhaseContext: ReturnType<typeof resolvePhaseContext> | undefined;
 if (invocation.mode === 'phase') {
-  legacyPhaseContext = resolvePhaseContext(invocation.task, invocation.phase);
-  if (!legacyPhaseContext.ok && legacyPhaseContext.reason !== 'unsupported-kind') {
-    console.error(legacyPhaseContext.message);
-    process.exit(1);
+  const abort = new AbortController();
+  let cancellationSignal: 'SIGINT' | 'SIGTERM' | undefined;
+  const handlers = new Map<'SIGINT' | 'SIGTERM', () => void>();
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    const handler = () => {
+      cancellationSignal ??= signal;
+      abort.abort(signal);
+    };
+    handlers.set(signal, handler);
   }
-  if (!legacyPhaseContext.ok) {
-    const abort = new AbortController();
-    let cancellationSignal: 'SIGINT' | 'SIGTERM' | undefined;
-    const handlers = new Map<'SIGINT' | 'SIGTERM', () => void>();
-    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-      const handler = () => {
-        cancellationSignal ??= signal;
-        abort.abort(signal);
-      };
-      handlers.set(signal, handler);
-      process.once(signal, handler);
-    }
-    const result = await runSddVerifyFacade(projectRoot, invocation.task, invocation.phase, {
-      signal: abort.signal,
-      ...(cancellationSignal === undefined ? {} : { cancellationSignal }),
-    });
-    for (const [signal, handler] of handlers) process.off(signal, handler);
-    if (result.stdout !== '') process.stdout.write(result.stdout);
-    if (result.stderr !== '') process.stderr.write(result.stderr);
-    process.exit(result.exitCode);
-  }
+  process.once('SIGINT', handlers.get('SIGINT')!);
+  process.once('SIGTERM', handlers.get('SIGTERM')!);
+  const result = await runSddVerifyFacade(projectRoot, invocation.task, invocation.phase, {
+    signal: abort.signal,
+    ...(cancellationSignal === undefined ? {} : { cancellationSignal }),
+    ...(invocation.legacyOverlay === undefined
+      ? {}
+      : { legacyOverlay: { provenance: invocation.legacyOverlay } }),
+  });
+  for (const [signal, handler] of handlers) process.off(signal, handler);
+  if (result.stdout !== '') process.stdout.write(result.stdout);
+  if (result.stderr !== '') process.stderr.write(result.stderr);
+  process.exit(result.exitCode);
 }
 
 // V-07: the `stack:` config section is a real gate here, ahead of any gate execution — a
@@ -109,63 +97,38 @@ const coverageProbe: CoverageProbe = {
 };
 
 let outcome;
-if (invocation.mode === 'phase') {
-  if (legacyPhaseContext === undefined || !legacyPhaseContext.ok) {
-    console.error('[sdd-verify] internal phase dispatch error');
-    process.exit(1);
-  }
-  outcome = await runPhaseVerification(
-    resolve('.'),
-    legacyPhaseContext.context,
-    defaultAsyncRunner,
-    (command) => {
-      const result = spawnSync(command, {
-        encoding: 'utf-8',
-        shell: true,
-        maxBuffer: GATE_MAX_BUFFER_BYTES,
-      });
-      if (result.error) return { exitCode: 127, output: `${command}: ${result.error.message}` };
-      return {
-        exitCode: result.status ?? 1,
-        output: `${result.stdout ?? ''}${result.stderr ?? ''}`,
-      };
-    },
-    coverageProbe
-  );
+let fullPlan;
+try {
+  fullPlan = resolveAssembledFullProfile(projectRoot, stackConfigLoad.config);
+} catch (cause) {
+  console.error(`[sdd-verify] ${cause instanceof Error ? cause.message : String(cause)}`);
+  process.exit(1);
+}
+// The hook proves and the guard independently re-proves that worktree == index. This internal
+// channel lets pre-commit verify the exact staged candidate; it is intentionally not a CLI flag.
+const tree = resolveTreeGuard(projectRoot, undefined, {
+  staged: preCommitIndexMode,
+});
+if (tree.kind === 'error') {
+  outcome = {
+    ok: false as const,
+    code: 'ERR_CLI_SDD_VERIFY_TREE_GUARD',
+    exitCode: 4 as const,
+    message: `[sdd-verify] ${tree.message}`,
+  };
 } else {
-  let fullPlan;
   try {
-    fullPlan = resolveAssembledFullProfile(projectRoot, stackConfigLoad.config);
-  } catch (cause) {
-    console.error(`[sdd-verify] ${cause instanceof Error ? cause.message : String(cause)}`);
-    process.exit(1);
-  }
-  // The hook proves and the guard independently re-proves that worktree == index. This internal
-  // channel lets pre-commit verify the exact staged candidate; it is intentionally not a CLI flag.
-  const tree = resolveTreeGuard(projectRoot, undefined, {
-    staged: preCommitIndexMode,
-  });
-  if (tree.kind === 'error') {
-    outcome = {
-      ok: false as const,
-      code: 'ERR_CLI_SDD_VERIFY_TREE_GUARD',
-      exitCode: 4 as const,
-      message: `[sdd-verify] ${tree.message}`,
-    };
-  } else {
-    try {
-      outcome = await run(
-        defaultAsyncRunner,
-        'full',
-        coverageProbe,
-        { targets: [], only: invocation.only, skip: invocation.skip, fullPlan },
-        undefined,
-        undefined,
-        tree
-      );
-    } finally {
-      if (tree.kind === 'guard') tree.guard.release();
-    }
+    outcome = await run(
+      defaultAsyncRunner,
+      'full',
+      coverageProbe,
+      { targets: [], only: invocation.only, skip: invocation.skip, fullPlan },
+      undefined,
+      undefined,
+      tree
+    );
+  } finally {
+    if (tree.kind === 'guard') tree.guard.release();
   }
 }
 console.log(outcome.ok ? outcome.text : outcome.message);

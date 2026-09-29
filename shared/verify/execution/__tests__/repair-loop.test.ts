@@ -82,6 +82,137 @@ function plan(steps: readonly PlannedVerifyStep[]): VerifyPlan {
 const ready: CapabilityMatrix = { status: 'READY', entries: [] };
 
 describe('target repair loop', () => {
+  it('runs the attempt-start hook only after guard acquisition and releases on hook failure', async () => {
+    await withRepo(async (root, trace) => {
+      const candidate = step(root, 'node:observe', 'observe', script(trace, 'spawned'), {
+        onFailure: 'continue',
+      });
+      const later = step(root, 'node:later', 'observe', script(trace, 'later'), {
+        needs: [candidate.id],
+      });
+      let starts = 0;
+      const failed = await runLocalVerifyPlan(root, plan([candidate, later]), ready, {
+        signalHandlers: false,
+        beforeFirstAttempt: {
+          run: () => {
+            starts += 1;
+            throw new Error('receipt invalidation failed');
+          },
+          writes: { root, include: ['tracked.txt'], exclude: ['.git/**'] },
+        },
+      });
+      assert.equal(failed.verdict, 'violation');
+      assert.equal(failed.problem?.code, 'VERIFY_LOCAL_ATTEMPT_START_FAILED');
+      assert.equal(starts, 1);
+      assert.equal(fs.existsSync(trace), false);
+
+      const retry = await runLocalVerifyPlan(root, plan([candidate]), ready, {
+        signalHandlers: false,
+      });
+      assert.equal(retry.verdict, 'pass');
+      assert.equal(fs.readFileSync(trace, 'utf8'), 'spawned');
+    });
+  });
+
+  it('preserves attempt-start evidence when readiness blocks or no runnable step exists', async () => {
+    await withRepo(async (root, trace) => {
+      const runnable = step(root, 'node:observe', 'observe', script(trace, 'spawned'));
+      let starts = 0;
+      const blocked = await runLocalVerifyPlan(
+        root,
+        plan([runnable]),
+        {
+          status: 'BLOCKED',
+          entries: [
+            {
+              plugin: 'node',
+              phase: 'code',
+              requirementId: 'node:project-ready',
+              status: 'BLOCKED',
+              message: 'project capability is missing',
+              blocking: true,
+            },
+          ],
+        },
+        {
+          signalHandlers: false,
+          beforeFirstAttempt: {
+            run: () => {
+              starts += 1;
+            },
+            writes: { root, include: ['tracked.txt'], exclude: ['.git/**'] },
+          },
+        }
+      );
+      assert.equal(blocked.verdict, 'blocked');
+      assert.equal(starts, 0);
+      assert.equal(fs.existsSync(trace), false);
+
+      const commandless = { ...runnable, command: undefined };
+      const skipped = await runLocalVerifyPlan(
+        root,
+        plan([commandless]),
+        {
+          status: 'READY',
+          entries: [
+            {
+              plugin: 'node',
+              phase: 'code',
+              requirementId: 'node:not-applicable',
+              stepId: commandless.id,
+              disposition: 'not-applicable',
+              status: 'READY',
+              message: 'not applicable to this project',
+            },
+          ],
+        },
+        {
+          signalHandlers: false,
+          beforeFirstAttempt: {
+            run: () => {
+              starts += 1;
+            },
+            writes: { root, include: ['tracked.txt'], exclude: ['.git/**'] },
+          },
+        }
+      );
+      assert.equal(skipped.verdict, 'pass');
+      assert.deepEqual(
+        skipped.results.map(({ status }) => status),
+        ['skipped']
+      );
+      assert.equal(starts, 0);
+      assert.equal(fs.existsSync(trace), false);
+    });
+  });
+
+  it('rejects an unsafe runnable boundary before the attempt-start lifecycle mutates evidence', async () => {
+    await withRepo(async (root, trace) => {
+      const receipt = path.join(root, 'tracked.txt');
+      const prior = fs.readFileSync(receipt, 'utf8');
+      const unsafe = step(root, 'node:repair', 'repair', script(trace, 'spawned'), {
+        writes: { root, include: ['.git/config'], exclude: [] },
+      });
+      let starts = 0;
+      const result = await runLocalVerifyPlan(root, plan([unsafe]), ready, {
+        signalHandlers: false,
+        beforeFirstAttempt: {
+          run: () => {
+            starts += 1;
+            fs.writeFileSync(receipt, 'invalidated\n');
+          },
+          writes: { root, include: ['tracked.txt'], exclude: ['.git/**'] },
+        },
+      });
+
+      assert.equal(result.verdict, 'violation');
+      assert.equal(result.problem?.code, 'VERIFY_WRITE_BOUNDARY_UNSAFE');
+      assert.equal(starts, 0);
+      assert.equal(fs.readFileSync(receipt, 'utf8'), prior);
+      assert.equal(fs.existsSync(trace), false);
+    });
+  });
+
   it('re-runs only invalidated successful observations and their qualified dependents', async () => {
     await withRepo(async (root, trace) => {
       fs.writeFileSync(path.join(root, 'dirty.txt'), 'agent dirty change\n');

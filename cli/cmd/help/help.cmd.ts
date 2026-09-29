@@ -44,7 +44,7 @@ console.info('  sdd-state         Report deterministic project SDD state and rea
 console.info('  sdd-check         Run mechanical integrity checks over SDD artifacts');
 console.info('  sdd-extract       Extract one anchored section from an SDD artifact');
 console.info('  sdd-new           Scaffold one SDD v2 artifact');
-console.info('  sdd-verify        Run the ticket or profile verification ladder');
+console.info('  sdd-verify        Thin SDD phase facade; temporary read-only full compatibility');
 console.info('  verify            Run one unified Verify phase; text or stable JSON report');
 console.info('  sdd-log           Append an event or atomically complete a verified ticket phase');
 console.info('  sdd-sync          Propagate ticket status into task trackers');

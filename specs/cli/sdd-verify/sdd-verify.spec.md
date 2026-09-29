@@ -22,9 +22,9 @@ _Обзор пути от контракта к реализации и пров
 
 **Module:** sdd-verify · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
-> **Target ownership amendment (2026-09-26):** public phase surface remains
+> **UV-13 cutover (2026-09-28):** public phase surface remains
 > `gennady sdd-verify --task <ticket> --phase <PhaseID>`, but its independent gate ladder is frozen
-> compatibility only. The target implementation is a thin SDD facade: it owns task/phase/scope,
+> compatibility only behind `--profile full`. Phase mode is a thin SDD facade: it owns task/phase/scope,
 > pre-dispatch `RuleSnapshot`, attempt journal and optional legacy receipt overlay; it invokes the
 > same universal Verify planner/runner used by standalone `gennady verify`. The standalone command
 > accepts no task flags and never reads/writes EXECUTION_LOG.
@@ -33,12 +33,12 @@ _Обзор пути от контракта к реализации и пров
 
 ## 1. Module Vision
 
-Детерминированная верификация с двумя режимами. Фазовый вызов `--task ... --phase ...` структурно выводит профиль, Target Files, Deleted Files, owning spec и применимые строки Verification. Одна attempt ремонтирует только существующие targets, один раз запускает foundation, выполняет дополнительные команды под read-only boundary и затем атомарно пишет структурированный receipt. После исправления допустима новая attempt той же canonical командой. `setup` допускает отсутствие ещё создаваемой инфраструктуры. Профиль `full` отделён: глобальный `type-check → test:coverage → lint → format → yagni`, read-only по исходникам и принадлежит одному group-audit STEP_1.
+Детерминированная верификация с двумя режимами. Фазовый вызов `--task ... --phase ...` замораживает ticket identity, exact Target/Deleted scope, composed selector и RuleSnapshot, открывает append-only attempt, затем вызывает universal Verify planner/runner ровно один раз. Его terminal `VerifyRunReport` атомарно завершает attempt; явный `--legacy-overlay=<provenance>` дополнительно допускает frozen receipt только после pre-spawn exact command binding. Профиль `full` пока отделён как read-only compatibility surface одного group-audit STEP_1 и удаляется UV-14.
 
-> **U4 transition:** UV-12 extracts immutable SDD context and a fail-closed optional receipt sink over
-> the unified `VerifyRunReport`, while this command's execution, command evidence and atomic writer
-> remain the frozen compatibility path. UV-13 owns directive/CLI cutover plus golden command/receipt
-> parity; UV-14 removes this runner. UV-12 therefore does not infer a target↔legacy command mapping.
+> **U4 state:** UV-13 routes every task/phase kind through the unified `VerifyRunReport`. Frozen
+> command/receipt parity exists only for an explicit provenance-bearing legacy overlay and is bound
+> before spawn; no-overlay phase execution inherits no legacy bytes/order. UV-14 removes the retained
+> independent full/compatibility implementation after review.
 
 **Key properties:**
 
@@ -133,7 +133,14 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 | Name                                  | Type         | Purpose                                                                                                                                                                             |
 | ------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `run`                                 | Command      | Прогон фиксированного repair-first phase либо read-only full профиля, тайминг и вердикт                                                                                             |
+| `ERR_CLI_SDD_VERIFY_STACK_CONFIG`     | Constant     | Stable diagnostic identity for invalid legacy stack configuration                                                                                                                   |
+| `stackConfigError`                    | Utility      | Render actionable legacy stack-configuration diagnostics                                                                                                                            |
+| `GateRunOptions`                      | Type         | Injectable legacy gate-run boundaries retained only for explicit compatibility execution                                                                                            |
 | `runSddVerifyFacade`                  | Command      | Resolve exact task/phase scope and mapped selector, then invoke the universal Verify engine once                                                                                    |
+| `SddReceiptCommandBinding`            | Value Object | Proven identity from an explicit legacy-overlay source to one runnable step, except frozen `target-repair`, which binds the complete primary-provider repair-step set               |
+| `bindSddReceiptCommands`              | Adapter      | Pre-spawn CONFIGURED command binding and PROVEN step/readiness adaptation for the explicit overlay                                                                                  |
+| `emitSddReceipt`                      | Sink         | Fail-closed compatibility receipt projection from the exact terminal report and proven bindings                                                                                     |
+| `persistLegacyPhaseReceipt`           | Sink         | Reuse the hardened atomic phase-receipt writer only for an explicit, proven legacy overlay                                                                                          |
 | `runWithSddAttemptJournal`            | Sink         | Serialize one SDD-owned attempt, block live owners, recover only revalidated orphans, recompute normalized final freshness and atomically persist one compact terminal entry        |
 | `runPhaseVerification`                | Command      | Одна фазовая транзакция: ladder + applicable Verification rows + atomic receipt                                                                                                     |
 | `createRepairMutationBoundary`        | Utility      | Before/after workspace proof: actual repair writes остаются внутри canonical Target Files                                                                                           |
@@ -248,7 +255,7 @@ $ npx gennady sdd-verify --task specs/app/app.task.TSK-1.md --phase P2
 
 ```
 cli/cmd/sdd-verify/
-├── index.ts             # dispatch: open kind → target facade; frozen kinds/full → compatibility
+├── index.ts             # dispatch: every task/phase → target facade; full → compatibility
 ├── sdd-verify.facade.ts # task/phase/scope owner over the universal Verify engine
 ├── phase-context.ts     # structural ticket/phase/profile/target/Verification resolver
 ├── phase-run.ts         # complete phase transaction and atomic receipt write
@@ -260,12 +267,13 @@ cli/cmd/sdd-verify/
 shared/sdd/phase-receipt.ts # paired receipt schema, parser, renderer and state hashes
 shared/sdd/verify/
 ├── sdd-verify-context.ts  # immutable task/phase/scope + compatibility receipt plan
-└── sdd-receipt-sink.ts    # optional report-driven sink; no UV-13 command guessing
+└── sdd-receipt-sink.ts    # optional report-driven sink + exact pre-spawn overlay binding
 ```
 
-The frozen `phase-context.ts`/`phase-run.ts` ladder remains the compatibility path for legacy
-setup/code/test kinds until UV-13/14. UV-22C sends open-vocabulary kinds through
-`sdd-verify.facade.ts`; both surfaces retain one public `sdd-verify --task … --phase …` invocation.
+The frozen `phase-context.ts`/`phase-run.ts` ladder remains implementation-only compatibility code
+until UV-14. UV-13 sends every task/phase kind through `sdd-verify.facade.ts`; `--profile full`
+remains the only direct compatibility dispatch. Explicit overlay may reuse the frozen context and
+receipt writer, but never the independent runner.
 
 **Registration points (4 files):** `cli/gennady.ts` · `cli/cmd/help/help.cmd.ts` · `cli/AGENTS.md` · `cli/cmd/README.md`.
 **Вызывается из:** `phase-execution-protocol` (STEP_5, профиль по kind); dispatched audit STEP_1 (единственный владелец group `full`); `reconcile` (`code`); `npm run check` для человека/CI/pre-commit (`full`). Execute-orchestrator сам `full` не запускает.
@@ -395,7 +403,7 @@ setup/code/test kinds until UV-13/14. UV-22C sends open-vocabulary kinds through
 
 ### D-SV038 — Phase command becomes a thin SDD facade over the universal Verify engine
 
-- **Status:** accepted target; compatibility ladder retained only until UV-13/14 cutover.
+- **Status:** active by UV-13; compatibility full implementation retained only until UV-14.
 - **Decision:** `sdd-verify --task … --phase …` validates task/log identity, builds exact PhaseFacts,
   freezes rule snapshot and composed selector, opens runner-owned attempt evidence, calls the shared
   Verify engine once, then passes the same `VerifyRunReport` to SDD-owned journal/receipt sinks.
@@ -405,6 +413,16 @@ setup/code/test kinds until UV-13/14. UV-22C sends open-vocabulary kinds through
   emit normalized case counts; exit zero alone never becomes synthetic test evidence. Selector trust
   is composed into the plan, and remote-required selectors remain BLOCKED until U5 supplies exact-SHA
   provider/pipeline evidence.
+- **Overlay gate states:** only frozen `CONFIGURED` gates run and project receipt commands. A
+  `PROVEN` gate removes its uniquely matched canonical target step plus that step's readiness facts
+  from the explicit compatibility overlay; unrelated/plugin-wide readiness remains authoritative.
+  Ordinary command sources remain one-to-one. The frozen `target-repair` marker is the sole
+  composite exception: it is projected only when every runnable canonical repair step of the
+  frozen primary provider passes. This proves the approved repair capability, not argv identity or
+  process-order equivalence; actual order and attempts remain in `VerifyRunReport`.
+  The ordinary no-overlay DAG is never rewritten. The actual step boundary is preflighted by
+  `WorkspaceGuard` before receipt invalidation, so unsafe repair writes execute neither lifecycle
+  mutation nor process.
 - **Journal integrity:** each attempt write uses an unpredictable same-directory temp opened with
   `O_CREAT|O_EXCL|O_WRONLY|O_NOFOLLOW`, descriptor `fstat`/`fsync`, immediate ticket dev/ino/content
   revalidation, owned-temp post-rename proof and exact-inode-only cleanup. BEGIN/END markers must
@@ -413,9 +431,53 @@ setup/code/test kinds until UV-13/14. UV-22C sends open-vocabulary kinds through
   without persisting the authored value.
 - **Standalone boundary:** `gennady verify --phase …` is persistence-free and rejects task/SDD
   context flags. Project-code repair remains allowed only through declared Verify write boundaries.
+- **Frozen acceptance:** A13/D-4 compares the independently invoked compatibility runner and common
+  engine adapter without normalizing away verdict, exit, diagnostic id/severity/location, or any
+  stable receipt field. V1 tickets without the V2 schema marker remain grandfathered; V2 keeps
+  marker-only receipt enforcement and never fabricates historical receipts. Group audit/review
+  receipts remain blocking for completed V2 groups.
 - **Repair:** проектные `format:fix` и `lint:fix` получают один и тот же точный, option-safe target-set. Поэтому новый test-файл проверяется, а чужие production/test/negative fixtures не мутируются и не блокируют фазу. Успех lint означает reread post-state и полный набор применимых read-only проверок. Для code/test owning spec обязателен; setup может временно обходиться без него в bootstrap.
 - **Profiles:** bootstrap/config/doc→setup; impl/refactor/fix→code; test→test. Единственное механическое исключение: active ticket из той же infra `GATE_QUEUE`, которая строит отсутствующие gates, временно получает setup без ручного выбора профиля. Foundation выполняется один раз после repair. `--profile full` остаётся отдельным глобальным read-only режимом.
 - **Rejected:** глобальный `--include-tests` — intentional negative fixtures делают его заведомо красным; ручные repeated targets/profile — дублирование ticket context и источник drift.
+
+#### UV-13 behavioral-scenario migration ledger
+
+The removed phase-mode process ladder was not discarded as coverage. Its scenarios moved to the
+layer that now owns each invariant; `--profile full` process coverage remains in
+`cli/__tests__/tool-behavior/sdd-verify.test.ts` until UV-14.
+
+1. Bootstrap command-missing honesty → `plugins/node/__tests__/node-target.test.ts` “zero-YAML DAG”
+   plus `shared/verify/execution/__tests__/local-executor.test.ts` “waived or non-runnable”.
+2. Empty Target/Deleted scope → `shared/verify/__tests__/multistack-planner.test.ts`
+   “empty targets as conservative all-scope”.
+3. Deletion-only exact scope/reappearance identity → facade “deletion-only phase” plus
+   `shared/sdd/verify/__tests__/sdd-verify-adapter.test.ts` tombstone identity mismatch.
+4. Deletion without tracked baseline → facade “deletion tombstone without a tracked baseline”.
+5. Incomplete readiness before spawn → local executor “blocks missing readiness or command”.
+6. Provisional/unsafe repair brick → Node target “unsafe package repair … BLOCKED”.
+7. Exact-target repair isolation → Node target exact-target materialization plus local executor
+   “successful bounded repair”.
+8. Outside-target runtime mutation → workspace guard “unexpected create, delete, and rename”.
+9. Ticket Verification once + receipt → facade golden “same complete legacy receipt fields”, which
+   asserts one `node:legacy-extra` result and the full persisted Verification projection.
+10. Inline/dynamic Verification rejection → facade “unsupported inline Verification row”.
+11. Exact test target without unrelated negative fixtures → Node exact-target normalization and
+    RuleResolver production-vs-test artifact tests.
+12. Explicit coverage N/A → `phase-context.test.ts` structural producer applicability plus local
+    executor typed non-runnable disposition.
+13. Single coverage owner → `phase-context.test.ts` “only in the declared owner” and frozen
+    `phase-run.test.ts` receipt evidence until UV-14.
+14. Type failure halts dependents → local executor exit classification plus repair-loop dependency
+    blocking.
+15. Test failure halts the selected slice → the same executor/repair-loop terminal propagation.
+16. Failed repair restores and blocks foundation → local executor “failed partial repair” and
+    repair-loop “restores a failed repair”.
+17. Package-script `|| true` boundary → retained `sdd-verify.cmd.test.ts` masked-exit contract; the
+    common executor never fabricates a failure hidden by the project-owned process exit.
+18. Fresh-but-empty coverage division → coverage adapter/`testcov` validation tests plus retained
+    `--profile full` producer-freshness process tests.
+19. Repair post-state verification → repair-loop selective invalidation/recheck and
+    `sdd-verify.cmd.test.ts` “mutating repair path … post-state”.
 
 ### D-SV019 — Exact repair executes project-declared argument-forwarding bricks
 
@@ -552,16 +614,16 @@ setup/code/test kinds until UV-13/14. UV-22C sends open-vocabulary kinds through
 
 ### D-SV040 — Public task/phase invocation is a thin facade over universal Verify
 
-- **Status:** active target boundary from UV-22C; frozen legacy-kind ladder remains until UV-13/14.
+- **Status:** active; UV-13 routes every phase kind through the facade, UV-14 removes compatibility code.
 - **Decision:** `sdd-verify --task … --phase …` alone owns SDD task/phase dispatch. Open-vocabulary
   kinds resolve exact Target/Deleted scope and the composed selector, then pass those data into the
-  same `runVerifyCommand` planner/runner used by standalone Verify. Legacy setup/code/test kinds
-  retain the frozen receipt-compatible runner until UV-13; this is a compatibility branch, not a
-  second target planner. `gennady verify` rejects SDD flags and cannot read or mutate
+  same `runVerifyCommand` planner/runner used by standalone Verify. Legacy setup/code/test kinds do
+  not select another runner. `gennady verify` rejects SDD flags and cannot read or mutate
   ticket/EXECUTION_LOG state.
-- **Persistence boundary:** UV-22C writes no SDD journal or receipt. UV-12E owns attempt persistence;
-  UV-13 owns the conditional legacy receipt overlay. Project-code repair remains governed by the
-  universal engine's declared write boundaries.
+- **Persistence boundary:** UV-12E owns attempt persistence. UV-13 adds only the conditional legacy
+  receipt overlay: non-empty provenance is explicit, exact command identities bind before spawn,
+  and no-overlay execution receives no legacy bytes/order. Project-code repair remains governed by
+  the universal engine's declared write boundaries.
 
 </details>
 

@@ -3,7 +3,7 @@
 // @consumers: sdd-task, sdd-verify
 
 import assert from 'node:assert/strict';
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { buildRepoFixture } from './fixture.ts';
 import { runCli } from './run-cli.ts';
@@ -165,13 +165,14 @@ function draft60Repo(): { root: string } {
 }
 
 describe('draft.60 Node infrastructure boundary', { concurrency: true }, () => {
-  it('maps the phase once while the compatibility runner still blocks a future-config gate', () => {
+  it('maps the phase once and reports a future-config failure through the common engine', () => {
     const { root } = draft60Repo();
     try {
       const phase = runCli(['sdd-task', INSTALL_TICKET, '--phase', 'P1'], root);
       const verify = runCli(['sdd-verify', '--task', INSTALL_TICKET, '--phase', 'P1'], root);
       const verifyOutput = `${verify.stdout}${verify.stderr}`;
       const verifyStateLine = verifyOutput.match(/^\s*gate-state: type-check .+$/m)?.[0]?.trim();
+      const persistedTicket = readFileSync(`${root}/${INSTALL_TICKET}`, 'utf8');
       assert.deepStrictEqual(
         {
           phaseExitCode: phase.exitCode,
@@ -183,18 +184,22 @@ describe('draft.60 Node infrastructure boundary', { concurrency: true }, () => {
             ? 'PREREQUISITE_PENDING'
             : 'ORDINARY_GATE_RESULT',
           structuralReceipt: verifyOutput.includes('receipt recorded:'),
+          verifyExitCode: verify.exitCode,
+          attemptJournal: /<!--SDD_VERIFY_ATTEMPT:[^:]+:BEGIN-->/.test(persistedTicket),
         },
         {
           phaseExitCode: 0,
           phaseSelectorMapped: true,
           phaseFacadeCommands: 1,
           phaseLeaksGateState: false,
-          verifyTypeCheckStarted: false,
-          verifyPrerequisiteState: 'PREREQUISITE_PENDING',
-          structuralReceipt: true,
+          verifyTypeCheckStarted: true,
+          verifyPrerequisiteState: 'ORDINARY_GATE_RESULT',
+          structuralReceipt: false,
+          verifyExitCode: 1,
+          attemptJournal: true,
         }
       );
-      assert.ok(verifyStateLine);
+      assert.strictEqual(verifyStateLine, undefined);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

@@ -10,7 +10,11 @@ import type {
   VerifyStepResult,
 } from '../model/verify-report.type.ts';
 import type { CapabilityMatrix } from '../model/verify-readiness.type.ts';
-import type { PlannedVerifyStep, QualifiedStepId } from '../model/verify-step.type.ts';
+import type {
+  PlannedVerifyStep,
+  QualifiedStepId,
+  WriteBoundary,
+} from '../model/verify-step.type.ts';
 import { executeLocalStep, type LocalStepExecution } from './local.executor.ts';
 import { acquireWorkspaceGuard } from './workspace-guard.ts';
 
@@ -202,6 +206,11 @@ export async function runLocalVerifyPlan(
     readonly signal?: AbortSignal;
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly signalHandlers?: boolean;
+    /** @purpose Guarded lifecycle mutation run exactly once before the first real spawn. */
+    readonly beforeFirstAttempt?: {
+      readonly run: () => void | Promise<void>;
+      readonly writes: WriteBoundary;
+    };
   } = {}
 ): Promise<LocalVerifyExecution> {
   const maxEvidenceBytes = options.maxEvidenceBytes ?? DEFAULT_EVIDENCE_BYTES;
@@ -250,6 +259,7 @@ export async function runLocalVerifyPlan(
   const blocked = new Set<QualifiedStepId>();
   let attempt = 0;
   let stopped = false;
+  let firstAttemptBegan = false;
 
   const record = async (step: PlannedVerifyStep): Promise<AttemptRecord> => {
     attempt += 1;
@@ -261,6 +271,17 @@ export async function runLocalVerifyPlan(
       ...(options.maxPolicyOutputBytes === undefined
         ? {}
         : { maxPolicyOutputBytes: options.maxPolicyOutputBytes }),
+      ...(options.beforeFirstAttempt === undefined || firstAttemptBegan
+        ? {}
+        : {
+            beforeSpawn: {
+              run: async () => {
+                firstAttemptBegan = true;
+                await options.beforeFirstAttempt!.run();
+              },
+              writes: options.beforeFirstAttempt.writes,
+            },
+          }),
     });
     const resultIndex = execution.result === null ? null : state.results.length;
     if (execution.result !== null) {

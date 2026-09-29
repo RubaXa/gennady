@@ -52,6 +52,14 @@ export type WorkspaceGuard = {
   /** @purpose Canonical Git toplevel owned by this transaction. */
   readonly toplevel: string;
   /**
+   * @purpose Validate one step's effect and write boundary without arming or mutating the guard.
+   * @param step Validated selected DAG node whose spawn boundary is being prepared.
+   * @returns Ready, or the same typed policy error beginStep would return.
+   */
+  preflightStep(
+    step: PlannedVerifyStep
+  ): { readonly kind: 'ready' } | { readonly kind: 'error'; readonly error: WorkspaceProblem };
+  /**
    * @purpose Arm one step after validating its effect and repair write boundary.
    * @param step Validated selected DAG node about to execute.
    * @returns Ready, or a typed fail-closed policy error.
@@ -926,50 +934,64 @@ export function acquireWorkspaceGuard(
     }
   };
 
-  const guard: WorkspaceGuard = {
-    toplevel: root,
-    beginStep(step) {
-      if (closed || active !== null) {
+  const validateStep = (
+    step: PlannedVerifyStep
+  ):
+    | { readonly kind: 'ready'; readonly boundary: NormalizedBoundary | null }
+    | { readonly kind: 'error'; readonly error: WorkspaceProblem } => {
+    if (closed || active !== null) {
+      return {
+        kind: 'error',
+        error: problem(
+          'VERIFY_WORKSPACE_STEP_STATE',
+          'workspace guard already has an active step or is closed'
+        ),
+      };
+    }
+    let boundary: NormalizedBoundary | null = null;
+    if (step.effect === 'repair') {
+      if (step.writes === undefined) {
         return {
           kind: 'error',
           error: problem(
-            'VERIFY_WORKSPACE_STEP_STATE',
-            'workspace guard already has an active step or is closed'
+            'VERIFY_WRITE_BOUNDARY_REQUIRED',
+            `repair step ${step.id} must declare a non-empty write boundary`
           ),
         };
       }
-      let boundary: NormalizedBoundary | null = null;
-      if (step.effect === 'repair') {
-        if (step.writes === undefined) {
-          return {
-            kind: 'error',
-            error: problem(
-              'VERIFY_WRITE_BOUNDARY_REQUIRED',
-              `repair step ${step.id} must declare a non-empty write boundary`
-            ),
-          };
-        }
-        try {
-          boundary = normalizeBoundary(root, step.writes);
-        } catch (error) {
-          return {
-            kind: 'error',
-            error: problem(
-              'VERIFY_WRITE_BOUNDARY_UNSAFE',
-              `unsafe write boundary for ${step.id}: ${String(error)}`
-            ),
-          };
-        }
-      } else if (step.writes !== undefined) {
+      try {
+        boundary = normalizeBoundary(root, step.writes);
+      } catch (error) {
         return {
           kind: 'error',
           error: problem(
             'VERIFY_WRITE_BOUNDARY_UNSAFE',
-            `non-repair step ${step.id} cannot declare a write boundary`
+            `unsafe write boundary for ${step.id}: ${String(error)}`
           ),
         };
       }
-      active = { step, boundary };
+    } else if (step.writes !== undefined) {
+      return {
+        kind: 'error',
+        error: problem(
+          'VERIFY_WRITE_BOUNDARY_UNSAFE',
+          `non-repair step ${step.id} cannot declare a write boundary`
+        ),
+      };
+    }
+    return { kind: 'ready', boundary };
+  };
+
+  const guard: WorkspaceGuard = {
+    toplevel: root,
+    preflightStep(step) {
+      const validated = validateStep(step);
+      return validated.kind === 'error' ? validated : { kind: 'ready' };
+    },
+    beginStep(step) {
+      const validated = validateStep(step);
+      if (validated.kind === 'error') return validated;
+      active = { step, boundary: validated.boundary };
       return { kind: 'ready' };
     },
     finishStep(stepId, result) {

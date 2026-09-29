@@ -11,7 +11,9 @@ import {
 import type { SddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
 import type { VerifyScope } from '../../../shared/verify/model/verify-context.type.ts';
+import type { WriteBoundary } from '../../../shared/verify/model/verify-step.type.ts';
 import type { VerifyRuleSnapshot } from '../../../shared/verify/model/verify-context.type.ts';
+import type { CapabilityMatrix } from '../../../shared/verify/model/verify-readiness.type.ts';
 import type { VerifyRunReport } from '../../../shared/verify/model/verify-report.type.ts';
 import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
@@ -73,8 +75,33 @@ export async function runVerifyCommand(
     readonly request?: VerifyCommandRequest;
     readonly sdd?: {
       readonly context: SddVerifyContext;
-      readonly bindings: readonly SddReceiptCommandBinding[];
+      readonly bindings:
+        | readonly SddReceiptCommandBinding[]
+        | ((
+            plan: VerifyRunReport['plan'],
+            readiness: CapabilityMatrix
+          ) =>
+            | {
+                readonly ok: true;
+                readonly bindings: readonly SddReceiptCommandBinding[];
+                readonly plan?: VerifyRunReport['plan'];
+                readonly readiness?: CapabilityMatrix;
+              }
+            | {
+                readonly ok: false;
+                readonly diagnostic: {
+                  readonly id: string;
+                  readonly severity: 'error';
+                  readonly location: string;
+                  readonly message: string;
+                };
+              });
       readonly persist?: SddReceiptPersistence;
+      /** @purpose Invalidate only explicit legacy proof in a bounded guard transaction before spawn. */
+      readonly beforeFirstAttempt?: {
+        readonly run: () => void | Promise<void>;
+        readonly writes: WriteBoundary;
+      };
     };
   } = {}
 ): Promise<{
@@ -114,18 +141,47 @@ export async function runVerifyCommand(
       ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
     });
     const plannedHeadSha = headSha(canonicalRoot);
+    const configuredBindings = options.sdd?.bindings;
+    let receiptBindings: readonly SddReceiptCommandBinding[] | undefined;
+    let executionPlanning = planning;
+    if (typeof configuredBindings === 'function') {
+      const resolvedBindings = configuredBindings(planning.plan, planning.readiness);
+      if (!resolvedBindings.ok) {
+        return {
+          exitCode: 1,
+          stdout: '',
+          stderr: `[verify] ${resolvedBindings.diagnostic.id} at ${resolvedBindings.diagnostic.location}: ${safeVerifyText(resolvedBindings.diagnostic.message, canonicalRoot)}\n`,
+        };
+      }
+      receiptBindings = resolvedBindings.bindings;
+      if (resolvedBindings.plan !== undefined)
+        executionPlanning = { ...planning, plan: resolvedBindings.plan };
+      if (resolvedBindings.readiness !== undefined) {
+        executionPlanning = { ...executionPlanning, readiness: resolvedBindings.readiness };
+      }
+    } else {
+      receiptBindings = configuredBindings;
+    }
     const execution = invocation.planOnly
       ? undefined
-      : await runLocalVerifyPlan(canonicalRoot, planning.plan, planning.readiness, {
-          signal: options.signal,
-          cancellationSignal: options.cancellationSignal,
-          signalHandlers: false,
-        });
+      : await runLocalVerifyPlan(
+          canonicalRoot,
+          executionPlanning.plan,
+          executionPlanning.readiness,
+          {
+            signal: options.signal,
+            cancellationSignal: options.cancellationSignal,
+            signalHandlers: false,
+            ...(options.sdd?.beforeFirstAttempt === undefined
+              ? {}
+              : { beforeFirstAttempt: options.sdd.beforeFirstAttempt }),
+          }
+        );
     const report = buildVerifyRunReport({
       root: canonicalRoot,
       phase: invocation.phase,
       headSha: plannedHeadSha,
-      planning,
+      planning: executionPlanning,
       execution,
       ...(request?.rules === undefined ? {} : { rules: request.rules }),
       ...(request?.workflow === undefined
@@ -145,7 +201,7 @@ export async function runVerifyCommand(
             canonicalRoot,
             report,
             options.sdd.context,
-            options.sdd.bindings,
+            receiptBindings ?? [],
             options.sdd.persist
           );
     const stdout =

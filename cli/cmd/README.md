@@ -139,8 +139,12 @@ npx gennady verify --plan --json --phase=full
 # SDD phase получает selector из preset defaults + verify.sdd.mapping override
 npx gennady sdd-task CLI-example --phase P2
 
-# Worker исполняет ровно выданную SDD-facade команду; facade доказывает ticket/phase/scope/selector
+# Worker исполняет ровно выданную SDD-facade команду; facade доказывает ticket/phase/scope/selector,
+# вызывает общий Verify engine и сохраняет append-only attempt evidence
 npx gennady sdd-verify --task=specs/app/app.task.CLI-example.md --phase=P2
+
+# Только явная временная compatibility-проекция legacy receipt; provenance обязателен
+npx gennady sdd-verify --task=specs/app/app.task.CLI-example.md --phase=P2 --legacy-overlay=operator-approved-migration
 ```
 
 ### 11. Визуализация покрытия тестами

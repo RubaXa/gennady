@@ -36,6 +36,8 @@ export type SddVerifyContext = {
   };
   /** @purpose Legacy receipt inputs frozen before unified execution starts. */
   readonly receiptPlan: PhaseReceiptPlan;
+  /** @purpose Primary provider whose canonical repairs may prove legacy target-repair. */
+  readonly primaryPlugin: StackId;
   /** @purpose Canonical legacy gate identities used only for explicit UV-13 parity mapping. */
   readonly gatePlan?: PhaseVerificationPlan;
 };
@@ -123,6 +125,7 @@ export function adaptSddVerifyContext(
         deletedFiles: [...phase.deletedFiles],
       },
       receiptPlan,
+      primaryPlugin: stack,
       ...(phase.gatePlan === undefined
         ? {}
         : {

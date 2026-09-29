@@ -124,12 +124,22 @@ function ticketBytes(root: string): string {
   return readFileSync(join(root, 'specs/app/app.task.TSK-repair.md'), 'utf-8');
 }
 
+function attemptProcesses(root: string): readonly { readonly stepId: string }[] {
+  const encoded = ticketBytes(root).match(/<!--SDD_VERIFY_EVIDENCE:([A-Za-z0-9_-]+)-->/)?.[1];
+  if (encoded === undefined) return [];
+  const attempt = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as {
+    processes?: readonly { readonly stepId: string }[];
+  };
+  return attempt.processes ?? [];
+}
+
 describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => {
   assert.ok(existsSync(ESLINT_BIN), `real ESLint is required at ${ESLINT_BIN}`);
   assert.ok(existsSync(PRETTIER_BIN), `real Prettier is required at ${PRETTIER_BIN}`);
 
   it('generic ESLint repairs an exact TS target without receiving Gennady-only flags', async () => {
     const { root } = buildRepoFixture({
+      embeddedRules: true,
       scripts: scripts(`${ESLINT_BIN} --fix`),
       files: {
         'eslint.config.mjs': eslintConfig(),
@@ -140,10 +150,10 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
       installRealGennady(root);
       const result = await runCliAsync(installTicket(root, ['src/value.ts']), root);
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      const receipt = ticketBytes(root);
-      assert.match(receipt, /npm run lint:fix -- src\/value\.ts &&/);
-      assert.doesNotMatch(receipt, /npm run lint:fix -- --include-tests/);
-      assert.match(receipt, /gennady lint --autofix --include-tests/);
+      assert.strictEqual(
+        attemptProcesses(root).filter(({ stepId }) => stepId === 'node:lint-fix').length,
+        1
+      );
       assert.match(readFileSync(join(root, 'src/value.ts'), 'utf-8'), /VALUE = 1;/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -152,6 +162,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
 
   it('the IB-gates package.json + gates-smoke.mjs shape sends only the applicable file to ESLint', async () => {
     const { root } = buildRepoFixture({
+      embeddedRules: true,
       scripts: scripts(`${ESLINT_BIN} --fix`),
       files: {
         'eslint.config.mjs': eslintConfig(),
@@ -165,10 +176,10 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
         root
       );
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      const receipt = ticketBytes(root);
-      assert.match(receipt, /npm run lint:fix -- scripts\/gates-smoke\.mjs/);
-      assert.doesNotMatch(receipt, /npm run lint:fix[^\n]*package\.json/);
-      assert.match(receipt, /gennady-contract\(skip: no applicable \.ts\/\.tsx targets\)/);
+      assert.strictEqual(
+        attemptProcesses(root).filter(({ stepId }) => stepId === 'node:lint-fix').length,
+        1
+      );
       assert.match(readFileSync(join(root, 'scripts/gates-smoke.mjs'), 'utf-8'), /true;/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -177,6 +188,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
 
   it('a Gennady project leaf receives its ABI once for supported TS targets', async () => {
     const { root } = buildRepoFixture({
+      embeddedRules: true,
       scripts: scripts('gennady lint --autofix'),
       files: { 'src/value.ts': CLEAN_TS },
     });
@@ -184,12 +196,11 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
       installRealGennady(root);
       const result = await runCliAsync(installTicket(root, ['src/value.ts']), root);
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      const receipt = ticketBytes(root);
-      assert.match(
-        receipt,
-        /npm run lint:fix -- --include-tests --spec=specs\/app\/app\.spec\.md -- src\/value\.ts/
+      assert.strictEqual(
+        attemptProcesses(root).filter(({ stepId }) => stepId === 'node:lint-fix').length,
+        1
       );
-      assert.doesNotMatch(receipt, /npx --no-install gennady lint/);
+      assert.match(readFileSync(join(root, 'src/value.ts'), 'utf-8'), /VALUE = 1;/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -197,6 +208,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
 
   it('a Gennady-only non-TS target set is an honest named skip, not unsupported-target failure', async () => {
     const { root } = buildRepoFixture({
+      embeddedRules: true,
       scripts: scripts('gennady lint --autofix'),
       files: { 'scripts/gates-smoke.mjs': 'export const smoke = true\n' },
     });
@@ -207,8 +219,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
         root
       );
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      const receipt = ticketBytes(root);
-      assert.match(receipt, /gennady-contract\(skip: no applicable \.ts\/\.tsx targets\)/);
+      assert.match(result.stdout, /WAIVED node:lint-fix/);
       assert.doesNotMatch(result.stdout + result.stderr, /ERR_CLI_LINT_UNSUPPORTED_TARGET/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -217,6 +228,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
 
   it('mixed adapters still fail closed when real ESLint setup mutates outside exact targets', async () => {
     const { root } = buildRepoFixture({
+      embeddedRules: true,
       scripts: scripts(`${ESLINT_BIN} --fix`),
       files: {
         'eslint.config.mjs': eslintConfig('src/unrelated.ts'),
@@ -232,9 +244,9 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
         root
       );
       assert.notStrictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      assert.match(result.stdout, /repair mutated paths outside its permitted write-set/);
+      assert.match(result.stdout, /mutated paths outside its declared write boundary/);
       assert.match(result.stdout, /src\/unrelated\.ts/);
-      assert.match(readFileSync(join(root, 'src/unrelated.ts'), 'utf-8'), /outside mutation/);
+      assert.strictEqual(readFileSync(join(root, 'src/unrelated.ts'), 'utf-8'), 'before\n');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

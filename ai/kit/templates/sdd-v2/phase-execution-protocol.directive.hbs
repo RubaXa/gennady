@@ -1,8 +1,9 @@
 <PhaseExecutionProtocol keywords="sdd, phase, worker, implementation, verification" type="directive" ver="2.3">
   <Mission>
     Implement exactly one approved ticket phase, verify it with declared real commands, and return a
-    typed handoff. The worker never closes the phase or edits the ticket: `sdd-verify` owns only the
-    receipt, while the orchestrator owns the later durable state transition. The worker is disposable;
+    typed handoff. The worker never closes the phase or edits the ticket: the thin `sdd-verify` facade
+    owns its append-only attempt evidence from the universal Verify report, while the orchestrator owns
+    the later durable state transition. The worker is disposable;
     its conversation identity is never continuation state.
   </Mission>
   <BeliefState>
@@ -23,7 +24,7 @@
     | ID | Trigger |
     |---|---|
     | `H_BLOCKED` | A trigger under `AX_BLOCKER_ESCALATION` fires: a rule file cited in phase Rules is missing, a prior-phase Handoff promised an artifact that doesn't exist, the spec contradicts itself or the ticket, the phase contract requires touching outside Target Files, a declared `Runtime Backing` cannot be honored in this environment, or a verification command cannot execute |
-    | `H_OUT_OF_PHASE_WRITE` | Per `AX_PHASE_SCOPE_LOCK`, the worker creates, edits, or deletes anything outside its declared `Target Files`/`Deleted Files`, or manually mutates the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line instead of leaving that one mutation to the exact `sdd-verify --task ... --phase ...` receipt |
+    | `H_OUT_OF_PHASE_WRITE` | Per `AX_PHASE_SCOPE_LOCK`, the worker creates, edits, or deletes anything outside its declared `Target Files`/`Deleted Files`, or manually mutates the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line instead of leaving SDD evidence persistence to the exact `sdd-verify --task ... --phase ...` facade |
   </HaltConditions>
   <ExecutionPlan>
     <Step id="STEP_1_ORIENT">

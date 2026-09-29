@@ -31,12 +31,10 @@ const REAL_SCRIPTS: Record<string, string> = {
   'type-check': 'node scripts/verify-pass.mjs',
   test: 'node scripts/verify-pass.mjs',
   'test:coverage': 'node scripts/verify-coverage.mjs',
-  format: 'node scripts/verify-pass.mjs',
-  // Carry the write switch as a REAL script arg (`--` ends node's own options), not a `# comment` —
-  // the detector now correctly rejects a switch hidden in a comment.
-  'format:fix': 'node scripts/verify-pass.mjs -- --write',
-  lint: 'gennady lint src/',
-  'lint:fix': 'node scripts/verify-pass.mjs -- --fix',
+  format: 'prettier --check',
+  'format:fix': 'prettier --write',
+  lint: 'gennady lint',
+  'lint:fix': 'gennady lint --autofix',
   fix: 'npm run format:fix && npm run lint:fix',
 };
 
@@ -160,6 +158,9 @@ function bootstrapFixture(scripts: Record<string, string>): string {
   const prettier = join(binDir, 'prettier');
   writeFileSync(prettier, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf-8');
   chmodSync(prettier, 0o755);
+  const gennady = join(binDir, 'gennady');
+  writeFileSync(gennady, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf-8');
+  chmodSync(gennady, 0o755);
   return root;
 }
 
@@ -184,10 +185,8 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         root
       );
       assert.notStrictEqual(unrelated.exitCode, 0, unrelated.stdout + unrelated.stderr);
-      assert.match(
-        unrelated.stdout + unrelated.stderr,
-        /does not structurally own a missing readiness gate/
-      );
+      assert.match(unrelated.stdout + unrelated.stderr, /VERDICT BLOCKED/);
+      assert.match(unrelated.stdout + unrelated.stderr, /argument-forwarding command prefix/);
 
       const ownerDispatch = runCli(
         ['sdd-task', 'specs/infra-core/infra-core.task.INFRA-1.md', '--phase', 'P1'],
@@ -207,17 +206,15 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         ownerVerify.stdout + ownerVerify.stderr,
         /does not structurally own a missing readiness gate/
       );
-      assert.match(
-        ownerVerify.stdout + ownerVerify.stderr,
-        /SDD_VERIFY_PHASE_PREREQUISITE_REQUIRED: fix COMMAND_MISSING/
-      );
+      assert.match(ownerVerify.stdout + ownerVerify.stderr, /VERDICT BLOCKED/);
+      assert.match(ownerVerify.stdout + ownerVerify.stderr, /argument-forwarding command prefix/);
       assert.doesNotMatch(ownerVerify.stdout + ownerVerify.stderr, /receipt recorded:/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('a setup phase records a receipt only after its exact declared repair ownership is proven', () => {
+  it('a no-overlay setup phase reports an inapplicable repair without fabricating a receipt', () => {
     const root = bootstrapFixture(REAL_SCRIPTS);
     try {
       const ticketPath = join(root, 'specs/infra-core/infra-core.task.INFRA-1.md');
@@ -237,8 +234,9 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         root
       );
       assert.strictEqual(verified.exitCode, 0, verified.stdout + verified.stderr);
-      assert.match(verified.stdout, /gate-state: fix PROVEN/);
-      assert.match(verified.stdout, /receipt recorded:/);
+      assert.match(verified.stdout, /WAIVED node:lint-fix/);
+      assert.match(verified.stdout, /VERDICT PASS \(DEGRADED\)/);
+      assert.doesNotMatch(verified.stdout, /gate-state:|receipt recorded:/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -350,7 +348,8 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         root
       );
       assert.notStrictEqual(r.exitCode, 0);
-      assert.match(r.stdout + r.stderr, /does not structurally own a missing readiness gate/);
+      assert.match(r.stdout + r.stderr, /VERDICT BLOCKED/);
+      assert.match(r.stdout + r.stderr, /required test statistics/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -364,10 +363,8 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         root
       );
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(
-        r.stdout + r.stderr,
-        /SDD_VERIFY_PHASE_PREREQUISITE_REQUIRED: fix COMMAND_MISSING/
-      );
+      assert.match(r.stdout + r.stderr, /VERDICT BLOCKED/);
+      assert.match(r.stdout + r.stderr, /argument-forwarding command prefix/);
       assert.doesNotMatch(r.stdout + r.stderr, /receipt recorded:/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -385,7 +382,7 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
     }
   });
 
-  it('sdd-verify fails closed when provisional readiness cannot load the portal', () => {
+  it('sdd-verify remains fail-closed on target readiness when the legacy portal is unavailable', () => {
     const root = bootstrapFixture(STUB_SCRIPTS);
     try {
       rmSync(join(root, 'specs', 'README.md'));
@@ -394,14 +391,14 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         root
       );
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout + r.stderr, /portal\/GATE_QUEUE cannot be resolved/);
-      assert.match(r.stdout + r.stderr, /ENOENT/);
+      assert.match(r.stdout + r.stderr, /VERDICT BLOCKED/);
+      assert.match(r.stdout + r.stderr, /argument-forwarding command prefix/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
-  it('sdd-verify fails closed when provisional readiness has no exact queue owner for the phase', () => {
+  it('sdd-verify refuses a provisional product phase through target readiness without a spawn pass', () => {
     const root = bootstrapFixture(STUB_SCRIPTS);
     try {
       const r = runCli(
@@ -409,7 +406,8 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         root
       );
       assert.notStrictEqual(r.exitCode, 0, r.stdout + r.stderr);
-      assert.match(r.stdout + r.stderr, /does not structurally own a missing readiness gate/);
+      assert.match(r.stdout + r.stderr, /VERDICT BLOCKED/);
+      assert.match(r.stdout + r.stderr, /argument-forwarding command prefix/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -433,8 +431,10 @@ describe('bootstrap path — from stub scripts to a verified product phase', () 
         root
       );
       assert.strictEqual(verify.exitCode, 0, verify.stdout + verify.stderr);
-      assert.match(verify.stdout, /✅ type-check/);
-      assert.match(verify.stdout, /✅ test\b/);
+      assert.match(verify.stdout, /PASS node:type-check/);
+      assert.match(verify.stdout, /PASS node:lint-fix/);
+      assert.match(verify.stdout, /VERDICT PASS/);
+      assert.doesNotMatch(verify.stdout, /PASS node:unit/);
       assert.doesNotMatch(verify.stdout, /вердикт уровня bootstrap/);
     } finally {
       rmSync(root, { recursive: true, force: true });
