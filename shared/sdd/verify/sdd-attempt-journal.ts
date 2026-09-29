@@ -280,6 +280,27 @@ function reportScalarIssue(report: VerifyRunReport): string | null {
               : ([['result.process.signal', result.process.signal] as const] as const)),
           ] as const)),
     ]),
+    ...(report.remote === undefined
+      ? []
+      : ([
+          ['remote.provider', report.remote.provider] as const,
+          ['remote.project', report.remote.project] as const,
+          ['remote.definitionId', report.remote.definitionId] as const,
+          ['remote.sourceSha', report.remote.sourceSha] as const,
+          ['remote.pipelineId', report.remote.pipelineId] as const,
+          ['remote.pipelineSha', report.remote.pipelineSha] as const,
+          ['remote.rawStatus', report.remote.rawStatus] as const,
+          ['remote.terminalState', report.remote.terminalState] as const,
+          ['remote.observedAt', report.remote.observedAt] as const,
+          ...report.remote.jobs.flatMap((job) => [
+            ['remote.job.id', job.id] as const,
+            ['remote.job.name', job.name] as const,
+            ['remote.job.rawStatus', job.rawStatus] as const,
+            ...(job.logIdentity === undefined
+              ? []
+              : ([['remote.job.logIdentity', job.logIdentity] as const] as const)),
+          ]),
+        ] as const)),
   ];
   if (!/^[0-9a-f]{40,64}$/.test(report.context.headSha)) {
     return 'context.headSha is not an exact Git object identity';
@@ -811,7 +832,19 @@ function terminalRecord(
           ? { level: 'pending', source: 'pre-report', resolved: false }
           : report.plan.trust.level === 'local-runner'
             ? { level: 'local-runner', source: report.plan.trust.source, resolved: true }
-            : { level: 'remote-provider', source: report.plan.trust.source, resolved: false },
+            : report.remote !== undefined &&
+                report.remote.sourceSha === report.context.headSha &&
+                report.remote.pipelineSha === report.context.headSha &&
+                report.remote.terminalState === 'REMOTE_SUCCESS'
+              ? {
+                  level: 'remote-provider',
+                  source: report.plan.trust.source,
+                  resolved: true,
+                  provider: report.remote.provider,
+                  exactSha: report.remote.sourceSha,
+                  pipelineId: report.remote.pipelineId,
+                }
+              : { level: 'remote-provider', source: report.plan.trust.source, resolved: false },
   };
 }
 
@@ -911,7 +944,9 @@ export async function runWithSddAttemptJournal(input: {
     }
     const finished = terminalRecord(input.root, input.ticketPath, running, outcome);
     const remoteTrustUnproven =
-      outcome.report?.plan.trust.level === 'remote-provider' && finished.state !== 'BLOCKED';
+      outcome.report?.plan.trust.level === 'remote-provider' &&
+      finished.state !== 'BLOCKED' &&
+      !finished.trust.resolved;
     const terminal =
       heartbeatFailure === undefined && runnerFailure === undefined && !remoteTrustUnproven
         ? finished
@@ -923,7 +958,7 @@ export async function runWithSddAttemptJournal(input: {
               source:
                 heartbeatFailure?.message ??
                 (remoteTrustUnproven
-                  ? 'remote-provider-proof-unavailable-until-u5'
+                  ? 'remote-provider exact-SHA pipeline proof is incomplete'
                   : 'runner-exception'),
               resolved: false,
             },

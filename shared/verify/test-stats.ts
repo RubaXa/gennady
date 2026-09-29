@@ -79,9 +79,8 @@ export function verifyPlanPolicyReadiness(plan: VerifyPlan): readonly VerifyRead
         phase: plan.phase,
         requirementId: `${plugin}:selector-trust`,
         status: 'BLOCKED',
-        message:
-          'selector requires remote-provider evidence; U5 provider watcher is not available locally',
-        fix: 'run the U5 exact-SHA provider pipeline and supply its immutable pipeline identity',
+        message: 'selector requires an initialized read-only exact-SHA provider observer',
+        fix: 'configure a supported origin and read-only provider credentials',
         blocking: true,
         policySource: plan.trust.source,
       });

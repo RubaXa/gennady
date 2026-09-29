@@ -23,6 +23,11 @@ export function renderVerifyText(report: VerifyRunReport, root: string, planOnly
     `trust=${report.plan.trust.level} source=${safeVerifyText(report.plan.trust.source, root)}`
   );
   lines.push(`head=${report.context.headSha}`);
+  if (report.remote !== undefined) {
+    lines.push(
+      `remote=${report.remote.provider}/${report.remote.definitionId}/${report.remote.pipelineId} sha=${report.remote.pipelineSha} state=${report.remote.terminalState}`
+    );
+  }
   lines.push(
     `rules=${'schema' in report.rules ? 'resolved' : 'pre-resolver'} ${report.rules.digest}`
   );

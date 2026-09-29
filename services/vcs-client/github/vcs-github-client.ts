@@ -7,6 +7,7 @@ import { VcsGithubMergeDiscussions } from './vcs-github-merge-discussions.ts';
 import { VcsGithubRepositoryFiles } from './vcs-github-repository-files.ts';
 import { VcsGithubReactions } from './vcs-github-reactions.ts';
 import { VcsClient } from '../abstract/vcs-client.ts';
+import { VcsGithubPipeline } from './vcs-github-pipeline.ts';
 
 /**
  * @purpose Options for creating a GitHub API client: base URL and access token.
@@ -38,7 +39,7 @@ export class VcsGithubClient extends VcsClient {
   readonly Inbox = undefined;
 
   /** @see {VcsClient#Pipeline} in services/vcs-client/abstract/vcs-client.ts | @deferred GitLab-only */
-  readonly Pipeline = undefined;
+  readonly Pipeline: VcsGithubPipeline;
 
   /** @see {VcsClient#Reactions} in services/vcs-client/abstract/vcs-client.ts */
   readonly Reactions: VcsGithubReactions;
@@ -50,26 +51,31 @@ export class VcsGithubClient extends VcsClient {
   constructor(options: VcsGithubClientOptions) {
     super();
 
-    const request = async (path: string, init: RequestInit = {}): Promise<unknown> => {
+    const request = async (
+      path: string,
+      init: RequestInit & { responseType?: 'text' } = {}
+    ): Promise<unknown> => {
+      const { responseType, ...fetchInit } = init;
       const response = await fetch(`${options.baseUrl}${path}`, {
-        ...init,
+        ...fetchInit,
         headers: {
           Authorization: 'Bearer ' + options.token,
           Accept: 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
-          ...(init.headers ?? {}),
+          ...(fetchInit.headers ?? {}),
         },
       });
       if (!response.ok) {
         const text = await response.text().catch(() => '');
         throw new Error(`GitHub request failed: ${response.status} ${response.statusText} ${text}`);
       }
-      return response.json();
+      return responseType === 'text' ? response.text() : response.json();
     };
 
     this.MergeRequests = new VcsGithubMergeRequests(request);
     this.MergeDiscussions = new VcsGithubMergeDiscussions(request);
     this.RepositoryFiles = new VcsGithubRepositoryFiles(options.baseUrl, options.token);
+    this.Pipeline = new VcsGithubPipeline(request);
     this.Reactions = new VcsGithubReactions(request);
   }
 }

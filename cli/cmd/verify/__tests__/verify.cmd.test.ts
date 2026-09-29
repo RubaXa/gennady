@@ -21,6 +21,7 @@ import { renderVerifyJson } from '../../../../shared/verify/reporting/json-repor
 import { renderVerifyText } from '../../../../shared/verify/reporting/text-reporter.ts';
 import { runVerifyCommand } from '../verify.cmd.ts';
 import { parseVerifyInvocation } from '../verify.types.ts';
+import type { RemotePipelineObserver } from '../../../../shared/verify/execution/remote-watcher.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 
@@ -335,6 +336,93 @@ describe('Verify report projection', () => {
 });
 
 describe('runVerifyCommand target integration', () => {
+  it('executes declared phase=ci through exact-SHA remote proof and no local command', async () => {
+    const root = createNodeRepo();
+    try {
+      const head = git(root, 'rev-parse', 'HEAD');
+      const calls: string[] = [];
+      const remoteObserver: RemotePipelineObserver = {
+        provider: 'gitlab',
+        project: 'group/repo',
+        pipeline: {
+          async hasCommit(query) {
+            calls.push(`commit:${query.sha}`);
+            return true;
+          },
+          async findPipelinesBySha(query) {
+            calls.push(`find:${query.sha}`);
+            return [
+              {
+                id: '123',
+                sha: query.sha,
+                status: 'success',
+                definitionId: 'source:push',
+              },
+            ];
+          },
+          async getPipeline() {
+            throw new Error('terminal discovery must not require an extra latest lookup');
+          },
+          async getPipelineJobs(query) {
+            calls.push(`jobs:${query.pipelineId}`);
+            return [
+              {
+                id: '1',
+                name: 'test',
+                status: 'success',
+                stage: 'test',
+                ref: 'main',
+                webUrl: '',
+              },
+            ];
+          },
+          async getJobLog() {
+            throw new Error('successful job logs are not fetched');
+          },
+        },
+      };
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'ci', planOnly: false, format: 'json' },
+        { homeDirectory: root, remoteObserver }
+      );
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(result.report?.verdict, 'pass');
+      assert.equal(result.report?.plan.trust.level, 'remote-provider');
+      assert.equal(result.report?.results[0]?.stepId, 'node:remote-ci');
+      assert.equal(result.report?.results[0]?.status, 'pass');
+      assert.equal(result.report?.remote?.pipelineId, '123');
+      assert.equal(result.report?.remote?.sourceSha, head);
+      assert.deepEqual(calls, [`commit:${head}`, `find:${head}`, 'jobs:123']);
+      assert.doesNotMatch(result.stdout, /PRIVATE-TOKEN|GITHUB_TOKEN/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps ci BLOCKED before spawn when provider credentials/capability are unavailable', async () => {
+    const root = createNodeRepo();
+    try {
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'ci', planOnly: false, format: 'text' },
+        {
+          homeDirectory: root,
+          resolveRemoteObserver: () => ({
+            ok: false,
+            message: 'provider credentials unavailable',
+            fix: 'configure read-only credentials',
+          }),
+        }
+      );
+      assert.equal(result.exitCode, 1);
+      assert.equal(result.report?.verdict, 'blocked');
+      assert.equal(result.report?.results.length, 0);
+      assert.match(result.stdout, /provider credentials unavailable/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
   it('passes one caller-frozen rule snapshot into the report without recomputation', async () => {
     const root = createNodeRepo();
     try {

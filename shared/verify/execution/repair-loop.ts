@@ -16,6 +16,7 @@ import type {
   WriteBoundary,
 } from '../model/verify-step.type.ts';
 import { executeLocalStep, type LocalStepExecution } from './local.executor.ts';
+import { executeRemoteStep, type RemoteVerifySession } from './remote.executor.ts';
 import { acquireWorkspaceGuard } from './workspace-guard.ts';
 
 const MAX_REPAIR_PASSES = 3;
@@ -37,6 +38,8 @@ export type LocalVerifyExecution = {
   readonly mutations: readonly VerifyMutation[];
   /** @purpose Bounded evidence in the same deterministic attempt order. */
   readonly evidence: readonly VerifyEvidence[];
+  /** @purpose Exact remote provider proof, present only for a successful pinned pipeline watch. */
+  readonly remote?: VerifyRunReport['remote'];
   /** @purpose Dominant actionable non-pass diagnostic, when present. */
   readonly problem?: RepairProblem;
   /** @purpose POSIX cancellation identity after WorkspaceGuard restoration. */
@@ -51,6 +54,7 @@ type MutableExecution = {
   results: VerifyStepResult[];
   mutations: VerifyMutation[];
   evidence: VerifyEvidence[];
+  remote?: VerifyRunReport['remote'];
   problem?: RepairProblem;
   cancellation?: LocalVerifyExecution['cancellation'];
 };
@@ -219,6 +223,7 @@ function immutableResult(state: MutableExecution): LocalVerifyExecution {
     evidence: state.evidence,
     ...(state.problem === undefined ? {} : { problem: state.problem }),
     ...(state.cancellation === undefined ? {} : { cancellation: state.cancellation }),
+    ...(state.remote === undefined ? {} : { remote: state.remote }),
   };
 }
 
@@ -242,6 +247,8 @@ export async function runLocalVerifyPlan(
     readonly signalHandlers?: boolean;
     /** @purpose Verify the exact staged candidate read-only; mutating repair nodes are not spawned. */
     readonly stagedCandidate?: boolean;
+    /** @purpose Read-only provider observation session required by remote-watch steps. */
+    readonly remote?: RemoteVerifySession;
     /** @purpose Guarded lifecycle mutation run exactly once before the first real spawn. */
     readonly beforeFirstAttempt?: {
       readonly run: () => void | Promise<void>;
@@ -306,26 +313,40 @@ export async function runLocalVerifyPlan(
 
   const record = async (step: PlannedVerifyStep): Promise<AttemptRecord> => {
     attempt += 1;
-    const execution = await executeLocalStep(step, guard, {
-      readiness,
-      signal: options.signal,
-      cancellationSignal: options.cancellationSignal,
-      maxEvidenceBytes,
-      ...(options.maxPolicyOutputBytes === undefined
-        ? {}
-        : { maxPolicyOutputBytes: options.maxPolicyOutputBytes }),
-      ...(options.beforeFirstAttempt === undefined || firstAttemptBegan
-        ? {}
-        : {
-            beforeSpawn: {
-              run: async () => {
-                firstAttemptBegan = true;
-                await options.beforeFirstAttempt!.run();
+    const execution =
+      step.executor === 'vcs-pipeline'
+        ? options.remote === undefined
+          ? ({
+              verdict: 'blocked',
+              result: null,
+              mutations: [],
+              evidence: [],
+              problem: {
+                code: 'VERIFY_REMOTE_PROVIDER_MISSING',
+                message: `remote provider session is unavailable for ${step.id}`,
               },
-              writes: options.beforeFirstAttempt.writes,
-            },
-          }),
-    });
+            } satisfies LocalStepExecution)
+          : await executeRemoteStep(step, options.remote, readiness, { signal: options.signal })
+        : await executeLocalStep(step, guard, {
+            readiness,
+            signal: options.signal,
+            cancellationSignal: options.cancellationSignal,
+            maxEvidenceBytes,
+            ...(options.maxPolicyOutputBytes === undefined
+              ? {}
+              : { maxPolicyOutputBytes: options.maxPolicyOutputBytes }),
+            ...(options.beforeFirstAttempt === undefined || firstAttemptBegan
+              ? {}
+              : {
+                  beforeSpawn: {
+                    run: async () => {
+                      firstAttemptBegan = true;
+                      await options.beforeFirstAttempt!.run();
+                    },
+                    writes: options.beforeFirstAttempt.writes,
+                  },
+                }),
+          });
     const resultIndex = execution.result === null ? null : state.results.length;
     if (execution.result !== null) {
       state.results.push(execution.result);
@@ -360,6 +381,9 @@ export async function runLocalVerifyPlan(
       };
     }
     if (execution.cancellation !== undefined) state.cancellation = execution.cancellation;
+    if ('remote' in execution && execution.remote != null) {
+      state.remote = execution.remote as NonNullable<VerifyRunReport['remote']>;
+    }
     return { execution, resultIndex };
   };
 

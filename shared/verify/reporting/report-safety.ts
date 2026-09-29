@@ -151,6 +151,23 @@ export function projectVerifyReport(
           identity: safeVerifyText(item.identity, root),
           summary: safeVerifyText(item.summary, root),
         })),
+    ...(report.remote === undefined
+      ? {}
+      : {
+          remote: {
+            schema: report.remote.schema,
+            provider: report.remote.provider,
+            project: safeVerifyText(report.remote.project, root),
+            definitionId: safeVerifyText(report.remote.definitionId, root),
+            sourceSha: report.remote.sourceSha,
+            pipelineId: safeVerifyText(report.remote.pipelineId, root),
+            pipelineSha: report.remote.pipelineSha,
+            rawStatus: safeVerifyText(report.remote.rawStatus, root),
+            terminalState: report.remote.terminalState,
+            observedAt: report.remote.observedAt,
+            jobs: report.remote.jobs.map((job) => ({ ...job })),
+          },
+        }),
     context: {
       request: {
         root: '.',

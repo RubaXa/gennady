@@ -55,6 +55,7 @@ export type {
   VerifyMutation,
   VerifyPlan,
   VerifyRunReport,
+  VerifyRemoteProof,
   VerifyStepResult,
   VerifyStepStatus,
 } from './model/verify-report.type.ts';

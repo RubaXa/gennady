@@ -408,8 +408,9 @@ marker validation, explicit-overlay parity evidence and facade-owned persistence
   proven dead/stale owner revalidated immediately before deletion recovers RUNNING as INTERRUPTED.
   Process attempts and test-runner statistics are distinct: only a step-owned supported protocol may
   emit normalized case counts; exit zero alone never becomes synthetic test evidence. Selector trust
-  is composed into the plan, and remote-required selectors remain BLOCKED until U5 supplies exact-SHA
-  provider/pipeline evidence.
+  is composed into the plan. A remote-required selector remains BLOCKED until the U5 read-only
+  observer is available, and can resolve trust only from the same report's exact pushed SHA and
+  immutable provider pipeline id; provider mutation and latest-pipeline inference are forbidden.
 - **Overlay gate states:** only frozen `CONFIGURED` gates run and project receipt commands. A
   `PROVEN` gate removes its uniquely matched canonical target step plus that step's readiness facts
   from the explicit compatibility overlay; unrelated/plugin-wide readiness remains authoritative.

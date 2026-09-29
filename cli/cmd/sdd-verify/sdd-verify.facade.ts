@@ -16,7 +16,9 @@ import {
 } from '../../../shared/sdd/verify/sdd-receipt-sink.ts';
 import { adaptSddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
+import type { RemotePipelineObserver } from '../../../shared/verify/execution/remote-watcher.ts';
 import { runVerifyCommand } from '../verify/verify.cmd.ts';
+import { resolveRemotePipelineObserver } from '../verify/remote-provider.ts';
 import { resolvePhaseContext } from './phase-context.ts';
 import { persistLegacyPhaseReceipt } from './legacy-receipt-persistence.ts';
 
@@ -57,6 +59,9 @@ export async function runSddVerifyFacade(
     readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
     readonly homeDirectory?: string;
     readonly legacyOverlay?: { readonly provenance: string };
+    /** @purpose Injectable exact-SHA observer used by deterministic facade contract tests. */
+    readonly remoteObserver?: RemotePipelineObserver;
+    readonly resolveRemoteObserver?: typeof resolveRemotePipelineObserver;
   } = {}
 ): Promise<SddFacadeOutcome> {
   let canonicalRoot: string;
