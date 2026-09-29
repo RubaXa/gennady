@@ -2,7 +2,7 @@
 // @spec: CLI-SDD-VERIFY
 // @consumers: help command
 
-/** @purpose Print CLI help for the SDD facade and the temporary read-only compatibility profile. */
+/** @purpose Print the task/phase-only SDD facade contract. */
 export function printHelp(): void {
   console.info('gennady sdd-verify — Verify one SDD phase through the unified Verify engine');
   console.info('');
@@ -10,9 +10,6 @@ export function printHelp(): void {
   console.info('  npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>');
   console.info(
     '  npx gennady sdd-verify --task <ticket-path> --phase <PhaseID> --legacy-overlay=<provenance>'
-  );
-  console.info(
-    '  npx gennady sdd-verify --profile full [--only=<glob>[,<glob>…]] [--skip=<glob>[,<glob>…]]'
   );
   console.info('');
   console.info('Phase mode:');
@@ -39,7 +36,7 @@ export function printHelp(): void {
   );
   console.info('  is owned only by this facade and its atomic SDD sinks.');
   console.info('');
-  console.info('Explicit legacy overlay (deprecated; removal owner UV-14):');
+  console.info('Explicit legacy overlay (deprecated; final cleanup owner UV-24):');
   console.info(
     '  --legacy-overlay requires a non-empty provenance string and is accepted only with task+phase.'
   );
@@ -50,17 +47,10 @@ export function printHelp(): void {
     '  once to a real passing direct-argv target step. Mapping is proven before spawn; no-overlay runs'
   );
   console.info('  never inherit legacy command/order semantics.');
-  console.info('');
-  console.info('Compatibility full profile (read-only; removal owner UV-14):');
   console.info(
-    '  --profile full retains the frozen project-level compatibility runner for hook/audit consumers.'
+    '  The independent compatibility runner and --profile/--only/--skip were removed in UV-14.'
   );
-  console.info(
-    '  --only/--skip select or exclude its gate names; these flags are rejected in phase mode.'
-  );
-  console.info(
-    '  This compatibility surface is not the phase-agent path and does not enable a legacy overlay.'
-  );
+  console.info('  Whole-project verification is `npx gennady verify --phase full`.');
   console.info('');
   console.info(
     'Exit codes: 0 verified PASS · 1 terminal verification/preflight failure · 4 invalid invocation'

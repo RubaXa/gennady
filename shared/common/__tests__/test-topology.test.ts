@@ -5,10 +5,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { availableParallelism } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const RUNNER = join(ROOT, 'scripts/test-topology.ts');
@@ -196,11 +196,14 @@ function probeSpawns(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental
   const probeMarker = '__TEST_TOPOLOGY_PROBE__';
   const source = `
 import { mock } from 'node:test';
+import { writeFileSync } from 'node:fs';
 const calls = [];
 mock.module('node:child_process', {
   namedExports: {
     spawnSync: (...args) => {
       calls.push(args);
+      const reporter = args[1].find((value) => value.startsWith('--test-reporter-destination=') && value !== '--test-reporter-destination=stdout');
+      if (reporter) writeFileSync(reporter.slice('--test-reporter-destination='.length), '# tests 1\\n# pass 1\\n# fail 0\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n');
       return { status: 0 };
     },
   },
@@ -235,7 +238,96 @@ process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map((
   return JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
 }
 
+function probeFailingCommand(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental'): {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+} {
+  const source = `
+import { mock } from 'node:test';
+import { writeFileSync } from 'node:fs';
+let call = 0;
+mock.module('node:child_process', {
+  namedExports: {
+    spawnSync: (_command, args) => {
+      call += 1;
+      const reporter = args.find((value) => value.startsWith('--test-reporter-destination=') && value !== '--test-reporter-destination=stdout');
+      const failing = ${JSON.stringify(mode === 'deterministic' || mode === 'coverage')} ? call === 2 : true;
+      if (reporter) writeFileSync(reporter.slice('--test-reporter-destination='.length), failing
+        ? '# tests 3\\n# pass 2\\n# fail 1\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n'
+        : '# tests 2\\n# pass 2\\n# fail 0\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n');
+      return { status: failing ? 1 : 0 };
+    },
+  },
+});
+process.argv = [process.execPath, ${JSON.stringify(RUNNER)}, ${JSON.stringify(mode)}];
+await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?failure-proof-${mode}`)});
+`;
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--import',
+      'tsx',
+      '--experimental-test-module-mocks',
+      '--input-type=module',
+      '--eval',
+      source,
+    ],
+    { cwd: ROOT, encoding: 'utf8', timeout: 5_000 }
+  );
+  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+}
+
 describe('test topology contract', () => {
+  it('retains normalized statistics from a real nonzero node:test run', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'gennady-topology-failure-'));
+    try {
+      const failingTest = join(directory, 'failure.test.mjs');
+      writeFileSync(
+        failingTest,
+        "import test from 'node:test'; import assert from 'node:assert/strict'; test('fails', () => assert.fail('expected probe failure'));\n"
+      );
+      const marker = '__REAL_FAILURE_STATS__';
+      const env = { ...process.env };
+      delete env.NODE_TEST_CONTEXT;
+      const helper = spawnSync(
+        process.execPath,
+        [
+          '--import',
+          'tsx',
+          '--input-type=module',
+          '--eval',
+          `import { runNodeTests } from ${JSON.stringify(pathToFileURL(RUNNER).href)}; const result = runNodeTests([${JSON.stringify(failingTest)}], { coverage: false, networkGuard: false, concurrency: 1 }); process.stdout.write(${JSON.stringify(marker)} + JSON.stringify(result) + '\\n');`,
+        ],
+        { cwd: ROOT, encoding: 'utf8', env, timeout: 5_000 }
+      );
+      assert.equal(helper.status, 0, helper.stderr);
+      const encoded = helper.stdout.split('\n').find((line) => line.startsWith(marker));
+      assert.ok(encoded, helper.stdout);
+      assert.deepEqual(JSON.parse(encoded.slice(marker.length)), {
+        status: 1,
+        stats: { executed: 1, passed: 0, failed: 1, skipped: 0 },
+      });
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('emits completed and failing partition statistics before every nonzero command return', () => {
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
+      const result = probeFailingCommand(mode);
+      assert.equal(result.status, 1, `${mode}: ${result.stderr}`);
+      const expected = mode === 'deterministic' || mode === 'coverage' ? 5 : 3;
+      assert.match(
+        result.stdout,
+        new RegExp(
+          `\\[gennady-test-topology-stats\\] \\{"executed":${expected},"passed":${expected - 1},"failed":1,"skipped":0\\}`
+        ),
+        mode
+      );
+    }
+  });
+
   it('list is disjoint, exhaustive, and exactly matches the legacy v2 gate corpus', () => {
     const topology = listedTopology();
     const classified = TEST_LAYERS.flatMap((layer) => topology[layer]);

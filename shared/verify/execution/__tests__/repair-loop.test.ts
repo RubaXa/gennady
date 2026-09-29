@@ -82,6 +82,64 @@ function plan(steps: readonly PlannedVerifyStep[]): VerifyPlan {
 const ready: CapabilityMatrix = { status: 'READY', entries: [] };
 
 describe('target repair loop', () => {
+  it('keeps the private staged-candidate gate read-only while observations prove convergence', async () => {
+    await withRepo(async (root, trace) => {
+      const repair = step(
+        root,
+        'node:repair',
+        'repair',
+        script(trace, 'repair', "require('node:fs').writeFileSync('tracked.txt', 'changed\\n')")
+      );
+      const observe = step(root, 'node:observe', 'observe', script(trace, 'observe'), {
+        needs: [repair.id],
+      });
+      const execution = await runLocalVerifyPlan(root, plan([repair, observe]), ready, {
+        signalHandlers: false,
+        stagedCandidate: true,
+      });
+      assert.equal(execution.verdict, 'pass');
+      assert.deepEqual(
+        execution.results.map((result) => [result.stepId, result.status]),
+        [
+          ['node:repair', 'skipped'],
+          ['node:observe', 'pass'],
+        ]
+      );
+      assert.equal(fs.readFileSync(trace, 'utf8'), 'observe');
+      assert.equal(fs.readFileSync(path.join(root, 'tracked.txt'), 'utf8'), 'baseline\n');
+    });
+  });
+
+  it('fails closed for repair-only staged plans and preserves observation failures', async () => {
+    await withRepo(async (root, trace) => {
+      const repair = step(root, 'node:repair-only', 'repair', script(trace, 'repair'));
+      const unproven = await runLocalVerifyPlan(root, plan([repair]), ready, {
+        signalHandlers: false,
+        stagedCandidate: true,
+      });
+      assert.equal(unproven.verdict, 'violation');
+      assert.equal(unproven.problem?.code, 'VERIFY_STAGED_REPAIR_UNPROVEN');
+      assert.equal(fs.existsSync(trace), false);
+
+      const observe = step(root, 'node:observe-failure', 'observe', 'process.exit(7)', {
+        needs: [repair.id],
+      });
+      const failed = await runLocalVerifyPlan(root, plan([repair, observe]), ready, {
+        signalHandlers: false,
+        stagedCandidate: true,
+      });
+      assert.equal(failed.verdict, 'fail');
+      assert.deepEqual(
+        failed.results.map((result) => [result.stepId, result.status]),
+        [
+          ['node:repair-only', 'skipped'],
+          ['node:observe-failure', 'fail'],
+        ]
+      );
+      assert.equal(fs.existsSync(trace), false);
+    });
+  });
+
   it('runs the attempt-start hook only after guard acquisition and releases on hook failure', async () => {
     await withRepo(async (root, trace) => {
       const candidate = step(root, 'node:observe', 'observe', script(trace, 'spawned'), {

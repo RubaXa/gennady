@@ -1,6 +1,6 @@
-// @file: RepairAdapter registry — maps formatter/project/contract capabilities to exact target invocations.
+// @file: Frozen legacy RepairAdapter registry retained for UV-24 parity proof.
 // @spec: CLI-SDD-VERIFY
-// @consumers: SddVerifyCommand
+// @consumers: frozen compatibility tests only
 
 import { extname } from 'node:path';
 import { scriptReachesGennady } from '../../../shared/sdd/readiness.ts';

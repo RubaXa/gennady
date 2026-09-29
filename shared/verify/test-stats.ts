@@ -11,6 +11,7 @@ type ParsedStats = NonNullable<VerifyStepResult['testStats']>;
 
 const SUPPORTED = new Set([
   'node-test-summary-v1:node:test',
+  'gennady-test-topology-v1:gennady-test-topology',
   'vitest-json-v1:vitest',
   'go-test-json-v1:go-test',
   'swift-test-summary-v1:swift-test',
@@ -160,6 +161,37 @@ function vitestJson(policy: VerifyTestStatsPolicy, output: string): ParsedStats 
   };
 }
 
+function gennadyTestTopology(policy: VerifyTestStatsPolicy, output: string): ParsedStats | null {
+  const prefix = '[gennady-test-topology-stats] ';
+  const lines = output.split(/\r?\n/).filter((line) => line.startsWith(prefix));
+  if (lines.length !== 1) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(lines[0]!.slice(prefix.length));
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+  const value = parsed as Record<string, unknown>;
+  const metrics = [value['executed'], value['passed'], value['failed'], value['skipped']];
+  if (!metrics.every((metric) => Number.isSafeInteger(metric) && (metric as number) >= 0)) {
+    return null;
+  }
+  const [executed, passed, failed, skipped] = metrics as [number, number, number, number];
+  if (passed + failed + skipped !== executed) return null;
+  return {
+    schema: 'gennady.verify-test-stats.v1',
+    policy: policy.policy,
+    protocol: policy.protocol!,
+    runner: policy.runner!,
+    source: policy.source,
+    executed,
+    passed,
+    failed,
+    skipped,
+  };
+}
+
 function goJson(policy: VerifyTestStatsPolicy, output: string): ParsedStats | null {
   const terminal = new Map<string, 'pass' | 'fail' | 'skip'>();
   for (const line of output.split(/\r?\n/)) {
@@ -232,6 +264,9 @@ export function parseVerifyTestStats(
   if (!verifyTestStatsCapability(policy).supported || policy.policy === 'none') return null;
   const output = `${stdout}\n${stderr}`;
   if (policy.protocol === 'node-test-summary-v1') return nodeSummary(policy, output);
+  if (policy.protocol === 'gennady-test-topology-v1') {
+    return gennadyTestTopology(policy, output);
+  }
   if (policy.protocol === 'vitest-json-v1') return vitestJson(policy, output);
   if (policy.protocol === 'go-test-json-v1') return goJson(policy, output);
   if (policy.protocol === 'swift-test-summary-v1' || policy.protocol === 'xctest-summary-v1') {

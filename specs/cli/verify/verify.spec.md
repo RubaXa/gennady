@@ -33,8 +33,8 @@ selects tags and dependency closure from that DAG; it never copies an independen
 The terminal `VerifyRunReport` is the single data product for standalone CLI output and the optional
 SDD receipt sink. It contains the resolved `VerificationContext`, selected plan, `CapabilityMatrix`,
 terminal step results, attributed mutations, evidence and the exact immutable rules snapshot.
-`sdd-verify` remains only as a compatibility runner until golden receipt parity is proven; it is not
-a second target engine.
+`sdd-verify` is the thin task/phase facade over this engine. UV-14 removed its independent runner;
+the provenance-bearing legacy receipt overlay remains a bounded compatibility projection until UV-24.
 
 ### Accepted target data, planning, execution and reporting contract (UV-01..11)
 
@@ -51,7 +51,7 @@ a second target engine.
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multi-provider DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds an SDD adapter over that exact report object. UV-22 adds arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance), while its standalone task-flag path is corrective work owned by the SDD facade. Embedded RuleRegistry + PhaseFacts + RuleResolver + SDD RuleSnapshot integration now precede UV-12E. U4-ER is ACKed but belongs to the SDD facade; UV-13 depends on the corrective UV-22 boundary, rule-snapshot integration and UV-12E. Runner deletion remains UV-14 and remote verification U5.
+UV-07 composes one scope-aware multi-provider DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds an SDD adapter over that exact report object. UV-22 adds arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance), while its standalone task-flag path is corrective work owned by the SDD facade. Embedded RuleRegistry + PhaseFacts + RuleResolver + SDD RuleSnapshot integration precede UV-12E. UV-13 cuts task/phase dispatch over, and UV-14 removes the independent runner plus project-level `sdd-verify --profile` surface. Remote verification remains U5; UV-24 owns final compatibility-adapter cleanup.
 
 ### Target call chain
 
@@ -315,7 +315,12 @@ Refines D-66/D-67.
 один раз, выбрать phase seeds только из scope-affected plugins и вернуть единый dependency-closed
 DAG. Пустой Target Files означает all-scope: все selected detected plugins affected/blocking. Root
 all-scope materializes the repository's existing tracked and non-ignored untracked files as exact
-repair operands without changing the normalized `scope.mode=all` report identity. Root
+Target Files, but a repair adapter MUST intersect that universe with the source policy declared by
+its paired read-only observation. For the Node Gennady contract linter, the reachable read-only
+`gennady lint` file/directory operands and its test/fixture/config inclusion switches are the
+authoritative repair domain; `lint-fix` MUST NOT widen them merely because the Verify scope is all.
+Selected files remain exact repair operands without changing the normalized `scope.mode=all`
+report identity. Root
 `gennady.yaml`/`.gennadyrc` affects all selected stacks. Unaffected plugins не исполняются и не
 образуют D-64 tail; cross-plugin dependency может visibly включить их как `dependency`. Changed
 scope требует exact non-empty `changedFrom` и сохраняет его рядом с resolved files.
@@ -332,6 +337,12 @@ runtime до U4. Refines D-68.
 ### VER-REQ-13 [должен · нештатная]
 
 **Когда** target executor захватывает workspace, **то `WorkspaceGuard` должен** сохранить dirty tracked/staged/unstaged/untracked non-ignored files и index без stash/refs/reset/clean; запрещать writes для non-repair effects; ограничивать repair include минус exclude внутри canonical root без symlink/escape/index mutation, применяя детерминированную glob-семантику `**`, `*`, `?`, braces и exclude-after-include; детерминированно атрибутировать create/modify/delete/rename (`previousPath`); продвигать checkpoint только после успешного repair; восстанавливать последний valid checkpoint при failure/violation/SIGINT/SIGTERM (130/143) только после integrity preflight всех blobs/index/HEAD, сохраняя lock+checkpoint при restore error для retry и восстанавливая stale dead owner до новой выдачи. Concurrent live owner блокирует. `HEAD`/ref drift никогда не откатывается автоматически: guard возвращает typed `VERIFY_WORKSPACE_REPOSITORY_MUTATION`, не трогает workspace/index и удерживает checkpoint для operator recovery; actual gitdir запрещён как root, effective `.git` writes всегда запрещены, а любой include, способный адресовать `.git`, требует явный `.git/**` exclude. Untracked gitignored output имеет explicit `preserve-and-exclude`, но tracked ignored drift остаётся наблюдаемым. UV-09 исполняет только direct argv без shell, валидирует canonical cwd/readiness, применяет serializable env-fail/output policy (`caseInsensitive: boolean` — единственный дополнительный regex mode; произвольные flags запрещены), hard timeout/cancellation с child-tree termination, сохраняет bounded UTF-8 summary каждого evidence item без argv/env secrets и отдаёт единый typed terminal outcome. Plain и exit-only шаги drain/discard verbose streams; `outputMeansFailure` хранит только streaming non-whitespace bit; finite prefix buffer включается лишь для regex streams. Его overflow никогда не убивает процесс и не делает successful exit ложным failure: executor продолжает drain, использует уже доказанный match, а nonzero без доказанного verdict возвращает fail-closed `VERIFY_LOCAL_OUTPUT_LIMIT`. Readiness связывает non-runnable fact с exact `stepId`: explicit disable → `waived`, not-applicable/optional unavailable → `skipped`, required/plugin-wide missing capability → `blocked`; ни один такой node не spawn-ится. Successful raw logs не сохраняются. UV-10 исполняет один dependency-ordered slice: каждый mutating repair обязан сойтись к no-op за максимум три passes, после каждой мутации переисполняются только уже успешные `observe`/`drift-signal` targets из `invalidates` и их уже успешные dependents в исходном plan order. Unselected или ещё не выполненные targets не запускаются. Третий pass всё ещё мутирует → `VERIFY_REPAIR_NON_CONVERGENT`/`violation`; failed/timeout/cancelled repair откатывается guard-ом. Все реальные attempts, mutations и bounded evidence сохраняются в execution order. Guard/ref/write failure доминирует обычный process verdict. Legacy runtime не переключается до U4. Refines D-67.
+
+Private pre-commit staged-candidate policy может пропустить selected repair только когда у него есть
+selected transitive dependency-linked `observe`/`drift-signal` command. Хотя бы один такой proof
+обязан реально завершиться `PASS` в том же run; repair-only, commandless, waived или skipped proof
+paths дают `VERIFY_STAGED_REPAIR_UNPROVEN`, а не false-green hook. Эта policy не является public
+Verify selector или dirty-tree bypass.
 
 ### VER-REQ-14 [должен]
 
@@ -460,7 +471,10 @@ only digests, terminal facts, stable per-spawn process identities and normalized
 count/provenance fields; argv, env, stdout/stderr, RuleSnapshot prompt bodies and absolute repository
 paths are never ticket payload. Process-attempt proof is separate from test-runner statistics and
 never fabricates case counts from an exit code. Supported local adapters are versioned and strict:
-Node test summary (`node-test-summary-v1`/`node:test`), Vitest machine JSON
+Node test summary (`node-test-summary-v1`/`node:test`), the repository-owned deterministic topology
+aggregate (`gennady-test-topology-v1`/`gennady-test-topology`, selected only by its exact package-script
+contract; its single runner-owned terminal record is read from a separate bounded stdout tail so a
+verbose successful corpus cannot erase the proof or make policy capture unbounded), Vitest machine JSON
 (`vitest-json-v1`/`vitest`, only with proven package facts), Go JSON events (`go-test-json-v1`/`go-test`),
 Swift test summary (`swift-test-summary-v1`/`swift-test`) and XCTest summary
 (`xctest-summary-v1`/`xcodebuild`). Required policy without a supported adapter is BLOCKED
@@ -473,8 +487,8 @@ facade invalid task/log identity возвращает CLI diagnostic и созд
 concurrent owner блокируется без изменения первой entry; proven-orphan recovery и все normalized
 terminal transitions; append-only failed/blocked/interrupted
 history после нового pass; required/optional/none stats fixtures; deterministic
-identities/staleness; selector trust в report/ticket; overlay on/off остаются раздельными. UV-14 не
-удаляет independent compatibility runner до UV-13.
+identities/staleness; selector trust в report/ticket; overlay on/off остаются раздельными. UV-14
+удаляет independent compatibility runner только после UV-13.
 
 ### VER-REQ-19 [должен · нештатная]
 
@@ -535,6 +549,7 @@ _Полный список файлов-сущностей, перенесённ
 | `shared/verify/reporting/**`        | Reporter     | Immutable report composition plus safe stable text/JSON projections                                                       |
 | `cli/cmd/verify/**`                 | Facade       | Public target phase runner and strict no-spawn plan compatibility mode                                                    |
 | `plugins/node/**`                   | Plugin       | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner                        |
+| `nodeGennadyLintRepairTargets`      | Adapter      | Intersect exact Node repair operands with the paired read-only Gennady lint source policy                                 |
 | `LocalStepExecution`                | Value Object | One terminal local-step product with typed non-runnable and cancellation outcomes                                         |
 | `executeLocalStep`                  | Service      | Execute one validated local step under `WorkspaceGuard` with bounded evidence                                             |
 | `LocalVerifyExecution`              | Value Object | Ordered local phase attempts, mutations, evidence and aggregate terminal state                                            |

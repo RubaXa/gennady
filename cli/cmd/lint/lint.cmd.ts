@@ -57,6 +57,7 @@ import {
   resolveReferencesForTasks,
 } from './utils/resolve-references.fn.ts';
 import { globToRegex } from './checks/utils/glob-match.ts';
+import { gennadyLintSourcePolicy } from '../../../shared/common/gennady-lint-source-policy.ts';
 import { isGennadyLintTarget } from './lint-source-policy.ts';
 
 const LINT_USAGE =
@@ -265,38 +266,14 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     positional.push(inventoryReverseDir);
   }
 
-  // Build-system dirs — no source of ours, always excluded (even under --include-all).
-  const SYSTEM_EXCLUDES = [
-    '**/node_modules/**',
-    '**/dist/**',
-    '**/coverage/**',
-    '**/build/**',
-    '**/out/**',
-  ];
-  // Configs, fixtures, mocks, and test dirs carry no DbC contracts by design — a config or a
-  // fixture is data, not a contracted entity, so the linter must never demand @purpose of them.
-  // Excluded by default; `--include-all` opts them back in for the rare deliberate audit.
-  // `*.fixture.*` and the `fixtures`/`__fixtures__` dirs — NOT a bare `*fixture*`, which would also
-  // eat a legitimate production file like `fixture-service.ts`.
-  const TEST_EXCLUDES = ['**/__tests__/**'];
-  const NON_CONTRACT_EXCLUDES = [
-    '**/fixtures/**',
-    '**/__fixtures__/**',
-    '**/*.fixture.*',
-    '**/*.mock.*',
-    '**/*.config.*',
-  ];
-  const DEFAULT_EXCLUDES = includeAll
-    ? SYSTEM_EXCLUDES
-    : [...SYSTEM_EXCLUDES, ...(includeTests ? [] : TEST_EXCLUDES), ...NON_CONTRACT_EXCLUDES];
-
   // Collect --exclude values (parseArgs packs multiples into array)
   const userExcludes: string[] = Array.isArray(rawExclude)
     ? rawExclude
     : typeof rawExclude === 'string'
       ? [rawExclude]
       : [];
-  const excludePatterns = [...DEFAULT_EXCLUDES, ...userExcludes];
+  const sourcePolicy = gennadyLintSourcePolicy({ includeAll, includeTests, exclude: userExcludes });
+  const excludePatterns = sourcePolicy.excludePatterns;
   const excludeRegexes = excludePatterns.map(globToRegex);
 
   if (verbose) setLogLevel('debug');
@@ -506,9 +483,6 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
 }
 
 // #region START_RESOLVE_TARGETS — invariant: recursive dir walk, shared lint policy, dedup, sort, exclude system dirs, skip symlinks
-const SYSTEM_DIRS = new Set(['node_modules', 'dist', 'coverage', 'build', 'out']);
-const TEST_DIRS = new Set(['__tests__']);
-
 /** @purpose Build one typed, teaching error when selected lint evidence cannot be read. */
 function lintReadError(path: string, cause: unknown, action = 'read'): LintError {
   const err = cause as NodeJS.ErrnoException;
@@ -620,6 +594,7 @@ function walkDir(
   errors: LintError[],
   options: { includeTests?: boolean }
 ): void {
+  const sourcePolicy = gennadyLintSourcePolicy({ includeTests: options.includeTests });
   let entries;
   try {
     entries = readdirSync(dir, { withFileTypes: true });
@@ -634,11 +609,7 @@ function walkDir(
     if (entry.name.startsWith('.')) {
       continue;
     }
-    if (SYSTEM_DIRS.has(entry.name)) {
-      continue;
-    }
-    // Propagate `includeTests`: nested `__tests__` directories belong to the same selected scope.
-    if (!options.includeTests && TEST_DIRS.has(entry.name)) {
+    if (!sourcePolicy.traversesDirectory(entry.name)) {
       continue;
     }
 

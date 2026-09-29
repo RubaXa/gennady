@@ -27,7 +27,7 @@ const notReady: ReadinessResult = {
   lintHasGennady: false,
   formatReadOnly: true,
   lintReadOnly: true,
-  checkReadOnly: true,
+  checkUsesUniversalVerify: true,
   formatFixMutates: true,
   lintFixMutates: true,
   formatFixDeclaredTargetPrefix: true,

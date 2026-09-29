@@ -33,7 +33,7 @@ const REAL_SCRIPTS: Record<string, string> = {
   'test:coverage': 'node scripts/verify-coverage.mjs',
   format: 'prettier --check',
   'format:fix': 'prettier --write',
-  lint: 'gennady lint',
+  lint: 'gennady lint src/',
   'lint:fix': 'gennady lint --autofix',
   fix: 'npm run format:fix && npm run lint:fix',
 };

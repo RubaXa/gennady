@@ -86,7 +86,7 @@
     "format:fix": "prettier --write",
     "lint": "npm run format && npm run type-check && npm run lint:contracts",
     "lint:fix": "tsx cli/gennady.ts lint --autofix",
-    "check": "tsx cli/gennady.ts sdd-verify --profile full",
+    "check": "tsx cli/gennady.ts verify --phase full",
     "gate:sdd-check-baseline": "node --import tsx ai/flow-eval/scripts/sdd-check-zero-new-error.ts --baseline ai/flow-eval/.baseline/sdd-check-227c03a8.json",
     "release:evidence-pack": "node --import tsx ai/flow-eval/scripts/release-evidence-pack.ts",
     "release:evidence-pack:check": "node --import tsx ai/flow-eval/scripts/release-evidence-pack-check.ts",

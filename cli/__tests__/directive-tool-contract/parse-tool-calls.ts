@@ -19,7 +19,7 @@ export type ActionToolLiteral = DocumentedCall & {
   readonly role: 'example' | 'future' | 'ticket' | 'delegated';
 };
 
-const KNOWN_COMMAND_PATTERN = 'sdd-[a-z]+|lint|yagni|testcov|orient';
+const KNOWN_COMMAND_PATTERN = 'sdd-[a-z]+|verify|lint|yagni|testcov|orient';
 const PREFIXED = new RegExp(`^npx gennady\\s+(${KNOWN_COMMAND_PATTERN})(.*)$`);
 const BARE = new RegExp(`^(?:gennady\\s+)?(${KNOWN_COMMAND_PATTERN})\\b(.*)$`);
 const STEP_RE = /<Step id="([^"]+)">([\s\S]*?)<\/Step>/g;
@@ -237,16 +237,19 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
     }
   ),
   'sdd-verify': schema(
-    { '--task': 'scalar', '--phase': 'scalar', '--profile': 'scalar' },
-    (p, f) =>
-      p.length === 0 &&
-      exactlyOne([
-        has(f, '--profile') && !has(f, '--task') && !has(f, '--phase'),
-        has(f, '--task') && has(f, '--phase') && !has(f, '--profile'),
-      ])
-        ? null
-        : 'requires --profile or --task with --phase'
+    { '--task': 'scalar', '--phase': 'scalar', '--legacy-overlay': 'scalar' },
+    (p, f) => {
+      if (p.length !== 0 || !has(f, '--task') || !has(f, '--phase'))
+        return 'requires --task with --phase';
+      return null;
+    }
   ),
+  verify: schema({ '--phase': 'scalar', '--plan': 'boolean', '--json': 'boolean' }, (p, f) => {
+    if (p.length !== 0) return 'accepts no positional arguments';
+    if (!has(f, '--phase')) return 'requires --phase';
+    if (has(f, '--plan') && !has(f, '--json')) return '--plan requires --json';
+    return null;
+  }),
   lint: schema(
     {
       '--autofix': 'boolean',

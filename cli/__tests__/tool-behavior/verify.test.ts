@@ -35,7 +35,7 @@ function createProject(): string {
       scripts: {
         'type-check': 'node -e ""',
         'lint:fix': `node ${GENNADY_ENTRY} lint --autofix`,
-        lint: `node ${GENNADY_ENTRY} lint`,
+        lint: `node ${GENNADY_ENTRY} lint src.ts`,
         'format:fix': 'prettier --write',
         format: 'prettier --check src.ts',
       },
@@ -58,11 +58,15 @@ function createProject(): string {
   return fs.realpathSync(root);
 }
 
-function runVerifyCli(args: readonly string[], root: string): Promise<CliResult> {
+function runVerifyCli(
+  args: readonly string[],
+  root: string,
+  extraEnv: NodeJS.ProcessEnv = {}
+): Promise<CliResult> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, ['--import', TSX_LOADER, GENNADY_ENTRY, ...args], {
       cwd: root,
-      env: { ...cleanTestChildEnv(process.env), HOME: path.join(root, '.home') },
+      env: { ...cleanTestChildEnv(process.env), HOME: path.join(root, '.home'), ...extraEnv },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -114,6 +118,24 @@ function runVerifyCliAndSignal(
 }
 
 describe('gennady verify target CLI', () => {
+  it('rejects the removed public sdd-verify profile/selectors', async () => {
+    const root = createProject();
+    try {
+      for (const args of [
+        ['sdd-verify', '--profile', 'full'],
+        ['sdd-verify', '--only', 'lint'],
+        ['sdd-verify', '--skip', 'format'],
+      ]) {
+        const result = await runVerifyCli(args, root);
+        assert.strictEqual(result.exitCode, 4, result.stdout + result.stderr);
+        assert.match(result.stderr, /ERR_CLI_SDD_VERIFY_BAD_INVOCATION/);
+        assert.match(result.stderr, /verify --phase full/);
+      }
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('--plan --json emits stable non-evidence target plan and never mutates', async () => {
     const root = createProject();
     try {
@@ -147,6 +169,68 @@ describe('gennady verify target CLI', () => {
       assert.match(
         fs.readFileSync(path.join(root, 'src.ts'), 'utf8'),
         /blackBox = \{ ready: true \}/
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('executes the universal full selector through the live common planner/runner', async () => {
+    const root = createProject();
+    try {
+      const document = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+      document.scripts.test = 'node --test test.mjs';
+      document.scripts['test:integration'] = 'node --test test.mjs';
+      document.scripts['test:coverage'] =
+        "node --test test.mjs && node -e \"require('node:fs').mkdirSync('coverage',{recursive:true});require('node:fs').writeFileSync('coverage/coverage-final.json','{}')\"";
+      fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(document));
+      fs.writeFileSync(
+        path.join(root, 'test.mjs'),
+        "import test from 'node:test'; import assert from 'node:assert/strict'; test('full',()=>assert.equal(1,1));\n"
+      );
+      fs.appendFileSync(path.join(root, '.gitignore'), 'coverage\n');
+      git(root, 'add', 'package.json', 'test.mjs', '.gitignore');
+      git(root, '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'full fixture');
+
+      const result = await runVerifyCli(['verify', '--phase=full'], root);
+      assert.strictEqual(result.exitCode, 0, `${result.stderr}\n${result.stdout}`);
+      assert.match(result.stdout, /VERIFY phase=full/);
+      assert.match(result.stdout, /PASS node:unit/);
+      assert.match(result.stdout, /PASS node:integration/);
+      assert.match(result.stdout, /PASS node:coverage/);
+      assert.match(result.stdout, /VERDICT PASS/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('pre-commit mode omits repair and verifies the exact staged candidate read-only', async () => {
+    const root = createProject();
+    try {
+      const staged = fs
+        .readFileSync(path.join(root, 'src.ts'), 'utf8')
+        .replace('blackBox={ready:true}', 'blackBox={ready:false}');
+      fs.writeFileSync(path.join(root, 'src.ts'), staged);
+      git(root, 'add', 'src.ts');
+      const indexBefore = execFileSync('git', ['-C', root, 'show', ':src.ts'], {
+        encoding: 'utf8',
+      });
+      const result = await runVerifyCli(['verify', '--phase=code'], root, {
+        GENNADY_INTERNAL_PRECOMMIT_INDEX: '1',
+      });
+      assert.notStrictEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.match(result.stdout, /SKIPPED node:format-fix/);
+      assert.match(result.stdout, /FAIL node:format/);
+      assert.match(result.stdout, /VERDICT FAIL/);
+      assert.doesNotMatch(result.stdout, /staged candidate is not converged/);
+      assert.strictEqual(fs.readFileSync(path.join(root, 'src.ts'), 'utf8'), staged);
+      assert.strictEqual(
+        execFileSync('git', ['-C', root, 'show', ':src.ts'], { encoding: 'utf8' }),
+        indexBefore
+      );
+      assert.strictEqual(
+        fs.existsSync(path.join(root, '.git', 'gennady-workspace-guard.lock')),
+        false
       );
     } finally {
       fs.rmSync(root, { recursive: true, force: true });

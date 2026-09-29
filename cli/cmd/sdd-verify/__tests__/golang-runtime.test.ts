@@ -2,7 +2,7 @@
 // @spec: CLI-SDD-VERIFY
 // @consumers: N/A
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import {
   existsSync,
   mkdtempSync,
@@ -19,10 +19,6 @@ import { resolveTreeGuard, treeStatus } from '../../../../shared/verify/tree-gua
 import { allOf, exitCodeMatches } from '../../../../shared/verify/env-fail.ts';
 import { defaultAsyncRunner, runGate } from '../sdd-verify.cmd.ts';
 import type { Gate, GateRunner } from '../sdd-verify.types.ts';
-
-const REPO_ROOT = resolve(import.meta.dirname, '../../../..');
-const TSX_IMPORT = join(REPO_ROOT, 'node_modules/tsx/dist/loader.mjs');
-const GENNADY = join(REPO_ROOT, 'cli/gennady.ts');
 
 function cliGate(gate: ReturnType<typeof golangPluginGates>[number]): Gate {
   return {
@@ -55,46 +51,6 @@ function initCommittedRepo(root: string): void {
 }
 
 describe('Go V-09 runtime semantics', () => {
-  it('public dirty CLI refuses while internal pre-commit mode accepts only a synchronized index', () => {
-    const root = realpathSync(mkdtempSync(join(tmpdir(), 'go-runtime-cli-index-')));
-    try {
-      writeFileSync(join(root, 'go.mod'), 'module example.com/runtime\n\ngo 1.22\n');
-      writeFileSync(join(root, 'main.go'), 'package runtime\n');
-      initCommittedRepo(root);
-      writeFileSync(join(root, 'main.go'), 'package runtime\n// staged candidate\n');
-      git(root, ['add', 'main.go']);
-      const argv = [
-        '--import',
-        TSX_IMPORT,
-        GENNADY,
-        'sdd-verify',
-        '--profile',
-        'full',
-        '--only',
-        'generate',
-      ];
-
-      const direct = spawnSync(process.execPath, argv, {
-        cwd: root,
-        encoding: 'utf-8',
-        env: { ...process.env, GENNADY_INTERNAL_PRECOMMIT_INDEX: undefined },
-      });
-      assert.equal(direct.status, 4, `${direct.stdout}${direct.stderr}`);
-      assert.match(`${direct.stdout}${direct.stderr}`, /DIRTY_TREE/);
-
-      const preCommit = spawnSync(process.execPath, argv, {
-        cwd: root,
-        encoding: 'utf-8',
-        env: { ...process.env, GENNADY_INTERNAL_PRECOMMIT_INDEX: '1' },
-      });
-      assert.equal(preCommit.status, 0, `${preCommit.stdout}${preCommit.stderr}`);
-      assert.match(preCommit.stdout, /ALL PASS/);
-      assert.match(git(root, ['diff', '--cached', '--name-only']), /main\.go/);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
   it('classifies module fetch failures as environment failures', async () => {
     const root = mkdtempSync(join(tmpdir(), 'go-runtime-env-'));
     try {

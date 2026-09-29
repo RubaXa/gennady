@@ -61,12 +61,20 @@ const EFFECTS = ['observe', 'repair', 'drift-signal'] as const;
 const TEST_STATS_POLICIES = ['required', 'optional', 'none'] as const;
 const TEST_STATS_PROTOCOLS = [
   'node-test-summary-v1',
+  'gennady-test-topology-v1',
   'vitest-json-v1',
   'go-test-json-v1',
   'swift-test-summary-v1',
   'xctest-summary-v1',
 ] as const;
-const TEST_STATS_RUNNERS = ['node:test', 'vitest', 'go-test', 'swift-test', 'xcodebuild'] as const;
+const TEST_STATS_RUNNERS = [
+  'node:test',
+  'gennady-test-topology',
+  'vitest',
+  'go-test',
+  'swift-test',
+  'xcodebuild',
+] as const;
 
 /** @purpose Compare strings by locale-independent UTF-16 code-unit order. */
 function compareText(left: string, right: string): number {
@@ -294,15 +302,17 @@ function testStatsPolicy(
   const expectedRunner =
     protocol === 'node-test-summary-v1'
       ? 'node:test'
-      : protocol === 'vitest-json-v1'
-        ? 'vitest'
-        : protocol === 'go-test-json-v1'
-          ? 'go-test'
-          : protocol === 'swift-test-summary-v1'
-            ? 'swift-test'
-            : protocol === 'xctest-summary-v1'
-              ? 'xcodebuild'
-              : undefined;
+      : protocol === 'gennady-test-topology-v1'
+        ? 'gennady-test-topology'
+        : protocol === 'vitest-json-v1'
+          ? 'vitest'
+          : protocol === 'go-test-json-v1'
+            ? 'go-test'
+            : protocol === 'swift-test-summary-v1'
+              ? 'swift-test'
+              : protocol === 'xctest-summary-v1'
+                ? 'xcodebuild'
+                : undefined;
   if (expectedRunner !== undefined && runner !== expectedRunner) {
     errors.push(
       new VerifyConfigError(

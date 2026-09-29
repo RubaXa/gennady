@@ -51,7 +51,7 @@ function createNodeRepo(options: { readonly sentinelTypecheck?: boolean } = {}):
           ? "node -e \"require('node:fs').writeFileSync('spawned','yes')\""
           : 'node -e ""',
         'lint:fix': `node ${gennady} lint --autofix`,
-        lint: `node ${gennady} lint`,
+        lint: `node ${gennady} lint src.ts`,
         'format:fix': 'prettier --write',
         format: 'prettier --check src.ts',
       },

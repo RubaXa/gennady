@@ -85,6 +85,56 @@ function checkpointOf(root: string): {
 }
 
 describe('WorkspaceGuard checkpoint and write policy', () => {
+  it('guards the exact staged candidate and restores any otherwise-allowed repair drift', () => {
+    withRepo((root) => {
+      fs.writeFileSync(path.join(root, 'tracked.txt'), 'staged candidate\n');
+      git(root, 'add', 'tracked.txt');
+      const indexBefore = fs.readFileSync(path.join(root, '.git', 'index'));
+      const acquired = acquireWorkspaceGuard(root, {
+        signalHandlers: false,
+        stagedCandidate: true,
+      });
+      assert.equal(
+        acquired.kind,
+        'guard',
+        acquired.kind === 'error' ? acquired.error.message : undefined
+      );
+      if (acquired.kind !== 'guard') return;
+      const candidate = step(root, 'repair', ['tracked.txt']);
+      assert.deepEqual(acquired.guard.beginStep(candidate), { kind: 'ready' });
+      fs.writeFileSync(path.join(root, 'tracked.txt'), 'formatter changed candidate\n');
+      const outcome = acquired.guard.finishStep(candidate.id, { succeeded: true });
+      assert.equal(outcome.kind, 'violation');
+      if (outcome.kind === 'violation') {
+        assert.match(outcome.error.message, /staged candidate is not converged/);
+      }
+      assert.deepEqual(acquired.guard.release(), { kind: 'released' });
+      assert.equal(fs.readFileSync(path.join(root, 'tracked.txt'), 'utf8'), 'staged candidate\n');
+      assert.deepEqual(fs.readFileSync(path.join(root, '.git', 'index')), indexBefore);
+      assert.match(git(root, 'diff', '--cached', '--name-only'), /tracked\.txt/);
+    });
+  });
+
+  it('refuses staged-candidate mode when worktree bytes are outside the index', () => {
+    for (const kind of ['unstaged', 'untracked'] as const) {
+      withRepo((root) => {
+        fs.writeFileSync(path.join(root, 'tracked.txt'), 'staged candidate\n');
+        git(root, 'add', 'tracked.txt');
+        if (kind === 'unstaged') fs.writeFileSync(path.join(root, 'tracked.txt'), 'unstaged\n');
+        else fs.writeFileSync(path.join(root, 'untracked.txt'), 'untracked\n');
+        const acquired = acquireWorkspaceGuard(root, {
+          signalHandlers: false,
+          stagedCandidate: true,
+        });
+        assert.equal(acquired.kind, 'error');
+        if (acquired.kind === 'error') {
+          assert.match(acquired.error.message, /DIRTY_INDEX_WORKTREE/);
+          assert.match(acquired.error.message, kind === 'unstaged' ? /tracked\.txt/ : /untracked/);
+        }
+      });
+    }
+  });
+
   it('preserves dirty tracked, staged, and untracked agent changes byte-for-byte', () => {
     withRepo((root) => {
       fs.writeFileSync(path.join(root, 'tracked.txt'), 'staged agent change\n');

@@ -96,6 +96,8 @@ export type WorkspaceGuard = {
 type WorkspaceGuardOptions = {
   /** @purpose Install cooperative SIGINT/SIGTERM restoration (default true; false for embedding/tests). */
   readonly signalHandlers?: boolean;
+  /** @purpose Internal hook mode: worktree must equal index and repair must remain a no-op. */
+  readonly stagedCandidate?: boolean;
 };
 
 type WorkspaceGuardAcquisition =
@@ -147,6 +149,7 @@ type WorkspaceLock = {
   readonly root: string;
   readonly checkpointId: string;
   readonly phase: 'capturing' | 'ready' | 'restoring';
+  readonly mode?: 'workspace' | 'staged-candidate';
   readonly startedAt: string;
 };
 
@@ -757,6 +760,9 @@ function parseLock(lockPath: string): WorkspaceLock | null {
       typeof value.pid !== 'number' ||
       typeof value.root !== 'string' ||
       typeof value.checkpointId !== 'string' ||
+      (value.mode !== undefined &&
+        value.mode !== 'workspace' &&
+        value.mode !== 'staged-candidate') ||
       (value.phase !== 'capturing' && value.phase !== 'ready' && value.phase !== 'restoring')
     ) {
       return null;
@@ -798,6 +804,32 @@ export function acquireWorkspaceGuard(
   const checkpointsRoot = path.join(gitDirectory, 'gennady-workspace-checkpoints');
   fs.mkdirSync(checkpointsRoot, { recursive: true });
 
+  if (options.stagedCandidate === true) {
+    try {
+      const outsideIndex = git(root, ['status', '--porcelain=v1', '--untracked-files=all'])
+        .split('\n')
+        .filter(Boolean)
+        .filter((line) => line[0] === '?' || line[1] !== ' ');
+      if (outsideIndex.length > 0) {
+        return {
+          kind: 'error',
+          error: problem(
+            'VERIFY_WORKSPACE_CHECKPOINT_FAILED',
+            `DIRTY_INDEX_WORKTREE: pre-commit staged mode requires working tree == index; stage or remove these paths:\n${outsideIndex.join('\n')}`
+          ),
+        };
+      }
+    } catch (error) {
+      return {
+        kind: 'error',
+        error: problem(
+          'VERIFY_WORKSPACE_CHECKPOINT_FAILED',
+          `cannot prove staged candidate identity: ${String(error)}`
+        ),
+      };
+    }
+  }
+
   const checkpointId = randomUUID();
   const checkpointDirectory = path.join(checkpointsRoot, checkpointId);
   let lock: WorkspaceLock = {
@@ -806,6 +838,7 @@ export function acquireWorkspaceGuard(
     root,
     checkpointId,
     phase: 'capturing',
+    mode: options.stagedCandidate === true ? 'staged-candidate' : 'workspace',
     startedAt: new Date().toISOString(),
   };
   const writeLock = (flag?: 'wx') => {
@@ -843,6 +876,11 @@ export function acquireWorkspaceGuard(
     }
     try {
       if (stale.root !== root) throw new Error('stale lock belongs to another repository root');
+      if (stale.mode === 'staged-candidate') {
+        throw new Error(
+          'stale staged-candidate verify lock cannot be recovered automatically because staged user work may have changed; inspect the index/worktree and remove the lock explicitly'
+        );
+      }
       const staleDirectory = path.join(checkpointsRoot, stale.checkpointId);
       if (path.dirname(staleDirectory) !== checkpointsRoot)
         throw new Error('invalid stale checkpoint id');
@@ -1033,7 +1071,9 @@ export function acquireWorkspaceGuard(
         active.step,
         active.boundary
       );
-      const unexpected = mutations.filter((mutation) => !mutation.allowed);
+      const unexpected = mutations.filter(
+        (mutation) => !mutation.allowed || options.stagedCandidate === true
+      );
       if (!result.succeeded || unexpected.length > 0) {
         const restoreError = restore();
         if (restoreError !== null) {
@@ -1047,9 +1087,13 @@ export function acquireWorkspaceGuard(
             mutations,
             error: problem(
               'VERIFY_WORKSPACE_WRITE_VIOLATION',
-              `step ${stepId} mutated paths outside its declared write boundary: ${unexpected
-                .map((mutation) => mutation.path)
-                .join(', ')}`,
+              options.stagedCandidate === true
+                ? `pre-commit staged candidate is not converged: repair step ${stepId} would mutate ${unexpected
+                    .map((mutation) => mutation.path)
+                    .join(', ')}`
+                : `step ${stepId} mutated paths outside its declared write boundary: ${unexpected
+                    .map((mutation) => mutation.path)
+                    .join(', ')}`,
               unexpected.map((mutation) => mutation.path)
             ),
             restored: true,

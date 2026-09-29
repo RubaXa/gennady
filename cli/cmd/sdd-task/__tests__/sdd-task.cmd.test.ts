@@ -1539,9 +1539,15 @@ describe('SddTaskCommand', () => {
     it('gate scripts present → no gate line, even with an infra TODO ticket queued', async () => {
       const readyDir = mkdtempSync(join(tmpdir(), 'sdd-task-ready-'));
       mkdirSync(join(readyDir, 'specs'), { recursive: true });
+      mkdirSync(join(readyDir, 'specs', 'infra-core'), { recursive: true });
       mkdirSync(join(readyDir, 'node_modules', '.bin'), { recursive: true });
       writeFileSync(join(readyDir, 'node_modules', '.bin', 'gennady'), '', 'utf-8');
       writeFileSync(join(readyDir, 'specs', 'README.md'), portalWithInfraScope, 'utf-8');
+      writeFileSync(
+        join(readyDir, 'specs', 'infra-core', 'infra-core.spec.md'),
+        '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->\n<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->\n',
+        'utf-8'
+      );
       writeFileSync(join(readyDir, 'ticket.md'), infraTicket('infra-2'), 'utf-8');
       writeFileSync(
         join(readyDir, 'package.json'),
@@ -1553,7 +1559,7 @@ describe('SddTaskCommand', () => {
             'test:coverage': 'node --test --coverage',
             lint: 'gennady lint --all .',
             format: 'prettier --check .',
-            check: 'npm run type-check && npm test && npm run lint && npm run format',
+            check: 'gennady verify --phase full',
             fix: 'npm run format:fix && npm run lint:fix && npm run check',
             'format:fix': 'prettier --write',
             'lint:fix': 'eslint --fix',

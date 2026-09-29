@@ -75,8 +75,8 @@
 
       A phase gets that sequence privately from context-derived `sdd-verify`; humans may use the
       whole-project `fix` wrapper. Exit 0 means formatter completed and lint re-read the exact
-      resulting bytes and found a clean post-state. Pre-commit and CI never repair; they run the
-      whole-project read-only `sdd-verify --profile full`.
+      resulting bytes and found a clean post-state. Pre-commit runs universal `verify --phase full`
+      under its internal staged-candidate policy: repair nodes are omitted and read-only lint/format observations prove convergence.
 
       Choice of formatter is an architecture decision: Prettier recommended; alternatives (Biome, dprint) acceptable IF the project picks ONE. Two formatters or formatting rules duplicated between ESLint and the formatter = forbidden.
     </Axiom>

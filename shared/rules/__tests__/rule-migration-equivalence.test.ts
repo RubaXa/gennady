@@ -44,7 +44,10 @@ function productionSources(root: string): string[] {
 describe('embedded rule migration equivalence', () => {
   it('preserves every old entry body, predicate intent, dependency and source exactly once', () => {
     assert.equal(FIXTURE.schema, 2);
-    assert.deepEqual(FIXTURE.operatorApprovedChanges, ['typescript-rules: Unless role=test']);
+    assert.deepEqual(FIXTURE.operatorApprovedChanges, [
+      'typescript-rules: Unless role=test',
+      'UV-14: eslint-setup, git-setup, and nodejs-npm-setup replace the retired whole-project runner with universal Verify',
+    ]);
     assert.equal(
       FIXTURE.entries.every(({ intent }) => intent.trim() !== ''),
       true

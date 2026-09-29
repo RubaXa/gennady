@@ -36,7 +36,7 @@ function fixture(
         'test:coverage': 'c8 node --test',
         format: 'prettier --check .',
         'format:fix': 'prettier --write',
-        lint: 'gennady lint',
+        lint: 'gennady lint .',
         'lint:fix': 'gennady lint --autofix',
         fix: 'npm run format:fix -- . && npm run lint:fix -- .',
       },

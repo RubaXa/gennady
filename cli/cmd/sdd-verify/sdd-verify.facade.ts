@@ -18,7 +18,7 @@ import { adaptSddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-con
 import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { runVerifyCommand } from '../verify/verify.cmd.ts';
 import { resolvePhaseContext } from './phase-context.ts';
-import { persistLegacyPhaseReceipt } from './phase-run.ts';
+import { persistLegacyPhaseReceipt } from './legacy-receipt-persistence.ts';
 
 type SddFacadeOutcome = Awaited<ReturnType<typeof runVerifyCommand>>;
 

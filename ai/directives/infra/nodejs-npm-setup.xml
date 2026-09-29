@@ -185,8 +185,9 @@
       while calling both prefixes in formatter→linter order. Task tickets and phase agents never call `check`/`fix`/any single brick by
       hand — they run `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`; its
       private repair formats and lint-autofixes only that exact set. `fix` is the REQUIRED human repair
-      entrypoint; `check` is an OPTIONAL read-only human / CI wrapper:
-      `"check": "npx gennady sdd-verify --profile full"`. Declare `check-command → npm run check`
+      entrypoint; `check` is an OPTIONAL universal whole-project wrapper whose declared repair steps
+      may mutate code outside the hook: `"check": "npx gennady verify --phase full"`. The pre-commit
+      integration applies its private staged-candidate no-mutation policy. Declare `check-command → npm run check`
       and `fix-command → npm run fix` in infra-spec §Verification Commands as these wrappers — not as a
       per-ticket verification alias (ticket §5 rows use the context-derived phase call
       directly). Include only active phases among the eight bricks; all commands are one-shot.

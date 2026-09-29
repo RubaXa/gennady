@@ -1,7 +1,6 @@
-// @file: Gates, types, and verdict for sdd-verify — repair-first phase profiles and a read-only
-//   full profile, each with a fixed order and fail-closed required gates.
+// @file: Frozen pre-UV-14 gate/receipt types retained for explicit-overlay parity proof.
 // @spec: CLI-SDD-VERIFY
-// @consumers: SddVerifyCommand
+// @consumers: frozen compatibility tests only
 
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {

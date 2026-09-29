@@ -11,9 +11,9 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
 # does not re-stage them lets the commit capture the pre-fix bytes while `prettier --check` passes
 # over the already-fixed working tree — a green hook over a dirty commit (this repo hit exactly that).
 # Repair belongs to the SDD phase flow (the task/phase context carries one exact-target repair rung); the
-# commit gate is the read-only final verdict, exactly what `sdd-verify --profile full` is. If a check
+# commit gate is the read-only staged-candidate policy over universal `verify --phase full`. If a check
 # is red because something is unformatted, YOU run `npm run fix` and `git add -u`, then commit again.
-echo "🔍 Pre-commit: check (sdd-verify --profile full — read-only) + directive gates"
+echo "🔍 Pre-commit: check (verify --phase full — staged candidate, repair nodes omitted) + directive gates"
 
 fail() {
   # $1 = which gate failed
@@ -69,10 +69,11 @@ if [ -n "$dirty" ]; then
 fi
 
 
-# Internal index-baseline mode is deliberately narrower than a public dirty-tree bypass. The guard
-# independently repeats the equality check above, locks the tree, and restores gate drift to the
-# staged index rather than HEAD. Ordinary `sdd-verify --profile full` still refuses every dirty tree.
-GENNADY_INTERNAL_PRECOMMIT_INDEX=1 npm run check || fail "check (npm run check) — sdd-verify --profile full: types, tests, lint, format, yagni. Если красное — format/lint: npm run fix && git add -u, затем commit заново"
+# Internal staged-candidate mode is deliberately narrower than a public dirty-tree bypass. The
+# universal WorkspaceGuard independently repeats the equality check and locks the tree. The private
+# policy omits repair nodes, then read-only lint/format observations prove convergence; any unexpected
+# write by an executed node is restored to the captured index candidate. No public staged/dirty flag exists.
+GENNADY_INTERNAL_PRECOMMIT_INDEX=1 npm run check || fail "check (npm run check) — verify --phase full: selected provider DAGs, readiness, tests and read-only lint/format observations over the staged candidate. Если красное — npm run fix && git add -u, затем commit заново"
 npm run check:directives-fresh || fail "directives-fresh (npm run check:directives-fresh) — ai/directives/** must match a fresh rebuild; see the message above for what to do"
 npm run audit:axioms || fail "audit:axioms (npm run audit:axioms) — see AUTHORING.md §10"
 npm run audit:contracts || fail "audit:contracts (npm run audit:contracts) — see the header of ai/kit/audit-contract-activation.mjs"

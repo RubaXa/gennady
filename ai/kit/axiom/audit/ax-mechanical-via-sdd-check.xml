@@ -6,7 +6,7 @@
       - `sdd-check --all [root]` → the whole tree, additionally: the task DAG (Task-ID collisions · unresolved dependencies · cycles) · tracker ↔ ticket coherence (status drift · missing rows · orphan rows) · spec-link resolution + spec-anchor balance · portal integrity (scope-graph acyclicity · graph↔table↔spec · orphan specs · dangling deps) · **FILE_RELATIONS** for V2 sources (resolved/unique `@spec`, active-writer collision, active/spec mismatch, forbidden V2 `@tasks`) · **group receipts** (every fully-DONE ticket group of one spec carries a durable `audit-receipt` / `review-receipt` — `SDD_GROUP_AUDIT_MISSING` / `SDD_GROUP_REVIEW_MISSING`) — plus RULES_CASCADE_CLOSURE, BDD_COVERAGE, BDD_NEGATIVE, BDD_TRACE, COVERAGE_POLICY and PHASE_RECEIPT per ticket, as above.
       - `sdd-check --changed [root]` → changed source files: the same V2 **FILE_RELATIONS** model · legacy-only **TASKS_APPEND_ONLY** for the pre-V2 ts/tsx/js production surface (`SDD_TASKS_APPEND_ONLY_REGRESSION`) · **CONSUMERS_RESOLVABLE** for files in their applicable V1/V2 scope (`SDD_CONSUMERS_UNRESOLVED`, warn-only: the search is crude, treat a hit as a lead, not a verdict). Untouched V1 files outside that historical surface remain ungraded.
 
-      `gennady yagni` (run as part of `sdd-verify --profile full`, STEP_1) is likewise taken as
+      `gennady yagni` (run as part of `verify --phase full`, STEP_1) is likewise taken as
       given for its own two checks: usage count `< 2` (`ERR_CLI_YAGNI_UNDERUSED`) and, when the
       Usage Waiver label cites an `<ACR>-DL-N` (or immutable legacy id), whether it resolves to a live Decision Log entry
       (`ERR_CLI_YAGNI_WAIVER_DECISION_MISSING`) — do not re-count usages or re-search Decision Logs

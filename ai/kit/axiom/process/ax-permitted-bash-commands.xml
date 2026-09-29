@@ -4,7 +4,7 @@
         protocol's STEP_5. That facade resolves the composed selector and delegates repair order,
         target derivation and dependency semantics to the universal Verify planner/runner;
         this axiom only permits the invocation. Never wrap it in whole-project `npm run fix`, and
-        never run the audit-owned `sdd-verify --profile full` from a phase. Its terminal attempt entry is the result;
+        never run the audit-owned `verify --phase full` from a phase. Its terminal report is the result;
         do not copy it into prose log lines or enable a legacy overlay unless the exact command explicitly requires one.
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
@@ -52,7 +52,7 @@
       same inventory/lint gates meant for real `Target Files`, and `/tmp`/`$TMPDIR` sit outside the
       checkout this role's recon is scoped to above.
 
-      **Forbidden:** any npm/network command outside the exact bootstrap-only forms above; `npm run fix`; `npm run check`; `npm run lint` alone (overkill — use `sdd-verify` or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly — repair and verification both live INSIDE `sdd-verify`, never called piecemeal; any recursive or project-wide file scan; any command that reads unrelated files for «context».
+      **Forbidden:** any npm/network command outside the exact bootstrap-only forms above; `npm run fix`; `npm run check`; `npm run lint` alone (overkill — use the SDD facade or `tsc --noEmit` for narrower checks); `npm run format`; `prettier` directly — repair and verification both live INSIDE the universal Verify engine invoked by the facade, never called piecemeal; any recursive or project-wide file scan; any command that reads unrelated files for «context».
 
       **Named exception — throwaway fixture repository for a guard-test phase.** A phase whose
       Objective is to prove a guard script, lint gate, or CI step against real Git plumbing may
@@ -64,7 +64,7 @@
       can find it, and remove the fixture directory before returning Handoff: it is scratch, not a
       Target File, and does not survive the phase. This is the one case where `git init`/`add`/`commit`
       is legal outside the step that owns publish/commit; it does not relax the ban on mutating the
-      checkout's own repository, and it does not touch what the read-only `sdd-verify` snapshot
+      checkout's own repository, and it does not touch what the guarded Verify snapshot
       observes about real `Target Files`.
 
       Ticket §5 commands are not a phase-agent exemption, and the fixture-repository exception above

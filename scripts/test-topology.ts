@@ -7,10 +7,11 @@
 // @spec: INFRA-BASE
 // @consumers: package.json test scripts
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { basename, join, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { availableParallelism } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '..');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
@@ -23,6 +24,13 @@ type TestPartition = {
   layers: readonly TestLayer[];
   files: string[];
 };
+type TestRunStats = {
+  readonly executed: number;
+  readonly passed: number;
+  readonly failed: number;
+  readonly skipped: number;
+};
+type TestRunResult = { readonly status: number; readonly stats?: TestRunStats };
 // GAP-2: `test/` and `utils/` each hold real, currently-unowned `*.test.ts` suites (`test/agent-inbox/`
 // — 23 files — and `utils/test/__tests__/` — 2 files) that predate this fix and were invisible to
 // `discoverTests()` below (and therefore absent from `npm test`, `test:coverage`, and pre-commit)
@@ -471,12 +479,18 @@ function createTestEnvironment(): NodeJS.ProcessEnv {
   return env;
 }
 
-function runNodeTests(
+export function runNodeTests(
   files: string[],
   options: { coverage: boolean; networkGuard: boolean; concurrency: number }
-): number {
+): TestRunResult {
+  const reporterDirectory = mkdtempSync(join(tmpdir(), 'gennady-test-topology-'));
+  const reporterPath = join(reporterDirectory, 'runner.tap');
   const nodeArgs = [
     '--test',
+    '--test-reporter=spec',
+    '--test-reporter-destination=stdout',
+    '--test-reporter=tap',
+    `--test-reporter-destination=${reporterPath}`,
     `--test-concurrency=${options.concurrency}`,
     '--import',
     'tsx',
@@ -495,16 +509,63 @@ function runNodeTests(
         ...nodeArgs,
       ]
     : nodeArgs;
-  const result = spawnSync(process.execPath, args, {
-    cwd: PROJECT_ROOT,
-    stdio: 'inherit',
-    env: createTestEnvironment(),
-  });
-  if (result.error) {
-    process.stderr.write(`[test-topology] cannot start test runner: ${result.error.message}\n`);
-    return 1;
+  try {
+    const result = spawnSync(process.execPath, args, {
+      cwd: PROJECT_ROOT,
+      stdio: 'inherit',
+      env: createTestEnvironment(),
+    });
+    if (result.error) {
+      process.stderr.write(`[test-topology] cannot start test runner: ${result.error.message}\n`);
+      return { status: 1 };
+    }
+    const status = result.status ?? 1;
+    let output: string;
+    try {
+      output = readFileSync(reporterPath, 'utf8');
+    } catch (error) {
+      process.stderr.write(
+        `[test-topology] test reporter is unavailable: ${error instanceof Error ? error.message : String(error)}\n`
+      );
+      return { status: status === 0 ? 1 : status };
+    }
+    const metric = (name: string): number | null => {
+      const match = output.match(new RegExp(`^# ${name} (\\d+)\\s*$`, 'm'));
+      return match?.[1] === undefined ? null : Number(match[1]);
+    };
+    const executed = metric('tests');
+    const passed = metric('pass');
+    const failed = metric('fail');
+    const skipped = (metric('skipped') ?? 0) + (metric('todo') ?? 0) + (metric('cancelled') ?? 0);
+    if (
+      executed === null ||
+      passed === null ||
+      failed === null ||
+      passed + failed + skipped !== executed
+    ) {
+      process.stderr.write('[test-topology] test reporter did not produce coherent statistics\n');
+      return { status: 1 };
+    }
+    return { status, stats: { executed, passed, failed, skipped } };
+  } finally {
+    rmSync(reporterDirectory, { recursive: true, force: true });
   }
-  return result.status ?? 1;
+}
+
+function aggregateStats(stats: readonly TestRunStats[]): TestRunStats {
+  return stats.reduce(
+    (sum, value) => ({
+      executed: sum.executed + value.executed,
+      passed: sum.passed + value.passed,
+      failed: sum.failed + value.failed,
+      skipped: sum.skipped + value.skipped,
+    }),
+    { executed: 0, passed: 0, failed: 0, skipped: 0 }
+  );
+}
+
+function writeStats(stats: readonly TestRunStats[]): void {
+  process.stdout.write(`[gennady-test-topology-stats] ${JSON.stringify(aggregateStats(stats))}\n`);
 }
 
 function help(): string {
@@ -568,11 +629,13 @@ function main(argv: string[]): number {
   if (command === 'unit') {
     const targets = unitTargets(topology);
     process.stdout.write(`[test-topology] unit: ${targets.length} files\n`);
-    return runNodeTests(targets, {
+    const result = runNodeTests(targets, {
       coverage: false,
       networkGuard: true,
       concurrency: OUTER_TEST_CONCURRENCY,
     });
+    if (result.stats !== undefined) writeStats([result.stats]);
+    return result.status;
   }
   if (command === 'deterministic') {
     // REL-7: run as two sequential partitions — `local` alone at the reduced concurrency, then the
@@ -581,18 +644,24 @@ function main(argv: string[]): number {
     process.stdout.write(
       `[test-topology] deterministic: ${partitions.reduce((sum, part) => sum + part.files.length, 0)} files\n`
     );
+    const stats: TestRunStats[] = [];
     for (const partition of partitions) {
       process.stdout.write(
         `[test-topology] ${partition.name}: ${partition.files.length} files ` +
           `(${partition.layers.join('+')}; concurrency=${partition.concurrency})\n`
       );
-      const status = runNodeTests(partition.files, {
+      const result = runNodeTests(partition.files, {
         coverage: false,
         networkGuard: false,
         concurrency: partition.concurrency,
       });
-      if (status !== 0) return status;
+      if (result.stats !== undefined) stats.push(result.stats);
+      if (result.status !== 0) {
+        if (result.stats !== undefined) writeStats(stats);
+        return result.status;
+      }
     }
+    writeStats(stats);
     return 0;
   }
   if (command === 'experimental') {
@@ -601,33 +670,43 @@ function main(argv: string[]): number {
     // and network access, same as `local`/`external` under `coverage`.
     const targets = topology.experimental;
     process.stdout.write(`[test-topology] experimental: ${targets.length} files\n`);
-    return runNodeTests(targets, {
+    const result = runNodeTests(targets, {
       coverage: false,
       networkGuard: false,
       concurrency: OUTER_TEST_CONCURRENCY,
     });
+    if (result.stats !== undefined) writeStats([result.stats]);
+    return result.status;
   }
   if (command === 'coverage') {
     const partitions = coveragePartitions(topology);
     process.stdout.write(
       `[test-topology] coverage: ${partitions.reduce((sum, part) => sum + part.files.length, 0)} files exactly once\n`
     );
+    const stats: TestRunStats[] = [];
     for (const partition of partitions) {
       process.stdout.write(
         `[test-topology] ${partition.name}: ${partition.files.length} files ` +
           `(${partition.layers.join('+')}; ${partition.coverage ? 'c8 observes production code' : 'no c8: subprocess boundary'})\n`
       );
-      const status = runNodeTests(partition.files, {
+      const result = runNodeTests(partition.files, {
         coverage: partition.coverage,
         networkGuard: false,
         concurrency: partition.concurrency,
       });
-      if (status !== 0) return status;
+      if (result.stats !== undefined) stats.push(result.stats);
+      if (result.status !== 0) {
+        if (result.stats !== undefined) writeStats(stats);
+        return result.status;
+      }
     }
+    writeStats(stats);
     return 0;
   }
   process.stderr.write(`[test-topology] unknown command: ${command}\n${help()}\n`);
   return 2;
 }
 
-process.exitCode = main(process.argv.slice(2));
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = main(process.argv.slice(2));
+}

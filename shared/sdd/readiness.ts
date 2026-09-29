@@ -16,7 +16,7 @@ import { probeSwiftToolchain, type SwiftProject } from '../../plugins/swift/swif
 
 /**
  * @purpose Exact npm scripts a v2-ready project declares: repair leaves, their public `fix`
- * entrypoint, and read-only foundation/quality gates. Human `check` remains optional.
+ * entrypoint, and read-only foundation/quality gates. Universal full `check` remains optional.
  * @invariant Matched by exact name only — no fuzzy guessing. `type-check` also accepts `typecheck`
  * via SCRIPT_ALIASES — still exact-match against a closed set.
  */
@@ -90,7 +90,7 @@ export type ReadinessLevel = 'not-ready' | 'provisional' | 'ready';
 /**
  * @purpose Verdict of the readiness check.
  * @invariant `ready` requires package.json present, all required scripts declared, `lint` reaching
- * gennady, read-only checks, mutating leaves, and gennady installed.
+ * gennady, read-only leaf checks, optional universal full wrapper, mutating leaves, and gennady installed.
  * @invariant `level` refines `ready`: `not-ready` ⇔ `!ready`; `provisional` = ready with ≥1
  * echo-stub; `ready` = zero stubs. `executionReady` ⇔ `level === 'ready'`.
  */
@@ -105,8 +105,8 @@ export type ReadinessResult = {
   formatReadOnly: boolean;
   /** @purpose Whether `lint` and every npm script it reaches are free of known write/autofix commands. */
   lintReadOnly: boolean;
-  /** @purpose Whether `check`, if present, and everything it reaches stay write-free — checked to catch a homemade mutating `check`, though `check` is optional. */
-  checkReadOnly: boolean;
+  /** @purpose Whether optional `check` reaches the canonical universal `verify --phase full`. */
+  checkUsesUniversalVerify: boolean;
   /** @purpose Whether `format:fix`, if present, or a script it reaches carries a mutating switch. */
   formatFixMutates: boolean;
   /** @purpose Whether `lint:fix`, if present, or a script it reaches carries a mutating switch. */
@@ -220,6 +220,40 @@ export function scriptReachesGennady(scripts: Record<string, string>, entry: str
 /** @purpose Whether the canonical read-only lint script reaches the Gennady contract linter. */
 function lintReachesGennady(scripts: Record<string, string>): boolean {
   return scriptReachesGennady(scripts, 'lint');
+}
+
+function invokesUniversalVerifyFull(command: string): boolean {
+  const tokens = command.trim().split(/\s+/);
+  while (tokens.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[0] as string)) tokens.shift();
+  while (tokens.length > 1 && RUNNER_TOKEN.test(tokens[0] as string)) tokens.shift();
+  if (!/(?:^|\/)gennady(?:\.[jt]s)?$/.test(tokens.shift() ?? '')) return false;
+  if (tokens.shift() !== 'verify') return false;
+  return (
+    (tokens.length === 2 && tokens[0] === '--phase' && tokens[1] === 'full') ||
+    (tokens.length === 1 && tokens[0] === '--phase=full')
+  );
+}
+
+function checkReachesUniversalVerify(scripts: Record<string, string>): boolean {
+  const seen = new Set<string>();
+  const visit = (name: string): boolean => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    const raw = scripts[name];
+    if (raw === undefined) return false;
+    const segments = commandSegments(stripShellComments(raw));
+    if (segments.length !== 1) return false;
+    const command = segments[0]!.cmd;
+    if (invokesUniversalVerifyFull(command)) return true;
+    const target = scriptHopTarget(command);
+    if (target === null) return false;
+    const tokens = command.trim().split(/\s+/);
+    while (tokens.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[0] as string))
+      tokens.shift();
+    if (tokens.length !== 3) return false;
+    return visit(target);
+  };
+  return visit('check');
 }
 
 /**
@@ -460,8 +494,8 @@ export function isRealScript(body: string | undefined): boolean {
 
 /**
  * @purpose Check the gathered tooling facts against the exact v2 readiness requirements.
- * @invariant Exact-name match only; `lint` reaches gennady; `format`/`lint` read-only; `check`, if
- * present, read-only too; repair leaves mutate; `fix` reaches both leaves; gennady installed.
+ * @invariant Exact-name match only; `lint` reaches gennady; `format`/`lint` read-only; optional
+ * `check` reaches universal `verify --phase full`; repair leaves mutate; `fix` reaches both leaves.
  * @param input The gathered facts: package.json presence, the `scripts` map, and gennady install state.
  * @returns A ReadinessResult: presence flags, per-script presence, overall readiness, and the missing list.
  */
@@ -476,7 +510,7 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   const lintHasGennady = lintReachesGennady(scripts);
   const formatReadOnly = isScriptReadOnly(scripts, 'format');
   const lintReadOnly = isScriptReadOnly(scripts, 'lint');
-  const checkReadOnly = isScriptReadOnly(scripts, 'check');
+  const checkUsesUniversalVerify = checkReachesUniversalVerify(scripts);
   const formatFixMutates = isScriptMutating(scripts, 'format:fix');
   const lintFixMutates = isScriptMutating(scripts, 'lint:fix');
   const formatFixDeclaredTargetPrefix = isDeclaredArgumentForwardingRepairBrick(
@@ -492,7 +526,8 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
   if (scripts['lint'] !== undefined && !lintHasGennady) missing.push('lint→gennady');
   if (scripts['format'] !== undefined && !formatReadOnly) missing.push('format(read-only)');
   if (scripts['lint'] !== undefined && !lintReadOnly) missing.push('lint(read-only)');
-  if (scripts['check'] !== undefined && !checkReadOnly) missing.push('check(read-only)');
+  if (scripts['check'] !== undefined && !checkUsesUniversalVerify)
+    missing.push('check(must invoke gennady verify --phase full)');
   if (scripts['format:fix'] !== undefined && !formatFixMutates)
     missing.push('format:fix(no --write/--fix/--autofix — a fixer that never mutates)');
   if (scripts['lint:fix'] !== undefined && !lintFixMutates)
@@ -523,7 +558,7 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     lintHasGennady &&
     formatReadOnly &&
     lintReadOnly &&
-    (scripts['check'] === undefined || checkReadOnly) &&
+    (scripts['check'] === undefined || checkUsesUniversalVerify) &&
     formatFixMutates &&
     lintFixMutates &&
     (isStubScript(scripts, 'format:fix') || formatFixDeclaredTargetPrefix) &&
@@ -546,7 +581,7 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     ...(!lintHasGennady && scripts['lint'] !== undefined ? ['lint'] : []),
     ...(!formatReadOnly && scripts['format'] !== undefined ? ['format'] : []),
     ...(!lintReadOnly && scripts['lint'] !== undefined ? ['lint'] : []),
-    ...(!checkReadOnly && scripts['check'] !== undefined ? ['check'] : []),
+    ...(!checkUsesUniversalVerify && scripts['check'] !== undefined ? ['check'] : []),
     ...(!formatFixMutates && scripts['format:fix'] !== undefined ? ['format:fix'] : []),
     ...(!formatFixDeclaredTargetPrefix &&
     scripts['format:fix'] !== undefined &&
@@ -569,7 +604,7 @@ export function checkReadiness(input: ReadinessInput): ReadinessResult {
     lintHasGennady,
     formatReadOnly,
     lintReadOnly,
-    checkReadOnly,
+    checkUsesUniversalVerify,
     formatFixMutates,
     lintFixMutates,
     formatFixDeclaredTargetPrefix,
@@ -698,7 +733,7 @@ function evaluateAnystackReadiness(input: ReadinessInput): ReadinessResult {
     lintHasGennady: true,
     formatReadOnly: true,
     lintReadOnly: true,
-    checkReadOnly: true,
+    checkUsesUniversalVerify: true,
     formatFixMutates: true,
     lintFixMutates: true,
     formatFixDeclaredTargetPrefix: true,
@@ -752,7 +787,7 @@ function evaluateGolangReadiness(input: ReadinessInput): ReadinessResult {
     lintHasGennady: true,
     formatReadOnly: true,
     lintReadOnly: true,
-    checkReadOnly: true,
+    checkUsesUniversalVerify: true,
     formatFixMutates: tools.gofmt,
     lintFixMutates: true,
     formatFixDeclaredTargetPrefix: true,
@@ -836,7 +871,7 @@ function evaluateSwiftReadiness(input: ReadinessInput): ReadinessResult {
     lintHasGennady: true,
     formatReadOnly: true,
     lintReadOnly: true,
-    checkReadOnly: true,
+    checkUsesUniversalVerify: true,
     formatFixMutates: facts.fix,
     lintFixMutates: true,
     formatFixDeclaredTargetPrefix: true,

@@ -115,7 +115,7 @@ function scripts(lintFix: string): Record<string, string> {
     test: 'node scripts/pass.mjs',
     'test:coverage': 'node scripts/pass.mjs',
     format: `${PRETTIER_BIN} --check`,
-    lint: 'gennady lint',
+    lint: 'gennady lint .',
     fix: 'npm run format:fix -- . && npm run lint:fix -- src/',
   };
 }
