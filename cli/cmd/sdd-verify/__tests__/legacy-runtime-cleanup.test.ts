@@ -3,7 +3,7 @@
 // @consumers: CI
 
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, relative, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { parseSddVerifyInvocation } from '../sdd-verify-invocation.ts';
@@ -46,6 +46,24 @@ function productionImportGraph(entry: string): Set<string> {
   return visited;
 }
 
+function sourceFilesUnder(directory: string): string[] {
+  const pending = [resolve(ROOT, directory)];
+  const files: string[] = [];
+  while (pending.length > 0) {
+    const owner = pending.pop()!;
+    for (const entry of readdirSync(owner, { withFileTypes: true }).sort((left, right) =>
+      left.name.localeCompare(right.name)
+    )) {
+      const path = resolve(owner, entry.name);
+      assert.equal(entry.isSymbolicLink(), false, `unexpected symlink in source tree: ${path}`);
+      if (entry.isDirectory()) pending.push(path);
+      else if (entry.isFile()) files.push(path);
+      else assert.fail(`unsupported source entry: ${path}`);
+    }
+  }
+  return files.sort();
+}
+
 describe('UV-24 independent runner cleanup', () => {
   it('keeps the facade on the universal planner/runner and current attempt journal only', () => {
     const graph = productionImportGraph('cli/cmd/sdd-verify/index.ts');
@@ -73,6 +91,15 @@ describe('UV-24 independent runner cleanup', () => {
     ]) {
       const parsed = parseSddVerifyInvocation(['node', 'gennady', 'sdd-verify', ...args]);
       assert.equal(parsed.ok, false, args.join(' '));
+    }
+  });
+
+  it('keeps active directive and axiom sources free of compatibility-overlay references', () => {
+    for (const file of [
+      ...sourceFilesUnder('ai/directives'),
+      ...sourceFilesUnder('ai/kit/axiom'),
+    ]) {
+      assert.doesNotMatch(readFileSync(file, 'utf8'), /legacy-overlay|legacyOverlay/, file);
     }
   });
 });
