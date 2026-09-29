@@ -413,6 +413,47 @@ describe('target verify config', () => {
     }
   });
 
+  it('rejects executable plugin declarations while retaining the data-only step extension path', () => {
+    const context = createVerifyConfigContext();
+    try {
+      context.writeProject(
+        'gennady.yaml',
+        [
+          'verify:',
+          '  pluginPackage: external-verify-plugin',
+          '  presets:',
+          '    external:',
+          '      module: ./external-plugin.mjs',
+          '    node:',
+          '      path: ./plugin-loader.mjs',
+          '',
+        ].join('\n')
+      );
+
+      const loaded = loadVerifyConfig(context.root, context.presets, context.home);
+
+      expectLoadError(
+        loaded.errors,
+        'VERIFY_CONFIG_EXECUTABLE_PLUGIN_FORBIDDEN',
+        'verify.pluginPackage'
+      );
+      expectLoadError(
+        loaded.errors,
+        'VERIFY_CONFIG_EXECUTABLE_PLUGIN_FORBIDDEN',
+        'verify.presets.external.module'
+      );
+      expectLoadError(
+        loaded.errors,
+        'VERIFY_CONFIG_EXECUTABLE_PLUGIN_FORBIDDEN',
+        'verify.presets.node.path'
+      );
+      expectLoadError(loaded.errors, 'VERIFY_CONFIG_UNKNOWN_PLUGIN', 'verify.presets.external');
+      assert.strictEqual(loaded.config, null);
+    } finally {
+      context.cleanup();
+    }
+  });
+
   it('adds one declarative step, selects it by an arbitrary id and composes SDD mapping provenance', () => {
     const context = createVerifyConfigContext();
     try {
@@ -458,6 +499,7 @@ describe('target verify config', () => {
         ['node:type-check', 'node:unit', 'node:deploy'],
         'the selector contributes one seed while needs supplies the complete dependency closure'
       );
+      assert.strictEqual(plan.steps.at(-1)?.provenance, 'gennady.yaml');
       assert.strictEqual(
         composed.provenance.get('verify.presets.node.phases.deploy.include'),
         'gennady.yaml'

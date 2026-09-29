@@ -30,6 +30,21 @@ import type {
 
 const TOP_LEVEL_KEYS = ['presets', 'sdd'] as const;
 const PLUGIN_KEYS = ['steps', 'phases', 'blocking', 'reason'] as const;
+const EXECUTABLE_PLUGIN_KEYS = new Set([
+  'plugin',
+  'plugins',
+  'externalPlugins',
+  'pluginPath',
+  'pluginPackage',
+  'pluginUrl',
+  'module',
+  'path',
+  'package',
+  'url',
+  'import',
+  'loader',
+  'entry',
+]);
 const STEP_KEYS = [
   'enabled',
   'reason',
@@ -151,6 +166,18 @@ function rejectUnknownKeys(
   for (const key of Object.keys(value).sort()) {
     if (allowed.includes(key)) continue;
     const pathName = `${keyPath}.${key}`;
+    if (EXECUTABLE_PLUGIN_KEYS.has(key)) {
+      errors.push(
+        new VerifyConfigError(
+          'VERIFY_CONFIG_EXECUTABLE_PLUGIN_FORBIDDEN',
+          pathName,
+          `external executable plugin declaration "${key}" is forbidden`,
+          'declare data-only command.argv/cwd under verify.presets.<detected-plugin>.steps; the common Verify executor is the only project-command runtime',
+          sourceAt(provenance, pathName)
+        )
+      );
+      continue;
+    }
     errors.push(
       new VerifyConfigError(
         'VERIFY_CONFIG_UNKNOWN_FIELD',
@@ -1092,12 +1119,15 @@ export function loadVerifyConfig(
     const rawPlugin = rawPresets[plugin];
     const preset = knownPresets.get(plugin);
     if (preset === undefined) {
+      if (isPlainObject(rawPlugin)) {
+        rejectUnknownKeys(rawPlugin, PLUGIN_KEYS, pluginPath, loaded.provenance, errors);
+      }
       errors.push(
         new VerifyConfigError(
           'VERIFY_CONFIG_UNKNOWN_PLUGIN',
           pluginPath,
           `unknown plugin "${plugin}"`,
-          `use a detected/registered plugin (${[...knownPresets.keys()].sort().join(', ') || 'none'}) or install its plugin before configuring steps`,
+          `use a detected bundled plugin (${[...knownPresets.keys()].sort().join(', ') || 'none'}) and declare data-only steps under it; executable plugins cannot be installed or imported`,
           sourceAt(loaded.provenance, pluginPath)
         )
       );

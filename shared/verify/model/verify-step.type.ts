@@ -90,6 +90,8 @@ export type VerifyStep = {
   readonly id: string;
   /** @purpose Plugin that owns the step. */
   readonly plugin: PluginId;
+  /** @purpose Built-in/detected/file source that declared this step, when project-authored. */
+  readonly provenance?: string;
   /** @purpose Phase-selection labels attached to the step. */
   readonly tags: readonly string[];
   /** @purpose Qualified or same-plugin step identifiers that must complete first. */

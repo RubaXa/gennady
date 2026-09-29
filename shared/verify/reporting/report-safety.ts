@@ -57,6 +57,7 @@ function stepProjection(step: PlannedVerifyStep, root: string): Record<string, u
   return {
     id: step.id,
     plugin: step.plugin,
+    ...(step.provenance === undefined ? {} : { provenance: safeVerifyText(step.provenance, root) }),
     tags: step.tags,
     needs: step.needs,
     executor: step.executor,
