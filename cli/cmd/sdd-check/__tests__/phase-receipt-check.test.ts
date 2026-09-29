@@ -2,9 +2,11 @@
 // @spec: CLI-SDD-CHECK
 // @consumers: N/A
 
+import { execFileSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -24,6 +26,63 @@ import {
   type PhaseReceiptPlan,
 } from '../../../../shared/sdd/phase-receipt.ts';
 import { checkPhaseReceipts } from '../phase-receipt-check.ts';
+import { runWithSddAttemptJournal } from '../../../../shared/sdd/verify/sdd-attempt-journal.ts';
+import type { VerifyRunReport } from '../../../../shared/verify/model/verify-report.type.ts';
+
+function git(root: string, ...args: string[]): string {
+  return execFileSync('git', ['-C', root, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
+    encoding: 'utf8',
+  }).trim();
+}
+
+function attemptReport(root: string, verdict: 'pass' | 'fail'): VerifyRunReport {
+  return {
+    context: {
+      request: {
+        root: '/not-persisted',
+        phase: 'code',
+        scope: { mode: 'files', files: ['src/a.ts'] },
+      },
+      plugins: ['node'],
+      frameworks: [],
+      headSha: git(root, 'rev-parse', 'HEAD'),
+      rules: { digest: `sha256:${'b'.repeat(64)}`, required: [], suggested: [], skipped: [] },
+    },
+    readiness: { status: 'READY', entries: [] },
+    plan: {
+      phase: 'code',
+      trust: { level: 'local-runner', source: 'fixture:selector' },
+      steps: [],
+    },
+    results: [],
+    mutations: [],
+    evidence: [],
+    rules: { digest: `sha256:${'b'.repeat(64)}`, required: [], suggested: [], skipped: [] },
+    verdict,
+  };
+}
+
+async function recordAttempt(
+  f: ReturnType<typeof fixture>,
+  verdict: 'pass' | 'fail'
+): Promise<void> {
+  if (!existsSync(join(f.root, '.git'))) {
+    git(f.root, 'init', '-q', '-b', 'main');
+    git(f.root, 'add', '.');
+    git(f.root, 'commit', '-qm', 'fixture');
+  }
+  await runWithSddAttemptJournal({
+    root: f.root,
+    ticketPath: f.path,
+    sddPhase: 'P1',
+    run: async () => ({
+      exitCode: verdict === 'pass' ? 0 : 1,
+      stdout: '',
+      stderr: '',
+      report: attemptReport(f.root, verdict),
+    }),
+  });
+}
 
 function fixture(): { root: string; path: string; content: string; plan: PhaseReceiptPlan } {
   const root = mkdtempSync(join(tmpdir(), 'sdd-receipt-check-'));
@@ -138,6 +197,31 @@ describe('checkPhaseReceipts', () => {
       assert.deepStrictEqual(
         checkPhaseReceipts(f.path, f.path, incomplete, f.root).map((x) => x.code),
         ['SDD_PHASE_RECEIPT_INCOMPLETE']
+      );
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts only the latest current canonical PASS and reports drift/non-PASS distinctly', async () => {
+    const f = fixture();
+    try {
+      await recordAttempt(f, 'pass');
+      let content = readFileSync(f.path, 'utf8');
+      assert.deepStrictEqual(checkPhaseReceipts(f.path, f.path, content, f.root), []);
+
+      writeFileSync(join(f.root, 'src/a.ts'), 'export const a = 2;');
+      assert.deepStrictEqual(
+        checkPhaseReceipts(f.path, f.path, content, f.root).map((finding) => finding.code),
+        ['SDD_PHASE_ATTEMPT_STALE']
+      );
+
+      writeFileSync(join(f.root, 'src/a.ts'), 'export const a = 1;');
+      await recordAttempt(f, 'fail');
+      content = readFileSync(f.path, 'utf8');
+      assert.deepStrictEqual(
+        checkPhaseReceipts(f.path, f.path, content, f.root).map((finding) => finding.code),
+        ['SDD_PHASE_ATTEMPT_NOT_PASS']
       );
     } finally {
       rmSync(f.root, { recursive: true, force: true });

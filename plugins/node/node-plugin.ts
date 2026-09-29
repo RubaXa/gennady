@@ -1,4 +1,4 @@
-// @file: Symmetric Node StackPlugin with legacy compatibility and target Verify facets.
+// @file: Symmetric Node StackPlugin with target Verify and historical receipt-validation facets.
 // @consumers: built-in plugin registry, node target planner
 // @spec: CLI-VERIFY
 

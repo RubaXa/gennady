@@ -2,10 +2,9 @@
 
 ## Contract boundary
 
-UV-06 adds the target `StackPlugin.target` / `VerifyPreset` path described below. The existing
-`verify` facet, `resolveSwiftPreset`, legacy gate order, receipt fields and `environmentState` remain
-a frozen compatibility path until the U4 cutover. Statements in "Legacy compatibility" are
-historical runtime facts, not the target DAG.
+The active Swift path is the target `StackPlugin.target` / `VerifyPreset` contract below. Historical
+gate order and receipt fingerprint details remain documented only for validating already persisted
+phase evidence; they are not an executable compatibility pipeline.
 
 ## Detection
 
@@ -56,23 +55,19 @@ stack:
 
 The plugin constructs direct `xcodebuild` argv without a shell. Missing identity, a missing selected
 tool or a missing workspace/project path is `BLOCKED` with an actionable fix. `testPlan` is applied
-only to the test step. Existing `stack.swift.overrideGates.build/test.argv` remains a
-compatibility-only grandfathered input until UV-24; it is surfaced through migration diagnostics.
-Combining identity with those legacy argv overrides is ambiguous and fails closed. Identity paths
-must stay physically inside the repository and may not traverse or name a symlink.
+only to the test step. Removed `stack.swift.skipGates/overrideGates/extraGates` fields fail closed;
+project commands and waivers belong under `verify.presets.swift`. Identity paths must stay
+physically inside the repository and may not traverse or name a symlink.
 
 UV-06 does not execute Xcode, emit `.xcresult`, or claim runtime coverage evidence. Exact
 `xcodebuild`/`xccov` shape, simulator/runtime selection, freshness and resource cost remain E-18 /
 UV-26 and are explicitly unverified by these unit contracts.
 
-## Legacy compatibility path (frozen until U4)
+## Historical receipt-validation facts
 
-Legacy order remains `format → build → test → lint`. A root Swift package uses `swift build` and
-`swift test`. An Xcode/Tuist repository may still provide exact build/test argv through
-`stack.swift.overrideGates`; the compatibility runner never guesses a workspace, scheme,
-destination or DerivedData path. The legacy `format` gate retains its read-only check plus fixer
-shape and historical required/optional semantics. UV-06 does not switch `sdd-verify` to the target
-runner and does not change receipt identity.
+Persisted pre-cutover evidence used `format → build → test → lint`. The marker-aware phase receipt
+validator retains those historical identities for currentness and V1 grandfathering, but no public
+command executes that ladder or accepts its gate overrides.
 
 ## Receipt environment (VERIFY-DL-4 / D-SWIFT-ENV)
 
@@ -96,4 +91,5 @@ runtime mutation attribution belongs to U3.
 - Xcode/Tuist build/test are commandless and blocked without project identity; a valid identity
   deterministically constructs argv and retains per-key provenance.
 - Unknown config, ambiguous identity and unsafe repair prefixes fail closed with typed errors.
-- Frozen legacy gate order, overrides, `environmentState` and receipt source remain unchanged.
+- Historical `environmentState` receipts remain parseable/currentness-checked without restoring the
+  removed gate runner.

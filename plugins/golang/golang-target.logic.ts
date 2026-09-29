@@ -6,7 +6,6 @@ import path from 'node:path';
 import { provenanceOf } from '../../services/config/config-loader.ts';
 import type {
   DetectedVerifyConfigLayer,
-  LegacyVerifyConfigAdapter,
   VerifyConfigLoad,
   VerifyStepConfig,
   VerifyStepWaiver,
@@ -635,104 +634,6 @@ export function materializeGolangVerifyConfig(
         : null,
     errors,
     provenance,
-  };
-}
-
-/**
- * @purpose A lossless legacy direct argv replaces target tool readiness for that same gate.
- * @param adapter Lossless shared legacy translation.
- * @returns Translation whose direct Go argv no longer requires the replaced built-in tool.
- */
-export function materializeLegacyGolangCommands(
-  adapter: LegacyVerifyConfigAdapter
-): LegacyVerifyConfigAdapter {
-  if (adapter.config === null) return adapter;
-  const plugin = adapter.config.presets.golang;
-  if (plugin === undefined) return adapter;
-  const steps: Record<string, VerifyStepConfig> = { ...plugin.steps };
-  const provenance = new Map(adapter.provenance);
-  const diagnostics = [...adapter.diagnostics];
-  const fmt = steps['fmt'];
-  if (fmt?.command?.argv !== undefined) {
-    const targetPath = 'verify.presets.golang.steps.fmt.command.argv';
-    const migration = diagnostics.find((candidate) => candidate.targetPath === targetPath);
-    const error = new VerifyConfigError(
-      'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
-      migration?.path ?? 'stack.golang.overrideGates.fmt.argv',
-      'legacy golang fmt argv cannot be mapped losslessly to target format-fix plus read-only fmt',
-      'remove the legacy fmt argv override and configure verify.presets.golang.steps.format-fix and .fmt explicitly',
-      migration?.source ?? provenanceOf(provenance, targetPath)
-    );
-    return { ...adapter, config: null, errors: [...adapter.errors, error] };
-  }
-
-  const mirrorWaiver = (
-    observeId: 'fmt' | 'lint',
-    repairId: 'format-fix' | 'lint-fix',
-    reason: string,
-    sourceField: 'enabled' | 'command.argv'
-  ): void => {
-    steps[repairId] = {
-      ...(steps[repairId] ?? {}),
-      enabled: false,
-      reason,
-    };
-    const observePath = `verify.presets.golang.steps.${observeId}.${sourceField}`;
-    const repairPath = `verify.presets.golang.steps.${repairId}`;
-    const source = provenanceOf(provenance, observePath) ?? 'legacy:stack config';
-    provenance.set(`${repairPath}.enabled`, source);
-    provenance.set(`${repairPath}.reason`, source);
-    const migration = diagnostics.find((candidate) => candidate.targetPath === observePath);
-    if (migration !== undefined) {
-      diagnostics.push({
-        path: migration.path,
-        source: migration.source,
-        targetPath: `${repairPath}.enabled`,
-        message: `legacy ${observeId} semantics also require an explicit target waiver for ${repairId}`,
-      });
-    }
-  };
-
-  if (fmt?.enabled === false) {
-    mirrorWaiver(
-      'fmt',
-      'format-fix',
-      'legacy skipGates fmt also waives target format-fix; migrate both decisions explicitly',
-      'enabled'
-    );
-  }
-  const lint = steps['lint'];
-  if (lint?.enabled === false) {
-    mirrorWaiver(
-      'lint',
-      'lint-fix',
-      'legacy skipGates lint also waives target lint-fix; migrate both decisions explicitly',
-      'enabled'
-    );
-  } else if (lint?.command?.argv !== undefined) {
-    mirrorWaiver(
-      'lint',
-      'lint-fix',
-      'legacy lint argv overrides only the observe gate; target lint-fix is waived because no lossless repair mapping exists',
-      'command.argv'
-    );
-  }
-
-  for (const [stepId, config] of Object.entries(steps)) {
-    if (config.command?.argv !== undefined) steps[stepId] = { ...config, requires: [] };
-  }
-  return {
-    ...adapter,
-    diagnostics,
-    provenance,
-    config: {
-      presets: {
-        ...adapter.config.presets,
-        golang: {
-          steps,
-        },
-      },
-    },
   };
 }
 

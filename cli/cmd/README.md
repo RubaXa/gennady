@@ -152,8 +152,6 @@ npx gennady sdd-task CLI-example --phase P2
 # вызывает общий Verify engine и сохраняет append-only attempt evidence
 npx gennady sdd-verify --task=specs/app/app.task.CLI-example.md --phase=P2
 
-# Только явная временная compatibility-проекция legacy receipt; provenance обязателен
-npx gennady sdd-verify --task=specs/app/app.task.CLI-example.md --phase=P2 --legacy-overlay=operator-approved-migration
 ```
 
 ### 11. Визуализация покрытия тестами

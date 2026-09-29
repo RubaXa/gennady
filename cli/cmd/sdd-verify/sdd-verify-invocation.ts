@@ -27,7 +27,6 @@ export function parseSddVerifyInvocation(argv: string[]):
       readonly invocation: {
         readonly task: string;
         readonly phase: string;
-        readonly legacyOverlay?: string;
       };
     }
   | { readonly ok: false; readonly message: string } {
@@ -38,7 +37,6 @@ export function parseSddVerifyInvocation(argv: string[]):
       {
         task: { aliases: ['task'], takesValue: true },
         phase: { aliases: ['phase'], takesValue: true },
-        'legacy-overlay': { aliases: ['legacy-overlay'], takesValue: true },
       },
       { strict: true }
     );
@@ -57,7 +55,7 @@ export function parseSddVerifyInvocation(argv: string[]):
     };
   }
   const scalar = (
-    key: 'task' | 'phase' | 'legacy-overlay'
+    key: 'task' | 'phase'
   ):
     | { readonly ok: true; readonly value?: string }
     | { readonly ok: false; readonly message: string } => {
@@ -75,8 +73,6 @@ export function parseSddVerifyInvocation(argv: string[]):
   if (!task.ok) return task;
   const phase = scalar('phase');
   if (!phase.ok) return phase;
-  const legacyOverlay = scalar('legacy-overlay');
-  if (!legacyOverlay.ok) return legacyOverlay;
   if (task.value === undefined || phase.value === undefined) {
     return {
       ok: false,
@@ -90,7 +86,6 @@ export function parseSddVerifyInvocation(argv: string[]):
     invocation: {
       task: task.value,
       phase: phase.value,
-      ...(legacyOverlay.value === undefined ? {} : { legacyOverlay: legacyOverlay.value }),
     },
   };
 }

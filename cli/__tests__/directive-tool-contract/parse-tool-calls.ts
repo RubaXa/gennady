@@ -236,14 +236,11 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       return null;
     }
   ),
-  'sdd-verify': schema(
-    { '--task': 'scalar', '--phase': 'scalar', '--legacy-overlay': 'scalar' },
-    (p, f) => {
-      if (p.length !== 0 || !has(f, '--task') || !has(f, '--phase'))
-        return 'requires --task with --phase';
-      return null;
-    }
-  ),
+  'sdd-verify': schema({ '--task': 'scalar', '--phase': 'scalar' }, (p, f) => {
+    if (p.length !== 0 || !has(f, '--task') || !has(f, '--phase'))
+      return 'requires --task with --phase';
+    return null;
+  }),
   verify: schema({ '--phase': 'scalar', '--plan': 'boolean', '--json': 'boolean' }, (p, f) => {
     if (p.length !== 0) return 'accepts no positional arguments';
     if (!has(f, '--phase')) return 'requires --phase';

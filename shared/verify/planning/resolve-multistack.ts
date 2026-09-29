@@ -12,35 +12,28 @@ import {
   createGolangVerifyPreset,
   golangDetectedConfig,
   materializeGolangVerifyConfig,
-  materializeLegacyGolangCommands,
 } from '../../../plugins/golang/golang-target.logic.ts';
 import type { NodeProjectFacts } from '../../../plugins/node/node-project.logic.ts';
 import {
-  materializeLegacyNodeCommands,
   materializeNodeVerifyConfig,
   nodeDetectedConfig,
 } from '../../../plugins/node/node-target.logic.ts';
 import type { SwiftProject } from '../../../plugins/swift/swift-detect.logic.ts';
 import {
   createSwiftVerifyPreset,
-  materializeLegacySwiftCommands,
   materializeSwiftVerifyConfig,
+  materializeSwiftXcodeIdentity,
   swiftDetectedConfig,
 } from '../../../plugins/swift/swift-target.logic.ts';
-import { adaptLegacyStackConfig } from '../config/adapt-legacy-stack-config.ts';
 import { loadVerifyConfig } from '../config/load-verify-config.ts';
 import { VerifyConfigError } from '../config/verify-config.error.ts';
-import type {
-  DetectedVerifyConfigLayer,
-  LegacyVerifyConfigAdapter,
-  VerifyConfigLoad,
-} from '../config/verify-config.type.ts';
+import type { DetectedVerifyConfigLayer, VerifyConfigLoad } from '../config/verify-config.type.ts';
 import type { PluginId } from '../model/plugin-id.type.ts';
 import type { VerifyScope } from '../model/verify-context.type.ts';
 import type { MultistackVerifyPlan } from '../model/verify-multistack.type.ts';
 import type { VerifyPreset } from '../model/verify-preset.type.ts';
 import type { VerifyReadiness } from '../model/verify-readiness.type.ts';
-import { loadStackConfig } from '../stack-config.ts';
+import { loadStackConfig, targetStackPipelineIssue } from '../stack-config.ts';
 import { detectTargetStacks } from '../stack-detection.ts';
 import {
   BUILTIN_GATE_IDS,
@@ -322,19 +315,11 @@ function filterConfigLoad(
   };
 }
 
-function selectedStackConfig(
-  config: StackConfig | null,
-  plugins: ReadonlySet<PluginId>
-): StackConfig | null {
-  if (config === null) return null;
-  return Object.fromEntries(
-    Object.entries(config).filter(([key]) => key === 'use' || plugins.has(key))
-  );
-}
-
 function materializeFiles(
   loaded: VerifyConfigLoad,
-  prepared: readonly PreparedStack[]
+  prepared: readonly PreparedStack[],
+  stackConfig: StackConfig | null,
+  stackProvenance: ReadonlyMap<string, string>
 ): VerifyConfigLoad {
   let result = loaded;
   for (const stack of prepared) {
@@ -352,29 +337,11 @@ function materializeFiles(
         stack.active.detection.details as SwiftProject,
         stack.swiftTargetFiles!
       );
-    }
-  }
-  return result;
-}
-
-function materializeLegacy(
-  adapter: LegacyVerifyConfigAdapter,
-  prepared: readonly PreparedStack[],
-  stackConfig: StackConfig | null,
-  provenance: ReadonlyMap<string, string>
-): LegacyVerifyConfigAdapter {
-  let result = adapter;
-  for (const stack of prepared) {
-    if (stack.active.plugin.id === 'node') {
-      result = materializeLegacyNodeCommands(result, stack.nodeTargetFiles);
-    } else if (stack.active.plugin.id === 'golang') {
-      result = materializeLegacyGolangCommands(result);
-    } else if (stack.active.plugin.id === 'swift') {
-      result = materializeLegacySwiftCommands(
+      result = materializeSwiftXcodeIdentity(
         result,
         stack.active.detection.details as SwiftProject,
         stackConfig,
-        provenance
+        stackProvenance
       );
     }
   }
@@ -420,8 +387,20 @@ export function resolveProjectSddVerifySelector(
     gateIds,
     options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
   );
-  if (stackLoad.errors[0] !== undefined) stackConfigError(stackLoad.errors[0]);
   const selected = [...detectTargetStacks(root, stackLoad.config)];
+  const pipelineIssue = targetStackPipelineIssue(
+    stackLoad.config,
+    selected.map((entry) => entry.plugin.id)
+  );
+  if (pipelineIssue !== null) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
+      pipelineIssue.path,
+      `${pipelineIssue.sourceField} belongs to the removed stack gate pipeline`,
+      'migrate each gate explicitly to verify.presets.<plugin>.steps and each waiver to its target step'
+    );
+  }
+  if (stackLoad.errors[0] !== undefined) stackConfigError(stackLoad.errors[0]);
   const globalScope = scope.mode === 'all' || scope.files.length === 0 || rootConfigInScope(scope);
   let participating = selected.filter(
     ({ plugin, detection }) => globalScope || plugin.target?.affectsScope(detection, scope) === true
@@ -452,7 +431,10 @@ export function resolveProjectSddVerifySelector(
     options.homeDirectory
   );
   if (files.errors[0] !== undefined) throw files.errors[0];
-  files = filterConfigLoad(materializeFiles(files, prepared), selectedIds);
+  files = filterConfigLoad(
+    materializeFiles(files, prepared, stackLoad.config, stackLoad.provenance),
+    selectedIds
+  );
   if (files.errors[0] !== undefined) throw files.errors[0];
   const composed = composePresets({
     presets: prepared.map((stack) => stack.preset),
@@ -502,9 +484,20 @@ export function resolveMultistackVerifyPlan(
     gateIds,
     options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }
   );
-  if (stackLoad.errors[0] !== undefined) stackConfigError(stackLoad.errors[0]);
-
   const selected = [...detectTargetStacks(root, stackLoad.config)];
+  const pipelineIssue = targetStackPipelineIssue(
+    stackLoad.config,
+    selected.map((entry) => entry.plugin.id)
+  );
+  if (pipelineIssue !== null) {
+    throw new VerifyConfigError(
+      'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
+      pipelineIssue.path,
+      `${pipelineIssue.sourceField} belongs to the removed stack gate pipeline`,
+      'migrate each gate explicitly to verify.presets.<plugin>.steps and each waiver to its target step'
+    );
+  }
+  if (stackLoad.errors[0] !== undefined) stackConfigError(stackLoad.errors[0]);
   const globalScope = rootConfigInScope(scope);
   const initiallyAffected = selected.filter(
     ({ plugin, detection }) => globalScope || plugin.target?.affectsScope(detection, scope) === true
@@ -560,18 +553,15 @@ export function resolveMultistackVerifyPlan(
     options.homeDirectory
   );
   if (files.errors[0] !== undefined) throw files.errors[0];
-  files = filterConfigLoad(materializeFiles(files, prepared), selectedIds);
+  files = filterConfigLoad(
+    materializeFiles(files, prepared, stackLoad.config, stackLoad.provenance),
+    selectedIds
+  );
   if (files.errors[0] !== undefined) throw files.errors[0];
-
-  const scopedStackConfig = selectedStackConfig(stackLoad.config, selectedIds);
-  let legacy = adaptLegacyStackConfig(root, presets, scopedStackConfig, stackLoad.provenance);
-  legacy = materializeLegacy(legacy, prepared, scopedStackConfig, stackLoad.provenance);
-  if (legacy.errors[0] !== undefined) throw legacy.errors[0];
 
   const composed = composePresets({
     presets,
     detected: prepared.flatMap((stack) => (stack.detected === undefined ? [] : [stack.detected])),
-    legacy,
     files,
   });
   const plan = selectPhase(composed.presets, phase, [...affected]);

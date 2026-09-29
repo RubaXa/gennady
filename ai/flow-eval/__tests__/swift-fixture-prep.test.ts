@@ -9,7 +9,6 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 import { parse as parseYaml } from 'yaml';
-import { resolveAssembledFullProfile } from '../../../cli/cmd/sdd-verify/full-profile-plan.ts';
 import { resolvePhaseVerificationPlan } from '../../../shared/sdd/phase-verification-plan.ts';
 import { resolveReadinessAdapter } from '../../../shared/sdd/readiness.ts';
 import type { TicketCorpusRef } from '../../../shared/sdd/ticket-resolve.ts';
@@ -150,21 +149,17 @@ describe('E-10 immutable legacy anystack compatibility', () => {
     const root = rootWithConfig(E10_SCOPED_CONFIG);
     const loaded = loadStackConfig(root, BUILTIN_GATE_IDS);
     assert.deepEqual(loaded.errors, []);
-    const plan = resolveAssembledFullProfile(root, loaded.config);
-
     assert.equal(fs.existsSync(path.join(root, 'package.json')), false);
-    assert.equal(plan.primary, 'anystack');
+    const effective = applyStackConfig(
+      [],
+      pluginConfigOf(loaded.config, 'anystack'),
+      'anystack',
+      root,
+      loaded.provenance
+    );
     assert.deepEqual(
-      plan.gates.map((gate) => gate.name),
+      effective.map((gate) => gate.id),
       ['swiftlint', 'build', 'unit-tests']
-    );
-    assert.deepEqual(
-      plan.gates.map((gate) => gate.command),
-      ['mise exec -- swiftlint lint --strict', '', '']
-    );
-    assert.deepEqual(
-      plan.gates.map((gate) => gate.skipped),
-      [null, 'when (config)', 'when (config)']
     );
     const readiness = resolveReadinessAdapter('anystack');
     assert.ok(readiness);
@@ -246,17 +241,6 @@ describe('E-18 isolated Swift-primary preparation', () => {
     withFakeSwiftTools(() => {
       const loaded = loadStackConfig(isolated, BUILTIN_GATE_IDS);
       assert.deepEqual(loaded.errors, []);
-      const plan = resolveAssembledFullProfile(isolated, loaded.config);
-      assert.equal(plan.primary, 'swift');
-      assert.deepEqual(
-        plan.gates.filter((gate) => gate.primary).map((gate) => [gate.name, gate.required]),
-        [
-          ['format', true],
-          ['build', true],
-          ['test', true],
-          ['lint', false],
-        ]
-      );
       const resolvePhase = (target: string) => {
         const ref = phaseTicket(target);
         const phasePlan = resolvePhaseVerificationPlan({

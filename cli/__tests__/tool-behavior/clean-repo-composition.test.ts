@@ -7,7 +7,6 @@ import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
-import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { BUILTIN_RULE_SOURCES } from '../../../shared/rules/builtin-rule-sources.ts';
 import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
 import { buildRepoFixture } from './fixture.ts';
@@ -316,20 +315,10 @@ function buildCompositionFixture(): string {
 }
 
 function verifyPhase(root: string, phase: string): void {
-  const output = runOk(root, [
-    'sdd-verify',
-    '--task',
-    TICKET,
-    '--phase',
-    phase,
-    '--legacy-overlay=test:clean-repo-composition',
-  ]);
+  const output = runOk(root, ['sdd-verify', '--task', TICKET, '--phase', phase]);
   assert.match(output, new RegExp(`sdd=${TICKET.replaceAll('.', '\\.')}#${phase}`));
   assert.match(output, /VERDICT PASS/);
   assert.match(readFileSync(join(root, TICKET), 'utf8'), /<!--SDD_VERIFY_ATTEMPT:[^:]+:BEGIN-->/);
-  const receipts = parsePhaseReceipts(readFileSync(join(root, TICKET), 'utf8'));
-  assert.strictEqual(receipts.ok, true);
-  if (receipts.ok) assert.ok(receipts.receipts.some((receipt) => receipt.phase === phase));
 }
 
 function completePhase(root: string, phase: string, artifacts: string): void {
@@ -483,13 +472,6 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       );
       runOk(root, ['sdd-log', TICKET, 'close']);
 
-      const receipts = parsePhaseReceipts(readFileSync(join(root, TICKET), 'utf8'));
-      assert.strictEqual(receipts.ok, true);
-      if (receipts.ok)
-        assert.deepStrictEqual(
-          receipts.receipts.map((receipt) => receipt.phase),
-          ['P1', 'P2', 'P3']
-        );
       runOk(root, ['sdd-check', '--task', TICKET]);
       runOk(root, ['sdd-sync', TICKET, INDEX]);
       assert.match(readFileSync(join(root, INDEX), 'utf8'), /\| IB-tool \|[^\n]*\| \[x\] DONE \|/);

@@ -8,7 +8,6 @@ ai/flow-eval/__tests__/exit-code-aggregate.test.ts	AI-SKILLS	manual responsibili
 ai/flow-eval/__tests__/fixture-coverage.test.ts	AI-SKILLS	manual responsibility: AI workflow/eval/inspector support; headerless inventory row; Git history non-authoritative
 ai/flow-eval/__tests__/fixture-detmig.test.ts	AI-SKILLS	manual responsibility: AI workflow/eval/inspector support; headerless inventory row; Git history non-authoritative
 ai/flow-eval/__tests__/gap-e1-fail-fast.test.ts	AI-SKILLS	manual responsibility: AI workflow/eval/inspector support; headerless inventory row; Git history non-authoritative
-ai/flow-eval/__tests__/golang-execute-roundtrip.test.ts	AI-SKILLS	manual responsibility: AI workflow/eval/inspector support; legacy @tasks E-12; Git history non-authoritative
 ai/flow-eval/__tests__/golang-slugify-golden.test.ts	AI-SKILLS	manual responsibility: AI workflow/eval/inspector support; headerless inventory row; Git history non-authoritative
 ai/flow-eval/__tests__/harness.test.ts	AI-SKILLS	manual responsibility: AI workflow/eval/inspector support; headerless inventory row; Git history non-authoritative
 ai/flow-eval/__tests__/infra-golden.test.ts	AI-SKILLS	manual responsibility: AI workflow/eval/inspector support; headerless inventory row; Git history non-authoritative
@@ -346,22 +345,11 @@ cli/cmd/sdd-task/help.ts	CLI-SDD-TASK	canonical CLI command boundary plus siblin
 cli/cmd/sdd-task/index.ts	CLI-SDD-TASK	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/sdd-task/sdd-task.cmd.ts	CLI-SDD-TASK	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks V-05b; Git history non-authoritative
 cli/cmd/sdd-task/sdd-task.types.ts	CLI-SDD-TASK	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/__tests__/golang-runtime.test.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/__tests__/parity-node.test.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/sdd-verify/__tests__/phase-context.test.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/__tests__/phase-run.test.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/__tests__/sdd-verify.cmd.test.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/__tests__/workspace-mutation.test.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/full-profile-plan.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks V-13b; Git history non-authoritative
 cli/cmd/sdd-verify/help.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/sdd-verify/index.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/sdd-verify/phase-context.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks V-05b, V-08c; Git history non-authoritative
 cli/cmd/sdd-verify/phase-receipt-validation.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/phase-run.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/repair-adapters.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/sdd-verify.cmd.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/sdd-verify.types.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/sdd-verify/workspace-mutation.ts	CLI-SDD-VERIFY	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/sync-skills/__tests__/sync-skills-core-partial-read.test.ts	CLI-SYNC-SKILLS	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks SS-command; Git history non-authoritative
 cli/cmd/sync-skills/__tests__/sync-skills-core.test.ts	CLI-SYNC-SKILLS	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks SS-command; Git history non-authoritative
 cli/cmd/sync-skills/__tests__/sync-skills-formatter.test.ts	CLI-SYNC-SKILLS	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks SS-command; Git history non-authoritative
@@ -1111,7 +1099,6 @@ shared/sdd/__tests__/phase-receipt.test.ts	SHARED	canonical shared scope boundar
 shared/sdd/__tests__/phase-verification-plan.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/portal-check.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/portal.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
-shared/sdd/__tests__/preset-node-golden.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/probe.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/project-feasibility.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/rc-recovery-invariants.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative

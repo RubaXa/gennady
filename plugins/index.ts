@@ -1,7 +1,6 @@
 // @file: Built-in plugin registry — the one place a built-in plugin is named for the bundle.
 //   Ported verbatim from MAIN (services/stack + plugins, commit d37d5910) as part of SDD v2
-//   transfer batch 10 (V-02). UV-04 adds Node symmetrically while its legacy behavior stays owned
-//   by the frozen resolvePreset/sdd-verify compatibility path until U4 cutover.
+//   transfer batch 10 (V-02). UV-04 adds Node symmetrically to the target registry.
 // @spec: CLI-VERIFY
 // @consumers: stack-registry, gate-spec-parity test
 

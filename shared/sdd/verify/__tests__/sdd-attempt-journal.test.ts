@@ -23,7 +23,11 @@ import type {
   VerifyRunReport,
   VerifyStepResult,
 } from '../../../verify/model/verify-report.type.ts';
-import { runWithSddAttemptJournal } from '../sdd-attempt-journal.ts';
+import {
+  inspectSddPhaseAttempt,
+  runWithSddAttemptJournal,
+  validateCurrentSddPhaseAttempt,
+} from '../sdd-attempt-journal.ts';
 
 function git(root: string, ...args: string[]): string {
   return execFileSync('git', ['-C', root, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
@@ -41,7 +45,24 @@ function fixture(): {
   const ticket = join(root, 'specs', 'task.md');
   writeFileSync(
     ticket,
-    ['# Task', '<!--SECTION:EXECUTION_LOG-->', '<!--/SECTION:EXECUTION_LOG-->', ''].join('\n')
+    [
+      '# Task',
+      '<!--SECTION:PHASES_OVERVIEW-->',
+      '| ID | Kind | Deps | Status |',
+      '|---|---|---|---|',
+      '| P1 | unit | — | [ ] |',
+      '<!--/SECTION:PHASES_OVERVIEW-->',
+      '<!--SECTION:PHASE_P1-->',
+      '### P1',
+      '- **Target Files:**',
+      '  - source.ts',
+      '- **Deleted Files:**',
+      '  - none',
+      '<!--/SECTION:PHASE_P1-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '<!--/SECTION:EXECUTION_LOG-->',
+      '',
+    ].join('\n')
   );
   writeFileSync(join(root, 'source.ts'), 'export const value = 1;\n');
   git(root, 'init', '-q', '-b', 'main');
@@ -162,6 +183,125 @@ it('normalizes repeated test-step attempts to the latest plan-ordered stats reco
     assert.deepEqual(record.testStats, [
       { stepId: 'node:unit', ...result('pass', true).testStats },
     ]);
+  } finally {
+    cleanup();
+  }
+});
+
+it('proves only the latest PASS attempt while its final repository identity is current', async () => {
+  const { root, ticket, cleanup } = fixture();
+  try {
+    await runWithSddAttemptJournal({
+      root,
+      ticketPath: ticket,
+      sddPhase: 'P1',
+      run: async () => ({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        report: report(root, [result('pass', true)]),
+      }),
+    });
+    assert.deepEqual(inspectSddPhaseAttempt(readFileSync(ticket, 'utf8'), 'P1'), {
+      ok: true,
+      state: 'PASS',
+    });
+    assert.deepEqual(validateCurrentSddPhaseAttempt(root, ticket, 'P1'), { ok: true });
+
+    writeFileSync(join(root, 'source.ts'), 'export const value = 2;\n');
+    const stale = validateCurrentSddPhaseAttempt(root, ticket, 'P1');
+    assert.equal(stale.ok, false);
+    if (!stale.ok) assert.match(stale.issue, /stale after worktree changed/);
+  } finally {
+    cleanup();
+  }
+});
+
+it('does not self-stale after the CLI-owned phase completion transition', async () => {
+  const { root, ticket, cleanup } = fixture();
+  try {
+    writeFileSync(
+      ticket,
+      [
+        '# Task',
+        '<!--SECTION:META-->',
+        '- **Status:** [~] IN_PROGRESS',
+        '<!--/SECTION:META-->',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|---|---|---|---|',
+        '| P1 | impl | — | [ ] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '### Round 1 — active',
+        '#### P1',
+        '- [ ] `<ts>` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+        '<!--/SECTION:EXECUTION_LOG-->',
+        '',
+      ].join('\n')
+    );
+    await runWithSddAttemptJournal({
+      root,
+      ticketPath: ticket,
+      sddPhase: 'P1',
+      run: async () => ({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        report: report(root, [result('pass', true)]),
+      }),
+    });
+    const completed = readFileSync(ticket, 'utf8')
+      .replace('| P1 | impl | — | [ ] |', '| P1 | impl | — | [x] |')
+      .replace('- [ ] `<ts>` DONE', '- [x] `2026-01-01T00:00:00.000Z` DONE')
+      .replace(
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+        '**Handoff →** artifacts: [source.ts]; decisions: [none]; open: [none]'
+      );
+    writeFileSync(ticket, completed);
+    assert.deepEqual(validateCurrentSddPhaseAttempt(root, ticket, 'P1'), { ok: true });
+    git(root, 'add', 'specs/task.md');
+    assert.deepEqual(validateCurrentSddPhaseAttempt(root, ticket, 'P1'), { ok: true });
+
+    git(root, 'add', '.');
+    git(root, 'commit', '-m', 'complete verified phase');
+    assert.deepEqual(validateCurrentSddPhaseAttempt(root, ticket, 'P1'), { ok: true });
+
+    writeFileSync(join(root, 'source.ts'), 'export const value = 2;\n');
+    const stale = validateCurrentSddPhaseAttempt(root, ticket, 'P1');
+    assert.equal(stale.ok, false);
+    if (!stale.ok) assert.match(stale.issue, /stale after worktree changed/);
+  } finally {
+    cleanup();
+  }
+});
+
+it('keeps a verified deletion current across its exact commit and stales on reappearance', async () => {
+  const { root, ticket, cleanup } = fixture();
+  try {
+    unlinkSync(join(root, 'source.ts'));
+    await runWithSddAttemptJournal({
+      root,
+      ticketPath: ticket,
+      sddPhase: 'P1',
+      run: async () => ({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        report: report(root, [result('pass', true)]),
+      }),
+    });
+    assert.deepEqual(validateCurrentSddPhaseAttempt(root, ticket, 'P1'), { ok: true });
+
+    git(root, 'add', '-A');
+    git(root, 'commit', '-m', 'commit verified deletion and evidence');
+    assert.deepEqual(validateCurrentSddPhaseAttempt(root, ticket, 'P1'), { ok: true });
+
+    writeFileSync(join(root, 'source.ts'), 'export const value = 1;\n');
+    const stale = validateCurrentSddPhaseAttempt(root, ticket, 'P1');
+    assert.equal(stale.ok, false);
+    if (!stale.ok) assert.match(stale.issue, /stale after worktree changed/);
   } finally {
     cleanup();
   }
@@ -341,35 +481,6 @@ it('fails freshness normalization on malformed or mismatched attempt markers', a
   }
 });
 
-it('records legacy overlay only when explicitly activated with provenance', async () => {
-  const { root, ticket, cleanup } = fixture();
-  try {
-    const run = async () => ({
-      exitCode: 0,
-      stdout: '',
-      stderr: '',
-      report: report(root, [result('pass', true)]),
-    });
-    await runWithSddAttemptJournal({ root, ticketPath: ticket, sddPhase: 'P1', run });
-    await runWithSddAttemptJournal({
-      root,
-      ticketPath: ticket,
-      sddPhase: 'P1',
-      legacyOverlay: { enabled: true, provenance: 'operator:compatibility-profile' },
-      run,
-    });
-    const [plain, compatibility] = allEvidence(ticket);
-    assert.equal(plain?.legacyOverlay, undefined);
-    assert.deepEqual(compatibility?.legacyOverlay, {
-      enabled: true,
-      provenance: 'operator:compatibility-profile',
-    });
-    assert.equal(JSON.stringify(plain).includes('legacyGateCommands'), false);
-  } finally {
-    cleanup();
-  }
-});
-
 it('rechecks a remote stale owner immediately before recovery deletion', async () => {
   const { root, ticket, cleanup } = fixture();
   try {
@@ -509,26 +620,6 @@ it('rejects unsafe persisted scalars without leaking authored values', async () 
       }),
       /sddPhase contains control characters/
     );
-    await assert.rejects(
-      runWithSddAttemptJournal({
-        root,
-        ticketPath: ticket,
-        sddPhase: 'P1',
-        legacyOverlay: { enabled: true, provenance: 'token=ghp_abcdefghijklmnop' },
-        run: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
-      }),
-      /legacyOverlay\.provenance contains secret-like material/
-    );
-    await assert.rejects(
-      runWithSddAttemptJournal({
-        root,
-        ticketPath: ticket,
-        sddPhase: 'P1',
-        legacyOverlay: { enabled: true, provenance: 'x'.repeat(257) },
-        run: async () => ({ exitCode: 0, stdout: '', stderr: '' }),
-      }),
-      /legacyOverlay\.provenance exceeds 256 UTF-8 bytes/
-    );
     assert.equal(readFileSync(ticket, 'utf8'), before);
 
     const unsafeReports: VerifyRunReport[] = [];
@@ -656,6 +747,17 @@ it('persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA 
         jobs: [],
       },
     };
+    writeFileSync(join(root, 'source.ts'), 'export const value = 9;\n');
+    const mismatched = await runWithSddAttemptJournal({
+      root,
+      ticketPath: ticket,
+      sddPhase: 'P1',
+      run: async () => ({ exitCode: 0, stdout: '', stderr: '', report: remotePass }),
+    });
+    assert.equal(mismatched.exitCode, 1);
+    assert.equal(allEvidence(ticket)[2]?.state, 'VIOLATION');
+    writeFileSync(join(root, 'source.ts'), 'export const value = 1;\n');
+
     const accepted = await runWithSddAttemptJournal({
       root,
       ticketPath: ticket,
@@ -663,7 +765,7 @@ it('persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA 
       run: async () => ({ exitCode: 0, stdout: '', stderr: '', report: remotePass }),
     });
     assert.equal(accepted.exitCode, 0);
-    assert.deepEqual(allEvidence(ticket)[2]?.trust, {
+    assert.deepEqual(allEvidence(ticket)[3]?.trust, {
       level: 'remote-provider',
       source: 'gennady.yaml#verify.presets.node.phases.ci',
       resolved: true,
@@ -671,6 +773,14 @@ it('persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA 
       exactSha: head,
       pipelineId: '88',
     });
+    git(root, 'add', '.');
+    git(root, 'commit', '-m', 'persist remote evidence');
+    assert.deepEqual(validateCurrentSddPhaseAttempt(root, ticket, 'P1'), { ok: true });
+
+    writeFileSync(join(root, 'source.ts'), 'export const value = 2;\n');
+    const staleRemote = validateCurrentSddPhaseAttempt(root, ticket, 'P1');
+    assert.equal(staleRemote.ok, false);
+    if (!staleRemote.ok) assert.match(staleRemote.issue, /stale after worktree changed/);
   } finally {
     cleanup();
   }

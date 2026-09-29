@@ -44,6 +44,32 @@ function ticket(
   ].join('\n');
 }
 
+function attempt(phase: string, state: 'PASS' | 'FAIL' = 'PASS'): string {
+  const runId = `run-${phase.toLowerCase()}`;
+  const value = {
+    schema: 'gennady.sdd-verify-attempt.v1',
+    runId,
+    sddPhase: phase,
+    state,
+    reportState: 'complete',
+    identity: {
+      headSha: 'a'.repeat(40),
+      worktreeDigest: `sha256:${'b'.repeat(64)}`,
+      scopeDigest: `sha256:${'c'.repeat(64)}`,
+      planDigest: `sha256:${'d'.repeat(64)}`,
+      configDigest: `sha256:${'e'.repeat(64)}`,
+      rulesDigest: `sha256:${'f'.repeat(64)}`,
+    },
+    trust: { level: 'local-runner', source: 'fixture', resolved: true },
+  };
+  const evidence = Buffer.from(JSON.stringify(value)).toString('base64url');
+  return [
+    `<!--SDD_VERIFY_ATTEMPT:${runId}:BEGIN-->`,
+    `<!--SDD_VERIFY_EVIDENCE:${evidence}-->`,
+    `<!--SDD_VERIFY_ATTEMPT:${runId}:END-->`,
+  ].join('\n');
+}
+
 describe('checkPhaseDependencies', () => {
   it('walks the complete dependency closure leaf-first and reports a stale ancestor', () => {
     const content = ticket(
@@ -88,12 +114,46 @@ describe('checkPhaseDependencies', () => {
     assert.match(issue ?? '', /dependency P1 is not current: stale/);
   });
 
-  it('requires every dependency receipt when the schema marker is present', () => {
+  it('requires a receipt or latest PASS attempt when the schema marker is present', () => {
     const issue = checkPhaseDependencies(
       ticket(['| P1 | impl | — | [x] |', '| P2 | test | P1 | [ ] |']),
       'P2',
       () => null
     );
-    assert.match(issue ?? '', /dependency P1 has no CLI-owned receipt/);
+    assert.match(issue ?? '', /dependency P1 has no current PASS Verify attempt/);
+    assert.strictEqual(
+      checkPhaseDependencies(
+        `${ticket(['| P1 | impl | — | [x] |', '| P2 | test | P1 | [ ] |'])}\n${attempt('P1')}`,
+        'P2',
+        () => null,
+        () => null
+      ),
+      null
+    );
+    assert.match(
+      checkPhaseDependencies(
+        `${ticket(['| P1 | impl | — | [x] |', '| P2 | test | P1 | [ ] |'])}\n${attempt('P1', 'FAIL')}`,
+        'P2',
+        () => null,
+        () => 'phase P1 latest Verify attempt is FAIL, not PASS'
+      ) ?? '',
+      /latest Verify attempt is FAIL, not PASS/
+    );
+  });
+
+  it('rejects a stale canonical PASS before dependent phase dispatch', () => {
+    const content = `${ticket([
+      '| P1 | impl | — | [x] |',
+      '| P2 | test | P1 | [ ] |',
+    ])}\n${attempt('P1')}`;
+    assert.match(
+      checkPhaseDependencies(
+        content,
+        'P2',
+        () => null,
+        () => 'phase P1 PASS is stale after worktree changed'
+      ) ?? '',
+      /dependency P1 has no current PASS Verify attempt: .*stale after worktree changed/
+    );
   });
 });

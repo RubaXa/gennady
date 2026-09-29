@@ -1,5 +1,5 @@
-// @file: Target verify config overlay, provenance and migration data contracts.
-// @consumers: verify config loader, preset composer, stack migration adapter
+// @file: Target verify config overlay and provenance data contracts.
+// @consumers: verify config loader, preset composer
 // @spec: CLI-VERIFY
 
 import type { PluginId } from '../model/plugin-id.type.ts';
@@ -126,38 +126,12 @@ export type VerifyStepWaiver = {
   readonly source: string;
 };
 
-/** @purpose Preserve target path and source for one lossless legacy translation. */
-export type VerifyMigrationDiagnostic = {
-  /** @purpose Exact legacy input path. */
-  readonly path: string;
-  /** @purpose Winning legacy source. */
-  readonly source: string;
-  /** @purpose Equivalent target `verify:` path. */
-  readonly targetPath: string;
-  /** @purpose Actionable replacement instruction. */
-  readonly message: string;
-};
-
-/** @purpose Carry an all-or-nothing temporary legacy overlay. */
-export type LegacyVerifyConfigAdapter = {
-  /** @purpose Translated target config, null when any migration error exists. */
-  readonly config: VerifyConfig | null;
-  /** @purpose Target-key provenance attributed to legacy sources. */
-  readonly provenance: ReadonlyMap<string, string>;
-  /** @purpose Successful lossless translations and their replacement paths. */
-  readonly diagnostics: readonly VerifyMigrationDiagnostic[];
-  /** @purpose Fatal non-lossless migration errors. */
-  readonly errors: readonly VerifyConfigError[];
-};
-
 /** @purpose Define explicit composition inputs without exposing arbitrary layer order. */
 export type ComposeVerifyPresetsInput = {
   /** @purpose Built-in preset DAGs; their fields own the lowest provenance layer. */
   readonly presets: readonly VerifyPreset[];
   /** @purpose Detected project facts applied in stable source order before file config. */
   readonly detected?: readonly DetectedVerifyConfigLayer[];
-  /** @purpose Temporary lossless stack-config translation, applied before target verify files. */
-  readonly legacy?: LegacyVerifyConfigAdapter;
   /** @purpose Target file overlay already merged using personal-highest policy. */
   readonly files?: VerifyConfigLoad;
 };
@@ -170,8 +144,6 @@ export type ComposedVerifyPresets = {
   readonly provenance: ReadonlyMap<string, string>;
   /** @purpose Explicit disabled-step facts retained outside the executable DAG. */
   readonly waivers: readonly VerifyStepWaiver[];
-  /** @purpose Lossless legacy translations that still need operator migration. */
-  readonly migrationDiagnostics: readonly VerifyMigrationDiagnostic[];
   /** @purpose Effective per-plugin blocking policy, including explicit reason/provenance. */
   readonly policies: readonly VerifyPluginPolicy[];
   /** @purpose Composed zero-YAML defaults plus project overrides, keyed by open SDD kind. */

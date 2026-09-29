@@ -27,6 +27,7 @@ import {
 import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { setDeviationVerdict, type DeviationVerdict } from '../../../shared/sdd/deviation.ts';
+import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import {
   ambiguousIdError,
   appendToBlockerTrail,
@@ -438,7 +439,14 @@ async function runCommand(
         'complete payload must be exactly: artifacts: [...]; decisions: [...]; open: [...]; deviations: [...] with real values'
       );
     }
-    const completed = completePhase(content, phaseFlag ?? '', completionPayload, ts);
+    const currentAttempt = validateCurrentSddPhaseAttempt(root, abs, phaseFlag ?? '');
+    const completed = completePhase(
+      content,
+      phaseFlag ?? '',
+      completionPayload,
+      ts,
+      currentAttempt.ok
+    );
     if (!completed.ok) return phaseCompletionError(completed.detail);
     const written = writeProvenRepoFile(resolved.identity, completed.content);
     if (!written.ok) return fileError(displayPath);
@@ -560,7 +568,10 @@ async function runCommand(
   // place. Dynamically opened rounds may receive one new close block, but repeated/ambiguous close
   // state fails before any write, including the Meta Status rewrite prepared above.
   if (mode === 'close') {
-    const closed = closeCurrentRound(workingContent, ts);
+    const closed = closeCurrentRound(workingContent, ts, (phase) => {
+      const proof = validateCurrentSddPhaseAttempt(root, abs, phase);
+      return proof.ok ? null : proof.issue;
+    });
     if (!closed.ok) return roundCloseError(closed.detail);
     const written = writeProvenRepoFile(resolved.identity, closed.content);
     if (!written.ok) return fileError(displayPath);

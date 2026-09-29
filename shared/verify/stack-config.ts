@@ -471,6 +471,31 @@ export function pluginConfigOf(
 }
 
 /**
+ * @purpose Reject removed gate-pipeline fields before target Verify planning can ignore them.
+ * @param config Validated stack config retained for detection ordering and Swift Xcode identity.
+ * @param pluginIds Detected target plugins whose sections participate in this plan.
+ * @returns The first removed pipeline field, or null when `stack:` is detection-only.
+ */
+export function targetStackPipelineIssue(
+  config: StackConfig | null,
+  pluginIds: readonly PluginId[]
+): { readonly path: string; readonly sourceField: string } | null {
+  for (const pluginId of [...pluginIds].sort()) {
+    const section = pluginConfigOf(config, pluginId);
+    if (section?.skipGates !== undefined) {
+      return { path: `stack.${pluginId}.skipGates`, sourceField: 'skipGates' };
+    }
+    if (section?.overrideGates !== undefined) {
+      return { path: `stack.${pluginId}.overrideGates`, sourceField: 'overrideGates' };
+    }
+    if (section?.extraGates !== undefined) {
+      return { path: `stack.${pluginId}.extraGates`, sourceField: 'extraGates' };
+    }
+  }
+  return null;
+}
+
+/**
  * @purpose Compile one `when` glob to a RegExp matching a repo-relative path (V-12, #9-bonus).
  * @invariant Same shape as the lint `--exclude` matcher (`cli/cmd/lint/checks/utils/glob-match.ts`)
  *   — duplicated locally, not imported, so `shared/` never depends on `cli/`. Supports `**`

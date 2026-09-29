@@ -17,7 +17,7 @@ import {
 } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import {
   formatPhaseReceipt,
   phaseReceiptPlanState,
@@ -29,8 +29,44 @@ import {
 import { buildGroupReceipt, upsertGroupReceipt } from '../../../../shared/sdd/group-receipt.ts';
 import { resolveSddRuleSnapshot } from '../../../../shared/rules/sdd-rule-snapshot.ts';
 import { BUILTIN_RULE_SOURCES } from '../../../../shared/rules/builtin-rule-sources.ts';
+import { runWithSddAttemptJournal } from '../../../../shared/sdd/verify/sdd-attempt-journal.ts';
+import type { VerifyRunReport } from '../../../../shared/verify/model/verify-report.type.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..');
+
+function git(root: string, ...args: string[]): string {
+  return execFileSync('git', ['-C', root, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
+    encoding: 'utf8',
+  }).trim();
+}
+
+function passingAttemptReport(root: string): VerifyRunReport {
+  const rules = { digest: `sha256:${'b'.repeat(64)}`, required: [], suggested: [], skipped: [] };
+  return {
+    context: {
+      request: {
+        root: '/not-persisted',
+        phase: 'code',
+        scope: { mode: 'files', files: ['src/foo.ts'] },
+      },
+      plugins: ['node'],
+      frameworks: [],
+      headSha: git(root, 'rev-parse', 'HEAD'),
+      rules,
+    },
+    readiness: { status: 'READY', entries: [] },
+    plan: {
+      phase: 'code',
+      trust: { level: 'local-runner', source: 'fixture:selector' },
+      steps: [],
+    },
+    results: [],
+    mutations: [],
+    evidence: [],
+    rules,
+    verdict: 'pass',
+  };
+}
 
 type TaskModule = typeof import('../sdd-task.cmd.ts');
 
@@ -1363,6 +1399,50 @@ describe('SddTaskCommand', () => {
         rmSync(root, { recursive: true, force: true });
       }
     });
+
+    it('refuses dependent dispatch when the latest canonical PASS is stale after source drift', async () => {
+      const root = mkdtempSync(join(tmpdir(), 'sdd-task-stale-attempt-'));
+      try {
+        writeExecutionReadyInfra(root);
+        writeDeclaredPhaseTargets(root);
+        mkdirSync(join(root, 'specs/cli/core'), { recursive: true });
+        writeFileSync(join(root, 'specs/cli/core/core.spec.md'), '# Core\n');
+        const ticketPath = join(root, 'specs/cli/core/core.task.cli-foo.md');
+        writeFileSync(
+          ticketPath,
+          PHASED_TICKET.replace(
+            '<!--SECTION:EXECUTION_LOG-->',
+            '<!--SECTION:EXECUTION_LOG-->\n<!--PHASE_RECEIPTS:v1-->'
+          )
+        );
+        git(root, 'init', '-q', '-b', 'main');
+        git(root, 'add', '.');
+        git(root, 'commit', '-qm', 'fixture');
+        await runWithSddAttemptJournal({
+          root,
+          ticketPath,
+          sddPhase: 'P1',
+          run: async () => ({
+            exitCode: 0,
+            stdout: '',
+            stderr: '',
+            report: passingAttemptReport(root),
+          }),
+        });
+        writeFileSync(join(root, 'src/foo.ts'), 'export const foo = false;\n');
+
+        const outcome = await withTemporaryCwd(root, () =>
+          mod.run(argv('specs/cli/core/core.task.cli-foo.md', '--phase', 'P2'))
+        );
+        assert.strictEqual(outcome.ok, false);
+        if (!outcome.ok) {
+          assert.match(outcome.message, /ERR_CLI_SDD_TASK_DEPENDENCY_NOT_READY/);
+          assert.match(outcome.message, /P1 PASS is stale after worktree changed/);
+        }
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
   });
 
   it('execution map with no classified active ticket → routes back to sdd-state', async () => {
@@ -2238,7 +2318,7 @@ describe('SddTaskCommand', () => {
       }
     });
 
-    it('V-06b: anystack repo (no package.json, explicit stack.use + ≥1 extraGate) passes the gate — no ERR_CLI_SDD_TASK_INFRA_NOT_READY', async () => {
+    it('rejects removed anystack extraGates instead of dispatching the compatibility pipeline', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-anystack-'));
       writeDeclaredPhaseTargets(gateDir);
       writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
@@ -2250,7 +2330,11 @@ describe('SddTaskCommand', () => {
       // Deliberately no package.json anywhere in this root.
       try {
         const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
-        assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
+        assert.strictEqual(r.ok, false);
+        if (!r.ok) {
+          assert.match(r.message, /VERIFY_CONFIG_LEGACY_UNSUPPORTED/);
+          assert.match(r.message, /verify\.presets\.<plugin>\.steps/);
+        }
       } finally {
         rmSync(gateDir, { recursive: true, force: true });
       }

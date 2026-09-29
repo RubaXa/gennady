@@ -31,9 +31,6 @@ const result = await runSddVerifyFacade(
   {
     signal: abort.signal,
     ...(cancellationSignal === undefined ? {} : { cancellationSignal }),
-    ...(parsed.invocation.legacyOverlay === undefined
-      ? {}
-      : { legacyOverlay: { provenance: parsed.invocation.legacyOverlay } }),
   }
 );
 for (const [signal, handler] of handlers) process.off(signal, handler);

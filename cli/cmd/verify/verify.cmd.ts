@@ -4,28 +4,18 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
-import {
-  emitSddReceipt,
-  type SddReceiptCommandBinding,
-} from '../../../shared/sdd/verify/sdd-receipt-sink.ts';
-import type { SddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
 import type { RemotePipelineObserver } from '../../../shared/verify/execution/remote-watcher.ts';
 import type { VerifyScope } from '../../../shared/verify/model/verify-context.type.ts';
-import type { WriteBoundary } from '../../../shared/verify/model/verify-step.type.ts';
 import type { VerifyRuleSnapshot } from '../../../shared/verify/model/verify-context.type.ts';
-import type { CapabilityMatrix } from '../../../shared/verify/model/verify-readiness.type.ts';
 import type { VerifyRunReport } from '../../../shared/verify/model/verify-report.type.ts';
 import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/resolve-multistack.ts';
 import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
 import { renderVerifyJson } from '../../../shared/verify/reporting/json-reporter.ts';
-import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.ts';
 import { renderVerifyText } from '../../../shared/verify/reporting/text-reporter.ts';
 import type { VerifyInvocation } from './verify.types.ts';
 import { resolveRemotePipelineObserver } from './remote-provider.ts';
 
-type SddReceiptPersistence = NonNullable<Parameters<typeof emitSddReceipt>[4]>;
-type SddReceiptSinkResult = Awaited<ReturnType<typeof emitSddReceipt>>;
 /** @purpose Caller-resolved planning scope; standalone CLI never derives it from SDD state. */
 type VerifyCommandRequest = {
   readonly scope: VerifyScope;
@@ -81,36 +71,6 @@ export async function runVerifyCommand(
     readonly resolveRemoteObserver?: typeof resolveRemotePipelineObserver;
     /** @purpose Optional scope already resolved by a trusted caller such as the SDD facade. */
     readonly request?: VerifyCommandRequest;
-    readonly sdd?: {
-      readonly context: SddVerifyContext;
-      readonly bindings:
-        | readonly SddReceiptCommandBinding[]
-        | ((
-            plan: VerifyRunReport['plan'],
-            readiness: CapabilityMatrix
-          ) =>
-            | {
-                readonly ok: true;
-                readonly bindings: readonly SddReceiptCommandBinding[];
-                readonly plan?: VerifyRunReport['plan'];
-                readonly readiness?: CapabilityMatrix;
-              }
-            | {
-                readonly ok: false;
-                readonly diagnostic: {
-                  readonly id: string;
-                  readonly severity: 'error';
-                  readonly location: string;
-                  readonly message: string;
-                };
-              });
-      readonly persist?: SddReceiptPersistence;
-      /** @purpose Invalidate only explicit legacy proof in a bounded guard transaction before spawn. */
-      readonly beforeFirstAttempt?: {
-        readonly run: () => void | Promise<void>;
-        readonly writes: WriteBoundary;
-      };
-    };
   } = {}
 ): Promise<{
   /** @purpose Deterministic process exit status. */
@@ -121,26 +81,10 @@ export async function runVerifyCommand(
   readonly stderr: string;
   /** @purpose Immutable internal report when planning reached a terminal product. */
   readonly report?: VerifyRunReport;
-  /** @purpose Optional SDD sink outcome over the same report object. */
-  readonly receiptSink?: SddReceiptSinkResult;
 }> {
   try {
     const canonicalRoot = fs.realpathSync(root);
-    if (invocation.planOnly && options.sdd?.persist !== undefined) {
-      throw new Error('an SDD receipt sink cannot be enabled for read-only --plan output');
-    }
-    const receiptRequest = options.sdd?.context.request;
-    const request =
-      options.request ??
-      (receiptRequest === undefined
-        ? undefined
-        : {
-            scope: receiptRequest.scope,
-            knownDeletedFiles: receiptRequest.deletedFiles ?? [],
-            ...(receiptRequest.task === undefined || receiptRequest.sddPhase === undefined
-              ? {}
-              : { workflow: { task: receiptRequest.task, phase: receiptRequest.sddPhase } }),
-          });
+    const request = options.request;
     const planning = resolveMultistackVerifyPlan(canonicalRoot, invocation.phase, {
       scope: request?.scope ?? { mode: 'all', files: [] },
       ...(request?.knownDeletedFiles === undefined
@@ -149,27 +93,7 @@ export async function runVerifyCommand(
       ...(options.homeDirectory === undefined ? {} : { homeDirectory: options.homeDirectory }),
     });
     const plannedHeadSha = headSha(canonicalRoot);
-    const configuredBindings = options.sdd?.bindings;
-    let receiptBindings: readonly SddReceiptCommandBinding[] | undefined;
     let executionPlanning = planning;
-    if (typeof configuredBindings === 'function') {
-      const resolvedBindings = configuredBindings(planning.plan, planning.readiness);
-      if (!resolvedBindings.ok) {
-        return {
-          exitCode: 1,
-          stdout: '',
-          stderr: `[verify] ${resolvedBindings.diagnostic.id} at ${resolvedBindings.diagnostic.location}: ${safeVerifyText(resolvedBindings.diagnostic.message, canonicalRoot)}\n`,
-        };
-      }
-      receiptBindings = resolvedBindings.bindings;
-      if (resolvedBindings.plan !== undefined)
-        executionPlanning = { ...planning, plan: resolvedBindings.plan };
-      if (resolvedBindings.readiness !== undefined) {
-        executionPlanning = { ...executionPlanning, readiness: resolvedBindings.readiness };
-      }
-    } else {
-      receiptBindings = configuredBindings;
-    }
     const remoteRequired = executionPlanning.plan.trust.level === 'remote-provider';
     const remoteResolution = remoteRequired
       ? options.remoteObserver === undefined
@@ -231,9 +155,6 @@ export async function runVerifyCommand(
                   },
                 }
               : {}),
-            ...(options.sdd?.beforeFirstAttempt === undefined
-              ? {}
-              : { beforeFirstAttempt: options.sdd.beforeFirstAttempt }),
           }
         );
     const report = buildVerifyRunReport({
@@ -253,32 +174,16 @@ export async function runVerifyCommand(
             },
           }),
     });
-    const receiptSink =
-      options.sdd === undefined
-        ? undefined
-        : await emitSddReceipt(
-            canonicalRoot,
-            report,
-            options.sdd.context,
-            receiptBindings ?? [],
-            options.sdd.persist
-          );
     const stdout =
       invocation.format === 'json'
         ? renderVerifyJson(report, canonicalRoot, invocation.planOnly)
         : renderVerifyText(report, canonicalRoot, invocation.planOnly);
-    const receiptFailure = receiptSink?.ok === false ? receiptSink.diagnostic : undefined;
     return {
       exitCode:
-        execution?.cancellation?.exitCode ??
-        (receiptFailure === undefined ? (invocation.planOnly ? 0 : exitCodeFor(report)) : 1),
+        execution?.cancellation?.exitCode ?? (invocation.planOnly ? 0 : exitCodeFor(report)),
       stdout: `${stdout}\n`,
-      stderr:
-        receiptFailure === undefined
-          ? ''
-          : `[verify] ${receiptFailure.id} at ${receiptFailure.location}: ${safeVerifyText(receiptFailure.message, canonicalRoot)}\n`,
+      stderr: '',
       report,
-      ...(receiptSink === undefined ? {} : { receiptSink }),
     };
   } catch (cause) {
     return { exitCode: 4, stdout: '', stderr: `${errorMessage(cause)}\n` };

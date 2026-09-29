@@ -5,7 +5,6 @@
 import { provenanceOf } from '../../services/config/config-loader.ts';
 import { VerifyConfigError } from '../../shared/verify/config/verify-config.error.ts';
 import type {
-  LegacyVerifyConfigAdapter,
   VerifyConfigLoad,
   VerifyStepConfig,
 } from '../../shared/verify/config/verify-config.type.ts';
@@ -517,59 +516,6 @@ export function materializeNodeVerifyConfig(
         : null,
     errors,
     provenance,
-  };
-}
-
-/** @purpose A legacy direct argv replaces the package-script capability, just like target argv. | @param adapter Lossless legacy translation. | @param [targetFiles] Explicit scope appended only to repair commands. | @returns Translation with Node script requirements removed for direct argv overrides. */
-export function materializeLegacyNodeCommands(
-  adapter: LegacyVerifyConfigAdapter,
-  targetFiles: readonly string[] = []
-): LegacyVerifyConfigAdapter {
-  if (adapter.config === null) return adapter;
-  const plugin = adapter.config.presets.node;
-  if (plugin === undefined) return adapter;
-  for (const [stepId, config] of Object.entries(plugin.steps)) {
-    if (
-      (stepId === 'lint-fix' || stepId === 'format-fix') &&
-      config.command?.argv !== undefined &&
-      !nodeRepairArgvIsSafePrefix(config.command.argv)
-    ) {
-      const targetPath = `verify.presets.node.steps.${stepId}.command.argv`;
-      const migration = adapter.diagnostics.find(
-        (diagnostic) => diagnostic.targetPath === targetPath
-      );
-      const error = new VerifyConfigError(
-        'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
-        migration?.path ?? targetPath,
-        `legacy node:${stepId} argv is not a target-free repair prefix`,
-        'remove operands and end the prefix in --fix, --write, or --autofix before target migration',
-        migration?.source ?? provenanceOf(adapter.provenance, targetPath)
-      );
-      return { ...adapter, config: null, errors: [...adapter.errors, error] };
-    }
-  }
-  const steps = Object.fromEntries(
-    Object.entries(plugin.steps).map(([stepId, config]) => {
-      if (config.command?.argv === undefined) return [stepId, config];
-      const repair = stepId === 'lint-fix' || stepId === 'format-fix';
-      return [
-        stepId,
-        {
-          ...config,
-          command:
-            repair && targetFiles.length > 0
-              ? { ...config.command, argv: [...config.command.argv, '--', ...targetFiles] }
-              : config.command,
-          requires: repair
-            ? [repairScopeRequirement(stepId, 'legacy-command.argv')]
-            : (config.requires ?? []),
-        },
-      ];
-    })
-  );
-  return {
-    ...adapter,
-    config: { presets: { ...adapter.config.presets, node: { steps } } },
   };
 }
 

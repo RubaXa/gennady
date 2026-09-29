@@ -1,5 +1,5 @@
-// @file: Typed fail-closed diagnostics for target verify configuration and migration.
-// @consumers: verify config loader, preset composer, legacy adapter
+// @file: Typed fail-closed diagnostics for target verify configuration.
+// @consumers: verify config loader, preset composer, target planners
 // @spec: CLI-VERIFY
 
 /** @purpose Identify one stable class of invalid verify configuration. */

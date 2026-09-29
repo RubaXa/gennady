@@ -8,9 +8,6 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>');
-  console.info(
-    '  npx gennady sdd-verify --task <ticket-path> --phase <PhaseID> --legacy-overlay=<provenance>'
-  );
   console.info('');
   console.info('Phase mode:');
   console.info(
@@ -36,20 +33,6 @@ export function printHelp(): void {
   );
   console.info('  is owned only by this facade and its atomic SDD sinks.');
   console.info('');
-  console.info('Explicit legacy overlay (deprecated; final cleanup owner UV-24):');
-  console.info(
-    '  --legacy-overlay requires a non-empty provenance string and is accepted only with task+phase.'
-  );
-  console.info(
-    '  It enables frozen legacy receipt bytes only when every configured legacy command maps exactly'
-  );
-  console.info(
-    '  once to a real passing direct-argv target step. Mapping is proven before spawn; no-overlay runs'
-  );
-  console.info('  never inherit legacy command/order semantics.');
-  console.info(
-    '  The independent compatibility runner and --profile/--only/--skip were removed in UV-14.'
-  );
   console.info('  Whole-project verification is `npx gennady verify --phase full`.');
   console.info('');
   console.info(

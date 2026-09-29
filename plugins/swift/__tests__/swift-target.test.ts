@@ -204,7 +204,6 @@ describe('Swift target StackPlugin', () => {
         });
         assert.strictEqual(result.project.kind, 'package');
         assert.strictEqual(result.readiness.status, 'READY');
-        assert.strictEqual(result.composed.migrationDiagnostics.length, 0);
       }
     );
   });
@@ -441,7 +440,7 @@ describe('Swift target StackPlugin', () => {
     );
   });
 
-  it('rejects target Xcode argv guessing but grandfathers legacy overrideGates', () => {
+  it('rejects target Xcode argv guessing and removed stack gate overrides', () => {
     withSwiftProject(
       xcodeFiles(),
       (root, home) => {
@@ -473,17 +472,15 @@ describe('Swift target StackPlugin', () => {
     withSwiftProject(
       xcodeFiles(),
       (root, home) => {
-        const result = resolve(root, home, 'unit');
-        assert.deepStrictEqual(
-          result.plan.steps.find((step) => step.id === 'swift:build')?.command?.argv,
-          ['project-tool', 'build']
+        assert.throws(
+          () => resolve(root, home, 'unit'),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
+            assert.strictEqual(error.path, 'stack.swift.overrideGates');
+            return true;
+          }
         );
-        assert.deepStrictEqual(
-          result.plan.steps.find((step) => step.id === 'swift:test')?.command?.argv,
-          ['project-tool', 'test']
-        );
-        assert.strictEqual(result.readiness.status, 'READY');
-        assert.ok(result.composed.migrationDiagnostics.length >= 2);
       },
       {
         tools: ['swiftformat', 'swiftlint'],
@@ -501,19 +498,18 @@ describe('Swift target StackPlugin', () => {
     );
   });
 
-  it('mirrors legacy format skip to repair as visible compatibility waivers', () => {
+  it('rejects removed stack gate skips before target composition', () => {
     withSwiftProject(
       packageFiles(),
       (root, home) => {
-        const result = resolve(root, home, 'code');
-        assert.strictEqual(result.readiness.status, 'DEGRADED');
-        assert.deepStrictEqual(result.composed.waivers.map((waiver) => waiver.stepId).sort(), [
-          'swift:format',
-          'swift:format-fix',
-        ]);
-        assert.strictEqual(
-          result.readiness.entries.filter((entry) => entry.status === 'WAIVED').length,
-          2
+        assert.throws(
+          () => resolve(root, home, 'code'),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_LEGACY_UNSUPPORTED');
+            assert.strictEqual(error.path, 'stack.swift.skipGates');
+            return true;
+          }
         );
       },
       {
@@ -530,7 +526,7 @@ describe('Swift target StackPlugin', () => {
       },
       {
         yaml: 'stack:\n  swift:\n    xcode:\n      workspace: App.xcworkspace\n      scheme: App\n',
-        code: 'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
+        code: 'VERIFY_CONFIG_INVALID_TYPE',
       },
       {
         yaml: JSON.stringify({

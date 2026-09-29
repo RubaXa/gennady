@@ -7,7 +7,6 @@ import path from 'node:path';
 import { provenanceOf } from '../../services/config/config-loader.ts';
 import type {
   DetectedVerifyConfigLayer,
-  LegacyVerifyConfigAdapter,
   VerifyCommandConfig,
   VerifyConfigLoad,
   VerifyStepConfig,
@@ -625,79 +624,34 @@ function xcodeCommand(
 }
 
 /**
- * @purpose Preserve legacy gate compatibility and materialize approved stack.swift.xcode identity.
- * @param adapter Shared lossless legacy translation.
+ * @purpose Materialize approved stack.swift.xcode identity into the target Verify config.
+ * @param loaded Strict target Verify config after file overlay materialization.
  * @param project Detected Swift project and tool facts.
  * @param stackConfig Validated stack config carrying optional Xcode identity.
- * @param stackProvenance Per-key legacy config provenance.
- * @returns Translation with compatibility commands and identity-derived Xcode commands.
+ * @param stackProvenance Per-key detector-config provenance.
+ * @returns Target config with identity-derived Xcode commands.
  */
-export function materializeLegacySwiftCommands(
-  adapter: LegacyVerifyConfigAdapter,
+export function materializeSwiftXcodeIdentity(
+  loaded: VerifyConfigLoad,
   project: SwiftProject,
   stackConfig: StackConfig | null,
   stackProvenance: ReadonlyMap<string, string>
-): LegacyVerifyConfigAdapter {
-  if (adapter.config === null) return adapter;
-  const plugin = adapter.config.presets.swift;
+): VerifyConfigLoad {
+  if (loaded.errors.length > 0) return loaded;
+  const config = loaded.config ?? { presets: {} };
+  const plugin = config.presets.swift;
   const stackPlugin = stackConfig?.swift as StackPluginConfig | undefined;
   const identity = stackPlugin?.xcode;
   const steps: Record<string, VerifyStepConfig> = { ...(plugin?.steps ?? {}) };
-  const provenance = new Map(adapter.provenance);
-  const diagnostics = [...adapter.diagnostics];
-
-  const format = steps['format'];
-  if (format?.command?.argv !== undefined) {
-    const migration = diagnostics.find(
-      (candidate) => candidate.targetPath === 'verify.presets.swift.steps.format.command.argv'
-    );
-    return {
-      ...adapter,
-      config: null,
-      errors: [
-        ...adapter.errors,
-        new VerifyConfigError(
-          'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
-          migration?.path ?? 'stack.swift.overrideGates.format.argv',
-          'legacy Swift format argv cannot map losslessly to target repair plus observe steps',
-          'configure verify.presets.swift.steps.format-fix and .format explicitly',
-          migration?.source ?? 'stack config'
-        ),
-      ],
-    };
-  }
-  if (format?.enabled === false) {
-    const source =
-      provenanceOf(provenance, 'verify.presets.swift.steps.format.enabled') ??
-      'legacy:stack config';
-    steps['format-fix'] = {
-      ...(steps['format-fix'] ?? {}),
-      enabled: false,
-      reason:
-        'legacy skipGates format also waives target format-fix; migrate both decisions explicitly',
-    };
-    provenance.set('verify.presets.swift.steps.format-fix.enabled', source);
-    provenance.set('verify.presets.swift.steps.format-fix.reason', source);
-    const migration = diagnostics.find(
-      (candidate) => candidate.targetPath === 'verify.presets.swift.steps.format.enabled'
-    );
-    if (migration !== undefined) {
-      diagnostics.push({
-        path: migration.path,
-        source: migration.source,
-        targetPath: 'verify.presets.swift.steps.format-fix.enabled',
-        message: 'legacy format skip also requires an explicit target format-fix waiver',
-      });
-    }
-  }
+  const provenance = new Map(loaded.provenance);
 
   if (identity !== undefined) {
     if (project.kind !== 'xcode') {
       return {
-        ...adapter,
+        ...loaded,
         config: null,
         errors: [
-          ...adapter.errors,
+          ...loaded.errors,
           new VerifyConfigError(
             'VERIFY_CONFIG_INVALID_TYPE',
             'stack.swift.xcode',
@@ -710,15 +664,15 @@ export function materializeLegacySwiftCommands(
     for (const stepId of ['build', 'test'] as const) {
       if (steps[stepId]?.command?.argv !== undefined) {
         return {
-          ...adapter,
+          ...loaded,
           config: null,
           errors: [
-            ...adapter.errors,
+            ...loaded.errors,
             new VerifyConfigError(
-              'VERIFY_CONFIG_LEGACY_UNSUPPORTED',
-              `stack.swift.overrideGates.${stepId}.argv`,
-              `both stack.swift.xcode and legacy ${stepId} argv are configured`,
-              `remove overrideGates.${stepId}; project identity owns target Xcode argv`
+              'VERIFY_CONFIG_INVALID_TYPE',
+              `verify.presets.swift.steps.${stepId}.command`,
+              `stack.swift.xcode conflicts with an authored ${stepId} command`,
+              'remove the command override; project identity owns target Xcode argv'
             ),
           ],
         };
@@ -786,12 +740,12 @@ export function materializeLegacySwiftCommands(
     }
   }
   return {
-    ...adapter,
-    diagnostics,
+    ...loaded,
     provenance,
     config: {
+      ...config,
       presets: {
-        ...adapter.config.presets,
+        ...config.presets,
         ...(Object.keys(steps).length === 0 ? {} : { swift: { steps } }),
       },
     },
