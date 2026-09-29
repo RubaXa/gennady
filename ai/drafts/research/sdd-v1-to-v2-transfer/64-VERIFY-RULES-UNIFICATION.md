@@ -257,8 +257,11 @@ credentials/runtime относятся к readiness/environment, а не к де
 
 `anystack` — пустой declarative preset для неизвестного стека. Built-in plugins покрывают Node,
 Go и Swift. Project-defined steps/phases дают расширение без исполняемого внешнего плагина.
-Загрузка стороннего npm-кода — отдельный security design gate; core снимает closed `StackId`, но не
-включает произвольный dynamic import до решения trust/version/isolation.
+UV-23 окончательно фиксирует data-only boundary: built-in plugins остаются bundled trusted code,
+а project/npm/URL executable plugin declaration и dynamic import запрещены и fail closed до import
+или spawn. Произвольная CLI-команда допустима только как полное declarative step data, после strict
+materialization в общий plan и только через общий executor (`shell:false`, readiness, timeout,
+WorkspaceGuard/write boundaries, bounded evidence). Отдельного plugin runtime нет.
 
 ### 5.5 Multistack
 
@@ -656,7 +659,7 @@ boundary.
 | U4 | SDD adapter + arbitrary selectors; затем embedded RuleRegistry, PhaseFacts, resolver и pre-dispatch RuleSnapshot; SDD-facade Evidence/Receipt; затем cutover второго runner | thin facade вызывает общий engine; snapshot frozen до agent work; ACK §12.1 реализован в UV-12E | **UV-13 ждёт reviewed UV-22C + UV-18A/B + UV-19 + UV-20S + UV-12E** |
 | U5 | exact-SHA remote watcher; перенос лучших dirty VCS частей | `phase=ci` ждёт GitLab/GitHub pipeline | только перед remote mutation/rollback |
 | U6 | remaining rules CLI/migration: `gennady rules` facade + entry migration/delete `knowledge.xml` | справочник и удаление legacy registry | только перед недетерминированным model-selector |
-| U7 | external-plugin trust/version/isolation contract и consumer fixture | граница внешнего кода доказана | перед исполнением внешнего кода |
+| U7 | data-only extension ADR и consumer fixture | external executable declarations fail closed; declarative argv исполняется только common executor | нет: operator выбрал запрет второго runtime |
 | U8 | удалить adapters/legacy; Node+Go+Swift evidence; exact E-18 | release evidence pack | **да: решение о публикации** |
 
 ### 12.1 ACK U4-ER — Evidence/Receipt
@@ -739,7 +742,7 @@ directive/CLI cutover; UV-14 по-прежнему не удаляет compatibi
 | UV-17 | U5 | `remote.executor` + `phase=ci` | UV-16, UV-11 | pushed SHA proof, jobs/logs in report |
 | UV-20 | U6 | read-only `gennady rules` facade over UV-20S snapshot | UV-20S | list/show/resolve read-only; reasons/provenance/bodies/digest match dispatch/report |
 | UV-21 | U6 | entry-by-entry embedded metadata migration and delete `knowledge.xml` | UV-18A..20 | equivalence + local override proof; zero consumer grep before deletion |
-| UV-23 | U7 | external plugin trust/version/isolation ADR | UV-01 | design decision before dynamic import |
+| UV-23 | U7 | data-only extension boundary ADR + consumer fixture | UV-01, UV-22 | path/package/URL/dynamic-import declarations fail closed до import/spawn; arbitrary declarative argv проходит общий planner/executor; report показывает qualified step + safe config provenance |
 | UV-24 | U8 | delete compatibility and stale tests | UV-14, UV-17, UV-21, UV-22 | zero legacy references, fresh directives |
 | UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24 | all acceptance scenarios reproducible |
 | UV-26 | U8 | exact cloud-ios E-18 | UV-06, UV-17 | real Xcode/Tuist execute→CI→coverage evidence |
@@ -761,6 +764,8 @@ directive/CLI cutover; UV-14 по-прежнему не удаляет compatibi
 - SDD receipt строится из общего report;
 - rules собираются динамически без центрального `knowledge.xml`, а `gennady rules` объясняет тот
   же snapshot без запуска Verify;
+- project extension boundary остаётся data-only: executable plugin path/package/URL/import
+  отвергается до import/spawn, а arbitrary declarative argv доказан через common guarded executor;
 - explicit legacy-overlay parity сохраняет A13/D-4 severity, diagnostic identity/location,
   grandfathering и marker-only semantics до удаления `sdd-verify`; no-overlay не наследует legacy
   bytes/order;
@@ -776,7 +781,7 @@ directive/CLI cutover; UV-14 по-прежнему не удаляет compatibi
 
 - не публикуем npm-пакет;
 - не включаем автоматический rollback/force-push после CI failure;
-- не загружаем произвольный внешний npm plugin;
+- не создаём runtime для project/npm/URL executable plugins и не делаем dynamic import project code;
 - не выдаём LLM semantic rule selection за детерминированную проверку;
 - не cherry-pick-им грязный `/Users/k.lebedev/Developer/gennady` целиком;
 - не сохраняем две публичные системы verify/fix;
