@@ -596,7 +596,7 @@ it('rejects unsafe persisted scalars without leaking authored values', async () 
   }
 });
 
-it('persists remote-required readiness as BLOCKED and rejects a local remote-trust PASS', async () => {
+it('persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA provider proof', async () => {
   const { root, ticket, cleanup } = fixture();
   try {
     const local = report(root, []);
@@ -638,6 +638,39 @@ it('persists remote-required readiness as BLOCKED and rejects a local remote-tru
     });
     assert.equal(outcome.exitCode, 1);
     assert.equal(allEvidence(ticket)[1]?.state, 'VIOLATION');
+
+    const head = git(root, 'rev-parse', 'HEAD');
+    const remotePass: VerifyRunReport = {
+      ...invalidPass,
+      remote: {
+        schema: 'gennady.verify-remote-proof.v1',
+        provider: 'gitlab',
+        project: 'group/repo',
+        definitionId: 'source:push',
+        sourceSha: head,
+        pipelineId: '88',
+        pipelineSha: head,
+        rawStatus: 'success',
+        terminalState: 'REMOTE_SUCCESS',
+        observedAt: '2026-09-29T10:00:00.000Z',
+        jobs: [],
+      },
+    };
+    const accepted = await runWithSddAttemptJournal({
+      root,
+      ticketPath: ticket,
+      sddPhase: 'P1',
+      run: async () => ({ exitCode: 0, stdout: '', stderr: '', report: remotePass }),
+    });
+    assert.equal(accepted.exitCode, 0);
+    assert.deepEqual(allEvidence(ticket)[2]?.trust, {
+      level: 'remote-provider',
+      source: 'gennady.yaml#verify.presets.node.phases.ci',
+      resolved: true,
+      provider: 'gitlab',
+      exactSha: head,
+      pipelineId: '88',
+    });
   } finally {
     cleanup();
   }

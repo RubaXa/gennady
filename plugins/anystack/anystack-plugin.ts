@@ -12,6 +12,7 @@ import type {
 } from 'gennady/stack';
 import { BUILTIN_SDD_KIND_SELECTORS } from '../../shared/verify/model/verify-preset.type.ts';
 import { verifyPlanPolicyReadiness } from '../../shared/verify/test-stats.ts';
+import { createRemoteCiStep, REMOTE_CI_SELECTOR } from '../../shared/verify/model/remote-step.ts';
 
 /** No built-in gates: the whole gate list is authored as `extraGates` (spec §2). */
 export const ANYSTACK_GATE_IDS: readonly string[] = [];
@@ -65,13 +66,16 @@ export const anystackPlugin: StackPlugin = {
     createPreset(): VerifyPreset {
       return {
         plugin: 'anystack',
-        steps: [],
-        phases: Object.fromEntries(
-          ['code', 'unit', 'integration', 'coverage', 'full'].map((phase) => [
-            phase,
-            { include: [] },
-          ])
-        ),
+        steps: [createRemoteCiStep('anystack')],
+        phases: {
+          ...Object.fromEntries(
+            ['code', 'unit', 'integration', 'coverage', 'full'].map((phase) => [
+              phase,
+              { include: [] },
+            ])
+          ),
+          ci: REMOTE_CI_SELECTOR,
+        },
         sddKinds: BUILTIN_SDD_KIND_SELECTORS,
         requirements: [
           {

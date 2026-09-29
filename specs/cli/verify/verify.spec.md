@@ -51,7 +51,7 @@ the provenance-bearing legacy receipt overlay remains a bounded compatibility pr
 | `VerifyRunReport`          | Terminal verdict and the complete plan/readiness/result/evidence snapshot.                                              |
 
 UV-01 materializes the model; UV-02 adds pure DAG validation/slicing; UV-03 adds strict `verify:` overlay/provenance and the temporary lossless `stack:` adapter. UV-04 adds Node's target DAG/readiness, UV-05 Go's, and UV-06 SwiftPM/Xcode/Tuist's without legacy cutover.
-UV-07 composes one scope-aware multi-provider DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds an SDD adapter over that exact report object. UV-22 adds arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance), while its standalone task-flag path is corrective work owned by the SDD facade. Embedded RuleRegistry + PhaseFacts + RuleResolver + SDD RuleSnapshot integration precede UV-12E. UV-13 cuts task/phase dispatch over, and UV-14 removes the independent runner plus project-level `sdd-verify --profile` surface. Remote verification remains U5; UV-24 owns final compatibility-adapter cleanup.
+UV-07 composes one scope-aware multi-provider DAG; UV-08 adds the workspace transaction, UV-09 the direct-argv local executor/verdict, UV-10 bounded repair/selective invalidation, and UV-11 the public target CLI plus stable text/JSON projection. UV-12 adds an SDD adapter over that exact report object. UV-22 adds arbitrary project selectors and composed SDD-kind mapping (preset zero-YAML defaults, then project overrides with provenance), while its standalone task-flag path is corrective work owned by the SDD facade. Embedded RuleRegistry + PhaseFacts + RuleResolver + SDD RuleSnapshot integration precede UV-12E. UV-13 cuts task/phase dispatch over, and UV-14 removes the independent runner plus project-level `sdd-verify --profile` surface. U5 adds the read-only exact-SHA remote watcher and built-in `ci` selector without provider mutation; UV-24 owns final compatibility-adapter cleanup.
 
 ### Target call chain
 
@@ -461,8 +461,8 @@ integration, corrective UV-22 boundary и UV-12E.
    и Verify selectors остаются open vocabulary.
 5. Trust задаётся selector-ом: ordinary local phases принимают `trust=local-runner`; final `ci`
    требует remote provider exact pushed SHA и immutable pipeline identity. Local receipt runner-owned
-   и детерминированно валидируется, но явно не cryptographic/tamper-proof. Remote implementation
-   остаётся U5.
+   и детерминированно валидируется, но явно не cryptographic/tamper-proof. U5 materializes remote
+   trust only from read-only exact-SHA provider proof carried by the same report.
 6. Legacy byte parity активируется только explicit legacy overlay с provenance; no-overlay path не
    наследует legacy command/order semantics.
 
@@ -545,7 +545,7 @@ _Полный список файлов-сущностей, перенесённ
 | `BUILTIN_SDD_KIND_SELECTORS`        | Constant     | Explicit zero-YAML SDD-kind defaults shared by built-in presets                                                           |
 | `shared/verify/planning/**`         | Service      | DAG validation/slicing and deterministic scope-aware multistack orchestration                                             |
 | `shared/verify/config/**`           | Service      | Strict target loader, provenance contracts and temporary lossless legacy adapter                                          |
-| `shared/verify/execution/**`        | Service      | Dirty-safe workspace transaction plus direct-argv local step execution and bounded evidence                               |
+| `shared/verify/execution/**`        | Service      | Dirty-safe workspace transaction plus local direct-argv and remote exact-SHA read-only execution with bounded evidence    |
 | `shared/verify/reporting/**`        | Reporter     | Immutable report composition plus safe stable text/JSON projections                                                       |
 | `cli/cmd/verify/**`                 | Facade       | Public target phase runner and strict no-spawn plan compatibility mode                                                    |
 | `plugins/node/**`                   | Plugin       | Symmetric Node detector, target DAG, package facts, selected-slice readiness and read-only planner                        |
@@ -577,6 +577,20 @@ _Полный список файлов-сущностей, перенесённ
 | `verifyTestStatsCapability`         | Service      | Readiness proof for one declared test-statistics protocol/runner pair                                                     |
 | `verifyPlanPolicyReadiness`         | Service      | Selected-slice readiness projection for step statistics and selector trust policies                                       |
 | `parseVerifyTestStats`              | Adapter      | Strict normalized counts from bounded output of the exact declared test runner                                            |
+| `VerifyRemoteProof`                 | Value Object | Exact pushed SHA, workflow definition + immutable provider run id, typed terminal state and bounded job/log identities    |
+| `RemotePipelineState`               | Value Object | Typed pending, terminal, timeout, cancellation and provider-error observation states                                      |
+| `RemotePipelineObserver`            | Port         | Read-only commit, exact-SHA pipeline, pinned run, jobs and log observation; provider mutations are absent                 |
+| `RemoteWatchResult`                 | Value Object | One typed observation outcome with optional proof and bounded redacted evidence                                           |
+| `RemoteVerifySession`               | Value Object | One run-scoped observation promise shared by every affected provider node                                                 |
+| `watchRemotePipeline`               | Service      | Pin one exact-SHA pipeline and poll only that immutable id to a typed terminal state                                      |
+| `executeRemoteStep`                 | Service      | Execute a `vcs-pipeline`/`remote-watch` node through the common Verify report without local spawn/provider mutation       |
+| `createRemoteCiStep`                | Factory      | Create the shared provider-owned read-only remote observation node                                                        |
+| `REMOTE_CI_SELECTOR`                | Constant     | Built-in `ci` selector fragment with explicit remote-provider trust                                                       |
+| `resolveRemotePipelineObserver`     | Adapter      | Resolve GitLab/GitHub origin plus existing read-only credentials without starting a pipeline                              |
+| `VcsPipelineShaQuery`               | Value Object | Provider project plus exact full source SHA                                                                               |
+| `VcsPipelineIdentityQuery`          | Value Object | Provider project plus immutable pinned pipeline/run id                                                                    |
+| `VcsPipelineSummary`                | Value Object | Required definition/id/SHA/raw-status provider response without empty metadata invention                                  |
+| `VcsGithubPipeline`                 | Adapter      | GitHub Actions read-only commit/run/job/log observation adapter                                                           |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -944,10 +958,22 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 
 ### VERIFY-DL-9 / D-69 — Remote Verify закрепляет pipeline exact SHA
 
-- **Status:** accepted; implementation deferred to U5.
-- **Decision:** `phase=ci` доказывает pushed HEAD, находит pipeline exact SHA, закрепляет immutable
-  pipeline id, ждёт terminal state и сохраняет jobs/log evidence. Автоматический rollback/force-push
-  не входит в контракт. Dirty source переносится через manifest + tests, не raw cherry-pick.
+- **Status:** implemented by UV-15..17 in U5.
+- **Decision:** `phase=ci` доказывает pushed HEAD, находит pipeline exact SHA, закрепляет provider
+  workflow/definition + immutable run id, ждёт terminal state и сохраняет jobs/log evidence. Если
+  exact SHA имеет несколько distinct definitions без explicit selection, Verify fail-closed с
+  `REMOTE_PIPELINE_AMBIGUOUS`; reruns одной definition выбираются newest deterministically, после
+  чего watcher опрашивает только pinned immutable id. Origin, который не доказывает GitHub/GitLab,
+  остаётся readiness `BLOCKED`; self-hosted GitLab требует GitLab-identifying host. Автоматический
+  rollback/force-push не входит в контракт. `REMOTE_SUCCESS` — единственный successful terminal;
+  failed/canceled/manual/skipped, timeout, provider availability/auth/rate-limit, ambiguity и SHA
+  mismatch остаются различимыми typed состояниями и никогда не превращаются в implicit pass. Общий
+  deadline/AbortSignal ограничивает каждый in-flight provider request и sleep использует remaining
+  deadline. Jobs ограничены, failure-equivalent job-log evidence имеет точный общий byte budget,
+  redaction и content digest. Один run-scoped watcher result разделяется всеми affected provider
+  `ci` nodes. SDD facade сохраняет exact provider/SHA/pipeline trust из того же report; standalone
+  Verify остаётся persistence-free. Dirty source переносится через
+  [remote source manifest](./remote-source-manifest.md) + tests, не raw cherry-pick.
 
 ### VERIFY-DL-10 / D-70 — Динамические правила имеют один resolver и read-only CLI
 

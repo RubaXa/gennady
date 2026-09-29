@@ -10,6 +10,7 @@ import {
 } from '../../../shared/sdd/verify/sdd-receipt-sink.ts';
 import type { SddVerifyContext } from '../../../shared/sdd/verify/sdd-verify-context.ts';
 import { runLocalVerifyPlan } from '../../../shared/verify/execution/repair-loop.ts';
+import type { RemotePipelineObserver } from '../../../shared/verify/execution/remote-watcher.ts';
 import type { VerifyScope } from '../../../shared/verify/model/verify-context.type.ts';
 import type { WriteBoundary } from '../../../shared/verify/model/verify-step.type.ts';
 import type { VerifyRuleSnapshot } from '../../../shared/verify/model/verify-context.type.ts';
@@ -21,6 +22,7 @@ import { renderVerifyJson } from '../../../shared/verify/reporting/json-reporter
 import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.ts';
 import { renderVerifyText } from '../../../shared/verify/reporting/text-reporter.ts';
 import type { VerifyInvocation } from './verify.types.ts';
+import { resolveRemotePipelineObserver } from './remote-provider.ts';
 
 type SddReceiptPersistence = NonNullable<Parameters<typeof emitSddReceipt>[4]>;
 type SddReceiptSinkResult = Awaited<ReturnType<typeof emitSddReceipt>>;
@@ -73,6 +75,10 @@ export async function runVerifyCommand(
     readonly homeDirectory?: string;
     /** @purpose Internal read-only pre-commit policy; never exposed as a public CLI flag. */
     readonly stagedCandidate?: boolean;
+    /** @purpose Deterministic fake/provider injection for exact-SHA remote contract tests. */
+    readonly remoteObserver?: RemotePipelineObserver;
+    /** @purpose Injectable provider discovery; defaults to origin+credential read-only resolution. */
+    readonly resolveRemoteObserver?: typeof resolveRemotePipelineObserver;
     /** @purpose Optional scope already resolved by a trusted caller such as the SDD facade. */
     readonly request?: VerifyCommandRequest;
     readonly sdd?: {
@@ -164,6 +170,48 @@ export async function runVerifyCommand(
     } else {
       receiptBindings = configuredBindings;
     }
+    const remoteRequired = executionPlanning.plan.trust.level === 'remote-provider';
+    const remoteResolution = remoteRequired
+      ? options.remoteObserver === undefined
+        ? (options.resolveRemoteObserver ?? resolveRemotePipelineObserver)(canonicalRoot)
+        : { ok: true as const, observer: options.remoteObserver }
+      : undefined;
+    if (remoteRequired) {
+      const resolvedRemote = remoteResolution!;
+      executionPlanning = {
+        ...executionPlanning,
+        readiness: {
+          ...executionPlanning.readiness,
+          entries: executionPlanning.readiness.entries.map((entry) =>
+            entry.requirementId.endsWith(':selector-trust')
+              ? resolvedRemote.ok
+                ? {
+                    ...entry,
+                    status: 'READY' as const,
+                    message: `${resolvedRemote.observer.provider} exact-SHA observer is available`,
+                    fix: undefined,
+                  }
+                : { ...entry, message: resolvedRemote.message, fix: resolvedRemote.fix }
+              : entry
+          ),
+          status:
+            resolvedRemote.ok &&
+            executionPlanning.readiness.entries.every(
+              (entry) =>
+                entry.requirementId.endsWith(':selector-trust') ||
+                entry.status !== 'BLOCKED' ||
+                entry.blocking === false
+            )
+              ? executionPlanning.readiness.entries.some(
+                  (entry) =>
+                    !entry.requirementId.endsWith(':selector-trust') && entry.status !== 'READY'
+                )
+                ? 'DEGRADED'
+                : 'READY'
+              : 'BLOCKED',
+        },
+      };
+    }
     const execution = invocation.planOnly
       ? undefined
       : await runLocalVerifyPlan(
@@ -175,6 +223,14 @@ export async function runVerifyCommand(
             cancellationSignal: options.cancellationSignal,
             signalHandlers: false,
             stagedCandidate: options.stagedCandidate,
+            ...(remoteRequired && remoteResolution?.ok
+              ? {
+                  remote: {
+                    observer: remoteResolution.observer,
+                    sourceSha: plannedHeadSha,
+                  },
+                }
+              : {}),
             ...(options.sdd?.beforeFirstAttempt === undefined
               ? {}
               : { beforeFirstAttempt: options.sdd.beforeFirstAttempt }),

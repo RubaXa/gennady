@@ -20,6 +20,7 @@ import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { BUILTIN_RULE_SOURCES } from '../../../../shared/rules/builtin-rule-sources.ts';
 import { resolveSddRuleSnapshot } from '../../../../shared/rules/sdd-rule-snapshot.ts';
+import type { RemotePipelineObserver } from '../../../../shared/verify/execution/remote-watcher.ts';
 import { adaptSddVerifyContext } from '../../../../shared/sdd/verify/sdd-verify-context.ts';
 import { bindSddReceiptCommands } from '../../../../shared/sdd/verify/sdd-receipt-sink.ts';
 import { runVerifyCommand } from '../../verify/verify.cmd.ts';
@@ -46,6 +47,42 @@ function attempts(ticket: string): readonly Record<string, unknown>[] {
   return [...ticket.matchAll(/<!--SDD_VERIFY_EVIDENCE:([A-Za-z0-9_-]+)-->/g)].map((match) =>
     JSON.parse(Buffer.from(match[1]!, 'base64url').toString('utf8'))
   );
+}
+
+function successfulRemoteObserver(): RemotePipelineObserver {
+  return {
+    provider: 'gitlab',
+    project: 'group/project',
+    pipeline: {
+      async hasCommit() {
+        return true;
+      },
+      async findPipelinesBySha(query) {
+        return [
+          {
+            id: 'pipeline-77',
+            sha: query.sha,
+            status: 'success',
+            definitionId: 'source:push',
+          },
+        ];
+      },
+      async getPipeline(query) {
+        return {
+          id: query.pipelineId,
+          sha: 'a'.repeat(40),
+          status: 'success',
+          definitionId: 'source:push',
+        };
+      },
+      async getPipelineJobs() {
+        return [];
+      },
+      async getJobLog() {
+        throw new Error('successful remote jobs have no failure log');
+      },
+    },
+  };
 }
 
 function rewriteFirstAttempt(
@@ -401,6 +438,39 @@ describe('runSddVerifyFacade RuleSnapshot integration', () => {
       assert.equal(result.exitCode, 1);
       assert.match(result.stderr, /no unique readable EXECUTION_LOG/);
       assert.equal(readFileSync(ticket, 'utf8'), before);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it('persists exact-SHA provider trust from the shared ci selector without a second runner', async () => {
+    const { root, ticket, cleanup } = fixture();
+    try {
+      writeFileSync(
+        join(root, 'gennady.yaml'),
+        ['verify:', '  sdd:', '    mapping:', '      ReleaseCandidate: ci', ''].join('\n')
+      );
+      const head = git(root, 'rev-parse', 'HEAD');
+
+      const result = await runSddVerifyFacade(root, 'specs/app/app.task.APP-rules.md', 'P1', {
+        homeDirectory: root,
+        remoteObserver: successfulRemoteObserver(),
+      });
+
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(result.report?.plan.phase, 'ci');
+      assert.equal(result.report?.remote?.sourceSha, head);
+      assert.equal(result.report?.remote?.pipelineSha, head);
+      assert.equal(result.report?.remote?.pipelineId, 'pipeline-77');
+      const [attempt] = attempts(readFileSync(ticket, 'utf8'));
+      assert.deepEqual(attempt?.trust, {
+        level: 'remote-provider',
+        source: 'builtin:remote-ci',
+        resolved: true,
+        provider: 'gitlab',
+        exactSha: head,
+        pipelineId: 'pipeline-77',
+      });
     } finally {
       cleanup();
     }

@@ -96,6 +96,7 @@ export function buildVerifyRunReport(input: {
     results: input.execution?.results ?? [],
     mutations: input.execution?.mutations ?? [],
     evidence: input.execution?.evidence ?? [],
+    ...(input.execution?.remote === undefined ? {} : { remote: input.execution.remote }),
     rules,
     verdict,
   });

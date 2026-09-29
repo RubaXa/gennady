@@ -17,6 +17,9 @@ export function printHelp(): void {
   console.info(
     '  Normal runs may apply only preset-declared bounded repair steps; there is no fix command.'
   );
+  console.info(
+    '  The built-in ci selector observes one exact pushed HEAD pipeline read-only; it never mutates provider state.'
+  );
   console.info('  Scope is the complete repository; SDD task scope belongs to gennady sdd-verify.');
   console.info('');
   console.info(

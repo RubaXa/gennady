@@ -452,7 +452,7 @@ describe('scope-aware multistack target planner', () => {
     );
   });
 
-  it('blocks remote-trust selectors before spawn until U5 provides exact provider evidence', () => {
+  it('leaves remote-trust selectors blocked until runtime supplies an exact provider observer', () => {
     withRepo(
       (root, home) => {
         const result = resolveMultistackVerifyPlan(root, 'deploy', {

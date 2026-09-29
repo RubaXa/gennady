@@ -21,6 +21,7 @@ import type {
 import { verifyPlanPolicyReadiness } from '../../shared/verify/test-stats.ts';
 import type { Requirement, VerifyStep } from '../../shared/verify/model/verify-step.type.ts';
 import type { VerifyPlan } from '../../shared/verify/model/verify-report.type.ts';
+import { createRemoteCiStep, REMOTE_CI_SELECTOR } from '../../shared/verify/model/remote-step.ts';
 import type {
   DetectedVerifyConfigLayer,
   VerifyStepWaiver,
@@ -281,6 +282,7 @@ export function createNodeVerifyPreset(detection: StackDetection): VerifyPreset 
       step(facts, 'unit', ['unit'], ['format'], 'observe'),
       step(facts, 'integration', ['integration'], ['unit'], 'observe'),
       step(facts, 'coverage', ['coverage'], ['unit'], 'observe'),
+      createRemoteCiStep('node'),
     ],
     phases: {
       code: { include: ['code'] },
@@ -288,6 +290,7 @@ export function createNodeVerifyPreset(detection: StackDetection): VerifyPreset 
       integration: { include: ['code', 'unit', 'integration'] },
       coverage: { include: ['code', 'unit', 'coverage'] },
       full: { include: ['code', 'unit', 'integration', 'coverage'] },
+      ci: REMOTE_CI_SELECTOR,
     },
     sddKinds: BUILTIN_SDD_KIND_SELECTORS,
     requirements: [
