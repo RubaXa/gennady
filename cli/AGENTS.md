@@ -40,6 +40,7 @@
 | sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Thin SDD task/phase facade over universal Verify                                    |
 | verify            | [cmd/verify/](cmd/verify/)                       | SDD-agnostic unified phase runner; `--plan` strictly read-only                      |
+| rules             | [cmd/rules/](cmd/rules/)                         | Read-only embedded rule inventory/detail and explicit-scope resolver                |
 | sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | События Execution Log + атомарное закрытие проверенной фазы                         |
 | sdd-sync          | [cmd/sdd-sync/](cmd/sdd-sync/)                   | Синхронизация статуса тикета с tasks-трекерами                                      |
 | sdd-task          | [cmd/sdd-task/](cmd/sdd-task/)                   | Карта исполнения и фазовый контекст тикета                                          |

@@ -46,6 +46,9 @@ console.info('  sdd-extract       Extract one anchored section from an SDD artif
 console.info('  sdd-new           Scaffold one SDD v2 artifact');
 console.info('  sdd-verify        Thin SDD task/phase facade over universal Verify');
 console.info('  verify            Run one unified Verify phase; text or stable JSON report');
+console.info(
+  '  rules             Read-only embedded rule inventory, detail, and scoped resolution'
+);
 console.info('  sdd-log           Append an event or atomically complete a verified ticket phase');
 console.info('  sdd-sync          Propagate ticket status into task trackers');
 console.info('  sdd-task          Show the execution map or one ticket phase context');

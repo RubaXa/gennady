@@ -226,6 +226,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/verify/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'rules':
+      await import('./cmd/rules/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'sdd-log':
       await import('./cmd/sdd-log/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -349,6 +353,10 @@ switch (command) {
 
   case 'agents-rules':
     await import('./cmd/agents-rules/index.ts');
+    break;
+
+  case 'rules':
+    await import('./cmd/rules/index.ts');
     break;
 
   case 'run':

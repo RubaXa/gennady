@@ -2483,6 +2483,7 @@ Spec hierarchy is materialized at `specs/cli/`. Module specs are at `specs/cli/<
 - [testcov](./testcov/testcov.spec.md) — Проверка покрытия тестами и адаптеры отчётов
 - [verify](./verify/verify.spec.md) — Единый target Verify engine; compatibility runtime cutover идёт волнами U1..U8
 - [rules](./rules/rules.spec.md) — Target read-only справочник `list/show/resolve` над общим RuleResolver (implementation U6)
+- [rules-cli](./rules/rules-cli.spec.md) — Thin read-only process facade and stable rules report projection
 - [yagni](./yagni/yagni.spec.md) — Проверка неиспользуемых экспортируемых сущностей
 - [agents-rules](./agents-rules/agents-rules.spec.md) — Команда `gennady agents-rules`: выводит инструкцию по orient для AI-агентов
 - [update-check](./update-check/update-check.spec.md) — Shared-модуль: неблокирующий детект обновлений через npm-реестр на старте CLI

@@ -44,8 +44,8 @@ _The command exposes one resolver snapshot without executing Verify — RUL-REQ-
 ## Module Usage Example
 
 ```text
-gennady rules list --stack node --phase code
-gennady rules show typescript
+gennady rules list --format json
+gennady rules show typescript-rules
 gennady rules resolve --phase code --files src/index.ts --format json
 ```
 
@@ -156,7 +156,7 @@ _The rules module supplies one immutable snapshot to Verify and its optional SDD
 | `RuleSnapshot`            | Value Object | Immutable selections, skips, reasons, provenance and digest            | UV-20S               |
 | `createRuleSnapshot`      | Service      | Validates resolution inputs and emits canonical versioned snapshot     | UV-20S               |
 | `resolveSddRuleSnapshot`  | Service      | Loads phase-declared embedded prompts and freezes pre-dispatch facts   | UV-20S               |
-| `rules list`              | CLI Command  | Read-only filtered inventory                                           | UV-20                |
+| `rules list`              | CLI Command  | Read-only complete deterministic inventory                             | UV-20                |
 | `rules show`              | CLI Command  | Read-only metadata and prompt-body projection                          | UV-20                |
 | `rules resolve`           | CLI Command  | Read-only explainable resolver projection                              | UV-20                |
 
@@ -225,6 +225,9 @@ observable boundaries.
   as Verify.
 - **Errors & Degradation:** never executes steps or writes snapshots/receipts.
 
+The concrete composition entities are owned by the bounded child spec
+[`rules-cli`](./rules-cli.spec.md), keeping this registry/resolver inventory closed and reviewable.
+
 </details>
 
 <!--/SECTION:ENTITY_SURFACES-->
@@ -288,10 +291,12 @@ owns read-only projection and stable JSON.
 
 ## Public Options & Policies
 
-- `list [--stack <id>] [--phase <phase>]`
+- `list [--format text|json]` (complete inventory; `--stack`/`--phase` are rejected)
 - `show <rule-id>`
 - `resolve --phase <phase> (--files <glob...> | --changed-from <ref> | --task <ticket>)`
-- `resolve --format text|json` (default: `text`)
+- `show|resolve --format text|json` (default: `text`)
+- Selection/filtering belongs only to `resolve`, which requires PhaseFacts from exactly one
+  explicit scope source. `list` never infers language/rules from a primary stack or selector name.
 - Equality policy: normalized equal inputs produce equal digest across rules/verify/report surfaces.
 - Mutation policy: always read-only; only Verify/SDD workflow owners may persist snapshot/receipt.
 
@@ -318,6 +323,9 @@ cli/cmd/rules/
 ├── rules-show.ts
 ├── rules-resolve.ts
 └── rules-report.ts
+specs/cli/rules/
+├── rules.spec.md
+└── rules-cli.spec.md
 ```
 
 The runtime files are delivered by UV-18A..20S; the complete built-in source manifest and
