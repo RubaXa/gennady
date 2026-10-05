@@ -4,6 +4,13 @@
 > Все числа ниже трассируемы до документа и секции; ссылки вида `10 §3.1` означают `10-MAIN-DELTA.md`, секция 3.1. Каталог плана: `/Users/k.lebedev/Developer/gennady/.claude/worktrees/nice-panini-8aa14e/ai/drafts/research/sdd-v1-to-v2-transfer/`.
 > Этот документ ничего не решает и ничего не меняет: он сводит уже зафиксированное в 00–61.
 
+> **Current cutover amendment (2026-10-05):** таблицы ниже сохраняют historical audit/baseline facts
+> и не являются текущей release queue. Нормативный current deliverable — `64 §12.3`: один ordinary
+> replacement-tree merge через existing draft PR #25 (`codex/sdd-v2-rc52-followup` → `main`), после
+> U8-MC ACK, UV-27 V1-eradication/cutover guard, UV-26, refreshed evidence и exact candidate ACK.
+> Publication-oriented #102/U8-RA superseded; npm publication/version 2.x запрещены и требуют
+> отдельного будущего post-cutover plan/ACK.
+
 ---
 
 ## 1. Статус

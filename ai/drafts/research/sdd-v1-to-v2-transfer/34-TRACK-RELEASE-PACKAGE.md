@@ -6,7 +6,9 @@
 
 Это чистовая версия трека RELEASE-PACKAGE после независимой перепроверки. Сырой двухчастный исходник (аналитик B5 + верификатор V-B5) сохранён без изменений в [`_raw/34-TRACK-RELEASE-PACKAGE.raw.md`](_raw/34-TRACK-RELEASE-PACKAGE.raw.md). Все 6 обязательных правок из «Правки к B5» (Часть II) применены в тексте ниже: 2 исправленных диапазона строк (`package.json` §1.4, §1.5), 1 уточнённая формулировка (`vite.config.ts` §2.1), 1 новый подраздел (`npm audit`, §3.4), 1 новая задача (REL-11), 1 факультативное усиление аргументации (§2.6). Дополнительно, по операторскому решению D-8 (2026-09-07), добавлены задачи REL-12…REL-14 из ветки `sdd-v2-inbox-transplant` — они требуют повторного вывода (re-derive) против текущего состояния RC, а не слепого cherry-pick (см. §7).
 
-> **Supersession note (2026-10-05):** этот документ сохраняет проверенные исторические факты REL о старых publish paths, но не является текущим release-authorization контрактом. Противоречащая UV-27 схема `infra-npm-publish`/publish-before-git должна быть заменена в implementation UV-27 одной shared fail-closed SSOT по `64 §12.2` и `60 U-A10`. До operator ACK U8-RA, реализации/ревью UV-27 и exact candidate ACK публикация запрещена.
+> **Historical #102 supersession note (2026-10-05):** этот документ сохраняет проверенные исторические факты REL о старых publish paths. В merged #102 он был superseded publication-oriented UV-27 contract по тогдашнему `64 §12.2`; текст сохранён как decision history и более не является current authorization.
+>
+> **Later operator decision (2026-10-05):** publication-oriented U8-RA/#102 также superseded. UV-27 теперь авторизует только replacement-tree cutover через existing PR #25 и реализует fail-closed npm lock; package publication/version 2.x требуют отдельного будущего plan/ACK после merge в `main`. Нормативный контракт — `64 §12.3` и `60 U-A10`.
 
 Где чистовой текст расходится с сырым источником — побеждает эта версия (Часть II верификатора учтена как финальная правка).
 
