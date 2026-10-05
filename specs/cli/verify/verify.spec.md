@@ -514,6 +514,16 @@ Provider selection идёт по exact phase artifacts/facts, не по primary 
   required provider остаётся visible `BLOCKED`. Одинаковый RuleSnapshot digest проходит без
   пересчёта через dispatch, Verify report и SDD sink; drift делает phase stale.
 
+### VER-REQ-21 [должен · нештатная]
+
+**Когда** release evidence заявляет U-A2/U-A6/U-A7/U-A9, **то один versioned evidence pack должен**
+закрепить один clean immutable source commit, exact deterministic command matrix, raw-log SHA-256,
+fixture Git-blob SHA-256 и обязательные observable assertions для Node, Go, Swift-local, remote,
+Rules и SDD attempt evidence. Independent checker реконструирует matrix из кода и fail closed при
+пропущенном scenario, изменённой команде, fixture/log drift или ложном success marker. Swift-local
+evidence доказывает SwiftPM и fail-closed Xcode planning, но явно не закрывает exact cloud-ios E-18:
+он остаётся `pending-UV-26`. Pack фиксирует `packagePublished=false` и не обращается к registry.
+
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:ENTITY_INVENTORY-->

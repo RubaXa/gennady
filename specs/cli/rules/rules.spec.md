@@ -114,6 +114,14 @@ registry bytes и overrides дают один immutable `RuleSnapshot` (`require
 dependencies, provenance, digest) в `rules resolve`, SDD dispatch и Verify report; drift делает
 phase evidence stale.
 
+### RUL-REQ-7 [должен]
+
+**Когда** UV-25 собирает release evidence, **то Rules scenario должен** выполнить реальные
+`list/show/resolve` CLI fixtures, resolver/snapshot determinism и entry-by-entry migration proof,
+сохранить raw log и SHA-256 всех exact fixture/source bytes из единственного clean source commit.
+Checker реконструирует command и fixture identities независимо; совпавший exit code без обязательных
+list/show/resolve, digest-parity и migration-equivalence markers не считается доказательством.
+
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
