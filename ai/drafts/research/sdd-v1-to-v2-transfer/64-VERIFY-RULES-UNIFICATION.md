@@ -35,7 +35,8 @@
 > его tarball/publication ACK semantics отменены последующим решением оператора. Current deliverable —
 > один обычный replacement-tree PR #25 (`codex/sdd-v2-rc52-followup` → `main`), не npm release.
 > UV-27 теперь означает fail-closed main-cutover authorization, V1 eradication audit и полный запрет
-> всех npm publish paths. Future npm publication требует нового отдельного design/ACK после cutover.
+> publication через supported repo-owned paths при недоступных registry credentials/OTP/authority.
+> Future npm publication требует нового отдельного design/ACK после cutover.
 
 ## 1. Решённая цель
 
@@ -810,9 +811,10 @@ UV-27 — umbrella с двумя обязательными implementation works
 2. **UV-27B — cutover guard + npm publication lock.** Одна shared fail-closed cutover SSOT связывает
    approved release branch/upstream/HEAD, current `main` base SHA, resulting Git tree SHA,
    deterministic diff/deletion manifest digest, UV-25/UV-26 evidence digests, clean branch/upstream
-   state и exact non-reusable operator ACK. Та же implementation оставляет direct `npm publish`
-   (`prepublishOnly`), `publish-next`, `publish-draft`, `release-it` и `--ignore-scripts` threat
-   fail-closed; registry credentials/OTP/protected publishing authority недоступны.
+   state и exact non-reusable operator ACK. Supported repo-owned direct `npm publish` path через
+   `prepublishOnly`, `publish-next`, `publish-draft` и `release-it` fail closed. Repo hook технически
+   не может перехватить произвольный external `npm publish --ignore-scripts` с пользовательским
+   token; current guarantee — registry credentials/OTP/protected publishing authority отсутствуют.
 
 Main base SHA обязан стать предком reviewed candidate **до merge**. Так как PR #25 сейчас
 CONFLICTING/DIRTY, history reconciliation выполняется обычным history-preserving Git operation в
@@ -825,7 +827,7 @@ Strict current order:
 
 1. operator ACK этого U8-MC plan;
 2. implementation/review UV-27A + UV-27B в release-ветке, без npm side effect;
-3. UV-26 exact cloud-ios E-18, если он остаётся блокирующим по текущему acceptance;
+3. UV-26 exact cloud-ios E-18 как безусловный бар A3/E-18 перед candidate/ACK;
 4. refresh UV-25/evidence после любого relevant product/config/rules/cutover-gate drift;
 5. materialize exact cutover candidate and update existing PR #25 diff/body;
 6. independent reviewer review exact candidate;
@@ -839,8 +841,10 @@ Npm publication не является шагом этой очереди. Нет
 
 Negative acceptance должна fail closed до merge при wrong/stale main base, release HEAD, Git tree,
 diff/deletion manifest, V1 inventory, UV-25/UV-26 evidence, branch/upstream state или operator ACK;
-при любой V1 residue; при случайном удалении canonical v2; при попытке direct/npm-script/release-it
-publication, включая `npm publish --ignore-scripts`, либо наличии registry credentials/OTP.
+при любой V1 residue; при случайном удалении canonical v2; если любой supported repo-owned
+direct/npm-script/release-it path способен дойти до publication side effect; либо если процессу
+доступны registry credentials/OTP/protected authority. Test не утверждает, что repo может остановить
+произвольный внешний npm process с самостоятельно предоставленным user token и `--ignore-scripts`.
 
 ## 13. Задачи новой очереди
 
@@ -878,7 +882,7 @@ publication, включая `npm publish --ignore-scripts`, либо налич�
 | UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24 | **DONE #101:** all acceptance scenarios reproducible; package not published; exact E-18 remains pending |
 | U8-RA | U8 | **SUPERSEDED by U8-MC:** historical #102 publication proposal (§12.2) | UV-25 | retained as decision history; no current ACK or executable publication semantics |
 | U8-MC | U8 | **PENDING operator ACK:** main replacement-tree cutover contract (§12.3) | UV-25 | operator explicitly accepts PR #25-only cutover, identity binding, V1 eradication and npm prohibition; plan merge alone is not cutover ACK |
-| UV-27 | U8 | umbrella: UV-27A V1 eradication inventory/removal + UV-27B fail-closed cutover guard/npm lock; no merge/publish | U8-MC ACK, UV-25 | complete v1 inventory/denylist+v2 allowlist; exact main-base/release-head/tree/diff/evidence binding; all npm paths and credentials fail closed |
+| UV-27 | U8 | umbrella: UV-27A V1 eradication inventory/removal + UV-27B fail-closed cutover guard/npm lock; no merge/publish | U8-MC ACK, UV-25 | complete v1 inventory/denylist+v2 allowlist; exact main-base/release-head/tree/diff/evidence binding; supported npm paths fail closed and credentials/OTP/authority are absent |
 | UV-26 | U8 | exact cloud-ios E-18 | UV-06, UV-17, UV-27A/B | real Xcode/Tuist execute→CI→coverage evidence; refresh UV-25 on relevant drift before candidate review |
 
 ## 14. Main-cutover acceptance
@@ -909,7 +913,8 @@ PR #25 не выходит из draft/review и не merge-ится, пока о
 - independent `sdd-verify` runner и compatibility adapters удалены;
 - dirty VCS source перенесён через manifest + tests, а не потерян;
 - UV-27A inventory удалил все v1-only surfaces и доказал отсутствие residue без удаления canonical
-  v2; UV-27B связал exact main base/release head/tree/diff/evidence и блокирует все npm paths;
+  v2; UV-27B связал exact main base/release head/tree/diff/evidence, блокирует supported repo-owned
+  npm paths и доказывает отсутствие credentials/OTP/protected authority;
 - exact Swift E-18 завершён в реальном release environment;
 - после последнего relevant product/config/rules/gate drift новый evidence pack снят с одного clean
   commit; checker разрешает после `sourceCommit` только exact evidence-pack allowlist;

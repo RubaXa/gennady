@@ -473,8 +473,9 @@ base SHA, Git tree, diff/deletion manifest, evidence digests и branch/upstream 
 base обязан быть ancestor candidate. Conflict resolution не может молча импортировать v1 tree и
 требует полного re-review. После exact operator ACK выполняются ordinary merge #25 и post-merge main
 verification. Direct npm publish/`prepublishOnly`, `publish-next`, `publish-draft`, `release-it` и
-`--ignore-scripts` остаются fail-closed, credentials/OTP недоступны. Package publication и version
-2.x требуют отдельного будущего post-cutover plan/ACK.
+их supported repo-owned invocation остаются fail-closed; credentials/OTP/protected authority
+недоступны. Repo hook не обещает перехват произвольного external `npm publish --ignore-scripts` с
+user token. Package publication и version 2.x требуют отдельного будущего post-cutover plan/ACK.
 
 **U0 ACK:** принят оператором 2026-09-24 после закрытия трёх review-флагов коммитом `69e63269`;
 разрешён старт U1 с UV-01.

@@ -41,7 +41,7 @@ A4 issues akkrat                    B4 RULES · B5 RELEASE · B6 DIRECTIVES/SKIL
 | 31 | `31-TRACK-CHECK-LOG.md` | журнал/receipts/Task-ID; B2-01..18 | ВЕРИФИЦИРОВАНО; решения D-20, D-21, L-1..L-3 |
 | 32 | `32-TRACK-SYNC-OWNERSHIP.md` | sync/sync-skills/владение; SO-1..14 + SO-2b | ВЕРИФИЦИРОВАНО; решения D-22, L-4; **открыт D-23** (первый sync над v1-деревом — обсуждать при постановке SO-12) |
 | 33 | `33-TRACK-RULES.md` (+ `33a-RULES-EXPLAINER.md`, `33b-RULES-VARIANTS.md`) | исторический аудит слоя правил; T-1..T-14 + RULES-D1..D6 | ВЕРИФИЦИРОВАНО; открытый дизайн D-33 **закрыт 64 / D-70** |
-| 34 | `34-TRACK-RELEASE-PACKAGE.md` | исторически проверенные упаковка/публикация/тесты/версии; REL-1..15; npm publication вынесена после main cutover | ВЕРИФИЦИРОВАНО как historical evidence; #102/U8-RA publication semantics superseded by `64 §12.3`; all npm paths locked |
+| 34 | `34-TRACK-RELEASE-PACKAGE.md` | исторически проверенные упаковка/публикация/тесты/версии; REL-1..15; npm publication вынесена после main cutover | ВЕРИФИЦИРОВАНО как historical evidence; #102/U8-RA publication semantics superseded by `64 §12.3`; supported npm paths locked, credentials unavailable |
 | 40 | `40-TRACK-DIRECTIVES-SKILLS.md` | инварианты v1→аксиомы v2, скиллы→роутер, сборка; T-B6-01..27 | ВЕРИФИЦИРОВАНО; D-27, L-9..L-12; **открыт D-26** (параллель задач) |
 | 50 | `50-TRACK-EVAL.md` | зрелость flow-eval, минимальные эвалы G1–G4; E-00..E-16 | ВЕРИФИЦИРОВАНО; D-28, D-29, L-13..L-15 |
 | 60 | `60-ACCEPTANCE.md` | критерии приёмки **A1–A24** и post-migration **U-A1..U-A10**; U-A10 — exact main-cutover authorization/V1 eradication/npm prohibition | ВЕРИФИЦИРОВАНО по историческому треку; **U8-MC/UV-27 ждёт operator ACK; PR #25 merge blocked** |
