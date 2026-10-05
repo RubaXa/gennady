@@ -1,31 +1,31 @@
 $ node --import tsx --test shared/verify/execution/__tests__/remote-watcher.test.ts services/vcs-client/__tests__/pipeline-observation.test.ts
 
 --- stdout ---
-(node:1228) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:70127) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ read-only pipeline observation providers
-  ✔ GitLab queries only the exact SHA then observes the pinned numeric id (1.19825ms)
-  ✔ GitHub queries head_sha and pins one workflow run id (0.294709ms)
-  ✔ collects bounded failed-job logs for a failed GitHub workflow (1.710125ms)
-  ✔ fails closed when identity fields are omitted instead of normalizing to empty strings (0.277667ms)
-✔ read-only pipeline observation providers (4.07825ms)
-(node:1229) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+  ✔ GitLab queries only the exact SHA then observes the pinned numeric id (1.136458ms)
+  ✔ GitHub queries head_sha and pins one workflow run id (0.33675ms)
+  ✔ collects bounded failed-job logs for a failed GitHub workflow (1.753375ms)
+  ✔ fails closed when identity fields are omitted instead of normalizing to empty strings (0.255333ms)
+✔ read-only pipeline observation providers (4.405625ms)
+(node:70128) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ watchRemotePipeline
-  ✔ proves pushed SHA, pins one exact pipeline id, and never returns to latest lookup (1.478416ms)
-  ✔ fails closed when the provider returns a non-exact SHA (0.180417ms)
-  ✔ maps every documented terminal conclusion without accidental unavailability (1.201875ms)
-  ✔ keeps every documented pending status non-terminal until the deadline (0.483542ms)
-  ✔ fails closed when exact SHA discovery contains distinct workflow definitions (0.160792ms)
-  ✔ pins the newest rerun of one workflow definition deterministically (0.115292ms)
-  ✔ times out deterministically both before discovery and after pinning (0.142209ms)
-  ✔ bounds an in-flight provider request by timeout and cancellation (34.672ms)
-  ✔ classifies provider failures without implicit exit-zero success (0.477292ms)
-  ✔ retains bounded redacted failed-job evidence and immutable log identity (1.582625ms)
-  ✔ bounds aggregate failed-job evidence and rejects an unbounded job projection (11.893958ms)
-  ✔ counts the truncation marker inside the exact aggregate evidence cap (0.4145ms)
-  ✔ cancels cooperatively without invoking a provider mutation (0.145417ms)
-✔ watchRemotePipeline (53.803292ms)
+  ✔ proves pushed SHA, pins one exact pipeline id, and never returns to latest lookup (1.590542ms)
+  ✔ fails closed when the provider returns a non-exact SHA (0.214166ms)
+  ✔ maps every documented terminal conclusion without accidental unavailability (0.762708ms)
+  ✔ keeps every documented pending status non-terminal until the deadline (0.95ms)
+  ✔ fails closed when exact SHA discovery contains distinct workflow definitions (0.186584ms)
+  ✔ pins the newest rerun of one workflow definition deterministically (0.134875ms)
+  ✔ times out deterministically both before discovery and after pinning (0.144791ms)
+  ✔ bounds an in-flight provider request by timeout and cancellation (31.982041ms)
+  ✔ classifies provider failures without implicit exit-zero success (0.680417ms)
+  ✔ retains bounded redacted failed-job evidence and immutable log identity (1.521542ms)
+  ✔ bounds aggregate failed-job evidence and rejects an unbounded job projection (11.478917ms)
+  ✔ counts the truncation marker inside the exact aggregate evidence cap (0.382792ms)
+  ✔ cancels cooperatively without invoking a provider mutation (0.110209ms)
+✔ watchRemotePipeline (51.049834ms)
 ℹ tests 17
 ℹ suites 2
 ℹ pass 17
@@ -33,7 +33,7 @@ $ node --import tsx --test shared/verify/execution/__tests__/remote-watcher.test
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 175.262959
+ℹ duration_ms 168.834833
 
 
 --- stderr ---

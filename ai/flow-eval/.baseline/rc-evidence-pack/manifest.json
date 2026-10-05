@@ -1,7 +1,7 @@
 {
   "schema": "gennady.rc-evidence-pack.v2",
-  "sourceCommit": "1c7322e6154d1b654445065e1b99a35e06d34117",
-  "generatedAt": "2026-10-05T08:27:04.152Z",
+  "sourceCommit": "e33758f4f1c2868045b64e23b507f3541fb76b6c",
+  "generatedAt": "2026-10-05T09:05:17.115Z",
   "cleanBefore": true,
   "cleanAfter": true,
   "environment": {
@@ -51,7 +51,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/build.log",
-      "sha256": "adfd8c89d5d64a403fa01017a8bc73ecc13b85ca88eef3247896f1b01441df6c"
+      "sha256": "7af09aaa28d4156cb5d5c0f7163e009bd54badd1efa9e500a7777a0981dacf78"
     },
     {
       "id": "test",
@@ -59,7 +59,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/test.log",
-      "sha256": "c852eb07d01a1955b8afb9d4727ba4167d6568a9fe27e724ee1f7595fcc786b2"
+      "sha256": "9d10e190990863c09095997381175e76b276455a12e6488d0c049b01176b27c3"
     },
     {
       "id": "uv25-node",
@@ -67,7 +67,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-node.log",
-      "sha256": "8eb1001ed068c527ad39b81af3d6d0a13eaa1d1063f55ea2fa36e956f522f747",
+      "sha256": "4e461d96949adc91cf708fe32e4f747b6248080d72432ef4229a08b6f13987c8",
       "scenario": {
         "area": "node",
         "acceptance": ["U-A2", "U-A9"],
@@ -102,7 +102,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-golang.log",
-      "sha256": "75726263d7792b70f988bca4ff17e696c3d6fde4514f1565a2d2b84679ca6516",
+      "sha256": "2386ccba1a8395425c2e23d517eda575db25813c88d8d39ea3b54a83868d01ea",
       "scenario": {
         "area": "golang",
         "acceptance": ["U-A2"],
@@ -133,7 +133,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-swift-local.log",
-      "sha256": "17cc14a1d84769db640522bf288bf3d695331d51e208830232473b3151b162c8",
+      "sha256": "72aa78f9d8ca8bd6cf987982bce07d5518c5446620f985eb054a9d06bd28126b",
       "scenario": {
         "area": "swift-local",
         "acceptance": ["U-A2"],
@@ -164,7 +164,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-remote.log",
-      "sha256": "f400b03ac03bf4dce04e1a6a7ffbe19b902e743e57ca69e0bbcc10c8c5eb23a5",
+      "sha256": "bcd4fc397809b9a0cef2cb2d9ddf322745c75e333483d1c0c2767ed0a912832d",
       "scenario": {
         "area": "remote",
         "acceptance": ["U-A6"],
@@ -187,12 +187,58 @@
       }
     },
     {
+      "id": "uv25-remote-live",
+      "command": "node --import tsx ai/flow-eval/scripts/release-remote-live-smoke.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-remote-live.log",
+      "sha256": "3f7720024de1088e4ed33b6b6fdda544bbef37cfb331e4bb2c1881c773af015b",
+      "scenario": {
+        "area": "remote-live",
+        "acceptance": ["U-A6"],
+        "fixtures": [
+          {
+            "path": "ai/flow-eval/scripts/release-remote-live-smoke.ts",
+            "sha256": "a24671ce73f61eeed0278ea27160f6be1d995da8240d5800d3ad7416d0cea2b6"
+          },
+          {
+            "path": "services/vcs-client/github/vcs-github-client.ts",
+            "sha256": "fdb06472582259ba4fa7a9ee32ef5066fc19076803345178a52d75d612892572"
+          },
+          {
+            "path": "services/vcs-client/github/vcs-github-pipeline.ts",
+            "sha256": "830c4fd72777f3878674a1ebe101fad77087d06be10f0fd85a42de5787b6f81a"
+          },
+          {
+            "path": "shared/verify/execution/remote-watcher.ts",
+            "sha256": "6a00a4ee34fb759dad2fcaa816aa93b9498514df7f2939edf70ddbe67979c9bb"
+          }
+        ],
+        "requiredOutput": [
+          "UV25_REMOTE_LIVE provider=github project=sindresorhus/p-map readOnly=true",
+          "UV25_REMOTE_LIVE exactSha=2c0934b8312b637f933b752c6054845c2d2d5533",
+          "UV25_REMOTE_LIVE definitionId=4634269 pipelineId=36383812626 state=REMOTE_SUCCESS jobs=5 successfulJobs=5",
+          "UV25_REMOTE_LIVE mutations=0 secretOutput=0 logBodies=0"
+        ],
+        "externalIdentity": {
+          "provider": "github",
+          "project": "sindresorhus/p-map",
+          "sourceSha": "2c0934b8312b637f933b752c6054845c2d2d5533",
+          "definitionId": "4634269",
+          "pipelineId": "36383812626",
+          "terminalState": "REMOTE_SUCCESS",
+          "jobs": 5,
+          "successfulJobs": 5
+        }
+      }
+    },
+    {
       "id": "uv25-rules",
       "command": "node --import tsx --test cli/__tests__/tool-behavior/rules.test.ts shared/rules/__tests__/rule-resolver.test.ts shared/rules/__tests__/rule-snapshot.test.ts shared/rules/__tests__/rule-migration-equivalence.test.ts",
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-rules.log",
-      "sha256": "000891a91067ac9a78826f7f8fa8d127e38737d83951cf5a3a3bbec9fbeae8d5",
+      "sha256": "dcd5e146a373ac11875a0660db04c73a926f7118cc923ac097eccacd955efc7b",
       "scenario": {
         "area": "rules",
         "acceptance": ["U-A7"],
@@ -236,7 +282,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-sdd-evidence.log",
-      "sha256": "d964c575f9821a0d3a8a7d7a5a66cad85cc6a73b95ad7825b5df8777cd30f998",
+      "sha256": "c255b6df6b5c383b75ebd82bf8af644a601c9c17d06447a03e4df0129548d3ea",
       "scenario": {
         "area": "sdd-evidence",
         "acceptance": ["U-A9"],

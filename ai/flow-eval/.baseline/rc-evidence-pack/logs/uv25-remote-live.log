@@ -1,0 +1,13 @@
+$ node --import tsx ai/flow-eval/scripts/release-remote-live-smoke.ts
+
+--- stdout ---
+UV25_REMOTE_LIVE provider=github project=sindresorhus/p-map readOnly=true
+UV25_REMOTE_LIVE exactSha=2c0934b8312b637f933b752c6054845c2d2d5533
+UV25_REMOTE_LIVE definitionId=4634269 pipelineId=36383812626 state=REMOTE_SUCCESS jobs=5 successfulJobs=5
+UV25_REMOTE_LIVE mutations=0 secretOutput=0 logBodies=0
+
+
+--- stderr ---
+(node:70137) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
