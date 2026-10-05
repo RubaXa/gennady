@@ -1,16 +1,16 @@
 {
-  "schema": "gennady.rc-evidence-pack.v1",
-  "sourceCommit": "d76a5ec5d04f4a8415908b091f178f283f20b796",
-  "generatedAt": "2026-09-23T14:42:08.228Z",
+  "schema": "gennady.rc-evidence-pack.v2",
+  "sourceCommit": "e33758f4f1c2868045b64e23b507f3541fb76b6c",
+  "generatedAt": "2026-10-05T09:05:17.115Z",
   "cleanBefore": true,
   "cleanAfter": true,
   "environment": {
     "platform": "darwin",
     "arch": "arm64",
-    "node": "v22.23.2",
-    "nodeExecutable": "/Users/k.lebedev/.local/share/mise/installs/node/22.23.2/bin/node",
-    "npm": "10.9.8",
-    "packageLockSha256": "45bb173abae13e19e22183f0481dd90494b2c8594934653cbdf620cde30566b0"
+    "node": "v26.5.0",
+    "nodeExecutable": "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+    "npm": "11.17.0",
+    "packageLockSha256": "a1eec4356574782eee3d0966aec97f0cda4d9c36ee7790dcfce52b3098bd4988"
   },
   "commands": [
     {
@@ -19,7 +19,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/type-check.log",
-      "sha256": "9c1b29c328f41f4f49d90aaf7bf2de7e3652d831c5df50a7bea69e7cb98e0f20"
+      "sha256": "d1c5a6642a3f28a9b7ff77deb39c406328ca0712d43d00f0acf9a6903830645b"
     },
     {
       "id": "format-check",
@@ -27,7 +27,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/format-check.log",
-      "sha256": "a70e3032ad7d51e4e0ff413f992a608c5530ecfba4c8957a9f70c824ded156c3"
+      "sha256": "3a6a47d8c9f9b8763b1dbcf351fc46565bdea343005305158cc9e3168820ec83"
     },
     {
       "id": "lint",
@@ -35,7 +35,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/lint.log",
-      "sha256": "05e3017dd0444ce3f9d7dffeacc1c2d721f0278d69a8c04b8f59927265aca0f1"
+      "sha256": "d3a2d488ac2ec360517a41041a575590aa3050ec91bbd4627dcd96db2862ec03"
     },
     {
       "id": "audit-sdd-templates",
@@ -43,7 +43,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/audit-sdd-templates.log",
-      "sha256": "d4c8e8f4e3bf018accfdbcec7b5781d196dee9dd38f1cb96609910767fb9822e"
+      "sha256": "2c50563ad022c708c6f32acdfc59ef1000d2cbc476392ea8df96bf3cb7ec7b95"
     },
     {
       "id": "build",
@@ -51,7 +51,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/build.log",
-      "sha256": "4e86184f034a7a53c9bcdcb72bd90d5d51cf497bcfc00d2f4f033757c4cb4fa5"
+      "sha256": "7af09aaa28d4156cb5d5c0f7163e009bd54badd1efa9e500a7777a0981dacf78"
     },
     {
       "id": "test",
@@ -59,7 +59,249 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/test.log",
-      "sha256": "f6d8a3398bf393bb522928063e6fed9ad2f8ce6ea310ff099bd5958aad859b31"
+      "sha256": "9d10e190990863c09095997381175e76b276455a12e6488d0c049b01176b27c3"
+    },
+    {
+      "id": "uv25-node",
+      "command": "node --import tsx --test plugins/node/__tests__/node-target.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-node.log",
+      "sha256": "4e461d96949adc91cf708fe32e4f747b6248080d72432ef4229a08b6f13987c8",
+      "scenario": {
+        "area": "node",
+        "acceptance": ["U-A2", "U-A9"],
+        "fixtures": [
+          {
+            "path": "plugins/node/__tests__/node-target.test.ts",
+            "sha256": "37921e7fb3ac49b7c9b57379d3e5b3eb051435de5e33abc3ed43a299f009fe4f"
+          },
+          {
+            "path": "plugins/node/__tests__/fixtures/zero-yaml/package.json",
+            "sha256": "7048b1266dd63a667a3ac054e69fe71676dd0c2a8f1e12ee925de77db2216253"
+          },
+          {
+            "path": "plugins/node/__tests__/fixtures/zero-yaml/src/a.ts",
+            "sha256": "b4797f503da2656da1817910a20b8f8135edff6bf56e947191cfcda6ccc9ac76"
+          },
+          {
+            "path": "plugins/node/__tests__/fixtures/zero-yaml/src/b.ts",
+            "sha256": "1433fd8fb9f3770064feb31617a54a9b3ff8b37bb40ecaf6cc7909a91bf9de14"
+          }
+        ],
+        "requiredOutput": [
+          "uses one zero-YAML DAG for code, unit and coverage slices",
+          "blocks only integration/full when test:integration is absent",
+          "materializes strict Vitest JSON stats only from proven package facts"
+        ]
+      }
+    },
+    {
+      "id": "uv25-golang",
+      "command": "node --import tsx --test plugins/golang/__tests__/golang-target.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-golang.log",
+      "sha256": "2386ccba1a8395425c2e23d517eda575db25813c88d8d39ea3b54a83868d01ea",
+      "scenario": {
+        "area": "golang",
+        "acceptance": ["U-A2"],
+        "fixtures": [
+          {
+            "path": "plugins/golang/__tests__/golang-target.test.ts",
+            "sha256": "3fcff09616b445f3acfa9ab3311407cfff73070bf8696944e7ca6ab0b5d31a2e"
+          },
+          {
+            "path": "plugins/golang/__tests__/fixtures/zero-yaml/go.mod",
+            "sha256": "3963ad37987c2145e5f9125a3af477256d20e00879b087c877ea83aa157eb40f"
+          },
+          {
+            "path": "plugins/golang/__tests__/fixtures/zero-yaml/main.go",
+            "sha256": "991a74fa69d93112fee377533e9e64091c9d3a690d95eb72bc283fa8b8bcd2e2"
+          }
+        ],
+        "requiredOutput": [
+          "uses one zero-YAML DAG for READY code and unit slices with direct argv",
+          "leaves project-owned integration and coverage commandless and blocks only selected slices",
+          "accepts explicit read-only integration and coverage argv without inventing tags or thresholds"
+        ]
+      }
+    },
+    {
+      "id": "uv25-swift-local",
+      "command": "node --import tsx --test plugins/swift/__tests__/swift-target.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-swift-local.log",
+      "sha256": "72aa78f9d8ca8bd6cf987982bce07d5518c5446620f985eb054a9d06bd28126b",
+      "scenario": {
+        "area": "swift-local",
+        "acceptance": ["U-A2"],
+        "fixtures": [
+          {
+            "path": "plugins/swift/__tests__/swift-target.test.ts",
+            "sha256": "101089089dec8f884efcb74de21a4c328879273cc2fbdf1ae00e07a6e5958461"
+          },
+          {
+            "path": "plugins/swift/__tests__/fixtures/zero-yaml/Package.swift",
+            "sha256": "aa080b02ba6a5b9f38fc175119b6c9593918512b95800475cdd3da85c6665601"
+          },
+          {
+            "path": "plugins/swift/__tests__/fixtures/zero-yaml/Sources/ZeroYaml/main.swift",
+            "sha256": "1ec373668d80905d343e29dfd07c6154e2b8104b9ab2418e6c7f05309a243578"
+          }
+        ],
+        "requiredOutput": [
+          "uses root SwiftPM zero-YAML defaults in one dependency-closed DAG",
+          "keeps Xcode build/test commandless and selected readiness BLOCKED without identity",
+          "accepts explicit read-only integration/coverage commands with target provenance"
+        ]
+      }
+    },
+    {
+      "id": "uv25-remote",
+      "command": "node --import tsx --test shared/verify/execution/__tests__/remote-watcher.test.ts services/vcs-client/__tests__/pipeline-observation.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-remote.log",
+      "sha256": "bcd4fc397809b9a0cef2cb2d9ddf322745c75e333483d1c0c2767ed0a912832d",
+      "scenario": {
+        "area": "remote",
+        "acceptance": ["U-A6"],
+        "fixtures": [
+          {
+            "path": "shared/verify/execution/__tests__/remote-watcher.test.ts",
+            "sha256": "23fc602bd023f4047caacb6f97bffdaa282d84107acf898931fa367f250cb5df"
+          },
+          {
+            "path": "services/vcs-client/__tests__/pipeline-observation.test.ts",
+            "sha256": "07eb5e2b5bea5a3976955b0e1ebc631ae278f30ce6f85d4b73115c26406a7adf"
+          }
+        ],
+        "requiredOutput": [
+          "proves pushed SHA, pins one exact pipeline id, and never returns to latest lookup",
+          "fails closed when exact SHA discovery contains distinct workflow definitions",
+          "GitLab queries only the exact SHA then observes the pinned numeric id",
+          "GitHub queries head_sha and pins one workflow run id"
+        ]
+      }
+    },
+    {
+      "id": "uv25-remote-live",
+      "command": "node --import tsx ai/flow-eval/scripts/release-remote-live-smoke.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-remote-live.log",
+      "sha256": "3f7720024de1088e4ed33b6b6fdda544bbef37cfb331e4bb2c1881c773af015b",
+      "scenario": {
+        "area": "remote-live",
+        "acceptance": ["U-A6"],
+        "fixtures": [
+          {
+            "path": "ai/flow-eval/scripts/release-remote-live-smoke.ts",
+            "sha256": "a24671ce73f61eeed0278ea27160f6be1d995da8240d5800d3ad7416d0cea2b6"
+          },
+          {
+            "path": "services/vcs-client/github/vcs-github-client.ts",
+            "sha256": "fdb06472582259ba4fa7a9ee32ef5066fc19076803345178a52d75d612892572"
+          },
+          {
+            "path": "services/vcs-client/github/vcs-github-pipeline.ts",
+            "sha256": "830c4fd72777f3878674a1ebe101fad77087d06be10f0fd85a42de5787b6f81a"
+          },
+          {
+            "path": "shared/verify/execution/remote-watcher.ts",
+            "sha256": "6a00a4ee34fb759dad2fcaa816aa93b9498514df7f2939edf70ddbe67979c9bb"
+          }
+        ],
+        "requiredOutput": [
+          "UV25_REMOTE_LIVE provider=github project=sindresorhus/p-map readOnly=true",
+          "UV25_REMOTE_LIVE exactSha=2c0934b8312b637f933b752c6054845c2d2d5533",
+          "UV25_REMOTE_LIVE definitionId=4634269 pipelineId=36383812626 state=REMOTE_SUCCESS jobs=5 successfulJobs=5",
+          "UV25_REMOTE_LIVE mutations=0 secretOutput=0 logBodies=0"
+        ],
+        "externalIdentity": {
+          "provider": "github",
+          "project": "sindresorhus/p-map",
+          "sourceSha": "2c0934b8312b637f933b752c6054845c2d2d5533",
+          "definitionId": "4634269",
+          "pipelineId": "36383812626",
+          "terminalState": "REMOTE_SUCCESS",
+          "jobs": 5,
+          "successfulJobs": 5
+        }
+      }
+    },
+    {
+      "id": "uv25-rules",
+      "command": "node --import tsx --test cli/__tests__/tool-behavior/rules.test.ts shared/rules/__tests__/rule-resolver.test.ts shared/rules/__tests__/rule-snapshot.test.ts shared/rules/__tests__/rule-migration-equivalence.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-rules.log",
+      "sha256": "dcd5e146a373ac11875a0660db04c73a926f7118cc923ac097eccacd955efc7b",
+      "scenario": {
+        "area": "rules",
+        "acceptance": ["U-A7"],
+        "fixtures": [
+          {
+            "path": "cli/__tests__/tool-behavior/rules.test.ts",
+            "sha256": "b3c5a7bb59483745d7372bf20fe7176d42ae7d64c8681773812843a26f3e5e86"
+          },
+          {
+            "path": "shared/rules/__tests__/rule-resolver.test.ts",
+            "sha256": "14df409ced0d98a0c02454200342fa52e43c8662304d67833a9828a060266f35"
+          },
+          {
+            "path": "shared/rules/__tests__/rule-snapshot.test.ts",
+            "sha256": "a0dbd80c893b80c607e00ea7a139baaabe4899ff8fe763867352f3f785114fa3"
+          },
+          {
+            "path": "shared/rules/__tests__/rule-migration-equivalence.test.ts",
+            "sha256": "cb65fe23e321355df7c7a96adb9eabbf80fca9f9e7533eb04a70158faaeb7c4e"
+          },
+          {
+            "path": "shared/rules/__tests__/fixtures/rule-migration-equivalence.json",
+            "sha256": "7e9fe460fa38d23180d7b1b77e4002960085ac0fab49f8b7991de9641f263cdd"
+          },
+          {
+            "path": "ai/directives/coding/typescript-rules.xml",
+            "sha256": "716f928d79253a9b9da2a8f531c9123bee7a586f7d156aceb4792b30cb548767"
+          }
+        ],
+        "requiredOutput": [
+          "lists the complete deterministic inventory and rejects stale stack/phase filters",
+          "resolves exact/glob files with the same real snapshot digest as SDD dispatch and Verify",
+          "evaluates When clauses as OR, attributes as same-artifact AND, and comma values as OR",
+          "preserves every old entry body, predicate intent, dependency and source exactly once"
+        ]
+      }
+    },
+    {
+      "id": "uv25-sdd-evidence",
+      "command": "node --import tsx --test shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-sdd-evidence.log",
+      "sha256": "c255b6df6b5c383b75ebd82bf8af644a601c9c17d06447a03e4df0129548d3ea",
+      "scenario": {
+        "area": "sdd-evidence",
+        "acceptance": ["U-A9"],
+        "fixtures": [
+          {
+            "path": "shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts",
+            "sha256": "038af1b7e647a8b9bd473eebcfc3927f44d8986b869b5ee974e7cc4df9689c4b"
+          },
+          {
+            "path": "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+            "sha256": "9ec88101b892918a5eac85c7f52940d4922101c2a8ea61d0564cf8d547404523"
+          }
+        ],
+        "requiredOutput": [
+          "retains failed attempts after retry and blocks a live concurrent owner",
+          "recovers only an ownerless RUNNING attempt as INTERRUPTED before appending the next run",
+          "persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA provider proof"
+        ]
+      }
     },
     {
       "id": "migration-1-agent-inbox",
@@ -271,5 +513,9 @@
     ],
     "rounds": 2,
     "allNoOp": true
+  },
+  "limitations": {
+    "exactCloudIosE18": "pending-UV-26",
+    "packagePublished": false
   }
 }

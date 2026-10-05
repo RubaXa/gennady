@@ -9,16 +9,19 @@ import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join, resolve } from 'node:path';
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { format as formatWithPrettier } from 'prettier';
 import {
   migrationScopeIdentityFinding,
   releaseEvidenceCommandPlan,
@@ -65,6 +68,36 @@ function sha256File(path: string): string {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+function scenarioEvidence(
+  root: string,
+  spec: ReleaseEvidenceCommand
+): ReleaseEvidenceResult['scenario'] {
+  if (spec.scenario === undefined) return undefined;
+  return {
+    area: spec.scenario.area,
+    acceptance: [...spec.scenario.acceptance],
+    fixtures: spec.scenario.fixturePaths.map((path) => {
+      const file = resolve(root, path);
+      const contained = relative(realpathSync(root), realpathSync(file));
+      if (
+        contained.length === 0 ||
+        contained === '..' ||
+        contained.startsWith(`..${sep}`) ||
+        isAbsolute(contained) ||
+        lstatSync(file).isSymbolicLink() ||
+        !lstatSync(file).isFile()
+      ) {
+        throw new Error(`${spec.id}: fixture не является contained regular file: ${path}`);
+      }
+      return { path, sha256: sha256File(file) };
+    }),
+    requiredOutput: [...spec.scenario.requiredOutput],
+    ...(spec.scenario.externalIdentity === undefined
+      ? {}
+      : { externalIdentity: { ...spec.scenario.externalIdentity } }),
+  };
+}
+
 function discoverMigrationScopes(root: string): string[] {
   const migrationRoot = join(root, 'migration');
   return readdirSync(migrationRoot)
@@ -91,15 +124,15 @@ function writeCommandLog(
   writeFileSync(logPath, text, 'utf8');
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const root = PROJECT_ROOT;
   if (process.argv.length > 2) {
     console.error('[release-evidence-pack] usage: npm run release:evidence-pack');
     process.exit(4);
   }
   const out = resolve(root, DEFAULT_OUT);
-  if (existsSync(out)) {
-    console.error(`[release-evidence-pack] отказ: output уже существует: ${out}`);
+  if (existsSync(out) && !statSync(out).isDirectory()) {
+    console.error(`[release-evidence-pack] отказ: output не является directory: ${out}`);
     process.exit(1);
   }
 
@@ -158,6 +191,7 @@ function main(): void {
         signal: executed.signal,
         logFile: `logs/${logFile}`,
         sha256: sha256File(logPath),
+        ...(spec.scenario === undefined ? {} : { scenario: scenarioEvidence(root, spec) }),
       });
       const failure = validateReleaseEvidenceResult(spec, executed.status, stdout + stderr);
       if (failure) failures.push(failure);
@@ -178,7 +212,7 @@ function main(): void {
     }
 
     const manifest: ReleaseEvidenceManifest = {
-      schema: 'gennady.rc-evidence-pack.v1',
+      schema: 'gennady.rc-evidence-pack.v2',
       sourceCommit,
       generatedAt: new Date().toISOString(),
       cleanBefore: true,
@@ -193,8 +227,13 @@ function main(): void {
       },
       commands: results,
       migration: { scopes, rounds: 2, allNoOp: true },
+      limitations: { exactCloudIosE18: 'pending-UV-26', packagePublished: false },
     };
-    writeFileSync(join(scratch, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    writeFileSync(
+      join(scratch, 'manifest.json'),
+      await formatWithPrettier(JSON.stringify(manifest), { parser: 'json' }),
+      'utf8'
+    );
     writeFileSync(join(scratch, 'README.md'), renderReleaseEvidenceReadme(manifest), 'utf8');
     mkdirSync(out, { recursive: true });
     cpSync(logs, join(out, 'logs'), { recursive: true });
@@ -210,4 +249,9 @@ function main(): void {
   }
 }
 
-if (process.argv[1] && basename(process.argv[1]) === basename(import.meta.filename)) main();
+if (process.argv[1] && basename(process.argv[1]) === basename(import.meta.filename)) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}

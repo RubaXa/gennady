@@ -5,7 +5,7 @@
 
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, readFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, isAbsolute, relative, resolve, sep } from 'node:path';
 import {
   migrationScopeIdentityFinding,
@@ -34,6 +34,23 @@ function git(root: string, args: readonly string[]): { status: number | null; ou
     maxBuffer: 4 * 1024 * 1024,
   });
   return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}` };
+}
+
+function gitBlobSha256(root: string, sourceCommit: string, path: string): string | null {
+  const portable = path.split('/');
+  if (
+    path.length === 0 ||
+    isAbsolute(path) ||
+    portable.some((part) => part.length === 0 || part === '.' || part === '..')
+  ) {
+    return null;
+  }
+  const result = spawnSync('git', ['show', `${sourceCommit}:${path}`], {
+    cwd: root,
+    encoding: 'buffer',
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  return result.status === 0 && Buffer.isBuffer(result.stdout) ? sha256(result.stdout) : null;
 }
 
 function sourceScopes(root: string, sourceCommit: string, failures: string[]): string[] {
@@ -92,14 +109,24 @@ function checkReleaseEvidencePack(projectRoot: string, packRoot: string): string
   }
 
   const failures: string[] = [];
-  if (manifest.schema !== 'gennady.rc-evidence-pack.v1') failures.push('неизвестная schema');
+  if (manifest.schema !== 'gennady.rc-evidence-pack.v2') failures.push('неизвестная schema');
   if (!manifest.cleanBefore || !manifest.cleanAfter)
     failures.push('clean-before/after не доказаны');
   if (manifest.migration?.rounds !== 2 || !manifest.migration?.allNoOp) {
     failures.push('migration summary не подтверждает два no-op round');
   }
+  if (
+    manifest.limitations?.exactCloudIosE18 !== 'pending-UV-26' ||
+    manifest.limitations?.packagePublished !== false
+  ) {
+    failures.push('limitations должны сохранять UV-26 и package publication открытыми');
+  }
 
   const scopes = sourceScopes(projectRoot, manifest.sourceCommit, failures);
+  const sourceLockSha = gitBlobSha256(projectRoot, manifest.sourceCommit, 'package-lock.json');
+  if (sourceLockSha === null || sourceLockSha !== manifest.environment?.packageLockSha256) {
+    failures.push('package-lock SHA-256 не совпадает с immutable source commit');
+  }
   const claimedScopes = Array.isArray(manifest.migration?.scopes)
     ? manifest.migration.scopes.filter((scope): scope is string => typeof scope === 'string')
     : [];
@@ -112,6 +139,16 @@ function checkReleaseEvidencePack(projectRoot: string, packRoot: string): string
   }
 
   const plan = releaseEvidenceCommandPlan(scopes);
+  const packEntries = readdirSync(packRoot).sort(codePointCompare);
+  if (JSON.stringify(packEntries) !== JSON.stringify(['README.md', 'logs', 'manifest.json'])) {
+    failures.push(`pack содержит unexpected entries: ${packEntries.join(', ')}`);
+  }
+  const logsRoot = resolve(packRoot, 'logs');
+  const expectedLogs = plan.map(({ id }) => `${id}.log`).sort(codePointCompare);
+  const actualLogs = existsSync(logsRoot) ? readdirSync(logsRoot).sort(codePointCompare) : [];
+  if (JSON.stringify(actualLogs) !== JSON.stringify(expectedLogs)) {
+    failures.push('raw log inventory не совпадает с deterministic command matrix');
+  }
   const commands = Array.isArray(manifest.commands) ? manifest.commands : [];
   if (commands.length !== plan.length) {
     failures.push(`command count: expected ${plan.length}, got ${commands.length}`);
@@ -129,6 +166,44 @@ function checkReleaseEvidencePack(projectRoot: string, packRoot: string): string
     ) {
       failures.push(`command[${i}] не совпадает с contract: ${actual.id}`);
       continue;
+    }
+    if (expected.scenario === undefined) {
+      if (actual.scenario !== undefined)
+        failures.push(`${actual.id}: неожиданный scenario payload`);
+    } else if (actual.scenario === undefined) {
+      failures.push(`${actual.id}: отсутствует scenario payload`);
+    } else {
+      const fixtureShapeValid =
+        Array.isArray(actual.scenario.fixtures) &&
+        actual.scenario.fixtures.every(
+          (fixture) =>
+            fixture !== null &&
+            typeof fixture === 'object' &&
+            typeof fixture.path === 'string' &&
+            typeof fixture.sha256 === 'string'
+        );
+      const contractMatches =
+        Array.isArray(actual.scenario.acceptance) &&
+        Array.isArray(actual.scenario.requiredOutput) &&
+        fixtureShapeValid &&
+        actual.scenario.area === expected.scenario.area &&
+        JSON.stringify(actual.scenario.acceptance) ===
+          JSON.stringify(expected.scenario.acceptance) &&
+        JSON.stringify(actual.scenario.requiredOutput) ===
+          JSON.stringify(expected.scenario.requiredOutput) &&
+        JSON.stringify(actual.scenario.externalIdentity) ===
+          JSON.stringify(expected.scenario.externalIdentity) &&
+        JSON.stringify(actual.scenario.fixtures.map(({ path }) => path)) ===
+          JSON.stringify(expected.scenario.fixturePaths);
+      if (!contractMatches) {
+        failures.push(`${actual.id}: scenario contract не совпадает с планом`);
+      }
+      for (const fixture of fixtureShapeValid ? actual.scenario.fixtures : []) {
+        const sourceSha = gitBlobSha256(projectRoot, manifest.sourceCommit, fixture.path);
+        if (sourceSha === null) failures.push(`${actual.id}: fixture отсутствует в source commit`);
+        else if (sourceSha !== fixture.sha256)
+          failures.push(`${actual.id}: fixture SHA-256 не совпадает: ${fixture.path}`);
+      }
     }
     const logPath = resolve(packRoot, actual.logFile);
     if (!isContainedFile(packRoot, logPath)) {

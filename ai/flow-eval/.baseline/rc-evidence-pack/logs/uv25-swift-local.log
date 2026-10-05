@@ -1,0 +1,37 @@
+$ node --import tsx --test plugins/swift/__tests__/swift-target.test.ts
+
+--- stdout ---
+(node:69943) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ Swift target StackPlugin
+  ✔ is registered symmetrically while the frozen legacy preset remains unchanged (157.941416ms)
+  ✔ uses root SwiftPM zero-YAML defaults in one dependency-closed DAG (184.604916ms)
+  ✔ preserves case-insensitive Xcode environment classification from the legacy preset (144.583083ms)
+  ✔ uses the checked-in zero-YAML fixture without authored config (141.723ms)
+  ✔ does not detect a nested dependency Package.swift as a Swift root (2.375584ms)
+  ✔ bounds repair to exact normalized Swift Target Files and invalidates build (141.871375ms)
+  ✔ keeps Xcode build/test commandless and selected readiness BLOCKED without identity (151.88075ms)
+  ✔ blocks selected missing Swift/Xcode tools without probing unrelated commands (301.964625ms)
+  ✔ marks an unavailable optional Swift lint step as explicitly non-runnable (127.665583ms)
+  ✔ constructs Xcode argv only from minimal project identity and preserves provenance (134.24925ms)
+  ✔ does not let unselected integration/coverage requirements block code or unit (146.250916ms)
+  ✔ accepts explicit read-only integration/coverage commands with target provenance (130.638208ms)
+  ✔ rejects target Xcode argv guessing and removed stack gate overrides (271.8215ms)
+  ✔ rejects removed stack gate skips before target composition (137.889792ms)
+  ✔ fails incomplete custom steps, malformed identity and unsafe repair config closed (406.4765ms)
+  ✔ rejects escaping Xcode identity even when xcodebuild is unavailable (131.83875ms)
+  ✔ rejects Xcode identity traversing a symlink parent or naming a symlink (268.789708ms)
+  ✔ preserves personal-highest target config while legacy HOME priority stays isolated (133.4335ms)
+✔ Swift target StackPlugin (3117.280041ms)
+ℹ tests 18
+ℹ suites 1
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3330.074042
+
+
+--- stderr ---
+

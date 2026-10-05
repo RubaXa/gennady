@@ -1,0 +1,49 @@
+$ node --import tsx --test plugins/node/__tests__/node-target.test.ts
+
+--- stdout ---
+(node:69883) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ Node target StackPlugin
+  ✔ is registered symmetrically while the frozen legacy preset stays unchanged (1.989292ms)
+  ✔ uses one zero-YAML DAG for code, unit and coverage slices (6.348375ms)
+  ✔ blocks an unsupported explicit package manager instead of guessing its argv contract (1.576292ms)
+  ✔ keeps an unsupported package-manager npmScript override as commandless BLOCKED data (5.651125ms)
+  ✔ does not require a package-manager adapter for a slice whose steps are all waived (2.348458ms)
+  ✔ declares repair effects, bounded writes and selective invalidation as preset data (0.780583ms)
+  ✔ normalizes, deduplicates and code-unit sorts exact Target Files before appending (0.572208ms)
+  ✔ bounds Gennady lint repair to the source policy declared by the read-only lint graph (5.545291ms)
+  ✔ fails readiness closed when Gennady lint declares no exact source operands (1.308583ms)
+  ✔ fails readiness closed for an unknown lint option instead of widening repair scope (2.136209ms)
+  ✔ rejects non-exact or escaping Target Files with a typed scope path (1.151708ms)
+  ✔ rejects regular and dangling Target File symlinks (1.306916ms)
+  ✔ blocks an unscoped repair prefix instead of reporting a false READY (0.404791ms)
+  ✔ blocks only integration/full when test:integration is absent (1.070708ms)
+  ✔ materializes strict Vitest JSON stats only from proven package facts (1.119167ms)
+  ✔ recognizes the repository-owned topology runner by its exact script contract (1.019042ms)
+  ✔ does not infer Vitest from arbitrary script text without package facts (1.322209ms)
+  ✔ materializes npmScript through package-manager facts and keeps file provenance (1.621083ms)
+  ✔ materializes yarn and bun scripts through their explicit argv adapters (1.881208ms)
+  ✔ turns a missing explicit npmScript into actionable BLOCKED readiness (1.668125ms)
+  ✔ lets explicit argv replace package-script readiness without guessing a script (1.898584ms)
+  ✔ materializes explicit repair argv as a Target Files prefix, never a whole-repo command (1.907708ms)
+  ✔ accepts the target-free Gennady repair form used by this repository (1.137333ms)
+  ✔ accepts proven read-only direct lint and format commands (2.082583ms)
+  ✔ rejects unsafe direct lint, format and repair argv with typed actionable errors (9.893208ms)
+  ✔ keeps an unsafe package repair command non-runnable and BLOCKED (1.098542ms)
+  ✔ rejects removed stack pipeline overrides instead of silently ignoring them (1.551ms)
+  ✔ rejects removed stack pipeline fields from the planner-provided home directory (1.271875ms)
+  ✔ rejects a legacy repair override with baked operands before target append (1.0295ms)
+  ✔ rejects ambiguous npmScript plus argv with a typed actionable error (1.195875ms)
+✔ Node target StackPlugin (65.151542ms)
+ℹ tests 30
+ℹ suites 1
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 281.610042
+
+
+--- stderr ---
+

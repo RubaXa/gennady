@@ -138,7 +138,7 @@ cli/__tests__/tool-behavior/sdd-task.test.ts	CLI	manual responsibility: CLI comp
 cli/__tests__/tool-behavior/sdd-v2-rc-composition.test.ts	CLI	manual responsibility: CLI composition/shared infrastructure; headerless inventory row; Git history non-authoritative
 cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts	CLI	manual responsibility: CLI composition/shared infrastructure; headerless inventory row; Git history non-authoritative
 cli/__tests__/tool-behavior/sdd-verify-stack-config.test.ts	CLI	manual responsibility: CLI composition/shared infrastructure; legacy @tasks V-07; Git history non-authoritative
-cli/__tests__/tool-behavior/sdd-verify.test.ts	CLI	manual responsibility: CLI composition/shared infrastructure; headerless inventory row; Git history non-authoritative
+cli/__tests__/tool-behavior/sdd-verify.test.ts	CLI-SDD-VERIFY	canonical live SDD facade behavior plus exact sibling @spec/spec inventory; Git history non-authoritative
 cli/__tests__/tool-behavior/testcov.test.ts	CLI	manual responsibility: CLI composition/shared infrastructure; headerless inventory row; Git history non-authoritative
 cli/__tests__/tool-behavior/verify.test.ts	CLI	manual responsibility: CLI composition/shared infrastructure; headerless inventory row; Git history non-authoritative
 cli/cmd/_shared/__tests__/update-check-worker.test.ts	CLI	manual responsibility: shared/VCS CLI command surface; legacy @tasks UC-tests; Git history non-authoritative
