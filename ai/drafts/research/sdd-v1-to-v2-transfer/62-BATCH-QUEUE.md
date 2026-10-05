@@ -461,10 +461,16 @@ Issue akkrat #21 и раздел D3 аудита: цикл ревью↔испр
 | U5 | UV-15..17 | U3 | только перед remote mutation/rollback |
 | U6 | UV-20..21: read-only `gennady rules` facade + entry-by-entry embedded metadata migration/equivalence + delete `knowledge.xml` at zero consumers | UV-20S | только перед недетерминированным model-selector |
 | U7 | UV-23: external-plugin trust/version/isolation | U2, U3 | перед исполнением внешнего plugin-кода |
-| U8 | UV-24..26 | U4, U5, U6, U7 | решение о публикации |
+| U8 | UV-24 (#99 DONE) → UV-25 (#101 DONE) → U8-RA ACK → UV-27 release gate → UV-26 exact E-18 → conditional UV-25 refresh → immutable candidate | U4, U5, U6, U7 | **два stop: ACK плана UV-27; затем exact operator ACK reviewed candidate. Publish — отдельное действие** |
 
-Публикация запрещена до U8: exact Swift E-18, remote exact-SHA evidence, удаление `sdd-verify`
-runner/`knowledge.xml`/compatibility adapters и один clean-commit evidence pack обязательны.
+Публикация запрещена до полного U8. #99/#101 закрыли cleanup и первый evidence pack, но не являются
+разрешением на publish и не оставляют UV-26 единственным остатком. Сначала operator принимает plan
+UV-27, затем release-ветка получает одну shared fail-closed SSOT для `prepublishOnly`,
+`publish-next`, `publish-draft` и `release-it`. После этого UV-26 снимает exact Swift E-18; любое
+relevant изменение product/config/rules/gate bytes заставляет переснять UV-25. Только exact reviewed
+`.tgz` с branch/upstream/HEAD/version/SHA/file-manifest identity получает отдельный non-reusable
+operator ACK и публикуется отдельным действием. До ACK registry credentials/OTP/protected publishing
+authority недоступны; repo hook сам по себе не считается защитой от `npm publish --ignore-scripts`.
 
 **U0 ACK:** принят оператором 2026-09-24 после закрытия трёх review-флагов коммитом `69e63269`;
 разрешён старт U1 с UV-01.
