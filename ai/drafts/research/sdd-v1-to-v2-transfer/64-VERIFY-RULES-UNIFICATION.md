@@ -1,6 +1,8 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
-> Статус: **ACK U0 ПРИНЯТ 2026-09-24; РЕАЛИЗАЦИЯ ИДЁТ; UV-13 BLOCKED**. Основание: операторский разговор
+> Статус: **ACK U0 ПРИНЯТ 2026-09-24; UV-24 ВЫПОЛНЕН (#99); UV-25 ВЫПОЛНЕН (#101); RELEASE BLOCKED**.
+> Следующая decision boundary — plan UV-27 и отдельный operator ACK этого плана; UV-26 и публикация
+> до неё не начинаются. Основание: операторский разговор
 > 2026-09-24 после завершения самомиграции SDD v2. Этот документ **замещает** старые открытые
 > развилки O-1/O-2 и design-tail plugin↔preset convergence, но не переписывает исторические
 > отчёты 30/33. Публикация пакета запрещена до выполнения §12.
@@ -19,6 +21,13 @@
 > SDD state/sinks. Rules metadata embedded в prompt header и читается custom lexical parser-ом, не
 > XML parser-ом и не sidecar. RuleRegistry + PhaseFacts + RuleResolver + pre-dispatch RuleSnapshot
 > integration теперь обязательны до UV-12E/UV-13.
+>
+> **Release-risk amendment 2026-10-05:** прежняя формулировка «после UV-25 остаётся только UV-26»
+> отменена. Review после merge #101 доказал, что документный stop не является executable release
+> barrier: supported local publish paths не связаны с UV-26 evidence и exact operator ACK. Поэтому
+> перед UV-26 вводится UV-27: сначала ACK этого плана, затем одна shared fail-closed release-
+> authorization SSOT в release-ветке. Только после неё идут exact E-18, при необходимости refresh
+> UV-25, immutable candidate, exact operator ACK и отдельное действие публикации.
 
 ## 1. Решённая цель
 
@@ -660,7 +669,7 @@ boundary.
 | U5 | exact-SHA remote watcher; перенос лучших dirty VCS частей | `phase=ci` ждёт GitLab/GitHub pipeline | только перед remote mutation/rollback |
 | U6 | remaining rules CLI/migration: `gennady rules` facade + entry migration/delete `knowledge.xml` | справочник и удаление legacy registry | только перед недетерминированным model-selector |
 | U7 | data-only extension ADR и consumer fixture | external executable declarations fail closed; declarative argv исполняется только common executor | нет: operator выбрал запрет второго runtime |
-| U8 | удалить adapters/legacy; Node+Go+Swift evidence; exact E-18 | release evidence pack | **да: решение о публикации** |
+| U8 | удалить adapters/legacy; Node+Go+Swift evidence; executable release authorization; exact E-18; immutable candidate | #99/#101 evidence + fail-closed UV-27 gate + UV-26 proof | **да: ACK плана UV-27; затем exact ACK immutable candidate; публикация — отдельное действие** |
 
 ### 12.1 ACK U4-ER — Evidence/Receipt
 
@@ -711,6 +720,59 @@ overlay on/off остаются раздельными. Только после 
 UV-12E и corrective UV-22C начинается UV-13
 directive/CLI cutover; UV-14 по-прежнему не удаляет compatibility runner до UV-13.
 
+### 12.2 PENDING ACK U8-RA — Release authorization / UV-27
+
+Этот раздел — proposal для operator ACK, а не выданное разрешение на публикацию. Merge #99 закрыл
+UV-24, merge #101 закрыл UV-25, но они не превращают `pending-UV-26` в release-ready и не являются
+publication ACK. Прежняя модель «UV-26 — единственный остаток» отменена. Обязательный порядок:
+
+1. operator ACK этого UV-27 plan;
+2. реализация и review UV-27 в release-ветке, **без** package publication;
+3. UV-26 exact cloud-ios E-18 на реальном Xcode/Tuist environment;
+4. refresh UV-25, если после его `sourceCommit` изменились product/config/rules или release-gate bytes;
+5. materialize и review одного immutable release candidate `.tgz`;
+6. exact operator ACK, связанный с candidate HEAD, version, tarball SHA-256 и file manifest;
+7. публикация как отдельное, явно авторизованное действие над тем же reviewed `.tgz`.
+
+UV-27 реализует **одну shared fail-closed release-authorization SSOT**, а не четыре независимых
+проверки. Её обязаны потреблять все поддержанные registry-writing paths: direct `npm publish` через
+`prepublishOnly`, `publish-next`, `publish-draft` и `release-it`. До npm auth, изменения manifests,
+commit/tag/push или registry side effect SSOT проверяет одновременно:
+
+- exact approved release branch, upstream и HEAD; clean candidate tree; согласованные
+  `package.json`/`package-lock.json` version; отсутствие конфликтующего npm version и git tag;
+- UV-25 manifest/checker и UV-26 exact-E-18 evidence; frozen rules/config/product identities;
+- product-drift policy: после UV-25 `sourceCommit` разрешён только exact evidence-pack allowlist;
+  любое изменение product/config/rules заставляет переснять UV-25 на новом clean commit;
+- tarball SHA-256 и полный sorted file manifest; allowlist/`ai/.npmignore`, отсутствие test/eval
+  artifacts, secret-like values, private keys, credentials и developer absolute paths;
+- exact non-reusable operator approval, привязанный к HEAD + version + tarball SHA-256 + manifest
+  digest. Статическая `approved=true` в репозитории не является ACK.
+
+Candidate публикуется как exact reviewed `.tgz`: после ACK запрещено пересобирать package или
+повторно вычислять содержимое из moving worktree. Commit/tag либо проверяемый local tag, связанный с
+candidate HEAD, создаётся и валидируется **до** необратимого npm side effect. Remote push policy
+должна быть явной и recovery-safe: ошибка push после registry success не может сообщать «не
+опубликовано», повторно публиковать version или оставлять неописанный recovery path; автоматический
+force-push/rollback запрещён.
+
+**Bypass threat model.** Repo hook не способен технически остановить сознательный
+`npm publish --ignore-scripts`. Поэтому registry credentials, OTP и protected publishing authority
+не выдаются процессу до exact operator ACK; supported commands отвергают `--ignore-scripts`, обход
+shared SSOT и отсутствие approval. UV-27 доказывает отсутствие credentials/OTP в pre-ACK tests и
+никогда не выполняет реальную публикацию.
+
+Remote live evidence делится на два слоя: обязательная deterministic offline hashed/redacted
+provider projection с exact SHA/workflow/pipeline/job identities и bounded fields; live recheck —
+read-only best-effort proof, явно retention/token/API-dependent. Истечение внешнего historical run не
+может молча переписать сохранённый offline proof или превратиться в ложный PASS.
+
+Negative acceptance UV-27 обязана пройти для всех четырёх supported paths и доказать rejection до
+side effect при: wrong branch, upstream, HEAD, version, tarball SHA/file manifest, missing/stale
+UV-25, missing UV-26, product/config/rules drift, отсутствующем/mismatched/reused ACK, bypass flag и
+доступных до ACK registry credentials/OTP. Отдельные tests фиксируют exact candidate reuse после ACK,
+pre-publish commit/tag precondition и честный post-registry recovery verdict.
+
 ## 13. Задачи новой очереди
 
 | ID | Волна | Задача | Depends on | Acceptance |
@@ -743,9 +805,11 @@ directive/CLI cutover; UV-14 по-прежнему не удаляет compatibi
 | UV-20 | U6 | read-only `gennady rules` facade over UV-20S snapshot | UV-20S | list/show/resolve read-only; reasons/provenance/bodies/digest match dispatch/report |
 | UV-21 | U6 | entry-by-entry embedded metadata migration and delete `knowledge.xml` | UV-18A..20 | equivalence + local override proof; zero consumer grep before deletion |
 | UV-23 | U7 | data-only extension boundary ADR + consumer fixture | UV-01, UV-22 | path/package/URL/dynamic-import declarations fail closed до import/spawn; arbitrary declarative argv проходит общий planner/executor; report показывает qualified step + safe config provenance |
-| UV-24 | U8 | delete compatibility and stale tests | UV-14, UV-17, UV-21, UV-22 | zero legacy references, fresh directives |
-| UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24 | all acceptance scenarios reproducible |
-| UV-26 | U8 | exact cloud-ios E-18 | UV-06, UV-17 | real Xcode/Tuist execute→CI→coverage evidence |
+| UV-24 | U8 | delete compatibility and stale tests | UV-14, UV-17, UV-21, UV-22 | **DONE #99:** zero legacy references, fresh directives |
+| UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24 | **DONE #101:** all acceptance scenarios reproducible; package not published; exact E-18 remains pending |
+| U8-RA | U8 | **PENDING operator ACK:** release-authorization contract §12.2 | UV-25 | operator explicitly accepts SSOT, candidate and bypass threat model; plan merge alone is not publication ACK |
+| UV-27 | U8 | implement shared fail-closed release-authorization SSOT and wire every supported publish path; no publish | U8-RA ACK, UV-25 | wrong branch/upstream/HEAD/version/tarball/evidence/ACK/bypass fail before side effect; exact candidate and recovery tests; canonical `infra-npm-publish` spec superseded |
+| UV-26 | U8 | exact cloud-ios E-18 | UV-06, UV-17, UV-27 | real Xcode/Tuist execute→CI→coverage evidence; refresh UV-25 on relevant drift |
 
 ## 14. Release acceptance
 
@@ -774,12 +838,20 @@ directive/CLI cutover; UV-14 по-прежнему не удаляет compatibi
   boundary;
 - independent `sdd-verify` runner и compatibility adapters удалены;
 - dirty VCS source перенесён через manifest + tests, а не потерян;
+- shared UV-27 release-authorization gate реализован и одинаково блокирует direct `npm publish`,
+  `publish-next`, `publish-draft` и `release-it` до exact evidence/candidate/ACK;
 - exact Swift E-18 завершён в реальном release environment;
-- новый evidence pack снят с одного чистого commit.
+- после последнего relevant product/config/rules/gate drift новый evidence pack снят с одного clean
+  commit; checker разрешает после `sourceCommit` только exact evidence-pack allowlist;
+- immutable reviewed `.tgz` связан с exact branch/upstream/HEAD/version/file-manifest digest и
+  operator ACK; publish action использует именно эти bytes и имеет честный recovery verdict.
 
 ## 15. Явно не делаем до соответствующей остановки
 
 - не публикуем npm-пакет;
+- не считаем merge UV-27, UV-26 или зелёный evidence checker publication ACK;
+- не выдаём registry credentials/OTP/publishing authority до exact operator ACK candidate bytes;
+- не пересобираем candidate после ACK и не публикуем из moving worktree;
 - не включаем автоматический rollback/force-push после CI failure;
 - не создаём runtime для project/npm/URL executable plugins и не делаем dynamic import project code;
 - не выдаём LLM semantic rule selection за детерминированную проверку;
