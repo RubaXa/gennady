@@ -10,5 +10,4 @@ All matched files use Prettier code style!
 
 
 --- stderr ---
-bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
 

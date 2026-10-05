@@ -33,14 +33,8 @@ $ npm run audit:sdd-templates
 
 
 --- stderr ---
-bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
-bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
-bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
-bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
-bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
-bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
-⚠ execute (skeleton): skeleton tokens (soft target) = 6966 exceeds 6000 by 966 — soft target, build still succeeds
-⚠ infra (skeleton): skeleton tokens (hard limit) = 9766 exceeds 8000 by 1766 — allowlisted monolith pending lazy-split (owner: T-B6-10a); warns instead of failing until split, build still succeeds
+⚠ execute (skeleton): skeleton tokens (soft target) = 7036 exceeds 6000 by 1036 — soft target, build still succeeds
+⚠ infra (skeleton): skeleton tokens (hard limit) = 9642 exceeds 8000 by 1642 — allowlisted monolith pending lazy-split (owner: T-B6-10a); warns instead of failing until split, build still succeeds
 ⚠ migration-v1-v2 (skeleton): skeleton tokens (soft target) = 6949 exceeds 6000 by 949 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds
 ⚠ reconcile (skeleton): skeleton tokens (soft target) = 6706 exceeds 6000 by 706 — soft target, build still succeeds
 ⚠ root (skeleton): skeleton tokens (soft target) = 7751 exceeds 6000 by 1751 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds

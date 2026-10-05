@@ -1,0 +1,37 @@
+$ node --import tsx --test plugins/golang/__tests__/golang-target.test.ts
+
+--- stdout ---
+(node:979) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ Go target StackPlugin
+  ✔ is registered symmetrically while the legacy preset and receipts contract stay intact (6.35525ms)
+  ✔ uses one zero-YAML DAG for READY code and unit slices with direct argv (151.43225ms)
+  ✔ models drift and repairs honestly with exact gofmt targets and selective invalidation (137.141958ms)
+  ✔ preserves representative Go environment classification from the legacy preset (136.724333ms)
+  ✔ bounds lint repair writes to selected packages instead of unrelated Go packages (133.583291ms)
+  ✔ leaves project-owned integration and coverage commandless and blocks only selected slices (149.382334ms)
+  ✔ accepts explicit read-only integration and coverage argv without inventing tags or thresholds (140.439167ms)
+  ✔ fails selected tool and linter-config readiness closed with actionable fixes (135.459375ms)
+  ✔ blocks missing Go/gofmt with version-aware installation guidance (2.532583ms)
+  ✔ does not require a missing linter for explicitly waived lint steps (139.44325ms)
+  ✔ keeps unscoped exact gofmt repair BLOCKED instead of widening its write set (3.747333ms)
+  ✔ omits direct repair commands when selected scope has no packages or exact Go files (4.0675ms)
+  ✔ does not turn all-mode directories into exact gofmt repair operands (3.812291ms)
+  ✔ uses personal config above project rc and yaml while preserving leaf provenance (143.992667ms)
+  ✔ rejects removed stack gate skips instead of silently ignoring them (142.15225ms)
+  ✔ rejects removed stack gate overrides before target composition (140.781041ms)
+  ✔ rejects a legacy fmt argv that cannot map to observe plus repair semantics (218.933208ms)
+  ✔ rejects unsafe observe/repair argv and non-regular Target Files with typed paths (837.62175ms)
+✔ Go target StackPlugin (2628.878166ms)
+ℹ tests 18
+ℹ suites 1
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2836.894
+
+
+--- stderr ---
+
