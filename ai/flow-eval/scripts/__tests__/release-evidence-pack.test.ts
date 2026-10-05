@@ -54,6 +54,7 @@ describe('REL-18 release evidence plan', () => {
         { id: 'uv25-golang', area: 'golang' },
         { id: 'uv25-swift-local', area: 'swift-local' },
         { id: 'uv25-remote', area: 'remote' },
+        { id: 'uv25-remote-live', area: 'remote-live' },
         { id: 'uv25-rules', area: 'rules' },
         { id: 'uv25-sdd-evidence', area: 'sdd-evidence' },
       ]
@@ -68,6 +69,17 @@ describe('REL-18 release evidence plan', () => {
           (scenario?.fixturePaths.length ?? 0) > 0 && (scenario?.requiredOutput.length ?? 0) > 0
       )
     );
+    const remoteLive = scenarios.find(({ id }) => id === 'uv25-remote-live')?.scenario;
+    assert.deepEqual(remoteLive?.externalIdentity, {
+      provider: 'github',
+      project: 'sindresorhus/p-map',
+      sourceSha: '2c0934b8312b637f933b752c6054845c2d2d5533',
+      definitionId: '4634269',
+      pipelineId: '36383812626',
+      terminalState: 'REMOTE_SUCCESS',
+      jobs: 5,
+      successfulJobs: 5,
+    });
   });
 
   it('fails closed on nonzero gates and migration output that is not exact no-op', () => {

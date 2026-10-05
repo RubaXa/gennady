@@ -191,6 +191,8 @@ function checkReleaseEvidencePack(projectRoot: string, packRoot: string): string
           JSON.stringify(expected.scenario.acceptance) &&
         JSON.stringify(actual.scenario.requiredOutput) ===
           JSON.stringify(expected.scenario.requiredOutput) &&
+        JSON.stringify(actual.scenario.externalIdentity) ===
+          JSON.stringify(expected.scenario.externalIdentity) &&
         JSON.stringify(actual.scenario.fixtures.map(({ path }) => path)) ===
           JSON.stringify(expected.scenario.fixturePaths);
       if (!contractMatches) {

@@ -13,10 +13,20 @@ export type ReleaseEvidenceCommand = {
 };
 
 export type ReleaseEvidenceScenario = {
-  area: 'node' | 'golang' | 'swift-local' | 'remote' | 'rules' | 'sdd-evidence';
+  area: 'node' | 'golang' | 'swift-local' | 'remote' | 'remote-live' | 'rules' | 'sdd-evidence';
   acceptance: readonly ('U-A2' | 'U-A6' | 'U-A7' | 'U-A9')[];
   fixturePaths: readonly string[];
   requiredOutput: readonly string[];
+  externalIdentity?: {
+    provider: 'github';
+    project: string;
+    sourceSha: string;
+    definitionId: string;
+    pipelineId: string;
+    terminalState: 'REMOTE_SUCCESS';
+    jobs: number;
+    successfulJobs: number;
+  };
 };
 
 export type ReleaseEvidenceFixture = {
@@ -36,6 +46,7 @@ export type ReleaseEvidenceResult = {
     acceptance: ReleaseEvidenceScenario['acceptance'];
     fixtures: ReleaseEvidenceFixture[];
     requiredOutput: ReleaseEvidenceScenario['requiredOutput'];
+    externalIdentity?: ReleaseEvidenceScenario['externalIdentity'];
   };
 };
 
@@ -182,6 +193,37 @@ export function releaseEvidenceCommandPlan(scopes: readonly string[]): ReleaseEv
       },
     },
     {
+      id: 'uv25-remote-live',
+      command: 'node',
+      args: ['--import', 'tsx', 'ai/flow-eval/scripts/release-remote-live-smoke.ts'],
+      scenario: {
+        area: 'remote-live',
+        acceptance: ['U-A6'],
+        fixturePaths: [
+          'ai/flow-eval/scripts/release-remote-live-smoke.ts',
+          'services/vcs-client/github/vcs-github-client.ts',
+          'services/vcs-client/github/vcs-github-pipeline.ts',
+          'shared/verify/execution/remote-watcher.ts',
+        ],
+        requiredOutput: [
+          'UV25_REMOTE_LIVE provider=github project=sindresorhus/p-map readOnly=true',
+          'UV25_REMOTE_LIVE exactSha=2c0934b8312b637f933b752c6054845c2d2d5533',
+          'UV25_REMOTE_LIVE definitionId=4634269 pipelineId=36383812626 state=REMOTE_SUCCESS jobs=5 successfulJobs=5',
+          'UV25_REMOTE_LIVE mutations=0 secretOutput=0 logBodies=0',
+        ],
+        externalIdentity: {
+          provider: 'github',
+          project: 'sindresorhus/p-map',
+          sourceSha: '2c0934b8312b637f933b752c6054845c2d2d5533',
+          definitionId: '4634269',
+          pipelineId: '36383812626',
+          terminalState: 'REMOTE_SUCCESS',
+          jobs: 5,
+          successfulJobs: 5,
+        },
+      },
+    },
+    {
       id: 'uv25-rules',
       command: 'node',
       args: [
@@ -313,6 +355,11 @@ export function renderReleaseEvidenceReadme(manifest: ReleaseEvidenceManifest): 
     `- UV-25 scenarios: Node/Go/Swift-local presets, exact-SHA remote watcher/provider contracts, ` +
     `Rules list/show/resolve + snapshot digest и SDD attempt evidence. Fixture bytes закреплены ` +
     `SHA-256 из source commit; package publication не выполняется.\n\n` +
+    `- U-A6 real smoke: read-only GitHub observation of historical immutable ` +
+    `\`sindresorhus/p-map@2c0934b8312b637f933b752c6054845c2d2d5533\`, workflow ` +
+    `\`4634269\`, run \`36383812626\`; rerun requires \`GITHUB_TOKEN\` or ` +
+    `\`GITHUB_PERSONAL_TOKEN\` with read-only Actions access. It never dispatches, pushes, retries ` +
+    `or cancels a workflow, and persists no token or job-log body.\n\n` +
     `${table}\n`
   );
 }

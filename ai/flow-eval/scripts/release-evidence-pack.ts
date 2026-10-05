@@ -92,6 +92,9 @@ function scenarioEvidence(
       return { path, sha256: sha256File(file) };
     }),
     requiredOutput: [...spec.scenario.requiredOutput],
+    ...(spec.scenario.externalIdentity === undefined
+      ? {}
+      : { externalIdentity: { ...spec.scenario.externalIdentity } }),
   };
 }
 

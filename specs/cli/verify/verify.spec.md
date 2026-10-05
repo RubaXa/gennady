@@ -522,7 +522,13 @@ fixture Git-blob SHA-256 и обязательные observable assertions дл�
 Rules и SDD attempt evidence. Independent checker реконструирует matrix из кода и fail closed при
 пропущенном scenario, изменённой команде, fixture/log drift или ложном success marker. Swift-local
 evidence доказывает SwiftPM и fail-closed Xcode planning, но явно не закрывает exact cloud-ios E-18:
-он остаётся `pending-UV-26`. Pack фиксирует `packagePublished=false` и не обращается к registry.
+он остаётся `pending-UV-26`. U-A6 включает отдельный production-backed read-only GitHub smoke:
+production `VcsGithubClient`/pipeline port и общий `watchRemotePipeline` наблюдают закреплённые
+historical identities `sindresorhus/p-map@2c0934b8312b637f933b752c6054845c2d2d5533`, workflow
+`4634269`, run `36383812626`, terminal `REMOTE_SUCCESS` и 5 successful jobs. Smoke требует только
+read-only Actions token, выводит bounded non-secret identity markers и не выполняет dispatch, push,
+retry, cancel или иные provider mutations. Pack фиксирует `packagePublished=false` и не обращается к
+registry.
 
 <!--/SECTION:MODULE_REQUIREMENTS-->
 
