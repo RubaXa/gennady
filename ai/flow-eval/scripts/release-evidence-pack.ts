@@ -21,6 +21,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { format as formatWithPrettier } from 'prettier';
 import {
   migrationScopeIdentityFinding,
   releaseEvidenceCommandPlan,
@@ -120,7 +121,7 @@ function writeCommandLog(
   writeFileSync(logPath, text, 'utf8');
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const root = PROJECT_ROOT;
   if (process.argv.length > 2) {
     console.error('[release-evidence-pack] usage: npm run release:evidence-pack');
@@ -225,7 +226,11 @@ function main(): void {
       migration: { scopes, rounds: 2, allNoOp: true },
       limitations: { exactCloudIosE18: 'pending-UV-26', packagePublished: false },
     };
-    writeFileSync(join(scratch, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    writeFileSync(
+      join(scratch, 'manifest.json'),
+      await formatWithPrettier(JSON.stringify(manifest), { parser: 'json' }),
+      'utf8'
+    );
     writeFileSync(join(scratch, 'README.md'), renderReleaseEvidenceReadme(manifest), 'utf8');
     mkdirSync(out, { recursive: true });
     cpSync(logs, join(out, 'logs'), { recursive: true });
@@ -241,4 +246,9 @@ function main(): void {
   }
 }
 
-if (process.argv[1] && basename(process.argv[1]) === basename(import.meta.filename)) main();
+if (process.argv[1] && basename(process.argv[1]) === basename(import.meta.filename)) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
+}
