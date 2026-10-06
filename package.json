@@ -50,6 +50,7 @@
     "audit:axioms": "node ai/kit/audit-axiom-activation.mjs",
     "audit:contracts": "node ai/kit/audit-contract-activation.mjs",
     "audit:halts": "node ai/kit/audit-halt-activation.mjs",
+    "audit:v1-eradication": "node --import tsx scripts/check-v1-eradication.ts",
     "audit:sdd-templates": "npm run check:directives-fresh && npm run audit:axioms && npm run audit:contracts && npm run audit:halts && npm run check:directive-budgets",
     "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
     "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
