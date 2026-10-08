@@ -1,16 +1,16 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
-> Статус: **ACK U0 ПРИНЯТ 2026-09-24; UV-24 ВЫПОЛНЕН (#99); UV-25 ВЫПОЛНЕН (#101); MAIN CUTOVER BLOCKED**.
-> Publication semantics из merged #102 **SUPERSEDED**; следующая decision boundary — U8-MC ACK
-> main-cutover плана UV-27. UV-26, exact candidate и merge PR #25 до неё не начинаются; npm
+> Статус: **ACK U0 ПРИНЯТ 2026-09-24; UV-24 DONE #99; UV-25 #101 — HISTORICAL DONE; MAIN CUTOVER BLOCKED**.
+> U8-MC policy approved, UV-27A/B implemented; после reviewed #106 нужны MAIN carry R1…R4,
+> reviewed history reconciliation R5 и final UV-25 refresh. Real UV-26/E-18 и exact candidate ACK pending; npm
 > publication вынесена в отдельный будущий plan/ACK и запрещена в текущем deliverable. Основание:
 > операторский разговор
 > 2026-09-24 после завершения самомиграции SDD v2. Этот документ **замещает** старые открытые
 > развилки O-1/O-2 и design-tail plugin↔preset convergence, но не переписывает исторические
-> отчёты 30/33. Публикация пакета запрещена до выполнения §12.
+> отчёты 30/33. Публикация запрещена во всём текущем deliverable; future publication требует отдельного post-cutover plan/ACK.
 >
-> Implementation baseline: `codex/sdd-v2-rc52-followup@8281a584`. Источник plan history:
-> PR #26 `sdd-v2-audit-migration-3b23b1@4e7b14a7`.
+> Current audit baseline: `codex/sdd-v2-rc52-followup@df39f8eff9d08caca5e3d90d313479cc50ed4fc0` (#106 merged).
+> Plan refinement base: `sdd-v2-audit-migration-3b23b1@d5cb9174069afd80ad2b9d80a89f0c6a80dbbfcb`.
 >
 > **Amendment 2026-09-25:** workflow SDD phase kind и Verify phase selector разведены как две
 > открытые vocabulary. Built-in preset даёт zero-YAML default mapping между ними, project YAML
@@ -678,7 +678,7 @@ boundary.
 | U5 | exact-SHA remote watcher; перенос лучших dirty VCS частей | `phase=ci` ждёт GitLab/GitHub pipeline | только перед remote mutation/rollback |
 | U6 | remaining rules CLI/migration: `gennady rules` facade + entry migration/delete `knowledge.xml` | справочник и удаление legacy registry | только перед недетерминированным model-selector |
 | U7 | data-only extension ADR и consumer fixture | external executable declarations fail closed; declarative argv исполняется только common executor | нет: operator выбрал запрет второго runtime |
-| U8 | удалить adapters/legacy; Node+Go+Swift evidence; executable release authorization; exact E-18; immutable candidate | #99/#101 evidence + fail-closed UV-27 gate + UV-26 proof | **да: ACK плана UV-27; затем exact ACK immutable candidate; публикация — отдельное действие** |
+| U8 | cleanup; reviewed MAIN carry R1…R4; history reconciliation R5; final UV-25; real E-18; immutable candidate | #99/#101 historical evidence + UV-27 guard + fresh UV-25/UV-26 proof + exhaustive disposition | **real E-18 host; затем exact ACK immutable candidate; публикация — отдельный будущий plan/ACK** |
 
 ### 12.1 ACK U4-ER — Evidence/Receipt
 
@@ -787,12 +787,12 @@ UV-25, missing UV-26, product/config/rules drift, отсутствующем/mis
 доступных до ACK registry credentials/OTP. Отдельные tests фиксируют exact candidate reuse после ACK,
 pre-publish commit/tag precondition и честный post-registry recovery verdict.
 
-### 12.3 PENDING ACK U8-MC — Main replacement-tree cutover / UV-27
+### 12.3 U8-MC — approved policy, pending exact candidate / Main replacement-tree cutover
 
 Текущий deliverable — **ровно один** итоговый PR в `main`: существующий draft PR #25 с base `main`
 и head `codex/sdd-v2-rc52-followup`. На момент этого amendment его observed identity:
 `base main=9663c65b6376c65f4b1df0daf27a06df5b25f7a3`,
-`head=6816cdbb3c25ef57a784b4acd5e79dfe31b44fee`, `mergeable=CONFLICTING`,
+`head=df39f8eff9d08caca5e3d90d313479cc50ed4fc0`, `mergeable=CONFLICTING`,
 `mergeStateStatus=DIRTY`. Эти значения — audit facts, не approved candidate: после любого движения
 веток или разрешения конфликтов exact identity обязана быть переснята.
 
@@ -818,17 +818,18 @@ UV-27 — umbrella с двумя обязательными implementation works
 
 Main base SHA обязан стать предком reviewed candidate **до merge**. Так как PR #25 сейчас
 CONFLICTING/DIRTY, history reconciliation выполняется обычным history-preserving Git operation в
-release-ветке. Conflict resolution обязано сохранить exact reviewed v2 final tree и пройти повторную
+отдельной feature-ветке от exact release, затем reviewed PR в release (не прямой mutation stable).
+Conflict resolution обязано сохранить exact reviewed v2 final tree и пройти повторную
 проверку inventory/tree/diff/evidence; запрещено молча импортировать v1 content из `main` или
 объявлять reviewed прежний candidate. Force-push/reset `main`, destructive overwrite и обход review
 запрещены.
 
 Strict current order:
 
-1. operator ACK этого U8-MC plan;
-2. implementation/review UV-27A + UV-27B в release-ветке, без npm side effect;
-3. UV-26 exact cloud-ios E-18 как безусловный бар A3/E-18 перед candidate/ACK;
-4. refresh UV-25/evidence после любого relevant product/config/rules/cutover-gate drift;
+1. существующая approved U8-MC policy и reviewed UV-27A/B, без npm side effect; этот refinement не выдаёт новый ACK;
+2. reviewed MAIN carry R1…R4 в release, затем отдельный reviewed history-preserving reconciliation R5 (§12.3.1);
+3. **final UV-25 refresh AFTER last product/config/rules/packaging change AND reconciliation**; #101 остаётся historical DONE, не current-candidate proof;
+4. real UV-26 exact cloud-ios E-18 как безусловный A3/E-18 bar; host macOS 14.8.5 не проходит require>=15.0, OPEN до compatible host; любой последующий relevant drift инвалидирует соответствующее evidence;
 5. materialize exact cutover candidate and update existing PR #25 diff/body;
 6. independent reviewer review exact candidate;
 7. exact operator ACK, bound to release HEAD + current main base SHA + tree SHA + diff/deletion
@@ -838,6 +839,55 @@ Strict current order:
 
 Npm publication не является шагом этой очереди. Нет tarball/operator publish ACK, version `2.x`
 или registry action. Future npm publication начинается только новым post-cutover design/ACK.
+
+#### 12.3.1 MAIN carry и reconciliation — operational refinement 2026-10-09
+
+Это детализация существующего approved U8-MC, не новая архитектура, не U0/ACK и не разрешение
+main merge/publication. Stable branches остаются plan `sdd-v2-audit-migration-3b23b1` и implementation
+`codex/sdd-v2-rc52-followup`; все изменения идут отдельными reviewed feature PR в соответствующую stable.
+
+Frozen audit refs: main `9663c65b6376c65f4b1df0daf27a06df5b25f7a3`, release
+`df39f8eff9d08caca5e3d90d313479cc50ed4fc0`, merge-base
+`46c6d616700ee4cc61dbfe077d5b0052ce661dcd`. MAIN-only **117 commits / 520 net paths**:
+170 present byte-identical, 19 deleted on both sides, 174 absent in release, 157 different.
+`merge-tree` diagnostic reports **157 initial conflict paths** (44 content, 27 modify/delete,
+84 add/add, 2 file-location). Это не число оставшихся конфликтов после R1…R4 и не результат resolution.
+
+| Gap                                                       | Current V2 owner / disposition                                                                           | Reviewed slice / causal proof                                                                                                                                                                                                                                                                      |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project-owned custom root files erased by full sync       | `cli/cmd/sync/sync-core.ts`, `specs/cli/sync/sync.spec.md`; adapt non-destruction, not registry          | R1: custom root bytes survive; stale files inside proven package-owned subtree still deleted; unknown root absence is not ownership proof                                                                                                                                                          |
+| `resolvePackageDir` assumes `/dist/` entry layout         | `shared/common/sync/sync-core.shared.ts`; adapt metadata-based discovery                                 | R1: foreign cwd + actual source and nested-dist package fixtures resolve strictly, never permissive null                                                                                                                                                                                           |
+| lint implementation self-executes on import               | `cli/cmd/lint/{lint.cmd,index}.ts`; adapt bootstrap boundary                                             | R1: import cannot run/print/exit/write; CLI exit 0/1/4 and autofix/format parity remain                                                                                                                                                                                                            |
+| Safe Go prompt suggests mutating `go fmt`                 | `cli/cmd/_shared/prompt/logic/verify-commands/resolve-verify-commands.logic.ts`; adapt read-only command | R1: real unformatted temp Go file retains exact bytes; scoped `gofmt -l` reports it; no old Verify shell engine                                                                                                                                                                                    |
+| RC requires models even for independent sections          | `shared/backend/rc/rc-config.ts`, current V2 config owners; adapt                                        | R1: absent models accepts verify-only RC; malformed present models still error; no closed StackId                                                                                                                                                                                                  |
+| Four MAIN baseline rules absent                           | current embedded lexical RuleRegistry/Resolver; adapt `<Meta>`                                           | R2: `ai/directives/coding/{baseline-rules,go-rules,python-rules}.xml`, `ai/directives/testing/baseline-testing.xml`; real resolver/semantic equivalence; never restore `knowledge.xml` registry                                                                                                    |
+| Four declared package exports point outside shipped files | current `package.json`/library publish specs; retain declared APIs, adapt build                          | R3: `gennady` root (`services/agent-mon/index.ts`), providers claude/opencode (current agent-mon provider entries), `gennady/stack` (`shared/verify/plugin-api.ts`) get dist-backed JS/types; actual local pack/install/import; no `services/stack` engine, no D60 experimental-composition change |
+
+Historical data is not runtime parity: MAIN `tasks/ai-skills/sdd-skills/sdd-skills.task-97.md`
+(owner `specs/ai-skills/sdd-skills/sdd-skills.spec.md`, DONE, 3 phases, 5 reopens, 8 execution/10 audit rounds)
+has no semantic-equivalent release ticket. Nearest `specs/ai-skills/sdd-skills/sdd-skills.task.SS-run-all.md`
+is a different 2-phase batch-scheduler history; matching owner/ID is not equivalence. MAIN
+`tasks/stack/stack-library.task-95.md` and `tasks/stack/verify-command.task-96.md` contain journals
+not represented by current Verify runtime. R4 preserves these **frozen byte-for-byte**, original
+source/blob hashes and provenance, without synthesizing active DONE/receipt/new phases. MAIN-only
+config/plugins/stack/stack-e2e/infra-e2e specs, indexes and flow docs receive explicit historical
+archive disposition, not silent deletion or reactivation.
+
+R4/R5 acceptance requires **exhaustive disposition of all 520 path deltas**, frozen MAIN/source
+blob hashes and stable ref identities: `retain` equivalent current V2 bytes, `adapt` improvements
+to current owners, `archive` historical user/spec/journal data, `exclude` intentionally replaced
+V1 runtime/closed StackId/old verify/bash helpers. Seven gaps above are not the exhaustive manifest.
+Changed source refs require a new delta audit before reconciliation. Archive must stay outside
+active package runtime/auto-import and cannot recreate legacy registry or fake active states.
+
+Slices: R1 safety/config → independent QA/review; R2 lexical rules and R3 declared export packaging
+may follow as one independent wave; R4 frozen archive + full disposition after fixes; R5 ordinary
+history-preserving `main` merge into a feature branch from reviewed release, audited conflict
+choices and retirement of auto-imported V1 files, reviewed PR into release. No blind `merge -s ours`,
+no destructive main overwrite, no synthetic history. Only then final UV-25/E-18 candidate evidence.
+Current operator stop-points remain real E-18 compatible host and exact reviewed candidate ACK;
+routine preservation/fixes require no new operator choice. Any actual public named-export collision
+or irreducible data-loss ambiguity must be reported before mutation (safe default: preserve archive).
 
 Negative acceptance должна fail closed до merge при wrong/stale main base, release HEAD, Git tree,
 diff/deletion manifest, V1 inventory, UV-25/UV-26 evidence, branch/upstream state или operator ACK;
@@ -879,11 +929,15 @@ direct/npm-script/release-it path способен дойти до publication s
 | UV-21 | U6 | entry-by-entry embedded metadata migration and delete `knowledge.xml` | UV-18A..20 | equivalence + local override proof; zero consumer grep before deletion |
 | UV-23 | U7 | data-only extension boundary ADR + consumer fixture | UV-01, UV-22 | path/package/URL/dynamic-import declarations fail closed до import/spawn; arbitrary declarative argv проходит общий planner/executor; report показывает qualified step + safe config provenance |
 | UV-24 | U8 | delete compatibility and stale tests | UV-14, UV-17, UV-21, UV-22 | **DONE #99:** zero legacy references, fresh directives |
-| UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24 | **DONE #101:** all acceptance scenarios reproducible; package not published; exact E-18 remains pending |
+| UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24; final refresh after R5 | **HISTORICAL DONE #101; FINAL REFRESH PENDING** after LAST product change/reconciliation; exact E-18 OPEN |
 | U8-RA | U8 | **SUPERSEDED by U8-MC:** historical #102 publication proposal (§12.2) | UV-25 | retained as decision history; no current ACK or executable publication semantics |
-| U8-MC | U8 | **PENDING operator ACK:** main replacement-tree cutover contract (§12.3) | UV-25 | operator explicitly accepts PR #25-only cutover, identity binding, V1 eradication and npm prohibition; plan merge alone is not cutover ACK |
-| UV-27 | U8 | umbrella: UV-27A V1 eradication inventory/removal + UV-27B fail-closed cutover guard/npm lock; no merge/publish | U8-MC ACK, UV-25 | complete v1 inventory/denylist+v2 allowlist; exact main-base/release-head/tree/diff/evidence binding; supported npm paths fail closed and credentials/OTP/authority are absent |
+| U8-MC | U8 | approved main replacement-tree policy; operational carry/reconciliation refinement (§12.3.1) | historical UV-25 #101; no new policy ACK | exact candidate ACK is a separate pending boundary after R1…R5 + fresh UV-25/UV-26; plan merge alone is not cutover ACK |
+| UV-27 | U8 | V1 eradication inventory + fail-closed cutover guard/npm lock | existing approved U8-MC policy, historical UV-25 | **IMPLEMENTED #104/#105**; exact candidate proof/ACK still pending; supported npm paths fail closed |
 | UV-26 | U8 | exact cloud-ios E-18 | UV-06, UV-17, UV-27A/B | real Xcode/Tuist execute→CI→coverage evidence; refresh UV-25 on relevant drift before candidate review |
+| U8-MC-R1 | U8 | safety/config: sync ownership, package root, lint import, safe Go, independent RC sections | reviewed #106 | PENDING reviewed release PR; causal RED→GREEN; no V1 runtime restoration |
+| U8-MC-R2/R3 | U8 | lexical baseline rules / current four public package exports | independent of R1 implementation; QA before integration | PENDING; no registry/old stack engine; D60 unchanged |
+| U8-MC-R4 | U8 | frozen raw data archive + exhaustive 520-path disposition/hashes | R1…R3 reviewed | PENDING; no synthetic active DONE/receipt |
+| U8-MC-R5 | U8 | ordinary history-preserving reconciliation via feature PR into release | R1…R4 reviewed | PENDING; audited V2 conflict choices + inventory, then final UV-25/E-18 candidate |
 
 ## 14. Main-cutover acceptance
 

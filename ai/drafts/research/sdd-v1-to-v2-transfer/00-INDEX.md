@@ -4,6 +4,17 @@
 > Baseline: main `8bb38477` (0.9.0-next.3, заморожен) · RC `95329c19` (0.8.4) · merge-base `46c6d616` · 115 коммитов main после merge-base.
 > Все документы — русский; идентификаторы, команды, пути — как в коде.
 
+> Current U8 refinement 2026-10-09: historical baseline выше не переписывается. Exact current main
+> `9663c65b6376c65f4b1df0daf27a06df5b25f7a3`, release `df39f8eff9d08caca5e3d90d313479cc50ed4fc0`,
+> merge-base `46c6d616700ee4cc61dbfe077d5b0052ce661dcd`, plan base
+> `d5cb9174069afd80ad2b9d80a89f0c6a80dbbfcb`. 117 MAIN-only commits, 520 paths, 157 **initial
+> diagnostic** conflicts. U8 теперь MAIN carry R1…R4 → reviewed reconciliation R5 → final UV-25
+> AFTER last product change/reconciliation + real E-18 → exact candidate/reviewer/ACK; #101 остаётся
+> historical DONE. Seven-gap/data matrix и exhaustive all-path disposition —
+> [64 §12.3.1](64-VERIFY-RULES-UNIFICATION.md#1231-main-carry-и-reconciliation--operational-refinement-2026-10-09).
+> Stop-points: real E-18 compatible host, exact reviewed candidate ACK. Operational refinement
+> existing approved U8-MC не является новым U0/ACK и не разрешает main merge/publication.
+
 ## 1. Цель и границы (из интервью, `01-INTERVIEW-DECISIONS.md`)
 
 - RC → единственный SDD; v1 удаляется из дерева после переноса всего полезного; совместимость только через миграцию V1→V2.
@@ -44,9 +55,9 @@ A4 issues akkrat                    B4 RULES · B5 RELEASE · B6 DIRECTIVES/SKIL
 | 34 | `34-TRACK-RELEASE-PACKAGE.md` | исторически проверенные упаковка/публикация/тесты/версии; REL-1..15; npm publication вынесена после main cutover | ВЕРИФИЦИРОВАНО как historical evidence; #102/U8-RA publication semantics superseded by `64 §12.3`; supported npm paths locked, credentials unavailable |
 | 40 | `40-TRACK-DIRECTIVES-SKILLS.md` | инварианты v1→аксиомы v2, скиллы→роутер, сборка; T-B6-01..27 | ВЕРИФИЦИРОВАНО; D-27, L-9..L-12; **открыт D-26** (параллель задач) |
 | 50 | `50-TRACK-EVAL.md` | зрелость flow-eval, минимальные эвалы G1–G4; E-00..E-16 | ВЕРИФИЦИРОВАНО; D-28, D-29, L-13..L-15 |
-| 60 | `60-ACCEPTANCE.md` | критерии приёмки **A1–A24** и post-migration **U-A1..U-A10**; U-A10 — exact main-cutover authorization/V1 eradication/npm prohibition | ВЕРИФИЦИРОВАНО по историческому треку; **U8-MC/UV-27 ждёт operator ACK; PR #25 merge blocked** |
+| 60 | `60-ACCEPTANCE.md` | критерии A1–A24 и U-A1..U-A10; exhaustive MAIN disposition/data preservation, final evidence, exact candidate authorization | historical verification retained; **approved U8-MC/implemented UV-27; R1…R5/final evidence/exact candidate ACK PENDING; PR #25 merge blocked** |
 | 61 | `61-TASK-BOARD.md` | сводная доска: **202 строки / 199 активных задач** (+2 — `GAP-B-2`/`REL-19` по D-54), волны **−1…5** (**3**/**67**/4/17/50/18/11, вне волн **20**; сумма 190 = 202 − 12), статусы **74**/**3 (ВЫПОЛНЕНО, пачка 8)**/88/22/12/2/1, 12 дублей-указателей, 5 блокеров релиза, **брифы 0/5…5/5** | ВЕРИФИЦИРОВАНО (V-61 + дельта 06/V-06-GAP + правки **V-61b** + **триаж #14** + **D-51** + **D-54** применены: `B2-12` → Волна 3, `SO-13` расщеплена по D-44, коллизия `V-06` устранена, трек `V14` заведён — `V14-1`/`V14-3` в релиз, `V14-2a..e` тоже в релиз (Волны 3/4, D-51), критерий `A24` — релизный, не блокер; **D-54: `GAP-B-2`/`REL-19` заведены** — гейт zero-new-error переезжает в pre-push, `check:ci`/`.github/workflows/ci.yml` удаляются; конфликт с `REL-9`/D-11 зафиксирован в `61 §2.2` п.16, не снят; **пачка 8 (2026-09-08, документная часть): `GAP-1`/`GAP-P-1`/`GAP-P-2` → ВЫПОЛНЕНО, статусный счётчик `61 §5.5` пересчитан по этой дельте только — полная ресинхронизация с фактическим исполнением остальных задач не входит в эту правку**) |
-| 64 | `64-VERIFY-RULES-UNIFICATION.md` | единый persistence-free Verify engine, thin SDD facade, preset/provider DAG, embedded lexical rule metadata + PhaseFacts/RuleSnapshot, exact-SHA remote executor; U8 replacement-tree cutover chain | **ACK U0; UV-24 DONE #99; UV-25 DONE #101; #102 publication proposal SUPERSEDED; U8-MC/UV-27 PENDING ACK; UV-26 и merge #25 blocked; npm publication out of scope** (D-65..D-70) |
+| 64 | `64-VERIFY-RULES-UNIFICATION.md` | unified Verify/rules; U8 MAIN carry R1…R4, all-path disposition, reconciliation R5, fresh evidence/candidate chain | **ACK U0 historical; UV-25 #101 historical DONE, final refresh PENDING; approved U8-MC/implemented UV-27; R1…R5 PENDING; real E-18/ exact candidate ACK OPEN; main merge/publication not authorized** (D-65..D-70) |
 | 70 | `70-ORCHESTRATION-PROTOCOL.md` | бриф/отчёт, ритм, полномочия | ЗАФИКСИРОВАНО |
 | — | `_raw/**` | нередактированные отчёты аналитиков и верификаторов, снимок ресёрча RC | АРХИВ |
 

@@ -461,14 +461,20 @@ Issue akkrat #21 и раздел D3 аудита: цикл ревью↔испр
 | U5 | UV-15..17 | U3 | только перед remote mutation/rollback |
 | U6 | UV-20..21: read-only `gennady rules` facade + entry-by-entry embedded metadata migration/equivalence + delete `knowledge.xml` at zero consumers | UV-20S | только перед недетерминированным model-selector |
 | U7 | UV-23: external-plugin trust/version/isolation | U2, U3 | перед исполнением внешнего plugin-кода |
-| U8 | UV-24 (#99 DONE) → UV-25 (#101 DONE) → U8-MC ACK → UV-27A/B V1 eradication + cutover guard/npm lock → UV-26 exact E-18 → conditional UV-25 refresh → exact PR #25 candidate → merge/main verification | U4, U5, U6, U7 | **два stop: ACK superseding main-cutover плана; затем exact operator ACK reviewed PR #25 candidate. Npm publish отсутствует** |
+| U8 | UV-27A/B → R1 safety/config → R2 lexical rules / R3 declared exports → R4 frozen archive + all-path disposition → R5 reviewed reconciliation → final UV-25 / real UV-26 → exact #25 candidate | U4, U5, U6, U7 | **real E-18 compatible host; затем exact operator ACK reviewed candidate. Npm publish отсутствует; #101 — historical DONE, final refresh pending** |
 
 Merged #102/U8-RA сохраняется как decision history, но его tarball/publication semantics superseded.
 Current deliverable — единственный существующий draft PR #25 (`codex/sdd-v2-rc52-followup` →
-`main`), replacement final tree через ordinary PR, не destructive overwrite. Сначала operator
-принимает U8-MC plan, затем release-ветка получает V1-eradication inventory/denylist+v2 allowlist и
-fail-closed cutover SSOT. После UV-26 любое relevant изменение product/config/rules/cutover-gate
-bytes заставляет переснять UV-25. Reviewed candidate связывается с exact release HEAD, current main
+`main`), replacement final tree через ordinary PR, не destructive overwrite. Existing approved
+U8-MC policy и implemented UV-27 не являются exact candidate ACK. R1 QA precedes integration;
+R2/R3 могут идти independent wave; R4/R5 после reviewed fixes. R4 сохраняет MAIN journals/specs
+frozen byte-for-byte без synthetic active DONE; R4/R5 фиксируют disposition **всех 520 paths** и
+source/blob hashes, не только seven gaps. Initial 157 merge-tree conflicts — diagnostic count,
+не remaining conflicts. Exact audit refs и matrix — [64 §12.3.1](64-VERIFY-RULES-UNIFICATION.md#1231-main-carry-и-reconciliation--operational-refinement-2026-10-09).
+Final UV-25 refresh обязателен AFTER LAST product/config/rules/packaging change AND reconciliation;
+#101 DONE сохраняется исторически. Real E-18 OPEN на macOS 14.8.5 (require>=15.0), не блокирует
+MAIN carry/reconciliation; любой subsequent relevant drift требует evidence refresh.
+Reviewed candidate связывается с exact release HEAD, current main
 base SHA, Git tree, diff/deletion manifest, evidence digests и branch/upstream state; current main
 base обязан быть ancestor candidate. Conflict resolution не может молча импортировать v1 tree и
 требует полного re-review. После exact operator ACK выполняются ordinary merge #25 и post-merge main
