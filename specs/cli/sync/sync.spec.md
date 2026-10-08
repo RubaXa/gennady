@@ -88,7 +88,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Service (чистые функции, без I/O к stdout)
 - **Purpose:** Ядро синхронизации: обнаружение пакета, сканирование, сравнение
 - **Public Operations:**
-  - `resolvePackageDir(cwd: string): string | null` — приоритет: `node_modules/gennady` > `import.meta.resolve('gennady')`
+  - `resolvePackageDir(cwd: string): string | null` — приоритет: local `node_modules/gennady` > explicit self-repo с `package.json name: gennady` > invoking tool owner через `import.meta.resolve('gennady')`. Чужой `cwd` не доказывает ownership.
   - `scanDirectives(sourceDir: string, subdirs?: string[]): string[]` — список относительных путей всех файлов; применяет `EXCLUDED_ENTRIES`
   - `collectAndCompare(deps: SyncCmdDeps, opts: SyncOptions): SyncResult` — главная точка входа. Применяет `PathNormalizer` с `SYNC_PATH_RULES` к содержимому каждого файла перед сравнением и записью
 - **Lifecycle:** Stateless. Вызывается `sync.cmd.ts`
@@ -161,7 +161,11 @@ None.
   - `EXCLUDED_ENTRIES` не попадают в результат
 - **Invariants:**
   - Никогда не пишет в stdout/stderr
+  - Mirror deletion ограничена текущими package-owned top-level подкаталогами источника. Stale файлы внутри них удаляются; неизвестные каталоги и root-файлы сохраняются с warning. Отсутствие root-файла в текущем пакете не доказывает прежнюю ownership; имена не являются whitelist ownership.
+  - Root-файлы, присутствующие в текущем source, сравниваются/обновляются штатно. Custom root `knowledge.xml` — только пользовательские bytes: не registry, не загружается и не seed-ится из legacy package file. Историческое удаление root-файла требует отдельного доказанного migration ownership, не угадывается sync.
+  - Неполный source scan запрещает deletion в затронутом prefix; dry-run не пишет и не удаляет.
   - `resolvePackageDir` всегда возвращает путь с `ai/directives` на конце
+  - Fallback обнаруживает package root по ближайшему ancestor `package.json` с `name: gennady`, независимо от source/dist/nested entry layout. Чужой cwd не считается package root; отсутствующий subdir возвращает `null`.
   - `scanDirectives` всегда возвращает пути с прямыми слешами (`/`)
 
 ### 4.3 Service: `SyncFormatter`

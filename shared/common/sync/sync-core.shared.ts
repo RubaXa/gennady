@@ -3,7 +3,7 @@
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -31,9 +31,14 @@ function resolveSelfRepoDir(projectRoot: string, subdir: string): string | null 
  * @purpose Locate a subdirectory inside the installed gennady npm package, or the gennady repo itself.
  * @param projectRoot Project root directory (contains node_modules/).
  * @param subdir Subdirectory path inside the gennady package (e.g., 'ai/directives').
+ * @param [resolveEntry] Internal resolution port; production uses import.meta.resolve, tests supply actual fixture entry URLs.
  * @returns Absolute path or null if the package or subdirectory is not found.
  */
-export function resolvePackageDir(projectRoot: string, subdir: string): string | null {
+export function resolvePackageDir(
+  projectRoot: string,
+  subdir: string,
+  resolveEntry: () => string = () => import.meta.resolve('gennady')
+): string | null {
   try {
     const localPath = join(projectRoot, 'node_modules', 'gennady', subdir);
     if (existsSync(localPath)) return localPath;
@@ -41,19 +46,22 @@ export function resolvePackageDir(projectRoot: string, subdir: string): string |
     // EACCES or other filesystem errors — fall through to import.meta.resolve
   }
 
+  // An explicit self-repo is a local source installation, ahead of the invoking tool's owner.
+  const selfRepoDir = resolveSelfRepoDir(projectRoot, subdir);
+  if (selfRepoDir) return selfRepoDir;
+
   try {
-    const resolved = import.meta.resolve('gennady');
-    const pkgFile = fileURLToPath(resolved);
-    const pkgRoot = pkgFile.replace(/[/\\]dist[/\\].*$/, '');
-    const dirPath = join(pkgRoot, subdir);
-    if (existsSync(dirPath)) return dirPath;
+    let packageRoot = dirname(fileURLToPath(resolveEntry()));
+    while (true) {
+      const dirPath = resolveSelfRepoDir(packageRoot, subdir);
+      if (dirPath) return dirPath;
+      const parent = dirname(packageRoot);
+      if (parent === packageRoot) break;
+      packageRoot = parent;
+    }
   } catch {
     // import.meta.resolve may fail
   }
-
-  // gennady's own repo (dev/CI running against itself) has no node_modules/gennady to find
-  const selfRepoDir = resolveSelfRepoDir(projectRoot, subdir);
-  if (selfRepoDir) return selfRepoDir;
 
   return null;
 }

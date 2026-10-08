@@ -22,7 +22,7 @@ import { tmpdir } from 'node:os';
 // sourceDir/catalog.txt      — unaffected, present in both
 // sourceDir/sdd/discovery.xml — unaffected, present in both
 // sourceDir/testing/legacy.xml — readdirSync on this ONE directory is mocked to throw EACCES
-// targetDir mirrors all three, plus a genuine orphan `stale-root.xml` the package never shipped.
+// targetDir mirrors all three, plus a stale file inside package-owned sdd/ and an unknown root file.
 
 const _tmpDir = mkdtempSync(join(tmpdir(), 'sync-core-partial-read-'));
 const _sourceDir = join(_tmpDir, 'ai', 'directives');
@@ -40,7 +40,8 @@ mkdirSync(join(_targetDir, 'testing'), { recursive: true });
 writeFileSync(join(_targetDir, 'catalog.txt'), 'catalog', 'utf-8');
 writeFileSync(join(_targetDir, 'sdd', 'discovery.xml'), '<d/>', 'utf-8');
 writeFileSync(join(_targetDir, 'testing', 'legacy.xml'), '<legacy/>', 'utf-8');
-writeFileSync(join(_targetDir, 'stale-root.xml'), '<stale/>', 'utf-8');
+writeFileSync(join(_targetDir, 'sdd', 'stale.xml'), '<stale/>', 'utf-8');
+writeFileSync(join(_targetDir, 'custom-root.xml'), '<custom/>', 'utf-8');
 
 // ── Mock: readdirSync throws EACCES for exactly the blocked source subdirectory, real fs
 // everywhere else (target reads, the rest of the source tree, this file's own fixture setup
@@ -102,10 +103,11 @@ describe('collectAndCompare — partial source read (SO-7)', () => {
     // A genuine orphan outside the blocked subtree is still pruned — the fix must be narrowly
     // scoped to the incomplete subtree, not "never delete anything on any error anywhere".
     assert.ok(
-      result.entries.some((e) => e.relativePath === 'stale-root.xml' && e.status === 'deleted'),
-      'stale-root.xml (a real orphan, unrelated to the read failure) must still be deleted'
+      result.entries.some((e) => e.relativePath === 'sdd/stale.xml' && e.status === 'deleted'),
+      'sdd/stale.xml (package-owned, unrelated to the read failure) must still be deleted'
     );
-    assert.ok(!existsSync(join(_targetDir, 'stale-root.xml')));
+    assert.ok(!existsSync(join(_targetDir, 'sdd', 'stale.xml')));
+    assert.equal(readFileSync(join(_targetDir, 'custom-root.xml'), 'utf-8'), '<custom/>');
 
     // Fail-safe direction requires both: never delete AND never stay silent about it.
     assert.ok(
