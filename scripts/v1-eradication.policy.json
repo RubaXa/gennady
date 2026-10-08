@@ -280,11 +280,11 @@
     "scripts/v1-eradication.policy.json",
     "scripts/__tests__/v1-eradication.test.ts"
   ],
-  "expectedInventoryDigest": "e5b992b82385867fb1c2a16e271db793652dee78d2a4424efaaa1672b79b7061",
+  "expectedInventoryDigest": "d1122518b20fa4254df49c33a170006c9af1043b0c200dc90d3b0b920b7982c8",
   "expectedCounts": {
     "canonical-v2": 201,
     "required-v1-to-v2-migration-boundary": 53,
-    "historical-test-evidence": 261,
-    "unrelated-product-version": 63
+    "historical-test-evidence": 262,
+    "unrelated-product-version": 64
   }
 }

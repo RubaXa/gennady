@@ -4,6 +4,7 @@
 
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { createVerifyCommandIdentity } from '../reporting/command-identity.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
@@ -918,11 +919,19 @@ export async function executeLocalStep(
     };
   }
 
-  const processOutcome = await runProcess(
-    step.command.argv,
+  const executedCommand = {
+    ...step.command,
+    argv: [...step.command.argv],
     cwd,
-    step.command.env,
-    Math.min(step.timeoutMs, step.command.timeoutMs),
+    ...(step.command.env === undefined ? {} : { env: { ...step.command.env } }),
+    timeoutMs: Math.min(step.timeoutMs, step.command.timeoutMs),
+  };
+  const commandIdentity = createVerifyCommandIdentity(executedCommand, guard.toplevel);
+  const processOutcome = await runProcess(
+    executedCommand.argv,
+    executedCommand.cwd,
+    executedCommand.env,
+    executedCommand.timeoutMs,
     maxEvidenceBytes,
     maxPolicyOutputBytes,
     new Set([
@@ -1097,6 +1106,7 @@ export async function executeLocalStep(
       process: {
         schema: 'gennady.verify-process.v1',
         identity: processOutcome.identity,
+        commandIdentity,
         startedAt: processOutcome.startedAt,
         finishedAt: processOutcome.finishedAt,
         termination: processOutcome.termination,

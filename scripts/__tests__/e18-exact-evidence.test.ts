@@ -4,158 +4,37 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it } from 'node:test';
-import { checkE18Evidence, preflightE18Environment } from '../e18-exact-evidence.ts';
+import {
+  createRepositoryRootCommandIdentity,
+  createVerifyCommandIdentity,
+} from '../../shared/verify/reporting/command-identity.ts';
+import {
+  runWithSddAttemptJournal,
+  validateCurrentSddPhaseAttempt,
+} from '../../shared/sdd/verify/sdd-attempt-journal.ts';
+import { buildGroupReceipt, upsertGroupReceipt } from '../../shared/sdd/group-receipt.ts';
+import { executeLocalStep } from '../../shared/verify/execution/local.executor.ts';
+import { acquireWorkspaceGuard } from '../../shared/verify/execution/workspace-guard.ts';
+import type { VerifyRunReport } from '../../shared/verify/model/verify-report.type.ts';
+import type { PlannedVerifyStep } from '../../shared/verify/model/verify-step.type.ts';
+import type { RemotePipelineObserver } from '../../shared/verify/execution/remote-watcher.ts';
+import {
+  checkE18Evidence,
+  collectE18Evidence,
+  preflightE18Environment,
+} from '../e18-exact-evidence.ts';
 
 const fixturePath = resolve(import.meta.dirname, 'fixtures/e18-exact-evidence.valid.json');
 
 function fixture(): Record<string, any> {
-  const value = JSON.parse(readFileSync(fixturePath, 'utf8')) as Record<string, any>;
-  const hash = (text: string): string => createHash('sha256').update(text).digest('hex');
-  const task = 'ai/tasks/cloud.task.T1.md';
-  const phase = 'P3';
-  const projectConfig = JSON.stringify({
-    schema: 'gennady.e18-project.v1',
-    workspace: value.project.workspace,
-    scheme: value.project.scheme,
-    destination: value.project.destination,
-    coverageThresholdBasisPoints: 8000,
-    coverageStepId: 'swift:coverage',
-    xcresult: value.coverage.xcresult.path,
-    sourceRoots: ['Sources'],
-  });
-  value.project.config = {
-    path: 'config/e18-project.json',
-    content: projectConfig,
-    sha256: hash(projectConfig),
-  };
-  const attempt = {
-    schema: 'gennady.sdd-verify-attempt.v1',
-    runId: 'attempt-e18-001',
-    sddPhase: phase,
-    selector: 'coverage',
-    state: 'PASS',
-    startedAt: '2026-10-08T12:00:00.000Z',
-    finishedAt: '2026-10-08T12:10:00.000Z',
-    durationMs: 600000,
-    reportState: 'complete',
-    processes: [
-      {
-        stepId: 'swift:coverage',
-        status: 'pass',
-        exitCode: 0,
-        durationMs: 300000,
-        identity: 'cmd-xcodebuild',
-        startedAt: '2026-10-08T12:04:00.000Z',
-        finishedAt: '2026-10-08T12:09:00.000Z',
-        termination: 'completed',
-        signal: null,
-      },
-    ],
-    trust: { level: 'remote-provider', source: 'ci', resolved: true },
-  };
-  const rawAttempt = Buffer.from(JSON.stringify(attempt)).toString('base64url');
-  Object.assign(value.execution.attempt, {
-    task,
-    phase,
-    rawEvidence: rawAttempt,
-    rawEvidenceDigest: hash(rawAttempt),
-  });
-  const signature = 'sha256:' + '4'.repeat(64);
-  value.execution.groupState = { members: ['cloud.task.T1.md'], signature };
-  value.execution.artifact = { path: 'Sources/App/App.swift', sha256: '5'.repeat(64) };
-  for (const receipt of value.execution.groupReceipts) {
-    const raw = JSON.stringify({
-      schema: 1,
-      kind: receipt.kind,
-      group: 'specs/cloud.spec.md',
-      members: ['cloud.task.T1.md'],
-      gitRef: value.cloudIos.headSha,
-      verdict: 'PASS',
-      ts: '2026-10-08T12:10:00.000Z',
-      signature,
-    });
-    receipt.raw = raw;
-    receipt.digest = hash(raw);
-  }
-  const watcher = {
-    state: 'REMOTE_SUCCESS',
-    pipelineId: value.remote.pipelineId,
-    proof: {
-      schema: 'gennady.verify-remote-proof.v1',
-      provider: value.remote.provider,
-      project: 'example/cloud-ios',
-      definitionId: value.remote.pipelineDefinitionId,
-      sourceSha: value.remote.exactSha,
-      pipelineId: value.remote.pipelineId,
-      pipelineSha: value.remote.exactSha,
-      rawStatus: 'success',
-      terminalState: 'REMOTE_SUCCESS',
-      observedAt: value.remote.observedAt,
-      jobs: value.remote.jobs.map((job: { id: string; name: string }) => ({
-        ...job,
-        rawStatus: 'success',
-      })),
-    },
-    evidence: [],
-    message: 'success',
-  };
-  value.remote.rawWatcher = JSON.stringify(watcher);
-  value.remote.rawWatcherDigest = hash(value.remote.rawWatcher);
-  const xccov = JSON.stringify({
-    targets: [
-      {
-        name: 'CloudIOS',
-        files: [
-          {
-            path: 'Sources/App/App.swift',
-            coveredLines: 90,
-            executableLines: 100,
-          },
-        ],
-      },
-    ],
-  });
-  value.coverage.xccov.payload = xccov;
-  value.coverage.xccov.sha256 = hash(xccov);
-  const argvByRole: Record<string, string[]> = {
-    'cloud-ios-execute': ['gennady', 'sdd-verify', '--task', task, '--phase', phase],
-    'remote-observe': [
-      'gennady:remote-watcher',
-      value.remote.provider,
-      value.remote.exactSha,
-      value.remote.pipelineId,
-    ],
-    'xcodebuild-coverage': [
-      'xcodebuild',
-      '-workspace',
-      value.project.workspace,
-      '-scheme',
-      value.project.scheme,
-      '-destination',
-      value.project.destination,
-      '-enableCodeCoverage',
-      'YES',
-      '-resultBundlePath',
-      value.coverage.xcresult.path,
-      'test',
-    ],
-    'xccov-export': ['xcrun', 'xccov', 'view', '--report', '--json', value.coverage.xcresult.path],
-  };
-  for (const command of value.execution.commands) {
-    if (command.role === 'cloud-ios-execute') command.id = 'attempt-e18-001';
-    command.argv = argvByRole[command.role];
-    command.argvIdentity = hash(command.argv.join('\u0000'));
-    command.log.content = command.role === 'xccov-export' ? xccov : `${command.role} PASS`;
-    command.log.bytes = Buffer.byteLength(command.log.content);
-    command.log.sha256 = hash(command.log.content);
-    command.log.truncated = false;
-  }
-  return value;
+  return JSON.parse(readFileSync(fixturePath, 'utf8')) as Record<string, any>;
 }
-
 function check(value: unknown, tree = '1212121212121212121212121212121212121212') {
   return checkE18Evidence(value, { resolveTree: () => tree });
 }
@@ -168,6 +47,47 @@ function expectInvalid(value: unknown, pattern: RegExp): void {
 }
 
 describe('UV-26 exact E-18 evidence', () => {
+  it('rejects an arbitrary cloud-ios base even when all other evidence is valid', () => {
+    const value = fixture();
+    value.cloudIos.baseSha = '2'.repeat(40);
+    expectInvalid(value, /immutable reviewed cloud-ios base/);
+  });
+
+  it('fails closed for historical/malformed identities and non-reviewed cwd/env/timeout after rehash', () => {
+    const canonicalArgv = fixture().execution.commands[2].argv;
+    const identities = [
+      undefined,
+      'sha256:malformed',
+      createRepositoryRootCommandIdentity({
+        argv: canonicalArgv,
+        env: { DEVELOPER_DIR: '/Applications/Other.app/Contents/Developer' },
+        timeoutMs: 5_400_000,
+      }),
+      createRepositoryRootCommandIdentity({ argv: canonicalArgv, timeoutMs: 1_000 }),
+      createVerifyCommandIdentity(
+        { argv: canonicalArgv, cwd: '/repo/subdir', timeoutMs: 5_400_000 },
+        '/repo'
+      ),
+    ];
+    for (const commandIdentity of identities) {
+      const value = fixture();
+      const attempt = JSON.parse(
+        Buffer.from(value.execution.attempt.rawEvidence, 'base64url').toString('utf8')
+      );
+      if (commandIdentity === undefined) delete attempt.processes[0].commandIdentity;
+      else attempt.processes[0].commandIdentity = commandIdentity;
+      value.execution.attempt.rawEvidence = Buffer.from(JSON.stringify(attempt)).toString(
+        'base64url'
+      );
+      value.execution.attempt.rawEvidenceDigest = createHash('sha256')
+        .update(value.execution.attempt.rawEvidence)
+        .digest('hex');
+      expectInvalid(value, /commandIdentity|command identity/);
+    }
+    const stale = fixture();
+    stale.execution.attempt.currentWorktreeDigest = `sha256:${'f'.repeat(64)}`;
+    expectInvalid(stale, /worktreeDigest must match/);
+  });
   it('accepts one frozen real-shape terminal projection and derives PASS', () => {
     const report = check(fixture());
     assert.deepEqual(report.issues, []);
@@ -324,6 +244,37 @@ describe('UV-26 exact E-18 evidence', () => {
       .digest('hex');
     expectInvalid(remote, /normalized fields do not match embedded watcher payload/u);
   });
+
+  it('rejects a self-consistent PASS attempt whose executed xcode command was different', () => {
+    const value = fixture();
+    const attempt = JSON.parse(
+      Buffer.from(value.execution.attempt.rawEvidence, 'base64url').toString('utf8')
+    );
+    attempt.processes[0].commandIdentity = createRepositoryRootCommandIdentity({
+      argv: [
+        'xcodebuild',
+        '-workspace',
+        'Other.xcworkspace',
+        '-scheme',
+        value.project.scheme,
+        '-destination',
+        value.project.destination,
+        '-enableCodeCoverage',
+        'YES',
+        '-resultBundlePath',
+        value.coverage.xcresult.path,
+        'test',
+      ],
+      timeoutMs: 5_400_000,
+    });
+    value.execution.attempt.rawEvidence = Buffer.from(JSON.stringify(attempt)).toString(
+      'base64url'
+    );
+    value.execution.attempt.rawEvidenceDigest = createHash('sha256')
+      .update(value.execution.attempt.rawEvidence)
+      .digest('hex');
+    expectInvalid(value, /runner-owned coverage command identity does not match/u);
+  });
 });
 
 describe('UV-26 host-first collector preflight', () => {
@@ -367,4 +318,258 @@ describe('UV-26 host-first collector preflight', () => {
     );
     assert.deepEqual(calls, ['sw_vers', 'xcodebuild', 'xcode-select', 'tuist']);
   });
+});
+
+describe('UV-26 durable journal collector lifecycle', () => {
+  async function lifecycle(
+    drift?: 'before' | 'watch-head' | 'watch-bundle' | 'watch-config' | 'wrong-command'
+  ) {
+    const sandbox = fs.realpathSync(fs.mkdtempSync(resolve(os.tmpdir(), 'e18-lifecycle-')));
+    const cloud = resolve(sandbox, 'cloud');
+    const gennady = resolve(sandbox, 'gennady');
+    const bin = resolve(sandbox, 'bin');
+    const oldPath = process.env.PATH;
+    const git = (root: string, ...args: string[]) =>
+      execFileSync('git', ['-C', root, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
+        encoding: 'utf8',
+      }).trim();
+    const put = (root: string, name: string, content: string) => {
+      fs.mkdirSync(resolve(root, name, '..'), { recursive: true });
+      fs.writeFileSync(resolve(root, name), content);
+    };
+    const output = resolve(gennady, 'ai/flow-eval/.baseline/e18-exact-evidence.json');
+    try {
+      for (const root of [cloud, gennady]) {
+        fs.mkdirSync(root);
+        git(root, 'init', '-q', '-b', 'main');
+      }
+      put(gennady, 'ai/flow-eval/.baseline/.gitkeep', '');
+      git(gennady, 'add', '.');
+      git(gennady, 'commit', '-qm', 'product');
+      const value = fixture();
+      const project = JSON.parse(value.project.config.content);
+      const task = 'ai/tasks/cloud.task.T1.md';
+      const spec = 'specs/cloud.spec.md';
+      const ticket =
+        '# Task\n<!--SECTION:META-->\n- **Status:** [x] DONE\n<!--/SECTION:META-->\n<!--SECTION:PHASES_OVERVIEW-->\n| ID | Kind | Deps | Status |\n|---|---|---|---|\n| P3 | unit | — | [x] |\n<!--/SECTION:PHASES_OVERVIEW-->\n<!--SECTION:PHASE_P3-->\n### P3\n- **Target Files:**\n  - Sources/App/App.swift\n- **Deleted Files:**\n  - none\n<!--/SECTION:PHASE_P3-->\n<!--SECTION:EXECUTION_LOG-->\n<!--/SECTION:EXECUTION_LOG-->\n';
+      put(cloud, task, ticket);
+      put(cloud, 'Sources/App/App.swift', 'public let value = 1\n');
+      put(cloud, '.mise.toml', '[tools]\ntuist = "4.202.0"\n');
+      put(cloud, '.gitignore', 'build/\n');
+      put(cloud, 'config/e18-project.json', value.project.config.content);
+      put(cloud, `${project.workspace}/contents.xcworkspacedata`, '<Workspace/>');
+      let specContent = '# Cloud\n';
+      for (const kind of ['audit', 'review'] as const) {
+        const receipt = buildGroupReceipt(
+          kind,
+          spec,
+          [{ file: task, content: ticket }],
+          '1'.repeat(40),
+          'PASS',
+          new Date().toISOString()
+        );
+        assert.equal(receipt.ok, true);
+        if (receipt.ok) specContent = upsertGroupReceipt(specContent, receipt.receipt);
+      }
+      put(cloud, spec, specContent);
+      git(cloud, 'add', '.');
+      git(cloud, 'commit', '-qm', 'reviewed product/config/receipts');
+      const verifiedHead = git(cloud, 'rev-parse', 'HEAD');
+      fs.mkdirSync(bin);
+      put(
+        bin,
+        'xcodebuild',
+        `#!${process.execPath}\nconst fs = require('node:fs'); const args = process.argv.slice(2); const result = args[args.indexOf('-resultBundlePath') + 1]; fs.mkdirSync(result, {recursive:true}); fs.writeFileSync(result + '/Data', 'observed test output');\n`
+      );
+      fs.chmodSync(resolve(bin, 'xcodebuild'), 0o755);
+      process.env.PATH = `${bin}:${oldPath}`;
+      const argv = value.execution.commands.find(
+        (command: any) => command.role === 'xcodebuild-coverage'
+      ).argv;
+      if (drift === 'wrong-command') argv[2] = 'Other.xcworkspace';
+      const step: PlannedVerifyStep = {
+        id: 'swift:coverage',
+        plugin: 'swift',
+        tags: ['coverage'],
+        needs: [],
+        executor: 'local',
+        effect: 'observe',
+        command: { argv, cwd: cloud, timeoutMs: project.coverageTimeoutMs },
+        requires: [],
+        timeoutMs: project.coverageTimeoutMs,
+        onFailure: 'stop-phase',
+      };
+      const outcome = await runWithSddAttemptJournal({
+        root: cloud,
+        ticketPath: resolve(cloud, task),
+        sddPhase: 'P3',
+        run: async () => {
+          const acquired = acquireWorkspaceGuard(cloud, { signalHandlers: false });
+          assert.equal(acquired.kind, 'guard');
+          if (acquired.kind !== 'guard') throw acquired.error;
+          const executed = await executeLocalStep(step, acquired.guard);
+          assert.equal(executed.verdict, 'pass');
+          assert.deepEqual(acquired.guard.release(), { kind: 'released' });
+          const rules = {
+            digest: `sha256:${'b'.repeat(64)}`,
+            required: [],
+            suggested: [],
+            skipped: [],
+          };
+          const report: VerifyRunReport = {
+            context: {
+              request: {
+                root: cloud,
+                phase: 'coverage',
+                scope: { mode: 'files', files: ['Sources/App/App.swift'] },
+              },
+              plugins: ['swift'],
+              frameworks: [],
+              headSha: verifiedHead,
+              rules,
+            },
+            readiness: { status: 'READY', entries: [] },
+            plan: {
+              phase: 'coverage',
+              trust: { level: 'local-runner', source: 'contract:actual-executor' },
+              steps: [step],
+            },
+            results: [executed.result!],
+            mutations: [],
+            evidence: executed.evidence,
+            rules,
+            verdict: 'pass',
+          };
+          return { exitCode: 0, stdout: '', stderr: '', report };
+        },
+      });
+      assert.equal(outcome.exitCode, 0);
+      git(cloud, 'add', task);
+      git(cloud, 'commit', '-qm', 'durable journal');
+      const collectedHead = git(cloud, 'rev-parse', 'HEAD');
+      assert.notEqual(collectedHead, verifiedHead);
+      assert.deepEqual(validateCurrentSddPhaseAttempt(cloud, resolve(cloud, task), 'P3'), {
+        ok: true,
+      });
+      const configPath = resolve(sandbox, 'run.json');
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({
+          schema: 'gennady.e18-run.v1',
+          cloudIosBaseSha: verifiedHead,
+          task,
+          sddPhase: 'P3',
+          owningSpec: spec,
+          groupMembers: [task],
+          artifact: 'Sources/App/App.swift',
+          projectConfig: 'config/e18-project.json',
+          remote: { timeoutMs: 1_000, pollIntervalMs: 100 },
+        })
+      );
+      if (drift === 'before') {
+        put(cloud, 'Sources/App/App.swift', 'public let value = 2\n');
+        git(cloud, 'add', '.');
+        git(cloud, 'commit', '-qm', 'product drift');
+      }
+      const run = (_cwd: string, command: string) => ({
+        status: 0,
+        stderr: '',
+        stdout:
+          command === 'sw_vers'
+            ? '15.2'
+            : command === 'xcodebuild'
+              ? 'Xcode 16.2'
+              : command === 'xcode-select'
+                ? '/Applications/Xcode.app/Contents/Developer'
+                : command === 'tuist'
+                  ? '4.202.0'
+                  : value.coverage.xccov.payload,
+      });
+      const collect = () =>
+        collectE18Evidence(gennady, cloud, configPath, {
+          reviewedCloudIosBaseSha: verifiedHead,
+          platform: 'darwin',
+          run,
+          resolveRemote: () => ({ ok: true, observer: {} as RemotePipelineObserver }),
+          watchRemote: async ({ sourceSha }) => {
+            if (drift === 'watch-head') {
+              put(cloud, 'Sources/App/App.swift', 'public let value = 2\n');
+              git(cloud, 'add', '.');
+              git(cloud, 'commit', '-qm', 'concurrent product drift');
+            }
+            if (drift === 'watch-config')
+              put(cloud, 'config/e18-project.json', `${value.project.config.content}\n`);
+            if (drift === 'watch-bundle') put(cloud, `${project.xcresult}/Data`, 'changed output');
+            return {
+              state: 'REMOTE_SUCCESS',
+              pipelineId: 'pipeline-8001',
+              message: 'success',
+              evidence: [],
+              proof: {
+                schema: 'gennady.verify-remote-proof.v1',
+                provider: 'github',
+                project: 'example/cloud-ios',
+                definitionId: 'workflow-7001',
+                sourceSha,
+                pipelineSha: sourceSha,
+                pipelineId: 'pipeline-8001',
+                rawStatus: 'success',
+                terminalState: 'REMOTE_SUCCESS',
+                observedAt: new Date().toISOString(),
+                jobs: [{ id: 'job-9001', name: 'tests', rawStatus: 'success' }],
+              },
+            };
+          },
+        });
+      if (drift) {
+        await assert.rejects(
+          collect,
+          drift === 'before'
+            ? /PASS is stale/
+            : drift === 'wrong-command'
+              ? /E18_XCODE_COMMAND_MISMATCH/
+              : /E18_SOURCE_DRIFT|E18_CLOUD_IOS.*DIRTY/
+        );
+        assert.equal(fs.existsSync(output), false);
+      } else {
+        const report = await collect();
+        assert.equal(report.ok, true);
+        const observed = JSON.parse(fs.readFileSync(output, 'utf8'));
+        const raw = JSON.parse(
+          Buffer.from(observed.execution.attempt.rawEvidence, 'base64url').toString('utf8')
+        );
+        assert.equal(raw.identity.headSha, verifiedHead);
+        assert.equal(observed.cloudIos.headSha, collectedHead);
+        assert.equal(observed.remote.exactSha, collectedHead);
+        assert.equal(raw.identity.worktreeDigest, observed.execution.attempt.currentWorktreeDigest);
+        assert.equal(
+          checkE18Evidence(observed, {
+            reviewedCloudIosBaseSha: verifiedHead,
+            resolveTree: () => git(gennady, 'rev-parse', 'HEAD^{tree}'),
+          }).ok,
+          true
+        );
+        assert.equal(
+          checkE18Evidence(observed, {
+            resolveTree: () => git(gennady, 'rev-parse', 'HEAD^{tree}'),
+          }).ok,
+          false
+        );
+      }
+    } finally {
+      process.env.PATH = oldPath;
+      fs.rmSync(sandbox, { recursive: true, force: true });
+    }
+  }
+  it('runs a real local process, journals it, commits the journal and collects current exact-SHA evidence', () =>
+    lifecycle());
+  it('rejects product drift after the durable-journal commit', () => lifecycle('before'));
+  it('rejects PASS with the correct stepId from a different actual argv command', () =>
+    lifecycle('wrong-command'));
+  it('rejects a committed HEAD/product change during the watcher without persisting evidence', () =>
+    lifecycle('watch-head'));
+  it('rejects config changes during the watcher without persisting evidence', () =>
+    lifecycle('watch-config'));
+  it('rejects ignored xcresult changes during the watcher without persisting evidence', () =>
+    lifecycle('watch-bundle'));
 });

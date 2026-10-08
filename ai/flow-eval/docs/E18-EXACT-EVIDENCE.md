@@ -8,6 +8,7 @@ independent checker derives PASS. This repository does not contain a PASS yet.
 
 - macOS 15 or newer, Xcode 16.2 or newer selected from `/Applications`, and direct Tuist 4.202.0;
 - clean Gennady and cloud-ios checkouts, with the cloud-ios HEAD already pushed;
+- immutable reviewed cloud-ios base `d9de0f7c16824aff043be8332818154d9ed00960` (arbitrary ancestor bases are rejected);
 - a committed `gennady.e18-project.v1` JSON file in cloud-ios declaring workspace, scheme,
   destination and a non-zero coverage threshold;
 - a current PASS SDD attempt, DONE group, current audit/review receipts and the produced artifact;
@@ -27,6 +28,28 @@ project-config path and remote observation bounds. The reviewed project config
 Swift source roots and `coverageThresholdBasisPoints`; evidence cannot lower or replace these
 values.
 
+The config also requires `coverageTimeoutMs` (1,000–86,400,000 ms). This is the reviewed effective
+process timeout: Verify runs the minimum of command and step timeouts. Exact E-18 requires canonical
+`xcodebuild -workspace … -scheme … -destination … -enableCodeCoverage YES -resultBundlePath … test`,
+cwd equal to the repository root and no environment overrides. The inherited host environment is
+outside this command-override identity and is governed by host preflight.
+
+The runner computes `process.commandIdentity` immediately before spawn from those actual argv, cwd,
+environment overrides and effective timeout using the shared `gennady.verify-command-identity.v1`
+projection. It keeps the random process-attempt UUID in `process.identity` separately. The append-only
+SDD journal persists the runner digest; it never reconstructs execution identity from authored argv.
+Historical v1 attempts without `commandIdentity` remain readable as history, but exact E-18 rejects
+them and requires a fresh coverage run. Reporter command digests use the same versioned projection.
+
+Committing the durable journal changes HEAD without changing the verified product. Embedded raw
+attempts therefore retain their original `identity.headSha`; the collector requires it to be an
+ancestor of the clean current HEAD and revalidates the normalized journal-independent product/config/
+rules `worktreeDigest`. Evidence records `execution.attempt.currentWorktreeDigest` and the checker
+requires equality with the embedded attempt digest. Remote proof still binds the exact current pushed
+`cloudIos.headSha`, not the original local attempt HEAD. Product drift is rejected even on a descendant
+HEAD. Audit/review receipts must already be current for the verified tree; changing their spec bytes
+after verification requires a fresh attempt under the existing freshness rules.
+
 ```sh
 npm run release:e18 -- --preflight --cloud-ios-root /path/to/cloud-ios
 npm run release:e18 -- --collect --cloud-ios-root /path/to/cloud-ios --run-config /path/to/e18-run.json
@@ -39,6 +62,13 @@ exact-SHA watcher, hashes the `.xcresult` tree, and executes only read-only
 safe argv, raw attempt/group receipt payloads, the reviewed project config, the production watcher
 payload and xccov JSON. Every embedded payload has a recomputed digest; no token, raw unbounded log
 or absolute temporary path is retained.
+
+Immediately before atomic persistence, the collector checks both repositories' clean HEAD/tree again,
+normalized worktree digest, ticket/spec/config/artifact bytes and xcresult directory identity/content.
+Concurrent changes during remote observation or xccov export reject collection without writing PASS.
+Contract tests use explicit host/provider ports and an internal reviewed-base seam for self-contained
+temporary Git fixtures; CLI and release-boundary expose no base override. These tests do not certify
+the required real macOS/Xcode/Tuist run.
 
 `scripts/e18-exact-evidence.ts --check` reparses those raw payloads, derives command order and
 identities, recomputes coverage totals/duplicates/threshold, verifies exact SHA/pinned pipeline/jobs,

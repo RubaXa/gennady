@@ -24,6 +24,10 @@ import type {
   VerifyStepResult,
 } from '../../../verify/model/verify-report.type.ts';
 import {
+  createVerifyCommandIdentity,
+  createRepositoryRootCommandIdentity,
+} from '../../../verify/reporting/command-identity.ts';
+import {
   inspectSddPhaseAttempt,
   runWithSddAttemptJournal,
   validateCurrentSddPhaseAttempt,
@@ -99,6 +103,10 @@ function result(status: VerifyStepResult['status'], withStats: boolean): VerifyS
     process: {
       schema: 'gennady.verify-process.v1',
       identity: `process:${status}`,
+      commandIdentity: createRepositoryRootCommandIdentity({
+        argv: ['node', '--test'],
+        timeoutMs: 1_000,
+      }),
       startedAt: '2026-01-01T00:00:00.000Z',
       finishedAt: '2026-01-01T00:00:00.004Z',
       termination: 'completed',
@@ -143,6 +151,7 @@ function report(root: string, results: readonly VerifyStepResult[]): VerifyRunRe
           needs: [],
           executor: 'local',
           effect: 'observe',
+          command: { argv: ['node', '--test'], cwd: root, timeoutMs: 1_000 },
           requires: [],
           testStats: {
             policy: 'required',
@@ -183,6 +192,72 @@ it('normalizes repeated test-step attempts to the latest plan-ordered stats reco
     assert.deepEqual(record.testStats, [
       { stepId: 'node:unit', ...result('pass', true).testStats },
     ]);
+    assert.match(record.processes[0].identity, /^process:/u);
+    assert.equal(
+      record.processes[0].commandIdentity,
+      createVerifyCommandIdentity({ argv: ['node', '--test'], cwd: root, timeoutMs: 1_000 }, root)
+    );
+    assert.notEqual(record.processes[0].identity, record.processes[0].commandIdentity);
+  } finally {
+    cleanup();
+  }
+});
+
+it('keeps historical attempts without commandIdentity readable while new attempts persist it', async () => {
+  const { root, ticket, cleanup } = fixture();
+  try {
+    await runWithSddAttemptJournal({
+      root,
+      ticketPath: ticket,
+      sddPhase: 'P1',
+      run: async () => ({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        report: report(root, [result('pass', true)]),
+      }),
+    });
+    const ticketText = readFileSync(ticket, 'utf8');
+    const matches = [...ticketText.matchAll(/<!--SDD_VERIFY_EVIDENCE:([A-Za-z0-9_-]+)-->/g)];
+    const latest = matches.at(-1)!;
+    const record = JSON.parse(Buffer.from(latest[1]!, 'base64url').toString('utf8'));
+    delete record.processes[0].commandIdentity;
+    const historical = ticketText.replace(
+      latest[0],
+      `<!--SDD_VERIFY_EVIDENCE:${Buffer.from(JSON.stringify(record)).toString('base64url')}-->`
+    );
+    writeFileSync(ticket, historical);
+    assert.deepEqual(inspectSddPhaseAttempt(historical, 'P1'), { ok: true, state: 'PASS' });
+  } finally {
+    cleanup();
+  }
+});
+
+it('preserves remote/command-less results and never invents identity from authored plan argv', async () => {
+  const { root, ticket, cleanup } = fixture();
+  try {
+    const processResult = result('pass', true);
+    const process = { ...processResult.process! };
+    delete process.commandIdentity;
+    const original = report(root, [{ ...processResult, process }]);
+    const commandless = {
+      ...original,
+      plan: {
+        ...original.plan,
+        steps: original.plan.steps.map(({ command: _command, ...step }) => step),
+      },
+    };
+    const outcome = await runWithSddAttemptJournal({
+      root,
+      ticketPath: ticket,
+      sddPhase: 'P1',
+      run: async () => ({ exitCode: 0, stdout: '', stderr: '', report: commandless }),
+    });
+    assert.equal(outcome.exitCode, 0);
+    const record = evidence(ticket);
+    assert.equal(record.state, 'PASS');
+    assert.equal(record.processes[0].identity, process.identity);
+    assert.equal(record.processes[0].commandIdentity, undefined);
   } finally {
     cleanup();
   }

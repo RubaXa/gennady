@@ -26,11 +26,15 @@ import { fileURLToPath } from 'node:url';
 import { xccovCoverageAdapter } from '../cli/cmd/testcov/xccov-coverage-adapter.ts';
 import { resolveRemotePipelineObserver } from '../cli/cmd/verify/remote-provider.ts';
 import { deriveGroupState, hasValidGroupReceipt } from '../shared/sdd/group-receipt.ts';
-import { validateCurrentSddPhaseAttempt } from '../shared/sdd/verify/sdd-attempt-journal.ts';
+import {
+  currentSddPhaseWorktreeDigest,
+  validateCurrentSddPhaseAttempt,
+} from '../shared/sdd/verify/sdd-attempt-journal.ts';
 import {
   watchRemotePipeline,
   type RemotePipelineObserver,
 } from '../shared/verify/execution/remote-watcher.ts';
+import { createRepositoryRootCommandIdentity } from '../shared/verify/reporting/command-identity.ts';
 
 const EVIDENCE_SCHEMA = 'gennady.e18-exact-evidence.v2';
 const CHECK_SCHEMA = 'gennady.e18-exact-check.v1';
@@ -46,6 +50,7 @@ const MAX_COMMAND_OUTPUT = 1024 * 1024;
 const MAX_RECEIPT_BYTES = 256 * 1024;
 const MAX_XCCOV_BYTES = 8 * 1024 * 1024;
 const REQUIRED_TUIST_VERSION = '4.202.0';
+const REVIEWED_CLOUD_IOS_BASE_SHA = 'd9de0f7c16824aff043be8332818154d9ed00960';
 const COMMAND_ROLES = [
   'cloud-ios-execute',
   'remote-observe',
@@ -62,6 +67,8 @@ type HostFacts = {
   tuistVersion: string;
 };
 type E18Ports = {
+  /** @internal @testOnly Self-contained Git fixture base; production CLI never supplies this seam. */
+  reviewedCloudIosBaseSha?: string;
   platform?: NodeJS.Platform;
   run?: (
     cwd: string,
@@ -78,6 +85,8 @@ type E18Ports = {
   watchRemote?: typeof watchRemotePipeline;
 };
 type E18CheckContext = {
+  /** @internal @testOnly Fixture base; CLI and release-boundary always use the immutable reviewed base. */
+  reviewedCloudIosBaseSha?: string;
   evidenceBytes?: Buffer;
   resolveTree?: (sourceSha: string) => string | null;
 };
@@ -119,6 +128,7 @@ type E18Evidence = {
       finishedAt: string;
       rawEvidence: string;
       rawEvidenceDigest: string;
+      currentWorktreeDigest: string;
     };
     groupReceipts: readonly [
       { kind: 'audit'; verdict: 'PASS'; identity: string; digest: string; raw: string },
@@ -175,6 +185,7 @@ type E18ProjectConfig = {
   destination: string;
   thresholdBasisPoints: number;
   coverageStepId: string;
+  coverageTimeoutMs: number;
   xcresult: string;
   sourceRoots: string[];
 };
@@ -268,6 +279,14 @@ function fullSha(value: unknown, owner: string): string {
 function digest(value: unknown, owner: string): string {
   const text = strictString(value, owner, 64);
   if (!SHA256.test(text)) throw new Error(`${owner} must be a lowercase SHA-256`);
+  return text;
+}
+
+function prefixedDigest(value: unknown, owner: string): string {
+  const text = strictString(value, owner, 71);
+  if (!/^sha256:[0-9a-f]{64}$/u.test(text)) {
+    throw new Error(`${owner} must be a canonical sha256 identity`);
+  }
   return text;
 }
 
@@ -386,7 +405,7 @@ function parseCommand(value: unknown, index: number): CommandEvidence {
   };
 }
 
-function parseEvidence(value: unknown): E18Evidence {
+function parseEvidence(value: unknown, reviewedBaseSha = REVIEWED_CLOUD_IOS_BASE_SHA): E18Evidence {
   const root = exactRecord(
     value,
     [
@@ -423,6 +442,8 @@ function parseEvidence(value: unknown): E18Evidence {
   );
   if (cloudIos.clean !== true) throw new Error('evidence.cloudIos.clean must be true');
   const cloudHead = fullSha(cloudIos.headSha, 'evidence.cloudIos.headSha');
+  if (fullSha(cloudIos.baseSha, 'evidence.cloudIos.baseSha') !== reviewedBaseSha)
+    throw new Error('evidence.cloudIos.baseSha must equal the immutable reviewed cloud-ios base');
 
   const toolchain = exactRecord(
     root.toolchain,
@@ -491,6 +512,7 @@ function parseEvidence(value: unknown): E18Evidence {
       'finishedAt',
       'rawEvidence',
       'rawEvidenceDigest',
+      'currentWorktreeDigest',
     ],
     'evidence.execution.attempt'
   );
@@ -527,6 +549,30 @@ function parseEvidence(value: unknown): E18Evidence {
     decodedAttempt.reportState !== 'complete'
   )
     throw new Error('evidence.execution.attempt does not match the embedded PASS attempt');
+  const attemptIdentity = exactRecord(
+    decodedAttempt.identity,
+    ['headSha', 'worktreeDigest', 'scopeDigest', 'planDigest', 'configDigest', 'rulesDigest'],
+    'evidence.execution.attempt.identity'
+  );
+  fullSha(attemptIdentity.headSha, 'evidence.execution.attempt.identity.headSha');
+  if (
+    prefixedDigest(
+      attempt.currentWorktreeDigest,
+      'evidence.execution.attempt.currentWorktreeDigest'
+    ) !== attemptIdentity.worktreeDigest
+  )
+    throw new Error(
+      'embedded attempt worktreeDigest must match the observed current cloud-ios product/config/rules bytes'
+    );
+  for (const field of [
+    'worktreeDigest',
+    'scopeDigest',
+    'planDigest',
+    'configDigest',
+    'rulesDigest',
+  ] as const) {
+    prefixedDigest(attemptIdentity[field], `evidence.execution.attempt.identity.${field}`);
+  }
   const decodedTrust = decodedAttempt.trust as Record<string, unknown> | undefined;
   if (decodedTrust?.resolved !== true)
     throw new Error('evidence.execution.attempt embedded trust is unresolved');
@@ -758,6 +804,24 @@ function parseEvidence(value: unknown): E18Evidence {
   if (boundProcesses.length !== 1)
     throw new Error('embedded attempt must contain exactly one reviewed coverage process');
   const boundProcess = boundProcesses[0]!;
+  const expectedXcodeArgv = [
+    'xcodebuild',
+    '-workspace',
+    String(project.workspace),
+    '-scheme',
+    String(project.scheme),
+    '-destination',
+    String(project.destination),
+    '-enableCodeCoverage',
+    'YES',
+    '-resultBundlePath',
+    String(xcresult.path),
+    'test',
+  ];
+  const expectedCoverageCommandIdentity = createRepositoryRootCommandIdentity({
+    argv: expectedXcodeArgv,
+    timeoutMs: parsedProjectConfig.coverageTimeoutMs,
+  });
   if (
     boundProcess.status !== 'pass' ||
     boundProcess.identity !== xcodeCommand.id ||
@@ -766,6 +830,16 @@ function parseEvidence(value: unknown): E18Evidence {
     boundProcess.finishedAt !== xcodeCommand.finishedAt
   )
     throw new Error('xcodebuild command does not match the runner-owned coverage process');
+  if (
+    prefixedDigest(
+      boundProcess.commandIdentity,
+      'evidence.execution.attempt.processes[].commandIdentity'
+    ) !== expectedCoverageCommandIdentity
+  ) {
+    throw new Error(
+      'runner-owned coverage command identity does not match reviewed xcodebuild argv/cwd/env/timeout'
+    );
+  }
   if (xcresult.producedBy !== xcodeCommand.id)
     throw new Error('evidence.coverage.xcresult.producedBy must bind xcodebuild command');
   if (xccov.commandId !== xccovCommand.id)
@@ -873,20 +947,7 @@ function parseEvidence(value: unknown): E18Evidence {
       String(remote.exactSha),
       String(remote.pipelineId),
     ],
-    'xcodebuild-coverage': [
-      'xcodebuild',
-      '-workspace',
-      String(project.workspace),
-      '-scheme',
-      String(project.scheme),
-      '-destination',
-      String(project.destination),
-      '-enableCodeCoverage',
-      'YES',
-      '-resultBundlePath',
-      String(xcresult.path),
-      'test',
-    ],
+    'xcodebuild-coverage': expectedXcodeArgv,
     'xccov-export': ['xcrun', 'xccov', 'view', '--report', '--json', String(xcresult.path)],
   };
   for (const command of commands) {
@@ -955,6 +1016,10 @@ function parseEvidence(value: unknown): E18Evidence {
           attempt.rawEvidenceDigest,
           'evidence.execution.attempt.rawEvidenceDigest'
         ),
+        currentWorktreeDigest: prefixedDigest(
+          attempt.currentWorktreeDigest,
+          'evidence.execution.attempt.currentWorktreeDigest'
+        ),
       },
       groupReceipts,
       groupState: { members: groupMembers, signature: groupSignature },
@@ -1011,7 +1076,7 @@ function parseEvidence(value: unknown): E18Evidence {
  */
 export function checkE18Evidence(input: unknown, context: E18CheckContext = {}): E18CheckReport {
   try {
-    const evidence = parseEvidence(input);
+    const evidence = parseEvidence(input, context.reviewedCloudIosBaseSha);
     const resolvedTree = context.resolveTree?.(evidence.sourceCommit) ?? evidence.gennady.treeSha;
     if (resolvedTree !== evidence.gennady.treeSha)
       throw new Error('evidence.gennady.treeSha does not match sourceCommit tree');
@@ -1147,7 +1212,10 @@ function assertCleanRepository(root: string, owner: string): void {
     throw new Error(`${owner}_DIRTY: ${status.split('\n').slice(0, 8).join(', ')}`);
 }
 
-function parseRunConfig(value: unknown): E18RunConfig {
+function parseRunConfig(
+  value: unknown,
+  reviewedBaseSha = REVIEWED_CLOUD_IOS_BASE_SHA
+): E18RunConfig {
   const root = exactRecord(
     value,
     [
@@ -1164,6 +1232,8 @@ function parseRunConfig(value: unknown): E18RunConfig {
     'runConfig'
   );
   exactString(root.schema, 'gennady.e18-run.v1', 'runConfig.schema');
+  if (fullSha(root.cloudIosBaseSha, 'runConfig.cloudIosBaseSha') !== reviewedBaseSha)
+    throw new Error('runConfig.cloudIosBaseSha must equal the immutable reviewed cloud-ios base');
   const remote = exactRecord(root.remote, ['timeoutMs', 'pollIntervalMs'], 'runConfig.remote');
   if (!Array.isArray(root.groupMembers) || root.groupMembers.length === 0)
     throw new Error('runConfig.groupMembers must be non-empty');
@@ -1203,6 +1273,7 @@ function parseProjectConfig(value: unknown): E18ProjectConfig {
       'destination',
       'coverageThresholdBasisPoints',
       'coverageStepId',
+      'coverageTimeoutMs',
       'xcresult',
       'sourceRoots',
     ],
@@ -1227,6 +1298,12 @@ function parseProjectConfig(value: unknown): E18ProjectConfig {
       10_000
     ),
     coverageStepId: safeId(root.coverageStepId, 'projectConfig.coverageStepId'),
+    coverageTimeoutMs: integer(
+      root.coverageTimeoutMs,
+      'projectConfig.coverageTimeoutMs',
+      1_000,
+      24 * 60 * 60 * 1000
+    ),
     xcresult: repoRelativePath(root.xcresult, 'projectConfig.xcresult', '.xcresult'),
     sourceRoots: [...sourceRoots].sort(compareText),
   };
@@ -1479,7 +1556,10 @@ export async function collectE18Evidence(
   const host = preflightE18Environment(cloudIosRoot, ports);
   assertCleanRepository(gennadyRoot, 'E18_GENNADY');
   assertCleanRepository(cloudIosRoot, 'E18_CLOUD_IOS');
-  const config = parseRunConfig(JSON.parse(readFileSync(runConfigPath, 'utf8')) as unknown);
+  const config = parseRunConfig(
+    JSON.parse(readFileSync(runConfigPath, 'utf8')) as unknown,
+    ports.reviewedCloudIosBaseSha
+  );
   const sourceCommit = gitText(gennadyRoot, ['rev-parse', 'HEAD'], 'E18_GENNADY_HEAD');
   const sourceTree = gitText(gennadyRoot, ['rev-parse', 'HEAD^{tree}'], 'E18_GENNADY_TREE');
   const cloudHead = gitText(cloudIosRoot, ['rev-parse', 'HEAD'], 'E18_CLOUD_IOS_HEAD');
@@ -1511,6 +1591,19 @@ export async function collectE18Evidence(
   )
     throw new Error('E18_GROUP_RECEIPT_INVALID: audit and review must both be current PASS');
   const attempt = latestAttempt(ticket, config.sddPhase);
+  const currentWorktreeDigest = currentSddPhaseWorktreeDigest(
+    cloudIosRoot,
+    taskPath,
+    config.sddPhase
+  );
+  const attemptIdentity = attempt.value.identity as Record<string, unknown>;
+  const attemptHead = fullSha(attemptIdentity.headSha, 'attempt.identity.headSha');
+  if (
+    defaultRun(cloudIosRoot, 'git', ['merge-base', '--is-ancestor', attemptHead, cloudHead])
+      .status !== 0
+  )
+    throw new Error('E18_ATTEMPT_HEAD_INVALID: attempt HEAD is not an ancestor of pushed HEAD');
+  const artifactDigest = sha256(readFileSync(artifactPath));
   const groupState = deriveGroupState(memberInputs);
   if (!groupState.allDone)
     throw new Error(`E18_R_COMPLETE_INVALID: open members ${groupState.notDone.join(', ')}`);
@@ -1553,6 +1646,14 @@ export async function collectE18Evidence(
   ];
 
   const remoteResolution = (ports.resolveRemote ?? resolveRemotePipelineObserver)(cloudIosRoot);
+  const xcresultBefore = existingInside(
+    cloudIosRoot,
+    project.xcresult,
+    'projectConfig.xcresult',
+    true
+  );
+  const xcresultDigest = treeDigest(xcresultBefore);
+  const xcresultIdentity = lstatSync(xcresultBefore);
   if (!remoteResolution.ok)
     throw new Error(`E18_REMOTE_UNAVAILABLE: ${remoteResolution.message}; ${remoteResolution.fix}`);
   const remoteStartedAt = ports.now?.() ?? new Date().toISOString();
@@ -1590,6 +1691,20 @@ export async function collectE18Evidence(
     xcodeArgv,
     coverageProcess[0]
   );
+  const expectedCoverageCommandIdentity = createRepositoryRootCommandIdentity({
+    argv: xcodeArgv,
+    timeoutMs: project.coverageTimeoutMs,
+  });
+  if (
+    prefixedDigest(
+      coverageProcess[0]!.commandIdentity,
+      'attempt coverage process commandIdentity'
+    ) !== expectedCoverageCommandIdentity
+  ) {
+    throw new Error(
+      'E18_XCODE_COMMAND_MISMATCH: runner-owned command identity does not match reviewed xcodebuild argv/cwd/env/timeout'
+    );
+  }
   const xcresultStat = lstatSync(xcresultPath);
   if (
     xcresultStat.mtimeMs < Date.parse(xcodeCommand.startedAt) ||
@@ -1694,6 +1809,7 @@ export async function collectE18Evidence(
         finishedAt: String(attempt.value.finishedAt),
         rawEvidence: attempt.raw,
         rawEvidenceDigest: sha256(attempt.raw),
+        currentWorktreeDigest,
       },
       groupReceipts: [
         {
@@ -1712,7 +1828,7 @@ export async function collectE18Evidence(
         },
       ],
       groupState: { members: groupState.members, signature: groupState.signature },
-      artifact: { path: config.artifact, sha256: sha256(readFileSync(artifactPath)) },
+      artifact: { path: config.artifact, sha256: artifactDigest },
       commands: [executeCommand, remoteCommand, xcodeCommand, xccovCommand],
     },
     remote: {
@@ -1733,7 +1849,7 @@ export async function collectE18Evidence(
     coverage: {
       xcresult: {
         path: project.xcresult,
-        sha256: treeDigest(xcresultPath),
+        sha256: xcresultDigest,
         sourceSha: cloudHead,
         producedBy: xcodeCommand.id,
         createdAt: new Date(xcresultStat.mtimeMs).toISOString(),
@@ -1752,11 +1868,12 @@ export async function collectE18Evidence(
       verdict: 'PASS',
     },
   };
-  const normalized = parseEvidence(raw);
+  const normalized = parseEvidence(raw, ports.reviewedCloudIosBaseSha);
   if (normalized.cloudIos.headSha !== cloudHead)
     throw new Error('E18_CLOUD_IOS_HEAD_DRIFT: observations do not bind current cloud-ios HEAD');
   const output = Buffer.from(`${JSON.stringify(canonicalize(normalized), null, 2)}\n`, 'utf8');
   const report = checkE18Evidence(normalized, {
+    reviewedCloudIosBaseSha: ports.reviewedCloudIosBaseSha,
     evidenceBytes: output,
     resolveTree: () => sourceTree,
   });
@@ -1764,6 +1881,28 @@ export async function collectE18Evidence(
   const outputPath = resolve(gennadyRoot, CANONICAL_EVIDENCE);
   if (existsSync(outputPath))
     throw new Error('E18_EVIDENCE_EXISTS: remove only through reviewed evidence refresh workflow');
+  assertCleanRepository(gennadyRoot, 'E18_GENNADY');
+  assertCleanRepository(cloudIosRoot, 'E18_CLOUD_IOS');
+  const finalBundle = lstatSync(
+    existingInside(cloudIosRoot, project.xcresult, 'projectConfig.xcresult', true)
+  );
+  if (
+    gitText(gennadyRoot, ['rev-parse', 'HEAD'], 'E18_GENNADY_HEAD') !== sourceCommit ||
+    gitText(gennadyRoot, ['rev-parse', 'HEAD^{tree}'], 'E18_GENNADY_TREE') !== sourceTree ||
+    gitText(cloudIosRoot, ['rev-parse', 'HEAD'], 'E18_CLOUD_IOS_HEAD') !== cloudHead ||
+    gitText(cloudIosRoot, ['rev-parse', 'HEAD^{tree}'], 'E18_CLOUD_IOS_TREE') !== cloudTree ||
+    currentSddPhaseWorktreeDigest(cloudIosRoot, taskPath, config.sddPhase) !==
+      currentWorktreeDigest ||
+    readFileSync(taskPath, 'utf8') !== ticket ||
+    readFileSync(specPath, 'utf8') !== spec ||
+    readFileSync(projectConfigPath, 'utf8') !== projectConfigContent ||
+    sha256(readFileSync(artifactPath)) !== artifactDigest ||
+    finalBundle.dev !== xcresultIdentity.dev ||
+    finalBundle.ino !== xcresultIdentity.ino ||
+    finalBundle.mtimeMs !== xcresultIdentity.mtimeMs ||
+    treeDigest(xcresultPath) !== xcresultDigest
+  )
+    throw new Error('E18_SOURCE_DRIFT: repository or evidence bytes changed during collection');
   safeAtomicWrite(outputPath, output);
   return report;
 }

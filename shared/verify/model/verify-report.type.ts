@@ -35,7 +35,10 @@ export type VerifyStepResult = {
   /** @purpose Runner-owned proof that a process attempt, rather than authored argv text, existed. */
   readonly process?: {
     readonly schema: 'gennady.verify-process.v1';
+    /** @purpose Unique runner-owned process-attempt identity; it is not a command identity. */
     readonly identity: string;
+    /** @purpose Digest of actual local argv/cwd/env overrides/effective timeout; absent for historical or non-local process proofs. */
+    readonly commandIdentity?: string;
     readonly startedAt: string;
     readonly finishedAt: string;
     readonly termination: 'completed' | 'timeout' | 'cancelled';
