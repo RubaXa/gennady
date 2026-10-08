@@ -11,6 +11,7 @@ import { describe, it } from 'node:test';
 import type { CapabilityMatrix } from '../../model/verify-readiness.type.ts';
 import type { PlannedVerifyStep } from '../../model/verify-step.type.ts';
 import { executeLocalStep } from '../local.executor.ts';
+import { createVerifyCommandIdentity } from '../../reporting/command-identity.ts';
 import { acquireWorkspaceGuard } from '../workspace-guard.ts';
 
 function git(root: string, ...args: string[]): string {
@@ -92,6 +93,10 @@ describe('target local executor', () => {
       assert.equal(passed.result?.exitCode, 0);
       assert.equal(passed.result?.process?.schema, 'gennady.verify-process.v1');
       assert.match(passed.result?.process?.identity ?? '', /^local-process:[0-9a-f-]+$/);
+      assert.equal(
+        passed.result?.process?.commandIdentity,
+        createVerifyCommandIdentity(passing.command!, root)
+      );
       assert.equal(passed.result?.testStats, undefined);
       assert.ok(passed.evidence.some((item) => item.summary.includes('status pass')));
       assert.ok(!passed.evidence.some((item) => item.identity.endsWith(':stdout')));
@@ -102,6 +107,21 @@ describe('target local executor', () => {
       assert.equal(failed.result?.status, 'fail');
       assert.equal(failed.result?.exitCode, 7);
       assert.notEqual(failed.result?.process?.identity, passed.result?.process?.identity);
+      assert.deepEqual(guard.release(), { kind: 'released' });
+    });
+  });
+
+  it('binds the process to actual argv/cwd/env and the effective minimum timeout', async () => {
+    await withRepo(async (root) => {
+      const guard = acquire(root);
+      const planned = step(root, 'process.exit(0)', { timeoutMs: 1_000 });
+      const first = await executeLocalStep(planned, guard);
+      const second = await executeLocalStep(planned, guard);
+      const expected = createVerifyCommandIdentity({ ...planned.command!, timeoutMs: 1_000 }, root);
+      assert.equal(first.result?.process?.commandIdentity, expected);
+      assert.equal(second.result?.process?.commandIdentity, expected);
+      assert.notEqual(first.result?.process?.identity, second.result?.process?.identity);
+      assert.notEqual(expected, createVerifyCommandIdentity(planned.command!, root));
       assert.deepEqual(guard.release(), { kind: 'released' });
     });
   });

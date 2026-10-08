@@ -25,7 +25,8 @@ const CANDIDATE_SCHEMA = 'gennady.main-cutover-candidate.v1';
 const ACK_PREFIX = 'gennady-main-cutover-ack-v1:';
 const UV27A_SCHEMA = 'gennady.v1-eradication-report.v1';
 const UV25_SCHEMA = 'gennady.rc-evidence-pack.v2';
-const UV26_SCHEMA = 'gennady.e18-exact-evidence.v1';
+const UV26_SCHEMA = 'gennady.e18-exact-evidence.v2';
+const UV26_CHECK_SCHEMA = 'gennady.e18-exact-check.v1';
 
 /** @purpose Closed reviewed policy for exact cutover refs, evidence and authority surfaces. */
 export type ReleaseBoundaryPolicy = {
@@ -43,6 +44,8 @@ export type ReleaseBoundaryPolicy = {
   uv25Checker: string;
   /** @purpose Repo-relative exact E-18 evidence allowed after product source. */
   uv26Evidence: string;
+  /** @purpose Repo-relative independent E-18 checker whose bytes are bound into the candidate. */
+  uv26Checker: string;
   /** @purpose Product, config and spec bytes independently bound into candidate identity. */
   relevantFiles: string[];
   /** @purpose Active repository paths scanned for embedded npm publishing authority. */
@@ -101,6 +104,8 @@ type CandidateProjection = {
       sourceCommit: string | null;
       status: string | null;
       evidenceDigest: string | null;
+      checkerDigest: string | null;
+      checkerPassed: boolean;
     };
   };
   configuration: { files: FileIdentity[]; digest: string };
@@ -129,11 +134,13 @@ type Uv25Manifest = {
   sourceCommit?: unknown;
   commands?: unknown;
 };
-type Uv26Evidence = {
+type Uv26Evidence = { schema?: unknown; sourceCommit?: unknown };
+type Uv26CheckReport = {
   schema?: unknown;
+  ok?: unknown;
+  derivedStatus?: unknown;
   sourceCommit?: unknown;
-  status?: unknown;
-  environment?: unknown;
+  evidenceDigest?: unknown;
 };
 /** @purpose Injectable read-only observations used by causal offline cutover tests. */
 export type ReleaseBoundaryPorts = {
@@ -159,6 +166,18 @@ export type ReleaseBoundaryPorts = {
     stdout: string;
     stderr: string;
   };
+  /**
+   * @purpose Execute the independent UV-26 derived checker, never trust evidence-authored PASS.
+   * @param root Exact repository root.
+   * @param checker Repo-relative checker path.
+   * @param evidence Repo-relative canonical evidence path.
+   * @returns Bounded child status and streams.
+   */
+  runUv26Checker?: (
+    root: string,
+    checker: string,
+    evidence: string
+  ) => { status: number; stdout: string; stderr: string };
   /** @purpose Deterministic race seam before authorization recomputes every candidate byte. */
   beforeAuthorizationRecheck?: () => void;
   /**
@@ -276,6 +295,7 @@ function validatePolicy(value: unknown, root: string): ReleaseBoundaryPolicy {
       'uv25Manifest',
       'uv25Checker',
       'uv26Evidence',
+      'uv26Checker',
       'relevantFiles',
       'authorityScanPaths',
       'forbiddenAuthEnvironment',
@@ -301,6 +321,7 @@ function validatePolicy(value: unknown, root: string): ReleaseBoundaryPolicy {
     uv25Manifest: repoPath(root, strictString(value.uv25Manifest, 'uv25Manifest')),
     uv25Checker: repoPath(root, strictString(value.uv25Checker, 'uv25Checker')),
     uv26Evidence: repoPath(root, strictString(value.uv26Evidence, 'uv26Evidence')),
+    uv26Checker: repoPath(root, strictString(value.uv26Checker, 'uv26Checker')),
     relevantFiles: strictStringArray(value.relevantFiles, 'relevantFiles').map((path) =>
       repoPath(root, path)
     ),
@@ -487,6 +508,25 @@ function defaultUv25(
   return { status: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 }
 
+function defaultUv26(
+  root: string,
+  checker: string,
+  evidence: string
+): { status: number; stdout: string; stderr: string } {
+  const result = spawnSync(
+    process.execPath,
+    ['--import', 'tsx', checker, '--check', '--evidence', evidence, '--json'],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: MAX_GIT_BUFFER,
+      timeout: COMMAND_TIMEOUT_MS,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }
+  );
+  return { status: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+}
+
 function uv27aEvidence(
   root: string,
   ports: ReleaseBoundaryPorts,
@@ -559,35 +599,63 @@ function uv26Evidence(
   root: string,
   policy: ReleaseBoundaryPolicy,
   evidenceSourceCommit: string | null,
+  ports: ReleaseBoundaryPorts,
   blockers: CutoverBlocker[]
 ): CandidateProjection['evidence']['uv26'] {
   const bytes = readRegularFile(root, policy.uv26Evidence);
+  const checkerBytes = readRegularFile(root, policy.uv26Checker);
   if (bytes === null) {
     blockers.push({ code: 'CUTOVER_UV26_MISSING', detail: policy.uv26Evidence });
-    return { schema: null, sourceCommit: null, status: null, evidenceDigest: null };
+    return {
+      schema: null,
+      sourceCommit: null,
+      status: null,
+      evidenceDigest: null,
+      checkerDigest: checkerBytes === null ? null : sha256(checkerBytes),
+      checkerPassed: false,
+    };
   }
   let evidence: Uv26Evidence | null = null;
+  let report: Uv26CheckReport | null = null;
   try {
     evidence = JSON.parse(bytes.toString('utf8')) as Uv26Evidence;
   } catch {
     // Validation below emits one stable finding.
   }
+  const checker = (ports.runUv26Checker ?? defaultUv26)(
+    root,
+    policy.uv26Checker,
+    policy.uv26Evidence
+  );
+  try {
+    report = JSON.parse(checker.stdout) as Uv26CheckReport;
+  } catch {
+    // Validation below emits one stable finding.
+  }
+  const bytesDigest = sha256(bytes);
   const valid =
     isRecord(evidence) &&
     evidence.schema === UV26_SCHEMA &&
-    evidence.status === 'PASS' &&
-    evidence.environment === 'cloud-ios' &&
-    evidence.sourceCommit === evidenceSourceCommit;
+    evidence.sourceCommit === evidenceSourceCommit &&
+    checker.status === 0 &&
+    isRecord(report) &&
+    report.schema === UV26_CHECK_SCHEMA &&
+    report.ok === true &&
+    report.derivedStatus === 'PASS' &&
+    report.sourceCommit === evidenceSourceCommit &&
+    report.evidenceDigest === bytesDigest;
   if (!valid)
     blockers.push({
       code: 'CUTOVER_UV26_INVALID',
-      detail: 'exact E-18 evidence must be PASS/cloud-ios and bind exact evidence source commit',
+      detail: `independent exact E-18 checker must derive PASS for the exact evidence source (${checker.stderr.trim().slice(0, 256) || 'invalid evidence/checker report'})`,
     });
   return {
     schema: typeof evidence?.schema === 'string' ? evidence.schema : null,
     sourceCommit: typeof evidence?.sourceCommit === 'string' ? evidence.sourceCommit : null,
-    status: typeof evidence?.status === 'string' ? evidence.status : null,
-    evidenceDigest: sha256(bytes),
+    status: valid ? 'PASS' : null,
+    evidenceDigest: bytesDigest,
+    checkerDigest: checkerBytes === null ? null : sha256(checkerBytes),
+    checkerPassed: valid,
   };
 }
 
@@ -820,7 +888,7 @@ function inspect(
     evidence: {
       uv27a: uv27aEvidence(root, ports, blockers),
       uv25,
-      uv26: uv26Evidence(root, policy, uv25.sourceCommit, blockers),
+      uv26: uv26Evidence(root, policy, uv25.sourceCommit, ports, blockers),
     },
     configuration: { files, digest: sha256(canonicalJson(files)) },
     authority: { forbiddenEnvironmentPresent, embeddedAuthorityFindings },

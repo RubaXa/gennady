@@ -306,7 +306,7 @@ describe('GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)', () => {
     // (ledger/EXPERIMENTS-LOG/RESULTS) plus the docs a later upstream rebase (fix/sdd-check-v2-critic-rounds)
     // added on top (11-ANALYSIS-CHECKLIST.md, journal/guard-verification.md, journal/eval-history-gaps.md) —
     // the recursive discovery must pick up all of them, not a frozen count from this batch alone.
-    assert.match(stdout, /OK — 8 doc\(s\)/);
+    assert.match(stdout, /OK — 9 doc\(s\)/);
     // Proves the new link-checking mechanism is actually exercised on the real corpus, not just
     // passing vacuously because nothing in it uses a markdown link.
     const linkCountMatch = stdout.match(/(\d+) link\(s\) checked/);

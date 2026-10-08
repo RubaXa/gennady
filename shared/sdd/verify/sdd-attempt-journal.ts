@@ -63,6 +63,7 @@ type AttemptRecord = {
     readonly exitCode: number | null;
     readonly durationMs: number;
     readonly identity: string;
+    readonly commandIdentity?: string;
     readonly startedAt: string;
     readonly finishedAt: string;
     readonly termination: 'completed' | 'timeout' | 'cancelled';
@@ -316,6 +317,14 @@ function reportScalarIssue(report: VerifyRunReport): string | null {
     const issue = persistedScalarIssue(value, field);
     if (issue !== null) return issue;
   }
+  if (
+    report.results.some(
+      (result) =>
+        result.process?.commandIdentity !== undefined &&
+        !/^sha256:[0-9a-f]{64}$/.test(result.process.commandIdentity)
+    )
+  )
+    return 'result.process.commandIdentity is not a canonical sha256 identity';
   return null;
 }
 
@@ -402,7 +411,18 @@ function downstreamOwnedFiles(
   return owned;
 }
 
-function worktreeDigest(root: string, ticketPath: string, sddPhase: string): string {
+/**
+ * @purpose Bind current product/config/rules bytes with the same journal-independent freshness identity used by Verify attempts.
+ * @param root Canonical repository root.
+ * @param ticketPath Exact phase ticket, whose runner journal and owned completion metadata are normalized.
+ * @param sddPhase Phase defining the verified scope and downstream exclusions.
+ * @returns Canonical sha256 digest independent of Git staging and durable-journal commits.
+ */
+export function currentSddPhaseWorktreeDigest(
+  root: string,
+  ticketPath: string,
+  sddPhase: string
+): string {
   const hash = createHash('sha256');
   const ticketRelative = path.relative(root, ticketPath).split(path.sep).join('/');
   const downstream = downstreamOwnedFiles(root, ticketPath, sddPhase);
@@ -565,6 +585,16 @@ function parseRecords(ticket: string): readonly AttemptRecord[] {
         Buffer.from(match[1]!, 'base64url').toString('utf8')
       ) as AttemptRecord;
       if (value.schema === ATTEMPT_SCHEMA && typeof value.runId === 'string') {
+        if (
+          !Array.isArray(value.processes) ||
+          value.processes.some(
+            (process) =>
+              process.commandIdentity !== undefined &&
+              !/^sha256:[0-9a-f]{64}$/u.test(process.commandIdentity)
+          )
+        ) {
+          throw new Error('SDD_VERIFY_ATTEMPT_CORRUPT: process command identity is malformed');
+        }
         const terminal = value.state !== 'RUNNING';
         const completeIdentity = Object.values(value.identity).every((item) => item !== null);
         const invalidTerminal =
@@ -638,7 +668,9 @@ export function validateCurrentSddPhaseAttempt(
         issue: `phase ${sddPhase} latest Verify attempt is ${latest.state}, not PASS`,
       };
     }
-    if (latest.identity.worktreeDigest !== worktreeDigest(root, ticketPath, sddPhase)) {
+    if (
+      latest.identity.worktreeDigest !== currentSddPhaseWorktreeDigest(root, ticketPath, sddPhase)
+    ) {
       return { ok: false, issue: `phase ${sddPhase} PASS is stale after worktree changed` };
     }
     return { ok: true };
@@ -950,19 +982,18 @@ function terminalRecord(
     );
   });
   if (malformedStats) state = 'VIOLATION';
-  const allProcesses = ordered.flatMap((result) =>
-    result.process === undefined
-      ? []
-      : [
-          {
-            stepId: result.stepId,
-            status: result.status,
-            exitCode: result.exitCode,
-            durationMs: result.durationMs,
-            ...result.process,
-          },
-        ]
-  );
+  const allProcesses = ordered.flatMap((result) => {
+    if (result.process === undefined) return [];
+    return [
+      {
+        stepId: result.stepId,
+        status: result.status,
+        exitCode: result.exitCode,
+        durationMs: Date.parse(result.process.finishedAt) - Date.parse(result.process.startedAt),
+        ...result.process,
+      },
+    ];
+  });
   if (allProcesses.length > MAX_RECORDED_PROCESSES) state = 'VIOLATION';
   const processes = allProcesses.slice(0, MAX_RECORDED_PROCESSES);
   const allTestStats = ordered.flatMap((result) =>
@@ -974,7 +1005,7 @@ function terminalRecord(
       ? running.identity
       : {
           headSha: scalarIssue === null ? report.context.headSha : running.identity.headSha,
-          worktreeDigest: worktreeDigest(root, ticketPath, running.sddPhase),
+          worktreeDigest: currentSddPhaseWorktreeDigest(root, ticketPath, running.sddPhase),
           scopeDigest: sha256(canonical(report.context.request.scope)),
           planDigest: sha256(canonical(report.plan)),
           configDigest: sha256(
@@ -1063,7 +1094,11 @@ export async function runWithSddAttemptJournal(input: {
   );
   const startedAt = new Date().toISOString();
   const initialHeadSha = headSha(input.root);
-  const initialWorktreeDigest = worktreeDigest(input.root, input.ticketPath, input.sddPhase);
+  const initialWorktreeDigest = currentSddPhaseWorktreeDigest(
+    input.root,
+    input.ticketPath,
+    input.sddPhase
+  );
   const running: AttemptRecord = {
     schema: ATTEMPT_SCHEMA,
     runId,

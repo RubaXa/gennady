@@ -4,6 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -72,6 +73,7 @@ function createFixture(): Fixture {
   git(root, 'config', 'user.email', 'uv27b@example.invalid');
   write(root, 'package.json', '{"name":"fixture","version":"1.0.0"}\n');
   write(root, 'checker.ts', '// immutable UV-25 checker\n');
+  write(root, 'checker-e18.ts', '// immutable UV-26 checker\n');
   write(root, 'obsolete.txt', 'removed by product source\n');
   const mainSha = commit(root, 'main base');
   git(root, 'remote', 'add', 'origin', remote);
@@ -99,7 +101,7 @@ function createFixture(): Fixture {
     root,
     'evidence/e18.json',
     `${JSON.stringify({
-      schema: 'gennady.e18-exact-evidence.v1',
+      schema: 'gennady.e18-exact-evidence.v2',
       sourceCommit,
       status: 'PASS',
       environment: 'cloud-ios',
@@ -115,6 +117,7 @@ function createFixture(): Fixture {
     uv25Manifest: 'evidence/manifest.json',
     uv25Checker: 'checker.ts',
     uv26Evidence: 'evidence/e18.json',
+    uv26Checker: 'checker-e18.ts',
     relevantFiles: ['package.json'],
     authorityScanPaths: ['.github/workflows', '.gitlab-ci.yml', '.npmrc', '.yarnrc.yml'],
     forbiddenAuthEnvironment: ['NODE_AUTH_TOKEN', 'NPM_CONFIG__AUTH', 'NPM_TOKEN'],
@@ -132,6 +135,20 @@ function createFixture(): Fixture {
       stderr: '',
     }),
     runUv25Checker: () => ({ status: 0, stdout: 'PASS\n', stderr: '' }),
+    runUv26Checker: (_root, _checker, evidence) => {
+      const bytes = readFileSync(join(root, evidence));
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          schema: 'gennady.e18-exact-check.v1',
+          ok: true,
+          derivedStatus: 'PASS',
+          sourceCommit,
+          evidenceDigest: createHash('sha256').update(bytes).digest('hex'),
+        }),
+        stderr: '',
+      };
+    },
   };
   return { root, remote, mainSha, sourceCommit, candidateHead, policy, ports };
 }
@@ -281,6 +298,30 @@ describe('UV-27B cutover candidate', () => {
     assert.ok(codes(report).includes('CUTOVER_UV27A_INVALID'));
     assert.ok(codes(report).includes('CUTOVER_UV25_INVALID'));
     assert.ok(codes(report).includes('CUTOVER_UV26_MISSING'));
+  });
+
+  it('rejects authored UV-26 PASS when the independent checker cannot derive it', () => {
+    const fixture = createFixture();
+    const report = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runUv26Checker: () => ({
+          status: 1,
+          stdout: JSON.stringify({
+            schema: 'gennady.e18-exact-check.v1',
+            ok: false,
+            derivedStatus: 'INVALID',
+            sourceCommit: fixture.sourceCommit,
+            evidenceDigest: digest,
+          }),
+          stderr: 'fabricated PASS',
+        }),
+      },
+      fixture.policy
+    );
+    assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    assert.equal(report.evidence.uv26.checkerPassed, false);
   });
 
   it('requires an external exact non-reusable ACK and rechecks candidate drift', () => {

@@ -159,6 +159,7 @@ const UNIT_ROOTS = [
   'ai/inspector/',
   'cli/',
   'plugins/',
+  'scripts/',
   'services/',
   'shared/',
   'utils/',

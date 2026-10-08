@@ -88,8 +88,9 @@ logs) и exact UV-26 E-18 evidence file. Любой product/config/rules/cutover
 между этими commits, undeclared evidence file, deletion или mode/blob drift блокирует candidate.
 Independent UV-25 checker проверяет manifest/log inventory и hashes; exact manifest/checker bytes,
 `generatedAt`, оба full SHA и evidence delta digest входят в candidate identity. UV-26 обязан иметь
-schema `gennady.e18-exact-evidence.v1`, `PASS`, `cloud-ios` и ссылаться на тот же
-`evidenceSourceCommit`.
+schema `gennady.e18-exact-evidence.v2`, ссылаться на тот же `evidenceSourceCommit` и пройти
+independent `scripts/e18-exact-evidence.ts --check`: release boundary не доверяет authored
+`status/environment`. Checker digest и derived PASS входят в candidate identity.
 
 Fresh UV-27A JSON report исполняется на candidate tree; `policyDigest`, `inventoryDigest` и полный
 report digest входят в identity. Candidate также требует clean tree, current main ancestor,
@@ -130,6 +131,9 @@ Authorization — отдельная read-only проверка с внешни�
 | `inspectCutoverCandidate`   | Service      | Read-only exact cutover candidate inspection                 |
 | `authorizeCutoverCandidate` | Service      | Exact external ACK comparison against a recomputed candidate |
 | `denyNpmPublication`        | Service      | Shared fail-closed npm publication denial                    |
+| `checkE18Evidence`          | Service      | Derive E-18 verdict from embedded raw terminal facts         |
+| `preflightE18Environment`   | Service      | Reject host before project/network/write                     |
+| `collectE18Evidence`        | Service      | Verify receipts/remote/xcresult/xccov and write one JSON     |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -149,6 +153,12 @@ Authorization — отдельная read-only проверка с внешни�
 - **Usage Waiver:** один production consumer — `release:boundary --authorize`; export нужен тем же
   causal fixtures для race/recompute и non-reusable ACK proof. Другого authorization consumer быть
   не должно: второй путь нарушил бы single-SSOT D-INFRA-010.
+
+### `checkE18Evidence` / `preflightE18Environment` / `collectE18Evidence`
+
+- **Usage Waiver:** production consumers — UV-26 CLI modes и UV-27B independent checker; exports
+  сохраняют injectable host/provider seams для causal offline tests. Это один exact evidence
+  boundary D-INFRA-011, а не общий execution framework.
 
 <!--/SECTION:ENTITY_SURFACES-->
 
@@ -176,6 +186,16 @@ Authorization — отдельная read-only проверка с внешни�
 - **Threat boundary:** repo hooks покрывают только supported entrypoints. Намеренный внешний
   `npm publish --ignore-scripts` с пользовательскими credentials технически не перехватывается;
   поэтому cutover process требует отсутствия auth env и repository-owned publish authority.
+
+### D-INFRA-011 — Exact E-18 is derived from raw runner/provider/coverage evidence
+
+- **Status:** contract implemented by UV-26; real runtime PASS remains open.
+- **Decision:** one versioned JSON embeds bounded raw SDD attempt/group receipt, reviewed Xcode
+  config, safe argv/process facts, production watcher result and xccov payload. Independent checker
+  reparses/re-hashes them and derives PASS; no authored boolean or digest-only projection is proof.
+- **Environment boundary:** macOS 15+/Xcode 16.2+/direct Tuist 4.202.0 preflight precedes all
+  project/network/write work. Collector is read-only except its final atomic canonical evidence
+  write and performs no CI mutation.
 
 ## 4. Delivery Trace
 

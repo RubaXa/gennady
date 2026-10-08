@@ -120,6 +120,11 @@
       "reason": "active UV-27B cutover inspector consumes the versioned UV-27A report"
     },
     {
+      "path": "scripts/e18-exact-evidence.ts",
+      "classification": "canonical-v2",
+      "reason": "active UV-26 exact evidence collector/checker; schema v1 tokens are its own versioned inputs"
+    },
+    {
       "prefix": "ai/directives/sdd-v2/",
       "classification": "canonical-v2",
       "reason": "active SDD v2 prompt surface, including its explicit migration owner"
@@ -275,11 +280,11 @@
     "scripts/v1-eradication.policy.json",
     "scripts/__tests__/v1-eradication.test.ts"
   ],
-  "expectedInventoryDigest": "3a1d1dfeecceb3cd2873a1edfdcc9cdcaa27dc8d623115c85433ebb4404c3d9c",
+  "expectedInventoryDigest": "d1122518b20fa4254df49c33a170006c9af1043b0c200dc90d3b0b920b7982c8",
   "expectedCounts": {
-    "canonical-v2": 200,
+    "canonical-v2": 201,
     "required-v1-to-v2-migration-boundary": 53,
-    "historical-test-evidence": 259,
-    "unrelated-product-version": 63
+    "historical-test-evidence": 262,
+    "unrelated-product-version": 64
   }
 }

@@ -2,11 +2,11 @@
 // @spec: CLI-VERIFY
 // @consumers: text/json Verify reporters
 
-import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { VerifyRuleSnapshot } from '../model/verify-context.type.ts';
 import type { VerifyRunReport } from '../model/verify-report.type.ts';
 import type { LocalCommand, PlannedVerifyStep } from '../model/verify-step.type.ts';
+import { createVerifyCommandIdentity } from './command-identity.ts';
 
 function regexpEscape(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,17 +37,9 @@ function relativePath(root: string, value: string): string {
 }
 
 function commandProjection(command: LocalCommand, root: string): Record<string, unknown> {
-  const normalized = {
-    argv: command.argv,
-    cwd: relativePath(root, command.cwd),
-    env: Object.fromEntries(
-      Object.entries(command.env ?? {}).sort(([left], [right]) => left.localeCompare(right))
-    ),
-    timeoutMs: command.timeoutMs,
-  };
   return {
-    identity: `sha256:${createHash('sha256').update(JSON.stringify(normalized)).digest('hex')}`,
-    cwd: normalized.cwd,
+    identity: createVerifyCommandIdentity(command, root),
+    cwd: relativePath(root, command.cwd),
     timeoutMs: command.timeoutMs,
     environmentKeys: Object.keys(command.env ?? {}).sort(),
   };
@@ -62,7 +54,14 @@ function stepProjection(step: PlannedVerifyStep, root: string): Record<string, u
     needs: step.needs,
     executor: step.executor,
     effect: step.effect,
-    ...(step.command === undefined ? {} : { command: commandProjection(step.command, root) }),
+    ...(step.command === undefined
+      ? {}
+      : {
+          command: commandProjection(
+            { ...step.command, timeoutMs: Math.min(step.timeoutMs, step.command.timeoutMs) },
+            root
+          ),
+        }),
     requires: step.requires.map((requirement) => ({
       ...requirement,
       description: safeVerifyText(requirement.description, root),
