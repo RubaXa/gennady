@@ -1,0 +1,158 @@
+{
+  "cloudIos": {
+    "baseSha": "2222222222222222222222222222222222222222",
+    "clean": true,
+    "headSha": "3333333333333333333333333333333333333333",
+    "treeSha": "4444444444444444444444444444444444444444"
+  },
+  "coverage": {
+    "actualBasisPoints": 9000,
+    "duplicatePaths": [],
+    "sources": [
+      {
+        "coveredLines": 90,
+        "executableLines": 100,
+        "path": "Sources/App/App.swift"
+      }
+    ],
+    "thresholdBasisPoints": 8000,
+    "totals": {
+      "coveredLines": 90,
+      "executableLines": 100
+    },
+    "verdict": "PASS",
+    "xccov": {
+      "commandId": "cmd-xccov",
+      "observedAt": "2026-10-08T12:09:02.000Z",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    },
+    "xcresult": {
+      "createdAt": "2026-10-08T12:08:00.000Z",
+      "path": "build/xcresult/TestResults.xcresult",
+      "producedBy": "cmd-xcodebuild",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "sourceSha": "3333333333333333333333333333333333333333"
+    }
+  },
+  "environment": "cloud-ios",
+  "execution": {
+    "attempt": {
+      "finishedAt": "2026-10-08T12:10:00.000Z",
+      "id": "attempt-e18-001",
+      "resultReceipt": "R-COMPLETE",
+      "startedAt": "2026-10-08T12:00:00.000Z",
+      "terminal": "PASS"
+    },
+    "commands": [
+      {
+        "argvIdentity": "7777777777777777777777777777777777777777777777777777777777777777",
+        "durationMs": 120000,
+        "exitCode": 0,
+        "finishedAt": "2026-10-08T12:02:00.000Z",
+        "id": "cmd-execute",
+        "log": {
+          "bytes": 4096,
+          "sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+          "truncated": false
+        },
+        "role": "cloud-ios-execute",
+        "signal": null,
+        "startedAt": "2026-10-08T12:00:00.000Z"
+      },
+      {
+        "argvIdentity": "9999999999999999999999999999999999999999999999999999999999999999",
+        "durationMs": 10000,
+        "exitCode": 0,
+        "finishedAt": "2026-10-08T12:03:10.000Z",
+        "id": "cmd-remote",
+        "log": {
+          "bytes": 2048,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "truncated": false
+        },
+        "role": "remote-observe",
+        "signal": null,
+        "startedAt": "2026-10-08T12:03:00.000Z"
+      },
+      {
+        "argvIdentity": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "durationMs": 300000,
+        "exitCode": 0,
+        "finishedAt": "2026-10-08T12:09:00.000Z",
+        "id": "cmd-xcodebuild",
+        "log": {
+          "bytes": 65536,
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "truncated": true
+        },
+        "role": "xcodebuild-coverage",
+        "signal": null,
+        "startedAt": "2026-10-08T12:04:00.000Z"
+      },
+      {
+        "argvIdentity": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "durationMs": 1000,
+        "exitCode": 0,
+        "finishedAt": "2026-10-08T12:09:02.000Z",
+        "id": "cmd-xccov",
+        "log": {
+          "bytes": 1024,
+          "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "truncated": false
+        },
+        "role": "xccov-export",
+        "signal": null,
+        "startedAt": "2026-10-08T12:09:01.000Z"
+      }
+    ],
+    "groupReceipts": [
+      {
+        "digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "identity": "group-audit-e18",
+        "kind": "audit",
+        "verdict": "PASS"
+      },
+      {
+        "digest": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "identity": "group-review-e18",
+        "kind": "review",
+        "verdict": "PASS"
+      }
+    ]
+  },
+  "generatedAt": "2026-10-08T12:10:00.000Z",
+  "gennady": {
+    "sourceSha": "1111111111111111111111111111111111111111",
+    "treeSha": "1212121212121212121212121212121212121212"
+  },
+  "project": {
+    "destination": "platform=iOS Simulator,name=iPhone 16 Pro,OS=18.2",
+    "scheme": "CloudIOS",
+    "workspace": "CloudIOS.xcworkspace"
+  },
+  "remote": {
+    "exactSha": "3333333333333333333333333333333333333333",
+    "jobs": [
+      {
+        "id": "job-9001",
+        "name": "cloud-ios-tests",
+        "status": "success"
+      }
+    ],
+    "observedAt": "2026-10-08T12:03:10.000Z",
+    "pipelineDefinitionId": "workflow-7001",
+    "pipelineId": "pipeline-8001",
+    "provider": "github",
+    "status": "success"
+  },
+  "schema": "gennady.e18-exact-evidence.v2",
+  "sourceCommit": "1111111111111111111111111111111111111111",
+  "status": "PASS",
+  "toolchain": {
+    "developerDir": "/Applications/Xcode.app/Contents/Developer",
+    "macosVersion": "15.2.0",
+    "tuistConfigDigest": "1313131313131313131313131313131313131313131313131313131313131313",
+    "tuistVersion": "4.202.0",
+    "xcodeVersion": "16.2.0"
+  }
+}

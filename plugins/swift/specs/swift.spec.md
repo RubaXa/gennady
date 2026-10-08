@@ -61,7 +61,11 @@ physically inside the repository and may not traverse or name a symlink.
 
 UV-06 does not execute Xcode, emit `.xcresult`, or claim runtime coverage evidence. Exact
 `xcodebuild`/`xccov` shape, simulator/runtime selection, freshness and resource cost remain E-18 /
-UV-26 and are explicitly unverified by these unit contracts.
+UV-26 and are explicitly unverified by these unit contracts. UV-26 now supplies the fail-closed
+`gennady.e18-exact-evidence.v2` collector/checker contract: it binds reviewed project-owned Xcode
+identity and coverage threshold, current SDD process/receipt evidence, production exact-SHA remote
+proof, hashed `.xcresult` and embedded/reparsed xccov JSON. The contract fixture is not runtime
+proof; the real macOS 15+/Xcode 16.2+/Tuist 4.202.0 cloud-ios run remains required.
 
 ## Historical receipt-validation facts
 
