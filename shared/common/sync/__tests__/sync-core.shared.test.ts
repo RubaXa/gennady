@@ -8,6 +8,7 @@ import { mkdtempSync, rmSync, mkdirSync, existsSync, writeFileSync } from 'node:
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { resolvePackageDir, compareBytes } from '../sync-core.shared.ts';
 
 const require = createRequire(import.meta.url);
@@ -50,15 +51,10 @@ describe('resolvePackageDir', () => {
   // #region TEST_CASE_SC_3: subdir exists in package but not in local node_modules
   it('resolves via import.meta.resolve fallback when local node_modules missing', () => {
     // contract: import.meta.resolve fallback finds the installed gennady package
-    // failure mode: null is acceptable if gennady is not resolvable in this runtime
     mkdirSync(join(tmpDir, 'node_modules'), { recursive: true });
 
     const result = resolvePackageDir(tmpDir, 'ai/directives');
-    if (result === null) {
-      // gennady may not be resolvable via import.meta.resolve in dev — not a test failure
-      return;
-    }
-    assert.ok(result.endsWith('ai/directives'));
+    assert.strictEqual(result, new URL('../../../../ai/directives', import.meta.url).pathname);
   });
   // #endregion
 
@@ -135,13 +131,14 @@ describe('resolvePackageDir', () => {
   // #endregion
 
   // #region TEST_CASE_SC_8: self-repo fallback does not apply to other packages
-  it('returns null for a foreign project with no node_modules/gennady, even with ai/skills present', () => {
+  it('uses invoking package, never foreign ai/skills without package ownership', () => {
     // contract: self-repo fallback only fires when package.json name is exactly "gennady"
     writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'some-other-project' }));
     mkdirSync(join(tmpDir, 'ai', 'skills'), { recursive: true });
 
     const result = resolvePackageDir(tmpDir, 'ai/skills');
-    assert.strictEqual(result, null);
+    assert.strictEqual(result, new URL('../../../../ai/skills', import.meta.url).pathname);
+    assert.notStrictEqual(result, join(tmpDir, 'ai/skills'));
   });
   // #endregion
 
@@ -150,7 +147,9 @@ describe('resolvePackageDir', () => {
     writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'gennady' }));
     // no ai/skills created
 
-    const result = resolvePackageDir(tmpDir, 'ai/skills');
+    const entry = join(tmpDir, 'entry.ts');
+    writeFileSync(entry, '');
+    const result = resolvePackageDir(tmpDir, 'ai/skills', () => pathToFileURL(entry).href);
     assert.strictEqual(result, null);
   });
   // #endregion

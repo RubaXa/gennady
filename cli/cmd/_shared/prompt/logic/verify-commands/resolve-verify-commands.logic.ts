@@ -35,7 +35,12 @@ const DETECTOR_ROWS: readonly DetectorRow[] = [
   {
     kind: 'marker',
     relativePath: 'go.mod',
-    commands: ['go test ./...', 'go vet ./...', 'go fmt ./...'],
+    commands: [
+      'go build -o /dev/null ./...',
+      'go vet ./...',
+      "gofmt -l $(go list -f '{{range .GoFiles}}{{$.Dir}}/{{.}} {{end}}{{range .CgoFiles}}{{$.Dir}}/{{.}} {{end}}{{range .TestGoFiles}}{{$.Dir}}/{{.}} {{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}} {{end}}' ./...) # non-empty output means formatting violations; do not rewrite files",
+      'go test ./...',
+    ],
   },
   {
     kind: 'npm-package-json',

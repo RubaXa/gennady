@@ -69,15 +69,18 @@ export class GennadyRc {
 
         if (Array.isArray(data)) {
           this._data.models = data as RcModel[];
-        } else if (
-          data &&
-          typeof data === 'object' &&
-          Array.isArray((data as GennadyRcData).models)
-        ) {
-          this._data = {
-            ...this._data,
-            ...(data as GennadyRcData),
-          };
+        } else if (data && typeof data === 'object') {
+          const models = (data as Partial<GennadyRcData>).models;
+          // Other sections have independent V2 owners; absent models is an empty model list,
+          // not an invalid verify/rules-only RC. Present malformed models must still fail.
+          if (models === undefined || Array.isArray(models)) {
+            this._data.models = models ?? [];
+          } else {
+            this._error = new Error(
+              `[GENNADY_RC_ERROR_CONFIG] Invalid "${this._filename}" models data`,
+              { cause: models }
+            );
+          }
         } else {
           this._error = new Error(
             `[GENNADY_RC_ERROR_CONFIG] Invalid "${this._filename}" config data`,

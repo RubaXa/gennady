@@ -74,10 +74,10 @@ describe('resolvePackageDir', () => {
   });
   // #endregion
 
-  // #region TEST_CASE_2: local not found, returns null
-  it('returns null when package not found', () => {
+  // #region TEST_CASE_2: foreign cwd uses actual package fallback
+  it('resolves package source directives when local installation is absent', () => {
     const result = resolvePackageDir(_tmpDir);
-    assert.equal(result, null);
+    assert.equal(result, new URL('../../../../ai/directives', import.meta.url).pathname);
   });
   // #endregion
 });
@@ -216,9 +216,11 @@ describe('collectAndCompare', () => {
   });
 
   it('deletes target directives removed from the installed package', () => {
-    writeFileSync(join(_sourceDir, 'current.xml'), '<current/>', 'utf-8');
-    writeFileSync(join(_targetDir, 'current.xml'), '<old/>', 'utf-8');
-    writeFileSync(join(_targetDir, 'stale.xml'), '<stale/>', 'utf-8');
+    mkdirSync(join(_sourceDir, 'coding'));
+    mkdirSync(join(_targetDir, 'coding'));
+    writeFileSync(join(_sourceDir, 'coding', 'current.xml'), '<current/>', 'utf-8');
+    writeFileSync(join(_targetDir, 'coding', 'current.xml'), '<old/>', 'utf-8');
+    writeFileSync(join(_targetDir, 'coding', 'stale.xml'), '<stale/>', 'utf-8');
 
     const result = collectAndCompare(createDeps(_tmpDir), {
       sourceDir: _sourceDir,
@@ -226,8 +228,8 @@ describe('collectAndCompare', () => {
     });
 
     assert.equal(result.deleted.length, 1);
-    assert.equal(result.deleted[0].relativePath, 'stale.xml');
-    assert.equal(existsSync(join(_targetDir, 'stale.xml')), false);
+    assert.equal(result.deleted[0].relativePath, 'coding/stale.xml');
+    assert.equal(existsSync(join(_targetDir, 'coding', 'stale.xml')), false);
   });
 
   it('filtered sync succeeds when the subdirectory does not exist in target yet', () => {

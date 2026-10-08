@@ -154,10 +154,11 @@ function listOwnedSubdirs(sourceDir: string): string[] {
 /**
  * @purpose Scan the target for mirror-deletion candidates, never throwing on a missing directory —
  *   an absent target subdirectory simply has nothing to delete.
- * @invariant Scans only package-owned subdirs: a project-added custom subdirectory is left
- *   untouched and reported as a warning, never swept away.
+ * @invariant Only source-owned subdirs prove mirror ownership. Unknown root files and
+ *   project-added subdirectories remain untouched and are reported as warnings.
  * @param targetDir Target directory to scan.
  * @param ownedSubdirs Top-level subdirectory names the package owns for this sync.
+ * @param ownedRootFiles Root files present in the current package; compared separately.
  * @param filtered True when an explicit subdir filter was passed — root files and out-of-filter
  *   directories are then out of scope, not warned about.
  * @returns Relative file paths eligible for mirror deletion, plus warnings for target
@@ -166,6 +167,7 @@ function listOwnedSubdirs(sourceDir: string): string[] {
 function scanTargetMirrorSpace(
   targetDir: string,
   ownedSubdirs: Set<string>,
+  ownedRootFiles: Set<string>,
   filtered: boolean
 ): { paths: string[]; warnings: string[] } {
   let topEntries: string[];
@@ -194,11 +196,11 @@ function scanTargetMirrorSpace(
         );
       }
       // Filtered mode: a directory outside the requested filter is out of scope, not a warning.
-    } else if (st.isFile() && !filtered) {
-      // Root-level files are only mirror candidates when the whole package (not a subdir filter)
-      // is being synced — matches scanDirectives(sourceDir, subdirs), which excludes root files
-      // from relativePaths whenever a subdir filter is active.
-      files.push(name);
+    } else if (st.isFile() && !filtered && !ownedRootFiles.has(name)) {
+      // Absence in this package is not evidence a root file ever belonged to the package.
+      // Present source files are compared separately; without historical ownership proof,
+      // root deletion is unsafe (including custom knowledge kept as user data, not a registry).
+      warnings.push(`root file in target (ownership not proven, left untouched): ${name}`);
     }
   }
 
@@ -279,6 +281,7 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
   const { paths: targetPaths, warnings } = scanTargetMirrorSpace(
     opts.targetDir,
     ownedSubdirs,
+    new Set(relativePaths.filter((relativePath) => !relativePath.includes('/'))),
     filtered
   );
 
