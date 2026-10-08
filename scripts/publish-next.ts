@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import type { SpawnSyncOptions } from 'node:child_process';
 import { parseArgs } from '../shared/common/parse-args.ts';
 import { logger } from '../shared/common/logger.ts';
+import { denyNpmPublication } from './release-boundary.ts';
 
 const rootDir = process.cwd();
 const packageJsonPath = resolve(rootDir, 'package.json');
@@ -168,6 +169,7 @@ function getNpmAuthUser(): string {
 }
 
 function calculatingVersion(): void {
+  denyNpmPublication('publish-next');
   const args = parseArgs(process.argv, {
     dryRun: ['dry-run', 'dryRun'],
     allowDirty: ['allow-dirty', 'allowDirty'],
