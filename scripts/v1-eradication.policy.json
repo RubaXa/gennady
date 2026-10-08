@@ -110,6 +110,16 @@
       "reason": "active repository gate registration; checker name is not a runtime generation"
     },
     {
+      "path": "scripts/release-boundary.policy.json",
+      "classification": "canonical-v2",
+      "reason": "active UV-27B main-cutover identity policy binds the versioned UV-27A report"
+    },
+    {
+      "path": "scripts/release-boundary.ts",
+      "classification": "canonical-v2",
+      "reason": "active UV-27B cutover inspector consumes the versioned UV-27A report"
+    },
+    {
       "prefix": "ai/directives/sdd-v2/",
       "classification": "canonical-v2",
       "reason": "active SDD v2 prompt surface, including its explicit migration owner"
@@ -265,11 +275,11 @@
     "scripts/v1-eradication.policy.json",
     "scripts/__tests__/v1-eradication.test.ts"
   ],
-  "expectedInventoryDigest": "37ff948fd13c292b66127b0f045b9cb948946178c347f5e3a2c3b331178971b8",
+  "expectedInventoryDigest": "3a1d1dfeecceb3cd2873a1edfdcc9cdcaa27dc8d623115c85433ebb4404c3d9c",
   "expectedCounts": {
-    "canonical-v2": 198,
+    "canonical-v2": 200,
     "required-v1-to-v2-migration-boundary": 53,
-    "historical-test-evidence": 258,
+    "historical-test-evidence": 259,
     "unrelated-product-version": 63
   }
 }

@@ -92,7 +92,7 @@
 
 ## 6. Test Scenario Coverage
 
-- release script вызывает release-it → `publish-contract.test.ts` :: `release script invokes release-it`
+- release script в current track сначала fail-closed отклоняет publication → `publish-contract.test.ts` :: `every supported package publication path invokes the shared denial first`
 - ai включена в публикацию → `publish-contract.test.ts` :: `package publication includes ai artifacts`
 - отсутствующий release script → `publish-contract.test.ts` :: `missing release script is rejected by the package contract`
 

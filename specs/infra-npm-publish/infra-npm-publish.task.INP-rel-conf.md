@@ -81,7 +81,7 @@
 
 ## 6. Test Scenario Coverage
 
-- preflight выполняет lint и tests до initialization → `publish-contract.test.ts` :: `release preflight runs lint and tests before initialization`
+- current publication lock срабатывает до historical lint/test initialization → `publish-contract.test.ts` :: `direct release-it denies before historical lint/test hooks`
 - невалидный config без before-init checks отклоняется → `publish-contract.test.ts` :: `invalid release config without before-init checks is rejected`
 
 <!--/SECTION:TEST_COVERAGE-->

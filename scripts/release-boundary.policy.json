@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "gennady.release-boundary-policy.v1",
+  "releaseBranch": "codex/sdd-v2-rc52-followup",
+  "releaseUpstream": "origin/codex/sdd-v2-rc52-followup",
+  "mainRef": "origin/main",
+  "uv25Manifest": "ai/flow-eval/.baseline/rc-evidence-pack/manifest.json",
+  "uv25Checker": "ai/flow-eval/scripts/release-evidence-pack-check.ts",
+  "uv26Evidence": "ai/flow-eval/.baseline/e18-exact-evidence.json",
+  "relevantFiles": [
+    ".release-it.json",
+    "package-lock.json",
+    "package.json",
+    "scripts/check-v1-eradication.ts",
+    "scripts/release-boundary.policy.json",
+    "scripts/release-boundary.ts",
+    "scripts/v1-eradication.policy.json",
+    "specs/infra-base/infra-base.spec.md",
+    "specs/infra-npm-publish/infra-npm-publish.spec.md"
+  ],
+  "authorityScanPaths": [".github/workflows", ".gitlab-ci.yml", ".npmrc", ".yarnrc.yml"],
+  "forbiddenAuthEnvironment": ["NODE_AUTH_TOKEN", "NPM_CONFIG__AUTH", "NPM_TOKEN"]
+}
