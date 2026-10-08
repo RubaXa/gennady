@@ -106,8 +106,8 @@ Full reasoning in `plugins/golang/directives/infra/golang-setup.xml`; the short 
 When the operator wants tooling _designed_ rather than merely run:
 
 1. **Extract intent.** Confirm scope-type=`infrastructure`, language=`go`. Resolve the scope name (e.g. `infra-golang`).
-2. **Load & activate.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`, then `~/Developer/gennady/plugins/golang/directives/infra/golang-setup.xml`.
-   Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | infrastructure | golang`
+2. **Load & activate.** Read in full: `~/Developer/gennady/ai/directives/sdd-v2/router.directive.xml`, then `~/Developer/gennady/plugins/golang/directives/infra/golang-setup.xml`.
+   Pass forced intent `author` with scope-type `infrastructure` and language `go`; the v2 router owns discovery.
 3. **Ground every requirement in observed state** — the `--plan --json` output above, not assumptions about how Go projects usually look.
 4. **Apply.** Follow the discovery Execution_Plan end-to-end. Every proposed gate must be expressible as a `gennady verify` invocation or a `gennady.yaml` entry — or justified as to why it is not.
 
