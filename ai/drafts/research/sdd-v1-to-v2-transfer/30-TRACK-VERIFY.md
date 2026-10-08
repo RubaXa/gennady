@@ -582,3 +582,26 @@
 **Итоговый вывод не изменился.** Рекомендация **A′** (Engine внутри v2 + пресеты как данные + verbatim-перенос примитивов MAIN, с суженными фасадами C) выдержала проверку: главный аргумент — «дорогое в RC — семантика фазы и receipts, дорогое в MAIN — данные и примитивы, и они переносятся копированием файлов» — подтверждён кодом обеих сессий. Три вещи план менял по существу, а не по формулировке: (1) порядок работ — источник `environmentState` (V-04a) должен идти сразу после V-04 и блокировать все non-node пресеты, иначе они «проходят гейты, но не пишут receipt»; (2) `--only/--skip` нельзя пускать в фазовый путь ни в каком виде; (3) риски `sdd-verify.cmd.ts` (рантайм-исполнение) и `phase-verification-plan.ts` (`commandForGate`) поменялись местами по степени опасности для receipts.
 
 Документ ждёт решений оператора по Q1–Q7 (§7); после их принятия декомпозиция §6 может быть напрямую превращена в тикеты `sdd-scaffold`.
+
+## 10. Current U8 verification refinement — 2026-10-09
+
+Предыдущие выводы/прогоны остаются historical evidence. Current canonical chain и frozen refs —
+[64 §12.3.1](64-VERIFY-RULES-UNIFICATION.md#1231-main-carry-и-reconciliation--operational-refinement-2026-10-09):
+main `9663c65b6376c65f4b1df0daf27a06df5b25f7a3`, release `df39f8eff9d08caca5e3d90d313479cc50ed4fc0`,
+merge-base `46c6d616700ee4cc61dbfe077d5b0052ce661dcd`; 117 MAIN-only commits / 520 net paths /
+157 initial diagnostic conflict paths. Ни git history, ни одинаковый ticket ID не доказывают
+semantic parity или сохранение пользовательского журнала.
+
+Review checklist: R1 причинные RED→GREEN на root data preservation + owned stale deletion,
+layout-independent package discovery, import-safe lint с CLI/autofix parity, read-only Go prompt
+и independent RC sections (malformed-present models остаётся error); R2 lexical `<Meta>` + resolver
+baseline-coding/Go/Python/testing без legacy registry; R3 real local pack/install/import нынешних
+четырёх public exports (root mon, claude/opencode providers, current stack plugin API), dist JS/types
+без `services/stack`, без D60 experimental-composition change; R4 frozen byte-preserving journals
+TSK97/95/96 и historical specs + exhaustive all-520 disposition/source hashes; R5 ordinary
+history-preserving reconciliation via reviewed release feature PR с intentional V2 replacement
+choices и retirement auto-imports. Никакого blind `merge -s ours` или synthetic active DONE/receipt.
+
+UV-25 #101 — historical DONE. Final refresh pending **после последнего product change И R5**;
+real E-18 pending compatible host (14.8.5 unsupported, require>=15.0) и exact candidate ACK pending.
+R1…R5 не меняют архитектуру/authority и не разрешают main merge/npm publish.
