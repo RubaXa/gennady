@@ -35,6 +35,8 @@ const LANGUAGE_BY_EXTENSION: Readonly<Record<string, string>> = Object.freeze({
   '.mts': 'typescript',
   '.cts': 'typescript',
   '.go': 'go',
+  '.py': 'python',
+  '.pyi': 'python',
   '.swift': 'swift',
   '.css': 'css',
   '.scss': 'scss',

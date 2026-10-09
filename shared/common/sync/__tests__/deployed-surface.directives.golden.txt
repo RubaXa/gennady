@@ -9,6 +9,9 @@ agent-inbox/security-interrogation.directive.xml
 agent-inbox/update-review.directive.xml
 agent-inbox/visual-vocabulary.directive.xml
 coding/README.md
+coding/baseline-rules.xml
+coding/go-rules.xml
+coding/python-rules.xml
 coding/svelte5-runes.xml
 coding/sveltekit-rules.xml
 coding/typescript-rules.xml
@@ -94,6 +97,7 @@ sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml
 sdd-v2/scaffold/steps/STEP_6_HANDOFF.xml
 sdd-v2/scope.directive.xml
 testing/README.md
+testing/baseline-testing.xml
 testing/common.xml
 testing/node-test.xml
 testing/playwright-cli.xml

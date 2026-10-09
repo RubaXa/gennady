@@ -8,6 +8,9 @@ import { createRuleRegistry, type RuleRegistry } from './rule-registry.ts';
 
 /** @purpose Enumerate required built-in prompt locations without duplicating their embedded metadata. */
 export const BUILTIN_RULE_SOURCES = Object.freeze([
+  'ai/directives/coding/baseline-rules.xml',
+  'ai/directives/coding/go-rules.xml',
+  'ai/directives/coding/python-rules.xml',
   'ai/directives/coding/svelte5-runes.xml',
   'ai/directives/coding/sveltekit-rules.xml',
   'ai/directives/coding/typescript-rules.xml',
@@ -15,6 +18,7 @@ export const BUILTIN_RULE_SOURCES = Object.freeze([
   'ai/directives/infra/git-setup.xml',
   'ai/directives/infra/nodejs-npm-setup.xml',
   'ai/directives/infra/storybook-setup.xml',
+  'ai/directives/testing/baseline-testing.xml',
   'ai/directives/testing/common.xml',
   'ai/directives/testing/node-test.xml',
   'ai/directives/testing/playwright-cli.xml',

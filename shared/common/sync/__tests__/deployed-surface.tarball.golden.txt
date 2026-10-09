@@ -14,6 +14,9 @@ ai/directives/agent-inbox/update-review.directive.xml
 ai/directives/agent-inbox/visual-vocabulary.directive.xml
 ai/directives/architecture/README.md
 ai/directives/coding/README.md
+ai/directives/coding/baseline-rules.xml
+ai/directives/coding/go-rules.xml
+ai/directives/coding/python-rules.xml
 ai/directives/coding/svelte5-runes.xml
 ai/directives/coding/sveltekit-rules.xml
 ai/directives/coding/typescript-rules.xml
@@ -99,6 +102,7 @@ ai/directives/sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml
 ai/directives/sdd-v2/scaffold/steps/STEP_6_HANDOFF.xml
 ai/directives/sdd-v2/scope.directive.xml
 ai/directives/testing/README.md
+ai/directives/testing/baseline-testing.xml
 ai/directives/testing/common.xml
 ai/directives/testing/node-test.xml
 ai/directives/testing/playwright-cli.xml

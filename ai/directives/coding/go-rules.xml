@@ -1,0 +1,96 @@
+<GoCodingRules rule-id="go-rules" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When language="go"/>
+  <DependsOn rule="coding-baseline"/>
+</Meta>
+  <Mission>
+    Thin Go baseline inheriting coding-baseline. testing-baseline is selected independently for test artifacts,
+    never pulled into production by this language rule. Grounding: Effective Go, Go Code Review Comments
+    and go.dev/blog/go1.13-errors; formatter, error, visibility and naming idioms remain unchanged.
+    Rules are agent instructions, not a second command pipeline. Only the configured selector/DAG
+    determines authority gates; examples below are not defaults and must not be run as extra gates.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_GO_GOFMT">
+      Code is `gofmt`/`goimports`-clean — non-negotiable, zero config. `goimports` is preferred (it also
+      groups and prunes imports). Tabs, tool-decided layout; there are no formatting debates in Go.
+    </Axiom>
+
+    <Axiom id="AX_GO_CHECK_AND_WRAP_ERRORS">
+      `error` is the last return value and every error is checked — never discarded with `_` unless the
+      discard is deliberate and justified. Add context by wrapping with `fmt.Errorf("doing X: %w", err)`
+      (`%w`, not `%v`, so callers can unwrap). Inspect with `errors.Is` / `errors.As`, not `==` or type
+      assertions. Define a sentinel (`var ErrNotFound = errors.New(…)`) only for a condition callers
+      actually branch on. Error strings are lowercase, no trailing punctuation.
+    </Axiom>
+
+    <Axiom id="AX_GO_NO_PANIC_IN_LIB">
+      Library code returns errors; it does not `panic` on ordinary or expected failures (bad input,
+      missing file). `panic` is for programmer bugs and truly unrecoverable state only.
+    </Axiom>
+
+    <Axiom id="AX_GO_NAMING">
+      Capitalization is visibility — export only what callers need. No stutter: in package `env`, name it
+      `env.Var`, not `env.EnvVar`; `New`/`Open`, not `NewEnv` inside `env`. Receiver names are short (1–2
+      letters) and consistent across a type's methods. Interfaces are small and `-er`-named; accept
+      interfaces, return concrete structs.
+    </Axiom>
+  </BeliefState>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_GO_IGNORED_ERROR">
+      <Bad>`_ = doThing()` or calling a function that returns `error` and not checking it.</Bad>
+      <Instead>Check it: handle, or `return fmt.Errorf("…: %w", err)`. Discard only with a justifying comment.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_GO_PANIC_IN_LIB">
+      <Bad>`panic("not found")` inside a reusable package for an expected condition.</Bad>
+      <Instead>Return an `error` the caller can handle.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_GO_PERCENT_V_WRAP">
+      <Bad>`fmt.Errorf("read config: %v", err)` — `%v` flattens the error; `errors.Is/As` can no longer unwrap it.</Bad>
+      <Instead>`fmt.Errorf("read config: %w", err)`.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_GO_STUTTER">
+      <Bad>`env.EnvVar`, `client.ClientConfig` — the package qualifier already carries the prefix.</Bad>
+      <Instead>`env.Var`, `client.Config`.</Instead>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_GO_FMT">
+      <Purpose>Code is gofmt-clean; formatting checks are read-only and use the configured exact scope.</Purpose>
+      <Example>gofmt -l <target-files></Example>
+      <Expected>No unformatted files in the configured required formatter report.</Expected>
+    </Hook>
+    <Hook id="HOOK_GO_VET">
+      <Purpose>Vet catches baseline bug classes when declared by the selected DAG.</Purpose>
+      <Example>go vet ./...</Example>
+      <Expected>The configured required step passes.</Expected>
+    </Hook>
+    <Hook id="HOOK_GO_LINT">
+      <Purpose>Honor the project's declared linter (for example golangci-lint with govet, errcheck,
+      staticcheck, ineffassign and unused). Do not silently skip a missing required linter.</Purpose>
+      <Example>golangci-lint run</Example>
+      <Expected>A missing required executable is BLOCKED/ENV_FAIL, not PASS; this example installs no default gate.</Expected>
+    </Hook>
+    <Hook id="HOOK_GO_TESTS">
+      <Purpose>The behavior's tests pass under the project's configured test step.</Purpose>
+      <Example>go test ./...</Example>
+      <Expected>The declared test step passes; production rule selection does not add a test phase.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ `gofmt`/`goimports`-clean; any configured required vet step passes (for example `go vet ./...`).
+    ✅ Every error checked; context added with `%w`; inspected via `errors.Is`/`As`.
+    ✅ Library code returns errors, never panics on expected failures.
+    ✅ No stutter; minimal exported surface; short consistent receiver names; small `-er` interfaces.
+    ✅ When authoring tests with the declared stdlib `testing` runner: table-driven cases, `t.Run` and `t.Helper()` in helpers; no imposed third-party framework.
+    ❌ An ignored/`_`-discarded error without justification.
+    ❌ `panic` in library code for an expected failure.
+    ❌ `%v` wrapping where `%w` is meant.
+    ❌ Stutter naming (`env.EnvVar`).
+    ❌ Speculatively-exported types/functions with no caller.
+  </RewardCriteria>
+</GoCodingRules>
