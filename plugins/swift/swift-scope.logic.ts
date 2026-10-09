@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileTrimSafe } from 'gennady/stack';
+import { execFileTrimSafe } from '../../shared/verify/plugin-api.ts';
 import type { ScopeRequest, StackScope } from 'gennady/stack';
 import { isSwiftBuildDefinitionPath, type SwiftProject } from './swift-detect.logic.ts';
 

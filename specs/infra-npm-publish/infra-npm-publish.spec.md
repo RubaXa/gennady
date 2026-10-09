@@ -79,6 +79,35 @@ direct `release-it` через первый `before:init` hook. `pack-draft` о�
 
 ## 5. Effective Rules (for cascade)
 
+### R3 — Current declared local package surface
+
+The existing four ESM entrypoints are retained, not replaced by the old helper facade or retired
+stack engine. Build emits executable JavaScript; declarations close over shipped `dist/**` files.
+
+| Import                       | Runtime target                              | Types target                                            |
+| ---------------------------- | ------------------------------------------- | ------------------------------------------------------- |
+| `gennady`                    | `dist/index.js` (current agent-mon barrel)  | `dist/services/agent-mon/index.d.ts`                    |
+| `gennady/providers/claude`   | `dist/providers/claude.js`                  | `dist/services/agent-mon/providers/claude/index.d.ts`   |
+| `gennady/providers/opencode` | `dist/providers/opencode.js`                | `dist/services/agent-mon/providers/opencode/index.d.ts` |
+| `gennady/stack`              | `dist/stack.js` (current Verify plugin API) | `dist/shared/verify/plugin-api.d.ts`                    |
+
+Conditional `types`/`import`/`default` targets are published paths; package `main`/`types` agree
+with the declared root monitor API. Source-only package aliases and `.ts` references, including
+`import("...")` types, are normalized in declarations. Built-in plugin runtime imports resolve
+the current source API by relative owner paths: source CLI must work from a foreign cwd without
+any dist artifact. External consumers continue using the public dist-backed entry, never a
+source-path or tsconfig-path fallback.
+
+Acceptance uses a real isolated build → local npm pack → offline npm install of the exact manifest
+→ plain Node cold imports and a strict NodeNext consumer (`skipLibCheck: false`, no source paths or
+tsx loader). The fixture provides physical copies of the installed locked runtime dependency
+closure, local file resolutions and explicit Node/undici types; it matches existing
+`legacy-peer-deps=true`. It is not a fresh registry/native-build readiness proof. No provider scan,
+agent process, network or publication is authorized. Every traversed JS/declaration relative target
+must be shipped and stay inside the installed package; unbundled runtime bare imports must be Node
+builtins or backed by declared runtime dependencies. Existing D60 experimental composition and
+release-readiness status are unchanged. Frozen directive/skill/tarball source goldens do not change.
+
 | Rule             | Category | Source             |
 | ---------------- | -------- | ------------------ |
 | nodejs-npm-setup | infra    | infra-base (D-003) |
