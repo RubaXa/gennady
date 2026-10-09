@@ -52,12 +52,18 @@ describe('resolveSddRuleSnapshot', () => {
 
       assert.deepEqual(
         dispatch.snapshot.required.map(({ id }) => id),
-        ['testing-common', 'node-test', 'typescript-rules']
+        ['coding-baseline', 'testing-common', 'node-test', 'typescript-rules']
       );
-      assert.match(dispatch.snapshot.required[0]?.body ?? '', /Shared testing core/);
-      assert.match(dispatch.snapshot.required[1]?.body ?? '', /Node\.js built-in `node:test`/);
+      assert.match(
+        dispatch.snapshot.required.find(({ id }) => id === 'testing-common')?.body ?? '',
+        /Shared testing core/
+      );
+      assert.match(
+        dispatch.snapshot.required.find(({ id }) => id === 'node-test')?.body ?? '',
+        /Node\.js built-in `node:test`/
+      );
       assert.equal(
-        dispatch.snapshot.required[1]?.provenance,
+        dispatch.snapshot.required.find(({ id }) => id === 'node-test')?.provenance,
         'specs/app/app.task.APP.md#PHASE_P1.Rules'
       );
       assert.deepEqual(dispatch.facts.providers, ['node']);
@@ -240,7 +246,7 @@ describe('resolveSddRuleSnapshot', () => {
       const automatic = resolveSddRuleSnapshot(input);
       assert.deepEqual(
         automatic.snapshot.required.map(({ id }) => id),
-        ['testing-common', 'vitest-rules']
+        ['coding-baseline', 'testing-baseline', 'testing-common', 'vitest-rules']
       );
       assert.deepEqual(automatic.facts.artifacts[0]?.frameworks, ['vitest']);
       assert.equal(

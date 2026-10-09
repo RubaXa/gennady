@@ -54,6 +54,7 @@ describe('embedded rule migration equivalence', () => {
     );
     const actual = loadBuiltinRuleRegistry(ROOT)
       .list()
+      .filter(({ ruleId }) => FIXTURE.entries.some(({ id }) => id === ruleId))
       .map(
         ({
           ruleId,
@@ -107,7 +108,12 @@ describe('embedded rule migration equivalence', () => {
 
     assert.equal(actual.length, 14);
     assert.deepEqual(actual, expected);
-    assert.deepEqual([...BUILTIN_RULE_SOURCES].sort(), expected.map(({ source }) => source).sort());
+    assert.deepEqual(
+      [...BUILTIN_RULE_SOURCES]
+        .filter((source) => expected.some((entry) => entry.source === source))
+        .sort(),
+      expected.map(({ source }) => source).sort()
+    );
   });
 
   it('has no runtime central registry and no production consumer of its former filename', () => {

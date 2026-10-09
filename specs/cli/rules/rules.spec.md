@@ -114,6 +114,39 @@ registry bytes и overrides дают один immutable `RuleSnapshot` (`require
 dependencies, provenance, digest) в `rules resolve`, SDD dispatch и Verify report; drift делает
 phase evidence stale.
 
+#### MAIN carry R2 — embedded baseline corpus
+
+The complete current manifest includes four retained MAIN bodies from frozen
+`9663c65b6376c65f4b1df0daf27a06df5b25f7a3`: `coding/baseline-rules.xml`, `coding/go-rules.xml`,
+`coding/python-rules.xml`, and `testing/baseline-testing.xml`. Their lexical ids are
+`coding-baseline`, `go-rules`, `python-rules`, and `testing-baseline` (required, schema 1).
+Coding baseline selects actual `javascript,typescript,go,python,swift,bash,shell` artifact language
+facts, not a production role alone: markdown/style-only scope gets no source-code baseline.
+Go/Python select their language and depend only on coding-baseline. Generic testing baseline
+selects `role=test`, including explicit project languages, without runner or TS annotation policy.
+The historical TS production `Unless role=test` and runner-specific testing-common dependencies
+remain unchanged. Arbitrary selector names do not determine rule semantics.
+
+`.py` and `.pyi` provide Python language facts only; no Python Verify provider/preset is introduced
+(V10 deferred). Rules remain agent instructions: only the configured selector/DAG owns executable
+gates. Tool examples do not add formatter/linter/type/test defaults; missing **declared required**
+capabilities cannot silently skip. Python public typing remains gradual; declared checker policy
+is project-owned. Ruff settings and pytest parametrization apply only when selected by the project;
+Go test idioms apply to test work with its declared runner, not as a production test dependency.
+Python's narrow-exception axiom corrects the frozen factual error: bare except/BaseException catch
+termination exceptions, Exception does not, though broad Exception can hide application bugs.
+See the [primary exception hierarchy](https://docs.python.org/3/library/exceptions.html#exception-hierarchy).
+
+The historical 14-entry UV-21 fixture remains byte-for-byte unchanged and proves its historical
+subset. Separate test-only `shared/rules/__tests__/fixtures/main-carry-rules.json` freezes original
+source bytes, source revision/Git blob/SHA-256 identities, carried body digests, metadata and explicit
+Mission/header/dependency/hook/reward deltas. Every axiom/antipattern id is retained; original axiom
+and antipattern bytes remain exact except the documented Python narrow-exception, configured
+formatter/linter and checker-authority updates, plus testing `AX_TEST_ONE_BEHAVIOR`/reward wording
+(`proves` → `checks`) aligned with AUTHORING §13: one observed test is not formal assurance of
+correctness. The single-behavior principle and axiom id remain unchanged. Complete current manifest acceptance covers the
+union of both fixtures (18 entries). Neither fixture is runtime input; no central registry returns.
+
 ### RUL-REQ-7 [должен]
 
 **Когда** UV-25 собирает release evidence, **то Rules scenario должен** выполнить реальные

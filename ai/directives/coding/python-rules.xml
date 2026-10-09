@@ -1,0 +1,96 @@
+<PythonCodingRules rule-id="python-rules" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When language="python"/>
+  <DependsOn rule="coding-baseline"/>
+</Meta>
+  <Mission>
+    Thin Python baseline inheriting coding-baseline. testing-baseline is independently selected for tests.
+    Preserve PEP 8, typing, exception and import idioms without choosing a project runner or Verify provider.
+    Python language alone does not select pytest, Ruff, mypy or pyright as executable gates.
+    Rules are agent instructions, not a second command pipeline. Only the configured selector/DAG
+    determines authority gates; examples below are not defaults and must not be run as extra gates.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_PY_TYPE_HINTS">
+      Public function and method signatures are type-annotated. Typing is gradual, not strict,
+      at baseline: annotate the surface, tighten over time. When the project declares a type gate,
+      honor its chosen checker (for example mypy or pyright); this rule creates no checker step.
+      Keep checker policy coherent rather than mixing competing configurations.
+    </Axiom>
+
+    <Axiom id="AX_PY_NARROW_EXCEPT">
+      Catch the narrowest exception you can actually handle (`FileNotFoundError`, `ValueError`), never a
+      bare `except:` or `except BaseException:` — these capture `KeyboardInterrupt`/`SystemExit`.
+      Broad `except Exception:` does not catch those termination exceptions, but can hide application bugs. Chain with `raise NewError(...) from err` to keep the cause; re-raise with a bare
+      `raise` after logging to keep the original traceback.
+    </Axiom>
+
+    <Axiom id="AX_PY_NO_MUTABLE_DEFAULT">
+      No mutable default arguments (`def f(x=[])` / `{}`): the default is shared across calls. Default to
+      `None` and construct inside the body.
+    </Axiom>
+
+    <Axiom id="AX_PY_FORMAT_AND_LINT">
+      Formatting and lint are tool-owned, not hand-argued: honor the project configuration.
+      A Ruff project can use `ruff format` (Black-compatible, conventionally 88 columns) and `ruff check`
+      with `F` (pyflakes), `E` (pycodestyle errors), `I` (import order) and `B` (bugbear).
+      Keep tool and packaging settings coherent in `pyproject.toml`; these examples do not choose gates.
+    </Axiom>
+  </BeliefState>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_PY_MUTABLE_DEFAULT">
+      <Bad>`def append_to(item, target=[]):` — `target` persists and accumulates across calls.</Bad>
+      <Instead>`def append_to(item, target=None): target = [] if target is None else target`.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_PY_BARE_EXCEPT">
+      <Bad>`try: … except: pass` or `except Exception:` as a catch-all that hides the failure.</Bad>
+      <Instead>Catch the specific type you handle; log-and-`raise` or `raise … from err` otherwise.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_PY_WILDCARD_IMPORT">
+      <Bad>`from module import *` — pollutes the namespace and defeats static analysis (Ruff F403/F405).</Bad>
+      <Instead>Import the names you use explicitly.</Instead>
+    </AntiPattern>
+    <AntiPattern id="AP_PY_IDENTITY_COMPARE">
+      <Bad>`if x == None:` / `== True` — value comparison to a singleton (Ruff E711/E712).</Bad>
+      <Instead>`if x is None:` / `if flag:`.</Instead>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_PY_FORMAT">
+      <Purpose>Code matches the project's declared formatter configuration.</Purpose>
+      <Example>ruff format --check <target-files></Example>
+      <Expected>The configured required formatter passes without modifying source.</Expected>
+    </Hook>
+    <Hook id="HOOK_PY_LINT">
+      <Purpose>The configured linter catches baseline bug classes; missing required tooling is not silently skipped.</Purpose>
+      <Example>ruff check <target-files></Example>
+      <Expected>The configured required linter passes (Ruff F/E/I/B is one example, not a default gate).</Expected>
+    </Hook>
+    <Hook id="HOOK_PY_TYPES">
+      <Purpose>Public annotations type-check using the project's declared checker.</Purpose>
+      <Example>mypy <target-files>; or the project's configured pyright equivalent</Example>
+      <Expected>The configured required type step passes.</Expected>
+    </Hook>
+    <Hook id="HOOK_PY_TESTS">
+      <Purpose>The behavior's tests pass under the project's explicitly configured runner.</Purpose>
+      <Example>If the project selects pytest: pytest -q. Otherwise use its declared runner.</Example>
+      <Expected>No language-only pytest requirement or inferred Verify preset; missing required capability is visible.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Public signatures are type-annotated; any declared type gate uses the project's chosen checker.
+    ✅ Exceptions caught are the narrowest handled; re-raise preserves the cause (`raise … from`) or the traceback (bare `raise`).
+    ✅ No mutable default arguments; `None` + in-body construction.
+    ✅ Declared formatter/linter configuration passes; Ruff 88 cols and F/E/I/B are project-selected examples; coherent `pyproject.toml`.
+    ✅ If the project explicitly selects pytest, use `@pytest.mark.parametrize` for input variants (one behavior per test); otherwise honor its declared runner.
+    ❌ Bare `except:` / blanket `except Exception:` that swallows the error.
+    ❌ Mutable default argument.
+    ❌ Wildcard import (`from x import *`).
+    ❌ `== None` / `== True` singleton comparison.
+    ❌ Re-raising a new exception without `from`, losing the original cause.
+  </RewardCriteria>
+</PythonCodingRules>
