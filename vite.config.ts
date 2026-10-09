@@ -47,7 +47,7 @@ const nodeBuiltins = (() => {
 function executableBin(): Plugin {
   return {
     name: 'gennady:executable-bin',
-    closeBundle() {
+    writeBundle() {
       chmodSync(resolve(__dirname, 'dist/gennady.js'), 0o755);
     },
   };
@@ -65,10 +65,13 @@ export default defineConfig({
     lib: {
       entry: {
         cli: resolve(__dirname, 'cli/gennady.ts'),
-        index: resolve(__dirname, 'index.ts'),
+        index: resolve(__dirname, 'services/agent-mon/index.ts'),
+        'providers/claude': resolve(__dirname, 'services/agent-mon/providers/claude/index.ts'),
+        'providers/opencode': resolve(__dirname, 'services/agent-mon/providers/opencode/index.ts'),
+        stack: resolve(__dirname, 'shared/verify/plugin-api.ts'),
       },
       formats: ['es'],
-      fileName: (_, name) => (name === 'cli' ? 'gennady.js' : 'index.js'),
+      fileName: (_, name) => (name === 'cli' ? 'gennady.js' : `${name}.js`),
     },
     rollupOptions: {
       // mermaid + jsdom are browser-oriented libs with mixed CJS/ESM internals (jsdom uses

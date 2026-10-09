@@ -19,17 +19,33 @@
   "type": "module",
   "bin": "./dist/gennady.js",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/services/agent-mon/index.d.ts",
   "imports": {
     "#snapshot-path-setup": "./snapshot-path.setup.ts",
     "#logger": "./services/logger/logger.ts",
     "#utils/*": "./utils/*"
   },
   "exports": {
-    ".": "./services/agent-mon/index.ts",
-    "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
-    "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts",
-    "./stack": "./shared/verify/plugin-api.ts"
+    ".": {
+      "types": "./dist/services/agent-mon/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./providers/claude": {
+      "types": "./dist/services/agent-mon/providers/claude/index.d.ts",
+      "import": "./dist/providers/claude.js",
+      "default": "./dist/providers/claude.js"
+    },
+    "./providers/opencode": {
+      "types": "./dist/services/agent-mon/providers/opencode/index.d.ts",
+      "import": "./dist/providers/opencode.js",
+      "default": "./dist/providers/opencode.js"
+    },
+    "./stack": {
+      "types": "./dist/shared/verify/plugin-api.d.ts",
+      "import": "./dist/stack.js",
+      "default": "./dist/stack.js"
+    }
   },
   "overrides": {
     "undici": "7.29.1",

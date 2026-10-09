@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { execFileTrimSafe } from 'gennady/stack';
+import { execFileTrimSafe } from '../../shared/verify/plugin-api.ts';
 import type { StackDiagnostic } from 'gennady/stack';
 
 const SKIP_DIRECTORIES = new Set([

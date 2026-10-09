@@ -5,7 +5,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { EnvFailPredicate, Gate, GatePlanOptions } from 'gennady/stack';
-import { execFileTrimSafe, exitCodeMatches, outputMatches, parseDuration } from 'gennady/stack';
+import {
+  execFileTrimSafe,
+  exitCodeMatches,
+  outputMatches,
+  parseDuration,
+} from '../../shared/verify/plugin-api.ts';
 import type { GoProject } from './golang-detect.logic.ts';
 import type { GoScope } from './golang-scope.logic.ts';
 import { moduleFlags } from './golang-scope.logic.ts';

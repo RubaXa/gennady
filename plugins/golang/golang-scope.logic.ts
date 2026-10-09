@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ScopeRequest } from 'gennady/stack';
-import { execFileTrimSafe } from 'gennady/stack';
+import { execFileTrimSafe } from '../../shared/verify/plugin-api.ts';
 import type { GoProject } from './golang-detect.logic.ts';
 
 /** Path segments whose packages are never worth verifying directly. */

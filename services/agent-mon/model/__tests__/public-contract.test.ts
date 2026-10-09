@@ -16,26 +16,32 @@ const root = fileURLToPath(new URL('../../../..', import.meta.url));
 const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
-  exports: Record<string, string>;
+  exports: Record<string, { types: string; import: string; default: string }>;
 };
 
 describe('agent-mon public contract', () => {
   it('root export points at the agent-mon barrel', () => {
-    assert.equal(packageJson.exports['.'], './services/agent-mon/index.ts');
+    assert.deepEqual(packageJson.exports['.'], {
+      types: './dist/services/agent-mon/index.d.ts',
+      import: './dist/index.js',
+      default: './dist/index.js',
+    });
   });
 
   it('Claude provider subpath is exported', () => {
-    assert.equal(
-      packageJson.exports['./providers/claude'],
-      './services/agent-mon/providers/claude/index.ts'
-    );
+    assert.deepEqual(packageJson.exports['./providers/claude'], {
+      types: './dist/services/agent-mon/providers/claude/index.d.ts',
+      import: './dist/providers/claude.js',
+      default: './dist/providers/claude.js',
+    });
   });
 
   it('OpenCode provider subpath is exported', () => {
-    assert.equal(
-      packageJson.exports['./providers/opencode'],
-      './services/agent-mon/providers/opencode/index.ts'
-    );
+    assert.deepEqual(packageJson.exports['./providers/opencode'], {
+      types: './dist/services/agent-mon/providers/opencode/index.d.ts',
+      import: './dist/providers/opencode.js',
+      default: './dist/providers/opencode.js',
+    });
   });
 
   it('missing required export is rejected by the package contract', () => {

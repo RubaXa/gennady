@@ -3,7 +3,7 @@
 // @consumers: swift-plugin, Swift preset
 
 import type { EnvFailPredicate, Gate, GatePlanOptions } from 'gennady/stack';
-import { exitCodeMatches, outputMatches } from 'gennady/stack';
+import { exitCodeMatches, outputMatches } from '../../shared/verify/plugin-api.ts';
 import type { SwiftProject } from './swift-detect.logic.ts';
 import type { SwiftScope } from './swift-scope.logic.ts';
 
