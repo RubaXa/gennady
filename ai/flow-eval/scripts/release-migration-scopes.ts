@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import {
   ARCHIVE_ROOT,
   checkFrozenMain,
@@ -25,6 +25,25 @@ function git(root: string, args: string[]): Buffer {
     );
   }
   return result.stdout;
+}
+
+/** @purpose Mirror a committed spec into its migration-unit path through the existing path owner. */
+function migrationUnitGitPath(spec: string): string {
+  return unitFilePath({
+    specFile: spec.split('/').join(sep),
+    scope: spec.split('/')[1],
+    module: null,
+    scopeType: null,
+    lines: 0,
+    mermaidCount: 0,
+    anchors: [],
+    headings: [],
+    tickets: [],
+    targetSections: [],
+    foldSections: [],
+  })
+    .split(sep)
+    .join('/');
 }
 
 /** @purpose Reconstruct scopes from the existing committed unit ledger, never directory presence alone. */
@@ -70,6 +89,7 @@ export function committedMigrationScopes(root: string, sourceCommit: string): st
     const parts = spec.split('/');
     if (
       parts.length < 3 ||
+      spec.includes('\\') ||
       /[\u0000-\u001f\u007f]/u.test(spec) ||
       parts.some((part) => !part || part === '.' || part === '..') ||
       !/\.(?:spec|1-spec)\.md$/.test(spec)
@@ -79,19 +99,7 @@ export function committedMigrationScopes(root: string, sourceCommit: string): st
     const scope = parts[1];
     if (`migration/${scope}` === ARCHIVE_ROOT)
       throw new Error('inert archive cannot be a migration unit');
-    const expected = unitFilePath({
-      specFile: spec,
-      scope,
-      module: null,
-      scopeType: null,
-      lines: 0,
-      mermaidCount: 0,
-      anchors: [],
-      headings: [],
-      tickets: [],
-      targetSections: [],
-      foldSections: [],
-    });
+    const expected = migrationUnitGitPath(spec);
     if (plan !== expected || plans.has(plan))
       throw new Error(`invalid/duplicate migration unit: ${plan}`);
     text(spec);

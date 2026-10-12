@@ -14,7 +14,9 @@ import {
   symlinkSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, posix, win32 } from 'node:path';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
 import { after, afterEach, before, it } from 'node:test';
 import { committedMigrationScopes } from '../release-migration-scopes.ts';
 import { sourceScopes } from '../release-evidence-pack-check.ts';
@@ -96,6 +98,28 @@ it('reconstructs the same committed ledger independently of uncommitted filesyst
 });
 
 const mutations: Array<[string, (root: string) => void, RegExp]> = [
+  [
+    'literal backslash in a Git ledger path',
+    (root) => {
+      const spec = 'specs/cli\\sub/foreign.spec.md';
+      const plan = 'migration/cli\\sub/foreign.spec.migration.md';
+      write(root, spec, '# owned nonportable unit\n');
+      write(
+        root,
+        plan,
+        readFileSync(join(root, 'migration/cli/cli.spec.migration.md'), 'utf8')
+          .replaceAll('specs/cli/cli.spec.md', spec)
+          .replace('**Scope:** cli', '**Scope:** cli\\sub')
+      );
+      write(
+        root,
+        'migration/README.md',
+        readFileSync(join(root, 'migration/README.md'), 'utf8') +
+          `| \`${plan}\` | \`${spec}\` | 0 |\n`
+      );
+    },
+    /invalid migration unit spec/,
+  ],
   [
     'whole archive omitted after canonical checker introduction',
     (root) =>
@@ -250,6 +274,50 @@ for (const [label, mutate, finding] of mutations)
     assert.deepEqual(sourceScopes(root, source, failures), []);
     assert.match(failures.join('\n'), finding);
   });
+
+it('adapts the actual existing unit path function through POSIX and Windows native bindings', () => {
+  // Execute only these two trusted local declarations, not their modules/imports or any I/O.
+  // This is native-path semantics evidence on this host, not an actual Windows runtime run.
+  function declaration(path: string, name: string): string {
+    const file = ts.createSourceFile(
+      path,
+      readFileSync(join(ROOT, path), 'utf8'),
+      ts.ScriptTarget.ES2022,
+      true
+    );
+    const node = file.statements.find(
+      (statement) => ts.isFunctionDeclaration(statement) && statement.name?.text === name
+    );
+    assert.ok(node, `missing trusted declaration ${name}`);
+    return node.getText(file).replace(/^export\s+/u, '');
+  }
+  const source =
+    declaration('shared/sdd/migration-plan.ts', 'unitFilePath') +
+    '\n' +
+    declaration('ai/flow-eval/scripts/release-migration-scopes.ts', 'migrationUnitGitPath');
+  const code = ts.transpileModule(source, {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
+  }).outputText;
+  for (const native of [posix, win32]) {
+    for (const spec of ['specs/cli/cli.spec.md', 'specs/cli/verify/verify.spec.md']) {
+      const actual = runInNewContext(
+        `${code}\nmigrationUnitGitPath(spec);`,
+        {
+          spec,
+          sep: native.sep,
+          join: native.join,
+          dirname: native.dirname,
+          basename: native.basename,
+        },
+        { timeout: 1000 }
+      );
+      assert.equal(
+        actual,
+        spec.replace(/^specs\//u, 'migration/').replace(/\.md$/u, '.migration.md')
+      );
+    }
+  }
+});
 
 it('verifies the real inert archive, excludes no genuine scope and rejects corrupted raw bytes', () => {
   const root = mkdtempSync(join(context.holder, 'archive-'));
