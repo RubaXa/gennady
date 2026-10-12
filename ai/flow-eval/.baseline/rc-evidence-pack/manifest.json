@@ -1,7 +1,7 @@
 {
   "schema": "gennady.rc-evidence-pack.v2",
-  "sourceCommit": "e33758f4f1c2868045b64e23b507f3541fb76b6c",
-  "generatedAt": "2026-10-05T09:05:17.115Z",
+  "sourceCommit": "f9cf95ec08e8d18b26eca688df04a400791453d3",
+  "generatedAt": "2026-10-12T20:41:35.128Z",
   "cleanBefore": true,
   "cleanAfter": true,
   "environment": {
@@ -51,7 +51,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/build.log",
-      "sha256": "7af09aaa28d4156cb5d5c0f7163e009bd54badd1efa9e500a7777a0981dacf78"
+      "sha256": "f9097eedb60ad4b0261384eecfafbc377abadea163b110a3710e8f140461ea6a"
     },
     {
       "id": "test",
@@ -59,7 +59,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/test.log",
-      "sha256": "9d10e190990863c09095997381175e76b276455a12e6488d0c049b01176b27c3"
+      "sha256": "d6b7b6ad7dfbbe2f4b7f4ff4bed744d7f35dad90ec06e3a4eb22ad06780c5dc4"
     },
     {
       "id": "uv25-node",
@@ -67,7 +67,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-node.log",
-      "sha256": "4e461d96949adc91cf708fe32e4f747b6248080d72432ef4229a08b6f13987c8",
+      "sha256": "ea153bad12cdd9244d11054b3c938ea4b32e4d2f98f9ecd76bcab483e0cf2e74",
       "scenario": {
         "area": "node",
         "acceptance": ["U-A2", "U-A9"],
@@ -102,7 +102,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-golang.log",
-      "sha256": "2386ccba1a8395425c2e23d517eda575db25813c88d8d39ea3b54a83868d01ea",
+      "sha256": "145bfbf0467dd3e34805e1d97d6aaa855fa1e5cb4026a3ec1c2447ceb0e16cbe",
       "scenario": {
         "area": "golang",
         "acceptance": ["U-A2"],
@@ -133,7 +133,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-swift-local.log",
-      "sha256": "72aa78f9d8ca8bd6cf987982bce07d5518c5446620f985eb054a9d06bd28126b",
+      "sha256": "fbe62013f90c866b281de9ecfbe70067336adfb1eab92a8b51a1ae4a543601b7",
       "scenario": {
         "area": "swift-local",
         "acceptance": ["U-A2"],
@@ -164,7 +164,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-remote.log",
-      "sha256": "bcd4fc397809b9a0cef2cb2d9ddf322745c75e333483d1c0c2767ed0a912832d",
+      "sha256": "7ed0532ca916cf6156c49a41a6f774c61315ee5bc740ebe213de28af77cb8d12",
       "scenario": {
         "area": "remote",
         "acceptance": ["U-A6"],
@@ -192,7 +192,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-remote-live.log",
-      "sha256": "3f7720024de1088e4ed33b6b6fdda544bbef37cfb331e4bb2c1881c773af015b",
+      "sha256": "8f4f6464debaa20bc48c982ae56e85c0c62b8355f2beced723b1ae4004cbd0a1",
       "scenario": {
         "area": "remote-live",
         "acceptance": ["U-A6"],
@@ -238,7 +238,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-rules.log",
-      "sha256": "dcd5e146a373ac11875a0660db04c73a926f7118cc923ac097eccacd955efc7b",
+      "sha256": "65f3989c821d28bda0d817046f1625201ebece47353d6eab7d22bb56253867aa",
       "scenario": {
         "area": "rules",
         "acceptance": ["U-A7"],
@@ -257,7 +257,7 @@
           },
           {
             "path": "shared/rules/__tests__/rule-migration-equivalence.test.ts",
-            "sha256": "cb65fe23e321355df7c7a96adb9eabbf80fca9f9e7533eb04a70158faaeb7c4e"
+            "sha256": "617e4a6896379c44204986c307837c5d5d1a94d2b4559298b925fffa69466162"
           },
           {
             "path": "shared/rules/__tests__/fixtures/rule-migration-equivalence.json",
@@ -282,14 +282,14 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-sdd-evidence.log",
-      "sha256": "c255b6df6b5c383b75ebd82bf8af644a601c9c17d06447a03e4df0129548d3ea",
+      "sha256": "11a828fae6621529f55f0e8196ac2ade03b51a49c43689d7fb8a3d60d079a370",
       "scenario": {
         "area": "sdd-evidence",
         "acceptance": ["U-A9"],
         "fixtures": [
           {
             "path": "shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts",
-            "sha256": "038af1b7e647a8b9bd473eebcfc3927f44d8986b869b5ee974e7cc4df9689c4b"
+            "sha256": "27ea8c61acb73948a6e0f3ae954682bb11d998af361e6156c21bc9d13ea83ce7"
           },
           {
             "path": "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
