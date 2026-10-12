@@ -14,6 +14,7 @@ import {
   validateReleaseEvidenceResult,
   type ReleaseEvidenceManifest,
 } from './release-evidence-contract.ts';
+import { committedMigrationScopes } from './release-migration-scopes.ts';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '../../..');
 const PACK_ROOT = resolve(PROJECT_ROOT, 'ai/flow-eval/.baseline/rc-evidence-pack');
@@ -53,7 +54,8 @@ function gitBlobSha256(root: string, sourceCommit: string, path: string): string
   return result.status === 0 && Buffer.isBuffer(result.stdout) ? sha256(result.stdout) : null;
 }
 
-function sourceScopes(root: string, sourceCommit: string, failures: string[]): string[] {
+/** @purpose Validate pack source ancestry and independently reconstruct its committed scope identity. */
+export function sourceScopes(root: string, sourceCommit: string, failures: string[]): string[] {
   if (!FULL_SHA.test(sourceCommit)) {
     failures.push('sourceCommit не full SHA');
     return [];
@@ -70,19 +72,14 @@ function sourceScopes(root: string, sourceCommit: string, failures: string[]): s
     failures.push('sourceCommit не является ancestor текущего HEAD');
     return [];
   }
-  const tree = git(root, ['ls-tree', '-d', '--name-only', `${sourceCommit}:migration`]);
-  if (tree.status !== 0) {
-    failures.push(`migration tree недоступен в sourceCommit: ${tree.output}`);
+  try {
+    return committedMigrationScopes(root, sourceCommit);
+  } catch (cause) {
+    failures.push(
+      `migration source identity: ${cause instanceof Error ? cause.message : String(cause)}`
+    );
     return [];
   }
-  const scopes = tree.output
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .sort(codePointCompare);
-  if (scopes.length === 0) failures.push('sourceCommit не содержит migration scope directories');
-  if (new Set(scopes).size !== scopes.length) failures.push('source migration scopes не уникальны');
-  return scopes;
 }
 
 function isContainedFile(packRoot: string, path: string): boolean {
