@@ -1,0 +1,12 @@
+notes: >
+  Finding 2 (live bug): a make-wrapped linter exits 2 on any failed recipe, and the plugin's
+  inherited `exit > 1` predicate turns a GENUINE finding into ENV_FAIL telling the agent not to
+  touch the code. An argv override must not inherit exit-code predicates for a command it no
+  longer runs.
+requires: [go]
+argv: ['--all', '--only=golang:lint']
+exitCode: 1
+gates:
+  golang:lint:
+    status: fail
+    outputIncludes: ['should have comment']

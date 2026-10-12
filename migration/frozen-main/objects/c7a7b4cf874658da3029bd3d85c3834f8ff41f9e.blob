@@ -1,0 +1,36 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+coverage
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.wisehub.app.js.map
+
+.gennadyrc
+# ...except inside E2E fixtures, where a personal rc IS the thing under test. Without this the
+# three config fixtures shipped without their rc and the suite was red from any fresh clone.
+!**/e2e/fixtures/**/.gennadyrc
+ai/drafts
+.claude/
+*.tgz
+# agent-inbox runtime state (registry, drafts, worktrees)
+.gennady/

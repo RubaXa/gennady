@@ -1,0 +1,6 @@
+stack:
+  use: [golang]
+  golang:
+    overrideGates:
+      lint:
+        argv: [make, lint]

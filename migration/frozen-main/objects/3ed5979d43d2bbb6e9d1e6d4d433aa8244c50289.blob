@@ -1,0 +1,9 @@
+notes: >
+  `typecheck` is a real node gate id, so load-time validation accepts it — but this package has no
+  script of that class, so the override matched no planned gate and used to be dropped in silence
+  while the user believed their command now ran (review #10). A config that cannot take effect is
+  invalid, consistent with the rest of the section.
+requires: [npm]
+argv: ['--all']
+exitCode: 4
+config: { error: 'typecheck' }

@@ -1,0 +1,8 @@
+notes: >
+  An argv override supplying a check-only form lifts the planner's mutation skip, so the gate
+  executes (config.spec §3.4).
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates:
+  node:lint: { status: pass }

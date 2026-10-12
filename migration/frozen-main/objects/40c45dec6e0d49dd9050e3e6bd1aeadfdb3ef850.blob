@@ -1,0 +1,8 @@
+notes: >
+  The reason this plugin exists: an exotic stack with no plugin is verified entirely through
+  extraGates. Two config-authored gates run and pass with no stack detection involved.
+argv: ['--all']
+exitCode: 0
+gates:
+  anystack:syntax: { status: pass }
+  anystack:style: { status: pass }

@@ -1,0 +1,4 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [vet]

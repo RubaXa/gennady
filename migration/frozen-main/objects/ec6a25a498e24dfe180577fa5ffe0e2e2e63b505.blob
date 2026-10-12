@@ -1,0 +1,11 @@
+notes: >
+  D-STACK-011: committed generated output that drifted from its sources is a FAIL naming the files
+  and pointing at `gennady fix`, and the real tree stays untouched because the generator ran in the
+  replica.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:generate:
+    status: fail
+    outputIncludes: ['gen.out', 'gennady fix golang:generate']

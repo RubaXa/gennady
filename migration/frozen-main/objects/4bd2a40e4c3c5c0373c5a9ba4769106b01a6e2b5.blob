@@ -1,0 +1,5 @@
+notes: No config at all is a valid state — pure auto-detection with the built-in gates (§4.1).
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates: { node:test: { status: pass } }

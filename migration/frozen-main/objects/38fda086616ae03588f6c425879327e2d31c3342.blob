@@ -1,0 +1,16 @@
+<PROVIDER name="claude">
+  <OVERRIDE_RUNTIME_TOOLS>
+    - `RUN_AGENT_TASK("{plan_file_path}")` — Override. plan_file_path = path to plan file (plan contains role instruction). If FW_AGENT_CLI_SUPPORT == true: run FW_AGENT_CLI_PATH with -p "TASK: {plan_file_path}". Else: read plan, load role from plan, RUN_SUB_PROMPT(role) with plan content.
+  </OVERRIDE_RUNTIME_TOOLS>
+  <AGENT_TOOLS>
+    - computer_use - Главный инструмент (включает клики, ввод текста, скролл, bash, редактирование файлов)
+    - bash - Выполняет команды в терминале (через computer_use)
+    - read_file - Читает файл
+    - write_file - Записывает/создаёт файл
+    - list_directory - Список содержимого папки
+    - edit_file - Редактирование файла с указанием диапазона строк (новая версия, очень точная)
+    - search_files - Поиск по содержимому проекта
+    - get_url - Делает HTTP GET запрос и возвращает содержимое
+    - take_screenshot - Делает скриншот (полный или области)
+  </AGENT_TOOLS>
+</PROVIDER>

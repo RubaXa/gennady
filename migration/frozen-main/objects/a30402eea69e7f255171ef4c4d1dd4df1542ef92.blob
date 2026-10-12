@@ -1,0 +1,5 @@
+stack:
+  node:
+    overrideGates:
+      nosuch:
+        argv: ['true']

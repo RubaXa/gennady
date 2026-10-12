@@ -1,0 +1,10 @@
+notes: >
+  The reported gap — an extra gate can now express ENV_FAIL. A script signalling infra with a
+  sysexits code is classified env-fail (not a claim about the code) and carries its remediation.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:e2e-lifter:
+    status: env-fail
+    hintIncludes: 'make beta-up'

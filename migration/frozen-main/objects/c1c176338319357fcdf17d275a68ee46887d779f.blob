@@ -1,0 +1,10 @@
+notes: >
+  D-CFG-002 deep-merge: a one-key personal .gennadyrc adds its skip while the project's extraGates
+  survive — the reviewer's scenario of a single personal override without restating the section.
+requires: [npm]
+argv: ['--all']
+# One gate executed and passed, so the run is a success even though another is skipped.
+exitCode: 0
+gates:
+  node:from-yaml: { status: pass }
+  node:test: { status: skipped }

@@ -1,0 +1,10 @@
+notes: >
+  The observe-only contract is enforced for npm scripts too: a passing script that writes into the
+  tree is a VIOLATION, and the real fixture tree stays clean because the write hit the replica.
+requires: [npm]
+argv: ['--all']
+exitCode: 1
+gates:
+  node:test:
+    status: violation
+    outputIncludes: ['side-effect.txt']

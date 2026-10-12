@@ -1,0 +1,35 @@
+# Defense-in-depth on top of the package.json "files" allowlist.
+#
+# "files" already whitelists exactly what ships (dist, ai, plugins assets, docs,
+# README). This file is a second, subtractive guard: even if a future change
+# loosens "files", test code, fixtures, coverage, and system cruft must never
+# reach the published tarball. Keep it in sync with what is genuinely non-runtime.
+
+# Test code and doubles
+*.test.*
+*.spec.*
+__tests__/
+__mocks__/
+__snapshots__/
+*.snap
+
+# Fixtures and end-to-end scaffolding
+fixtures/
+**/fixtures/
+e2e/
+**/e2e/
+
+# Coverage and build metadata
+coverage/
+.nyc_output/
+*.tsbuildinfo
+*.map
+
+# Scratch / local working files
+scratch/
+*.local.*
+
+# System / editor cruft
+.DS_Store
+Thumbs.db
+*.log

@@ -1,0 +1,8 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: sleeper
+        argv: [sh, -c, 'sleep 30']
+        timeout: 2s

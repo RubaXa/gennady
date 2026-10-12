@@ -1,0 +1,1 @@
+{ "name": "mutating-lint", "private": true, "scripts": { "lint": "prettier --write .", "test": "node -e \"process.exit(0)\"" } }

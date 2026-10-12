@@ -1,0 +1,10 @@
+notes: >
+  D-STACK-015: a matching rule outranks TIMEOUT, so a hang whose cause was printed becomes
+  env-fail with remediation instead of a bare clock verdict.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:sleeper:
+    status: env-fail
+    hintIncludes: 'start docker'

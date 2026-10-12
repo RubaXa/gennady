@@ -1,0 +1,56 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "#logger": ["./services/logger/logger.ts"],
+      "@shared/*": ["shared/*"],
+      "@services/*": ["services/*"],
+      "gennady": ["./index.ts"],
+      "gennady/stack": ["./services/stack/plugin-api.ts"]
+    }
+  },
+  "include": [
+    "shared/**/*",
+    "services/**/*",
+    "plugins/**/*",
+    "cli/**/*",
+    "scripts/**/*",
+    "assistant/**/*",
+    "index.ts",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/__tests__/fixtures/**",
+    "**/__tests__/e2e/fixtures/**",
+    "plugins/*/e2e/fixtures/**"
+  ]
+}

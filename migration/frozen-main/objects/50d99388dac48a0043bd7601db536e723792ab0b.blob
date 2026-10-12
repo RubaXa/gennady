@@ -1,0 +1,7 @@
+notes: >
+  Arrays REPLACE rather than concatenate (D-CFG-002): the personal list wins whole, so `test` is
+  no longer skipped even though the project asked for it.
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates: { node:test: { status: pass } }

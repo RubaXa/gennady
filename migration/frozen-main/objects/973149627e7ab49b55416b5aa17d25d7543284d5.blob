@@ -1,0 +1,6 @@
+notes: A failing npm test script is a code FAIL, not an environment problem.
+requires: [npm]
+argv: ['--all', '--only=node:test']
+exitCode: 1
+gates:
+  node:test: { status: fail }

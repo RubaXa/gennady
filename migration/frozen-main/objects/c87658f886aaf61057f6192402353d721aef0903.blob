@@ -1,0 +1,10 @@
+{
+  "name": "clean-full",
+  "private": true,
+  "scripts": {
+    "type-check": "node -e \"process.exit(0)\"",
+    "lint": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\"",
+    "format:check": "node -e \"process.exit(0)\""
+  }
+}

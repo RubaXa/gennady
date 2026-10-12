@@ -15,11 +15,12 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { builtinModules } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import ts from 'typescript';
+import { pathToFileURL } from 'node:url';
 import { cleanTestChildEnv } from '../../cli/__tests__/tool-behavior/run-cli.ts';
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -211,8 +212,7 @@ describe('declared local package exports (R3)', () => {
       });
     }
     symlinkSync(realpathSync(join(ROOT, 'node_modules')), join(build, 'node_modules'), 'dir');
-    run('npm', ['run', 'build'], build);
-    run('npm', ['run', 'build:types'], build);
+    run('npm', ['run', 'build:publish'], build);
     const [pack] = JSON.parse(
       run('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', fixture], build)
     ) as Array<{ filename: string; files: Array<{ path: string }> }>;
@@ -313,6 +313,66 @@ describe('declared local package exports (R3)', () => {
   });
   after(() => {
     if (context.fixture) rmSync(context.fixture, { recursive: true, force: true });
+  });
+
+  it('R4 copied readonly config closes the actual installed bundle path without agent launch', () => {
+    const { installed, files } = context;
+    const expectedPath = join(installed, 'dist/chunks/readonly.config.json');
+    assert.ok(files.has('dist/chunks/readonly.config.json'));
+    assert.deepEqual(
+      readFileSync(expectedPath),
+      readFileSync(join(ROOT, 'services/agent-run/engines/opencode/readonly.config.json'))
+    );
+    const require = createRequire(import.meta.url);
+    const observedPaths: string[] = [];
+    for (const path of files) {
+      if (!path.startsWith('dist/chunks/') || !path.endsWith('.js')) continue;
+      const absolute = join(installed, path);
+      const source = ts.createSourceFile(
+        path,
+        readFileSync(absolute, 'utf8'),
+        ts.ScriptTarget.Latest
+      );
+      const bindings: Record<string, unknown> = {};
+      for (const statement of source.statements) {
+        if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))
+          continue;
+        const module = statement.moduleSpecifier.text;
+        if (!['node:path', 'path', 'node:url', 'url'].includes(module)) continue;
+        const names = statement.importClause?.namedBindings;
+        if (names && ts.isNamedImports(names))
+          for (const name of names.elements) {
+            const imported = name.propertyName?.text ?? name.name.text;
+            if (['resolve', 'dirname', 'fileURLToPath'].includes(imported))
+              bindings[name.name.text] = require(module)[imported];
+          }
+      }
+      const visit = (node: ts.Node): void => {
+        if (
+          ts.isCallExpression(node) &&
+          node.arguments.some(
+            (arg) => ts.isStringLiteral(arg) && arg.text === 'readonly.config.json'
+          )
+        ) {
+          assert.ok(
+            ts.isIdentifier(node.expression) && bindings[node.expression.text],
+            'runtime path uses imported Node resolver'
+          );
+          // Execute only the emitted resolver expression with its actual Node built-in bindings.
+          // No module/engine/agent is launched, and the URL is the real installed chunk location.
+          const expression = node.getText(source).replace(/import\.meta\.url/g, 'artifactUrl');
+          observedPaths.push(
+            new Function(...Object.keys(bindings), 'artifactUrl', `return (${expression})`)(
+              ...Object.values(bindings),
+              pathToFileURL(absolute).href
+            )
+          );
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    }
+    assert.deepEqual(observedPaths, [expectedPath]);
   });
 
   for (const [entry, names] of Object.entries(ENTRIES)) {

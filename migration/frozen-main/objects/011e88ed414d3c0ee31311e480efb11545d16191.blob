@@ -1,0 +1,5 @@
+stack:
+  node:
+    overrideGates:
+      typecheck:
+        argv: ['node', '-e', 'process.exit(0)']

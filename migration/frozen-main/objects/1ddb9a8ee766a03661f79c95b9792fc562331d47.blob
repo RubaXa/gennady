@@ -1,0 +1,5 @@
+notes: An invalid duration names the grammar, so the fix is obvious from the message (D-CFG-003).
+requires: [npm]
+argv: ['--all']
+exitCode: 4
+config: { error: '<int>(s|m|h)' }

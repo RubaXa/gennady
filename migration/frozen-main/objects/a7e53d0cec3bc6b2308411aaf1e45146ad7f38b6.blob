@@ -1,0 +1,7 @@
+notes: 'CLI --skip drops a gate from the plan, reported as a skip with `--skip` as the reason.'
+requires: [go]
+argv: ['--all', '--skip=golang:vet']
+exitCode: 0
+gates:
+  golang:vet: { status: skipped }
+  golang:build: { status: pass }

@@ -1,0 +1,81 @@
+{
+  "name": "gennady",
+  "version": "0.8.4",
+  "author": "Konstantin Lebedev <ibnrubaxa@gmail.com>",
+  "description": "Gennady — General Extensible Neural Network Adaptive Data Yntelligence",
+  "keywords": [
+    "git",
+    "ai",
+    "llm",
+    "local",
+    "commit",
+    "generator",
+    "gennady",
+    "review",
+    "code-review"
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/rubaxa/gennady",
+  "type": "module",
+  "bin": "./dist/gennady.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "imports": {
+    "#snapshot-path-setup": "./snapshot-path.setup.ts",
+    "#logger": "./services/logger/logger.ts"
+  },
+  "exports": {
+    ".": "./services/agent-mon/index.ts",
+    "./providers/claude": "./services/agent-mon/providers/claude/index.ts",
+    "./providers/opencode": "./services/agent-mon/providers/opencode/index.ts"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "ai/**/*",
+    "cli/cmd/orient/README.md",
+    "services/agent-run/engines/opencode/readonly.config.json"
+  ],
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "build:types": "tsc -p tsconfig.types.json && node --import tsx scripts/normalize-dts-imports.ts",
+    "build:publish": "npm run build && npm run build:types && node --import tsx scripts/prepare-publish-artifacts.ts",
+    "test": "node --import tsx --test --experimental-test-module-mocks",
+    "test:e2e": "GENNADY_E2E=1 node --import tsx --test --experimental-test-module-mocks cli/__tests__/e2e/*.test.ts",
+    "test:watch": "tsx --test-loader 'cli/**/*.test.ts' 'shared/**/*.test.ts' 'services/**/*.test.ts'",
+    "dev": "tsx cli/gennady.ts",
+    "build": "vite build",
+    "prepublishOnly": "npm run lint && npm run test:e2e && npm run build:publish",
+    "postpublish": "node --import tsx scripts/cleanup-publish-artifacts.ts",
+    "publish-next": "node --import tsx scripts/publish-next.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "npm run format && npm run type-check && npm run lint:contracts",
+    "release": "release-it",
+    "lint:contracts": "tsx cli/gennady.ts lint --autofix cli/ shared/ services/"
+  },
+  "devDependencies": {
+    "@ai-sdk/openai": "^3.0.41",
+    "@mtcute/dispatcher": "^0.29.0",
+    "@mtcute/node": "^0.28.2",
+    "@types/node": "^25.3.2",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.2.15",
+    "ai": "^6.0.116",
+    "fast-glob": "^3.3.3",
+    "open": "^11.0.0",
+    "prettier": "^3.4.2",
+    "qrcode": "^1.5.4",
+    "release-it": "20.0.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "zod": "^4.3.6"
+  },
+  "dependencies": {
+    "ink": "^7.0.3",
+    "react": "^19.2.6",
+    "tree-sitter": "^0.22.4",
+    "tree-sitter-typescript": "^0.23.2"
+  }
+}

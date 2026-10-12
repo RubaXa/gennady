@@ -1,0 +1,8 @@
+stack:
+  use: [golang]
+  golang:
+    extraGates:
+      - id: e2e
+        argv: [true]
+        requires:
+          - argv: [docker, info] # no hint — a precondition without remediation is rejected

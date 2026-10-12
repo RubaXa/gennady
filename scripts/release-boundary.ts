@@ -85,6 +85,7 @@ type CandidateProjection = {
     evidenceSourceToCandidate: { entries: DiffEntry[]; digest: string };
   };
   evidence: {
+    frozenMain: { passed: boolean; manifestDigest: string | null };
     uv27a: {
       schema: string | null;
       ok: boolean;
@@ -144,6 +145,8 @@ type Uv26CheckReport = {
 };
 /** @purpose Injectable read-only observations used by causal offline cutover tests. */
 export type ReleaseBoundaryPorts = {
+  /** @purpose Deterministic test observation; production always runs strict frozen MAIN freshness. */
+  runMainCarry?: (root: string) => { status: number; stdout: string; stderr: string };
   /** @purpose Environment projection checked only for credential-name presence. */
   environment?: NodeJS.ProcessEnv;
   /**
@@ -492,6 +495,49 @@ function defaultUv27a(root: string): { status: number; stdout: string; stderr: s
     }
   );
   return { status: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+}
+
+/** @purpose Mandatory live-ref freshness plus archive/current-proof check before any candidate/ACK. */
+function frozenMainEvidence(
+  root: string,
+  ports: ReleaseBoundaryPorts,
+  blockers: CutoverBlocker[]
+): CandidateProjection['evidence']['frozenMain'] {
+  const result = ports.runMainCarry
+    ? ports.runMainCarry(root)
+    : spawnSync(
+        process.execPath,
+        ['--import', 'tsx', 'scripts/main-carry-disposition.ts', '--pre-reconciliation'],
+        {
+          cwd: root,
+          encoding: 'utf8',
+          timeout: COMMAND_TIMEOUT_MS,
+          maxBuffer: MAX_GIT_BUFFER,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        }
+      );
+  let report: unknown;
+  try {
+    report = JSON.parse(result.stdout ?? '');
+  } catch {
+    report = null;
+  }
+  const passed =
+    result.status === 0 &&
+    isRecord(report) &&
+    report.rows === 520 &&
+    report.commits === 117 &&
+    typeof report.manifestDigest === 'string' &&
+    SHA256.test(report.manifestDigest);
+  if (!passed)
+    blockers.push({
+      code: 'CUTOVER_FROZEN_MAIN_INVALID',
+      detail: result.stderr?.trim() || 'strict frozen MAIN integrity/freshness failed',
+    });
+  return {
+    passed,
+    manifestDigest: passed && isRecord(report) ? (report.manifestDigest as string) : null,
+  };
 }
 
 function defaultUv25(
@@ -886,6 +932,7 @@ function inspect(
       },
     },
     evidence: {
+      frozenMain: frozenMainEvidence(root, ports, blockers),
       uv27a: uv27aEvidence(root, ports, blockers),
       uv25,
       uv26: uv26Evidence(root, policy, uv25.sourceCommit, ports, blockers),

@@ -1,0 +1,10 @@
+notes: >
+  The typecheck class is selected by script NAME as well as by a `tsc --noEmit` body; its
+  failure is a code FAIL even at exit 2, because no exit-code rule is declared for it.
+requires: [npm]
+argv: ['--all']
+exitCode: 1
+gates:
+  node:typecheck:
+    status: fail
+    outputIncludes: ['TS2322']

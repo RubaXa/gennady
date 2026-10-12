@@ -1,0 +1,10 @@
+notes: >
+  The other half of go-make-lint-exit2. golangci-lint exits 1 for findings and >1 when it could not
+  run, so exit >1 is ENV_FAIL — here an unloadable config. This needs the REAL binary: after the
+  argv-override fix an exit-code predicate is dropped when config replaces the command, so a wrapper
+  script cannot stand in for it. That coupling is why CI installs golangci-lint.
+requires: [go, golangci-lint]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:lint: { status: env-fail }

@@ -1,0 +1,3 @@
+stack:
+  node:
+    skipGate: [test]

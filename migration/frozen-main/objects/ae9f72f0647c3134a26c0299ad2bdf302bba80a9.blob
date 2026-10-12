@@ -1,0 +1,11 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: dirty-and-broken
+        argv: [sh, -c, 'echo "cannot reach docker daemon" >&2; echo junk > junk.txt; exit 1']
+        timeout: 1m
+        envFail:
+          - stderrMatches: 'cannot reach docker daemon'
+            hint: 'start docker, then re-run'

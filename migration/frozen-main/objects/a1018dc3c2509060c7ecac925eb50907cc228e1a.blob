@@ -1,0 +1,7 @@
+notes: >
+  Validation reports the FULL list, not just the first error — fixing config one round-trip per
+  typo is the failure mode this avoids (§4.1).
+requires: [npm]
+argv: ['--all']
+exitCode: 4
+config: { error: 'stack.use.rust' }
