@@ -122,7 +122,7 @@ dist/chunks/index-Bri-DJPT.js                       119.70 kB │ gzip:  30.48 k
 dist/chunks/shared-Bv8rj3KR.js                      782.62 kB │ gzip: 222.94 kB
 dist/chunks/index-CkFz6YKI.js                     1,028.99 kB │ gzip: 249.84 kB
 dist/chunks/services-BdaSNv7s.js                  1,980.05 kB │ gzip: 514.45 kB
-✓ built in 3.36s
+✓ built in 2.96s
 
 
 --- stderr ---

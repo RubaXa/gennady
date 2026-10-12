@@ -1,28 +1,28 @@
 $ node --import tsx --test plugins/swift/__tests__/swift-target.test.ts
 
 --- stdout ---
-(node:32962) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:57320) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ Swift target StackPlugin
-  ✔ is registered symmetrically while the frozen legacy preset remains unchanged (179.684834ms)
-  ✔ uses root SwiftPM zero-YAML defaults in one dependency-closed DAG (170.083708ms)
-  ✔ preserves case-insensitive Xcode environment classification from the legacy preset (135.470333ms)
-  ✔ uses the checked-in zero-YAML fixture without authored config (135.315ms)
-  ✔ does not detect a nested dependency Package.swift as a Swift root (2.088917ms)
-  ✔ bounds repair to exact normalized Swift Target Files and invalidates build (132.523875ms)
-  ✔ keeps Xcode build/test commandless and selected readiness BLOCKED without identity (140.95625ms)
-  ✔ blocks selected missing Swift/Xcode tools without probing unrelated commands (271.110834ms)
-  ✔ marks an unavailable optional Swift lint step as explicitly non-runnable (132.750583ms)
-  ✔ constructs Xcode argv only from minimal project identity and preserves provenance (133.945833ms)
-  ✔ does not let unselected integration/coverage requirements block code or unit (151.454458ms)
-  ✔ accepts explicit read-only integration/coverage commands with target provenance (133.910958ms)
-  ✔ rejects target Xcode argv guessing and removed stack gate overrides (265.049833ms)
-  ✔ rejects removed stack gate skips before target composition (133.12125ms)
-  ✔ fails incomplete custom steps, malformed identity and unsafe repair config closed (401.279166ms)
-  ✔ rejects escaping Xcode identity even when xcodebuild is unavailable (135.171458ms)
-  ✔ rejects Xcode identity traversing a symlink parent or naming a symlink (272.085708ms)
-  ✔ preserves personal-highest target config while legacy HOME priority stays isolated (135.034916ms)
-✔ Swift target StackPlugin (3062.207916ms)
+  ✔ is registered symmetrically while the frozen legacy preset remains unchanged (144.848875ms)
+  ✔ uses root SwiftPM zero-YAML defaults in one dependency-closed DAG (182.251333ms)
+  ✔ preserves case-insensitive Xcode environment classification from the legacy preset (197.832291ms)
+  ✔ uses the checked-in zero-YAML fixture without authored config (241.2165ms)
+  ✔ does not detect a nested dependency Package.swift as a Swift root (2.811667ms)
+  ✔ bounds repair to exact normalized Swift Target Files and invalidates build (236.020416ms)
+  ✔ keeps Xcode build/test commandless and selected readiness BLOCKED without identity (137.248209ms)
+  ✔ blocks selected missing Swift/Xcode tools without probing unrelated commands (264.179125ms)
+  ✔ marks an unavailable optional Swift lint step as explicitly non-runnable (137.6705ms)
+  ✔ constructs Xcode argv only from minimal project identity and preserves provenance (136.922917ms)
+  ✔ does not let unselected integration/coverage requirements block code or unit (260.264625ms)
+  ✔ accepts explicit read-only integration/coverage commands with target provenance (228.925083ms)
+  ✔ rejects target Xcode argv guessing and removed stack gate overrides (499.763541ms)
+  ✔ rejects removed stack gate skips before target composition (250.002792ms)
+  ✔ fails incomplete custom steps, malformed identity and unsafe repair config closed (757.630041ms)
+  ✔ rejects escaping Xcode identity even when xcodebuild is unavailable (259.940417ms)
+  ✔ rejects Xcode identity traversing a symlink parent or naming a symlink (278.5145ms)
+  ✔ preserves personal-highest target config while legacy HOME priority stays isolated (135.371125ms)
+✔ Swift target StackPlugin (4352.65225ms)
 ℹ tests 18
 ℹ suites 1
 ℹ pass 18
@@ -30,7 +30,7 @@ $ node --import tsx --test plugins/swift/__tests__/swift-target.test.ts
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 3606.349583
+ℹ duration_ms 4582.405125
 
 
 --- stderr ---
