@@ -1,0 +1,5 @@
+notes: '--stack acts as a one-shot stack.use, overriding the committed narrowing (config.spec §3.5).'
+requires: [npm, go]
+argv: ['--all', '--stack=node']
+exitCode: 0
+gates: { node:test: { status: pass } }

@@ -1,0 +1,5 @@
+notes: An unknown plugin section is fatal and suggests the closest known plugin id.
+requires: [npm]
+argv: ['--all']
+exitCode: 4
+config: { error: 'did you mean "golang"' }

@@ -1,0 +1,9 @@
+notes: >
+  A target with no Go files yields an empty scope: gates are reported as skipped with a reason and
+  the run exits 1 via ZERO_GATES — verifying nothing must never read as success.
+requires: [go]
+argv: ['docs']
+exitCode: 1
+gates:
+  golang:build: { status: skipped }
+  golang:test: { status: skipped }

@@ -1,0 +1,11 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: e2e-lifter
+        argv: [sh, -c, 'echo "beta container is not running" >&2; exit 69']
+        timeout: 1m
+        envFail:
+          - exitCodeMatches: ['>=64', '<=78'] # sysexits band = infra, not a test failure
+            hint: 'bring the beta stack up: make beta-up'

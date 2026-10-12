@@ -1,0 +1,8 @@
+notes: 'A config skip stays visible and names its source file, so a silent config is impossible.'
+requires: [go]
+argv: ['--all']
+exitCode: 0
+gates:
+  golang:vet:
+    status: skipped
+    outputIncludes: ['gennady.yaml']

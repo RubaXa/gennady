@@ -1,0 +1,10 @@
+notes: >
+  The third config source: `$HOME/.gennadyrc` participates in the merge at lowest priority
+  (D-CFG-002). Only reachable because the harness overrides HOME — which is also why that override
+  is mandatory, since a developer's real rc would otherwise change fixture verdicts.
+requires: [npm]
+homeRc: '{"stack":{"node":{"skipGates":["test"]}}}'
+argv: ['--all']
+exitCode: 1
+gates:
+  node:test: { status: skipped }

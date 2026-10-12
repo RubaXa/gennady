@@ -1,0 +1,5 @@
+stack:
+  anystack:
+    extraGates:
+      - id: build
+        argv: [sh, -c, 'true']

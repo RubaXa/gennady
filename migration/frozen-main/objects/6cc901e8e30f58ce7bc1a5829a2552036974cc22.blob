@@ -1,0 +1,7 @@
+notes: >
+  No classifiable script means nothing was verified: NODE_NO_SCRIPTS plus ZERO_GATES, and exit 1
+  — a run that checked nothing must never read as success.
+requires: [npm]
+argv: ['--all']
+exitCode: 1
+diagnostics: ['NODE_NO_SCRIPTS']

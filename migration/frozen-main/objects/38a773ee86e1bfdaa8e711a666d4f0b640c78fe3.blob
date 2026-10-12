@@ -1,0 +1,5 @@
+notes: Unparseable YAML is fatal before any gate runs (FR-STACK-12).
+requires: [npm]
+argv: ['--all']
+exitCode: 4
+config: { error: 'cannot parse YAML' }

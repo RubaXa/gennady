@@ -1,0 +1,8 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: dirty
+        argv: [sh, -c, 'echo junk > junk.txt']
+        timeout: 1m

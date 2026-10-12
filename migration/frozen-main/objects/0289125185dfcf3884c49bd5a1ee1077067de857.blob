@@ -1,0 +1,8 @@
+notes: >
+  D-STACK-006: npm scripts are repo-level commands, so an explicit positional target does not
+  narrow them — the gate still runs rather than being skipped as out of scope.
+requires: [npm]
+argv: ['src']
+exitCode: 0
+gates:
+  node:test: { status: pass }

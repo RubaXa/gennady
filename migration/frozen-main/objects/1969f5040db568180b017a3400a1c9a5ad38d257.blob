@@ -1,0 +1,5 @@
+notes: The committed gennady.yaml alone drives the plan; the skip is visible, not silent.
+requires: [npm]
+argv: ['--all']
+exitCode: 1
+gates: { node:test: { status: skipped } }

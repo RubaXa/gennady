@@ -119,6 +119,40 @@ Authorization — отдельная read-only проверка с внешни�
 - Текущая release закономерно `BLOCKED`: она не находится на release branch/upstream, UV-25 относится
   к более раннему source commit, UV-26 отсутствует, а current main не является ancestor дерева v2.
 
+### 2.4 R4 — Frozen MAIN preservation and exhaustive disposition
+
+Before R5 history reconciliation and final candidate materialization, `npm run audit:main-carry`
+must pass as part of normal pre-commit. It is read-only and shares the versioned
+`migration/frozen-main/manifest.json` / `dispositions.json` source of truth; no parallel runtime
+registry is introduced. The exact MAIN/audit-release/merge-base/reviewed-release refs are frozen.
+
+Acceptance requires all 117 MAIN-only commits and all 520 rename-aware delta rows (521 raw path
+identities, including both sides of the one relocation), original Git blob/mode plus SHA-256/size,
+and explicit retain/adapt/archive/exclude owner, reason and current proof mappings. Every source
+and preimage byte is retained as inert content-addressed `.blob`, including excluded old runtime.
+No historical ticket is made active, no DONE/receipt/phase is synthesized, and SS-run-all is not
+TSK-97 equivalence. Historical specs/config/trackers/flow docs remain frozen, not auto-imported.
+
+The archive is outside package files and active Markdown scans. Checker rejects omitted/extra/
+duplicate rows/objects, wrong source refs/commits/blobs, corrupt archive, traversal/symlink paths,
+false retained bytes or current mapped owner/target/proof drift. Declared source @spec owners use
+the existing ownership-header and Spec-ID parsers. Permanent integrity reconstructs immutable
+historical refs, so legitimate post-cutover main advancement does not permanently break normal
+commit gates. Before R5, `npm run audit:main-carry -- --pre-reconciliation` additionally requires
+HEAD to descend from reviewed release base and current origin/release, with origin/main still
+equal frozen MAIN. A moved-ahead or divergent upstream is not accepted merely because both refs
+share an ancestor. Existing release-boundary candidate/ACK inspection unconditionally runs this
+strict mode and binds its manifest digest; no production policy/environment opt-out exists.
+Historical integrity PASS after main advancement is not approval of a new reconciliation delta.
+
+Proof hashes bind actual final files after R4 commit/R5, not an impossible self-commit SHA or only
+old release bytes. Any relevant change needs a reviewed disposition/proof refresh. Mechanical
+archive generation is explicit authoring, not an automatic way to accept a red checker.
+Byte retention does not imply API/dependency/runtime parity. The old OpenCode data-URL/temp
+workaround is excluded only with real installed copied-config/emitted-path acceptance; this is
+not real OpenCode agent/network E2E. Existing goldens, D38 baseline, publication DENY and D60 scope
+remain unchanged. R5, final UV25, real E18 and exact candidate ACK remain OPEN.
+
 <!--SECTION:ENTITY_INVENTORY-->
 
 ## UV-27B Entity Inventory

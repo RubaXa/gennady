@@ -1,0 +1,8 @@
+notes: >
+  Naming a gate in --only is an explicit request to run it, so it lifts a config skipGates entry —
+  the "expensive gate skipped by default, run addressed before merge" workflow.
+requires: [go]
+argv: ['--all', '--only=golang:vet']
+exitCode: 0
+gates:
+  golang:vet: { status: pass }

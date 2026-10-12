@@ -1,0 +1,9 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: drift-script
+        argv: [sh, -c, 'echo "out-of-date.pb.go"; exit 0']
+        timeout: 1m
+        outputMeansFailure: true # prints offenders, exits 0 — the gofmt family

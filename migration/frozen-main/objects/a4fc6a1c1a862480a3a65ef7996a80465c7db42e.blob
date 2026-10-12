@@ -1,0 +1,7 @@
+notes: >
+  `use` narrows the registry: both markers are present, but only golang gates are planned — the
+  node test script must not appear in the result.
+requires: [npm, go]
+argv: ['--all']
+exitCode: 0
+gates: { golang:build: { status: pass } }

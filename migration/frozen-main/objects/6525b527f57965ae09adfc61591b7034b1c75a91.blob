@@ -1,0 +1,1 @@
+{ "name": "cfg", "private": true, "scripts": { "test": "node -e \"console.error(String.fromCharCode(66,79,79,77)); process.exit(1)\"" } }

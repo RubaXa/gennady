@@ -1,0 +1,9 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: needs-replica
+        argv: [sh, -c, 'exit 0']
+        timeout: 1m
+        driftMeansFailure: true

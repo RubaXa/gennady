@@ -1,0 +1,14 @@
+notes: >
+  Panel finding 11: a machine-global rule reclassifies failures in EVERY repo on the machine, so the
+  report must name the file it came from at match time — otherwise a personal rc silently overrides
+  project policy and only `--plan` would reveal it.
+requires: [npm]
+homeRc: '{"stack":{"node":{"overrideGates":{"test":{"envFail":[{"stderrMatches":"BOOM","hint":"personal machine-global rule"}]}}}}}'
+argv: ['--all']
+exitCode: 1
+gates:
+  node:test:
+    status: env-fail
+    # The loader labels the machine-global source `~/.gennadyrc`, distinct from the repo-local one.
+    outputIncludes: ['from ~/.gennadyrc']
+    hintIncludes: 'personal machine-global rule'

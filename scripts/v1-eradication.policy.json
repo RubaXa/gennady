@@ -105,6 +105,11 @@
   ],
   "classifiers": [
     {
+      "path": "scripts/main-carry-disposition.ts",
+      "classification": "canonical-v2",
+      "reason": "frozen MAIN integrity checker pins the current eradication policy; no retired runtime or active old-rule reference"
+    },
+    {
       "path": "package.json",
       "classification": "canonical-v2",
       "reason": "active repository gate registration; checker name is not a runtime generation"
@@ -280,11 +285,11 @@
     "scripts/v1-eradication.policy.json",
     "scripts/__tests__/v1-eradication.test.ts"
   ],
-  "expectedInventoryDigest": "d1122518b20fa4254df49c33a170006c9af1043b0c200dc90d3b0b920b7982c8",
+  "expectedInventoryDigest": "102211216af72998fbce4845140d9ce31bbd090e7c243878955d69f804614e13",
   "expectedCounts": {
-    "canonical-v2": 201,
+    "canonical-v2": 202,
     "required-v1-to-v2-migration-boundary": 53,
-    "historical-test-evidence": 262,
+    "historical-test-evidence": 328,
     "unrelated-product-version": 64
   }
 }

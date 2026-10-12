@@ -1,0 +1,11 @@
+notes: >
+  `fixer` as a gate field (reviewer's design): verify reports drift for the committed stale file,
+  `gennady fix` materializes it in the REAL tree, and the following verify is clean. The loop is
+  addressed by the gate's own name, so gate and remedy cannot drift apart by id.
+requires: [go]
+command: verify,fix,verify
+argv: ['--all']
+exitCode: 0
+treeUnchanged: false
+gates:
+  golang:codegen: { status: pass }

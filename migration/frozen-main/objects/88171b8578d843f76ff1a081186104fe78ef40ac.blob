@@ -1,0 +1,11 @@
+notes: >
+  Baseline — classified npm scripts run as gates and the FULL unnarrowed run passes
+  (infra-e2e §7 main user path).
+requires: [npm]
+argv: ['--all']
+exitCode: 0
+gates:
+  node:typecheck: { status: pass }
+  node:lint: { status: pass }
+  node:test: { status: pass }
+  node:format: { status: pass }

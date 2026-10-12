@@ -1,0 +1,7 @@
+stack:
+  use: [golang]
+  golang:
+    overrideGates:
+      test:
+        timeout: 90s
+        env: { STACK_FIXTURE_VAR: '42' }

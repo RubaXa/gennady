@@ -1,0 +1,5 @@
+stack:
+  anystack:
+    extraGates:
+      - id: exotic-build
+        argv: [sh, -c, 'test -f src/main.exotic']

@@ -5,7 +5,15 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
@@ -123,6 +131,11 @@ function createFixture(): Fixture {
     forbiddenAuthEnvironment: ['NODE_AUTH_TOKEN', 'NPM_CONFIG__AUTH', 'NPM_TOKEN'],
   };
   const ports: ReleaseBoundaryPorts = {
+    runMainCarry: () => ({
+      status: 0,
+      stdout: JSON.stringify({ rows: 520, commits: 117, manifestDigest: digest }),
+      stderr: '',
+    }),
     environment: {},
     runUv27a: () => ({
       status: 0,
@@ -284,6 +297,97 @@ describe('UV-27B cutover candidate', () => {
     git(fixture.root, 'update-ref', 'refs/remotes/origin/main', fixture.mainSha);
     const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
     assert.ok(codes(report).includes('CUTOVER_MAIN_REF_STALE'));
+  });
+
+  it('rejects strict frozen-MAIN drift before candidate and ACK even when archive integrity passed', () => {
+    const fixture = createFixture();
+    const ports = {
+      ...fixture.ports,
+      runMainCarry: () => ({
+        status: 1,
+        stdout: '',
+        stderr: 'MAIN_DISPOSITION_REF_DRIFT: origin/main advanced',
+      }),
+    };
+    const report = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_FROZEN_MAIN_INVALID'));
+    assert.throws(
+      () => authorizeCutoverCandidate(fixture.root, report.challenge, ports, fixture.policy),
+      /UV27B_CUTOVER_BLOCKED/
+    );
+  });
+
+  it('binds the independently checked frozen manifest identity into the exact challenge', () => {
+    const fixture = createFixture();
+    const before = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    const after = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runMainCarry: () => ({
+          status: 0,
+          stdout: JSON.stringify({ rows: 520, commits: 117, manifestDigest: 'b'.repeat(64) }),
+          stderr: '',
+        }),
+      },
+      fixture.policy
+    );
+    assert.notEqual(before.challenge, after.challenge);
+    assert.throws(
+      () =>
+        authorizeCutoverCandidate(
+          fixture.root,
+          before.challenge,
+          {
+            ...fixture.ports,
+            runMainCarry: () => ({
+              status: 0,
+              stdout: JSON.stringify({ rows: 520, commits: 117, manifestDigest: 'b'.repeat(64) }),
+              stderr: '',
+            }),
+          },
+          fixture.policy
+        ),
+      /UV27B_ACK_MISMATCH/
+    );
+  });
+
+  it('rejects malformed, false-count and invalid-digest frozen MAIN observations', () => {
+    const fixture = createFixture();
+    for (const stdout of [
+      'not-json',
+      '{}',
+      JSON.stringify({ rows: 519, commits: 117, manifestDigest: digest }),
+      JSON.stringify({ rows: 520, commits: 116, manifestDigest: digest }),
+      JSON.stringify({ rows: 520, commits: 117, manifestDigest: 'not-a-digest' }),
+    ]) {
+      assert.ok(
+        codes(
+          inspectCutoverCandidate(
+            fixture.root,
+            { ...fixture.ports, runMainCarry: () => ({ status: 0, stdout, stderr: '' }) },
+            fixture.policy
+          )
+        ).includes('CUTOVER_FROZEN_MAIN_INVALID')
+      );
+    }
+  });
+
+  it('the production observer always invokes strict pre-reconciliation, not integrity-only mode', () => {
+    const fixture = createFixture();
+    mkdirSync(join(fixture.root, 'node_modules'));
+    // Explicit loader tooling for the owned child, not a runtime/source consumer dependency.
+    symlinkSync(join(projectRoot, 'node_modules/tsx'), join(fixture.root, 'node_modules/tsx'));
+    write(
+      fixture.root,
+      'scripts/main-carry-disposition.ts',
+      `process.stderr.write('observed-strict:' + JSON.stringify(process.argv.slice(2))); process.exitCode = 1;\n`
+    );
+    const { runMainCarry: _seam, ...ports } = fixture.ports;
+    const report = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
+    const blocker = report.blockers.find(({ code }) => code === 'CUTOVER_FROZEN_MAIN_INVALID');
+    assert.ok(blocker);
+    assert.ok(blocker.detail.includes('observed-strict:["--pre-reconciliation"]'), blocker.detail);
   });
 
   it('rejects missing/malformed evidence and a non-PASS UV-27A report', () => {
