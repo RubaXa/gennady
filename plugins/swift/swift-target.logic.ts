@@ -4,6 +4,14 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  probeSelectedSwiftTools,
+  selectedSwiftTool,
+  swiftCommandRequirements,
+  swiftToolFix,
+  xcodeTestBearing,
+} from './swift-readiness.logic.ts';
+import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
 import { provenanceOf } from '../../services/config/config-loader.ts';
 import type {
   DetectedVerifyConfigLayer,
@@ -89,8 +97,9 @@ const XCODE_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
 
 const SWIFTLINT_ENV_FAIL: readonly VerifyEnvironmentFailureRule[] = [
   {
-    exitCodeMatches: ['!=0', '!=2'],
-    hint: 'swiftlint did not return its code-finding exit 2; repair the pinned SwiftLint environment',
+    outputMatches: 'dyld(?:\\[\\d+\\])?: Library not loaded|error while loading shared libraries',
+    caseInsensitive: true,
+    hint: 'repair the project-pinned SwiftLint dynamic-library environment and retry',
     source: 'builtin:swift',
   },
 ];
@@ -280,7 +289,7 @@ export function createSwiftVerifyPreset(
           ? null
           : [project.tools.swiftlint.bin, 'lint', '--strict', ...targetFiles],
         project,
-        [toolRequirement('lint', 'swiftlint', false)],
+        [toolRequirement('lint', 'swiftlint', project.tools.swiftlint.bin !== null)],
         { envFail: SWIFTLINT_ENV_FAIL }
       ),
       step('test', ['unit'], ['lint'], 'observe', testArgv, project, testRequirements, {
@@ -735,7 +744,31 @@ export function materializeSwiftXcodeIdentity(
       steps[stepId] = {
         ...config,
         command: { ...config.command, cwd: config.command.cwd ?? project.root },
-        requires: [],
+        requires: [
+          ...new Map(
+            [
+              ...(config.requires ?? []),
+              ...swiftCommandRequirements(stepId, config.command.argv),
+            ].map((requirement) => [requirement.id, requirement])
+          ).values(),
+        ],
+      };
+    }
+    if (
+      config.command?.argv !== undefined &&
+      identity !== undefined &&
+      (stepId === 'build' || stepId === 'test')
+    ) {
+      steps[stepId] = {
+        ...steps[stepId],
+        requires: [
+          ...new Map(
+            [
+              ...(config.requires ?? []),
+              ...swiftCommandRequirements(stepId, config.command.argv),
+            ].map((requirement) => [requirement.id, requirement])
+          ).values(),
+        ],
       };
     }
   }
@@ -746,7 +779,7 @@ export function materializeSwiftXcodeIdentity(
       ...config,
       presets: {
         ...config.presets,
-        ...(Object.keys(steps).length === 0 ? {} : { swift: { steps } }),
+        ...(Object.keys(steps).length === 0 ? {} : { swift: { ...plugin, steps } }),
       },
     },
   };
@@ -772,14 +805,34 @@ function readinessEntry(
   };
 }
 
-function xcodeIdentityReady(step: VerifyStep | undefined): boolean {
+function xcodeIdentityReady(step: VerifyStep | undefined, root: string): boolean {
   const argv = step?.command?.argv;
   if (argv === undefined) return false;
-  const flagIndex = argv.findIndex((value) => value === '-workspace' || value === '-project');
+  const flags = argv.flatMap((value, index) =>
+    value === '-workspace' || value === '-project' ? [index] : []
+  );
+  if (flags.length !== 1) return false;
+  const flagIndex = flags[0]!;
   if (flagIndex < 0 || argv[flagIndex + 1] === undefined || step?.command === undefined)
     return false;
   try {
-    const metadata = fs.lstatSync(path.resolve(step.command.cwd, argv[flagIndex + 1]!));
+    const value = (flag: string): string | null => {
+      const matches = argv.flatMap((token, index) => (token === flag ? [index] : []));
+      const found = matches.length === 1 ? argv[matches[0]! + 1] : undefined;
+      return found !== undefined && found.trim() !== '' && !found.startsWith('-') ? found : null;
+    };
+    if (
+      value('-scheme') === null ||
+      value('-destination') === null ||
+      (xcodeTestBearing(step) && value('-testPlan') === null)
+    )
+      return false;
+    const absolute = path.resolve(step.command.cwd, argv[flagIndex + 1]!);
+    const relative = path.relative(root, absolute).split(path.sep).join('/');
+    relativeIdentityPath(root, relative, 'selected Xcode identity');
+    if (!relative.endsWith(argv[flagIndex] === '-workspace' ? '.xcworkspace' : '.xcodeproj'))
+      return false;
+    const metadata = fs.lstatSync(absolute);
     return metadata.isDirectory() && !metadata.isSymbolicLink();
   } catch {
     return false;
@@ -805,6 +858,10 @@ export function evaluateSwiftReadiness(
     readinessEntry(plan.phase, requirement, project.markers.length > 0)
   );
   const waiverByStep = new Map(waivers.map((waiver) => [waiver.stepId, waiver]));
+  const selected = plan.steps.filter(
+    (candidate) => candidate.plugin === 'swift' && !waiverByStep.has(candidate.id)
+  );
+  const probes = probeSelectedSwiftTools(project.root, selected);
   const stepById = new Map(preset.steps.map((candidate) => [`swift:${candidate.id}`, candidate]));
   for (const planned of plan.steps.filter((candidate) => candidate.plugin === 'swift')) {
     const waiver = waiverByStep.get(planned.id);
@@ -824,27 +881,38 @@ export function evaluateSwiftReadiness(
       continue;
     }
     const authored = stepById.get(planned.id);
+    if (planned.executor !== 'local') continue;
     for (const requirement of authored?.requires ?? []) {
       const parts = requirement.id.split(':');
-      const tool = parts[1] === 'tool' ? (parts[2] as SwiftToolId) : null;
+      const tool = parts[1] === 'tool' ? parts[2] : null;
+      const probe =
+        tool !== null && selectedSwiftTool(planned.command?.argv ?? [])?.tool === tool
+          ? probes.get(planned.id)
+          : undefined;
       const ready =
         tool !== null
-          ? project.tools[tool].bin !== null
+          ? (probe?.ready ??
+            (project.tools[tool as SwiftToolId]?.bin !== null &&
+              project.tools[tool as SwiftToolId]?.bin !== undefined))
           : requirement.id === 'swift:exact-targets:format-fix'
             ? (authored?.writes?.include.length ?? 0) > 0 && authored?.command !== undefined
             : requirement.id === 'swift:exact-targets:format'
               ? authored?.command !== undefined
               : requirement.id.startsWith('swift:xcode-identity:')
-                ? xcodeIdentityReady(authored)
+                ? xcodeIdentityReady(authored, project.root)
                 : requirement.id.startsWith('swift:command:')
                   ? authored?.command !== undefined
                   : false;
       entries.push(
         readinessEntry(
           plan.phase,
-          requirement,
+          tool !== null
+            ? { ...requirement, fix: swiftToolFix(tool as Parameters<typeof swiftToolFix>[0]) }
+            : requirement,
           ready,
-          undefined,
+          probe?.message === undefined
+            ? undefined
+            : safeVerifyText(probe.message, project.root, planned.command?.env),
           planned.id,
           !ready && !requirement.required && authored?.command === undefined
             ? 'optional-unavailable'
@@ -859,5 +927,21 @@ export function evaluateSwiftReadiness(
     : entries.some((entry) => entry.status === 'DEGRADED' || entry.status === 'WAIVED')
       ? 'DEGRADED'
       : 'READY';
-  return { status, entries };
+  return {
+    status,
+    entries: entries.map((entry) => {
+      const env = plan.steps.find((candidate) => candidate.id === entry.stepId)?.command?.env;
+      const safe = (value: string) => safeVerifyText(value, project.root, env);
+      return {
+        ...entry,
+        message: safe(entry.message),
+        ...(entry.fix === undefined ? {} : { fix: safe(entry.fix) }),
+        ...(entry.policySource === undefined ? {} : { policySource: safe(entry.policySource) }),
+        ...(entry.policyReason === undefined ? {} : { policyReason: safe(entry.policyReason) }),
+        ...(entry.policyReasonSource === undefined
+          ? {}
+          : { policyReasonSource: safe(entry.policyReasonSource) }),
+      };
+    }),
+  };
 }

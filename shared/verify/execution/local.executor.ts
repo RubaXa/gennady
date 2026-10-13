@@ -5,6 +5,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createVerifyCommandIdentity } from '../reporting/command-identity.ts';
+import { safeVerifyText } from '../reporting/report-safety.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
@@ -654,7 +655,7 @@ function skipped(
  * @param [options] Readiness, cancellation, and evidence bounds supplied by the target runner.
  * @returns One typed terminal local-step product; never an implicit pass.
  */
-export async function executeLocalStep(
+async function executeLocalStepOutcome(
   step: PlannedVerifyStep,
   guard: WorkspaceGuard,
   options: {
@@ -1118,5 +1119,36 @@ export async function executeLocalStep(
     evidence,
     ...(problem === undefined ? {} : { problem }),
     ...(cancellation === undefined ? {} : { cancellation }),
+  };
+}
+
+/** @purpose Preserve raw private policy/stats adjudication while every terminal stream is presentation-safe. | @param step Selected direct-argv step. | @param guard Existing workspace transaction. | @param [options] Existing execution controls. | @returns The same terminal semantics with sanitized output/evidence/diagnostics. */
+export async function executeLocalStep(
+  step: PlannedVerifyStep,
+  guard: WorkspaceGuard,
+  options: Parameters<typeof executeLocalStepOutcome>[2] = {}
+): Promise<LocalStepExecution> {
+  const outcome = await executeLocalStepOutcome(step, guard, options);
+  const safe = (value: string) => safeVerifyText(value, guard.toplevel, step.command?.env);
+  return {
+    ...outcome,
+    result:
+      outcome.result === null ? null : { ...outcome.result, output: safe(outcome.result.output) },
+    evidence: outcome.evidence.map((item) => ({
+      ...item,
+      identity: safeVerifyText(item.identity, guard.toplevel, {}, false),
+      summary: safe(item.summary),
+    })),
+    ...(outcome.problem === undefined
+      ? {}
+      : {
+          problem: {
+            ...outcome.problem,
+            message: safe(outcome.problem.message),
+            ...(outcome.problem.source === undefined
+              ? {}
+              : { source: safe(outcome.problem.source) }),
+          },
+        }),
   };
 }

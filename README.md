@@ -41,6 +41,36 @@ export GITLAB_API_PATH="/api/v4"
 
 ## 🧭 Команды CLI
 
+### Swift: UNVERIFIED prototype
+
+Swift поддержка остаётся **UNVERIFIED**: deterministic unit tests проверяют диагностику, а не
+нативную работу Xcode/Tuist. Exact E-18/UV-26 deferred post-main-cutover и не блокирует release;
+это не отменяет FAIL/ENV_FAIL/BLOCKED у выбранных пользовательских Swift gates.
+
+```bash
+npx gennady verify --plan --phase unit --json
+npx gennady verify --phase unit
+```
+
+`--plan` не выполняет gates; выбранные prerequisites могут проверяться ограниченными version
+probes под WorkspaceGuard и не являются runtime evidence. SwiftPM не требует Xcode/Tuist.
+Для реально выбранного Xcode build/test нужны Xcode >=16.2 и project-owned identity:
+
+```yaml
+stack:
+  swift:
+    xcode:
+      workspace: App.xcworkspace # либо project: App.xcodeproj, но не оба
+      scheme: App
+      destination: platform=iOS Simulator,name=ProjectOwnedSimulator
+      testPlan: App # обязателен только для выбранных test-bearing Xcode actions
+```
+
+Tuist >=4.202.0 проверяется только при его фактическом использовании. Formatter/linter нужны
+только выбранным steps: установите project-pinned версию и выставьте PATH; Xcode выбирается через
+`xcode-select`/`DEVELOPER_DIR`. Missing/broken prerequisites дают actionable BLOCKED, обычная
+ошибка компиляции/теста — FAIL; ENV_FAIL требует конкретного признака проблемы окружения.
+
 ### 📝 `commit`
 
 Генерация commit message из staged-изменений.

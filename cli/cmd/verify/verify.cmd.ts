@@ -13,6 +13,7 @@ import { resolveMultistackVerifyPlan } from '../../../shared/verify/planning/res
 import { buildVerifyRunReport } from '../../../shared/verify/reporting/build-report.ts';
 import { renderVerifyJson } from '../../../shared/verify/reporting/json-reporter.ts';
 import { renderVerifyText } from '../../../shared/verify/reporting/text-reporter.ts';
+import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.ts';
 import type { VerifyInvocation } from './verify.types.ts';
 import { resolveRemotePipelineObserver } from './remote-provider.ts';
 
@@ -186,6 +187,6 @@ export async function runVerifyCommand(
       report,
     };
   } catch (cause) {
-    return { exitCode: 4, stdout: '', stderr: `${errorMessage(cause)}\n` };
+    return { exitCode: 4, stdout: '', stderr: `${safeVerifyText(errorMessage(cause), root)}\n` };
   }
 }

@@ -81,22 +81,23 @@ describe('planSwiftGates', () => {
     assert.match(gates.find((gate) => gate.id === 'lint')?.skipped ?? '', /optional/);
   });
 
-  it('keeps swiftlint findings as FAIL and classifies other nonzero exits as environment', () => {
+  it('keeps ordinary SwiftLint nonzero failures as FAIL; only proven library errors are environment', () => {
     const gates = planSwiftGates(project('package', ['swift', 'swiftlint']), scope, options);
-    const outcome = (exitCode: number) => ({
+    const outcome = (exitCode: number, output = '') => ({
       exitCode,
       timedOut: false,
       stdout: '',
       stderr: '',
-      output: '',
+      output,
     });
     for (const id of ['format', 'lint']) {
       const predicate = gates.find((gate) => gate.id === id)?.envFail?.[0];
-      assert.ok(predicate, `${id} must carry SwiftLint's literal exit convention`);
+      assert.ok(predicate, `${id} must carry a concrete SwiftLint environment signature`);
       assert.equal(predicate(outcome(0)), false);
       assert.equal(predicate(outcome(2)), false);
-      assert.equal(predicate(outcome(1)), true);
-      assert.equal(predicate(outcome(70)), true);
+      assert.equal(predicate(outcome(1)), false);
+      assert.equal(predicate(outcome(70)), false);
+      assert.equal(predicate(outcome(70, 'dyld: Library not loaded: owned-library')), true);
     }
   });
 });

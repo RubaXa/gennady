@@ -33,6 +33,24 @@ CLI-VERIFY
 > `BLOCKED` until declarative custom selectors/composed mapping (UV-22) and the concrete evidence
 > implementation (UV-12E) both land and pass review.
 
+**UV-29 selected Swift diagnostics (2026-10-13).** Live universal Verify readiness derives
+prerequisites from actual selected commands, not step/phase names or project kind: Xcode >=16.2
+only for selected Xcode use, Tuist >=4.202.0 only for selected Tuist use, and project-pinned
+formatter/linter only for their selected steps. SwiftPM/generic custom argv/remote-only slices
+do not inherit unrelated Apple tools. Xcode project operations require exactly one existing
+workspace/project plus scheme and destination; testPlan is required only by actual test-bearing
+actions (including custom integration/coverage), not option values named `test` or xccov export.
+Missing/broken/invalid/low/timed-out prerequisites are actionable BLOCKED. Version observations
+use the exact executable/wrapper/cwd/env under WorkspaceGuard before executable code; unexpected
+writes restore dirty-safely, ref drift retains the checkpoint, and probe descendants terminate
+before release. No Git guard means BLOCKED, not unprotected readiness. `--plan` runs no gates;
+bounded prerequisite observations are non-evidence. Ordinary compile/test/unknown nonzero exits
+remain FAIL; only proven environment signatures are ENV_FAIL. Raw classifier/stat inputs remain
+private and unchanged; shared safeVerifyText sanitizes errors/readiness/step output/public JSON,
+text and SDD journal with known selected-command secrets while preserving protocol/hash identities.
+Deterministic fixtures do not verify native Swift. Global Swift remains UNVERIFIED, E-18 deferred;
+final UV-25 recapture is required after the last reviewed product change.
+
 The target module owns one public engine, `gennady verify --phase <selector>`. The selector value is
 an arbitrary declared preset/YAML-owned string; core assigns no semantics from its name. A stack plugin has an
 open runtime `PluginId` and supplies detection plus a declarative `VerifyPreset`: one immutable DAG

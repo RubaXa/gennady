@@ -3,7 +3,7 @@
 // @consumers: swift-plugin, Swift preset
 
 import type { EnvFailPredicate, Gate, GatePlanOptions } from 'gennady/stack';
-import { exitCodeMatches, outputMatches } from '../../shared/verify/plugin-api.ts';
+import { outputMatches } from '../../shared/verify/plugin-api.ts';
 import type { SwiftProject } from './swift-detect.logic.ts';
 import type { SwiftScope } from './swift-scope.logic.ts';
 
@@ -30,9 +30,9 @@ const XCODE_ENV_FAIL: readonly EnvFailPredicate[] = [
 ];
 
 const SWIFTLINT_ENV_FAIL: readonly EnvFailPredicate[] = [
-  exitCodeMatches(
-    ['!=0', '!=2'],
-    'swiftlint did not return its code-finding exit 2; repair the pinned SwiftLint environment'
+  outputMatches(
+    /dyld(?:\[\d+\])?: Library not loaded|error while loading shared libraries/i,
+    'repair the project-pinned SwiftLint dynamic-library environment and retry'
   ),
 ];
 

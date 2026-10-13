@@ -12084,9 +12084,9 @@
     },
     {
       "path": "cli/cmd/verify/verify.cmd.ts",
-      "oid": "7f71b813da2bbd49aa33778e420102ef8d2adf45",
-      "sha256": "90fb1d62c495b55710bab46dc7d665d30f6224958be2058654c928beaa396ec6",
-      "bytes": 7896
+      "oid": "ff5832f25f974ae9f99363d779e49c7b86f720b1",
+      "sha256": "0f8a3d2173406de047ccfc505d90fe9e18e6c36862367872a982ac10f5e8e27c",
+      "bytes": 8002
     },
     {
       "path": "cli/gennady.ts",
@@ -13446,9 +13446,9 @@
     },
     {
       "path": "specs/cli/verify/verify.spec.md",
-      "oid": "0c89d285252f000c2a0a7b192b34143f71458eae",
-      "sha256": "c1cdfff50d4bb5e52c39b2cac8e0df1a77327ff8af4a641199df33ced2c31fdf",
-      "bytes": 113622
+      "oid": "38b94751d291818bd793907a12382f922750337a",
+      "sha256": "5b6524b5a4210a9f0663865051118b66964b294fbedfe138e50a0dd89821eb77",
+      "bytes": 115228
     },
     {
       "path": "specs/infra-base/infra-base.spec.md",
