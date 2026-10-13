@@ -1,7 +1,7 @@
 {
   "schema": "gennady.rc-evidence-pack.v2",
-  "sourceCommit": "5a17d989d370c99a844d49bbfc5dd2f438dfc28e",
-  "generatedAt": "2026-10-13T10:30:02.762Z",
+  "sourceCommit": "c9d578c12f84491a97c3bc0e3a46edf10080e465",
+  "generatedAt": "2026-10-13T17:15:57.970Z",
   "cleanBefore": true,
   "cleanAfter": true,
   "environment": {
@@ -43,7 +43,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/audit-sdd-templates.log",
-      "sha256": "2c50563ad022c708c6f32acdfc59ef1000d2cbc476392ea8df96bf3cb7ec7b95"
+      "sha256": "ab1a0379ccb1a0d0fb1f22893eef3bb5875747564aa05328b548a8853631db76"
     },
     {
       "id": "build",
@@ -51,7 +51,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/build.log",
-      "sha256": "8250146e6f3aebecec0777c011956e12dd974ab0923ee748125b920043e14506"
+      "sha256": "7de876fb9bee385b4910fbe3ae0ac6ffc7129c43038da63a944bf18f0fc0adb3"
     },
     {
       "id": "test",
@@ -59,7 +59,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/test.log",
-      "sha256": "64f10baa0ca1b100f26056f7a430537d37913a711a3e3f2e71b095a55aae5cb9"
+      "sha256": "ab198210c61043e06e9ec24aa74504e048ac6bc5f05be5aa980fc3703935c32c"
     },
     {
       "id": "uv25-node",
@@ -67,7 +67,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-node.log",
-      "sha256": "646dc661f679a5334ef9e989a4e007a7392fa6bb7095c50d98fb7e40a19fb168",
+      "sha256": "62ec7161a7b0a85d7a9f1bb3610077f7ace272adbd70b071a8a9de590e26209b",
       "scenario": {
         "area": "node",
         "acceptance": ["U-A2", "U-A9"],
@@ -102,7 +102,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-golang.log",
-      "sha256": "f28ea6cfe7b9382b71069a5ececf3e67cc944ddc6a0f61085723c92f1e39bd7d",
+      "sha256": "512ea90b2c249b483267aac5f89ec11dde28172697e93e243b600047d57442f4",
       "scenario": {
         "area": "golang",
         "acceptance": ["U-A2"],
@@ -133,7 +133,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-swift-local.log",
-      "sha256": "ffb193c98ea59243406616cd4044e5112b437eafcf9113156906f1ad1a568b82",
+      "sha256": "d38b4d74f5bff8cb6d647f41289f1797bed4e118a3686152c83aa0584222e085",
       "scenario": {
         "area": "swift-local",
         "acceptance": ["U-A2"],
@@ -164,7 +164,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-remote.log",
-      "sha256": "3112a4019c57a551bbbbdacb5b984d58776ca956f0843838bcdde469df9b01ac",
+      "sha256": "3d527cac11d7ab2ae97526c0a0a395bfbb8c83731849bfe8cbf8c99af6714123",
       "scenario": {
         "area": "remote",
         "acceptance": ["U-A6"],
@@ -192,7 +192,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-remote-live.log",
-      "sha256": "0e3f674bf23a58e99b225aa41981871128a79b968c4e11a56fe04950a2550c22",
+      "sha256": "2ec3d3cea7d1d44086272b577a2c24f5c2ab1e0f096c8fd15063a837a0e349d8",
       "scenario": {
         "area": "remote-live",
         "acceptance": ["U-A6"],
@@ -238,7 +238,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-rules.log",
-      "sha256": "c38ee21b13bce1341aadf54dab106ce56a5d54217ba50f6c62e4824a228195fe",
+      "sha256": "bd77ccf7dede81a40bcde1401e0947dbbfdf277ad5c07c1af55113803f40ff68",
       "scenario": {
         "area": "rules",
         "acceptance": ["U-A7"],
@@ -261,11 +261,11 @@
           },
           {
             "path": "shared/rules/__tests__/fixtures/rule-migration-equivalence.json",
-            "sha256": "7e9fe460fa38d23180d7b1b77e4002960085ac0fab49f8b7991de9641f263cdd"
+            "sha256": "d4c6d894604f7bf211f83a839543061cb50df289a2a7b9f3ef903624fc6f9ba1"
           },
           {
             "path": "ai/directives/coding/typescript-rules.xml",
-            "sha256": "716f928d79253a9b9da2a8f531c9123bee7a586f7d156aceb4792b30cb548767"
+            "sha256": "cf5a85bb6c3e284a01de6c7cc12a3ec4c141e25fa0412ca59e5ab6e64ed02f8b"
           }
         ],
         "requiredOutput": [
@@ -282,7 +282,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-sdd-evidence.log",
-      "sha256": "4747cce34c4eac5d877ed4acfe0f87b3d0df38c6ce44dbde6b6621636949b813",
+      "sha256": "36b6b61874f8bb2097dbac9da659dd0795bfa723c41c573940b8b46eff998dd1",
       "scenario": {
         "area": "sdd-evidence",
         "acceptance": ["U-A9"],
