@@ -1,10 +1,12 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
 > Статус: **ACK U0 ПРИНЯТ 2026-09-24; UV-24 DONE #99; UV-25 #101 — HISTORICAL DONE; MAIN CUTOVER BLOCKED**.
-> **Current amendment 2026-10-13:** R1…R5 reviewed/merged (#108…#112), UV-25 refresh #113 merged;
-> release `c6223402dd8d80ca728f81e7b16f507e4c9e64ff`, UV-25 source `2e4a9a9c8be596594ab0711ef4e70ebb68d047ed`.
+> **Current delivery 2026-10-13:** R1…R5, UV-28/29 and UV-25 #117 merged; release
+> `2067066b89adc87cd27094838f5435613401f4eb`. Corrective UV-30..33 in OPEN release PR
+> [#119](https://github.com/RubaXa/gennady/pull/119) (`6cddc448`), plan #118; independent review pending.
 > Swift — **UNVERIFIED prototype**; real UV-26/E-18 deferred post-main-cutover, не bar (§12.3.2).
-> UV-28 guard policy + UV-29 selected-step diagnostics pending; после их последних product merges нужен новый UV-25 refresh.
+> UV-34/fresh UV-25 follows LAST reviewed corrective product/currentProof merge; old #117
+> evidence/challenge must not authorize the changed tree. Full commit/push gates PASS for #119.
 > U8-MC/UV-27 сохраняют остальные invariants и exact candidate ACK; npm
 > publication вынесена в отдельный будущий plan/ACK и запрещена в текущем deliverable. Основание:
 > операторский разговор
@@ -964,6 +966,59 @@ independent evidence/candidate review и exact scope-bound ACK → ordinary #25 
 Npm publish/version/tarball authorization отсутствуют; будущий E18 run остаётся отдельной post-cutover
 работой и не выполняется ни одним из этих PR.
 
+### 12.3.3 Strict V2 boundary — corrective amendment 2026-10-13
+
+Оператор поручил устранить независимо подтверждённые остатки и передать исправления на ревью.
+Это исполнение цели «V1 только как вход миграции», не новый дизайн интервью, не cutover ACK
+и не разрешение publication. Audited release — `2067066b89adc87cd27094838f5435613401f4eb`
+(#117), current main `9663c65b`. UV-28/#115 и UV-29/#116 merged; UV-25/#117 evidence source
+`5a17d989`. После corrective edits этот capture historical: ancestry/прежний ELIGIBLE не proof
+новых bytes. Старые rollout-статусы — history, не текущая очередь.
+
+| Подтверждённое расхождение | Исправление | Сохраняемый контракт |
+|---|---|---|
+| `typescript-rules.xml:178`, `axiom/coding/ax-file-level-context.xml:8` учат новым `@tasks`, против `file-relations.adr.md:41` | header recipe `@file → @spec → @consumers`, синхронные examples/tag matrix/kit/generated prompts; `@tasks` только migration evidence | embedded lexical metadata, opaque body, phase RuleSnapshot; мигратор читает старую шапку |
+| `router.directive.xml:307` / `contract/process/readiness-preflight-gate.xml:10` разрешают legacy-compatible owner flow | V1 ведёт к bounded read-only migration assessment/bootstrap/explicit migration, не V1 authoring/execution | narrow V2 spec repair не требует миграции unrelated V1 scopes; безопасный preflight, без silent writes |
+| production `tasks-append-only`, orient/lint readers, numbered spec fallback | audited call-site disposition; migration/guidance/approved grandfathering чтение отделено от V1 ownership/execution authority; normal V1 append-only constraint удалён | A13/D-4 identity/severity/location, marker-only receipts; untouched V1 не получает новых V2 диагностик; migration history byte-preserving |
+| corpus включает 3 scenario tickets S7/S8/S9, `sdd-task .` показывает `APP-greet-greeting`; npm filelist содержит 13 flow-sim files | historical corpus исключён из execution graph/ID uniqueness и delivered agent/runtime surface | реальные проектные specs/tickets остаются в поиске; migration fixtures/archives инертны |
+| eradication gate PASS при этих behaviors | causal source/consumer checks и negative injections, явные migration boundaries вместо blanket shared/sdd prefix | forbidden/protected paths, marker constraints, immutable archive refs/blobs и D38 baseline неизменны |
+
+«Zero V1» не означает удаление любого слова `v1`: unrelated schema/API versions, provenance,
+inert frozen migration inputs разрешены при доказанной недостижимости как active runtime/prompt/queue.
+Read-only detection/refusal/grandfathering/migration inspection не дают V1 ownership или
+разрешение execution. Normal CLI действует по V2 contract либо объясняет миграцию, а не
+поддерживает отдельный V1 authoring/runner. `@tasks` evidence не альтернативный semantic owner.
+
+#### Задачи и causal acceptance
+
+1. **UV-30 authoring/router:** исправить live coding contract/kit/examples/tag matrix/readiness
+   contract/router, regenerate directives. RED→GREEN на stale header authoring и legacy flow;
+   migration route, scoped V2 repair и template/generated consistency сохранены. Не XML parser.
+2. **UV-31 runtime boundary:** disposition каждого reachable legacy reader, убрать normal-runtime
+   V1 append-only authority, сохранить migration preservation. Behavioral fixtures: V1 guidance
+   без diagnostic flood, V2 @spec ownership, legacy ticket/heading не обходят V2 execution/receipts.
+   Intermediate anchored V1 ticket после `sdd-migrate anchors` не становится executable:
+   scope-aware guard перед dispatch/attempt/lifecycle/tracker writes; mixed already-V2 scope остаётся
+   доступным. Read-only execution map показывает legacy как migration-blocked, не pickable.
+3. **UV-32 isolation:** ticket corpus/Task-ID scanners и package/deployed surface исключают
+   historical flow-sim. Public CLI не показывает scenario IDs; реальные project tickets остаются.
+   Check-only pack/install filelist и fresh artifact smoke не являются registry action.
+4. **UV-33 enforcer:** injected stale authoring/router/corpus contamination дают FAIL независимо
+   от inventory recalculation; concrete path/semantics migration boundaries. Exact changed-path,
+   class/count/digest/currentProof delta предъявляется в PR. Разрешено обновлять только хэши
+   реально изменённых audited product/policy paths, не immutable 117 commits/520 disposition rows/
+   542 raw blobs, dispositions, marker constraints, protected/forbidden paths или baseline.
+   Unexpected delta вне corrective scope — stop/report, не silent whitelist refresh.
+5. **UV-34 / existing fresh UV-25:** после independent review и мержа ПОСЛЕДНЕГО UV-30..33
+   product/policy/currentProof change снять новый clean immutable source capture. Fresh compiled
+   artifact/delivery smoke, receipt/grandfathering/migration и amended eradication checks проходят
+   independent review; прежний candidate/challenge не переиспользуется, exact scope ACK отдельно.
+
+Targeted SDD V2/migration tests сначала; обязательные hooks не обходятся. Hook FAIL — имя и полный
+raw output оператору, не --no-verify/env bypass. Native Swift не запускается и не объявляется
+verified. Все PR — внешнему reviewer, не self-merge. Code PR base всегда release stable,
+plan PR base всегда plan stable; никаких новых stable веток и PR в main кроме #25.
+
 ## 13. Задачи новой очереди
 
 | ID | Волна | Задача | Depends on | Acceptance |
@@ -1009,9 +1064,19 @@ Npm publish/version/tarball authorization отсутствуют; будущий
 | UV-28 | U8 | approved source-owned Swift UNVERIFIED/E18 DEFERRED cutover policy | reviewed amendment 2026-10-13, UV-27 | missing optional E18 deferred/no checker PASS; supplied invalid/unsafe evidence fail-closed; all other invariants and npm denial unchanged; report/ACK bind scope; narrow currentProof refresh (§12.3.2) |
 | UV-29 | U8 | selected-step/mode-aware Swift tool/version/readiness and safe diagnostics | UV-28 reviewed; existing UV-06/UV-11 | actual live universal integration, Xcode>=16.2 only Xcode; Tuist>=4.202.0 only Tuist; Xcode workspace OR project +scheme/destination, testPlan only test-bearing; BLOCKED/ENV_FAIL/FAIL distinctions, sanitized output, deterministic failures, no native runtime claim |
 
+| UV-30 | U8 corrective | V2 header authoring + no legacy owner flow | operator corrective task, #117 | live rule/kit/generated consistency; negative stale contract/router tests; migration/scoped repair preserved |
+| UV-31 | U8 corrective | reachable legacy consumer disposition + V2 ownership/execution boundary | UV-30 | no V1 authority; explicit migration guidance/grandfathering; A13/D4/marker-only/preservation unchanged |
+| UV-32 | U8 corrective | simulation corpus/runtime/package isolation | #117, independent UV-30/31 | scenario IDs absent from queue/uniqueness; real tickets retained; historical corpus not delivered |
+| UV-33 | U8 corrective | causal eradication enforcer + narrow proof refresh | UV-30..32 | stale contract/router/corpus FAIL independent of digest; explicit boundaries, immutable protection unchanged |
+| UV-34 | U8 corrective | existing fresh UV-25 + corrected candidate review | reviewed merged UV-30..33 LAST product change | clean new source/capture, independent review, new scope-bound ACK separate |
+
 ## 14. Main-cutover acceptance
 
 PR #25 не выходит из draft/review и не merge-ится, пока одновременно не доказано:
+
+- UV-30..33 independently reviewed/merged, UV-34/fresh UV-25 AFTER last product change; strict
+  V2 boundary `§12.3.3` подтверждён live authoring/router/consumers/public CLI, не только digest;
+  historical corpus не попадает в execution queue;
 
 - Node/Go используют один planner/runner; Swift prototype подключён к тому же engine, но остаётся UNVERIFIED;
 - обычный Node/Go проект не требует `gennady.yaml`; SwiftPM zero-YAML planning проверяется deterministic fixtures, не обещает native support verification;
