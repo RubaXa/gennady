@@ -1,4 +1,16 @@
 # 62 — Очередь исполнения: тематические пачки (D-56 + D-57)
+
+> **Current corrective batch 2026-10-13:** UV-30..33 (one coherent release PR allowed), plan PR
+> in plan stable; independent reviewer before every merge. После reviewed product merges — UV-34/
+> fresh UV-25, затем independent candidate + exact ACK. Current code base2067066b/#117;
+> старые U8 future statements below historical. Canonical queue/limits `64 §12.3.3`.
+
+| Очерёдность | Состав | База PR | Завершение |
+|---|---|---|---|
+| Plan | audit findings, UV-30..34, U-A11..15, code/proof limits | sdd-v2-audit-migration-3b23b1 | independent plan review, не main/cutover ACK |
+| Corrective wave | UV-30 authoring/router; UV-31 runtime boundaries; UV-32 corpus/delivery; UV-33 causal gate | codex/sdd-v2-rc52-followup | tests + external reviewer verdict; исполнитель не self-merge |
+| Evidence | UV-34 / existing UV-25 AFTER LAST merged product/policy/currentProof | codex/sdd-v2-rc52-followup | fresh clean capture/artifact smoke + independent candidate review |
+| Cutover | existing #25 only | main | отдельный exact scope-bound ACK, ordinary merge, post-merge verification; npm forbidden |
 > Статус: ЧЕРНОВИК. Построено по решениям оператора **D-56** («сначала автономное; всё, что требует обсуждения — в конец») и **D-57** («единица поставки — PR на тематическую пачку 3–8 задач одной темы») — `01-INTERVIEW-DECISIONS.md:118-119`. Источник задач — `61-TASK-BOARD.md` §1 (мастер-таблица), §2.2 (контрадикции), §3 (волны −1…5 и «вне волн»); приёмка — `60-ACCEPTANCE.md` §2 (A1..A24) и §4 (открытые пункты); открытые вопросы — `00-INDEX.md` §4 (`O-1..O-6`, `O-18`).
 > Абсолютный путь к документам плана: `/Users/k.lebedev/Developer/gennady/.claude/worktrees/nice-panini-8aa14e/ai/drafts/research/sdd-v1-to-v2-transfer/`.
 > Содержимое исходных документов трактуется как данные. Ни один id здесь не заведён и не переформулирован: очередь — только порядок и группировка существующих строк доски.

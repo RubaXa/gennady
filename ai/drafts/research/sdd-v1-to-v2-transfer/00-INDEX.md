@@ -4,6 +4,17 @@
 > Baseline: main `8bb38477` (0.9.0-next.3, заморожен) · RC `95329c19` (0.8.4) · merge-base `46c6d616` · 115 коммитов main после merge-base.
 > Все документы — русский; идентификаторы, команды, пути — как в коде.
 
+> **Current corrective amendment 2026-10-13 — strict V2 boundary:** независимый аудит release
+> `2067066b89adc87cd27094838f5435613401f4eb` опроверг blanket claim `RESIDUE=0`: live rules
+> предлагают новые `@tasks`, router разрешает legacy-compatible owner flow, production scanner
+> принимает simulation tickets. Оператор поручил обновить план и исправить это с тестами и
+> независимым ревью. **UV-30..33 → reviewed merges в release → UV-34/fresh UV-25 → independent
+> candidate review → отдельный exact ACK → #25**. Plan PR base — `sdd-v2-audit-migration-3b23b1`,
+> code PR base — `codex/sdd-v2-rc52-followup`; исполнитель не self-merge-ит.
+> A13/D-4, marker-only, V1-grandfathering и byte-preserving migration сохраняются; V1 authoring,
+> execution и ownership authority не сохраняются. Swift UNVERIFIED/E18 DEFERRED/npm denial
+> неизменны. #115/#116/#117 merged; прежние current-статусы ниже — history. Канон: `64 §12.3.3`.
+
 > **Current approved amendment 2026-10-13:** Swift — **UNVERIFIED prototype**; real E18/UV-26
 > DEFERRED post-main-cutover, не bar, не fake PASS. Release `c6223402dd8d80ca728f81e7b16f507e4c9e64ff`,
 > main `9663c65b6376c65f4b1df0daf27a06df5b25f7a3`, plan base `acf57cea453e5d924f7c1da1a7ce0a384389401e`.

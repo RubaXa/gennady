@@ -73,6 +73,23 @@ UV-28/UV-29 owner/diagnostics/currentProof scope — `64 §12.3.2`; оба produ
 затем новый UV-25 source freeze/recapture + independent review + exact unverified-scope ACK → #25.
 Ни amendment, ни три PR не являются ACK или publication authority.
 
+### 2.3 Strict V2 boundary — corrective acceptance 2026-10-13
+
+Оператор разрешил corrective wave после independent audit release `2067066b` (#117).
+Blanket `RESIDUE=0` опровергнут; удаление старых paths/flags не proof active behavior.
+Current source — `64 §12.3.3`; A5/A17/U-A8/U-A10 дополняются:
+
+| ID | MUST | Исполнители / доказательство |
+|---|---|---|
+| U-A11 | live rules/kit/examples учат @spec, не новым @tasks; нет legacy-compatible authoring/execution route | UV-30; stale-contract negative fixtures; actual RuleRegistry/fresh router; migration/scoped V2 repair preserved |
+| U-A12 | normal CLI не даёт V1 ownership/execution authority; legacy чтение только migration/guidance/untouched grandfathering | UV-31; call-site disposition и CLI fixtures; A13/D4 severity/identity/location/marker-only, byte preservation, no V1 diagnostic flood |
+| U-A13 | historical scenario corpus не влияет на production tickets/uniqueness/queue и не delivered agent/runtime | UV-32; public sdd-task excludes simulation IDs and retains real tickets; package/deployment filelist + fresh artifact smoke |
+| U-A14 | stale authoring/router/corpus дают FAIL даже после inventory recalculation | UV-33; causal injections, explicit boundaries, narrow hashes; forbidden/protected/constraints/117refs/520rows/542blobs/D38 unchanged |
+| U-A15 | fresh evidence/candidate AFTER last reviewed corrective product/policy/currentProof merge | UV-34/existing UV-25; old #117 capture historical after edits; independent review + new exact scope ACK; npm forbidden, Swift UNVERIFIED/E18 DEFERRED |
+
+Инертные migration fixtures/archives и unrelated API/protocol v1 не active engine. Эта wave не
+меняет baseline, не разрешает main merge/publication и не удаляет grandfathering вслепую.
+
 ## 3. Что НЕ входит в приёмку (зафиксировано)
 
 - agent-inbox из `sdd-v2-inbox-transplant` (D-2); messenger как обязательный снапшот G4 (D-29); python-rules до первого проекта (D-25); **python-пресет `V-10`** остаётся отдельным расширением после встроенных Node/Go/Swift; полная хэш-модель владения SO-3 (D-22, после релиза); LLM-точки G1/G2 как бар (D-28: судья — диагностика, L-14), в том числе **`E-13`** — диагностика, а не бар (D-45). Repair и dynamic rules больше не являются исключениями: они обязательны по U-A4/U-A7 и D-65..D-70.
