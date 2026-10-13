@@ -1,7 +1,7 @@
 {
   "schema": "gennady.rc-evidence-pack.v2",
-  "sourceCommit": "2e4a9a9c8be596594ab0711ef4e70ebb68d047ed",
-  "generatedAt": "2026-10-12T21:01:17.850Z",
+  "sourceCommit": "5a17d989d370c99a844d49bbfc5dd2f438dfc28e",
+  "generatedAt": "2026-10-13T10:30:02.762Z",
   "cleanBefore": true,
   "cleanAfter": true,
   "environment": {
@@ -51,7 +51,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/build.log",
-      "sha256": "59e10cef8ce5d8111c0ac5b475ac11e35733d305f8917db2d6fb17fa47dd5bd2"
+      "sha256": "8250146e6f3aebecec0777c011956e12dd974ab0923ee748125b920043e14506"
     },
     {
       "id": "test",
@@ -59,7 +59,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/test.log",
-      "sha256": "dba6be81f169c4cb49efb684af37991d3a9526772705269365b5379105bf2509"
+      "sha256": "64f10baa0ca1b100f26056f7a430537d37913a711a3e3f2e71b095a55aae5cb9"
     },
     {
       "id": "uv25-node",
@@ -67,7 +67,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-node.log",
-      "sha256": "90795c01f7edb97e02ae86f1392eee69dc31679b4165177cb9e216e079e40d88",
+      "sha256": "646dc661f679a5334ef9e989a4e007a7392fa6bb7095c50d98fb7e40a19fb168",
       "scenario": {
         "area": "node",
         "acceptance": ["U-A2", "U-A9"],
@@ -102,7 +102,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-golang.log",
-      "sha256": "bc98edeb54815c18b6dc08626f3aa51c6e23f706f416dd089917734cd38d7fae",
+      "sha256": "f28ea6cfe7b9382b71069a5ececf3e67cc944ddc6a0f61085723c92f1e39bd7d",
       "scenario": {
         "area": "golang",
         "acceptance": ["U-A2"],
@@ -133,14 +133,14 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-swift-local.log",
-      "sha256": "0770eaf3c7128679b8e2174b176dc487439f0e9648a1984c929386caf249dce2",
+      "sha256": "ffb193c98ea59243406616cd4044e5112b437eafcf9113156906f1ad1a568b82",
       "scenario": {
         "area": "swift-local",
         "acceptance": ["U-A2"],
         "fixtures": [
           {
             "path": "plugins/swift/__tests__/swift-target.test.ts",
-            "sha256": "101089089dec8f884efcb74de21a4c328879273cc2fbdf1ae00e07a6e5958461"
+            "sha256": "844e104b65ddc5bece39b56ca417da356462b74975a668123b9b50194669200e"
           },
           {
             "path": "plugins/swift/__tests__/fixtures/zero-yaml/Package.swift",
@@ -164,7 +164,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-remote.log",
-      "sha256": "0d4d4f216b917785747a3534af590a7b4f6396b1128eb66c01b682b550e9a265",
+      "sha256": "3112a4019c57a551bbbbdacb5b984d58776ca956f0843838bcdde469df9b01ac",
       "scenario": {
         "area": "remote",
         "acceptance": ["U-A6"],
@@ -192,7 +192,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-remote-live.log",
-      "sha256": "a0d5b732dc9e9ca0461ac7e8d78b95096867d883c6e51cd565bbe4f79849af2c",
+      "sha256": "0e3f674bf23a58e99b225aa41981871128a79b968c4e11a56fe04950a2550c22",
       "scenario": {
         "area": "remote-live",
         "acceptance": ["U-A6"],
@@ -238,7 +238,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-rules.log",
-      "sha256": "b2596286ce47a79d403d60f2d20a6d9e2317277a5d770796a0064d62a03f2d7e",
+      "sha256": "c38ee21b13bce1341aadf54dab106ce56a5d54217ba50f6c62e4824a228195fe",
       "scenario": {
         "area": "rules",
         "acceptance": ["U-A7"],
@@ -282,7 +282,7 @@
       "exitCode": 0,
       "signal": null,
       "logFile": "logs/uv25-sdd-evidence.log",
-      "sha256": "3a100dca5ae58317fc2114066f348bcbe37366d4b37b4a2380c71529edbc336e",
+      "sha256": "4747cce34c4eac5d877ed4acfe0f87b3d0df38c6ce44dbde6b6621636949b813",
       "scenario": {
         "area": "sdd-evidence",
         "acceptance": ["U-A9"],

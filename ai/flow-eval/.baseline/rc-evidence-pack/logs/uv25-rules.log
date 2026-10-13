@@ -1,44 +1,44 @@
 $ node --import tsx --test cli/__tests__/tool-behavior/rules.test.ts shared/rules/__tests__/rule-resolver.test.ts shared/rules/__tests__/rule-snapshot.test.ts shared/rules/__tests__/rule-migration-equivalence.test.ts
 
 --- stdout ---
-(node:58101) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:51042) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ gennady rules
-  ✔ lists the complete deterministic inventory and rejects stale stack/phase filters (1416.783292ms)
-  ✔ shows one exact prompt body and fails closed for an unknown id (1717.417792ms)
-  ✔ resolves exact/glob files with the same real snapshot digest as SDD dispatch and Verify (389.278625ms)
-  ✔ uses one selector-matched ticket phase and leaves dirty files, ticket and sentinel unchanged (402.063708ms)
-  ✔ materializes changed-from existing files and tombstones deterministically (828.892917ms)
-  ✔ fails closed for ambiguous/missing scope, escape, symlink and malformed embedded source (1459.636333ms)
-✔ gennady rules (6214.896041ms)
-(node:58102) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+  ✔ lists the complete deterministic inventory and rejects stale stack/phase filters (2053.69475ms)
+  ✔ shows one exact prompt body and fails closed for an unknown id (2726.940875ms)
+  ✔ resolves exact/glob files with the same real snapshot digest as SDD dispatch and Verify (611.972042ms)
+  ✔ uses one selector-matched ticket phase and leaves dirty files, ticket and sentinel unchanged (891.598583ms)
+  ✔ materializes changed-from existing files and tombstones deterministically (2108.896208ms)
+  ✔ fails closed for ambiguous/missing scope, escape, symlink and malformed embedded source (2508.853375ms)
+✔ gennady rules (10903.366625ms)
+(node:51043) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ embedded rule migration equivalence
-  ✔ preserves every old entry body, predicate intent, dependency and source exactly once (23.0855ms)
-  ✔ has no runtime central registry and no production consumer of its former filename (194.261084ms)
-✔ embedded rule migration equivalence (218.442417ms)
-(node:58104) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+  ✔ preserves every old entry body, predicate intent, dependency and source exactly once (36.750375ms)
+  ✔ has no runtime central registry and no production consumer of its former filename (351.51525ms)
+✔ embedded rule migration equivalence (389.555ms)
+(node:51044) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ RuleResolver predicate semantics
-  ✔ evaluates When clauses as OR, attributes as same-artifact AND, and comma values as OR (11.71ms)
-  ✔ lets any matching Unless veto an otherwise matching rule (0.670041ms)
-  ✔ selects TS core + test-light + Vitest for tests while excluding production strictness (0.629667ms)
-  ✔ matches mixed artifact and phase/project facts without primary-stack fallback (0.90325ms)
-  ✔ fails closed when a descriptor supplies an unsupported predicate fact (0.335666ms)
-✔ RuleResolver predicate semantics (15.288958ms)
+  ✔ evaluates When clauses as OR, attributes as same-artifact AND, and comma values as OR (22.947709ms)
+  ✔ lets any matching Unless veto an otherwise matching rule (1.09225ms)
+  ✔ selects TS core + test-light + Vitest for tests while excluding production strictness (0.678917ms)
+  ✔ matches mixed artifact and phase/project facts without primary-stack fallback (0.8385ms)
+  ✔ fails closed when a descriptor supplies an unsupported predicate fact (0.378875ms)
+✔ RuleResolver predicate semantics (27.861583ms)
 ▶ RuleResolver dependencies and overrides
-  ✔ closes dependencies transitively in deterministic topological then id order (0.360791ms)
-  ✔ fails closed for missing dependencies and cycles anywhere in the registry (0.323417ms)
-  ✔ applies reasoned add/skip overrides with provenance and preserves exact prompt identity (0.557292ms)
-  ✔ rejects empty override evidence, conflicts, unknown ids, and skipped required dependencies (0.564125ms)
-✔ RuleResolver dependencies and overrides (2.082667ms)
-(node:58105) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+  ✔ closes dependencies transitively in deterministic topological then id order (0.386083ms)
+  ✔ fails closed for missing dependencies and cycles anywhere in the registry (0.2345ms)
+  ✔ applies reasoned add/skip overrides with provenance and preserves exact prompt identity (0.213542ms)
+  ✔ rejects empty override evidence, conflicts, unknown ids, and skipped required dependencies (0.256417ms)
+✔ RuleResolver dependencies and overrides (1.252542ms)
+(node:51045) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ RuleSnapshot canonical identity
-  ✔ is byte-identical and deeply frozen independent of registry and fact insertion order (12.191458ms)
-  ✔ changes for body, predicate, facts, override reason and override provenance drift (2.818416ms)
-  ✔ rejects absolute source identity instead of hashing host-specific paths (0.517292ms)
-✔ RuleSnapshot canonical identity (16.591084ms)
+  ✔ is byte-identical and deeply frozen independent of registry and fact insertion order (19.67975ms)
+  ✔ changes for body, predicate, facts, override reason and override provenance drift (3.469167ms)
+  ✔ rejects absolute source identity instead of hashing host-specific paths (0.724291ms)
+✔ RuleSnapshot canonical identity (24.654041ms)
 ℹ tests 20
 ℹ suites 5
 ℹ pass 20
@@ -46,7 +46,7 @@ $ node --import tsx --test cli/__tests__/tool-behavior/rules.test.ts shared/rule
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 6578.912084
+ℹ duration_ms 11733.332
 
 
 --- stderr ---
