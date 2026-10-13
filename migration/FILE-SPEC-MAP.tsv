@@ -226,7 +226,6 @@ cli/cmd/lint/checks/utils/strip-strings-comments.ts	CLI-LINT	canonical CLI comma
 cli/cmd/lint/checks/word-count.check.ts	CLI-LINT	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks TSK-XX; Git history non-authoritative
 cli/cmd/lint/help.ts	CLI-LINT	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks LIN-types, LIN-headers, LIN-anchors, LIN-dbc, LIN-command; Git history non-authoritative
 cli/cmd/lint/lint-source-policy.ts	CLI-LINT	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
-cli/cmd/lint/utils/resolve-references.fn.ts	CLI-LINT	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/orient/__tests__/file-relations.test.ts	CLI-ORIENT	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/orient/core/resolve-file-relations.ts	CLI-ORIENT	canonical CLI command boundary plus sibling @spec/spec inventory; headerless inventory row; Git history non-authoritative
 cli/cmd/orient/help.ts	CLI-ORIENT	canonical CLI command boundary plus sibling @spec/spec inventory; legacy @tasks ORI-command; Git history non-authoritative
@@ -1116,7 +1115,7 @@ shared/sdd/__tests__/spec-id.test.ts	SHARED	canonical shared scope boundary plus
 shared/sdd/__tests__/spec-schema.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/task-authoring-literals.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/task-id.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
-shared/sdd/__tests__/tasks-append-only.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
+shared/sdd/__tests__/migration-tasks-header.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/templates.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/ticket.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/__tests__/tracker.test.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
@@ -1164,7 +1163,7 @@ shared/sdd/spec-id.ts	SHARED	canonical shared scope boundary plus Entity Invento
 shared/sdd/spec-schema.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/task-authoring-literals.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/task-id.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
-shared/sdd/tasks-append-only.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
+shared/sdd/migration-tasks-header.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/templates.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/ticket-resolve.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative
 shared/sdd/ticket.ts	SHARED	canonical shared scope boundary plus Entity Inventory; headerless inventory row; Git history non-authoritative

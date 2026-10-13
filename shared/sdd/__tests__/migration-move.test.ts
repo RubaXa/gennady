@@ -16,6 +16,7 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import {
   planScopeMove,
   executeScopeMove,
@@ -24,6 +25,8 @@ import {
 } from '../migration-move.ts';
 import { scanMigrationUnits, scaffoldUnitFile, unitFilePath } from '../migration-plan.ts';
 import { planMigrationFileHeaders } from '../migration-file-headers.ts';
+import { parseSourceOwnershipHeader } from '../source-ownership-header.ts';
+import { inspectRepoPath } from '../../common/repo-path.ts';
 
 let root: string;
 
@@ -183,6 +186,34 @@ describe('migration-move', () => {
   });
   after(() => {
     rmSync(root, { recursive: true, force: true });
+  });
+
+  it('FO-6: versioned live source-owner map resolves unique current canonical headers', () => {
+    const repository = fileURLToPath(new URL('../../../', import.meta.url));
+    const map = readFileSync(join(repository, 'migration', 'FILE-SPEC-MAP.tsv'), 'utf8');
+    const seen = new Set<string>();
+    const errors: string[] = [];
+    for (const [index, row] of map.split(/\r?\n/).entries()) {
+      if (!row.trim() || row.startsWith('#')) continue;
+      const cells = row.split('\t');
+      assert.equal(cells.length, 3, `map row ${index + 1}`);
+      const [file = '', owner = '', evidence = ''] = cells;
+      assert.ok(evidence.trim(), `missing owner evidence: ${file}`);
+      if (seen.has(file)) errors.push(`duplicate source: ${file}`);
+      seen.add(file);
+      const inspected = inspectRepoPath(repository, file, 'file');
+      if (!inspected.ok) {
+        errors.push(`${file}: ${inspected.detail}`);
+        continue;
+      }
+      const declared = parseSourceOwnershipHeader(readFileSync(join(repository, file), 'utf8'))
+        .blocks.filter((block) => block.tag === 'spec')
+        .map((block) => block.value.trim());
+      if (declared.length !== 1 || declared[0] !== owner)
+        errors.push(`${file}: canonical @spec ${JSON.stringify(declared)} != ${owner}`);
+    }
+    assert.ok(seen.size > 0, 'versioned live map must not be empty');
+    assert.deepEqual(errors, [], errors.join('\n'));
   });
 
   it('без слоя миграции план заблокирован с внятными причинами', () => {
@@ -462,6 +493,32 @@ describe('migration-move', () => {
     if (!result.ok) assert.match(result.errors.join('\n'), /source shared\/demo\.ts дублирован/);
     assert.strictEqual(readFileSync(source, 'utf8'), sourceBytes);
     assert.ok(existsSync(join(root, 'tasks', 'demo', 'core', 'core.task-1.md')));
+  });
+
+  it('FO-6: missing live map source still blocks move before any source/spec/ticket write', () => {
+    mkdirSync(join(root, 'shared'), { recursive: true });
+    const source = join(root, 'shared', 'demo.ts');
+    const sourceBytes = '// @file: demo\n// @consumers: DemoCommand\n';
+    writeFileSync(source, sourceBytes, 'utf8');
+    writeFileSpecMap([
+      ['shared/demo.ts', 'DEMO-CORE', 'operator-reviewed existing source'],
+      ['shared/removed.ts', 'DEMO-CORE', 'stale source must fail closed'],
+    ]);
+    fillPlanLayer();
+    const originals = new Map(
+      [
+        source,
+        join(root, 'specs', 'demo', 'core', 'core.spec.md'),
+        join(root, 'tasks', 'demo', 'core', 'core.task-1.md'),
+      ].map((file) => [file, readFileSync(file, 'utf8')])
+    );
+    const result = executeScopeMove(root, 'demo', true);
+    assert.ok(!result.ok, JSON.stringify(result));
+    if (!result.ok)
+      assert.match(result.errors.join('\n'), /source path shared\/removed\.ts rejected.*missing/);
+    for (const [file, bytes] of originals) assert.equal(readFileSync(file, 'utf8'), bytes);
+    assert.ok(!existsSync(join(root, 'specs', 'demo', 'core', 'core.task.demo-alpha.md')));
+    assert.ok(!existsSync(join(root, 'specs', 'demo', 'demo.3-tasks.md')));
   });
 
   it('FO-6: map без exact archived legacy list не разрешает удаление @tasks', () => {
