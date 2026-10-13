@@ -6,6 +6,8 @@
 > retire one deleted-helper row, update two migration-parser paths, regression tests; preflight,
 > frozen history, baseline/protection/currentProof unchanged. Review/merge fix before new immutable
 > capture. No fresh candidate or reused #117 challenge; npm forbidden, Swift UNVERIFIED.
+> Corrective [#120](https://github.com/RubaXa/gennady/pull/120) / plan status #121 OPEN; full ordinary
+> commit/push gates PASS, independent reviewer verdict pending. Not UV-34 DONE.
 
 > **Earlier submission (superseded by current UV-34 status above):** plan [#118](https://github.com/RubaXa/gennady/pull/118), implementation
 > [#119](https://github.com/RubaXa/gennady/pull/119) (`6cddc448`) — OPEN, independent review pending.
