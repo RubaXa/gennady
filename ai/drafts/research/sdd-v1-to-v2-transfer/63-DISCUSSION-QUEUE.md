@@ -1,5 +1,9 @@
 # Очередь обсуждений с оператором (D-63)
 
+> **Delivery:** UV-30..33 submitted for independent review in [#119](https://github.com/RubaXa/gennady/pull/119),
+> plan #118. No new operator decision requested; UV-34 waits reviewed merges, not per-PR operator ACK.
+> Exact corrected candidate ACK and npm-publication prohibition remain unchanged.
+
 > **2026-10-13 corrective task уже разрешена оператором:** V1-only active behavior убрать,
 > migration/grandfathering/A13 сохранить; UV-30..33 идут автономно с тестами и external review.
 > Это не новый архитектурный checkpoint и не повод просить per-PR «да». Unexpected authority

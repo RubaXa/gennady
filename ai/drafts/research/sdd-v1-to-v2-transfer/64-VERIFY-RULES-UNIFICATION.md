@@ -1,10 +1,12 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
 > Статус: **ACK U0 ПРИНЯТ 2026-09-24; UV-24 DONE #99; UV-25 #101 — HISTORICAL DONE; MAIN CUTOVER BLOCKED**.
-> **Current amendment 2026-10-13:** R1…R5 reviewed/merged (#108…#112), UV-25 refresh #113 merged;
-> release `c6223402dd8d80ca728f81e7b16f507e4c9e64ff`, UV-25 source `2e4a9a9c8be596594ab0711ef4e70ebb68d047ed`.
+> **Current delivery 2026-10-13:** R1…R5, UV-28/29 and UV-25 #117 merged; release
+> `2067066b89adc87cd27094838f5435613401f4eb`. Corrective UV-30..33 in OPEN release PR
+> [#119](https://github.com/RubaXa/gennady/pull/119) (`6cddc448`), plan #118; independent review pending.
 > Swift — **UNVERIFIED prototype**; real UV-26/E-18 deferred post-main-cutover, не bar (§12.3.2).
-> UV-28 guard policy + UV-29 selected-step diagnostics pending; после их последних product merges нужен новый UV-25 refresh.
+> UV-34/fresh UV-25 follows LAST reviewed corrective product/currentProof merge; old #117
+> evidence/challenge must not authorize the changed tree. Full commit/push gates PASS for #119.
 > U8-MC/UV-27 сохраняют остальные invariants и exact candidate ACK; npm
 > publication вынесена в отдельный будущий plan/ACK и запрещена в текущем deliverable. Основание:
 > операторский разговор

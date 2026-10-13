@@ -1,5 +1,10 @@
 # План переноса SDD v1 (main) → SDD v2 (RC) — индекс
 
+> **Delivery 2026-10-13:** plan [#118](https://github.com/RubaXa/gennady/pull/118), implementation
+> [#119](https://github.com/RubaXa/gennady/pull/119) (`6cddc448`) — OPEN, independent review pending.
+> UV-30..33 implemented/tested, not merged; UV-34/fresh UV-25 waits LAST reviewed corrective merge.
+> Ordinary full pre-commit + pre-push PASS; no baseline change, main merge or npm publication.
+
 > Статус: В РАБОТЕ (аудит). Ведёт сессия «SDD v2 // Lead». Исполнитель — сессия «SDD v2 RC v6» (ветка `codex/sdd-v2-rc52-followup`, PR #25).
 > Baseline: main `8bb38477` (0.9.0-next.3, заморожен) · RC `95329c19` (0.8.4) · merge-base `46c6d616` · 115 коммитов main после merge-base.
 > Все документы — русский; идентификаторы, команды, пути — как в коде.

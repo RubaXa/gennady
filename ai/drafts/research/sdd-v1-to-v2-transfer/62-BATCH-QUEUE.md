@@ -1,5 +1,9 @@
 # 62 — Очередь исполнения: тематические пачки (D-56 + D-57)
 
+> **Delivery:** plan #118 / release [#119](https://github.com/RubaXa/gennady/pull/119) OPEN.
+> UV-30..33 IN REVIEW; ordinary commit/push gates PASS. Next autonomous batch UV-34/fresh UV-25
+> starts only after independent reviewer merges LAST corrective product/currentProof change.
+
 > **Current corrective batch 2026-10-13:** UV-30..33 (one coherent release PR allowed), plan PR
 > in plan stable; independent reviewer before every merge. После reviewed product merges — UV-34/
 > fresh UV-25, затем independent candidate + exact ACK. Current code base2067066b/#117;

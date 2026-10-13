@@ -1,17 +1,17 @@
 # 61 — Сводная доска задач (треки 20, 30–50) + волны исполнения + первые пять брифов
 
 > **Current corrective queue 2026-10-13:** #115/#116/#117 merged, release2067066b; claim
-> RESIDUE=0 disproved by independent behavioral audit. UV-30..33 IN PROGRESS → reviewer merges →
+> RESIDUE=0 disproved by independent behavioral audit. UV-30..33 IN REVIEW #119 → reviewer merges →
 > UV-34/fresh UV-25 → independent candidate review → exact operator ACK → existing #25.
 > Details `64 §12.3.3`, acceptance U-A11..15. Старые счётчики/history не пересчитываются;
 > npm forbidden, Swift UNVERIFIED/E18 DEFERRED, baseline/archive/grandfathering preserved.
 
 | Current ID | Работа | Depends on | Acceptance | Статус |
 |---|---|---|---|---|
-| UV-30 | canonical @spec authoring/kit/examples + router migration-only V1 branch | #117/operator corrective request | U-A11, fresh directives, stale-contract/router RED→GREEN | IN PROGRESS |
-| UV-31 | production legacy reader disposition, no V1 ownership/execution/append-only authority | UV-30 | U-A12, migration/guidance/grandfathering and A13/D4 preserved | IN PROGRESS |
-| UV-32 | simulation corpus scanner/queue/uniqueness/package isolation | #117 | U-A13, public CLI retains real tickets but excludes scenarios | IN PROGRESS |
-| UV-33 | causal eradication gate, explicit boundaries, narrow changed-path proof refresh | UV-30..32 | U-A14, negative injections independent of digest, protections unchanged | IN PROGRESS |
+| UV-30 | canonical @spec authoring/kit/examples + router migration-only V1 branch | #117/operator corrective request | U-A11, fresh directives, stale-contract/router RED→GREEN | IN REVIEW #119 |
+| UV-31 | production legacy reader disposition, no V1 ownership/execution/append-only authority | UV-30 | U-A12, migration/guidance/grandfathering and A13/D4 preserved | IN REVIEW #119 |
+| UV-32 | simulation corpus scanner/queue/uniqueness/package isolation | #117 | U-A13, public CLI retains real tickets but excludes scenarios | IN REVIEW #119 |
+| UV-33 | causal eradication gate, explicit boundaries, narrow changed-path proof refresh | UV-30..32 | U-A14, negative injections independent of digest, protections unchanged | IN REVIEW #119 |
 | UV-34 | existing fresh UV-25 after LAST reviewed product/currentProof merge + independent audit | reviewed merged UV-30..33 | U-A15, new candidate/challenge, separate exact ACK | PENDING REVIEWED MERGES |
 
 > Статус: пишется (черновик, ревизия после независимой верификации **V-61**, затем после **гейта адекватности** `06-ADEQUACY-GAP.md` + верификации **V-06-GAP** + решений оператора **D-38..D-46**, затем после **триажа #14** (`_raw/V14-PROPOSALS-TRIAGE.md`, `_raw/V14-2-AUTONOMOUS-EXECUTE.md`) + решений оператора **D-48..D-50** и Lead **L-16**, затем после решения оператора **D-54** (CI и жёсткие проверки) — см. § Итог верификации V-61, § Итог правок гейта адекватности, § Правки после триажа #14 и § Правки по D-54 в конце документа). Источники: `01-INTERVIEW-DECISIONS.md` (**D-1..D-50**), `06-ADEQUACY-GAP.md` §5 (дельта гейта: `REL-17`/`REL-18`, `GAP-B-1`, `B2-21`/`B2-22`, `FO-1..FO-7`, `IDN-1..IDN-6`, `T-B6-28`/`T-B6-29`, `E-22`/`E-23`, `GAP-E-1..GAP-E-5`, `GAP-1..GAP-4`, `GAP-P-1`/`GAP-P-2`; из перечисленного `B2-21` **ОТМЕНЕНА** решением D-39, а `GAP-E-3` **ПОГЛОЩЕНА** `GAP-E-5` решением D-46), `02-LEAD-DECISIONS.md` (L-1..L-16), `20-ISSUES-VERDICTS.md` (ISS-1..13, LOCK-1..3), `30-TRACK-VERIFY.md` §6 (V-01..V-18 + V-04a; V-16 расщеплена на V-16a/V-16b, добавлена V-19), `31-TRACK-CHECK-LOG.md` §4.1 (B2-01..18 + B2-19/B2-20), `32-TRACK-SYNC-OWNERSHIP.md` §4.1 (SO-1..14 + SO-2b), `33-TRACK-RULES.md` §5 (T-1..T-14) + **`33a-RULES-EXPLAINER.md`** и **`33b-RULES-VARIANTS.md` §6** (RULES-D1..RULES-D6, переформулировка T-2, отмена T-7 по D-32), `34-TRACK-RELEASE-PACKAGE.md` §8 (REL-1..14 + REL-15 по D-10/D-30 + REL-16), `40-TRACK-DIRECTIVES-SKILLS.md` §5.1 (T-B6-01..27 + T-15 по L-11), `50-TRACK-EVAL.md` §4 (E-00..E-16 + E-17..E-21), `60-ACCEPTANCE.md` (A1..A24), `70-ORCHESTRATION-PROTOCOL.md` (шаблон брифа), **новый трек `V14`** (`_raw/V14-PROPOSALS-TRIAGE.md`, `_raw/V14-2-AUTONOMOUS-EXECUTE.md` §5: V14-1, V14-2a..e, V14-3).
