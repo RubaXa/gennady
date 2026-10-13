@@ -40,8 +40,74 @@ function relation(path: string, taskId: string): FileRelationsResult {
 }
 
 describe('queryTask', () => {
-  it('returns empty array for empty task selection', () => {
+  it('returns empty array for empty task list', () => {
     assert.deepEqual(queryTask([], []), []);
+  });
+  it('single task: finds matching files', () => {
+    const a = file('/project/src/a.ts', ['APP-stale']);
+    const b = file('/project/src/b.ts', ['APP-work']);
+    const evidence = new Map([
+      [a.absPath, relation('src/a.ts', 'APP-work')],
+      [b.absPath, relation('src/b.ts', 'APP-test')],
+    ]);
+    const results = queryTask([a, b], ['APP-work'], evidence);
+    assert.equal(results.length, 1);
+    assert.equal(results[0]?.taskId, 'APP-work');
+    assert.deepEqual(results[0]?.files, [a]);
+    assert.deepEqual(results[0]?.migrationFiles, [b]);
+  });
+  it('multiple tasks: returns grouped results', () => {
+    const a = file('/project/src/a.ts', []);
+    const b = file('/project/src/b.ts', []);
+    const c = file('/project/src/c.ts', ['APP-stale']);
+    const shared = relation('src/c.ts', 'APP-work');
+    shared.planned = relation('src/c.ts', 'APP-test').active.map((active) => ({
+      ...active,
+      kind: 'planned',
+      evidence: 'declared',
+    }));
+    const evidence = new Map([
+      [a.absPath, relation('src/a.ts', 'APP-work')],
+      [b.absPath, relation('src/b.ts', 'APP-test')],
+      [c.absPath, shared],
+    ]);
+    const results = queryTask([a, b, c], ['APP-work', 'APP-test'], evidence);
+    assert.equal(results.length, 2);
+    assert.equal(results[0]?.taskId, 'APP-work');
+    assert.deepEqual(results[0]?.files, [a, c]);
+    assert.equal(results[1]?.taskId, 'APP-test');
+    assert.deepEqual(results[1]?.files, [b, c]);
+    assert.deepEqual(
+      results.map((result) => result.migrationFiles),
+      [[], []]
+    );
+  });
+  it('task not found: returns empty files array', () => {
+    const source = file('/project/src/a.ts', ['APP-missing']);
+    const evidence = new Map([[source.absPath, relation('src/a.ts', 'APP-work')]]);
+    const results = queryTask([source], ['APP-missing'], evidence);
+    assert.equal(results.length, 1);
+    assert.equal(results[0]?.taskId, 'APP-missing');
+    assert.deepEqual(results[0]?.files, []);
+    assert.deepEqual(results[0]?.migrationFiles, [source]);
+  });
+  it('handles duplicate task IDs in input', () => {
+    const source = file('/project/src/a.ts', []);
+    const evidence = new Map([[source.absPath, relation('src/a.ts', 'APP-work')]]);
+    const results = queryTask([source], ['APP-work', 'APP-work'], evidence);
+    assert.equal(results.length, 2);
+    assert.deepEqual(
+      results.map((result) => result.taskId),
+      ['APP-work', 'APP-work']
+    );
+    assert.deepEqual(
+      results.map((result) => result.files),
+      [[source], [source]]
+    );
+    assert.deepEqual(
+      results.map((result) => result.migrationFiles),
+      [[], []]
+    );
   });
   it('does not assign ownership from legacy @tasks', () => {
     const source = file('/project/source.ts', ['TSK-1']);
