@@ -307,7 +307,7 @@ describe('sdd-check file ownership', () => {
     }
   });
 
-  it('gates legacy @tasks append-only to V1 and permits V2 replacement by @spec', async () => {
+  it('keeps legacy headers migration-only and permits V2 replacement by @spec without append-only constraints', async () => {
     const v2 = fixture({
       sourceHeader: '// @file: value\n// @spec: APP',
       baselineSource:
@@ -327,8 +327,8 @@ describe('sdd-check file ownership', () => {
     });
     try {
       const result = await mod.run(argv('--changed', v1.root));
-      assert.strictEqual(result.exitCode, 1, result.text);
-      assert.match(result.text, /SDD_TASKS_APPEND_ONLY_REGRESSION/);
+      assert.strictEqual(result.exitCode, 0, result.text);
+      assert.doesNotMatch(result.text, /SDD_TASKS_APPEND_ONLY_REGRESSION/);
       assert.doesNotMatch(result.text, /SDD_FILE_/);
     } finally {
       rmSync(v1.root, { recursive: true, force: true });

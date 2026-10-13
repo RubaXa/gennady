@@ -1,10 +1,10 @@
-// @file: Unit tests for tasks-append-only — TASKS_APPEND_ONLY header regression check.
+// @file: Migration-only task-header evidence and canonical ownership-header parser regressions.
 // @spec: SHARED
 // @consumers: check
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkTasksAppendOnly, parseTasksHeader } from '../tasks-append-only.ts';
+import { parseTasksHeader } from '../migration-tasks-header.ts';
 import { parseSourceOwnershipHeader } from '../source-ownership-header.ts';
 
 describe('parseTasksHeader', () => {
@@ -103,38 +103,5 @@ describe('parseSourceOwnershipHeader', () => {
     );
     assert.strictEqual(parsed.blocks.filter((block) => block.tag === 'file')[0]?.value, '');
     assert.strictEqual(parsed.blocks.filter((block) => block.tag === 'tasks').length, 2);
-  });
-});
-
-describe('checkTasksAppendOnly — untouched V1 compatibility only', () => {
-  it('новый файл (нет версии в HEAD) → без findings', () => {
-    const findings = checkTasksAppendOnly('f.ts', '// @tasks: TSK-1', null);
-    assert.deepStrictEqual(findings, []);
-  });
-
-  it('id только добавлены → без findings', () => {
-    const findings = checkTasksAppendOnly(
-      'f.ts',
-      '// @tasks: TSK-116, TSK-136',
-      '// @tasks: TSK-116'
-    );
-    assert.deepStrictEqual(findings, []);
-  });
-
-  it('прежний id пропал → SDD_TASKS_APPEND_ONLY_REGRESSION', () => {
-    const findings = checkTasksAppendOnly(
-      'f.ts',
-      '// @tasks: TSK-136',
-      '// @tasks: TSK-116, TSK-136'
-    );
-    assert.strictEqual(findings.length, 1);
-    assert.strictEqual(findings[0]?.code, 'SDD_TASKS_APPEND_ONLY_REGRESSION');
-    assert.strictEqual(findings[0]?.severity, 'error');
-    assert.match(findings[0]?.message ?? '', /TSK-116/);
-  });
-
-  it('N/A → реальный id не считается регрессией', () => {
-    const findings = checkTasksAppendOnly('f.ts', '// @tasks: TSK-80', '// @tasks: N/A');
-    assert.deepStrictEqual(findings, []);
   });
 });

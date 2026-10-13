@@ -28,7 +28,7 @@ export function printHelp(): void {
   console.info('');
   console.info('Not a code navigator — that is `gennady orient`. sdd-orient reads .spec.md design');
   console.info(
-    'graphs (both v2 <!--SECTION--> and legacy numbered-heading specs); orient reads .ts files.'
+    'graphs; legacy numbered-heading results are labelled read-only migration context, not authoring/execution authority.'
   );
   console.info('');
   console.info('Exit codes:');

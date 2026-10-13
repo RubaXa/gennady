@@ -25,7 +25,7 @@ export function printHelp(): void {
     '  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/'
   );
   console.info(
-    '  npx gennady sdd-check --changed [project-root]  # check @tasks/@consumers headers of changed files'
+    '  npx gennady sdd-check --changed [project-root]  # check V2 ownership and consumers of changed files'
   );
   console.info('  Choose exactly one mode: --task, --spec, --all, or --changed.');
   console.info('');
@@ -67,7 +67,7 @@ export function printHelp(): void {
   );
   console.info('  --all also: broken `](…spec.md)` links that do not resolve on disk');
   console.info(
-    '  --changed: TASKS_APPEND_ONLY (@tasks: header never drops an id present at HEAD) ·'
+    '  --changed: V2 FILE_RELATIONS (canonical @spec owner; legacy headers are migration evidence) ·'
   );
   console.info(
     '             CONSUMERS_RESOLVABLE (@consumers: identifiers resolve elsewhere in the repo, warn-only)'

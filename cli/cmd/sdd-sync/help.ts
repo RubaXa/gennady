@@ -7,6 +7,12 @@
  */
 export function printHelp(): void {
   console.info('gennady sdd-sync — Propagate a ticket Status into the *.3-tasks.md trackers');
+  console.info(
+    'Tracker writes require a V2 owning scope; legacy/historical input stays read-only.'
+  );
+  console.info(
+    'For V1: npx gennady sdd-migrate bootstrap .; complete scope migration before writes.'
+  );
   console.info('');
   console.info(
     'Not `sync`/`sync-skills` (those mirror ai/directives/ai/skills from the npm package) —'

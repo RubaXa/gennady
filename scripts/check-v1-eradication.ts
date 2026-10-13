@@ -68,6 +68,7 @@ const ACTIVE_CLASSIFICATIONS: readonly Classification[] = [
   'unrelated-product-version',
 ];
 const REQUIRED_ACTIVE_REFERENCE_MARKERS = new Map<string, { literal?: string; pattern?: string }>([
+  ['old-runtime-label', { literal: 'Legacy-V1-only' }],
   ['old-directive-path', { literal: 'ai/directives/sdd/' }],
   ['old-skill-script-path', { literal: 'ai/skills/sdd-execute/scripts/' }],
   [
@@ -84,6 +85,113 @@ const ALLOWED_INVENTORY_EXCLUSIONS = new Set([
   'scripts/v1-eradication.policy.json',
   'scripts/__tests__/v1-eradication.test.ts',
 ]);
+
+const MIGRATION_BOUNDARY_PATHS = new Set([
+  'README.md',
+  'guides/v1-to-v2-migration.md',
+  'ai/directives/sdd-v2/guides/v1-to-v2-migration.md',
+  'ai/directives/sdd-v2/migration-v1-v2.directive.xml',
+  'ai/kit/templates/sdd-v2/migration-v1-v2.directive.hbs',
+  'shared/common/sync/v1-consumer-guard.ts',
+  'shared/sdd/flow.ts',
+  'shared/sdd/anchor-inject.ts',
+  'shared/sdd/id-replace.ts',
+  'shared/sdd/migration-tasks-header.ts',
+  'shared/sdd/migration-bootstrap.ts',
+  'shared/sdd/migration-bootstrap.types.ts',
+  'shared/sdd/migration-file-headers.ts',
+  'shared/sdd/migration-move.ts',
+  'shared/sdd/migration-plan.ts',
+  'cli/cmd/sdd-migrate/help.ts',
+  'cli/cmd/sdd-migrate/index.ts',
+  'cli/cmd/sdd-migrate/sdd-migrate.cmd.ts',
+  'cli/cmd/sdd-migrate/sdd-migrate.types.ts',
+]);
+
+/** @purpose Check live authoring/dispatch contracts independently of markers, classifications and recalibrated inventory digests. */
+function semanticFindings(path: string, content: string): Finding[] {
+  const findings: Finding[] = [];
+  const coding =
+    path === 'ai/directives/coding/typescript-rules.xml' ||
+    path === 'ai/kit/axiom/coding/ax-file-level-context.xml' ||
+    /^ai\/kit\/(?:axiom|pattern)\/typescript\//u.test(path);
+  if (
+    coding &&
+    (/^\s*\/\/\s*@tasks:/mu.test(content) ||
+      /`\/\/ @tasks:[^`]*`[^\n]*(?:optional|may be added)/u.test(content))
+  )
+    findings.push({
+      code: 'V1_ERADICATION_LEGACY_HEADER_AUTHORING',
+      path,
+      detail:
+        'Live V2 authoring must use @file → @spec → @consumers; @tasks is migration evidence only.',
+    });
+
+  if (
+    path === 'ai/kit/contract/process/readiness-preflight-gate.xml' ||
+    path === 'ai/directives/sdd-v2/router.directive.xml'
+  ) {
+    const normalized = content.replace(/\s+/gu, ' ');
+    if (/continue the legacy-compatible owner flow/u.test(normalized))
+      findings.push({
+        code: 'V1_ERADICATION_LEGACY_OWNER_FLOW',
+        path,
+        detail:
+          'Legacy detection/migration planning does not authorize legacy authoring or execution.',
+      });
+    const gate = normalized.slice(normalized.indexOf('<LogicSwitch on="FLOW_VERSION'));
+    const stop = gate.indexOf('requested owning scope is legacy or unknown');
+    const scaffold = gate.indexOf('any requested scaffold target');
+    const exemption = gate.indexOf('ticket/phase about to run');
+    if (
+      stop < 0 ||
+      scaffold < 0 ||
+      exemption < 0 ||
+      stop > scaffold ||
+      stop > exemption ||
+      !gate.includes('STOP authoring/execution') ||
+      !gate.includes('request is read-only detection or migration planning') ||
+      !gate.includes('bounded edit of a mechanically checked V2 owning spec')
+    )
+      findings.push({
+        code: 'V1_ERADICATION_LEGACY_PREFLIGHT_PRIORITY',
+        path,
+        detail:
+          'Legacy/unknown scope must stop before scaffold/readiness execution permissions; retain only read-only migration and proven V2 spec repair.',
+      });
+  }
+  if (path === 'cli/cmd/sdd-check/sdd-check.cmd.ts' && /checkTasksAppendOnly/u.test(content)) {
+    findings.push({
+      code: 'V1_ERADICATION_LEGACY_RUNTIME_CONSTRAINT',
+      path,
+      detail: 'Normal V2 runtime cannot enforce retired @tasks append-only ownership.',
+    });
+  }
+  if (path === 'cli/cmd/sdd-log/sdd-log.cmd.ts') {
+    const start = content.indexOf('// #region START_CLOSE_OVERVIEW');
+    const end = content.indexOf('// #endregion END_CLOSE_OVERVIEW', start);
+    const meta = content.indexOf('// #region START_META_STATUS');
+    const guard = start >= 0 && end > start ? content.slice(start, end) : '';
+    if (
+      start < 0 ||
+      end < 0 ||
+      meta < end ||
+      !guard.includes("if (mode === 'close')") ||
+      !guard.includes("extractSection(content, 'PHASES_OVERVIEW')") ||
+      !guard.includes('parsePhasesOverview(overview.content)') ||
+      !guard.includes('phases.length === 0') ||
+      !guard.includes('return roundCloseError(') ||
+      !guard.includes('sdd-migrate bootstrap')
+    )
+      findings.push({
+        code: 'V1_ERADICATION_LEGACY_CLOSE_WRITER',
+        path,
+        detail:
+          'Normal close must reject unreadable/empty legacy phase plans before Meta Status or lifecycle writes.',
+      });
+  }
+  return findings;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -306,6 +414,12 @@ function validatePolicy(value: unknown): Policy {
       )
     )
       throw new Error(`${markerId} must remain forbidden in every active classification`);
+    if (
+      markerId === 'old-runtime-label' &&
+      !constraint.forbiddenClassifications.includes('required-v1-to-v2-migration-boundary')
+    ) {
+      throw new Error('old-runtime-label cannot be hidden inside migration classification');
+    }
   }
 
   const expectedInventoryDigest = nonEmptyString(
@@ -521,6 +635,7 @@ function run(root: string): {
     const bytes = readFileSync(absolute);
     if (bytes.includes(0)) continue;
     const content = bytes.toString('utf8');
+    findings.push(...semanticFindings(path, content));
     const markers = matchingMarkers(content, policy.markers);
     const protectedPath = protectedByPath.get(path);
     if (markers.length === 0 && protectedPath === undefined) continue;
@@ -534,6 +649,16 @@ function run(root: string): {
       });
       continue;
     }
+    if (
+      classification === 'required-v1-to-v2-migration-boundary' &&
+      !MIGRATION_BOUNDARY_PATHS.has(path)
+    )
+      findings.push({
+        code: 'V1_ERADICATION_MIGRATION_BOUNDARY_UNPROVEN',
+        path,
+        detail:
+          'Migration classification requires an exact migration-only or detection entrypoint; a subtree grandfathering label is insufficient.',
+      });
     for (const constraint of policy.markerConstraints) {
       if (
         !markers.includes(constraint.markerId) ||

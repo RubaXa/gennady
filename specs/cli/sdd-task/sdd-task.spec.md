@@ -10,6 +10,12 @@ CLI-SDD-TASK
 
 ## Обзор
 
+Карта сохраняет V1 tickets как read-only migration context и помечает их migration-blocked;
+они не входят в pickable. Phase/task dispatch требует V2 owning scope, включая anchored V1
+intermediate tickets. Уже мигрированный V2 scope остаётся доступным в mixed repository.
+Исторические `ai/flow-sim`, `ai/flow-eval` и `migration` paths не являются live corpus или
+execution authority даже при прямом path-аргументе; read-only inspection сохраняется.
+
 ```mermaid
 flowchart LR
   Contract[Контракт] --> Implementation[Реализация]

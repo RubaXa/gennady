@@ -4,8 +4,8 @@
       <Snippet language="typescript">
         ```typescript
         // @file: HTTP implementation of the VendorGateway contract.
+        // @spec: VENDOR-GATEWAY
         // @consumers: OrderFulfillmentPipeline
-        // @tasks: TASK-1187
 
         import { logger } from '#logger';
 

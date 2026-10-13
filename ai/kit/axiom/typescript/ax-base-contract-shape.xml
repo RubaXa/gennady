@@ -21,5 +21,5 @@ Base JSDoc contract shape for all types, interfaces, methods, fields, properties
 8. `@post` — state guarantees after the call.
 9. `@sideEffect` — I/O, network, logs, etc.
 
-A strict order and closed vocabulary let a reader-agent parse the JSDoc contract deterministically. File-level tags (`@file:`, `@consumers:`, `@tasks:`) live in `// @tag:` line-comments at file head — never inside entity JSDoc (see `AX_FILE_LEVEL_CONTEXT`).
+A strict order and closed vocabulary let a reader-agent parse the JSDoc contract deterministically. V2 file-level tags (`@file:`, `@spec:`, `@consumers:`) live in that order in `// @tag:` line-comments at file head — never inside entity JSDoc (see `AX_FILE_LEVEL_CONTEXT`). Existing `@tasks` is read-only migration evidence.
 </Axiom>

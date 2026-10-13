@@ -10,6 +10,12 @@ export function printHelp(): void {
     'gennady sdd-log — Append events or atomically complete a verified phase/spec draft'
   );
   console.info('');
+  console.info(
+    'Lifecycle writes require a V2 owning scope; legacy/historical input stays read-only.'
+  );
+  console.info(
+    'For V1: npx gennady sdd-migrate bootstrap .; complete scope migration before writes.'
+  );
   console.info('Usage:');
   console.info(
     '  npx gennady sdd-log <ticket> round "<reason>"     # open a new Round (auto-numbered, dated)'

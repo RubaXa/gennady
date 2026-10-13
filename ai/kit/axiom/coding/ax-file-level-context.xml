@@ -4,10 +4,10 @@ File-level meta uses line-comments (`// @tag`), never a JSDoc block — distinct
 
 Block of consecutive `//` lines at the very top of the file, before any `import`:
 `// @file: <what the file holds>` *(mandatory)*
-`// @consumers: <ConsumerName>` *(optional; omit when no uniform consumer)*
-`// @tasks: <TASK-ID>[, TASK-ID...]` *(optional; may be added later)*
+`// @spec: <CANONICAL-SPEC-ID>` *(one resolved semantic owner)*
+`// @consumers: <ConsumerName>` *(named consumers from the owning spec)*
 
 `@purpose` is NOT a file-level tag — it belongs exclusively to entities. Local entities inherit `@consumers` from file level and MUST NOT redeclare it unless their consumer diverges.
 
-`@consumers:` and `@tasks:` are optional — a coding-only agent may lack full project context. Omit rather than fabricate.
+Resolve the owning spec before creating a V2 header; when ownership is unavailable, ask for the owning spec instead of inventing it. Legacy `@tasks` is read-only V1 migration evidence, never a new-header field or routing authority. Migration owns removal of existing legacy header bytes.
 </Axiom>

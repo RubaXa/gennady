@@ -132,7 +132,7 @@
 
         | Level | Checked by |
         |---|---|
-        | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, V2 FILE_RELATIONS, legacy-only TASKS_APPEND_ONLY, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
+        | Structural / mechanical (anchors, Meta, Execution Log completeness, fabricated-DONE, phase DAG, tracker coherence, RULES_CASCADE_CLOSURE, BDD_COVERAGE, V2 FILE_RELATIONS, CONSUMERS_RESOLVABLE) | `sdd-check --task <ticket>` (+ `--all`, `--changed`) |
         | Code (types, format, contract lint, yagni usage) | `verify --phase full` |
         | Closed-world inventory + exact-target contract lint | `gennady lint --include-tests --spec=<module-spec> <AuditContext lint-files>` |
         | Test coverage policy | Per-ticket `coverage-gates:` from AuditContext: execute a `required` command verbatim; skip explicit `not-applicable` with its reason; legacy-unset is grandfathered and invents nothing; INVALID blocks audit |
@@ -166,7 +166,7 @@
         Together they report the deterministic
         findings: structure / anchors / Task-ID + Status, fabricated-DONE, the phase graph,
         Execution-Log completeness, the task DAG, tracker↔ticket coherence, RULES_CASCADE_CLOSURE,
-        BDD_COVERAGE, V2 FILE_RELATIONS, legacy-only TASKS_APPEND_ONLY, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
+        BDD_COVERAGE, V2 FILE_RELATIONS, and CONSUMERS_RESOLVABLE. Take these as given — the tool owns
         them. Then INDEPENDENTLY re-run the green gate — verification ToolCall below and
         contractCheck ToolCall below (one argv item per printed AuditContext lint-file; zero files → skip lint and
         report `H_NOTHING_TO_AUDIT`, never broaden scope), and

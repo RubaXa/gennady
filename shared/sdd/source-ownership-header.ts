@@ -1,6 +1,6 @@
 // @file: Canonical parser for leading source ownership headers shared by V1 compatibility and V2 migration.
 // @spec: SHARED
-// @consumers: tasks-append-only, migration-file-headers
+// @consumers: migration-tasks-header, migration-file-headers
 
 /** @purpose Canonical ownership tags supported in source-file headers. */
 export type SourceOwnershipTag = 'file' | 'spec' | 'tasks' | 'consumers';

@@ -57,7 +57,7 @@ export async function runSddVerifyFacade(
     );
   }
 
-  const resolved = resolveTicketArg(task, canonicalRoot);
+  const resolved = resolveTicketArg(task, canonicalRoot, 'execution');
   if (!resolved.ok) {
     const detail = 'detail' in resolved ? resolved.detail : resolved.reason;
     return failure(`cannot resolve ticket ${JSON.stringify(task)}: ${detail}`);

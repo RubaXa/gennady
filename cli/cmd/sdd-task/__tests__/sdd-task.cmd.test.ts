@@ -253,6 +253,18 @@ function markLegacyFlow(root: string): void {
   mkdirSync(join(root, 'tasks'), { recursive: true });
 }
 
+/** @purpose Seed one canonical co-located V2 phase-plan ticket owner for positive dispatch fixtures. */
+function phaseTicketPath(): string {
+  const owner = join(dir, 'specs', 'cli', 'core');
+  mkdirSync(owner, { recursive: true });
+  writeFileSync(
+    join(owner, 'core.spec.md'),
+    '<!--SECTION:SPEC_ID-->\nCLI-CORE\n<!--/SECTION:SPEC_ID-->\n# Core\n',
+    'utf-8'
+  );
+  return join(owner, 'core.task.cli-foo.md');
+}
+
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-task', ...rest];
 }
@@ -300,7 +312,6 @@ describe('SddTaskCommand', () => {
     process.exit = ((_code?: number) => undefined) as typeof process.exit;
     process.argv = ['node', 'gennady', 'sdd-task'];
     dir = mkdtempSync(join(tmpdir(), 'sdd-task-'));
-    markLegacyFlow(dir);
     ticket = join(dir, 'ticket.md');
     writeFileSync(ticket, TICKET, 'utf-8');
     writeExecutionReadyInfra(dir);
@@ -531,19 +542,20 @@ describe('SddTaskCommand', () => {
   });
 
   it('execution map with a pickable ticket → next: hint points at sdd-task <id>', async () => {
+    const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v2-pickable-'));
+    writeCrossSpecMapFixture(mapDir, 'v2', true);
     const origCwd = process.cwd();
-    process.chdir(dir);
+    process.chdir(mapDir);
     try {
       const r = await mod.run(argv());
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
-      // Sibling files accumulated by earlier tests (blocked.md, resolved.md) also carry Task-ID
-      // cli-foo — assert structure (root line, ≥1 per-line pickable path), not a specific filename.
       assert.match(r.text, /^root: /m);
-      assert.match(r.text, /pickable \(ready now\):\n(?: {2}cli-foo → \S+\n?)+/);
+      assert.match(r.text, /pickable \(ready now\):\n  B-one → specs\/b\/b\.task\.B-one\.md/);
       assert.match(r.text, /next: возьми Task-ID из pickable и вызови `sdd-task <id>`/);
     } finally {
       process.chdir(origCwd);
+      rmSync(mapDir, { recursive: true, force: true });
     }
   });
 
@@ -605,14 +617,15 @@ describe('SddTaskCommand', () => {
     }
   });
 
-  it('B2-13: the equivalent V1 dependency remains grandfathered without an audit receipt', async () => {
+  it('B2-13: equivalent V1 dependency stays read-only grandfathered but requires migration before execution', async () => {
     const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-v1-audit-grandfathered-'));
     writeCrossSpecMapFixture(mapDir, 'v1', false);
     try {
       const r = await mod.run(argv(mapDir));
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
-      assert.match(r.text, /pickable \(ready now\):\n  B-one → specs\/b\/b\.task\.B-one\.md/);
+      assert.match(r.text, /pickable \(ready now\): — none/);
+      assert.match(r.text, /blocked: B-one[^\n]*V1→V2 migration required/);
       assert.doesNotMatch(r.text, /group audit receipt/);
     } finally {
       rmSync(mapDir, { recursive: true, force: true });
@@ -637,7 +650,10 @@ describe('SddTaskCommand', () => {
       // be byte-identical to `mapDir` — assert it names a real, absolute directory instead.
       assert.match(r.text, /^root: \/\S*$/m);
       assert.match(r.text, /pickable \(ready now\): — none/);
-      assert.match(r.text, /blocked: cli-foo ← EXECUTION_READY=no  →  ticket\.md$/m);
+      assert.match(
+        r.text,
+        /blocked: cli-foo ← V1→V2 migration required; npx gennady sdd-migrate bootstrap \.  →  ticket\.md$/m
+      );
       assert.match(r.text, /portal\/GATE_QUEUE cannot be resolved/);
     } finally {
       process.chdir(origCwd);
@@ -659,7 +675,10 @@ describe('SddTaskCommand', () => {
       if (!r.ok) return;
       assert.match(r.text, /^\[sdd-task\] execution map/);
       assert.match(r.text, /pickable \(ready now\): — none/);
-      assert.match(r.text, /blocked: cli-foo ← EXECUTION_READY=no  →  ticket\.md$/m);
+      assert.match(
+        r.text,
+        /blocked: cli-foo ← V1→V2 migration required; npx gennady sdd-migrate bootstrap \.  →  ticket\.md$/m
+      );
     } finally {
       rmSync(mapDir, { recursive: true, force: true });
     }
@@ -746,7 +765,10 @@ describe('SddTaskCommand', () => {
       const r = await mod.run(argv());
       assert.strictEqual(r.ok, true);
       if (!r.ok) return;
-      assert.match(r.text, /blocked: TSK-blocked ← TSK-missing\s*→\s*blocked\.md/);
+      assert.match(
+        r.text,
+        /blocked: TSK-blocked ← TSK-missing, V1→V2 migration required[^\n]*→\s*blocked\.md/
+      );
     } finally {
       process.chdir(origCwd);
       rmSync(blkDir, { recursive: true, force: true });
@@ -965,7 +987,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('emits a compact single-phase context with one mapped Verify invocation', async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
       assert.strictEqual(outcome.ok, true);
@@ -974,13 +996,16 @@ describe('SddTaskCommand', () => {
       assert.match(text, /\[sdd-task\] cli-foo — P2 test  status=\[ \]/);
       assert.match(text, /objective:   test foo/);
       assert.match(text, /verification:\n {2}selector: unit ← builtin:node/);
-      assert.match(text, /command:\s+npx gennady sdd-verify --task=phased\.md --phase=P2/);
+      assert.match(
+        text,
+        /command:\s+npx gennady sdd-verify --task=specs\/cli\/core\/core\.task\.cli-foo\.md --phase=P2/
+      );
       assert.match(text, /agent must not select individual gates/);
       assert.strictEqual((text.match(/npx gennady sdd-verify/g) ?? []).length, 1);
       const expectedRules = resolveSddRuleSnapshot({
         root: dir,
         declaredSources: ['ai/directives/testing/node-test.xml'],
-        declarationProvenance: 'phased.md#PHASE_P2.Rules',
+        declarationProvenance: 'specs/cli/core/core.task.cli-foo.md#PHASE_P2.Rules',
         targetFiles: ['src/foo.test.ts'],
         plannedFiles: ['src/foo.test.ts'],
         intents: ['test'],
@@ -1020,7 +1045,6 @@ describe('SddTaskCommand', () => {
       const customRoot = mkdtempSync(join(tmpdir(), 'sdd-task-custom-selector-'));
       const customTicket = join(customRoot, 'custom.task.cli-foo.md');
       try {
-        markLegacyFlow(customRoot);
         writeDeclaredPhaseTargets(customRoot);
         writeFileSync(
           join(customRoot, 'package.json'),
@@ -1083,7 +1107,6 @@ describe('SddTaskCommand', () => {
       const customRoot = mkdtempSync(join(tmpdir(), 'sdd-task-unmapped-selector-'));
       const customTicket = join(customRoot, 'custom.task.cli-foo.md');
       try {
-        markLegacyFlow(customRoot);
         writeExecutionReadyInfra(customRoot);
         writeDeclaredPhaseTargets(customRoot);
         writeFileSync(
@@ -1105,7 +1128,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('rejects a raw pipeline/extra Verification cell before emitting phase context', async () => {
-      const t = join(dir, 'phased-malformed-verification.md');
+      const t = phaseTicketPath();
       writeFileSync(
         t,
         PHASED_TICKET.replace(
@@ -1123,7 +1146,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('rejects an absent Verification section before emitting phase context', async () => {
-      const t = join(dir, 'phased-missing-verification.md');
+      const t = phaseTicketPath();
       writeFileSync(
         t,
         PHASED_TICKET.replace(
@@ -1141,7 +1164,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('READ specs falls back to the full Meta Spec References when the phase declares no Spec Refs', async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
       assert.strictEqual(outcome.ok, true);
@@ -1153,7 +1176,7 @@ describe('SddTaskCommand', () => {
     });
 
     it("READ specs uses the phase's own Spec Refs when declared — not the whole Meta list", async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P1'));
       assert.strictEqual(outcome.ok, true);
@@ -1165,7 +1188,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('includes the verbatim Handoff line of the completed prior phase, prefixed Handoff ←P1', async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
       assert.strictEqual(outcome.ok, true);
@@ -1177,7 +1200,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('omits the [HANDOFF] block for the first phase', async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P1'));
       assert.strictEqual(outcome.ok, true);
@@ -1197,7 +1220,7 @@ describe('SddTaskCommand', () => {
           '**Handoff →** artifacts: [src/real.ts]; decisions: [real-decision]; open: [none]',
         ].join('\n')
       );
-      const t = join(dir, 'phased-round2.md');
+      const t = phaseTicketPath();
       writeFileSync(t, ROUND2_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
       assert.strictEqual(outcome.ok, true);
@@ -1214,7 +1237,7 @@ describe('SddTaskCommand', () => {
         '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
         ''
       );
-      const t = join(dir, 'phased-no-handoff.md');
+      const t = phaseTicketPath();
       writeFileSync(t, NO_HANDOFF_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
       assert.strictEqual(outcome.ok, true);
@@ -1227,7 +1250,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('ends with a worker-only instruction that leaves ticket closure to the orchestrator', async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
       assert.strictEqual(outcome.ok, true);
@@ -1247,7 +1270,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('unknown --phase → exit 2 naming the known phases', async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P9'));
       assert.strictEqual(outcome.ok, false);
@@ -1257,7 +1280,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('no ## Audit Rounds section → no Audit Rounds block at all', async () => {
-      const t = join(dir, 'phased.md');
+      const t = phaseTicketPath();
       writeFileSync(t, PHASED_TICKET, 'utf-8');
       const outcome = await mod.run(argv(t, '--phase', 'P2'));
       assert.strictEqual(outcome.ok, true);
@@ -1266,7 +1289,7 @@ describe('SddTaskCommand', () => {
     });
 
     it('## Audit Rounds section present → rendered verbatim after the Handoff block', async () => {
-      const t = join(dir, 'phased-audited.md');
+      const t = phaseTicketPath();
       const AUDIT_BLOCK = [
         '',
         '## Audit Rounds',

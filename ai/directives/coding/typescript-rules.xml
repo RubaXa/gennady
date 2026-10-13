@@ -174,12 +174,12 @@
 
       Block of consecutive `//` lines at the very top of the file, before any `import`:
       `// @file: &lt;what the file holds&gt;` *(mandatory)*
-      `// @consumers: &lt;ConsumerName&gt;` *(optional; omit when no uniform consumer)*
-      `// @tasks: &lt;TASK-ID&gt;[, TASK-ID...]` *(optional; may be added later)*
+      `// @spec: <CANONICAL-SPEC-ID>` *(one resolved semantic owner)*
+      `// @consumers: <ConsumerName>` *(named consumers from the owning spec)*
 
       `@purpose` is NOT a file-level tag — it belongs exclusively to entities. Local entities inherit `@consumers` from file level and MUST NOT redeclare it unless their consumer diverges.
 
-      `@consumers:` and `@tasks:` are optional — a coding-only agent may lack full project context. Omit rather than fabricate.
+      Resolve the owning spec before creating a V2 header; when ownership is unavailable, ask for the owning spec instead of inventing it. Legacy `@tasks` is read-only V1 migration evidence, never a new-header field or routing authority. Migration owns removal of existing legacy header bytes.
     </Axiom>
 
     <Axiom id="AX_FLAT_JSDOC_FOR_PROPERTIES">
@@ -210,12 +210,12 @@
       8. `@post` — state guarantees after the call.
       9. `@sideEffect` — I/O, network, logs, etc.
 
-      A strict order and closed vocabulary let a reader-agent parse the JSDoc contract deterministically. File-level tags (`@file:`, `@consumers:`, `@tasks:`) live in `// @tag:` line-comments at file head — never inside entity JSDoc (see `AX_FILE_LEVEL_CONTEXT`).
+      A strict order and closed vocabulary let a reader-agent parse the JSDoc contract deterministically. V2 file-level tags (`@file:`, `@spec:`, `@consumers:`) live in that order in `// @tag:` line-comments at file head — never inside entity JSDoc (see `AX_FILE_LEVEL_CONTEXT`). Existing `@tasks` is read-only migration evidence.
     </Axiom>
 
     <Axiom id="AX_TAG_USAGE_MATRIX">
       When each tag is used:
-      - `@file:`, `@tasks:` — file-level line-comments only; see `AX_FILE_LEVEL_CONTEXT`.
+      - `@file:`, `@spec:`, `@consumers:` — V2 file-level line-comments in that order; see `AX_FILE_LEVEL_CONTEXT`. Existing `@tasks` is read-only migration evidence.
       - `@consumers` — file-level line-comment when uniform; entity-level only when consumer diverges from file-level; skip for local helpers.
       - `@implements` — required on exported class/const root directly implementing a named interface/contract; skip for data shapes, interfaces, member declarations.
       - `@invariant` — stateful entities, resilience / error policy, ordering guarantees, non-local assumptions, implementation-strategy guarantees that modifying agents must preserve.
@@ -260,8 +260,8 @@
       <Snippet language="typescript"><![CDATA[
         ```typescript
         // @file: ERP catalog item shape shared across the synchronization pipeline.
+        // @spec: ERP-CATALOG
         // @consumers: ErpSynchronizationWorker
-        // @tasks: TASK-4231
 
         /** @purpose Normalized response from an external ERP catalog. */
         export type ErpCatalogItem = {
@@ -308,8 +308,8 @@
       <Snippet language="typescript"><![CDATA[
         ```typescript
         // @file: HTTP implementation of the VendorGateway contract.
+        // @spec: VENDOR-GATEWAY
         // @consumers: OrderFulfillmentPipeline
-        // @tasks: TASK-1187
 
         import { logger } from '#logger';
 
@@ -563,7 +563,7 @@
   </VerificationHooks>
 
   <RewardCriteria>
-    ✅ File has `// @file:` line-comment header; `// @consumers:` / `// @tasks:` when applicable; no `@purpose` at file level.
+    ✅ V2 file has `// @file:`, one resolved `// @spec:`, and `// @consumers:` in that order; legacy `@tasks` stays migration evidence; no `@purpose` at file level.
     ✅ Every exported entity has valid JSDoc contract per `AX_BASE_CONTRACT_SHAPE`; tag order preserved.
     ✅ Implementation roots use `@purpose` + `@implements`; member implementations use `@see`; overrides write the full contract.
     ✅ Comments carry intent (purpose / consumer / invariant / side effect / failure mode / non-goal); do NOT restate syntax.

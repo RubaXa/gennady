@@ -12,6 +12,11 @@ CLI-LINT
 
 → Parent scope: [../cli.spec.md](../cli.spec.md)
 
+References в отчёте ошибок происходят из canonical `@spec` semantic owner и resolver-confirmed
+`active` ticket relations. Legacy `@tasks` и отдельное `tasks/` tree не назначают владельца;
+неразрешённая ownership evidence не подменяется Task-ID из header. Диагностика самих lint checks
+и существующий grandfathering при этом сохраняются.
+
 ## 2. Entity Inventory (Closed-World)
 
 _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._

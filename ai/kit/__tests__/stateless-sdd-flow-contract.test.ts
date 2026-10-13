@@ -42,6 +42,18 @@ describe('stateless SDD entry contract', () => {
     assert.doesNotMatch(router, /sdd-session|SESSION_FILE_FORMAT/);
   });
 
+  it('stops unknown/legacy owners before readiness permissions while preserving proven V2 repair and read-only migration planning', () => {
+    const gate = read('ai', 'kit', 'contract', 'process', 'readiness-preflight-gate.xml');
+    const guard = gate.indexOf('requested owning scope is legacy or unknown');
+    assert.ok(guard >= 0 && guard < gate.indexOf('any requested scaffold target'));
+    assert.ok(guard < gate.indexOf('ticket/phase about to run'));
+    assert.match(gate, /STOP authoring\/execution/);
+    assert.match(gate, /request is read-only detection or migration planning/);
+    assert.match(gate, /bounded edit of a mechanically checked V2 owning spec/);
+    assert.match(gate, /absent `tasks\/<scope>\/` plus existing `specs\/<scope>\/<scope>\.3-tasks\.md`/);
+    assert.doesNotMatch(gate, /continue the legacy-compatible owner flow/);
+  });
+
   it('keeps exact tool-result handling active in every authoring owner', () => {
     for (const owner of ['scope', 'module', 'infra', 'interface']) {
       const source = read('ai', 'kit', 'templates', 'sdd-v2', `${owner}.directive.hbs`);

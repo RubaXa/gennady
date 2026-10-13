@@ -82,7 +82,6 @@ import {
   parseRuleDependsOn,
   type RuleDepsMap,
 } from '../../../shared/sdd/rules-cascade.ts';
-import { checkTasksAppendOnly } from '../../../shared/sdd/tasks-append-only.ts';
 import {
   checkConsumersResolvable,
   classifyConsumerEntry,
@@ -1337,7 +1336,7 @@ export async function run(
     }
     fileCount = 1;
   } else if (changed) {
-    // #region START_CHANGED — invariant: V1 TASKS_APPEND_ONLY plus ownership/consumer checks run over changed source files
+    // #region START_CHANGED — invariant: V2 ownership/consumer checks preserve grandfathered legacy diagnostics without legacy header constraints
     const selectedRoot = positional[0] ?? '.';
     const root = resolve(selectedRoot);
     const rootIssue = selectedRootIssue(selectedRoot);
@@ -1369,7 +1368,6 @@ export async function run(
           );
           if (ownership.flow === 'v1') {
             if (!isLegacyChangedSource(rel)) continue;
-            findings.push(...checkTasksAppendOnly(rel, '', baseline.content));
           }
           findings.push(...ownership.findings);
           fileCount++;
@@ -1386,9 +1384,6 @@ export async function run(
       );
       if (ownership.flow === 'v1') {
         if (!isLegacyChangedSource(rel)) continue;
-        findings.push(
-          ...checkTasksAppendOnly(rel, content, baseline.status === 'ok' ? baseline.content : null)
-        );
       }
       findings.push(...ownership.findings);
       findings.push(...checkFileConsumersResolvable(rel, content, root, resolve(abs)));

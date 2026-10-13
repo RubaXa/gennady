@@ -10,6 +10,15 @@ CLI-SDD-LOG
 
 ## Обзор
 
+Execution Log, authoring-complete и group receipts записываются только для V2 owning scope.
+Anchored V1 intermediate tickets и исторические evidence paths остаются read-only input;
+до записи требуется `sdd-migrate bootstrap` и завершённая V1→V2 scope migration. Mixed repo
+не блокирует уже мигрированного V2 владельца. Inspection/grandfathering не разрешает writes.
+Нормальный `close` требует читаемый непустой parseable `PHASES_OVERVIEW` до изменения
+META/Status или Round DONE; отсутствие/повреждение даёт `ERR_CLI_SDD_LOG_CLOSE_STATE`
+с repair/migration guidance и оставляет файл byte-identical. Historical read-only parsing
+и marker-only receipt validation не меняются.
+
 ```mermaid
 flowchart LR
   Contract[Контракт] --> Implementation[Реализация]
@@ -173,6 +182,7 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 **Contract (DbC):**
 
 - Preconditions:
+  - нормальный CLI writer имеет читаемый непустой parseable `PHASES_OVERVIEW`; иначе repair/migration guidance без записи
   - текущий Round содержит не более одного `#### Round close`
   - существующий блок содержит ровно `- [ ] \`<ts>\` DONE`; уже закрытый или повреждённый блок отклоняется
 - Postconditions:

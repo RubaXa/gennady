@@ -10,6 +10,11 @@ CLI-SDD-SYNC
 
 ## Обзор
 
+Tracker status writes требуют V2 owning scope. Anchored V1 intermediate ticket остаётся
+read-only migration input; guidance указывает `sdd-migrate bootstrap` и V1→V2 migration.
+Уже мигрированный V2 sibling в mixed repo доступен. Historical simulation/migration paths
+не получают lifecycle authority от прямого path или Task-ID; inspection сохраняется.
+
 ```mermaid
 flowchart LR
   Contract[Контракт] --> Implementation[Реализация]

@@ -34,9 +34,9 @@ export class LintReport {
   readonly errors: LintError[];
   /** @purpose Count of errors auto-fixed by DbcContractCheck. */
   readonly autoFixed: number;
-  /** @purpose Deduplicated task file paths resolved from @tasks annotations in linted files. */
+  /** @purpose Deduplicated active ticket paths from canonical file-relations evidence. */
   readonly taskPaths: string[];
-  /** @purpose Deduplicated spec file paths resolved from task files. */
+  /** @purpose Deduplicated resolved canonical semantic-owner spec paths. */
   readonly specPaths: string[];
   /** @purpose Agent guidance hint shown at the end of the report when relevant error families are present. */
   readonly guidance?: string;

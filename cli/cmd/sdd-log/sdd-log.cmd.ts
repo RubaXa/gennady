@@ -17,8 +17,15 @@ import {
   readScratchPayloadFile,
   type ScratchPayload,
 } from '../../../shared/common/scratch-payload-file.ts';
-import { extractHeadingSection, findSectionBounds } from '../../../shared/sdd/section.ts';
+import {
+  extractHeadingSection,
+  extractSection,
+  findSectionBounds,
+} from '../../../shared/sdd/section.ts';
+import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
 import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
+import { isSddEvidencePath } from '../../../shared/sdd/corpus-path.ts';
+import { ticketFlowVersion } from '../../../shared/sdd/flow.ts';
 import {
   proveRepoFile,
   readProvenRepoFile,
@@ -173,6 +180,11 @@ async function runCommand(
     return badInvocation(`unknown mode "${mode ?? ''}" — use ${MODES.join(' | ')}`);
   }
   const root = resolve(projectRoot);
+  if (isSddEvidencePath(relative(root, resolve(root, ticket)))) {
+    return fileError(
+      'Historical SDD evidence is read-only migration/inspection context, not lifecycle authority.'
+    );
+  }
   const inlinePayload = positional.slice(mode === 'phase' ? 3 : 2).join(' ');
   const contentFile = oneFlag(args.contentFile, 'content-file');
   if (typeof contentFile === 'object') return contentFile;
@@ -272,6 +284,11 @@ async function runCommand(
   if (mode === 'authoring-complete') {
     const proven = proveRepoFile(root, ticket);
     if (!proven.ok) return fileError(`${ticket} (${proven.detail})`);
+    if (ticketFlowVersion(proven.identity.absolute, root) === 'v1') {
+      return fileError(
+        'Legacy V1 scope is read-only migration input; run npx gennady sdd-migrate bootstrap . and complete V1→V2 migration before authoring receipts.'
+      );
+    }
     if (!proven.identity.relative.endsWith('.spec.md')) {
       return badInvocation('authoring-complete requires an exact *.spec.md path');
     }
@@ -340,6 +357,11 @@ async function runCommand(
       canonicalRoot = resolve(root);
     }
     const specRel = relative(canonicalRoot, resolution.specPath);
+    if (isSddEvidencePath(specRel) || ticketFlowVersion(resolution.specPath, root) === 'v1') {
+      return groupReceiptError(
+        'Legacy/historical scope is read-only migration input; complete V1→V2 migration before lifecycle receipts.'
+      );
+    }
     const groupId = specRel.split(sep).join('/');
     const gitRef = getHeadRef(root);
     const built = buildGroupReceipt(kind, groupId, members, gitRef, verdict, now.toISOString());
@@ -369,7 +391,7 @@ async function runCommand(
   // #endregion END_GROUP_RECEIPT
 
   // #region START_READ — invariant: path or Task-ID (AX_TASK_RESOLUTION) → resolved path + content
-  const resolved = resolveTicketArg(ticket, root);
+  const resolved = resolveTicketArg(ticket, root, 'execution');
   if (!resolved.ok) {
     if (resolved.reason === 'unreadable') return fileError(ticket);
     if (resolved.reason === 'unsafe-path' || resolved.reason === 'unsafe-corpus') {
@@ -543,6 +565,29 @@ async function runCommand(
     insertText = buildCloseBlock(ts);
   }
   // #endregion END_BUILD
+
+  // #region START_CLOSE_OVERVIEW — invariant: normal close never creates DONE from a missing,
+  // empty or malformed phase plan; historical read-only parsing remains independent.
+  if (mode === 'close') {
+    const overview = extractSection(content, 'PHASES_OVERVIEW');
+    const phases = overview.status === 'ok' ? parsePhasesOverview(overview.content) : [];
+    if (
+      phases.length === 0 ||
+      phases.some(
+        (phase) =>
+          !PHASE_ID_RE.test(phase.id) ||
+          !phase.kind.trim() ||
+          !/^\[(?: |~|x|!)\]/u.test(phase.status)
+      )
+    ) {
+      return roundCloseError(
+        'V2 close requires a readable, non-empty parseable PHASES_OVERVIEW. ' +
+          `Repair the V2 ticket via npx gennady sdd-check --task ${displayPath} --authoring; ` +
+          'legacy scopes require sdd-migrate bootstrap and V1→V2 migration before lifecycle writes.'
+      );
+    }
+  }
+  // #endregion END_CLOSE_OVERVIEW
 
   // #region START_META_STATUS — invariant: round/close also drive Meta Status; tolerant of old
   // tickets with no META/Status line (setMetaStatus leaves content untouched, changed: false).

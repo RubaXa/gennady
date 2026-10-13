@@ -19,6 +19,8 @@ function renderEntry(n: NeighbourEntry): string[] {
     lines.push('    (спека не читается)');
     return lines;
   }
+  if (n.legacy)
+    lines.push('    legacy migration context — read-only, not ownership/execution authority');
   if (n.kind === 'scope') {
     lines.push(
       n.modules.length > 0
@@ -52,6 +54,11 @@ function renderEntry(n: NeighbourEntry): string[] {
  */
 export function renderNeighbourhood(n: Neighbourhood): string {
   const lines: string[] = [`[sdd-orient] neighbourhood — ${n.targetPath}`];
+  if (n.targetLegacy) {
+    lines.push(
+      'legacy migration context — next: npx gennady sdd-migrate bootstrap .; follow the V1→V2 guide before authoring/execution'
+    );
+  }
 
   const typeLabel = n.scopeType ?? 'тип неизвестен';
   if (!n.portalFound) {

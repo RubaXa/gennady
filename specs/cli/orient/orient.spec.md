@@ -13,6 +13,11 @@ CLI-ORIENT
 semantic-owner/work relations; `--history` меняет только детализацию, `--json` возвращает
 детерминированную schema `gennady.orient.file-relations`, version `1`.
 
+`orient --task` использует canonical resolver relations. Legacy `@tasks` matches показываются
+отдельно как read-only migration evidence и никогда не назначают owner или execution authority;
+guidance ведёт к `sdd-migrate bootstrap` и V1→V2 guide. Нет canonical matches → явное сообщение
+`No canonical V2 files found`, независимо от наличия historical header evidence.
+
 → Parent scope: [../../cli/cli.spec.md](../../cli/cli.spec.md) (§3.5 orient DX).
 
 ## 2. Entity Inventory (Closed-World)

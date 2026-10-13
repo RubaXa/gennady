@@ -17,7 +17,10 @@ import { queryEntity } from './core/query-entity.ts';
 import { buildGraph, buildRecursiveTree } from './core/query-graph.ts';
 import { loadSpecOverview, searchSpec } from './core/query-spec.ts';
 import { generateHints } from './core/hints.ts';
-import { resolveOrientFileRelations } from './core/resolve-file-relations.ts';
+import {
+  prepareOrientFileRelationsContext,
+  resolveOrientFileRelations,
+} from './core/resolve-file-relations.ts';
 import { renderTree } from './render/render-tree.ts';
 import { renderDetail } from './render/render-detail.ts';
 import { renderFileList } from './render/render-file-list.ts';
@@ -151,10 +154,22 @@ function handleS1(files: ScannedFile[], args: OrientArgs, projectRoot: string): 
 // #region START_HANDLE_S2 — invariant: task query with optional detail
 function handleS2(files: ScannedFile[], args: OrientArgs, projectRoot: string): void {
   logger.debug('[OrientCommand#run] [routing → S2] task');
-  const results = queryTask(files, args.task);
+  const context = prepareOrientFileRelationsContext(projectRoot);
+  const relations = new Map(
+    files.map((file) => [
+      file.absPath,
+      resolveOrientFileRelations(projectRoot, file.absPath, file.header, {}, context),
+    ])
+  );
+  const results = queryTask(files, args.task, relations);
   for (const r of results) {
+    if (r.migrationFiles?.length) {
+      console.log(`${r.taskId} — legacy @tasks migration evidence (not ownership):`);
+      for (const file of r.migrationFiles) console.log(`  ${relative(projectRoot, file.absPath)}`);
+      console.log('  next: npx gennady sdd-migrate bootstrap .; follow the V1→V2 migration guide');
+    }
     if (r.files.length === 0) {
-      console.log(`No files found for ${r.taskId}`);
+      console.log(`No canonical V2 files found for ${r.taskId}`);
       continue;
     }
     console.log(`${r.taskId} — ${r.files.length} file${r.files.length === 1 ? '' : 's'}:`);

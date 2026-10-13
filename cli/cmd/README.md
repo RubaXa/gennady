@@ -212,23 +212,23 @@ npx gennady yagni /path/to/repo
 | `run`               | Запуск задания через AI-движок (opencode)                                 |
 | `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                                 |
 | `remote-console`    | Зеркалирование браузерной консоли в stdout                                |
-| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants                   |
+| `lint`              | Валидация .ts; references из canonical owner/active task relations        |
 | `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности                      |
 | `sync`              | V2-синхронизация `ai/directives/`; V1 отказывает до записи                |
 | `sync-skills`       | V2-навыки в `.claude/skills/`; V1 отказывает до записи                    |
 | `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов                              |
-| `orient`            | File-header/DBC навигация и V2 `@spec` ownership relations                |
-| `sdd-orient`        | Окрестность спеки или scope в SDD-графе                                   |
+| `orient`            | V2 resolver relations; legacy headers — read-only migration evidence      |
+| `sdd-orient`        | SDD-граф; legacy headings — read-only migration context                   |
 | `sdd-state`         | Детерминированный снимок SDD-состояния проекта                            |
-| `sdd-check`         | Структурная проверка SDD; authoring авто-фиксит мелочи                    |
+| `sdd-check`         | V2 checks; legacy diagnostics grandfathered, no append-only header gate   |
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                            |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
 | `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine               |
 | `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
 | `rules`             | Embedded rules: inventory/detail/explicit-scope resolve                   |
-| `sdd-log`           | Execution Log, закрытие фаз/групп и verdict отклонения                    |
-| `sdd-sync`          | Синхронизация статуса тикета с tasks-трекерами                            |
-| `sdd-task`          | Карта и фаза с одной mapped unified Verify invocation                     |
+| `sdd-log`           | V2 lifecycle writes; legacy/historical input stays read-only              |
+| `sdd-sync`          | V2 tracker writes; legacy scope requires migration                        |
+| `sdd-task`          | V2 execution map/phase; legacy scopes are migration-blocked               |
 | `sdd-migrate`       | SDD v1 → v2: bootstrap, anchors, IDs, move и headers                      |
 | `agents-rules`      | Инструкция по orient для AI-агентов                                       |
 | `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)                        |

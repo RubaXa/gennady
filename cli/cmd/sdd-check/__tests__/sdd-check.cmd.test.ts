@@ -385,7 +385,7 @@ describe('SddCheckCommand', () => {
     assert.match(result.text, /1 file\(s\) checked/);
   });
 
-  it('--changed checks deleted tracked sources against HEAD instead of silently omitting them', async () => {
+  it('--changed accounts deleted tracked legacy sources without enforcing retired task-header ownership', async () => {
     const repo = join(dir, 'changed-deleted-task-id');
     mkdirSync(repo, { recursive: true });
     const source = join(repo, 'retired.ts');
@@ -398,8 +398,8 @@ describe('SddCheckCommand', () => {
     rmSync(source);
 
     const result = await mod.run(argv('--changed', repo));
-    assert.strictEqual(result.exitCode, 1, result.text);
-    assert.match(result.text, /SDD_TASKS_APPEND_ONLY_REGRESSION/);
+    assert.strictEqual(result.exitCode, 0, result.text);
+    assert.doesNotMatch(result.text, /SDD_TASKS_APPEND_ONLY_REGRESSION/);
     assert.doesNotMatch(result.text, /0 file\(s\) checked/);
   });
 

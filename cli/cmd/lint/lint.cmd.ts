@@ -51,11 +51,11 @@ import {
   ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC,
 } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
+import { extractHeader } from '../orient/core/extract-header.ts';
 import {
-  loadTaskReferences,
-  extractTaskIdsFromHeader,
-  resolveReferencesForTasks,
-} from './utils/resolve-references.fn.ts';
+  prepareOrientFileRelationsContext,
+  resolveOrientFileRelations,
+} from '../orient/core/resolve-file-relations.ts';
 import { globToRegex } from './checks/utils/glob-match.ts';
 import { gennadyLintSourcePolicy } from '../../../shared/common/gennady-lint-source-policy.ts';
 import { isGennadyLintTarget } from './lint-source-policy.ts';
@@ -345,10 +345,11 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   let totalAutoFixed = 0;
   const implementedUnion = new Set<string>();
 
-  // #region START_RESOLVE_REFERENCES — invariant: load taskRefMap once, collect task IDs from headers
+  // #region START_RESOLVE_REFERENCES — invariant: resolve current semantic owner and active ticket relations, never legacy header ownership
   const projectRoot = resolve('.');
-  const taskRefMap = loadTaskReferences(projectRoot);
-  const foundTaskIds = new Set<string>();
+  const ownershipContext = prepareOrientFileRelationsContext(projectRoot);
+  const foundTaskPaths = new Set<string>();
+  const foundSpecPaths = new Set<string>();
   // #endregion END_RESOLVE_REFERENCES
 
   // #region START_LINT_LOOP — invariant: autofix is followed by a complete read-only pass over
@@ -406,9 +407,16 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     }
 
     if (allErrors.length > errorCountBefore) {
-      const taskIds = extractTaskIdsFromHeader(content);
-      for (const tid of taskIds) {
-        foundTaskIds.add(tid);
+      const relations = resolveOrientFileRelations(
+        projectRoot,
+        resolve(filePath),
+        extractHeader(content),
+        {},
+        ownershipContext
+      );
+      if (relations.flow === 'v2' && relations.semanticOwner.spec.status === 'resolved') {
+        foundSpecPaths.add(relations.semanticOwner.spec.path);
+        for (const relation of relations.active) foundTaskPaths.add(relation.ticketFile);
       }
     }
   }
@@ -465,8 +473,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   }
   // #endregion END_INVENTORY_REVERSE
 
-  // #region START_RESOLVE_REFS_OUTPUT — invariant: resolve references from collected task IDs
-  const { taskPaths, specPaths } = resolveReferencesForTasks([...foundTaskIds], taskRefMap);
+  // #region START_RESOLVE_REFS_OUTPUT — invariant: project only canonical owner and current active relations
+  const taskPaths = [...foundTaskPaths].sort();
+  const specPaths = [...foundSpecPaths].sort();
   const guidance = buildGuidance(allErrors);
   const report = new LintReport(allErrors, totalAutoFixed, taskPaths, specPaths, guidance);
   // #endregion END_RESOLVE_REFS_OUTPUT

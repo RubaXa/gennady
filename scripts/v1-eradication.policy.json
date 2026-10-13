@@ -81,6 +81,14 @@
   ],
   "markerConstraints": [
     {
+      "markerId": "old-runtime-label",
+      "forbiddenClassifications": [
+        "canonical-v2",
+        "unrelated-product-version",
+        "required-v1-to-v2-migration-boundary"
+      ]
+    },
+    {
       "markerId": "old-directive-path",
       "forbiddenClassifications": ["canonical-v2", "unrelated-product-version"],
       "allowContexts": [
@@ -160,24 +168,34 @@
       "reason": "frozen migration, grandfathering and marker-only fixtures"
     },
     {
-      "prefix": "shared/sdd/",
+      "pattern": "^shared/sdd/(?:flow|anchor-inject|id-replace|migration-(?:tasks-header|bootstrap(?:\\.types)?|file-headers|move|plan))\\.ts$",
       "classification": "required-v1-to-v2-migration-boundary",
-      "reason": "consumer migration and grandfathering boundary retained by the v2 runtime"
+      "reason": "exact V1-to-V2 migrator, legacy input parser or layout detector"
     },
     {
-      "prefix": "shared/common/sync/",
+      "prefix": "shared/sdd/",
+      "classification": "canonical-v2",
+      "reason": "current V2 runtime; historical read-only formats are not alternate authoring/execution authority"
+    },
+    {
+      "path": "shared/common/sync/v1-consumer-guard.ts",
       "classification": "required-v1-to-v2-migration-boundary",
       "reason": "sync refuses old consumer layouts before writing"
     },
     {
-      "prefix": "cli/cmd/sdd-state/",
-      "classification": "required-v1-to-v2-migration-boundary",
-      "reason": "read-only flow-version detector for consumer migration"
+      "prefix": "shared/common/sync/__tests__/",
+      "classification": "historical-test-evidence",
+      "reason": "sync ownership and deployed-surface regression evidence"
     },
     {
-      "pattern": "^cli/cmd/sdd-(?:check|migrate|task|sync|verify)/",
+      "pattern": "^cli/cmd/sdd-migrate/(?:help|index|sdd-migrate\\.cmd|sdd-migrate\\.types)\\.ts$",
       "classification": "required-v1-to-v2-migration-boundary",
-      "reason": "active v2 command retains explicit migration/grandfathering semantics"
+      "reason": "exact deterministic V1-to-V2 migration command entrypoints"
+    },
+    {
+      "pattern": "^cli/cmd/sdd-(?:check|state|task|sync|verify)/(?!__tests__/)",
+      "classification": "canonical-v2",
+      "reason": "ordinary V2 command with read-only legacy guidance/grandfathering, never V1 authoring/execution"
     },
     {
       "pattern": "^cli/(?:AGENTS\\.md|cmd/README\\.md|cmd/help/)",
@@ -285,11 +303,11 @@
     "scripts/v1-eradication.policy.json",
     "scripts/__tests__/v1-eradication.test.ts"
   ],
-  "expectedInventoryDigest": "102211216af72998fbce4845140d9ce31bbd090e7c243878955d69f804614e13",
+  "expectedInventoryDigest": "610cf3b7c281d2a5548c6cba104c423dcc5a369a859b170448be27d0ed0f31f4",
   "expectedCounts": {
-    "canonical-v2": 202,
-    "required-v1-to-v2-migration-boundary": 53,
-    "historical-test-evidence": 328,
-    "unrelated-product-version": 64
+    "canonical-v2": 234,
+    "required-v1-to-v2-migration-boundary": 15,
+    "historical-test-evidence": 344,
+    "unrelated-product-version": 69
   }
 }

@@ -4,8 +4,8 @@
       <Snippet language="typescript">
         ```typescript
         // @file: ERP catalog item shape shared across the synchronization pipeline.
+        // @spec: ERP-CATALOG
         // @consumers: ErpSynchronizationWorker
-        // @tasks: TASK-4231
 
         /** @purpose Normalized response from an external ERP catalog. */
         export type ErpCatalogItem = {
