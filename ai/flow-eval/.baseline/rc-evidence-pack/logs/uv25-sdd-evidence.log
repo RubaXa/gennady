@@ -1,37 +1,37 @@
 $ node --import tsx --test shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts
 
 --- stdout ---
-(node:59128) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:53605) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ▶ runSddVerifyFacade RuleSnapshot integration
-  ✔ passes the exact pre-dispatch digest and prompt body through the universal report (405.052ms)
-  ✔ keeps a deletion-only phase as exact tombstone scope instead of widening to all-scope (358.965167ms)
-  ✔ rejects a deletion tombstone without a tracked baseline before the Verify engine runs (149.449291ms)
-  ✔ fails before spawning when a declared required source is missing (129.243458ms)
-  ✔ does not persist when exact task/log identity is invalid (81.802125ms)
-  ✔ persists exact-SHA provider trust from the shared ci selector without a second runner (293.737791ms)
-  ✔ retains failed attempts after retry and blocks a live concurrent owner (979.871917ms)
-  ✔ recovers only an ownerless RUNNING attempt as INTERRUPTED before appending the next run (589.097292ms)
-✔ runSddVerifyFacade RuleSnapshot integration (2988.351041ms)
-(node:59129) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+  ✔ passes the exact pre-dispatch digest and prompt body through the universal report (600.858ms)
+  ✔ keeps a deletion-only phase as exact tombstone scope instead of widening to all-scope (581.884292ms)
+  ✔ rejects a deletion tombstone without a tracked baseline before the Verify engine runs (287.648084ms)
+  ✔ fails before spawning when a declared required source is missing (241.111167ms)
+  ✔ does not persist when exact task/log identity is invalid (136.2355ms)
+  ✔ persists exact-SHA provider trust from the shared ci selector without a second runner (513.870709ms)
+  ✔ retains failed attempts after retry and blocks a live concurrent owner (1296.626834ms)
+  ✔ recovers only an ownerless RUNNING attempt as INTERRUPTED before appending the next run (1008.640042ms)
+✔ runSddVerifyFacade RuleSnapshot integration (4668.51225ms)
+(node:53607) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
-✔ normalizes repeated test-step attempts to the latest plan-ordered stats record (145.783542ms)
-✔ keeps historical attempts without commandIdentity readable while new attempts persist it (157.757959ms)
-✔ preserves remote/command-less results and never invents identity from authored plan argv (150.707584ms)
-✔ proves only the latest PASS attempt while its final repository identity is current (156.89325ms)
-✔ does not self-stale after the CLI-owned phase completion transition (238.145583ms)
-✔ keeps a verified deletion current across its exact commit and stales on reappearance (200.72375ms)
-✔ turns a promised required test step without normalized stats into VIOLATION (128.57975ms)
-✔ persists an unexpected runner exception as VIOLATION instead of a readiness BLOCKED claim (99.924542ms)
-✔ recomputes normalized terminal freshness after repairs without self-staling on its journal (280.588792ms)
-✔ refuses to overwrite a ticket replaced immediately before atomic rename (92.475042ms)
-✔ never removes a substituted ticket temporary path during failed cleanup (94.914709ms)
-✔ fails freshness normalization on malformed or mismatched attempt markers (171.61675ms)
-✔ rechecks a remote stale owner immediately before recovery deletion (52.206791ms)
-✔ does not let a heartbeat atomic rename overwrite a replacement owner token (157.485ms)
-✔ does not remove a substituted owner temporary path during heartbeat cleanup (161.904208ms)
-✔ rejects unsafe persisted scalars without leaking authored values (293.845584ms)
-✔ persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA provider proof (459.717375ms)
+✔ normalizes repeated test-step attempts to the latest plan-ordered stats record (251.267084ms)
+✔ keeps historical attempts without commandIdentity readable while new attempts persist it (296.154959ms)
+✔ preserves remote/command-less results and never invents identity from authored plan argv (204.767167ms)
+✔ proves only the latest PASS attempt while its final repository identity is current (249.484708ms)
+✔ does not self-stale after the CLI-owned phase completion transition (411.53775ms)
+✔ keeps a verified deletion current across its exact commit and stales on reappearance (357.893625ms)
+✔ turns a promised required test step without normalized stats into VIOLATION (257.928292ms)
+✔ persists an unexpected runner exception as VIOLATION instead of a readiness BLOCKED claim (180.970541ms)
+✔ recomputes normalized terminal freshness after repairs without self-staling on its journal (476.448792ms)
+✔ refuses to overwrite a ticket replaced immediately before atomic rename (136.238375ms)
+✔ never removes a substituted ticket temporary path during failed cleanup (145.010125ms)
+✔ fails freshness normalization on malformed or mismatched attempt markers (239.506708ms)
+✔ rechecks a remote stale owner immediately before recovery deletion (72.550917ms)
+✔ does not let a heartbeat atomic rename overwrite a replacement owner token (209.176625ms)
+✔ does not remove a substituted owner temporary path during heartbeat cleanup (212.296125ms)
+✔ rejects unsafe persisted scalars without leaking authored values (419.791083ms)
+✔ persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA provider proof (838.879ms)
 ℹ tests 25
 ℹ suites 1
 ℹ pass 25
@@ -39,7 +39,7 @@ $ node --import tsx --test shared/sdd/verify/__tests__/sdd-attempt-journal.test.
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 3355.863666
+ℹ duration_ms 5462.407625
 
 
 --- stderr ---
