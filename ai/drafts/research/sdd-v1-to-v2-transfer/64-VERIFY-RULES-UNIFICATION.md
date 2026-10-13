@@ -995,6 +995,9 @@ Read-only detection/refusal/grandfathering/migration inspection не дают V1
 2. **UV-31 runtime boundary:** disposition каждого reachable legacy reader, убрать normal-runtime
    V1 append-only authority, сохранить migration preservation. Behavioral fixtures: V1 guidance
    без diagnostic flood, V2 @spec ownership, legacy ticket/heading не обходят V2 execution/receipts.
+   Intermediate anchored V1 ticket после `sdd-migrate anchors` не становится executable:
+   scope-aware guard перед dispatch/attempt/lifecycle/tracker writes; mixed already-V2 scope остаётся
+   доступным. Read-only execution map показывает legacy как migration-blocked, не pickable.
 3. **UV-32 isolation:** ticket corpus/Task-ID scanners и package/deployed surface исключают
    historical flow-sim. Public CLI не показывает scenario IDs; реальные project tickets остаются.
    Check-only pack/install filelist и fresh artifact smoke не являются registry action.
