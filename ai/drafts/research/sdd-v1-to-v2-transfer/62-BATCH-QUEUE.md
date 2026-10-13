@@ -448,8 +448,9 @@ Issue akkrat #21 и раздел D3 аудита: цикл ревью↔испр
 ## 6. Новая очередь после самомиграции — U0…U8
 
 > Нормативный источник — `64-VERIFY-RULES-UNIFICATION.md`. Эта очередь не продолжает старую
-> нумерацию пачек 1…24: переход v1→v2 уже завершён, а U-series перерабатывает Verify/Rules перед
-> публикацией. Внутри одной волны PR проходят dependency review без операторской остановки.
+> нумерацию пачек 1…24: они historical; переход v1→v2 уже завершён. Current U-series готовит
+> main cutover, **не publication**. Amendment 2026-10-13 (§64.12.3.2) supersedes E18 host/bar ordering,
+> а не сохранение данных/истории или consumer phase gates. Внутри волны PR проходят dependency review.
 
 | Волна | Пачки | Предпосылка | Точка остановки |
 |---|---|---|---|
@@ -461,27 +462,39 @@ Issue akkrat #21 и раздел D3 аудита: цикл ревью↔испр
 | U5 | UV-15..17 | U3 | только перед remote mutation/rollback |
 | U6 | UV-20..21: read-only `gennady rules` facade + entry-by-entry embedded metadata migration/equivalence + delete `knowledge.xml` at zero consumers | UV-20S | только перед недетерминированным model-selector |
 | U7 | UV-23: external-plugin trust/version/isolation | U2, U3 | перед исполнением внешнего plugin-кода |
-| U8 | UV-27A/B → R1 safety/config → R2 lexical rules / R3 declared exports → R4 frozen archive + all-path disposition → R5 reviewed reconciliation → final UV-25 / real UV-26 → exact #25 candidate | U4, U5, U6, U7 | **real E-18 compatible host; затем exact operator ACK reviewed candidate. Npm publish отсутствует; #101 — historical DONE, final refresh pending** |
+| U8 | R1…R5 merged → plan amendment → UV-28 deferred/unverified guard → UV-29 Swift diagnostics → NEW UV-25 after last reviewed product merges → independent #25 candidate | U4, U5, U6, U7; reviewed #108…#113 | **exact scope-bound candidate ACK, not real E18 host. Swift UNVERIFIED, UV-26 post-main-cutover DEFERRED. Npm publish forbidden; #113 current until new product edits, then historical** |
 
 Merged #102/U8-RA сохраняется как decision history, но его tarball/publication semantics superseded.
 Current deliverable — единственный существующий draft PR #25 (`codex/sdd-v2-rc52-followup` →
 `main`), replacement final tree через ordinary PR, не destructive overwrite. Existing approved
-U8-MC policy и implemented UV-27 не являются exact candidate ACK. R1 QA precedes integration;
-R2/R3 могут идти independent wave; R4/R5 после reviewed fixes. R4 сохраняет MAIN journals/specs
+U8-MC policy и implemented UV-27 не являются exact candidate ACK. R1…R5 reviewed/merged #108…#112,
+UV-25 #113 merged release `c6223402` со source `2e4a9a9c`; история их dependencies сохранена в 64.
+R4 сохраняет MAIN journals/specs
 frozen byte-for-byte без synthetic active DONE; R4/R5 фиксируют disposition **всех 520 paths** и
 source/blob hashes, не только seven gaps. Initial 157 merge-tree conflicts — diagnostic count,
 не remaining conflicts. Exact audit refs и matrix — [64 §12.3.1](64-VERIFY-RULES-UNIFICATION.md#1231-main-carry-и-reconciliation--operational-refinement-2026-10-09).
-Final UV-25 refresh обязателен AFTER LAST product/config/rules/packaging change AND reconciliation;
-#101 DONE сохраняется исторически. Real E-18 OPEN на macOS 14.8.5 (require>=15.0), не блокирует
-MAIN carry/reconciliation; любой subsequent relevant drift требует evidence refresh.
+Следующая реализация — ровно три reviewed PR: этот plan в plan stable, UV-28 guard и UV-29 diagnostics
+в release stable. Затем обязательный **новый UV-25 AFTER LAST product/config/rules/gate/currentProof
+change AND reviewer merges**. #101 historical; #113 current только до новых edits. Три PR не делают
+old source eligible. Swift UNVERIFIED; real E18/UV-26 deferred post-main-cutover, strict tools/floors
+сохраняются, отсутствующий proof не PASS. Selected consumer Swift gates остаются blocking.
 Reviewed candidate связывается с exact release HEAD, current main
-base SHA, Git tree, diff/deletion manifest, evidence digests и branch/upstream state; current main
+base SHA, Git tree, diff/deletion manifest, evidence digests, branch/upstream state и явным
+UNVERIFIED/DEFERRED scope/policy digest; current main
 base обязан быть ancestor candidate. Conflict resolution не может молча импортировать v1 tree и
 требует полного re-review. После exact operator ACK выполняются ordinary merge #25 и post-merge main
 verification. Direct npm publish/`prepublishOnly`, `publish-next`, `publish-draft`, `release-it` и
 их supported repo-owned invocation остаются fail-closed; credentials/OTP/protected authority
 недоступны. Repo hook не обещает перехват произвольного external `npm publish --ignore-scripts` с
 user token. Package publication и version 2.x требуют отдельного будущего post-cutover plan/ACK.
+
+UV-28 сохраняет branch/upstream/main/history/product drift/R4/UV25/exact ACK/npm denial; missing
+optional E18 DEFERRED без checker invocation/PASS, supplied invalid/unsafe file INVALID/fail-closed.
+UV-29 hardens actual live universal Swift path, mode-aware tools/versions/identity/hints и common
+sanitizer; обычный code/test failure FAIL, proven environment ENV_FAIL, missing prerequisite BLOCKED.
+CurrentProof refresh ограничен реально changed approved release guard/verify/infra paths из 64 §12.3.2;
+independent frozen refs/117commits/520rows/542objects check обязателен. Unexpected marker inventory
+delta сначала предъявляется с exact paths/counts/digest, не silent recalibration/constraint weakening.
 
 **U0 ACK:** принят оператором 2026-09-24 после закрытия трёх review-флагов коммитом `69e63269`;
 разрешён старт U1 с UV-01.

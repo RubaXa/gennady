@@ -1167,7 +1167,9 @@ Swift-правил).
 
 > Старые счётчики §5 описывают исходную миграционную доску и не переписываются задним числом.
 > Канонические формулировки, dependencies и acceptance новой очереди —
-> `64-VERIFY-RULES-UNIFICATION.md` §13. До ACK U0 все строки ниже `ПЛАН`, код не начинается.
+> `64-VERIFY-RULES-UNIFICATION.md` §13. U0 ACK 2026-09-24 — historical approved prerequisite;
+> старые rollout-статусы U1…U7 не ресинхронизируются этой правкой. Current U8 amendment — 2026-10-13,
+> `64 §12.3.2`; новый U0/ACK не создаётся.
 
 | Волна | ID | Смысл | Статус |
 |---|---|---|---|
@@ -1178,6 +1180,15 @@ Swift-правил).
 | U5 | UV-15..17 | manifest dirty VCS source, exact-SHA watcher, `phase=ci` | ПЛАН |
 | U6 | UV-20..21 | read-only `gennady rules` facade; entry-by-entry embedded metadata migration/equivalence; удалить `knowledge.xml` только при zero consumers | ПЛАН; parser/facts/resolver/snapshot moved before UV-12E/UV-13 |
 | U7 | UV-23 | external-plugin security/trust/version/isolation ADR | ПЛАН |
-| U8 | UV-24..27 + U8-MC-R1…R5 | cleanup → UV-27 guard/npm lock → reviewed MAIN carry → history reconciliation → final UV-25/real E-18 → exact #25 candidate → ACK → merge/main verification | **UV-24 DONE #99; UV-25 #101 HISTORICAL DONE, final refresh PENDING; UV-27 implemented; R1…R5 PENDING; real E-18 host + exact candidate ACK are stops; npm publication OUT OF SCOPE** |
+| U8 | UV-24/25/27/28/29 + reviewed U8-MC-R1…R5; UV-26 post-cutover | merged carry/reconciliation → reviewed UNVERIFIED policy + Swift diagnostics → NEW final UV-25 AFTER last product merges → independent #25 candidate → exact scope-bound ACK → ordinary main merge/verification | **R1…R5 MERGED #108…#112; UV-25 #113 CURRENT source2e4a9a9c/releasec6223402 until edits; UV-28/UV-29 + new refresh pending. Swift UNVERIFIED; E18 DEFERRED not bar; npm publication FORBIDDEN** |
 
-Строгая U8-очередь: reviewed UV-27A/B → R1 safety/config (QA before next integration) → independent R2 lexical rules/R3 declared exports → R4 frozen data + exhaustive 520-path disposition → R5 ordinary history reconciliation via feature PR into release → **final UV-25 AFTER last product change/reconciliation** + real E-18 → exact reviewed candidate in existing #25 → reviewer → exact operator ACK → ordinary main merge → verification. #101 остаётся historical DONE, не current-candidate proof. Frozen refs, seven gaps/data and retain/adapt/archive/exclude matrix — [64 §12.3.1](64-VERIFY-RULES-UNIFICATION.md#1231-main-carry-и-reconciliation--operational-refinement-2026-10-09). 117 commits/520 paths/157 initial diagnostic conflicts не являются post-fix remaining counts. Operational refinement approved U8-MC не создаёт новый ACK/U0; main merge и publication не разрешены. Canonical acceptance — `64 §12.3`, `60 U-A10`.
+Current U8-очередь 2026-10-13: plan PR → reviewed UV-28 guard PR → reviewed UV-29 diagnostics PR в release → **новый UV-25 AFTER LAST product/gate/currentProof change AND reviewer merges** → independent evidence/candidate review → exact ACK, binding Swift UNVERIFIED/DEFERRED scope → ordinary existing #25 merge → main verification. Три PR не дают instant eligibility; #113 после новых edits — historical capture, не amended-source proof. E18/UV-26 deferred post-main-cutover, strict tools доступны, не dependency. Consumer selected Swift gates остаются blocking, phase PASS не global verification. Npm publication запрещена; никакого нового U0/ACK. Исторический all-path audit [64 §12.3.1](64-VERIFY-RULES-UNIFICATION.md#1231-main-carry-и-reconciliation--operational-refinement-2026-10-09) сохраняет 117 commits/520 rows/542 raw blobs; 157 initial diagnostic conflicts не remaining count. Canonical current acceptance — `64 §12.3.2`, `60 §2.2/U-A10`.
+
+| Current task | Owner / scope | Acceptance / stop |
+|---|---|---|
+| UV-28 | source-owned release guard policy, verify/infra specs | missing optional E18 DEFERRED, unsafe/supplied invalid proof INVALID/fail-closed; report/digest/exact ACK binds UNVERIFIED scope; preserve all other guards/npm denial; narrow currentProof refresh of approved changed paths only |
+| UV-29 | live Swift target/plan + common safeVerifyText | selected-step/mode-aware Xcode>=16.2/Tuist>=4.202.0 only actual use; selected Xcode identity/testPlan; SwiftPM/remote-only no unrelated tools; FAIL vs proven ENV_FAIL vs BLOCKED, sanitized dangerous output/probes; deterministic tests not native runtime proof |
+| UV-25 refresh | existing evidence task, not new architecture | after reviewed UV-28/UV-29 and last currentProof refresh; clean immutable source, all 37 commands/raw hashes/39-file allowlist; independent review before exact #25 ACK |
+
+UV-28/UV-29 ID absence checked across plan Markdown before allocation. Старые §1–§5 counters и
+historical Swift/E18 tasks ниже не переписываются; их runtime bar superseded текущим amendment.

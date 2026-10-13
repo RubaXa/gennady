@@ -1,16 +1,19 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
 > Статус: **ACK U0 ПРИНЯТ 2026-09-24; UV-24 DONE #99; UV-25 #101 — HISTORICAL DONE; MAIN CUTOVER BLOCKED**.
-> U8-MC policy approved, UV-27A/B implemented; после reviewed #106 нужны MAIN carry R1…R4,
-> reviewed history reconciliation R5 и final UV-25 refresh. Real UV-26/E-18 и exact candidate ACK pending; npm
+> **Current amendment 2026-10-13:** R1…R5 reviewed/merged (#108…#112), UV-25 refresh #113 merged;
+> release `c6223402dd8d80ca728f81e7b16f507e4c9e64ff`, UV-25 source `2e4a9a9c8be596594ab0711ef4e70ebb68d047ed`.
+> Swift — **UNVERIFIED prototype**; real UV-26/E-18 deferred post-main-cutover, не bar (§12.3.2).
+> UV-28 guard policy + UV-29 selected-step diagnostics pending; после их последних product merges нужен новый UV-25 refresh.
+> U8-MC/UV-27 сохраняют остальные invariants и exact candidate ACK; npm
 > publication вынесена в отдельный будущий plan/ACK и запрещена в текущем deliverable. Основание:
 > операторский разговор
 > 2026-09-24 после завершения самомиграции SDD v2. Этот документ **замещает** старые открытые
 > развилки O-1/O-2 и design-tail plugin↔preset convergence, но не переписывает исторические
 > отчёты 30/33. Публикация запрещена во всём текущем deliverable; future publication требует отдельного post-cutover plan/ACK.
 >
-> Current audit baseline: `codex/sdd-v2-rc52-followup@df39f8eff9d08caca5e3d90d313479cc50ed4fc0` (#106 merged).
-> Plan refinement base: `sdd-v2-audit-migration-3b23b1@d5cb9174069afd80ad2b9d80a89f0c6a80dbbfcb`.
+> Historical audit baseline: `codex/sdd-v2-rc52-followup@df39f8eff9d08caca5e3d90d313479cc50ed4fc0` (#106 merged).
+> Current plan amendment base: `sdd-v2-audit-migration-3b23b1@acf57cea453e5d924f7c1da1a7ce0a384389401e`.
 >
 > **Amendment 2026-09-25:** workflow SDD phase kind и Verify phase selector разведены как две
 > открытые vocabulary. Built-in preset даёт zero-YAML default mapping между ними, project YAML
@@ -789,12 +792,19 @@ pre-publish commit/tag precondition и честный post-registry recovery ver
 
 ### 12.3 U8-MC — approved policy, pending exact candidate / Main replacement-tree cutover
 
-Текущий deliverable — **ровно один** итоговый PR в `main`: существующий draft PR #25 с base `main`
-и head `codex/sdd-v2-rc52-followup`. На момент этого amendment его observed identity:
+Текущий deliverable — **ровно один** итоговый PR в `main`: существующий PR #25 с base `main`
+и head `codex/sdd-v2-rc52-followup`. Historical snapshot 2026-10-09:
 `base main=9663c65b6376c65f4b1df0daf27a06df5b25f7a3`,
 `head=df39f8eff9d08caca5e3d90d313479cc50ed4fc0`, `mergeable=CONFLICTING`,
 `mergeStateStatus=DIRTY`. Эти значения — audit facts, не approved candidate: после любого движения
 веток или разрешения конфликтов exact identity обязана быть переснята.
+
+Current observed refs 2026-10-13: main `9663c65b6376c65f4b1df0daf27a06df5b25f7a3`, release
+`c6223402dd8d80ca728f81e7b16f507e4c9e64ff`. R1 #108, R2 #109, R3 #110, R4 #111,
+R5 #112 и UV-25 #113 merged; main history — ancestor release. UV-25 source
+`2e4a9a9c8be596594ab0711ef4e70ebb68d047ed` даёт 37/37 commands, 12 scopes × 2 no-op;
+это current evidence до новых product edits, не proof будущих UV-28/UV-29 bytes. На current guard
+отсутствующий E18 пока даёт два blocker-кода; approved изменение этого bar ещё требует UV-28 review.
 
 Внутренние product feature PR по-прежнему идут только в release-ветку; plan feature PR — только в
 `sdd-v2-audit-migration-3b23b1`. Никакой второй cutover PR в `main` не создаётся. `main` не
@@ -810,14 +820,15 @@ UV-27 — umbrella с двумя обязательными implementation works
    Примеры из интервью не являются исчерпывающим списком.
 2. **UV-27B — cutover guard + npm publication lock.** Одна shared fail-closed cutover SSOT связывает
    approved release branch/upstream/HEAD, current `main` base SHA, resulting Git tree SHA,
-   deterministic diff/deletion manifest digest, UV-25/UV-26 evidence digests, clean branch/upstream
-   state и exact non-reusable operator ACK. Supported repo-owned direct `npm publish` path через
+   deterministic diff/deletion manifest digest, свежий UV-25 и optional strict UV-26 diagnostics,
+   явный approved Swift UNVERIFIED/DEFERRED scope (§12.3.2), clean branch/upstream state и exact
+   non-reusable operator ACK. Supported repo-owned direct `npm publish` path через
    `prepublishOnly`, `publish-next`, `publish-draft` и `release-it` fail closed. Repo hook технически
    не может перехватить произвольный external `npm publish --ignore-scripts` с пользовательским
    token; current guarantee — registry credentials/OTP/protected publishing authority отсутствуют.
 
-Main base SHA обязан стать предком reviewed candidate **до merge**. Так как PR #25 сейчас
-CONFLICTING/DIRTY, history reconciliation выполняется обычным history-preserving Git operation в
+Main base SHA обязан стать предком reviewed candidate **до merge**. Историческая reconciliation,
+завершённая reviewed R5 #112, выполнялась обычным history-preserving Git operation в
 отдельной feature-ветке от exact release, затем reviewed PR в release (не прямой mutation stable).
 Conflict resolution обязано сохранить exact reviewed v2 final tree и пройти повторную
 проверку inventory/tree/diff/evidence; запрещено молча импортировать v1 content из `main` или
@@ -827,13 +838,13 @@ Conflict resolution обязано сохранить exact reviewed v2 final tr
 Strict current order:
 
 1. существующая approved U8-MC policy и reviewed UV-27A/B, без npm side effect; этот refinement не выдаёт новый ACK;
-2. reviewed MAIN carry R1…R4 в release, затем отдельный reviewed history-preserving reconciliation R5 (§12.3.1);
-3. **final UV-25 refresh AFTER last product/config/rules/packaging change AND reconciliation**; #101 остаётся historical DONE, не current-candidate proof;
-4. real UV-26 exact cloud-ios E-18 как безусловный A3/E-18 bar; host macOS 14.8.5 не проходит require>=15.0, OPEN до compatible host; любой последующий relevant drift инвалидирует соответствующее evidence;
+2. MAIN carry R1…R4 и history-preserving reconciliation R5 reviewed/merged (#108…#112; §12.3.1);
+3. approved plan amendment → reviewed UV-28 guard policy → reviewed UV-29 Swift diagnostics (отдельные product PR в release; §12.3.2);
+4. **новый final UV-25 refresh AFTER LAST UV-28/UV-29 product/config/rules/gate/currentProof change AND reviewer merges**; #101 и #113 сохраняются исторически, #113 перестаёт быть current proof после product drift. Real E18/UV-26 deferred post-main-cutover, не dependency этой очереди;
 5. materialize exact cutover candidate and update existing PR #25 diff/body;
 6. independent reviewer review exact candidate;
 7. exact operator ACK, bound to release HEAD + current main base SHA + tree SHA + diff/deletion
-   manifest digest + evidence digests + branch/upstream state;
+   manifest digest + evidence digests + branch/upstream state + явный Swift UNVERIFIED/DEFERRED scope/policy digest;
 8. ordinary merge PR #25 to `main`;
 9. post-merge verification on `main` against the approved tree/evidence identities.
 
@@ -841,6 +852,10 @@ Npm publication не является шагом этой очереди. Нет
 или registry action. Future npm publication начинается только новым post-cutover design/ACK.
 
 #### 12.3.1 MAIN carry и reconciliation — operational refinement 2026-10-09
+
+> Historical carry/audit snapshot; R1…R5 теперь merged. Старый порядок real E18/candidate и
+> stop-point compatible host ниже **SUPERSEDED только в этой части** amendment §12.3.2.
+> Frozen data/provenance/disposition и history-preservation invariants не отменены.
 
 Это детализация существующего approved U8-MC, не новая архитектура, не U0/ACK и не разрешение
 main merge/publication. Stable branches остаются plan `sdd-v2-audit-migration-3b23b1` и implementation
@@ -890,11 +905,64 @@ routine preservation/fixes require no new operator choice. Any actual public nam
 or irreducible data-loss ambiguity must be reported before mutation (safe default: preserve archive).
 
 Negative acceptance должна fail closed до merge при wrong/stale main base, release HEAD, Git tree,
-diff/deletion manifest, V1 inventory, UV-25/UV-26 evidence, branch/upstream state или operator ACK;
+diff/deletion manifest, V1 inventory, UV-25 или supplied invalid UV-26 evidence, branch/upstream state или operator ACK;
 при любой V1 residue; при случайном удалении canonical v2; если любой supported repo-owned
 direct/npm-script/release-it path способен дойти до publication side effect; либо если процессу
 доступны registry credentials/OTP/protected authority. Test не утверждает, что repo может остановить
 произвольный внешний npm process с самостоятельно предоставленным user token и `--ignore-scripts`.
+
+#### 12.3.2 Approved Swift UNVERIFIED / E18 deferral — amendment 2026-10-13
+
+Оператор явно изменил только release/main-cutover validation scope: Swift остаётся **UNVERIFIED
+prototype**, real E18/UV-26 deferred **post-main-cutover**, не A3/release/cutover bar. Это не новый U0,
+не exact candidate ACK и не обещание native Xcode/Tuist runtime. Строгие E18 collector/checker
+сохраняются для будущей отдельной validation; их floors, source/command/remote/coverage identities
+не ослабляются. Старые A3/E18 bar-формулировки — superseded history, не текущая dependency.
+
+**UV-28 — только approved source-owned guard policy.** Missing optional E18 явно отображается как
+`DEFERRED`, support tier Swift — `UNVERIFIED`, никогда `PASS`. Supplied evidence проверяется строгим
+checker; invalid evidence остаётся truthful `INVALID` diagnostic и fail-closed, не silently ignored.
+Present unsafe file (symlink/nonregular/oversize/read-error) тоже `INVALID`, не «отсутствует»;
+при genuine absence optional checker не запускается и `checkerPassed=true` не выставляется.
+Candidate report visibly carries scope/reason/policy identity; candidate digest и exact non-reusable
+ACK обязаны bind этот unverified scope. Не допускаются project/YAML/env switches, скрытый bypass,
+blanket language skip или static `approved=true` как ACK. Все остальные branch/upstream/main/history,
+product drift, R4 integrity, UV-25 freshness, exact ACK и npm denial invariants сохраняются.
+
+**UV-29 — scoped Swift diagnostics hardening.** Проверяется live universal Verify →
+`plugins/swift/swift-target.logic.ts` / `swift-plan.logic.ts`, не только старый
+`shared/verify/presets/swift.ts` probe. Existing `safeVerifyText` из
+`shared/verify/reporting/report-safety.ts` — общий sanitizer, включая probe/readiness messages.
+Readiness/tool/version определяется только actual
+selected steps и execution mode: Xcode >=16.2 — только selected Xcode steps; Tuist >=4.202.0 — только
+actual Tuist use, не для SwiftPM или remote-only. Для selected local Xcode steps нужны **workspace
+OR project**, плюс scheme + destination; testPlan обязателен только для selected Xcode test-bearing
+steps. SwiftPM/remote-only не получают несвязанные local Xcode/Tuist prerequisites. Hints actionable,
+errors sanitized без секретов. Missing selected prerequisite → `BLOCKED`; доказанный environment
+error → `ENV_FAIL`; обычный code/compile/test failure и unknown nonzero → `FAIL`, а не automatic
+`ENV_FAIL`. Existing timeout/cancel/violation semantics не меняются. Deterministic failure-path unit
+tests обязательны, но не являются native Xcode proof.
+
+Global support tier **не отключает consumer phase gates**: selected Swift build/test/coverage
+остаются blocking при `FAIL`/`ENV_FAIL`/`BLOCKED`. Реальный phase `PASS` по выполненному DAG не
+повышает поддержку Swift в целом до verified. Waiver относится только к E18 release-validation bar.
+
+**Narrow R4 live-proof refresh, не переписывание source history.** На release c622 currentProof
+bind-ит ровно следующие затрагиваемые owners: `scripts/release-boundary.ts`,
+`specs/cli/verify/verify.spec.md`, `specs/infra-base/infra-base.spec.md`. UV-28 может обновить только
+hash identities этих реально changed approved paths; UV-29 — bound verify spec, если она изменена.
+Любой дополнительный touched bound path сначала предъявляется reviewer, не blanket re-freeze.
+Независимый контроль до/после обязан подтвердить неизменность остальных currentProof entries,
+immutable refs, 117 original commits, 520 rows/521 path identities, dispositions, 542 raw blob bytes,
+`parityClaim=false`, marker constraints, expected counts и D38 baseline. Если schema/marker change
+реально меняет inventory, сначала назвать exact observed path/class/count/digest delta и получить
+отдельную authority на её recalibration; запрещены silent refresh и classifier weakening.
+
+Три PR (plan, guard, diagnostics) сами по себе **не делают старый source eligible**. После last
+reviewer product merge/currentProof refresh нужен новый UV-25 на clean immutable source, отдельный
+independent evidence/candidate review и exact scope-bound ACK → ordinary #25 merge → main verification.
+Npm publish/version/tarball authorization отсутствуют; будущий E18 run остаётся отдельной post-cutover
+работой и не выполняется ни одним из этих PR.
 
 ## 13. Задачи новой очереди
 
@@ -929,23 +997,25 @@ direct/npm-script/release-it path способен дойти до publication s
 | UV-21 | U6 | entry-by-entry embedded metadata migration and delete `knowledge.xml` | UV-18A..20 | equivalence + local override proof; zero consumer grep before deletion |
 | UV-23 | U7 | data-only extension boundary ADR + consumer fixture | UV-01, UV-22 | path/package/URL/dynamic-import declarations fail closed до import/spawn; arbitrary declarative argv проходит общий planner/executor; report показывает qualified step + safe config provenance |
 | UV-24 | U8 | delete compatibility and stale tests | UV-14, UV-17, UV-21, UV-22 | **DONE #99:** zero legacy references, fresh directives |
-| UV-25 | U8 | Node/Go/Swift/remote/rules evidence pack | UV-24; final refresh after R5 | **HISTORICAL DONE #101; FINAL REFRESH PENDING** after LAST product change/reconciliation; exact E-18 OPEN |
+| UV-25 | U8 | Node/Go/Swift-local prototype/remote/rules evidence pack | UV-24, reviewed R5; next refresh after UV-28/UV-29 merges | **CURRENT #113** source `2e4a9a9c`, release `c6223402`; 37/37, 12×2. After new product edits historical; mandatory fresh capture after LAST change, never E18 runtime proof |
 | U8-RA | U8 | **SUPERSEDED by U8-MC:** historical #102 publication proposal (§12.2) | UV-25 | retained as decision history; no current ACK or executable publication semantics |
-| U8-MC | U8 | approved main replacement-tree policy; operational carry/reconciliation refinement (§12.3.1) | historical UV-25 #101; no new policy ACK | exact candidate ACK is a separate pending boundary after R1…R5 + fresh UV-25/UV-26; plan merge alone is not cutover ACK |
+| U8-MC | U8 | approved main replacement-tree policy + Swift UNVERIFIED amendment (§12.3.2) | reviewed R1…R5, UV-28/UV-29, final UV-25 | exact candidate review/ACK binds unverified scope; E18 deferred post-cutover; plan merge alone is not cutover ACK |
 | UV-27 | U8 | V1 eradication inventory + fail-closed cutover guard/npm lock | existing approved U8-MC policy, historical UV-25 | **IMPLEMENTED #104/#105**; exact candidate proof/ACK still pending; supported npm paths fail closed |
-| UV-26 | U8 | exact cloud-ios E-18 | UV-06, UV-17, UV-27A/B | real Xcode/Tuist execute→CI→coverage evidence; refresh UV-25 on relevant drift before candidate review |
-| U8-MC-R1 | U8 | safety/config: sync ownership, package root, lint import, safe Go, independent RC sections | reviewed #106 | PENDING reviewed release PR; causal RED→GREEN; no V1 runtime restoration |
-| U8-MC-R2/R3 | U8 | lexical baseline rules / current four public package exports | independent of R1 implementation; QA before integration | PENDING; no registry/old stack engine; D60 unchanged |
-| U8-MC-R4 | U8 | frozen raw data archive + exhaustive 520-path disposition/hashes | R1…R3 reviewed | PENDING; no synthetic active DONE/receipt |
-| U8-MC-R5 | U8 | ordinary history-preserving reconciliation via feature PR into release | R1…R4 reviewed | PENDING; audited V2 conflict choices + inventory, then final UV-25/E-18 candidate |
+| UV-26 | post-main-cutover | exact cloud-ios E-18; strict collector/checker remain available | separate compatible host + reviewed real run | **DEFERRED, not cutover dependency**; Swift remains UNVERIFIED, no fake PASS or native runtime claim |
+| U8-MC-R1 | U8 | safety/config: sync ownership, package root, lint import, safe Go, independent RC sections | reviewed #106 | **MERGED #108**; causal RED→GREEN; no V1 runtime restoration |
+| U8-MC-R2/R3 | U8 | lexical baseline rules / current four public package exports | reviewed R1 | **MERGED #109/#110**; no registry/old stack engine; D60 unchanged |
+| U8-MC-R4 | U8 | frozen raw data archive + exhaustive 520-path disposition/hashes | R1…R3 reviewed | **MERGED #111**; 520 rows/117 commits/542 raw blobs; no synthetic active DONE/receipt |
+| U8-MC-R5 | U8 | ordinary history-preserving reconciliation via feature PR into release | R1…R4 reviewed | **MERGED #112**; reviewed tree unchanged, original main history reachable |
+| UV-28 | U8 | approved source-owned Swift UNVERIFIED/E18 DEFERRED cutover policy | reviewed amendment 2026-10-13, UV-27 | missing optional E18 deferred/no checker PASS; supplied invalid/unsafe evidence fail-closed; all other invariants and npm denial unchanged; report/ACK bind scope; narrow currentProof refresh (§12.3.2) |
+| UV-29 | U8 | selected-step/mode-aware Swift tool/version/readiness and safe diagnostics | UV-28 reviewed; existing UV-06/UV-11 | actual live universal integration, Xcode>=16.2 only Xcode; Tuist>=4.202.0 only Tuist; Xcode workspace OR project +scheme/destination, testPlan only test-bearing; BLOCKED/ENV_FAIL/FAIL distinctions, sanitized output, deterministic failures, no native runtime claim |
 
 ## 14. Main-cutover acceptance
 
 PR #25 не выходит из draft/review и не merge-ится, пока одновременно не доказано:
 
-- Node, Go, Swift используют один planner/runner;
-- обычный Node/Go/SwiftPM проект не требует `gennady.yaml`;
-- Xcode требует project identity, а не копию argv;
+- Node/Go используют один planner/runner; Swift prototype подключён к тому же engine, но остаётся UNVERIFIED;
+- обычный Node/Go проект не требует `gennady.yaml`; SwiftPM zero-YAML planning проверяется deterministic fixtures, не обещает native support verification;
+- selected Xcode steps требуют mode-aware project identity/readiness по UV-29, а не копию argv;
 - arbitrary declared selector выбирает только свой DAG-срез; core не выводит semantics из имени;
 - SDD kind разрешается composed mapping `preset default → project override` в одну exact Verify
   invocation, без выбора gates агентом; unresolved fail-closed только после composition;
@@ -958,9 +1028,8 @@ PR #25 не выходит из draft/review и не merge-ится, пока о
   же snapshot без запуска Verify;
 - project extension boundary остаётся data-only: executable plugin path/package/URL/import
   отвергается до import/spawn, а arbitrary declarative argv доказан через common guarded executor;
-- explicit legacy-overlay parity сохраняет A13/D-4 severity, diagnostic identity/location,
-  grandfathering и marker-only semantics до удаления `sdd-verify`; no-overlay не наследует legacy
-  bytes/order;
+- после UV-24 #99 overlay удалён; A13/D-4 severity/identity/journal semantics проверяются canonical
+  validator/report, без current byte-parity/overlay promise; прежние overlay clauses — migration history;
 - Evidence/Receipt ACK реализован UV-12E: append-only attempt journal, proof actual invocation,
   machine-readable stats, drift-sensitive identities и явная selector-owned local/remote trust
   boundary;
@@ -969,11 +1038,11 @@ PR #25 не выходит из draft/review и не merge-ится, пока о
 - UV-27A inventory удалил все v1-only surfaces и доказал отсутствие residue без удаления canonical
   v2; UV-27B связал exact main base/release head/tree/diff/evidence, блокирует supported repo-owned
   npm paths и доказывает отсутствие credentials/OTP/protected authority;
-- exact Swift E-18 завершён в реальном release environment;
+- approved source-owned policy visibly фиксирует Swift UNVERIFIED и E18 DEFERRED post-main-cutover; missing optional proof не PASS, supplied invalid/unsafe proof fail-closed; actual selected Swift gates не отключены;
 - после последнего relevant product/config/rules/gate drift новый evidence pack снят с одного clean
   commit; checker разрешает после `sourceCommit` только exact evidence-pack allowlist;
 - existing PR #25 содержит exact reviewed replacement tree; current main base — предок candidate;
-  diff/deletion manifest, evidence digests и branch/upstream state связаны с operator ACK;
+  diff/deletion manifest, evidence digests, branch/upstream state и unverified scope/policy identity связаны с operator ACK;
 - ordinary merge #25 сохраняет history, а post-merge verification на `main` подтверждает approved
   tree. Package publication отсутствует и требует будущего отдельного plan/ACK.
 
