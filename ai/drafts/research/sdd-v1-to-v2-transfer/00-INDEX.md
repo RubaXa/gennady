@@ -4,7 +4,18 @@
 > Baseline: main `8bb38477` (0.9.0-next.3, заморожен) · RC `95329c19` (0.8.4) · merge-base `46c6d616` · 115 коммитов main после merge-base.
 > Все документы — русский; идентификаторы, команды, пути — как в коде.
 
-> Current U8 refinement 2026-10-09: historical baseline выше не переписывается. Exact current main
+> **Current approved amendment 2026-10-13:** Swift — **UNVERIFIED prototype**; real E18/UV-26
+> DEFERRED post-main-cutover, не bar, не fake PASS. Release `c6223402dd8d80ca728f81e7b16f507e4c9e64ff`,
+> main `9663c65b6376c65f4b1df0daf27a06df5b25f7a3`, plan base `acf57cea453e5d924f7c1da1a7ce0a384389401e`.
+> R1…R5 reviewed/merged #108…#112, final UV-25 #113 current source `2e4a9a9c8be596594ab0711ef4e70ebb68d047ed`
+> до новых product edits. Следуют reviewed plan → UV-28 source-owned guard policy → UV-29 live
+> selected-step Swift diagnostics → **NEW UV-25 AFTER LAST product/gate/currentProof change AND
+> reviewer merges** → independent candidate review → exact UNVERIFIED-scope ACK → existing #25.
+> Три PR не дают instant eligibility; consumer selected Swift gates не отключены. E18 tools strict
+> доступны для отдельной будущей validation; npm publication запрещена. Canonical current scope —
+> `64 §12.3.2`, `60 §2.2/U-A10`; исторические bar/host stops ниже superseded, не исполнены.
+
+> Historical U8 refinement 2026-10-09 (ordering superseded 2026-10-13): historical baseline выше не переписывается. Exact audit main
 > `9663c65b6376c65f4b1df0daf27a06df5b25f7a3`, release `df39f8eff9d08caca5e3d90d313479cc50ed4fc0`,
 > merge-base `46c6d616700ee4cc61dbfe077d5b0052ce661dcd`, plan base
 > `d5cb9174069afd80ad2b9d80a89f0c6a80dbbfcb`. 117 MAIN-only commits, 520 paths, 157 **initial
@@ -55,9 +66,9 @@ A4 issues akkrat                    B4 RULES · B5 RELEASE · B6 DIRECTIVES/SKIL
 | 34 | `34-TRACK-RELEASE-PACKAGE.md` | исторически проверенные упаковка/публикация/тесты/версии; REL-1..15; npm publication вынесена после main cutover | ВЕРИФИЦИРОВАНО как historical evidence; #102/U8-RA publication semantics superseded by `64 §12.3`; supported npm paths locked, credentials unavailable |
 | 40 | `40-TRACK-DIRECTIVES-SKILLS.md` | инварианты v1→аксиомы v2, скиллы→роутер, сборка; T-B6-01..27 | ВЕРИФИЦИРОВАНО; D-27, L-9..L-12; **открыт D-26** (параллель задач) |
 | 50 | `50-TRACK-EVAL.md` | зрелость flow-eval, минимальные эвалы G1–G4; E-00..E-16 | ВЕРИФИЦИРОВАНО; D-28, D-29, L-13..L-15 |
-| 60 | `60-ACCEPTANCE.md` | критерии A1–A24 и U-A1..U-A10; exhaustive MAIN disposition/data preservation, final evidence, exact candidate authorization | historical verification retained; **approved U8-MC/implemented UV-27; R1…R5/final evidence/exact candidate ACK PENDING; PR #25 merge blocked** |
+| 60 | `60-ACCEPTANCE.md` | критерии A1–A24 и U-A1..U-A10; current Swift UNVERIFIED amendment, all-path preservation, fresh evidence/scope-bound ACK | **R1…R5/#113 merged; UV-28/UV-29/new UV-25/exact ACK PENDING; E18 deferred post-cutover, npm forbidden**; historical verification retained |
 | 61 | `61-TASK-BOARD.md` | сводная доска: **202 строки / 199 активных задач** (+2 — `GAP-B-2`/`REL-19` по D-54), волны **−1…5** (**3**/**67**/4/17/50/18/11, вне волн **20**; сумма 190 = 202 − 12), статусы **74**/**3 (ВЫПОЛНЕНО, пачка 8)**/88/22/12/2/1, 12 дублей-указателей, 5 блокеров релиза, **брифы 0/5…5/5** | ВЕРИФИЦИРОВАНО (V-61 + дельта 06/V-06-GAP + правки **V-61b** + **триаж #14** + **D-51** + **D-54** применены: `B2-12` → Волна 3, `SO-13` расщеплена по D-44, коллизия `V-06` устранена, трек `V14` заведён — `V14-1`/`V14-3` в релиз, `V14-2a..e` тоже в релиз (Волны 3/4, D-51), критерий `A24` — релизный, не блокер; **D-54: `GAP-B-2`/`REL-19` заведены** — гейт zero-new-error переезжает в pre-push, `check:ci`/`.github/workflows/ci.yml` удаляются; конфликт с `REL-9`/D-11 зафиксирован в `61 §2.2` п.16, не снят; **пачка 8 (2026-09-08, документная часть): `GAP-1`/`GAP-P-1`/`GAP-P-2` → ВЫПОЛНЕНО, статусный счётчик `61 §5.5` пересчитан по этой дельте только — полная ресинхронизация с фактическим исполнением остальных задач не входит в эту правку**) |
-| 64 | `64-VERIFY-RULES-UNIFICATION.md` | unified Verify/rules; U8 MAIN carry R1…R4, all-path disposition, reconciliation R5, fresh evidence/candidate chain | **ACK U0 historical; UV-25 #101 historical DONE, final refresh PENDING; approved U8-MC/implemented UV-27; R1…R5 PENDING; real E-18/ exact candidate ACK OPEN; main merge/publication not authorized** (D-65..D-70) |
+| 64 | `64-VERIFY-RULES-UNIFICATION.md` | unified Verify/rules; approved 2026-10-13 Swift deferral + UV-28 guard/UV-29 diagnostics + final evidence chain | **U0 ACK historical; R1…R5/#113 merged; Swift UNVERIFIED/E18 DEFERRED; UV-28/UV-29/fresh capture/independent review/exact scope ACK pending; no main merge/publication authority** |
 | 70 | `70-ORCHESTRATION-PROTOCOL.md` | бриф/отчёт, ритм, полномочия | ЗАФИКСИРОВАНО |
 | — | `_raw/**` | нередактированные отчёты аналитиков и верификаторов, снимок ресёрча RC | АРХИВ |
 
