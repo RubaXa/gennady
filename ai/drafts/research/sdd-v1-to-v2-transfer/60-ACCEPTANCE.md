@@ -1,6 +1,12 @@
 # 60 — Приёмка «v1 больше не нужен»
 
-> **Current U-A15:** UV-30..33 reviewed/merged (#119, `b0a7685a`), UV-34 first capture FAIL.
+> **Current U-A15 evidence submitted:** clean source `c9d578c1` after reviewed #120,37/37 PASS,
+> two rounds over12 scopes exact no-op, machine checker + independent parent hash review PASS.
+> Manifest SHA256 `f536bff021914e4a7704e36cd42677ee55f53d641b09f8049b39101e0e2936b7`.
+> Fresh installed consumer smoke on Node26/22 PASS,3120 delivered files/0 forbidden historical paths.
+> This is an evidence handoff, NOT reviewer approval, exact candidate ACK, main merge or publication.
+
+> **Earlier U-A15 failure (historical):** UV-30..33 reviewed/merged (#119, `b0a7685a`), UV-34 first capture FAIL.
 > All 24 migration rounds blocked by three stale live ownership-map rows; 13 other commands PASS.
 > No generated fresh manifest, therefore U-A15 NOT satisfied. Corrective acceptance: exact three-row
 > map delta, real current-path regression + missing-source fail-closed negative, immutable historical

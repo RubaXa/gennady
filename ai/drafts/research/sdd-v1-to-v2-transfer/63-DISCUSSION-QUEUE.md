@@ -1,6 +1,11 @@
 # Очередь обсуждений с оператором (D-63)
 
-> **UV-34 causal corrective:** stale live migration-map references after #119, not a new design
+> **Current UV-34:** fresh37/37 capture on reviewed source `c9d578c1` + independently checked local
+> installed package ready for evidence review. No architecture question or per-PR operator «да».
+> After reviewer merge, NEW exact scope-bound candidate ACK for #25 remains mandatory; native
+> Swift is still UNVERIFIED/E18 DEFERRED and npm publication forbidden.
+
+> **Earlier UV-34 causal corrective (historical):** stale live migration-map references after #119, not a new design
 > choice. Correct only one deleted-helper row and two renamed parser paths; no weakening preflight,
 > no frozen-history/baseline/currentProof changes. Independent reviewer before merge, then fresh
 > immutable capture. Exact #25 ACK remains separate; no operator decision or npm publication inferred.
