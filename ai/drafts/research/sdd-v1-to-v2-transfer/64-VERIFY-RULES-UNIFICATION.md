@@ -1,7 +1,14 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
+> **Current execution 2026-10-13:** #118/#119 reviewed/merged, release `b0a7685a`.
+> UV-34 fresh capture FAIL: all 24 migration commands reject stale FILE-SPEC-MAP rows229/1119/1167
+> (deleted lint helper and two renamed migration-parser paths); other 13 commands PASS. No fresh
+> manifest/candidate. Correct exactly those live map references + regression tests, keep whole-scope
+> preflight and immutable archives/protection unchanged, independent review/merge, then recapture
+> all 37 commands on NEW source. Previous #117/candidate/challenge cannot authorize this tree.
+
 > Статус: **ACK U0 ПРИНЯТ 2026-09-24; UV-24 DONE #99; UV-25 #101 — HISTORICAL DONE; MAIN CUTOVER BLOCKED**.
-> **Current delivery 2026-10-13:** R1…R5, UV-28/29 and UV-25 #117 merged; release
+> **Earlier submission (historical):** R1…R5, UV-28/29 and UV-25 #117 merged; release
 > `2067066b89adc87cd27094838f5435613401f4eb`. Corrective UV-30..33 in OPEN release PR
 > [#119](https://github.com/RubaXa/gennady/pull/119) (`6cddc448`), plan #118; independent review pending.
 > Swift — **UNVERIFIED prototype**; real UV-26/E-18 deferred post-main-cutover, не bar (§12.3.2).

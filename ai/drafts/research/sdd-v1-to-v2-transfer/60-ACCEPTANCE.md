@@ -1,6 +1,12 @@
 # 60 — Приёмка «v1 больше не нужен»
 
-> **Corrective acceptance delivery:** U-A11..14 submitted in release PR
+> **Current U-A15:** UV-30..33 reviewed/merged (#119, `b0a7685a`), UV-34 first capture FAIL.
+> All 24 migration rounds blocked by three stale live ownership-map rows; 13 other commands PASS.
+> No generated fresh manifest, therefore U-A15 NOT satisfied. Corrective acceptance: exact three-row
+> map delta, real current-path regression + missing-source fail-closed negative, immutable historical
+> corpus/protection untouched; then reviewed merge and repeat all 37 commands on NEW clean source.
+
+> **Earlier acceptance submission (historical):** U-A11..14 submitted in release PR
 > [#119](https://github.com/RubaXa/gennady/pull/119), independent acceptance pending; plan PR #118.
 > Full pre-commit PASS: unit executed4627/passed4619/failed0/skipped8, integration72/69/0/3,
 > coverage/type-check/lint/format/audits PASS; ordinary pre-push zero-new-error PASS.

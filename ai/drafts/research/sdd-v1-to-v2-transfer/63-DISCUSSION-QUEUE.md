@@ -1,6 +1,11 @@
 # Очередь обсуждений с оператором (D-63)
 
-> **Delivery:** UV-30..33 submitted for independent review in [#119](https://github.com/RubaXa/gennady/pull/119),
+> **UV-34 causal corrective:** stale live migration-map references after #119, not a new design
+> choice. Correct only one deleted-helper row and two renamed parser paths; no weakening preflight,
+> no frozen-history/baseline/currentProof changes. Independent reviewer before merge, then fresh
+> immutable capture. Exact #25 ACK remains separate; no operator decision or npm publication inferred.
+
+> **Earlier submission (historical):** UV-30..33 submitted for independent review in [#119](https://github.com/RubaXa/gennady/pull/119),
 > plan #118. No new operator decision requested; UV-34 waits reviewed merges, not per-PR operator ACK.
 > Exact corrected candidate ACK and npm-publication prohibition remain unchanged.
 

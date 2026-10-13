@@ -1,6 +1,15 @@
 # План переноса SDD v1 (main) → SDD v2 (RC) — индекс
 
-> **Delivery 2026-10-13:** plan [#118](https://github.com/RubaXa/gennady/pull/118), implementation
+> **Current UV-34 finding 2026-10-13:** #118/#119 reviewed/merged, release `b0a7685a`.
+> Fresh capture FAIL: 24 migration dry-runs reject three stale `FILE-SPEC-MAP.tsv` paths removed
+> or renamed by #119; remaining 13 commands PASS, no new manifest materialized. Narrow corrective:
+> retire one deleted-helper row, update two migration-parser paths, regression tests; preflight,
+> frozen history, baseline/protection/currentProof unchanged. Review/merge fix before new immutable
+> capture. No fresh candidate or reused #117 challenge; npm forbidden, Swift UNVERIFIED.
+> Corrective [#120](https://github.com/RubaXa/gennady/pull/120) / plan status #121 OPEN; full ordinary
+> commit/push gates PASS, independent reviewer verdict pending. Not UV-34 DONE.
+
+> **Earlier submission (superseded by current UV-34 status above):** plan [#118](https://github.com/RubaXa/gennady/pull/118), implementation
 > [#119](https://github.com/RubaXa/gennady/pull/119) (`6cddc448`) — OPEN, independent review pending.
 > UV-30..33 implemented/tested, not merged; UV-34/fresh UV-25 waits LAST reviewed corrective merge.
 > Ordinary full pre-commit + pre-push PASS; no baseline change, main merge or npm publication.
