@@ -3,10 +3,11 @@
 // @consumers: sdd-new.cmd, check.ts
 
 import { readdirSync, readFileSync, type Dirent } from 'node:fs';
-import { join, sep } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { extractSection } from './section.ts';
 import { parseMetaInfo } from './ticket.ts';
 import { legacyHeaderBody } from './anchor-inject.ts';
+import { isSddEvidencePath } from './corpus-path.ts';
 
 /**
  * @purpose v2 Task-ID grammar: `<ACR>-<slug>` — ACR is upper-alnum starting with a letter; slug is one or
@@ -102,6 +103,7 @@ export function collectTaskIds(root: string): string[] {
     for (const entry of entries) {
       if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue;
       const full = join(dir, entry.name);
+      if (isSddEvidencePath(relative(root, full))) continue;
       if (entry.isDirectory()) {
         if (SKIP_DIRS.has(entry.name)) continue;
         walk(full);

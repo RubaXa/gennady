@@ -1,7 +1,7 @@
 <!-- source: ai/directives/coding/typescript-rules.xml -->
 <Axiom id="AX_TAG_USAGE_MATRIX">
 When each tag is used:
-- `@file:`, `@tasks:` — file-level line-comments only; see `AX_FILE_LEVEL_CONTEXT`.
+- `@file:`, `@spec:`, `@consumers:` — V2 file-level line-comments in that order; see `AX_FILE_LEVEL_CONTEXT`. Existing `@tasks` is read-only migration evidence.
 - `@consumers` — file-level line-comment when uniform; entity-level only when consumer diverges from file-level; skip for local helpers.
 - `@implements` — required on exported class/const root directly implementing a named interface/contract; skip for data shapes, interfaces, member declarations.
 - `@invariant` — stateful entities, resilience / error policy, ordering guarantees, non-local assumptions, implementation-strategy guarantees that modifying agents must preserve.

@@ -92,6 +92,8 @@ export type TaskQueryResult = {
   taskId: string;
   /** @purpose Matching files */
   files: ScannedFile[];
+  /** @purpose Legacy header matches reported only as read-only migration evidence, never ownership. */
+  migrationFiles?: ScannedFile[];
 };
 
 /** @purpose Query result from a consumer search (S3). */

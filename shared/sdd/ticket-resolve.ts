@@ -12,6 +12,7 @@ import {
 import { isTicket, ticketRef, type TicketRef } from './check.ts';
 import { ticketFlowVersion } from './flow.ts';
 import { looksLikeTaskId } from './task-id.ts';
+import { isSddEvidencePath } from './corpus-path.ts';
 
 const SKIP_DIRS = new Set([
   'node_modules',
@@ -86,6 +87,7 @@ function collectTicketRefsStrict(root: string): StrictTicketCorpus {
     for (const entry of entries) {
       if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
       const rel = relativeDir ? join(relativeDir, entry.name) : entry.name;
+      if (isSddEvidencePath(rel)) continue;
       if (entry.isSymbolicLink()) return `ticket corpus contains a symlink: ${rel}`;
       if (entry.isDirectory()) {
         const issue = walk(rel);
@@ -151,11 +153,32 @@ export function collectTicketRefs(root: string): TicketRef[] {
  * @invariant Every ticket-taking SDD command resolves through this one function — no duplicate scans.
  * @param ticket Raw CLI argument (a ticket path or a bare Task-ID).
  * @param root Absolute project root — scanned only when the path read fails and the argument looks like an id.
+ * @param [purpose] Inspection may read evidence; execution/lifecycle consumers accept only live corpus paths.
  * @returns The resolved path + content (tagged by how it was found), or a typed failure reason.
  */
-export function resolveTicketArg(ticket: string, root: string): TicketResolution {
+export function resolveTicketArg(
+  ticket: string,
+  root: string,
+  purpose: 'inspection' | 'execution' = 'inspection'
+): TicketResolution {
   const direct = proveRepoFile(root, ticket);
   if (direct.ok) {
+    if (purpose === 'execution' && isSddEvidencePath(direct.identity.relative)) {
+      return {
+        ok: false,
+        reason: 'unsafe-path',
+        detail:
+          'Historical SDD evidence is read-only migration/inspection context, not execution or lifecycle authority.',
+      };
+    }
+    if (purpose === 'execution' && ticketFlowVersion(direct.identity.absolute, root) === 'v1') {
+      return {
+        ok: false,
+        reason: 'unsafe-path',
+        detail:
+          'Legacy V1 scope is read-only migration input. Run npx gennady sdd-migrate bootstrap . and complete V1→V2 scope migration before execution/lifecycle writes.',
+      };
+    }
     const read = readProvenRepoFile(direct.identity);
     if (!read.ok) return { ok: false, reason: 'unsafe-path', detail: read.detail };
     return {
@@ -180,6 +203,14 @@ export function resolveTicketArg(ticket: string, root: string): TicketResolution
   if (matches.length > 1) return { ok: false, reason: 'ambiguous-id', id: ticket, matches };
 
   const match = matches[0] as TicketCorpusRef & { identity: RepoFileIdentity };
+  if (purpose === 'execution' && match.flowVersion === 'v1') {
+    return {
+      ok: false,
+      reason: 'unsafe-path',
+      detail:
+        'Legacy V1 scope is read-only migration input. Run npx gennady sdd-migrate bootstrap . and complete V1→V2 scope migration before execution/lifecycle writes.',
+    };
+  }
   const read = readProvenRepoFile(match.identity);
   if (!read.ok) return { ok: false, reason: 'unsafe-corpus', detail: read.detail };
   return {

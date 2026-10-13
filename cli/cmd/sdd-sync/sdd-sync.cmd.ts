@@ -142,7 +142,7 @@ export async function run(rawArgs: string[], projectRoot = resolve('.')): Promis
   if (!ticket) return badInvocation('missing <ticket>');
 
   const root = realpathSync(resolve(projectRoot));
-  const resolved = resolveTicketArg(ticket, root);
+  const resolved = resolveTicketArg(ticket, root, 'execution');
   if (!resolved.ok) {
     if (resolved.reason === 'unreadable') return fileError(ticket);
     if (resolved.reason === 'unsafe-path' || resolved.reason === 'unsafe-corpus') {

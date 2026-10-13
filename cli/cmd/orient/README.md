@@ -4,6 +4,11 @@
 (`@file:`, V2 `@spec:`, legacy `@tasks:`, `@consumers:`) и публичные сущности с их DBC-контрактами
 (экспортируемые функции, классы, типы, интерфейсы).
 
+`--task` показывает связи из canonical file-relations resolver. Совпадения старого `@tasks`
+выводятся отдельно как read-only migration evidence, без назначения владельца. Для такого поля
+следующий шаг — `npx gennady sdd-migrate bootstrap .` и V1→V2 guide; поле не разрешает authoring,
+execution или открытие нового раунда.
+
 ## Когда использовать
 
 | Тебе нужно ...                                          | Вызови                                          |

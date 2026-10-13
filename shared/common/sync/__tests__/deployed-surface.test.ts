@@ -17,7 +17,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { scanDirectives } from '../../../../cli/cmd/sync/sync-core.ts';
@@ -78,10 +79,21 @@ function findLeaks(files: ReadonlyMap<string, string>): string[] {
 let packFilesCache: string[] | undefined;
 function packFiles(): string[] {
   if (packFilesCache) return packFilesCache;
-  const result = spawnSync('npm', ['pack', '--dry-run', '--json'], {
-    cwd: ROOT,
-    encoding: 'utf-8',
-  });
+  // Filelist inspection must not execute prepare or mutate the operator's npm cache.
+  const cache = mkdtempSync(resolve(tmpdir(), 'deployed-surface-npm-'));
+  let result: ReturnType<typeof spawnSync<string>>;
+  try {
+    result = spawnSync(
+      'npm',
+      ['pack', '--dry-run', '--ignore-scripts', '--cache', cache, '--json'],
+      {
+        cwd: ROOT,
+        encoding: 'utf-8',
+      }
+    );
+  } finally {
+    rmSync(cache, { recursive: true, force: true });
+  }
   assert.equal(result.status, 0, result.stderr);
   const [{ files }] = JSON.parse(result.stdout) as [{ files: Array<{ path: string }> }];
   packFilesCache = files.map((f) => f.path);

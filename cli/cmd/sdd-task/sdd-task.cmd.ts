@@ -201,10 +201,11 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
   const readiness = resolveProjectReadiness(canonicalRoot);
   const gateQueue = infraGateQueue(refs, canonicalRoot, readiness);
   const auditContext = pickableAuditContext(refs);
-  const graphPickable = pickableTasks(refs, auditContext);
+  const graphPickable = pickableTasks(refs, auditContext).filter((ref) => ref.flowVersion === 'v2');
   const gateTicketFiles = new Set(gateQueue.owners.map((owner) => owner.ticketFile));
   const queuePickable = refs.filter(
     (ref) =>
+      ref.flowVersion === 'v2' &&
       gateTicketFiles.has(ref.file) &&
       !/\bDONE\b/i.test(ref.status ?? '') &&
       pickabilityBlockers(ref, refs, auditContext).length === 0
@@ -228,6 +229,8 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
   }
   for (const b of blocked) {
     const unmet = pickabilityBlockers(b, refs, auditContext);
+    if (b.flowVersion === 'v1')
+      unmet.push('V1→V2 migration required; npx gennady sdd-migrate bootstrap .');
     if (!readiness.executionReady && graphPickableIds.has(b.taskId))
       unmet.push('EXECUTION_READY=no');
     lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}  →  ${relPath(b.file)}`);
@@ -474,7 +477,7 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
   }
 
   const root = defaultRoot;
-  const resolved = resolveTicketArg(ticket, root);
+  const resolved = resolveTicketArg(ticket, root, 'execution');
   if (!resolved.ok) {
     if (resolved.reason === 'unreadable') return fileError(ticket);
     if (resolved.reason === 'unsafe-path' || resolved.reason === 'unsafe-corpus') {

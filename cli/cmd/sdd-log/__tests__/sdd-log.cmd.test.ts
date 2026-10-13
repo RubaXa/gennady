@@ -38,11 +38,22 @@ let ticket: string;
 
 const CLOCK = new Date('2026-06-21T10:00:00.000Z');
 
+const OVERVIEW = [
+  '<!--SECTION:PHASES_OVERVIEW-->',
+  '## Phases Overview',
+  '| ID | Kind | Deps | Status |',
+  '|----|------|------|--------|',
+  '| P1 | impl | — | [x] |',
+  '<!--/SECTION:PHASES_OVERVIEW-->',
+].join('\n');
+
 const BASE = [
   '# t',
   '<!--SECTION:META-->',
   '- **Task-ID:** cli-foo',
   '<!--/SECTION:META-->',
+  '',
+  OVERVIEW,
   '',
   '<!--SECTION:EXECUTION_LOG-->',
   '## 7. Execution Log',
@@ -455,11 +466,29 @@ describe('SddLogCommand', () => {
       assert.strictEqual(readFileSync(ticket, 'utf-8'), bypassed);
     });
 
-    it('is tolerant of a legacy ticket with no readable PHASES_OVERVIEW (unchanged behavior)', async () => {
-      // BASE (the shared fixture) has no PHASES_OVERVIEW at all.
-      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
-      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
-    });
+    for (const [name, overview] of [
+      ['missing', ''],
+      ['empty', OVERVIEW.replace('| P1 | impl | — | [x] |', '')],
+      ['malformed', OVERVIEW.replace('| P1 | impl | — | [x] |', '| wrong | | — | invalid |')],
+    ]) {
+      it(`rejects ${name} PHASES_OVERVIEW before creating META or Round DONE`, async () => {
+        const oldSchema = BASE.replace(OVERVIEW, overview!).replace(
+          '- **Task-ID:** cli-foo',
+          '- **Task-ID:** cli-foo\n- **Status:** [~] IN_PROGRESS'
+        );
+        writeFileSync(ticket, oldSchema, 'utf-8');
+        const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+        assert.strictEqual(outcome.ok, false);
+        if (!outcome.ok) {
+          assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+          assert.match(outcome.message, /readable, non-empty parseable PHASES_OVERVIEW/);
+          assert.match(outcome.message, /sdd-check.*--authoring/);
+          assert.match(outcome.message, /sdd-migrate bootstrap/);
+        }
+        assert.strictEqual(readFileSync(ticket, 'utf-8'), oldSchema);
+        assert.doesNotMatch(readFileSync(ticket, 'utf-8'), /\[x\].*DONE/);
+      });
+    }
   });
 
   // B2-04: append-only means a fix goes into a NEW Round, never after a closed one.
@@ -516,17 +545,10 @@ describe('SddLogCommand', () => {
   });
 
   describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {
-    const withStatus = [
-      '# t',
-      '<!--SECTION:META-->',
+    const withStatus = BASE.replace(
       '- **Task-ID:** cli-foo',
-      '- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->',
-      '<!--/SECTION:META-->',
-      '',
-      '<!--SECTION:EXECUTION_LOG-->',
-      '## 7. Execution Log',
-      '<!--/SECTION:EXECUTION_LOG-->',
-    ].join('\n');
+      '- **Task-ID:** cli-foo\n- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->'
+    );
 
     it('round sets Meta Status to IN_PROGRESS, keeping the hint comment', async () => {
       writeFileSync(ticket, withStatus, 'utf-8');
@@ -552,7 +574,7 @@ describe('SddLogCommand', () => {
       );
     });
 
-    it('round/close on a ticket with no Status line (old ticket) — tolerant, no crash, honest note', async () => {
+    it('round/close on a V2 phase plan with no Status line — tolerant, no crash, honest note', async () => {
       // BASE (the shared fixture) has META but no Status line.
       const roundOutcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
       assert.strictEqual(roundOutcome.ok, true);

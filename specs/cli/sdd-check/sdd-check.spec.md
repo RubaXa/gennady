@@ -22,6 +22,11 @@ _Обзор пути от контракта к реализации и пров
 
 **Module:** sdd-check · **Parent scope:** [cli](../cli.spec.md) · **Task:** bootstrap — SDD v2 tooling (без тикета; см. ai/sdd-v2-plan.md (удалён))
 
+Обычный runtime использует V2 `FILE_RELATIONS`; legacy headers/tickets остаются read-only
+migration evidence с прежним grandfathering диагностик. `--changed` больше не требует
+append-only `@tasks`: сохранение и удаление старых header bytes принадлежат V1→V2 migrator,
+а обнаруженное поле не разрешает authoring/execution или назначение owner.
+
 <!--SECTION:MODULE_VISION-->
 
 ## 1. Module Vision

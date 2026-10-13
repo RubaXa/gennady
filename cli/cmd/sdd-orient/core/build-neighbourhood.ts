@@ -40,6 +40,8 @@ export type NeighbourEntry = {
 
 /** @purpose The full depth-1 neighbourhood model `renderNeighbourhood` needs. */
 export type Neighbourhood = {
+  /** @purpose Unanchored target is read-only migration context, never V2 authoring/execution authority. */
+  targetLegacy?: boolean;
   /** @purpose Target path, relative to `root`. */
   targetPath: string;
   /** @purpose Target's classification: module, scope, or unknown. */
@@ -182,6 +184,7 @@ export function buildNeighbourhood(
   ].sort();
 
   const base: Omit<Neighbourhood, 'neighbours' | 'consumers'> = {
+    targetLegacy: !hasAnySectionMarker(targetContent),
     targetPath: relTarget,
     targetKind,
     scopeName,

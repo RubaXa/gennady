@@ -64,12 +64,14 @@ describe('FO-5 workflow consumers', () => {
     assert.match(audit, /shared deterministic resolver/);
   });
 
-  it('keeps legacy append-only explicitly outside the V2 resolver contract', () => {
-    const compatibility = source('shared/sdd/tasks-append-only.ts');
+  it('keeps legacy header evidence inside migration and removes append-only from ordinary checks', () => {
+    const migration = source('shared/sdd/migration-tasks-header.ts');
+    const check = source('cli/cmd/sdd-check/sdd-check.cmd.ts');
     const mechanical = source('ai/kit/axiom/audit/ax-mechanical-via-sdd-check.xml');
 
-    assert.match(compatibility, /Legacy-V1-only/);
-    assert.match(mechanical, /legacy-only \*\*TASKS_APPEND_ONLY\*\*/);
+    assert.match(migration, /only by V1→V2 header migration/);
+    assert.doesNotMatch(check, /checkTasksAppendOnly|tasks-append-only/);
+    assert.doesNotMatch(mechanical, /legacy-only \*\*TASKS_APPEND_ONLY\*\*/);
     assert.match(mechanical, /Untouched V1 files outside that historical surface remain ungraded/);
   });
 });

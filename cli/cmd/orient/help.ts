@@ -17,7 +17,10 @@ export function printHelp(): void {
   console.info('Options:');
   console.info('  --file=<path>       Show detailed view of a specific file (repeatable)');
   console.info('  --dir=<path>        Limit scanning to a directory');
-  console.info('  --task=<ACR-slug>   Find files by canonical or legacy task ID (repeatable)');
+  console.info('  --task=<ACR-slug>   Find canonical resolver relations (repeatable)');
+  console.info(
+    '                      Legacy @tasks matches are read-only migration evidence, not ownership'
+  );
   console.info('  --consumer=<name>   Find files by consumer name (repeatable)');
   console.info('  --entity=<name>     Search for an exported entity (repeatable)');
   console.info('  --graph             Show consumer dependency graph');

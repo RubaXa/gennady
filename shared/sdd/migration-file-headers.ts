@@ -12,7 +12,7 @@ import { isSddSourceFile } from './source-extensions.ts';
 import { extractSection } from './section.ts';
 import { collectSpecIdEntries, deriveInitialSpecId, parseSpecId } from './spec-id.ts';
 import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
-import { parseTasksHeader } from './tasks-append-only.ts';
+import { parseTasksHeader } from './migration-tasks-header.ts';
 import { scanMigrationUnits, type SpecUnit } from './migration-plan.ts';
 import { collectTicketCorpus } from './ticket-resolve.ts';
 import {

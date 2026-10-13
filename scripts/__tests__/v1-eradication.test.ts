@@ -54,6 +54,7 @@ function policy(expectedInventoryDigest = 'PENDING', expectedCounts: Record<stri
     schemaVersion: 'gennady.v1-eradication-policy.v1',
     markers: [
       { id: 'v1-word', pattern: '\\b[Vv]1\\b' },
+      { id: 'old-runtime-label', literal: 'Legacy-V1-only' },
       { id: 'old-directive-path', literal: 'ai/directives/sdd/' },
       { id: 'old-skill-script-path', literal: 'ai/skills/sdd-execute/scripts/' },
       {
@@ -98,10 +99,11 @@ function policy(expectedInventoryDigest = 'PENDING', expectedCounts: Record<stri
         reason: 'frozen fixture',
       },
       {
-        prefix: 'shared/sdd/',
+        path: 'shared/sdd/migration-bootstrap.ts',
         classification: 'required-v1-to-v2-migration-boundary',
         reason: 'migration boundary',
       },
+      { prefix: 'shared/sdd/', classification: 'canonical-v2', reason: 'current runtime' },
       {
         prefix: 'services/agent-mon/',
         classification: 'unrelated-product-version',
@@ -119,6 +121,14 @@ function policy(expectedInventoryDigest = 'PENDING', expectedCounts: Record<stri
       },
     ],
     markerConstraints: [
+      {
+        markerId: 'old-runtime-label',
+        forbiddenClassifications: [
+          'canonical-v2',
+          'unrelated-product-version',
+          'required-v1-to-v2-migration-boundary',
+        ],
+      },
       {
         markerId: 'old-directive-path',
         forbiddenClassifications: ['canonical-v2', 'unrelated-product-version'],
@@ -185,6 +195,128 @@ afterEach(() => {
 });
 
 describe('UV-27A V1-only eradication inventory', () => {
+  it('rejects retired active runtime even when attached to an exact migration path', () => {
+    const root = fixture();
+    write(
+      root,
+      'shared/sdd/migration-bootstrap.ts',
+      'const KNOWN_V1_BYTES = new Map();\n// Legacy-V1-only runtime\n'
+    );
+    acceptObservedInventory(root, execute(root).report);
+    const result = execute(root);
+    assert.equal(result.status, 1);
+    assert.ok(
+      result.report.findings.some(
+        (finding) => finding.code === 'V1_ERADICATION_FORBIDDEN_ACTIVE_REFERENCE'
+      )
+    );
+  });
+  it('rejects stale @tasks authoring after the inventory digest is recalibrated', () => {
+    const root = fixture();
+    write(
+      root,
+      'ai/kit/axiom/coding/ax-file-level-context.xml',
+      '<Axiom id="AX_FILE_LEVEL_CONTEXT">\n`// @tasks: <TASK-ID>` *(optional; may be added later)*\n</Axiom>\n'
+    );
+    acceptObservedInventory(root, execute(root).report);
+    const result = execute(root);
+    assert.equal(result.status, 1);
+    assert.ok(
+      result.report.findings.some(
+        (finding) => finding.code === 'V1_ERADICATION_LEGACY_HEADER_AUTHORING'
+      )
+    );
+    assert.ok(result.report.findings.every((finding) => !finding.code.includes('INVENTORY_DRIFT')));
+  });
+
+  it('rejects legacy owner flow and readiness-before-legacy priority after recalibration', () => {
+    const path = 'ai/kit/contract/process/readiness-preflight-gate.xml';
+    const canonical = readFileSync(join(ROOT, path), 'utf8');
+    for (const kind of ['legacy-flow', 'priority'] as const) {
+      const root = fixture();
+      let stale = canonical;
+      if (kind === 'legacy-flow')
+        stale = stale.replace(
+          'STOP authoring/execution',
+          'continue the legacy-compatible owner flow'
+        );
+      else {
+        const lines = stale.split('\n');
+        const index = lines.findIndex((line) =>
+          line.includes('requested owning scope is legacy or unknown')
+        );
+        const [guard] = lines.splice(index, 1);
+        lines.splice(
+          lines.findIndex((line) => line.includes('- DEFAULT')),
+          0,
+          guard!
+        );
+        stale = lines.join('\n');
+      }
+      write(root, path, stale);
+      acceptObservedInventory(root, execute(root).report);
+      const result = execute(root);
+      assert.equal(result.status, 1);
+      assert.ok(
+        result.report.findings.some(
+          (finding) =>
+            finding.code ===
+            (kind === 'legacy-flow'
+              ? 'V1_ERADICATION_LEGACY_OWNER_FLOW'
+              : 'V1_ERADICATION_LEGACY_PREFLIGHT_PRIORITY')
+        )
+      );
+      assert.ok(
+        result.report.findings.every((finding) => !finding.code.includes('INVENTORY_DRIFT'))
+      );
+    }
+  });
+
+  it('rejects arbitrary runtime reclassified as migration even after recalibration', () => {
+    const root = fixture();
+    write(root, 'shared/sdd/alternate-runtime.ts', 'const flow = "v1";\n');
+    const accepted = JSON.parse(readFileSync(join(root, POLICY_PATH), 'utf8')) as ReturnType<
+      typeof policy
+    >;
+    accepted.classifiers.unshift({
+      path: 'shared/sdd/alternate-runtime.ts',
+      classification: 'required-v1-to-v2-migration-boundary',
+      reason: 'claimed migration',
+    });
+    write(root, POLICY_PATH, `${JSON.stringify(accepted, null, 2)}\n`);
+    acceptObservedInventory(root, execute(root).report);
+    const result = execute(root);
+    assert.equal(result.status, 1);
+    assert.ok(
+      result.report.findings.some(
+        (finding) => finding.code === 'V1_ERADICATION_MIGRATION_BOUNDARY_UNPROVEN'
+      )
+    );
+  });
+
+  it('rejects missing close overview guard after the inventory digest is recalibrated', () => {
+    const root = fixture();
+    const path = 'cli/cmd/sdd-log/sdd-log.cmd.ts';
+    const canonical = readFileSync(join(ROOT, path), 'utf8');
+    write(
+      root,
+      path,
+      canonical.replace(
+        /  \/\/ #region START_CLOSE_OVERVIEW[\s\S]*?  \/\/ #endregion END_CLOSE_OVERVIEW\n/u,
+        ''
+      )
+    );
+    acceptObservedInventory(root, execute(root).report);
+    const result = execute(root);
+    assert.equal(result.status, 1);
+    assert.ok(
+      result.report.findings.some(
+        (finding) => finding.code === 'V1_ERADICATION_LEGACY_CLOSE_WRITER'
+      )
+    );
+    assert.ok(result.report.findings.every((finding) => !finding.code.includes('INVENTORY_DRIFT')));
+  });
+
   it('passes the real tree with zero forbidden residue and protects canonical/migration/evidence classes', () => {
     const result = execute(ROOT);
     assert.equal(result.status, 0, JSON.stringify(result.report.findings, null, 2));

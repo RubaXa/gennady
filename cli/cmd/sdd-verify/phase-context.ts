@@ -7,6 +7,8 @@ import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'nod
 import { basename, isAbsolute, join, relative, resolve } from 'node:path';
 import { inspectRepoPath } from '../../../shared/common/repo-path.ts';
 import { resolveOwningSpec } from '../../../shared/sdd/audit-group.ts';
+import { isSddEvidencePath } from '../../../shared/sdd/corpus-path.ts';
+import { ticketFlowVersion } from '../../../shared/sdd/flow.ts';
 import {
   phaseOwnsMissingReadinessGate,
   queuedInfraGateTicketIds,
@@ -118,6 +120,16 @@ export function resolvePhaseContext(
 ): PhaseContextResult {
   const projectRoot = resolve(root);
   const taskPath = resolve(projectRoot, taskArg);
+  if (isSddEvidencePath(relative(projectRoot, taskPath))) {
+    return failure(
+      'Historical SDD evidence is read-only migration/inspection context, not phase execution authority.'
+    );
+  }
+  if (ticketFlowVersion(taskPath, projectRoot) === 'v1') {
+    return failure(
+      'Legacy V1 scope is read-only migration input. Run npx gennady sdd-migrate bootstrap . and complete V1→V2 scope migration before phase execution.'
+    );
+  }
   if (!inside(projectRoot, taskPath)) return failure(`ticket escapes the project: ${taskArg}`);
   let content: string;
   try {

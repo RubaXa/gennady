@@ -7,6 +7,10 @@
  */
 export function printHelp(): void {
   console.info('gennady sdd-task — Emit a ticket planning surface for the execute orchestrator');
+  console.info(
+    'Legacy V1 scopes are migration-blocked, never pickable; historical simulation files are inspection-only.'
+  );
+  console.info('An already migrated V2 scope remains usable inside a mixed repository.');
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-task [project-root]');

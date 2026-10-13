@@ -11832,9 +11832,9 @@
     },
     {
       "path": "ai/directives/coding/typescript-rules.xml",
-      "oid": "ac0687dcc0ca8d2c74af07ce1b22052af5d14951",
-      "sha256": "716f928d79253a9b9da2a8f531c9123bee7a586f7d156aceb4792b30cb548767",
-      "bytes": 43384
+      "oid": "27dd565aecbea1b85d88d3f4e4569ba5ac6eae6e",
+      "sha256": "cf5a85bb6c3e284a01de6c7cc12a3ec4c141e25fa0412ca59e5ab6e64ed02f8b",
+      "bytes": 43714
     },
     {
       "path": "ai/directives/coding/uikit-spec-drafting.xml",
@@ -11850,9 +11850,9 @@
     },
     {
       "path": "ai/directives/sdd-v2/router.directive.xml",
-      "oid": "3ea173db8cc3ad892517ee096f011f35d69feb11",
-      "sha256": "78564aff2c6266f1a3cceff116a5af7c5d3733718610bd76cb8d60f64ce45c3b",
-      "bytes": 33502
+      "oid": "1dba9e8e30f5969127b0c97def702d496846e558",
+      "sha256": "bf528bb99d68b5ebd43adbc7e5e61733258135223e7bb2083a62d44c8bf9b1e4",
+      "bytes": 34111
     },
     {
       "path": "ai/directives/testing/baseline-testing.xml",
@@ -11958,9 +11958,9 @@
     },
     {
       "path": "cli/cmd/lint/lint.cmd.ts",
-      "oid": "6267c493be8de6c5ab01f16bec608d125f20f25b",
-      "sha256": "28f5ee1e36b670600d6c59168e2ebf5be9c07a85a7720d352ba1579f737dbe5e",
-      "bytes": 27356
+      "oid": "ae1b146d0f7cf44fac902768bc4b9319470f6aae",
+      "sha256": "89226e37c9e8f06cd4449d3fe57163364ec62226b426293db0de129df31aa3a6",
+      "bytes": 27840
     },
     {
       "path": "cli/cmd/orient/__tests__/damerau-levenshtein.test.ts",
@@ -13266,9 +13266,9 @@
     },
     {
       "path": "scripts/v1-eradication.policy.json",
-      "oid": "ba3d0573ace095c40e9ac55718311001312e4ade",
-      "sha256": "5152428feebc1e410f180cea897506ef161bba917166cabe50b03221f09e1571",
-      "bytes": 10446
+      "oid": "1db97b1e68221f4fab428b4498e6eea40e42e1df",
+      "sha256": "dee4f85baab41efaed917b52f73ff1d31bfa36d99f14a8b86618ece2867be512",
+      "bytes": 11239
     },
     {
       "path": "services/agent-run/engines/opencode/opencode-engine.ts",
@@ -13410,15 +13410,15 @@
     },
     {
       "path": "specs/cli/lint/lint.spec.md",
-      "oid": "62d7d711a1070d19289caf18523c94fef73c2498",
-      "sha256": "b2f10cff458004903770254fc32b1474a78274fdec5ef69157ccdca7257ae279",
-      "bytes": 130666
+      "oid": "6fae2d7e0243d81e2cc89695b2b1358a143ce560",
+      "sha256": "29bc08783e210b4a615121a16eff19a24f3075ba684682ae1614d75b70803bcb",
+      "bytes": 131135
     },
     {
       "path": "specs/cli/orient/orient.spec.md",
-      "oid": "625a522de70ba2bb600b727c9645754b8b11d1f6",
-      "sha256": "feea78e913eb4edbd2beee494210b5dde1a256611226089657a8d0b1ca41fdb1",
-      "bytes": 20097
+      "oid": "35277b1aadc97bfa865e7691c846b9e7542d2df0",
+      "sha256": "4e94d42bc2169f69349b4d39c0f49264f6090eecf464cb3c1263b8a1440dce37",
+      "bytes": 20567
     },
     {
       "path": "specs/cli/review/review.spec.md",

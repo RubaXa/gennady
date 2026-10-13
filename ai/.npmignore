@@ -29,6 +29,8 @@ fixtures/
 
 # Eval harness: dev-only tooling, baselines and run results — never shipped
 flow-eval/
+flow-sim/
+drafts/
 .baseline/
 **/.baseline/
 .results/
