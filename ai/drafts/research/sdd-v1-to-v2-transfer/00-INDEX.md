@@ -5,6 +5,8 @@
 > independent checker + parent37 log/24 fixture hashes PASS. Actual installed package smoke PASS
 > on Node26/22,3120 files/0 forbidden paths. Generated evidence only, external review/merge pending;
 > then NEW exact candidate review/ACK for #25. npm forbidden, Swift UNVERIFIED/E18 DEFERRED.
+> Evidence [#122](https://github.com/RubaXa/gennady/pull/122) OPEN (`f4695dc7`), plan status #123;
+> full ordinary commit/push gates PASS. Independent reviewer verdict/merge still pending.
 
 > **Earlier UV-34 failure (historical):** #118/#119 reviewed/merged, release `b0a7685a`.
 > Fresh capture FAIL: 24 migration dry-runs reject three stale `FILE-SPEC-MAP.tsv` paths removed
