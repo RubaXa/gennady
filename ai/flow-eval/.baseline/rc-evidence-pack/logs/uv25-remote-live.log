@@ -8,6 +8,6 @@ UV25_REMOTE_LIVE mutations=0 secretOutput=0 logBodies=0
 
 
 --- stderr ---
-(node:70137) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:57861) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 

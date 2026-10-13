@@ -12,7 +12,6 @@ import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -23,7 +22,6 @@ import { tmpdir } from 'node:os';
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { format as formatWithPrettier } from 'prettier';
 import {
-  migrationScopeIdentityFinding,
   releaseEvidenceCommandPlan,
   renderReleaseEvidenceReadme,
   validateReleaseEvidenceResult,
@@ -31,6 +29,7 @@ import {
   type ReleaseEvidenceManifest,
   type ReleaseEvidenceResult,
 } from './release-evidence-contract.ts';
+import { committedMigrationScopes } from './release-migration-scopes.ts';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '../../..');
 const DEFAULT_OUT = 'ai/flow-eval/.baseline/rc-evidence-pack';
@@ -98,13 +97,6 @@ function scenarioEvidence(
   };
 }
 
-function discoverMigrationScopes(root: string): string[] {
-  const migrationRoot = join(root, 'migration');
-  return readdirSync(migrationRoot)
-    .filter((entry) => statSync(join(migrationRoot, entry)).isDirectory())
-    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-}
-
 function writeCommandLog(
   logPath: string,
   spec: ReleaseEvidenceCommand,
@@ -143,25 +135,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const scopes = discoverMigrationScopes(root);
-  if (scopes.length === 0) {
-    console.error('[release-evidence-pack] отказ: migration scopes не найдены');
-    process.exit(1);
-  }
   const sourceCommit = runText('git', ['rev-parse', 'HEAD'], root);
-  const committedScopes = runText(
-    'git',
-    ['ls-tree', '-d', '--name-only', `${sourceCommit}:migration`],
-    root
-  )
-    .split(/\r?\n/u)
-    .filter(Boolean)
-    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-  const scopeFinding = migrationScopeIdentityFinding(scopes, committedScopes);
-  if (scopeFinding) {
-    console.error(`[release-evidence-pack] отказ: ${scopeFinding}`);
-    process.exit(1);
-  }
+  const scopes = committedMigrationScopes(root, sourceCommit);
   const npmVersion = runText('npm', ['--version'], root);
 
   const scratch = mkdtempSync(join(tmpdir(), 'gennady-rel18-'));
