@@ -1,6 +1,14 @@
 # План переноса SDD v1 (main) → SDD v2 (RC) — индекс
 
-> **Current UV-34 finding 2026-10-13:** #118/#119 reviewed/merged, release `b0a7685a`.
+> **Current UV-34 delivery 2026-10-13:** #120/#121 reviewed/merged, release source
+> `c9d578c12f84491a97c3bc0e3a46edf10080e465`. Fresh capture37/37 PASS,12 scopes×2 exact no-op,
+> independent checker + parent37 log/24 fixture hashes PASS. Actual installed package smoke PASS
+> on Node26/22,3120 files/0 forbidden paths. Generated evidence only, external review/merge pending;
+> then NEW exact candidate review/ACK for #25. npm forbidden, Swift UNVERIFIED/E18 DEFERRED.
+> Evidence [#122](https://github.com/RubaXa/gennady/pull/122) OPEN (`f4695dc7`), plan status #123;
+> full ordinary commit/push gates PASS. Independent reviewer verdict/merge still pending.
+
+> **Earlier UV-34 failure (historical):** #118/#119 reviewed/merged, release `b0a7685a`.
 > Fresh capture FAIL: 24 migration dry-runs reject three stale `FILE-SPEC-MAP.tsv` paths removed
 > or renamed by #119; remaining 13 commands PASS, no new manifest materialized. Narrow corrective:
 > retire one deleted-helper row, update two migration-parser paths, regression tests; preflight,

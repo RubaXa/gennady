@@ -1,6 +1,14 @@
 # 64 — Единая система Verify, preset-плагины, remote execution и динамические правила
 
-> **Current execution 2026-10-13:** #118/#119 reviewed/merged, release `b0a7685a`.
+> **Current UV-34 handoff 2026-10-13:** #120/#121 reviewed/merged, clean source
+> `c9d578c12f84491a97c3bc0e3a46edf10080e465`,37/37 capture PASS,12 scopes×2 exact no-op.
+> Independent checker/parent raw+fixture hash review PASS; actual fresh tarball consumer Node26/22
+> PASS (four exports/declarations, V1 refusal without writes, V2 close, public corpus isolation,
+> 3120 files/0 forbidden paths). Generated pack only; external evidence review/merge pending.
+> Next: NEW exact candidate review → operator scope-bound ACK → #25 → post-merge verify.
+> Native Swift UNVERIFIED/E18 DEFERRED; npm publication remains forbidden.
+
+> **Earlier failed execution (historical):** #118/#119 reviewed/merged, release `b0a7685a`.
 > UV-34 fresh capture FAIL: all 24 migration commands reject stale FILE-SPEC-MAP rows229/1119/1167
 > (deleted lint helper and two renamed migration-parser paths); other 13 commands PASS. No fresh
 > manifest/candidate. Correct exactly those live map references + regression tests, keep whole-scope

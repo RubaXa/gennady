@@ -1,6 +1,10 @@
 # 62 — Очередь исполнения: тематические пачки (D-56 + D-57)
 
-> **Current order:** #118/#119 DONE → narrow stale live FILE-SPEC-MAP repair with regression tests
+> **Current order:** #120/#121 DONE → clean UV-34 capture `c9d578c1` PASS37/37 + fresh package smoke
+> → independent evidence review/merge → NEW candidate review/challenge → exact operator ACK → #25.
+> Evidence delivery is generated-only; no source/policy/currentProof/baseline drift or npm publication.
+
+> **Earlier failed-capture order (historical):** #118/#119 DONE → narrow stale live FILE-SPEC-MAP repair with regression tests
 > → independent corrective review/merge → UV-34 all 37 commands on NEW immutable source → candidate
 > review → exact operator ACK → #25. Capture on `b0a7685a` failed all 24 migration no-op commands;
 > successful 13 commands do not constitute a PASS pack. No retry before causal repair.
