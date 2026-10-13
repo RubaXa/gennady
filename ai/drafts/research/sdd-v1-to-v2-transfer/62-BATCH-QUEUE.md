@@ -1,6 +1,11 @@
 # 62 — Очередь исполнения: тематические пачки (D-56 + D-57)
 
-> **Delivery:** plan #118 / release [#119](https://github.com/RubaXa/gennady/pull/119) OPEN.
+> **Current order:** #118/#119 DONE → narrow stale live FILE-SPEC-MAP repair with regression tests
+> → independent corrective review/merge → UV-34 all 37 commands on NEW immutable source → candidate
+> review → exact operator ACK → #25. Capture on `b0a7685a` failed all 24 migration no-op commands;
+> successful 13 commands do not constitute a PASS pack. No retry before causal repair.
+
+> **Earlier submission (historical):** plan #118 / release [#119](https://github.com/RubaXa/gennady/pull/119) OPEN.
 > UV-30..33 IN REVIEW; ordinary commit/push gates PASS. Next autonomous batch UV-34/fresh UV-25
 > starts only after independent reviewer merges LAST corrective product/currentProof change.
 
