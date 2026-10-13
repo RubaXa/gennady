@@ -78,7 +78,7 @@ export function renderVerifyText(report: VerifyRunReport, root: string, planOnly
   if (report.evidence.length === 0) lines.push('  <none>');
   for (const evidence of report.evidence) {
     lines.push(
-      `  ${evidence.kind} ${safeVerifyText(evidence.identity, root)}: ${safeVerifyText(evidence.summary, root)}`
+      `  ${evidence.kind} ${safeVerifyText(evidence.identity, root, {}, false)}: ${safeVerifyText(evidence.summary, root)}`
     );
   }
   if (planOnly) {

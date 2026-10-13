@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 import { BUILTIN_PLUGINS } from '../../index.ts';
 import { VerifyConfigError } from '../../../shared/verify/config/verify-config.error.ts';
@@ -17,10 +18,20 @@ import { resolveSwiftVerifyPlan } from '../swift-planner.ts';
 
 const ZERO_YAML = path.resolve('plugins/swift/__tests__/fixtures/zero-yaml');
 const TARGET = 'Sources/ZeroYaml/main.swift';
+const GIT = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
 
 function executable(file: string): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, '#!/bin/sh\nexit 0\n');
+  const version = {
+    swift: 'Swift version 6.0',
+    swiftformat: '0.55.5',
+    swiftlint: '0.57.0',
+    xcodebuild: 'Xcode 16.2',
+  }[path.basename(file)];
+  fs.writeFileSync(
+    file,
+    `#!${process.execPath}\nprocess.stdout.write(${JSON.stringify(version ?? '')});\n`
+  );
   fs.chmodSync(file, 0o755);
 }
 
@@ -33,7 +44,7 @@ function withSwiftProject(
     readonly personal?: string;
   } = {}
 ): void {
-  const top = fs.mkdtempSync(path.join(os.tmpdir(), 'swift-target-'));
+  const top = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'swift-target-')));
   const root = path.join(top, 'repo');
   const home = path.join(top, 'home');
   const bin = path.join(top, 'bin');
@@ -49,6 +60,7 @@ function withSwiftProject(
     for (const tool of options.tools ?? ['swift', 'swiftformat', 'swiftlint', 'xcodebuild']) {
       executable(path.join(bin, tool));
     }
+    fs.symlinkSync(GIT, path.join(bin, 'git'));
     const which = path.join(bin, 'which');
     fs.writeFileSync(
       which,
@@ -58,6 +70,21 @@ function withSwiftProject(
     if (options.yaml !== undefined) fs.writeFileSync(path.join(root, 'gennady.yaml'), options.yaml);
     if (options.personal !== undefined)
       fs.writeFileSync(path.join(home, '.gennadyrc'), options.personal);
+    execFileSync(GIT, ['init', '-q'], { cwd: root });
+    execFileSync(GIT, ['add', '.'], { cwd: root });
+    execFileSync(
+      GIT,
+      [
+        '-c',
+        'user.name=Owned fixture',
+        '-c',
+        'user.email=owned@example.invalid',
+        'commit',
+        '-qm',
+        'owned source',
+      ],
+      { cwd: root }
+    );
     process.env['PATH'] = bin;
     run(root, home);
   } finally {
@@ -290,7 +317,7 @@ describe('Swift target StackPlugin', () => {
           (entry) => entry.requirementId === 'swift:tool:swift:build'
         );
         assert.strictEqual(tool?.status, 'BLOCKED');
-        assert.match(tool?.fix ?? '', /Apple Swift toolchain/);
+        assert.match(tool?.fix ?? '', /install\/select.*swift.*PATH/);
       },
       { tools: ['swiftformat', 'swiftlint'] }
     );

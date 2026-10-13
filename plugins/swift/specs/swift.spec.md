@@ -6,6 +6,11 @@ The active Swift path is the target `StackPlugin.target` / `VerifyPreset` contra
 gate order and receipt fingerprint details remain documented only for validating already persisted
 phase evidence; they are not an executable compatibility pipeline.
 
+Swift remains an **UNVERIFIED prototype**. UV-29 deterministic failure-path fixtures are not
+native Xcode/Tuist verification. Real exact E-18/UV-26 is DEFERRED post-main-cutover and is not a
+release dependency; selected consumer gates still block on FAIL/ENV_FAIL/BLOCKED. An actual
+phase PASS does not upgrade the global support tier.
+
 ## Detection
 
 The plugin detects a literal root `Package.swift`, `Project.swift`, or `Workspace.swift`, or a
@@ -34,14 +39,24 @@ block the selected slice instead of widening to `.` or the repository. `format` 
 read-only post-repair observations. Repair invalidates the earlier build observation so U3 can
 perform a selective recheck without a duplicated DAG node.
 
-SwiftPM tool availability and Xcode identity are evaluated only when their steps are in the
-selected dependency-closed slice. Explicitly waived steps remain visible and do not contribute
-their readiness requirements.
+Prerequisites derive from actual commands in the selected dependency-closed slice, not phase,
+step name or detected project kind. Explicitly waived steps remain visible and do not contribute
+their readiness requirements. Generic custom argv and remote-only slices require no unrelated
+Apple tools or project identity; SwiftPM requires no Xcode/Tuist. Selected Xcode requires >=16.2;
+selected Tuist requires >=4.202.0 (an exact-floor prerelease is insufficient). Selected formatter/
+linter probes identify their project-pinned installed version; absent/broken prerequisites are
+BLOCKED with PATH/install/select hints, never a fabricated gate PASS.
+
+Bounded version probes use the exact selected executable/wrapper, cwd and env (including
+DEVELOPER_DIR), protected by WorkspaceGuard before execution. Unexpected writes are restored
+dirty-safely; ref drift retains the checkpoint for explicit recovery. Timeout descendants are
+terminated before release. A missing Git guard never becomes unprotected readiness. `--plan`
+may observe these prerequisites but never executes gates or supplies run evidence.
 
 ## Xcode/Tuist project identity
 
-The target path never guesses or accepts a copied target argv for Xcode build/test. A project owns
-the minimal identity:
+The builtin target path never guesses Xcode build/test identity. A project owns the minimal
+identity; explicit custom argv retains the same selected-command prerequisite checks:
 
 ```yaml
 stack:
@@ -50,12 +65,15 @@ stack:
       workspace: App.xcworkspace # exactly one of workspace/project
       scheme: App
       destination: platform=iOS Simulator,name=iPhone 15 Pro,OS=17.2
-      testPlan: App # optional
+      testPlan: App # required only for selected test-bearing Xcode actions
 ```
 
 The plugin constructs direct `xcodebuild` argv without a shell. Missing identity, a missing selected
 tool or a missing workspace/project path is `BLOCKED` with an actionable fix. `testPlan` is applied
-only to the test step. Removed `stack.swift.skipGates/overrideGates/extraGates` fields fail closed;
+only to the builtin test step; actual custom test/test-without-building/build-for-testing actions
+also require it, including integration/coverage. Option values such as a scheme named `test` are
+not actions. `xcrun --find` is discovery; xccov export does not require build/test identity.
+Removed `stack.swift.skipGates/overrideGates/extraGates` fields fail closed;
 project commands and waivers belong under `verify.presets.swift`. Identity paths must stay
 physically inside the repository and may not traverse or name a symlink.
 
@@ -65,7 +83,14 @@ UV-26 and are explicitly unverified by these unit contracts. UV-26 now supplies 
 `gennady.e18-exact-evidence.v2` collector/checker contract: it binds reviewed project-owned Xcode
 identity and coverage threshold, current SDD process/receipt evidence, production exact-SHA remote
 proof, hashed `.xcresult` and embedded/reparsed xccov JSON. The contract fixture is not runtime
-proof; the real macOS 15+/Xcode 16.2+/Tuist 4.202.0 cloud-ios run remains required.
+proof; the real macOS 15+/Xcode 16.2+/Tuist 4.202.0 cloud-ios run is DEFERRED post-main-cutover,
+not a release/main-cutover bar. This future exact collector/checker contract remains strict.
+
+Ordinary compile/test/lint and unknown nonzero failures are FAIL. ENV_FAIL requires a concrete
+environment signature (for example an unavailable simulator or SwiftLint dynamic library), not
+every nonzero exit. Private raw verdict/stat inputs remain intact; output, readiness, public
+JSON/text, errors and SDD journals use the shared safeVerifyText sanitizer, including selected
+command-env secret values. Timeout/cancellation/mutation semantics are unchanged.
 
 ## Historical receipt-validation facts
 
@@ -92,8 +117,10 @@ runtime mutation attribution belongs to U3.
 - Every phase is a dependency-closed slice of one DAG; missing integration/coverage commands do not
   block `code` or `unit`.
 - Swift repair argv and writes contain only exact selected `.swift` files.
-- Xcode/Tuist build/test are commandless and blocked without project identity; a valid identity
-  deterministically constructs argv and retains per-key provenance.
+- Builtin Xcode build/test are commandless and blocked without project identity; a valid identity
+  deterministically constructs argv and retains per-key provenance. Actual selected custom Xcode
+  operations enforce their own identity/version checks; generic/remote commands do not inherit
+  unrelated identity requirements. Composed custom phases and metadata remain intact.
 - Unknown config, ambiguous identity and unsafe repair prefixes fail closed with typed errors.
 - Historical `environmentState` receipts remain parseable/currentness-checked without restoring the
   removed gate runner.

@@ -12,18 +12,61 @@ function regexpEscape(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** @purpose Remove repository absolute paths and common authored secret forms from presentation text. | @param value Authored or runtime text. | @param root Canonical repository root. | @returns Safe deterministic presentation text. */
-export function safeVerifyText(value: string, root: string): string {
-  const withoutRoot = value.replace(new RegExp(regexpEscape(root), 'g'), '.');
-  return withoutRoot
+/** @purpose Remove repository paths and credential forms only after private verdict/stat classification. | @param value Authored or runtime text. | @param root Canonical repository root. | @param [environment] Selected command overrides carrying known secret values. | @param [maskKnownValues] False only for fixed protocol/hash identities, never runtime prose. | @returns Safe deterministic presentation text. */
+export function safeVerifyText(
+  value: string,
+  root: string,
+  environment: Readonly<Record<string, string | undefined>> = {},
+  maskKnownValues = true
+): string {
+  let text = value;
+  const secrets = new Set(
+    maskKnownValues
+      ? Object.entries({ ...process.env, ...environment }).flatMap(([key, secret]) => {
+          if (
+            !/(?:^|_)(?:TOKEN|PASSWORD|SECRET|AUTHORIZATION|API_?KEY|PRIVATE_?KEY|ACCESS_?KEY|CLIENT_?SECRET|CREDENTIAL)(?:_|$)/i.test(
+              key
+            ) ||
+            !secret
+          )
+            return [];
+          const variants = [secret, JSON.stringify(secret).slice(1, -1)];
+          try {
+            variants.push(encodeURIComponent(secret));
+          } catch {
+            /* JSON may carry a lone surrogate; raw/JSON variants remain masked. */
+          }
+          return variants;
+        })
+      : []
+  );
+  for (const secret of [...secrets].sort((a, b) => b.length - a.length)) {
+    text = text.split(secret).join('[redacted]');
+    const marker = text.lastIndexOf('\n[truncated');
+    if (marker >= 0 && secret.length >= 4) {
+      const prefix = text.slice(0, marker);
+      const start = prefix.lastIndexOf(secret.slice(0, 4));
+      const suffix = start < 0 ? '' : prefix.slice(start);
+      if (suffix.length >= 4 && suffix.length < secret.length && secret.startsWith(suffix))
+        text = `${prefix.slice(0, start)}[redacted]${text.slice(marker)}`;
+    }
+  }
+  text = text.replace(new RegExp(regexpEscape(root), 'g'), '.');
+  return text
+    .replace(/\b([a-z][a-z\d+.-]*:\/\/)[^/\s@]+@/gi, '$1[redacted]@')
+    .replace(
+      /\b(?:gh[pousr]_[A-Za-z\d]{12,}|github_pat_[A-Za-z\d_]+|sk-[A-Za-z\d_-]{12,})\b/g,
+      '[redacted]'
+    )
     .replace(/\b(Bearer)\s+[^\s,;]+/gi, '$1 [redacted]')
     .replace(
-      /--(token|password|secret|authorization|api[_-]?key)(?:=|\s+)[^\s,;]+/gi,
+      /--(token|password|secret|authorization|api[_-]?key)(?:=|\s+)(?:"(?:\\.|[^"\\\r\n])*(?:"|(?=\r?\n|$))|'[^'\r\n]*(?:'|(?=\r?\n|$))|[^\s,;]+)/gi,
       '--$1=[redacted]'
     )
     .replace(
-      /\b(token|password|secret|authorization|api[_-]?key)\s*([=:])\s*[^\s,;]+/gi,
-      '$1$2[redacted]'
+      /\b([\w-]*(?:token|password|secret|authorization|api[_-]?key))(["']?)\s*([=:])\s*("(?:\\.|[^"\\\r\n])*(?:"|(?=\r?\n|$))|'[^'\r\n]*(?:'|(?=\r?\n|$))|(?:(?:Basic|Bearer)\s+)?[^\s,;}\]]+)/gi,
+      (_match, key: string, quote: string, delimiter: string, content: string) =>
+        `${key}${quote}${delimiter}${content.startsWith('"') ? '"[redacted]"' : content.startsWith("'") ? "'[redacted]'" : '[redacted]'}`
     );
 }
 
@@ -46,10 +89,11 @@ function commandProjection(command: LocalCommand, root: string): Record<string, 
 }
 
 function stepProjection(step: PlannedVerifyStep, root: string): Record<string, unknown> {
+  const safe = (text: string) => safeVerifyText(text, root, step.command?.env);
   return {
     id: step.id,
     plugin: step.plugin,
-    ...(step.provenance === undefined ? {} : { provenance: safeVerifyText(step.provenance, root) }),
+    ...(step.provenance === undefined ? {} : { provenance: safe(step.provenance) }),
     tags: step.tags,
     needs: step.needs,
     executor: step.executor,
@@ -64,8 +108,8 @@ function stepProjection(step: PlannedVerifyStep, root: string): Record<string, u
         }),
     requires: step.requires.map((requirement) => ({
       ...requirement,
-      description: safeVerifyText(requirement.description, root),
-      fix: safeVerifyText(requirement.fix, root),
+      description: safe(requirement.description),
+      fix: safe(requirement.fix),
       ...(requirement.probe === undefined
         ? {}
         : { probe: commandProjection(requirement.probe, root) }),
@@ -75,7 +119,7 @@ function stepProjection(step: PlannedVerifyStep, root: string): Record<string, u
       : {
           testStats: {
             ...step.testStats,
-            source: safeVerifyText(step.testStats.source, root),
+            source: safe(step.testStats.source),
           },
         }),
     ...(step.outputMeansFailure === undefined
@@ -88,15 +132,15 @@ function stepProjection(step: PlannedVerifyStep, root: string): Record<string, u
             ...rule,
             ...(rule.stdoutMatches === undefined
               ? {}
-              : { stdoutMatches: safeVerifyText(rule.stdoutMatches, root) }),
+              : { stdoutMatches: safe(rule.stdoutMatches) }),
             ...(rule.stderrMatches === undefined
               ? {}
-              : { stderrMatches: safeVerifyText(rule.stderrMatches, root) }),
+              : { stderrMatches: safe(rule.stderrMatches) }),
             ...(rule.outputMatches === undefined
               ? {}
-              : { outputMatches: safeVerifyText(rule.outputMatches, root) }),
-            hint: safeVerifyText(rule.hint, root),
-            ...(rule.source === undefined ? {} : { source: safeVerifyText(rule.source, root) }),
+              : { outputMatches: safe(rule.outputMatches) }),
+            hint: safe(rule.hint),
+            ...(rule.source === undefined ? {} : { source: safe(rule.source) }),
           })),
         }),
     ...(step.writes === undefined
@@ -148,7 +192,7 @@ export function projectVerifyReport(
       ? false
       : report.evidence.map((item) => ({
           ...item,
-          identity: safeVerifyText(item.identity, root),
+          identity: safeVerifyText(item.identity, root, {}, false),
           summary: safeVerifyText(item.summary, root),
         })),
     ...(report.remote === undefined
