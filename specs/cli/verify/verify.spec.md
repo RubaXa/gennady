@@ -15,8 +15,17 @@ CLI-VERIFY
 > **Target/cutover contract (ACK U0, 2026-09-24):** this section and VERIFY-DL-5..10 are the
 > normative release contract. The V-02..V-19 material below remains historical evidence for the
 > currently shipped compatibility runtime; it must not be read as the target architecture. Cutover
-> proceeds through UV-01..17 and UV-22..26, and publication stays blocked through U8 plus exact
-> Swift E-18 evidence.
+> proceeds through UV-01..17 and UV-22..26. The original exact Swift E-18 release bar is superseded
+> by the approved 2026-10-13 amendment below; npm publication remains forbidden independently.
+>
+> **2026-10-13 UV-28 amendment:** Swift support is an **UNVERIFIED prototype**; real E-18/UV-26
+> validation is **DEFERRED post-main-cutover**, not a release/main-cutover dependency. Strict future
+> E-18 collector/checker contracts remain unchanged. Missing optional proof is DEFERRED, never
+> PASS; supplied invalid/unsafe proof remains INVALID/fail-closed. The source-owned versioned
+> guard policy, reason and unverified scope are visible and bound into candidate identity/exact
+> ACK. Consumer selected Swift build/test/coverage FAIL/ENV_FAIL/BLOCKED remain blocking; actual
+> phase PASS does not upgrade global support. UV-28/UV-29 reviewed product changes require final
+> UV-25 recapture on their immutable source before independent candidate review and exact ACK.
 >
 > **2026-09-25 amendment:** SDD workflow phase kind and Verify phase selector are separate open
 > vocabularies. Built-in presets provide zero-YAML default mappings; project YAML overlays/overrides
@@ -521,8 +530,9 @@ Provider selection идёт по exact phase artifacts/facts, не по primary 
 fixture Git-blob SHA-256 и обязательные observable assertions для Node, Go, Swift-local, remote,
 Rules и SDD attempt evidence. Independent checker реконструирует matrix из кода и fail closed при
 пропущенном scenario, изменённой команде, fixture/log drift или ложном success marker. Swift-local
-evidence доказывает SwiftPM и fail-closed Xcode planning, но явно не закрывает exact cloud-ios E-18:
-он остаётся `pending-UV-26`. U-A6 включает отдельный production-backed read-only GitHub smoke:
+evidence проверяет deterministic Swift-local preset/planner scenarios и fail-closed Xcode planning,
+не native Xcode runtime и не global verified Swift support. Exact cloud-ios E-18 остаётся
+`DEFERRED post-main-cutover` по amendment 2026-10-13. U-A6 включает отдельный production-backed read-only GitHub smoke:
 production `VcsGithubClient`/pipeline port и общий `watchRemotePipeline` наблюдают закреплённые
 historical identities `sindresorhus/p-map@2c0934b8312b637f933b752c6054845c2d2d5533`, workflow
 `4634269`, run `36383812626`, terminal `REMOTE_SUCCESS` и 5 successful jobs. Smoke требует только
@@ -922,7 +932,7 @@ amendment open-vocabulary mapping и ACKed Evidence/Receipt checkpoint.
 - **Decision:** Swift `environmentState` = hash отсортированного repo-relative набора Swift/Xcode/Tuist manifests+locks плюс успешные `swift --version` и `xcodebuild -version`; gate commands остаются только в `planState`. SwiftPM defaults допустимы только при root `Package.swift`; Xcode/Tuist workspace/scheme/destination задаёт `stack.swift` config. Phase `fix` работает по exact Target Files. Workspace mutation scan пропускает только реально gitignored output. `xccov` producer экспортирует canonical/current bounded `.xcresult`, созданный project-owned test gate, и сохраняет mtime bundle в JSON-report для честной freshness.
 - **Why:** generic Xcode argv неизбежно угадывает project identity, полный hash DerivedData неприемлем на реальном cloud-ios, а новый JSON mtime после экспорта скрывал бы stale source относительно старого test bundle. Эти границы сохраняют ownership проекта, производительность и fail-closed evidence одновременно.
 - **Eval fixture:** опубликованный cloud-ios commit `d9de0f7c16824aff043be8332818154d9ed00960` остаётся immutable; обязательный V-19 scope для долгих legacy build/test gates добавляется только deterministic overlay внутри isolated eval worktree перед переносом literals в Swift overrides.
-- **Runtime validation: DEFERRED / UNVERIFIED IN REAL XCODE.** По решению оператора release validation должна проверить exact `xccov` argv и JSON shape, duplicate source paths across targets, bundle-mtime freshness, единый active Xcode/`DEVELOPER_DIR`, реальные workspace/scheme/destination/runtime и resource cost. UV-26 принимает только один `gennady.e18-exact-evidence.v2`: independent checker перепроверяет exact source/tree, clean cloud-ios identity, reviewed Xcode/coverage config, runner-owned SDD/group/process facts, production exact-SHA watcher, fresh `.xcresult` и embedded xccov payload. Collector выполняет host preflight до project/network/write и не мутирует remote; macOS 15+, Xcode 16.2 и Tuist 4.202.0 обязательны. Unit/contract tests зелёные, но fixture не является runtime proof E-18.
+- **Runtime validation: DEFERRED post-main-cutover / Swift UNVERIFIED prototype (approved 2026-10-13).** Future exact E-18 validation должна проверить exact `xccov` argv и JSON shape, duplicate source paths across targets, bundle-mtime freshness, единый active Xcode/`DEVELOPER_DIR`, реальные workspace/scheme/destination/runtime и resource cost. Это больше не release/main-cutover bar; consumer selected phase gates не отключены. UV-26 принимает только один `gennady.e18-exact-evidence.v2`: independent checker перепроверяет exact source/tree, clean cloud-ios identity, reviewed Xcode/coverage config, runner-owned SDD/group/process facts, production exact-SHA watcher, fresh `.xcresult` и embedded xccov payload. Collector выполняет host preflight до project/network/write и не мутирует remote; macOS 15+, Xcode 16.2 и Tuist 4.202.0 обязательны для этого future exact contract. Unit/contract tests зелёные, но fixture не является runtime proof E-18; optional supplied invalid evidence остаётся fail-closed.
 
 ### VERIFY-DL-5 / D-65 — Один Verify вместо двух движков и отдельного fix
 

@@ -84,13 +84,27 @@ diff identities (status, path, modes и old/new Git object ids), relevant config
 
 UV-25 выполняется на clean product commit `evidenceSourceCommit`. Candidate HEAD может быть только
 его descendant, добавляющим frozen UV-25 pack (`manifest.json`, `README.md` и ровно declared raw
-logs) и exact UV-26 E-18 evidence file. Любой product/config/rules/cutover/policy/package/workflow byte
+logs) и optional exact UV-26 E-18 evidence file. Любой product/config/rules/cutover/policy/package/workflow byte
 между этими commits, undeclared evidence file, deletion или mode/blob drift блокирует candidate.
 Independent UV-25 checker проверяет manifest/log inventory и hashes; exact manifest/checker bytes,
-`generatedAt`, оба full SHA и evidence delta digest входят в candidate identity. UV-26 обязан иметь
+`generatedAt`, оба full SHA и evidence delta digest входят в candidate identity. Предъявленный UV-26 обязан иметь
 schema `gennady.e18-exact-evidence.v2`, ссылаться на тот же `evidenceSourceCommit` и пройти
 independent `scripts/e18-exact-evidence.ts --check`: release boundary не доверяет authored
 `status/environment`. Checker digest и derived PASS входят в candidate identity.
+
+**Approved UV-28 amendment (2026-10-13):** source-owned versioned
+`gennady.swift-release-validation.v2` policy откладывает real E-18 validation до post-main-cutover.
+Global Swift support остаётся `UNVERIFIED` prototype; waiver ограничен release/main-cutover и
+не отключает consumer selected Swift build/test/coverage gates: `FAIL`/`ENV_FAIL`/`BLOCKED` blocking.
+Genuine absent optional E-18 → `DEFERRED`, checker не запускается, `checkerPassed=false`.
+Present invalid proof → `CUTOVER_UV26_INVALID` / `INVALID`, не deferred: symlink (включая dangling),
+unsafe ancestor, nonregular file, unreadable file, oversize (>32 MiB), read-time drift или
+несовпадающий strict checker/source. Reader не открывает nonregular files, не следует links,
+читает bounded bytes, не раскрывает OS errors/content/checker stderr. Optional strict `PASS`
+не меняет support tier. Candidate JSON/text явно несут support tier, consumer-gate scope,
+reason, policy identity/hash и observed E-18 status; весь projection bind-ится digest/exact ACK.
+Нет project/YAML/env waiver switches и static ACK. UV-25 manifest/README/все declared raw logs
+остаются обязательными; unsafe optional proof не маскируется как отсутствие.
 
 Fresh UV-27A JSON report исполняется на candidate tree; `policyDigest`, `inventoryDigest` и полный
 report digest входят в identity. Candidate также требует clean tree, current main ancestor,
@@ -113,11 +127,14 @@ Authorization — отдельная read-only проверка с внешни�
   release branch, а `git ls-remote` отделяет options literal `--`.
 - Arbitrary ancestor не считается evidence source: delta допускает только exact manifest-derived
   UV-25 allowlist и exact UV-26 path; extra/missing evidence и любой product byte fail closed.
-- UV-25/UV-26/UV-27A missing, malformed, stale или non-PASS блокируют authorization.
+- UV-25/UV-27A missing, malformed, stale или non-PASS блокируют authorization; UV-26 genuine
+  absence deferred, но supplied invalid/unsafe/non-PASS proof блокирует authorization.
 - Candidate digest детерминирован; exact ACK проходит в обе стороны только для одного повторно
   вычисленного eligible candidate.
-- Текущая release закономерно `BLOCKED`: она не находится на release branch/upstream, UV-25 относится
-  к более раннему source commit, UV-26 отсутствует, а current main не является ancestor дерева v2.
+- Historical pre-reconciliation snapshot был blocked wrong branch/upstream, UV-25 drift, missing
+  E-18 и отсутствием MAIN ancestry. R1–R5/#113 уже reviewed/merged на release c622; после UV-28/UV-29
+  product changes требуется fresh UV-25 на final immutable source, independent review и новый
+  exact scope-bound ACK. Этот amendment не делает старый source eligible и не даёт npm authority.
 
 ### 2.4 R4 — Frozen MAIN preservation and exhaustive disposition
 
@@ -151,7 +168,12 @@ archive generation is explicit authoring, not an automatic way to accept a red c
 Byte retention does not imply API/dependency/runtime parity. The old OpenCode data-URL/temp
 workaround is excluded only with real installed copied-config/emitted-path acceptance; this is
 not real OpenCode agent/network E2E. Existing goldens, D38 baseline, publication DENY and D60 scope
-remain unchanged. R5, final UV25, real E18 and exact candidate ACK remain OPEN.
+remain unchanged. Historical R4 snapshot above preceded reviewed R5/#112 and UV25/#113.
+UV-28 allows only reviewed currentProof hashes for actually changed `scripts/release-boundary.ts`,
+`specs/cli/verify/verify.spec.md`, `specs/infra-base/infra-base.spec.md`; every other proof, frozen
+ref/117 commits/520 rows/521 identities/disposition/542 raw blobs/parityClaim=false is unchanged.
+After the last reviewed UV-28/UV-29 product change, fresh final UV25 and exact candidate review/ACK
+remain pending. Real E18 is deferred post-main-cutover, not PASS. Publication remains denied.
 
 <!--SECTION:ENTITY_INVENTORY-->
 
@@ -237,4 +259,4 @@ remain unchanged. R5, final UV25, real E18 and exact candidate ACK remain OPEN.
 | ------ | ------ | ----------------------------------------------------------------------------------------- |
 | UV-27A | done   | inventory/policy/checker, causal tests, pre-commit gate, zero forbidden runtime residue   |
 | UV-27B | done   | read-only candidate/ACK SSOT, bounded evidence descendant and npm publication prohibition |
-| UV-26+ | open   | exact E-18 evidence, refreshed UV-25, reviewed candidate/ACK and external main cutover    |
+| UV-28+ | open   | Swift UNVERIFIED policy, diagnostics, fresh UV-25, exact candidate/ACK; E-18 post-cutover |

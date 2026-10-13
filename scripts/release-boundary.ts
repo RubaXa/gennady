@@ -6,7 +6,16 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync } from 'node:fs';
+import {
+  closeSync,
+  constants,
+  existsSync,
+  fstatSync,
+  lstatSync,
+  openSync,
+  readFileSync,
+  readSync,
+} from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,6 +36,17 @@ const UV27A_SCHEMA = 'gennady.v1-eradication-report.v1';
 const UV25_SCHEMA = 'gennady.rc-evidence-pack.v2';
 const UV26_SCHEMA = 'gennady.e18-exact-evidence.v2';
 const UV26_CHECK_SCHEMA = 'gennady.e18-exact-check.v1';
+const MAX_OPTIONAL_EVIDENCE_BYTES = 32 * 1024 * 1024;
+
+/** @purpose Approved source-owned release waiver, never a consumer phase skip or runtime PASS. */
+const SWIFT_RELEASE_VALIDATION = Object.freeze({
+  schema: 'gennady.swift-release-validation.v2',
+  decisionDate: '2026-10-13',
+  scope: 'RELEASE_MAIN_CUTOVER_ONLY',
+  e18Validation: 'DEFERRED_POST_MAIN_CUTOVER',
+  reason:
+    'Swift remains an unverified prototype; real E18 validation is deferred post-main-cutover',
+} as const);
 
 /** @purpose Closed reviewed policy for exact cutover refs, evidence and authority surfaces. */
 export type ReleaseBoundaryPolicy = {
@@ -66,6 +86,12 @@ type DiffEntry = {
 type FileIdentity = { path: string; sha256: string };
 type CandidateProjection = {
   schema: typeof CANDIDATE_SCHEMA;
+  swiftSupport: {
+    tier: 'UNVERIFIED';
+    consumerPhaseGates: 'BLOCKING';
+    policy: typeof SWIFT_RELEASE_VALIDATION;
+    policyDigest: string;
+  };
   identity: {
     branch: string | null;
     releaseBranch: string;
@@ -466,6 +492,84 @@ function readRegularFile(root: string, path: string): Buffer | null {
   return stat.isFile() && !stat.isSymbolicLink() ? readFileSync(absolute) : null;
 }
 
+/** @purpose Distinguish genuine absence from unsafe supplied proof without leaking OS/content errors. */
+function optionalEvidence(
+  root: string,
+  path: string
+): { status: 'MISSING' | 'INVALID'; bytes: null } | { status: 'PRESENT'; bytes: Buffer } {
+  let descriptor: number | undefined;
+  try {
+    const parts = repoPath(root, path).split('/');
+    const components: Array<{ path: string; dev: number; ino: number; directory: boolean }> = [];
+    const unchanged = (): boolean =>
+      components.every((component) => {
+        const stat = lstatSync(component.path);
+        return (
+          stat.dev === component.dev &&
+          stat.ino === component.ino &&
+          !stat.isSymbolicLink() &&
+          (component.directory ? stat.isDirectory() : stat.isFile())
+        );
+      });
+    for (let index = 0; index < parts.length; index += 1) {
+      let stat;
+      try {
+        stat = lstatSync(resolve(root, ...parts.slice(0, index + 1)));
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT')
+          return { status: unchanged() ? 'MISSING' : 'INVALID', bytes: null };
+        return { status: 'INVALID', bytes: null };
+      }
+      if (
+        stat.isSymbolicLink() ||
+        (index < parts.length - 1 ? !stat.isDirectory() : !stat.isFile())
+      )
+        return { status: 'INVALID', bytes: null };
+      components.push({
+        path: resolve(root, ...parts.slice(0, index + 1)),
+        dev: stat.dev,
+        ino: stat.ino,
+        directory: index < parts.length - 1,
+      });
+    }
+    descriptor = openSync(
+      resolve(root, path),
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK
+    );
+    const before = fstatSync(descriptor);
+    const leaf = components.at(-1)!;
+    if (
+      !before.isFile() ||
+      before.dev !== leaf.dev ||
+      before.ino !== leaf.ino ||
+      !unchanged() ||
+      before.size > MAX_OPTIONAL_EVIDENCE_BYTES
+    )
+      return { status: 'INVALID', bytes: null };
+    const buffer = Buffer.alloc(before.size + 1);
+    let length = 0;
+    while (length < buffer.length) {
+      const count = readSync(descriptor, buffer, length, buffer.length - length, null);
+      if (count === 0) break;
+      length += count;
+    }
+    const after = fstatSync(descriptor);
+    if (
+      length !== before.size ||
+      before.size !== after.size ||
+      before.mtimeMs !== after.mtimeMs ||
+      before.ctimeMs !== after.ctimeMs ||
+      !unchanged()
+    )
+      return { status: 'INVALID', bytes: null };
+    return { status: 'PRESENT', bytes: buffer.subarray(0, length) };
+  } catch {
+    return { status: 'INVALID', bytes: null };
+  } finally {
+    if (descriptor !== undefined) closeSync(descriptor);
+  }
+}
+
 function fileIdentities(
   root: string,
   headSha: string | null,
@@ -648,16 +752,36 @@ function uv26Evidence(
   ports: ReleaseBoundaryPorts,
   blockers: CutoverBlocker[]
 ): CandidateProjection['evidence']['uv26'] {
-  const bytes = readRegularFile(root, policy.uv26Evidence);
-  const checkerBytes = readRegularFile(root, policy.uv26Checker);
+  const observation = optionalEvidence(root, policy.uv26Evidence);
+  const bytes = observation.bytes;
   if (bytes === null) {
-    blockers.push({ code: 'CUTOVER_UV26_MISSING', detail: policy.uv26Evidence });
+    if (observation.status === 'INVALID')
+      blockers.push({
+        code: 'CUTOVER_UV26_INVALID',
+        detail: 'optional exact E-18 evidence is unsafe or unreadable',
+      });
     return {
       schema: null,
       sourceCommit: null,
-      status: null,
+      status: observation.status === 'MISSING' ? 'DEFERRED' : 'INVALID',
       evidenceDigest: null,
-      checkerDigest: checkerBytes === null ? null : sha256(checkerBytes),
+      checkerDigest: null,
+      checkerPassed: false,
+    };
+  }
+  const checkerObservation = optionalEvidence(root, policy.uv26Checker);
+  const checkerBytes = checkerObservation.bytes;
+  if (checkerBytes === null) {
+    blockers.push({
+      code: 'CUTOVER_UV26_INVALID',
+      detail: 'optional exact E-18 checker is unsafe, missing or unreadable',
+    });
+    return {
+      schema: null,
+      sourceCommit: null,
+      status: 'INVALID',
+      evidenceDigest: sha256(bytes),
+      checkerDigest: null,
       checkerPassed: false,
     };
   }
@@ -679,7 +803,11 @@ function uv26Evidence(
     // Validation below emits one stable finding.
   }
   const bytesDigest = sha256(bytes);
+  const currentEvidence = optionalEvidence(root, policy.uv26Evidence);
+  const currentChecker = optionalEvidence(root, policy.uv26Checker);
   const valid =
+    evidenceSourceCommit !== null &&
+    FULL_SHA.test(evidenceSourceCommit) &&
     isRecord(evidence) &&
     evidence.schema === UV26_SCHEMA &&
     evidence.sourceCommit === evidenceSourceCommit &&
@@ -689,16 +817,21 @@ function uv26Evidence(
     report.ok === true &&
     report.derivedStatus === 'PASS' &&
     report.sourceCommit === evidenceSourceCommit &&
-    report.evidenceDigest === bytesDigest;
+    report.evidenceDigest === bytesDigest &&
+    currentEvidence.bytes?.equals(bytes) === true &&
+    currentChecker.bytes?.equals(checkerBytes) === true;
   if (!valid)
     blockers.push({
       code: 'CUTOVER_UV26_INVALID',
-      detail: `independent exact E-18 checker must derive PASS for the exact evidence source (${checker.stderr.trim().slice(0, 256) || 'invalid evidence/checker report'})`,
+      detail: 'independent exact E-18 checker must derive PASS for the exact evidence source',
     });
   return {
-    schema: typeof evidence?.schema === 'string' ? evidence.schema : null,
-    sourceCommit: typeof evidence?.sourceCommit === 'string' ? evidence.sourceCommit : null,
-    status: valid ? 'PASS' : null,
+    schema: evidence?.schema === UV26_SCHEMA ? UV26_SCHEMA : null,
+    sourceCommit:
+      typeof evidence?.sourceCommit === 'string' && FULL_SHA.test(evidence.sourceCommit)
+        ? evidence.sourceCommit
+        : null,
+    status: valid ? 'PASS' : 'INVALID',
     evidenceDigest: bytesDigest,
     checkerDigest: checkerBytes === null ? null : sha256(checkerBytes),
     checkerPassed: valid,
@@ -732,6 +865,7 @@ function validateEvidenceOnlyDelta(
   sourceCommit: string | null,
   headSha: string | null,
   entries: readonly DiffEntry[],
+  optionalPresent: boolean,
   blockers: CutoverBlocker[]
 ): void {
   if (sourceCommit === null || !FULL_SHA.test(sourceCommit)) {
@@ -769,7 +903,7 @@ function validateEvidenceOnlyDelta(
       detail: unexpected.sort(compareText).join(', '),
     });
   const allowedChanged = new Set(entries.map(({ path }) => path));
-  for (const path of allowed) {
+  for (const path of uv25AllowedPaths(root, policy)) {
     if (!existsSync(resolve(root, path)))
       blockers.push({ code: 'CUTOVER_EVIDENCE_FILE_MISSING', detail: path });
     else if (!allowedChanged.has(path) && readHeadFile(root, sourceCommit, path) === null) {
@@ -779,6 +913,15 @@ function validateEvidenceOnlyDelta(
       });
     }
   }
+  if (
+    optionalPresent &&
+    !allowedChanged.has(policy.uv26Evidence) &&
+    readHeadFile(root, sourceCommit, policy.uv26Evidence) === null
+  )
+    blockers.push({
+      code: 'CUTOVER_EVIDENCE_FILE_NOT_COMMITTED',
+      detail: `${policy.uv26Evidence} is neither in evidence delta nor source commit`,
+    });
 }
 
 function trackedAuthorityFiles(root: string, scanPaths: readonly string[]): string[] {
@@ -903,10 +1046,25 @@ function inspect(
     });
 
   const uv25 = uv25Evidence(root, policy, ports, blockers);
+  const uv26 = uv26Evidence(root, policy, uv25.sourceCommit, ports, blockers);
   const evidenceEntries = diffManifest(root, uv25.sourceCommit, headSha);
-  validateEvidenceOnlyDelta(root, policy, uv25.sourceCommit, headSha, evidenceEntries, blockers);
+  validateEvidenceOnlyDelta(
+    root,
+    policy,
+    uv25.sourceCommit,
+    headSha,
+    evidenceEntries,
+    uv26.status !== 'DEFERRED',
+    blockers
+  );
   const projection: CandidateProjection = {
     schema: CANDIDATE_SCHEMA,
+    swiftSupport: {
+      tier: 'UNVERIFIED',
+      consumerPhaseGates: 'BLOCKING',
+      policy: SWIFT_RELEASE_VALIDATION,
+      policyDigest: sha256(canonicalJson(SWIFT_RELEASE_VALIDATION)),
+    },
     identity: {
       branch,
       releaseBranch: policy.releaseBranch,
@@ -935,7 +1093,7 @@ function inspect(
       frozenMain: frozenMainEvidence(root, ports, blockers),
       uv27a: uv27aEvidence(root, ports, blockers),
       uv25,
-      uv26: uv26Evidence(root, policy, uv25.sourceCommit, ports, blockers),
+      uv26,
     },
     configuration: { files, digest: sha256(canonicalJson(files)) },
     authority: { forbiddenEnvironmentPresent, embeddedAuthorityFindings },
@@ -1033,6 +1191,8 @@ function renderText(report: CutoverCandidateReport): string {
     `${report.eligible ? 'ELIGIBLE' : 'BLOCKED'} main-cutover ${report.candidateDigest}\n` +
     `head=${report.identity.headSha ?? '<missing>'} main=${report.identity.mainBaseSha ?? '<missing>'} ` +
     `tree=${report.identity.treeSha ?? '<missing>'}\n` +
+    `Swift=${report.swiftSupport.tier} E18=${report.evidence.uv26.status} policy=${report.swiftSupport.policy.schema} scope=${report.swiftSupport.policy.scope}\n` +
+    `${report.swiftSupport.policy.reason}\n` +
     `challenge=${report.challenge}\n` +
     report.blockers.map(({ code, detail }) => `${code}: ${detail}\n`).join('')
   );

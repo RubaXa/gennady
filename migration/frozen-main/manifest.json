@@ -13260,9 +13260,9 @@
     },
     {
       "path": "scripts/release-boundary.ts",
-      "oid": "9b38dafbccfa32be18b16db27d1113e0f89732cd",
-      "sha256": "56759deb575bae6ddafa0b019e87b1d53f0d7c7a0380dfa469a5bef935bc0db6",
-      "bytes": 39082
+      "oid": "417dd906c2a115cf9f44c997de1f1bace760b181",
+      "sha256": "401a7de832ef1c24c797916689ee9fbdb651ec5bb72c7097cfc944eaa9f9e457",
+      "bytes": 44247
     },
     {
       "path": "scripts/v1-eradication.policy.json",
@@ -13446,15 +13446,15 @@
     },
     {
       "path": "specs/cli/verify/verify.spec.md",
-      "oid": "0b563b86d0a81567d3c583747062a2c09229425c",
-      "sha256": "262798bebaf426c2346539c1ddcf56074b5349e04f9adbbb70443ab631bde873",
-      "bytes": 112448
+      "oid": "0c89d285252f000c2a0a7b192b34143f71458eae",
+      "sha256": "c1cdfff50d4bb5e52c39b2cac8e0df1a77327ff8af4a641199df33ced2c31fdf",
+      "bytes": 113622
     },
     {
       "path": "specs/infra-base/infra-base.spec.md",
-      "oid": "ce9ae241e8a07f54361d3943685ec09b57338907",
-      "sha256": "5b5393b42f07b6d6d25c4bd3e851f66dfbe5677e7f40e62817b38a53a4256299",
-      "bytes": 17737
+      "oid": "135d34e2c78f47c3963431a7625e5e26711ec6d1",
+      "sha256": "64f3621985c5f41c61a539e6c3181b19cd04fd1feb412e49ecc8886f3e60f0e1",
+      "bytes": 19945
     },
     {
       "path": "specs/infra-npm-publish/infra-npm-publish.spec.md",

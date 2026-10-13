@@ -5,11 +5,15 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import {
   existsSync,
+  chmodSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -401,7 +405,327 @@ describe('UV-27B cutover candidate', () => {
     const report = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
     assert.ok(codes(report).includes('CUTOVER_UV27A_INVALID'));
     assert.ok(codes(report).includes('CUTOVER_UV25_INVALID'));
-    assert.ok(codes(report).includes('CUTOVER_UV26_MISSING'));
+    assert.equal(report.evidence.uv26.status, 'DEFERRED');
+    assert.ok(!codes(report).includes('CUTOVER_UV26_MISSING'));
+  });
+
+  it('defers genuinely absent optional E18 without executing its checker or disabling consumer gates', () => {
+    const fixture = createFixture();
+    rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+    commit(fixture.root, 'remove optional native proof');
+    repointRelease(fixture);
+    const report = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runUv26Checker: () => {
+          throw new Error('absent checker must not run');
+        },
+      },
+      fixture.policy
+    );
+    assert.equal(report.eligible, true, JSON.stringify(report.blockers));
+    assert.equal(report.evidence.uv26.status, 'DEFERRED');
+    assert.equal(report.evidence.uv26.checkerPassed, false);
+    assert.equal(report.swiftSupport.tier, 'UNVERIFIED');
+    assert.equal(report.swiftSupport.consumerPhaseGates, 'BLOCKING');
+    assert.equal(report.swiftSupport.policy.schema, 'gennady.swift-release-validation.v2');
+    assert.equal(report.swiftSupport.policy.e18Validation, 'DEFERRED_POST_MAIN_CUTOVER');
+  });
+
+  it('binds the unverified policy scope and optional evidence status into the exact ACK', () => {
+    const fixture = createFixture();
+    const before = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(before.evidence.uv26.status, 'PASS');
+    assert.equal(before.swiftSupport.tier, 'UNVERIFIED');
+    rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+    commit(fixture.root, 'defer optional proof');
+    repointRelease(fixture);
+    const after = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(after.eligible, true);
+    assert.notEqual(before.candidateDigest, after.candidateDigest);
+    const {
+      candidateDigest: _digest,
+      challenge: _challenge,
+      eligible: _eligible,
+      blockers: _blockers,
+      ...projection
+    } = after;
+    const canonical = (value: unknown): unknown =>
+      Array.isArray(value)
+        ? value.map(canonical)
+        : value !== null && typeof value === 'object'
+          ? Object.fromEntries(
+              Object.entries(value)
+                .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+                .map(([key, entry]) => [key, canonical(entry)])
+            )
+          : value;
+    assert.equal(
+      createHash('sha256')
+        .update(JSON.stringify(canonical(projection)))
+        .digest('hex'),
+      after.candidateDigest
+    );
+    const changed = {
+      ...projection,
+      swiftSupport: { ...projection.swiftSupport, tier: 'VERIFIED' },
+    };
+    assert.notEqual(
+      createHash('sha256')
+        .update(JSON.stringify(canonical(changed)))
+        .digest('hex'),
+      after.candidateDigest
+    );
+    assert.throws(
+      () =>
+        authorizeCutoverCandidate(fixture.root, before.challenge, fixture.ports, fixture.policy),
+      /UV27B_ACK_MISMATCH/
+    );
+  });
+
+  for (const variant of [
+    'symlink',
+    'dangling',
+    'directory',
+    'oversize',
+    'unreadable',
+    'ancestor-symlink',
+    'ancestor-file',
+  ] as const) {
+    it(`rejects unsafe optional E18 (${variant}) without checker execution or secret output`, () => {
+      const fixture = createFixture();
+      let path = join(fixture.root, fixture.policy.uv26Evidence);
+      rmSync(path);
+      if (variant === 'ancestor-symlink' || variant === 'ancestor-file') {
+        fixture.policy.uv26Evidence = 'unsafe/e18.json';
+        if (variant === 'ancestor-symlink')
+          symlinkSync(join(fixture.root, 'evidence'), join(fixture.root, 'unsafe'));
+        else write(fixture.root, 'unsafe', 'secret-never-print');
+      } else if (variant === 'symlink' || variant === 'dangling') {
+        symlinkSync(variant === 'symlink' ? 'manifest.json' : 'absent-secret-never-print', path);
+      } else if (variant === 'directory') mkdirSync(path);
+      else if (variant === 'oversize') writeFileSync(path, Buffer.alloc(32 * 1024 * 1024 + 1));
+      else {
+        writeFileSync(path, 'secret-never-print');
+        chmodSync(path, 0);
+      }
+      try {
+        const report = inspectCutoverCandidate(
+          fixture.root,
+          {
+            ...fixture.ports,
+            runUv26Checker: () => {
+              throw new Error('unsafe checker must not run');
+            },
+          },
+          fixture.policy
+        );
+        assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+        assert.equal(report.evidence.uv26.status, 'INVALID');
+        assert.equal(report.evidence.uv26.checkerPassed, false);
+        assert.doesNotMatch(JSON.stringify(report), /secret-never-print/);
+      } finally {
+        if (variant === 'unreadable') chmodSync(path, 0o600);
+      }
+    });
+  }
+
+  it('does not expose secret checker diagnostics for invalid optional evidence', () => {
+    const fixture = createFixture();
+    const report = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runUv26Checker: () => ({
+          status: 1,
+          stdout: 'secret-never-print',
+          stderr: 'token=secret-never-print',
+        }),
+      },
+      fixture.policy
+    );
+    assert.equal(report.evidence.uv26.status, 'INVALID');
+    assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    assert.doesNotMatch(JSON.stringify(report), /secret-never-print/);
+    write(
+      fixture.root,
+      fixture.policy.uv26Evidence,
+      JSON.stringify({ schema: 'secret-never-print', sourceCommit: 'secret-never-print' })
+    );
+    const malformed = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(malformed.evidence.uv26.status, 'INVALID');
+    assert.doesNotMatch(JSON.stringify(malformed), /secret-never-print/);
+  });
+
+  for (const variant of ['missing', 'symlink', 'unreadable'] as const) {
+    it(`rejects ${variant} optional checker when proof is present, but never reads it for absent proof`, () => {
+      const fixture = createFixture();
+      const checker = join(fixture.root, fixture.policy.uv26Checker);
+      if (variant === 'unreadable') chmodSync(checker, 0);
+      else {
+        rmSync(checker);
+        if (variant === 'symlink') symlinkSync('checker.ts', checker);
+      }
+      const ports = {
+        ...fixture.ports,
+        runUv26Checker: () => {
+          throw new Error('unsafe checker must not execute');
+        },
+      };
+      try {
+        const present = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
+        assert.equal(present.evidence.uv26.status, 'INVALID');
+        assert.ok(codes(present).includes('CUTOVER_UV26_INVALID'));
+        rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+        assert.equal(
+          inspectCutoverCandidate(fixture.root, ports, fixture.policy).evidence.uv26.status,
+          'DEFERRED'
+        );
+      } finally {
+        if (variant === 'unreadable') chmodSync(checker, 0o600);
+      }
+    });
+  }
+
+  for (const variant of [
+    'leaf-before-open',
+    'ancestor-after-open',
+    'ancestor-after-read',
+  ] as const) {
+    it(`rejects optional proof replacement race ${variant} with nonblocking open`, (t) => {
+      const fixture = createFixture();
+      const evidence = join(fixture.root, fixture.policy.uv26Evidence);
+      const originalOpen = fs.openSync;
+      const originalRead = fs.readSync;
+      let swapped = false;
+      const replace = () => {
+        if (swapped) return;
+        swapped = true;
+        if (variant === 'leaf-before-open') {
+          renameSync(evidence, `${evidence}.old`);
+          writeFileSync(evidence, 'replacement');
+        } else {
+          renameSync(join(fixture.root, 'evidence'), join(fixture.root, 'replaced-evidence'));
+          symlinkSync('replaced-evidence', join(fixture.root, 'evidence'));
+        }
+      };
+      t.mock.method(fs, 'openSync', (path: fs.PathLike, flags: string | number, mode?: fs.Mode) => {
+        if (String(path) === evidence) {
+          assert.equal(typeof flags, 'number');
+          assert.ok((Number(flags) & fs.constants.O_NONBLOCK) !== 0);
+          if (variant === 'leaf-before-open') replace();
+          const fd = originalOpen(path, flags, mode);
+          if (variant === 'ancestor-after-open') replace();
+          return fd;
+        }
+        return originalOpen(path, flags, mode);
+      });
+      if (variant === 'ancestor-after-read')
+        t.mock.method(
+          fs,
+          'readSync',
+          (
+            fd: number,
+            buffer: NodeJS.ArrayBufferView,
+            offset: number,
+            length: number,
+            position: number | null
+          ) => {
+            const count = originalRead(fd, buffer, offset, length, position);
+            replace();
+            return count;
+          }
+        );
+      syncBuiltinESMExports();
+      try {
+        const report = inspectCutoverCandidate(
+          fixture.root,
+          {
+            ...fixture.ports,
+            runUv26Checker: () => {
+              throw new Error('raced checker must not execute');
+            },
+          },
+          fixture.policy
+        );
+        assert.equal(swapped, true);
+        assert.equal(report.evidence.uv26.status, 'INVALID');
+        assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+      } finally {
+        t.mock.restoreAll();
+        syncBuiltinESMExports();
+      }
+    });
+  }
+
+  it('never defers ENOENT caused by an observed ancestor becoming a dangling symlink', (t) => {
+    const fixture = createFixture();
+    const evidence = join(fixture.root, fixture.policy.uv26Evidence);
+    const original = fs.lstatSync;
+    let swapped = false;
+    t.mock.method(fs, 'lstatSync', (path: fs.PathLike, options?: fs.StatOptions) => {
+      if (String(path) === evidence && !swapped) {
+        swapped = true;
+        renameSync(join(fixture.root, 'evidence'), join(fixture.root, 'replaced-evidence'));
+        symlinkSync('absent', join(fixture.root, 'evidence'));
+      }
+      return original(path, options);
+    });
+    syncBuiltinESMExports();
+    try {
+      const report = inspectCutoverCandidate(
+        fixture.root,
+        {
+          ...fixture.ports,
+          runUv26Checker: () => {
+            throw new Error('unsafe checker must not run');
+          },
+        },
+        fixture.policy
+      );
+      assert.equal(swapped, true);
+      assert.equal(report.evidence.uv26.status, 'INVALID');
+      assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    } finally {
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+    }
+  });
+
+  it('still requires UV25 raw logs and manifest despite optional E18 absence', () => {
+    const fixture = createFixture();
+    rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+    rmSync(join(fixture.root, 'evidence/logs/result.log'));
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(report.evidence.uv26.status, 'DEFERRED');
+    assert.ok(
+      report.blockers.some(
+        ({ code, detail }) =>
+          code === 'CUTOVER_EVIDENCE_FILE_MISSING' && detail === 'evidence/logs/result.log'
+      )
+    );
+  });
+
+  it('rejects evidence bytes or checker identity changed during optional strict checking', () => {
+    for (const path of ['evidence/e18.json', 'checker-e18.ts']) {
+      const fixture = createFixture();
+      const report = inspectCutoverCandidate(
+        fixture.root,
+        {
+          ...fixture.ports,
+          runUv26Checker: (root, checker, evidence) => {
+            const result = fixture.ports.runUv26Checker!(root, checker, evidence);
+            write(fixture.root, path, 'changed during checker');
+            return result;
+          },
+        },
+        fixture.policy
+      );
+      assert.equal(report.evidence.uv26.status, 'INVALID');
+      assert.equal(report.evidence.uv26.checkerPassed, false);
+      assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    }
   });
 
   it('rejects authored UV-26 PASS when the independent checker cannot derive it', () => {

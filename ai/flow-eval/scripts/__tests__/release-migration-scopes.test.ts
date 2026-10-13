@@ -323,18 +323,45 @@ it('verifies the real inert archive, excludes no genuine scope and rejects corru
   const root = mkdtempSync(join(context.holder, 'archive-'));
   context.roots.push(root);
   git(root, ['init', '--quiet']);
-  const source = git(ROOT, ['rev-parse', 'HEAD']);
+  const baseSource = git(ROOT, ['rev-parse', 'HEAD']);
   const pack = frozenGit(
     ROOT,
     ['pack-objects', '--stdout', '--revs'],
-    `${source}\n${FROZEN_REFS.main}\n${FROZEN_REFS.releaseAudit}\n`
+    `${baseSource}\n${FROZEN_REFS.main}\n${FROZEN_REFS.releaseAudit}\n`
   );
   frozenGit(root, ['index-pack', '--stdin'], pack);
-  git(root, ['update-ref', 'HEAD', source]);
+  git(root, ['update-ref', 'HEAD', baseSource]);
   const manifest = JSON.parse(readFileSync(join(ROOT, MANIFEST_PATH), 'utf8'));
   for (const proof of manifest.currentProof)
     write(root, proof.path, readFileSync(join(ROOT, proof.path)));
   cpSync(join(ROOT, ARCHIVE_ROOT), join(root, ARCHIVE_ROOT), { recursive: true });
+  if (
+    !frozenGit(ROOT, ['show', `${baseSource}:${MANIFEST_PATH}`]).equals(
+      readFileSync(join(ROOT, MANIFEST_PATH))
+    )
+  )
+    assert.throws(() => committedMigrationScopes(root, baseSource), /source archive drift/);
+  // The gate may inspect staged authoring: do not mix committed old archive bytes with live proofs.
+  // Preserve all unmaterialized source contracts in the owned index; stage only copied paths.
+  git(root, ['read-tree', baseSource]);
+  git(root, [
+    'add',
+    '--',
+    ...manifest.currentProof.map((proof: { path: string }) => proof.path),
+    ARCHIVE_ROOT,
+  ]);
+  if (git(root, ['write-tree']) !== git(root, ['rev-parse', `${baseSource}^{tree}`]))
+    git(root, [
+      '-c',
+      'user.name=Fixture',
+      '-c',
+      'user.email=fixture@example.invalid',
+      'commit',
+      '--quiet',
+      '-m',
+      'owned matching current proof source',
+    ]);
+  const source = git(root, ['rev-parse', 'HEAD']);
   const scopes = committedMigrationScopes(root, source);
   assert.deepEqual(
     scopes,
