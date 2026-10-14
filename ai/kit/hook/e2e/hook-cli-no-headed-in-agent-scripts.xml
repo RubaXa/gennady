@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Hook id="HOOK_CLI_NO_HEADED_IN_AGENT_SCRIPTS">
+      <Purpose>No agent-committed script forces headed mode or `--ui`.</Purpose>
+      <Command>find . \( -name '*.ts' -o -name '*.js' \) -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'headless\s*:\s*false|--headed|--ui|--debug' || true</Command>
+      <Expected>Empty output. Matches must either be human-only debugging scripts (excluded from the agent's workflow) or removed.</Expected>
+    </Hook>

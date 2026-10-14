@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/result-conventions.xml -->
+<Axiom id="AX_NO_RESULT_SECOND_GENERIC">
+      `Result<T, ConcreteError>` is forbidden. No method can guarantee it only throws one error class — library and runtime code can throw anything. Use `Result<T>` only.
+      Exception: when the second arg is a type parameter of the enclosing generic declaration (function / type alias / class) — that is a constraint, not a pinned class. Detection: AST walk up to nearest TSTypeParameterDeclaration; skip if name appears there.
+      Autofix: remove second type argument.
+    </Axiom>

@@ -1,0 +1,13 @@
+<!-- source: sdd/scaffold TASKS_README_STRUCTURE, reconciled to co-located 3-tasks (draft T15) -->
+<Contract id="PROJECT_TASKS_INDEX_STRUCTURE">
+  `specs/3-tasks.md` — project task index, co-located with the specs it mirrors. Holds the project-wide
+  shared conventions ONCE (inherited by every scope / module / ticket, per draft T15), the cross-scope
+  DAG, and a scope status rollup. No Cascade Table here (that is per-scope).
+
+  For a cross-scope reviewed ticket set, this index contains approval #2 exactly as
+  `ARTIFACT_APPROVAL_MARKER` defines.
+
+  ```markdown
+  {{> "sdd-skeleton-project-index"}}
+  ```
+</Contract>

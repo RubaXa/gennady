@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Axiom id="AX_SVELTE_TEST_EFFECT_ROOT_OUTSIDE_COMPONENT">
+  Tests exercising `$effect` directly (not through a mounted component) MUST run inside `$effect.root(() => { ... })` and dispose of its returned cleanup. `$effect` outside a component context is illegal; `$effect.root` provides the disposal boundary that makes it legal AND that prevents effects from leaking into subsequent tests.
+
+  For component tests, `@testing-library/svelte` `render()` already establishes a component context — explicit `$effect.root` is needed only for direct rune testing in `.svelte.ts` modules.
+</Axiom>

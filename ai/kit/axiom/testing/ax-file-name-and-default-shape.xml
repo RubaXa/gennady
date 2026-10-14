@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_FILE_NAME_AND_DEFAULT_SHAPE">
+File naming: `[subject].test.ts`. Default shape: `describe(subject)` → optional shared hooks → nested `describe(method)` → `it(case)`. A `Test Graph` header comment (map of cases) is RECOMMENDED for multi-method or non-trivial files, OPTIONAL for tiny focused ones.
+</Axiom>

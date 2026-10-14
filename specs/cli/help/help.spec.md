@@ -1,5 +1,11 @@
 # Module: help
 
+<!--SECTION:SPEC_ID-->
+
+CLI-HELP
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Статическая команда `gennady help` — выводит таблицу всех CLI-команд с описанием и примерами в stdout. Без аргументов (кроме опционального имени команды для детальной справки), без DI, без опций.
@@ -75,13 +81,12 @@ Commands:
   vcs-worktree   Prepare read-only git worktree for code review
   vcs-reply      Post replies to GitLab MR discussions
   vcs-approve    Approve GitLab MR via API
-  alt-opinion    Get alternative opinions from AI models
   agents-rules   Print agent instructions for orient command
 
 Examples:
   gennady lint src/**/*.ts
   gennady cat src/ --ext=".ts,.md" -o md
-  gennady orient --task=TSK-01
+  gennady orient --task=DP-fields
   gennady run "explain this repo" --dir ../other
 
 Run gennady help <command> for detailed help on a specific command.
@@ -97,7 +102,7 @@ Usage: gennady lint [--autofix] [--staged] [--max-words <n>] [--max-region-comme
 
 Flags:
   --autofix         Auto-fix fixable errors
-  --staged          Lint only staged .ts files (mutually exclusive with positional targets)
+  --staged          Lint existing staged ACMR + untracked .ts/.tsx; ignore staged deletions
   --max-words <n>   Max words per file (default: 50)
   ...
 
@@ -132,7 +137,7 @@ Flags:
 
 Examples:
   gennady orient                           # project map
-  gennady orient --task=TSK-01             # find files by task
+  gennady orient --task=DP-fields             # find files by task
   gennady orient --consumer=DbcTsLinter    # find consumers
   gennady orient "merge conflict"          # keyword search
   gennady orient --file=src/foo.ts         # file detail

@@ -1,0 +1,369 @@
+<SddInfra keywords="infra, infrastructure, tooling, tool-stack, dev-workflow, verification-commands, decision-log, sdd-infra" type="directive" ver="2.1">
+  <Mission>
+    Author or evolve an `infrastructure` scope spec — the project's tooling: package manager,
+    type-checker, linter, formatter, test runner, git hooks, CI. A self-contained living spec:
+    Vision, Tool Stack (Decision Log per tool), Dev Workflow Example, File Structure, Effective
+    Rules, Verification Commands, Bootstrap Requirements, Handoff to scaffold. Loaded lazily by the
+    router; inherits the router core (language, dialogue, safeguard, diverge, no-narration,
+    stateless) — not repeated here.
+
+    Input — scope name + intent (or an existing spec for refine / pivot). Output —
+    `specs/<scope>/<scope>.spec.md` (scope-type infrastructure). The router sends product / library
+    to the scope branch and interface to the interface branch.
+
+    Out of scope: product / library design, module decomposition. The project portal is the root branch.
+
+    **Glossary.** Modes: greenfield · refine · pivot · rewrite. Mandatory tool categories: vcs,
+    package-management, git-hooks. Optional: type-check, linting, formatting, test-unit, test-e2e,
+    bundler, ci, monorepo-tool, docs.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+    {{> "axiom/process/ax-tool-invocation"}}
+
+    {{> "axiom/scaffold/ax-directive-mode"}}
+
+    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/process/ax-diverge-before-recommend"}}
+
+    {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
+
+    {{> "axiom/spec/ax-living-spec"}}
+
+    {{> "axiom/spec/ax-spec-lifecycle"}}
+
+    {{> "axiom/truth/ax-spec-is-sole-source"}}
+
+    {{> "axiom/infra/ax-infrastructure-flow"}}
+
+    {{> "axiom/testing/ax-e2e-first"}}
+
+    {{> "axiom/spec/ax-decision-log-required"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/scaffold/ax-scope-rules-declaration"}}
+
+    {{> "axiom/scaffold/ax-rule-activation"}}
+
+    {{> "axiom/boundary/ax-cross-scope-dependencies"}}
+
+    {{> "axiom/spec/ax-parallel-mechanism-requires-justification"}}
+
+    {{> "axiom/truth/ax-evidence-hygiene"}}
+
+    {{> "axiom/truth/ax-research-persisted"}}
+
+    {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
+
+    {{> "axiom/spec/ax-spec-mandatory-diagram"}}
+
+    {{> "axiom/process/ax-artifact-style-self-check"}}
+
+    {{> "axiom/process/ax-close-with-integrity-check"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTAKE` | Empty intake |
+    | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_MANDATORY_CATEGORY_DROPPED` | A mandatory category (vcs / package-management / git-hooks) was dropped |
+    | `H_SYSTEM_FIT_NOT_RUN` | `STEP_2_TOOL_CATEGORIES` entered before `STEP_1B_SYSTEM_FIT`'s checklist closed, or "вводим новое" recorded without the specific neighbour invariant/requirement ID it fails (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
+    | `H_TOOL_LOCKED_WITHOUT_DECISION` | A tool locked without a Decision Log entry |
+    | `H_MISSING_RULE_FILE` | A rule reference does not resolve to an existing file |
+    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
+    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | External-deps step finished without a Bootstrap Requirements section |
+    | `H_OPERATOR_REJECT` | Operator rejected the spec |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve scope name and mode.</Goal>
+      <Action>
+        State from the router gives the portal + scope-type (infrastructure). Resolve the scope name;
+        stat the spec → `greenfield` or detect the mode per `AX_DIRECTIVE_MODE` /
+        `AX_MODE_AUTO_DETECT_OR_HALT`. Rule discovery is owned by the deterministic embedded-source
+        manifest and lexical RuleRegistry; each prompt carries its identity and `<Meta>` predicates.
+        The phase RuleSnapshot supplies exact selected bodies and provenance. Agents do not scan
+        `ai/directives/**`, guess prompt paths, or parse prompt markup as XML.
+      </Action>
+    </Step>
+    <Step id="STEP_1_CONFIRM">
+      <Goal>Confirm scope-type and the operating scale.</Goal>
+      <Action>
+        Confirm scope-type (`infrastructure`) and mode with the operator. The section set is NOT an
+        Ask — it is fixed by `INFRASTRUCTURE_SPEC_STRUCTURE` and materialized by `sdd-new` at
+        STEP_7; naming the skeleton to the operator here would be asking approval for a contract,
+        not a decision they own. State the confirmed default SCALE inline in the plan text instead
+        of a standalone question — `module` for a typical infra scope unless intake signals
+        otherwise (`AX_SCALE_PROPORTIONAL_DEPTH`) — and let the operator correct it here or at the
+        next substantive Ask (STEP_2); it never burns a dedicated round. If state already resolves
+        every field, proceed without Ask.
+      </Action>
+    </Step>
+    <Step id="STEP_1B_SYSTEM_FIT">
+      <Goal>Reconcile with the existing system before tool categories are declared.</Goal>
+      <Action>
+        FIRST action this step: run orientation ToolCall below (this works even before
+        `sdd-new` materializes the infra spec)
+        and read its output in full: the portal line, the one-hop neighbours with their paths,
+        entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing question.
+
+        Then close, in THIS message, the fixed checklist — record every answer in the spec (Decision
+        Log entry when (a)/(b) lands on "new", inline note otherwise):
+        (a) Is the tooling mechanism this scope is about to stand up already an existing kind — does
+        the extract already name a sibling infra scope (e.g. `infra-base`) that owns it?
+        (b) If not: which existing infra scope / mechanism the extract names are we EXTENDING instead
+        of introducing a parallel pipeline / config / gate?
+        (c) Which neighbour specs (paths, from the extract) will need work for this tool stack to fit
+        the system — each is recorded in the owning dependency/impact section or Pivot Invalidation List?
+        (d) Which neighbour requirements (IDs, from the extract) conflict with the tool categories we
+        are about to declare, and how is the conflict resolved?
+        "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
+        ID the existing mechanism cannot satisfy, plus its own Decision Log entry
+        (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) — else `H_SYSTEM_FIT_NOT_RUN`. On a
+        genuinely greenfield project with no neighbours, `sdd-orient` degenerates to its one-line
+        "соседей нет" — the checklist still runs, (a) still gets an honest answer, (c)/(d) collapse to
+        "н/д"; the step itself is never skipped. STOP.
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: <scope>=operator-confirmed infrastructure scope retained by this flow. Use orientation.
+      </Action>
+    </Step>
+    <Step id="STEP_2_TOOL_CATEGORIES">
+      <Goal>Declare the tool categories, then route on stack typicality.</Goal>
+      <Action>
+        Propose a subset from intent per `AX_INFRASTRUCTURE_FLOW`, Facts / Assumptions / Hypotheses
+        separated per `AX_EVIDENCE_HYGIENE`.
+
+        Already-approved categories are current authoring input, not a question: a category+tool pair the
+        operator already locked in root's `STEP_3_INFRA_BOOTSTRAP` Tool Stack
+        table, or an earlier round of this very flow — is read from state and shown back as ONE
+        reference line, e.g. «уже утверждено: npm, tsc, eslint+prettier, vitest, husky — не
+        переспрашиваю», never re-run through research and never re-asked. Only categories still
+        unlocked (a mandatory one split out on its own, e.g. git-hooks, or an optional one like vite /
+        test-e2e / ci) go through the research-and-Ask cycle below. Reopening an already-locked tool
+        needs a concrete conflict THIS discovery found — then it is its own flagged question naming
+        the reason (`<tool> не подходит из-за <found issue> — заменить на <alt>?`), never a silent
+        whole-table re-confirm.
+
+        Mandatory categories
+        (vcs / package-management / git-hooks) cannot be dropped (`H_MANDATORY_CATEGORY_DROPPED`).
+        `test-e2e` is optional on the category LIST but not on the DECISION — per `AX_E2E_FIRST` the
+        agent proposes it in by default and takes an explicit operator answer to drop it (with the
+        risk line recorded), rather than reasoning "small scope, skip e2e" on its own and folding
+        that into the proposed subset unchallenged.
+
+        <LogicSwitch on="stack typicality">
+        - WHEN every still-unlocked proposed category resolves through embedded prompt metadata (no exotic / novel tool named by the operator, no operator request for a detailed pass) -> EXPRESS branch below replaces the full interview for STEP_2/STEP_3
+        - WHEN a still-unlocked category has no registry match, or the operator asked for "подробно" / a detailed pass, or typicality is genuinely unclear -> run the full operator interview — `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing scope-type `infrastructure` and the SCALE confirmed for this invocation: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the triage minimum; `product` → the full scope-type block. The interview IS the substance of the step; STEP_3 then runs in full, over the still-unlocked categories only. Uncertain typicality defaults to THIS branch — never a silent EXPRESS guess.
+        </LogicSwitch>
+
+        If every category is already locked (the reference line above covers the whole set), STEP_2
+        and STEP_3 are done with no research and no Ask at all — proceed to STEP_4.
+
+        EXPRESS branch (typical stack): run the STEP_3 research gate now, for every still-unlocked
+        category at once (2–3 targeted WebSearch queries per category — alive/current, AI-agent
+        friendliness for the current year). Per `AX_RESEARCH_PERSISTED`, before the candidates table
+        below is shown, persist the findings with researchManifest ToolCall below, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED), one
+        document per category or one covering the batch. Then present ONE batch Ask — a single
+        candidates table, one row per still-unlocked category (an already-locked category never gets
+        a row — it already had its reference line above), each row naming the recommended tool + a
+        one-line rationale from the research (not recall) + a currency note, per
+        `AX_DIVERGE_BEFORE_RECOMMEND`, plus a link to the research document backing it. The operator
+        confirms the whole table or names deviations in ONE reply. Include the Tool Interaction
+        Check (linter vs formatter, runner vs type-check, CI vs package manager) in this first batch.
+        A deviation opens a follow-up only when its consequences create a new unresolved interaction;
+        otherwise apply it directly. One Ask normally replaces the per-category STEP_2 / STEP_3
+        interview cycle — Mandatory Rationale Pull → Decision Log entry per `AX_DECISION_LOG_REQUIRED`
+        still applies per tool (`H_TOOL_LOCKED_WITHOUT_DECISION`), its RELATED citing the research
+        document in parentheses: the compression is in the NUMBER of
+        operator round-trips, never in the Decision Log discipline. For any locked tool that is a
+        GATE tool, the same Integration Detail concreteness bar as STEP_3 applies — no exemption for
+        having taken the fast path. STEP_3 is done once this closes —
+        proceed to STEP_4. STOP only when that Ask was needed.
+        Inputs <scope>, <slug>: this STEP_2 category context.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Use researchManifest.
+      </Action>
+    </Step>
+    <Step id="STEP_3_TOOL_CHOICES">
+      <Goal>Choose a tool per category (full path only — EXPRESS already closed this step).</Goal>
+      <Action>
+        Skip entirely when STEP_2 took the EXPRESS branch — its two Asks already produced the
+        candidates table, the operator pick, and the Tool Interaction Check; re-running this step
+        would re-ask what STEP_2 just closed. Otherwise (full path): this step runs over the
+        still-unlocked categories only — STEP_2's reference line already excluded every category the
+        operator locked in root's bootstrap or an earlier round, and none of those get a row, research,
+        or an Ask here. Research gate before candidates — applies to still-unlocked categories being
+        picked NOW (`greenfield`, or `refine`/`pivot` touching a category not already locked in the
+        spec); skip it also for a `fix`/`module`-scale request where the category is already locked in
+        the existing infra spec, per `AX_SCALE_PROPORTIONAL_DEPTH` — no revisit, no research. In every
+        case, reopening a locked category requires a concrete conflict discovery surfaced, raised as its
+        own named-reason question, never a silent re-confirm. Where it applies: run 2–3
+        targeted WebSearch queries per category under revision — is each candidate alive and current
+        (not abandoned / superseded), and how it compares on AI-agent friendliness for the current year
+        (text-configurable, autofix, machine-readable diagnostics) — before drafting candidates from
+        memory. Per `AX_RESEARCH_PERSISTED`, before candidates are presented, persist the findings —
+        researchManifest ToolCall below, filled
+        (STATUS/PROBLEM/CRITERIA/OPTIONS/DECISION/CONSEQUENCES/EVIDENCE/RELATED). Then per category,
+        2–3 candidates with trade-offs per `AX_DIVERGE_BEFORE_RECOMMEND`
+        (reach past the obvious default; judge against THIS project); for each candidate presented,
+        one line stating why it's here per the research (not recall) plus the source, and a currency /
+        AI-friendliness note, plus a link to the research document backing the category. If WebSearch
+        is unavailable in this environment, say so plainly instead of
+        silently falling back — `предлагаю по памяти на <дата обучения модели>, ресёрч недоступен` — a
+        named caveat, not silence (no research document in that case — nothing was found to persist).
+
+        For a GATE tool — anything the execution phases' own verification gate enforces (linter,
+        formatter, type-checker, test runner, contract-lint): the Integration Detail fields
+        (`Версия/API` · `Нужные методы` · `Эскиз интеграции` · `Ограничения`, already in the Tool
+        Stack skeleton) MUST carry what a phase worker needs to write its config with ZERO further
+        research — the exact locked version, the config schema's version/URL, a literal config
+        skeleton (even minimal), and any known version-specific gotcha (a default that changed
+        between majors, a file type the tool does not handle out of the box). When this concrete
+        detail is not already in evidence, it is exactly what the research gate above exists to
+        produce — persist the schema URL/version and the skeleton in the research document
+        (`AX_RESEARCH_PERSISTED`), never leave it for the execute-phase worker to reverse-engineer
+        from the installed package's internals (`phase-execution-protocol` STEP_3B_TOOL_API already
+        forbids that path on the worker's side — this step is where the gap is meant to close
+        instead).
+
+        Operator picks → Mandatory Rationale Pull → Decision Log entry per
+        `AX_DECISION_LOG_REQUIRED` (`DECISION_LOG_ENTRY_FORMAT`), its RELATED citing the research
+        document in parentheses; no tool locked without one
+        (`H_TOOL_LOCKED_WITHOUT_DECISION`). Tool Interaction Check (linter vs formatter, runner vs
+        type-check, CI vs package manager). STOP.
+        <ToolCall owner="this-step" result="researchManifest">npx gennady sdd-new research --scope <scope> --slug <slug></ToolCall> Inputs <scope>, <slug>: <scope>=operator-confirmed infrastructure scope; <slug>=short restricted slug for this STEP_3 tool comparison. Use researchManifest.
+      </Action>
+    </Step>
+    <Step id="STEP_4_DEV_WORKFLOW">
+      <Goal>Write the Developer Workflow Example.</Goal>
+      <Action>Shell-script shape: how a developer installs, checks, tests, commits. STOP.</Action>
+    </Step>
+    <Step id="STEP_5_FILE_STRUCTURE_AND_RULES">
+      <Goal>Lock file layout, Effective Rules, Verification Commands.</Goal>
+      <Action>
+        Repo root layout + config-file mapping. Effective Rules — activate per `AX_RULE_ACTIVATION`:
+        look up each chosen tool in the rule registry per `AX_SCOPE_RULES_DECLARATION`; Stage A —
+        shortlist «recommend activate» + «considered, recommend skip» with one-line rationales,
+        operator locks the list; Stage B — for `infra/*` rules on the locked list read only
+        `Mission`, `Belief_State`, `Reward_Criteria` and walk the axioms: operator Accept (default) /
+        Adapt / Override, the latter two → Decision Log. Record matched rule file paths
+        (unresolvable reference → `H_MISSING_RULE_FILE`). When a formatter is among the chosen
+        tools, default its ignore file (`.prettierignore` / Biome `ignore`) to EXCLUDE `specs/`
+        (and the legacy v1 `tasks/`, when present mid-migration) — agent-authored markdown; formatter churn there breaks table alignment
+        and produces noisy diffs unrelated to the change. Record the exclusion in the spec's own
+        Effective Rules so it is not a silent tool-config fact. `.gitignore` MUST also default to
+        cover `.claude/tmp/` — the shared scratch directory execution workers use for temp/trial
+        files (`AX_PERMITTED_BASH_COMMANDS`), reused across roles and unrelated to any one tool
+        choice — recorded in the same Effective Rules entry, never a silent omission. Verification
+        Commands table — one row per active tool command. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_6_EXTERNAL_DEPENDENCIES_AUDIT">
+      <Goal>Materialize Bootstrap Requirements.</Goal>
+      <Action>
+        Walk the drafted spec; extract external assumptions; classify `exists` | `missing` | `unknown`
+        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ` and `AX_SPEC_IS_SOLE_SOURCE` —
+        design stays sourced from specs); resolve with the operator; record confirmed cross-scope
+        assumptions as `depends-on` edges per `AX_CROSS_SCOPE_DEPENDENCIES`;
+        materialize the canonical six-column Bootstrap Requirements table. Every task-owned `package`
+        row names exact `package.json, package-lock.json` Gate Artifacts. The infrastructure scope that
+        first installs dependencies must own Node/npm runtime artifacts (`.nvmrc`, Node fields in
+        `package.json`, `.npmrc`) before that install. For project-readiness work, record exact
+        `Readiness Gates` and repo-relative `Gate Artifacts`; use `—` for non-readiness rows. Empty
+        only if explicit «nothing to bootstrap», else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+      </Action>
+    </Step>
+    <Step id="STEP_7_FINAL_SPEC">
+      <Goal>Emit the infrastructure spec.</Goal>
+      <Action>
+        In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
+        create its skeleton via infrastructureManifest ToolCall below — it never overwrites and
+        prints the section manifest (which sections are REQUIRED and what to fill); in
+        `refine`/`pivot` mode the file already exists: read it in full and skip `sdd-new`. In every
+        authoring mode compose the COMPLETE target document in memory, then replace the file with
+        exactly ONE whole-file `Write`. `Edit`, `Patch`, regex rewrites, and per-section writes are
+        forbidden. Retain SECTION markers and replace every skeleton guidance comment; none may
+        survive. For SDD_LANGUAGE_CALQUE findings, rewrite the whole enclosing sentence while
+        composing that one replacement, never as a later point edit. Content guidance per
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml")`.
+        The `Overview` section carries at least one diagram per `AX_SPEC_MANDATORY_DIAGRAM`.
+        Before writing, run the self-check pass per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. Close with the declared integrity check per
+        `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode update sections in place per
+        `AX_LIVING_SPEC`. In `pivot` mode also
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession, no
+        invalidation list. For a brand-new scope, append the `🚧 (awaiting root sync)` placeholder row
+        to the portal Scopes table per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION`; every other
+        portal edit belongs to root. Write the ordinary V2 spec directly per `AX_SPEC_LIFECYCLE`.
+        Git diff carries the review delta; record affected neighbours in owning dependency/impact
+        fields, never a temporary manifest. During authoring run the exact `fix-command` recorded in
+        §Verification Commands once; its output becomes the input tree for the read-only gate. Then
+        run integrityCheck and use its findings as the remaining fix list. CI and approval never
+        invoke `fix-command`.
+
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/preflight-protocol.directive.xml")` and run
+        only the domain checklists whose triggers match the chosen stack. The critic is not the first
+        line of defense on mechanics; then run this
+        self-check before dispatching it, catch here what four MAJOR rounds otherwise catch late:
+        (a) Prerequisites completeness — every chosen tool's own plugins/loaders are named (a parser
+        for `.ts`, a loader for the TS config), not just the tool itself; (b) internal consistency —
+        "gate" and "autofix" language agree across Vision / Dev Workflow / Verification Commands for
+        the same tool, never contradicting; (c) fact currency — versions / LTS lines come from the
+        STEP_3 research gate, never from memory; (d) every declared hook / command in Dev Workflow
+        and Verification Commands has a recorded Decision Log entry — no dangling "we'll figure this
+        out" left implicit.
+
+        Publication context and VCS cleanliness are owned entirely by the review lifecycle; do not run
+        a pre-lifecycle `git status` / `git diff` probe here (it duplicates that owner and can hide
+        untracked publication files). `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")`
+        — structural check → one fresh independent semantic review → correction → operator approval
+        #1 of the exact actual bytes. The approval question stops normally while awaiting the answer;
+        no session state or publication state machine is required.
+
+        After the spec merges to master, render one continuity menu per `NEXT_STEP_MENU_FORMAT`. When
+        another scope in the Scope Graph still lacks a spec, recommend «Продолжить спеки: discovery
+        `<next scope per the Scope Graph>`»; selection returns to the router with that scope, which
+        loads its owner from current artifacts. When all
+        specs exist, the chained option is «Разбить готовые спеки на задачи (scaffold) — механическая
+        нарезка УТВЕРЖДЁННЫХ спек в тикеты; рекомендуется после того, как готовы ВСЕ спеки»; selection
+        returns `continue` to the router with forced intent `scaffold`. Never describe scaffold as
+        materializing configs — execute does that against a ticket. A pause selection prints the exact
+        next scope/skill; durable artifacts preserve context. When no work remains, report completion.
+        <ToolCall owner="this-step" result="infrastructureManifest">npx gennady sdd-new infrastructure --scope <scope></ToolCall> Use infrastructureManifest.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatProtocol>
+    {{> "contract/process/question-rule-slim"}}
+  </ChatProtocol>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `🛠️ INF_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
+    `BREADCRUMB_FORMAT`): Tool Categories · Tool Choices · Dev Workflow · File Structure · Spec.
+    The step currently running ALWAYS carries `👷` — never a row of bare `◻️` with no active
+    marker; a milestone is `✅` only once its STOP has been passed.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
+
+    {{> "contract/process/next-step-menu-format"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+
+  <ArtifactOutput>
+    {{> "contract/process/artifact-approval-marker"}}
+
+    <!-- spec-structure + pivot formats load lazily at STEP_7 (used only when writing) — see ExecutionPlan. -->
+    {{> "contract/spec/decision-log-entry-format"}}
+  </ArtifactOutput>
+</SddInfra>

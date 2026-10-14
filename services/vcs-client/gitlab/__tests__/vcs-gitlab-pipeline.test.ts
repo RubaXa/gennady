@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabPipeline — getJob, playJob, cancelJob, getJobLog contract.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-84
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

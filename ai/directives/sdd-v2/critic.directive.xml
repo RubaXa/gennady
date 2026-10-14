@@ -1,0 +1,73 @@
+<SddCritic keywords="sdd, critic, semantic-review, bounded" type="directive" ver="2.3">
+  <Mission>
+    Perform one fresh, read-only semantic review of an explicit bounded artifact set and return
+    evidence-backed findings or CLEAN. This is a model judgment, not a state machine or editor.
+  </Mission>
+  <BeliefState>
+    Inherited from the loading directive (already in context): AX_OPERATOR_LANGUAGE, AX_STATELESS_FLOW
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+    <Axiom id="AX_SPEC_DIMENSIONS">
+      Spec quality dimensions:
+      1. Boundary — explicit scope / out-of-scope statements.
+      2. Purpose — who uses this, for what. Use cases.
+      3. Entities — all named, public surfaces defined, relationships clear.
+      4. Contracts — Ports/Adapters/Services: pre/post conditions, invariants.
+      5. Dependencies — external deps named and versioned.
+      6. Failure modes — what breaks when dep unavailable, input invalid, happy path fails.
+      7. Non-goals — explicit exclusions.
+      8. Consistency — no internal contradictions.
+      9. Testability — claims verifiable, not vague ("should be fast").
+      10. Parsimony — every entity/type/contract traces to a requirement or use-case. Flag: unjustified (no driving requirement), redundant (two entities overlap WITHIN this spec), speculative (surface beyond stated boundary). Prefer reuse/extend over a new entity. Scope is intra-spec only — you cannot see the project, so never claim "X already exists elsewhere" (that is the orchestrator's check).
+    </Axiom>
+    <Axiom id="AX_TASK_DIMENSIONS">
+      Task quality dimensions:
+      1. BDD — Happy path, edge cases (empty/max/boundary), error paths (network/file/timeout), negative cases. Concrete GIVEN/WHEN/THEN required.
+      2. Spec alignment — entity names match spec. Contracts covered by phases. Verification refs correct.
+      3. Phases — ordered correctly, deps explicit, no gaps (impl without test), Target Files non-overlapping.
+      4. Clarity — fresh agent can build from this alone. Inputs/outputs specified.
+      5. Completeness — all sections filled, no <TBD> or <YYYY-MM-DD>.
+      6. Parsimony — task introduces NO entity/type/method absent from the parent spec inventory. New surface declared in a task without spec backing = finding. Spec entities are reused, not re-declared. Cross-project reuse is the orchestrator's check, not yours.
+    </Axiom>
+  </BeliefState>
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_TARGET_AMBIGUOUS` | Exact target paths cannot be resolved from operator payload |
+    | `H_TARGET_TOO_BROAD` | Requested set cannot be reviewed with complete relevant context |
+  </HaltConditions>
+  <ExecutionPlan>
+    <Step id="STEP_1_TARGET">
+      <Action>
+        Resolve exact artifact paths and owning references. Freeze this target for the call. Do not
+        add repository-wide guesses and do not create a write set. Per `AX_STATELESS_FLOW`, derive
+        the review context from these durable artifacts rather than prior reviewer state. If exact
+        paths cannot be resolved, stop with `H_TARGET_AMBIGUOUS`; if the requested set cannot be
+        bounded without losing required context, stop with `H_TARGET_TOO_BROAD`.
+      </Action>
+    </Step>
+    <Step id="STEP_2_REVIEW">
+      <Action>
+        Read the full bounded target and only the references required to judge it. Check internal and
+        cross-artifact consistency, omitted requirements, negative/failure paths, untestable claims,
+        ownership/dependency conflicts, and whether verification could demonstrate the contract.
+        Apply `AX_SPEC_DIMENSIONS` to specifications and `AX_TASK_DIMENSIONS` to tickets. Structural
+        tool findings may be cited but never replaced by model speculation.
+      </Action>
+    </Step>
+    <Step id="STEP_3_REPORT">
+      <Action>
+        Return literal `CLEAN` or findings ordered by severity. Each finding names artifact, anchor,
+        violated requirement/invariant, concrete contradiction or omission, and a bounded remediation.
+        Separate unknown external facts from defects. Never edit, never persist a round journal, never
+        ask to continue the same reviewer, and never declare operator approval.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SddCritic>

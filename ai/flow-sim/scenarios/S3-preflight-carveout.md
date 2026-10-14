@@ -1,0 +1,141 @@
+# S3 — preflight carve-out: v1 репозиторий, но узкий запрос не тянет миграцию
+
+Проверяет: router `STEP_0_STATE` ветку 3 (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED` — blast radius не
+достаёт до `tasks/` layout → миграция НЕ грузится, состояние фиксируется одной строкой, роутинг идёт
+в `evolve-scope` как обычно).
+
+## Fixture
+
+Та же v1-фикстура, что в S2 (переиспользуется буквально, без изменений):
+
+`package.json`:
+
+```json
+{
+  "name": "demo-project",
+  "version": "0.1.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "gennady lint --all .",
+    "format": "prettier --check ."
+  }
+}
+```
+
+`node_modules/.bin/gennady` (пустой файл):
+
+```
+
+```
+
+`specs/README.md`:
+
+```markdown
+# demo-project
+
+## Vision
+
+Демо-проект для проверки миграции v1 → v2.
+
+## Scopes
+
+| Scope                         | Type    | Spec | Description |
+| ----------------------------- | ------- | ---- | ----------- |
+| [`demo`](./demo/demo.spec.md) | product | ✅   | Демо-скоуп  |
+```
+
+`specs/demo/demo.spec.md` (v1-спека):
+
+```markdown
+# Demo Scope
+
+## 1. Vision
+
+Демо-скоуп для отслеживания X.
+
+## 2. Architecture
+
+Один модуль `core` — вся логика внутри него.
+
+## 3. Decision Log
+
+### D-001 — Один модуль на старте
+
+- **Status:** active
+- **Why:** пока нет причин делить.
+```
+
+`tasks/demo/README.md`:
+
+```markdown
+# Demo — Tasks
+
+| ID        | Module | Title            | Status |
+| --------- | ------ | ---------------- | ------ |
+| DP-fields | core   | Реализовать ядро | done   |
+```
+
+`tasks/demo/core/core.task-01.md`:
+
+```markdown
+# DP-fields — Реализовать ядро
+
+## Meta
+
+- Purpose: базовая логика core-модуля demo
+- Module: core
+- Status: done
+
+## Description
+
+Инициализация core-модуля: структуры данных и точка входа.
+```
+
+## Entry
+
+Скилл: `/sdd`. Первая реплика оператора:
+
+> Поправь формулировку Vision в `specs/demo/demo.spec.md` — замени «отслеживания X» на «учёта Y».
+
+## Operator Script
+
+1. На вопрос роутера про `scale` (единственная развилка — intent тут однозначен, узкая правка одного
+   абзаца) — ответ: «согласен, function».
+
+## Stop
+
+Сразу после того, как агент предложил миграцию отдельным следующим шагом (а не выполнил её) и готов
+продолжать текущую правку Vision — наблюдаемо по поведению: следующее действие агента — вход в
+контентную работу над `specs/demo/demo.spec.md` (approval-обмен `scope.directive` STEP*1_CONFIRM), а
+не загрузка `migration-v1-v2.directive.xml` — ДО того, как оператор ответил на что-либо внутри
+`scope.directive`. Само сообщение оператору НЕ называет маршрут/mode напрямую («идём через
+evolve-scope», «mode=refine» и т.п.) — это была бы process-narration, запрещённая
+`AX_NO_PROCESS_NARRATION` (сервисная строка/лог — да, реплика оператору — нет); стоп фиксируется по
+наблюдаемому поведению агента (что он предлагает и что не грузит), а не по тому, что он проговорил
+маршрут вслух. Трейс заканчивается строкой `stop: per-map — <это условие дословно>` (не `halt:` —
+остановка по карте, не директивный `H*\*`-гейт).
+
+## Checkpoints
+
+1. `sdd-state` вызван первым, репортит `FLOW_VERSION=v1`.
+2. Сработавшая ветка router `STEP_0_STATE` — дословно (третий случай, НЕ первый): «WHEN
+   (`FLOW_VERSION=v1` OR `READINESS=not-ready`) AND the request's blast radius stays inside its own
+   scope (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`) -> record state in one line, proceed to STEP_1_CLASSIFY;
+   propose migration / readiness setup to the operator as a separate next step».
+3. `AX_PREFLIGHT_BLAST_RADIUS_SCOPED` процитирован/применён по смыслу: правка одного абзаца Vision в
+   уже существующей спеке — «a spec paragraph» — прямой пример из самой аксиомы («when the requested
+   change stays inside the entry point's own scope (a spec paragraph, a single ticket)... record the
+   state in one line and proceed straight to the entry point's own work»).
+4. В трейсе НЕТ строки `directive: ai/directives/sdd-v2/migration-v1-v2.directive.xml loaded` и НЕТ
+   ни одного `tool: sdd-migrate ...` вызова — миграция не грузится и не запускается.
+5. `H_NOT_V1` не фигурирует (не тот путь — миграция не входила).
+6. Классифицированный intent — `evolve-scope` (правка существующей `demo.spec.md`, не создание новой
+   спеки); router `LOGIC_SWITCH` даёт ветку 3: «WHEN intent ∈ {new-scope, evolve-scope} AND
+   scope-type ∈ {product, library} -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")» —
+   в трейсе ровно один `directive: ... loaded` после router, `scope.directive.xml`.
+7. Финальное сообщение перед стопом явно называет миграцию как отдельный будущий шаг, а не выполняет
+   её — трейс содержит `note:`, фиксирующую именно это (предложение миграции отдельно от текущей
+   правки), без единого `write:` в `specs/demo/demo.spec.md` (правка Vision ещё не начата — стоп до
+   входа в содержательные шаги `scope.directive`).

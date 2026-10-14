@@ -1,6 +1,6 @@
 // @file: GitLab GraphQL implementation of the actionable inbox port.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGitlabClient
-// @tasks: TSK-75
 
 import { VcsClientInbox } from '../abstract/vcs-client-inbox.ts';
 import type {
@@ -14,38 +14,82 @@ import type {
 type GraphqlRequestFn = (query: string, variables?: Record<string, unknown>) => Promise<unknown>;
 
 /**
- * @purpose Single GraphQL query collecting everything that needs the user's
- *   attention: todos on MRs, MRs where review is requested, and authored MRs.
+ * @purpose Shared MR projection selected independently by every actionable source query.
  * @invariant `type: [MERGEREQUEST]` and `state: [pending]` are list enums on
  *   the todos connection (verified against the live instance).
  */
 const MR_FIELDS = `iid title webUrl updatedAt draft state
-  description
+  description diffHeadSha approvalsRequired
   author { username }
-  reviewers { nodes { username } }
-  approvedBy { nodes { username } }
+  reviewers(first: 100) { nodes { username } }
+  approvedBy(first: 100) { nodes { username } }
+  headPipeline { status }
   project { fullPath }`;
 
-const ACTIONABLE_QUERY = `{
-  currentUser {
-    todos(state: [pending], type: [MERGEREQUEST]) {
-      nodes {
-        id
-        action
-        target {
-          __typename
-          ... on MergeRequest { ${MR_FIELDS} }
+/**
+ * @purpose Complexity-bounded source queries executed separately for GitLab instances with a low query budget.
+ * @invariant Every document contains exactly one root connection below `currentUser`.
+ * @invariant All root connections are explicitly bounded; result normalization remains cross-source deduplicated.
+ */
+const ACTIONABLE_QUERIES = [
+  `{
+    currentUser {
+      todos(first: 100, state: [pending], type: [MERGEREQUEST]) {
+        nodes {
+          id
+          action
+          target {
+            __typename
+            ... on MergeRequest { ${MR_FIELDS} }
+          }
         }
       }
     }
-    reviewRequestedMergeRequests(state: opened) {
-      nodes { ${MR_FIELDS} }
+  }`,
+  `{
+    currentUser {
+      reviewRequestedMergeRequests(first: 100, state: opened) {
+        nodes { ${MR_FIELDS} }
+      }
     }
-    authoredMergeRequests(state: opened) {
-      nodes { ${MR_FIELDS} }
+  }`,
+  `{
+    currentUser {
+      assignedMergeRequests(first: 100, state: opened) {
+        nodes { ${MR_FIELDS} }
+      }
     }
-  }
-}`;
+  }`,
+  `{
+    currentUser {
+      authoredMergeRequests(first: 100, state: opened) {
+        nodes { ${MR_FIELDS} }
+      }
+    }
+  }`,
+] as const;
+
+/**
+ * @purpose Build a single targeted query scoped to one MR IID — eliminates the 4×broad-query
+ *   overhead when the caller knows which MR to look up.
+ * @param iid MR internal ID.
+ * @returns GraphQL query document.
+ */
+function TARGETED_QUERY(iid: string): string {
+  return `{
+    currentUser {
+      authoredMergeRequests(first: 1, iids: ["${iid}"]) {
+        nodes { ${MR_FIELDS} }
+      }
+      reviewRequestedMergeRequests(first: 1, iids: ["${iid}"]) {
+        nodes { ${MR_FIELDS} }
+      }
+      assignedMergeRequests(first: 1, iids: ["${iid}"]) {
+        nodes { ${MR_FIELDS} }
+      }
+    }
+  }`;
+}
 
 /** @purpose GitLab Todo action name → my role on the MR (priority resolved later). */
 const ACTION_ROLE: Record<string, VcsActionableRole> = {
@@ -87,9 +131,12 @@ type MrNode = {
   draft?: boolean;
   state?: string;
   description?: string;
+  diffHeadSha?: string;
+  approvalsRequired?: number;
   author?: { username?: string } | null;
   reviewers?: UserConn | null;
   approvedBy?: UserConn | null;
+  headPipeline?: { status?: string } | null;
   project?: { fullPath?: string } | null;
 };
 
@@ -103,6 +150,7 @@ type ActionableData = {
   currentUser?: {
     todos?: { nodes?: TodoNode[] } | null;
     reviewRequestedMergeRequests?: { nodes?: MrNode[] } | null;
+    assignedMergeRequests?: { nodes?: MrNode[] } | null;
     authoredMergeRequests?: { nodes?: MrNode[] } | null;
   } | null;
 };
@@ -122,6 +170,9 @@ type Accumulator = {
     | 'author'
     | 'reviewers'
     | 'approvedBy'
+    | 'headSha'
+    | 'pipelineStatus'
+    | 'approvalsRequired'
   >;
   role: VcsActionableRole | null;
   events: Set<VcsActionableEvent>;
@@ -149,14 +200,23 @@ export class VcsGitlabInbox extends VcsClientInbox {
   }
 
   /**
+   * @param [filter] When `iid` is provided, uses a single targeted query instead of 4 broad ones.
    * @returns Deduplicated actionable MRs with one role + state events each; unfiltered.
-   * @sideEffect Network: POST /api/graphql (currentUser todos + MR connections)
+   * @sideEffect Network: one or four bounded POST /api/graphql reads.
    * @see {VcsClientInbox#getActionable} in services/vcs-client/abstract/vcs-client-inbox.ts
    */
-  async getActionable(): Promise<VcsActionableMr[]> {
-    const data = (await this._graphql(ACTIONABLE_QUERY)) as ActionableData;
-    const user = data?.currentUser;
-    if (!user) return [];
+  async getActionable(filter?: { iid?: string }): Promise<VcsActionableMr[]> {
+    const queries = filter?.iid
+      ? [TARGETED_QUERY(filter.iid)]
+      : (ACTIONABLE_QUERIES as unknown as string[]);
+
+    const payloads = (await Promise.all(
+      queries.map((query) => this._graphql(query))
+    )) as ActionableData[];
+    const users = payloads.flatMap((payload) =>
+      payload?.currentUser ? [payload.currentUser] : []
+    );
+    if (users.length === 0) return [];
 
     const merged = new Map<string, Accumulator>();
 
@@ -181,6 +241,9 @@ export class VcsGitlabInbox extends VcsClientInbox {
             author: node.author?.username ?? '',
             reviewers: usernames(node.reviewers),
             approvedBy: usernames(node.approvedBy),
+            headSha: node.diffHeadSha,
+            pipelineStatus: node.headPipeline?.status,
+            approvalsRequired: node.approvalsRequired,
           },
           role: null,
           events: new Set(),
@@ -196,25 +259,31 @@ export class VcsGitlabInbox extends VcsClientInbox {
       if (!entry.role || ROLE_PRIORITY[role] > ROLE_PRIORITY[entry.role]) entry.role = role;
     };
 
-    for (const todo of user.todos?.nodes ?? []) {
-      if (todo?.target?.__typename !== 'MergeRequest') continue;
-      const entry = ensure(todo.target);
-      if (!entry) continue;
-      if (todo.id) entry.todoIds.push(todo.id);
-      const action = todo.action ?? '';
-      const role = ACTION_ROLE[action];
-      if (role) upgradeRole(entry, role);
-      const event = ACTION_EVENT[action];
-      if (event) entry.events.add(event);
-      if (action === 'directly_addressed') entry.directlyAddressed = true;
-    }
-    for (const mr of user.reviewRequestedMergeRequests?.nodes ?? []) {
-      const entry = ensure(mr);
-      if (entry) upgradeRole(entry, 'reviewer');
-    }
-    for (const mr of user.authoredMergeRequests?.nodes ?? []) {
-      const entry = ensure(mr);
-      if (entry) upgradeRole(entry, 'author');
+    for (const user of users) {
+      for (const todo of user.todos?.nodes ?? []) {
+        if (todo?.target?.__typename !== 'MergeRequest') continue;
+        const entry = ensure(todo.target);
+        if (!entry) continue;
+        if (todo.id && !entry.todoIds.includes(todo.id)) entry.todoIds.push(todo.id);
+        const action = todo.action ?? '';
+        const role = ACTION_ROLE[action];
+        if (role) upgradeRole(entry, role);
+        const event = ACTION_EVENT[action];
+        if (event) entry.events.add(event);
+        if (action === 'directly_addressed') entry.directlyAddressed = true;
+      }
+      for (const mr of user.reviewRequestedMergeRequests?.nodes ?? []) {
+        const entry = ensure(mr);
+        if (entry) upgradeRole(entry, 'reviewer');
+      }
+      for (const mr of user.assignedMergeRequests?.nodes ?? []) {
+        const entry = ensure(mr);
+        if (entry) upgradeRole(entry, 'mentioned');
+      }
+      for (const mr of user.authoredMergeRequests?.nodes ?? []) {
+        const entry = ensure(mr);
+        if (entry) upgradeRole(entry, 'author');
+      }
     }
 
     return [...merged.values()].map((entry) => ({
@@ -223,6 +292,7 @@ export class VcsGitlabInbox extends VcsClientInbox {
       events: [...entry.events],
       directlyAddressed: entry.directlyAddressed,
       todoIds: entry.todoIds,
+      approvalsRequired: entry.base.approvalsRequired,
     }));
   }
 

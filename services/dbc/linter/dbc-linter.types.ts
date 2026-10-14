@@ -1,6 +1,6 @@
 // @file: Port DbcLinter, Value Objects, and lint error constants for the dbc-linter module.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinter
-// @tasks: TSK-07, TSK-09, TSK-11, TSK-88
 
 import type { DbcIssueCode } from '../parser/dbc-parser.types.ts';
 

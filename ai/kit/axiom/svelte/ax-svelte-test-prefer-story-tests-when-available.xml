@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Axiom id="AX_SVELTE_TEST_PREFER_STORY_TESTS_WHEN_AVAILABLE">
+  If the project has a working Storybook integration with a story-test addon, prefer authoring story-level tests over manual `render()` calls — stories already document props and behaviour, and the story-test addon reuses them as executable contracts. Manual `render()` tests are reserved for cases that have no natural story counterpart (e.g. pure `.svelte.ts` reactive modules, error boundaries hard to express as a story variant).
+</Axiom>

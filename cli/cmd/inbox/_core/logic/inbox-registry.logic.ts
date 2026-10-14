@@ -1,6 +1,6 @@
 // @file: Persistent global registry of inbox MRs we have already classified.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A
 
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -22,6 +22,20 @@ export type RegistryEntry = {
   firstSeenAt: string;
   /** @purpose ISO timestamp of the last classification touch */
   lastClassifiedAt: string;
+  /** @purpose HEAD SHA at last sighting — basis for detecting new commits since last classification */
+  candidateHeadSha?: string;
+  /** @purpose HEAD SHA at the last completed review — basis for headChanged delta */
+  lastReviewedHeadSha?: string;
+  /** @purpose HEAD SHA at which I last approved — set when myLogin is in approvedBy; basis for approval-reset detection */
+  lastApprovedHeadSha?: string;
+  /** @purpose Role the operator explicitly assigned (SV-08) | @invariant Distinct from `role` (last-sighting classification) — survives restarts and is restored regardless of role activation */
+  assignedRole?: string;
+  /** @purpose ISO timestamp of that explicit assignment */
+  assignedAt?: string;
+  /** @purpose ISO timestamp of the latest consumed MR feed event (D-317) */
+  lastReadAt?: string;
+  /** @purpose Rebuilt per-capability autonomy modes; registry remains a cache (D-302) */
+  capabilities?: Record<string, 'proposal' | 'auto'>;
 };
 
 /** @purpose The whole registry document persisted to disk. */
@@ -32,7 +46,7 @@ export type InboxRegistry = {
   entries: Record<string, RegistryEntry>;
 };
 
-const EMPTY: InboxRegistry = { version: 1, entries: {} };
+const emptyRegistry = (): InboxRegistry => ({ version: 1, entries: {} });
 
 /**
  * @purpose Load the registry, tolerating a missing or corrupt file.
@@ -42,12 +56,12 @@ const EMPTY: InboxRegistry = { version: 1, entries: {} };
  * @consumer inbox.cmd
  */
 export function loadRegistry(path: string): InboxRegistry {
-  if (!existsSync(path)) return { version: 1, entries: {} };
+  if (!existsSync(path)) return emptyRegistry();
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf8')) as InboxRegistry;
-    return parsed && typeof parsed === 'object' && parsed.entries ? parsed : { ...EMPTY };
+    return parsed && typeof parsed === 'object' && parsed.entries ? parsed : emptyRegistry();
   } catch {
-    return { ...EMPTY };
+    return emptyRegistry();
   }
 }
 
@@ -63,6 +77,46 @@ export function saveRegistry(path: string, registry: InboxRegistry): void {
   const tmp = `${path}.tmp`;
   writeFileSync(tmp, JSON.stringify(registry, null, 2), 'utf8');
   renameSync(tmp, path);
+}
+
+/**
+ * @purpose Promote candidateHeadSha → lastReviewedHeadSha, leaving candidateHeadSha unchanged.
+ *   Returns a shallow copy of the registry; original is not mutated.
+ * @param registry Current registry.
+ * @param ref MR reference in `group/project!iid` format.
+ * @returns New registry with promoted head sha, or unchanged registry when entry not found.
+ * @consumer inbox.cmd
+ */
+export function promoteReviewedHead(registry: InboxRegistry, ref: string): InboxRegistry {
+  // #region START_RESOLVE_ENTRY_BY_REF
+  // invariant: ref format is `group/project!iid`; no-op on invalid format
+  const sep = ref.lastIndexOf('!');
+  if (sep === -1) return registry;
+  const project = ref.slice(0, sep);
+  const iid = ref.slice(sep + 1);
+  // #endregion END_RESOLVE_ENTRY_BY_REF
+
+  // #region START_FIND_AND_PROMOTE_ENTRY
+  const entries = { ...registry.entries };
+  let found = false;
+  for (const [webUrl, entry] of Object.entries(entries)) {
+    if (entry.project === project && entry.iid === iid) {
+      // invariant: only promote when candidateHeadSha is a non-empty truthy value
+      if (entry.candidateHeadSha) {
+        entries[webUrl] = {
+          ...entry,
+          lastReviewedHeadSha: entry.candidateHeadSha,
+        };
+      }
+      found = true;
+      break;
+    }
+  }
+  // #endregion END_FIND_AND_PROMOTE_ENTRY
+
+  // invariant: return original registry when no entry was matched
+  if (!found) return registry;
+  return { ...registry, entries };
 }
 
 /**

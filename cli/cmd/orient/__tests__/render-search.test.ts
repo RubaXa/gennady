@@ -1,6 +1,6 @@
 // @file: Unit tests for renderSearch — keyword search result rendering (S4 scenario).
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import type { KeywordMatch, ScannedFile } from '../orient.types.ts';
 function makeFile(absPath: string): ScannedFile {
   return {
     absPath,
-    header: { file: 'test file', tasks: ['TSK-01'], consumers: ['ConsumerA'] },
+    header: { file: 'test file', tasks: ['DP-fields'], consumers: ['ConsumerA'] },
     exports: [],
   };
 }

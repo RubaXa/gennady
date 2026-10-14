@@ -1,0 +1,5 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<Hook id="HOOK_TYPECHECK_BEFORE_TEST">
+      <Command>npx tsc --noEmit</Command>
+      <Expected>Exit 0; no TS errors.</Expected>
+    </Hook>

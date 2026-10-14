@@ -1,6 +1,6 @@
 // @file: Core for model selection and prompt batching by diff; combines GennadyRc and AiLegacyModel.
+// @spec: CLI
 // @consumers: commit-gen, review-gen
-// @tasks: N/A
 
 import { AiLegacyModel } from './ai-legacy-model.ts';
 import { GennadyRc } from '../../../shared/backend/rc/rc-config.ts';

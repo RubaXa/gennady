@@ -1,5 +1,11 @@
 # Module: observe
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-OBSERVE
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Async iterable для непрерывного наблюдения за изменениями сессий. Принимает `AgentMonitor`, каждые N мс делает `scanAll` + `diff`, yield'ит `SessionChanges`.

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<AntiPattern id="AP_SK_THROW_INSTEAD_OF_FAIL">
+<Bad>In a form action: `if (!email) throw new Error('Email required');`</Bad>
+<WhyBad>Action throws instead of returning `fail()` (`AX_SK_VALIDATION_AT_ACTION_BOUNDARY`). Surfaces as a 500 with the framework's error page; the form loses its inputs; the user has no recoverable UI state. `fail()` is the contract channel for recoverable validation rejection.</WhyBad>
+<Good>`return fail(400, { email: '', error: 'Email is required' });` — page re-renders with `form.error` visible and inputs preserved.</Good>
+</AntiPattern>

@@ -1,6 +1,6 @@
 // @file: Anchor thinness check — validates that #region START / #endregion END blocks contain at least 2 meaningful lines.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-XX
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_ANCHOR_TOO_THIN } from '../lint.types.ts';

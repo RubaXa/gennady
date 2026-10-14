@@ -1,0 +1,340 @@
+<VitestRules keywords="vitest, runner, vi_mock, vi_fn, fake_timers, stub_env, vitest_run_not_watch, mock_confirm_gate, explicit_imports" type="testing-rules" ver="3.0">
+  <Mission>
+    Vitest runner (`vitest`) specifics on top of [`testing/common`](./common.xml). Only the deltas are stated here: one-shot vs watch invocation, `vi`-matcher API, `vi.mock` confirm-gate, mock hygiene, fake timers / env / global lifecycle, explicit imports, default isolation.
+
+    Read `testing/common.xml` first. Everything about contract boundary, case flow, phase anchors, unified context, factory-over-hooks, BDD mapping, snapshot operator-confirm, file budget — lives there.
+  </Mission>
+
+  <DependsOn>
+    - ai/directives/testing/common.xml
+  </DependsOn>
+
+  <InheritedBaseline>
+    All axioms in [`testing/common`](./common.xml) `Belief_State` apply here UNCHANGED — reader-agent treats them as binding under this directive. `BDD_Mapping_Hint`, `Definitions`, `Workflow_Outline` likewise inherited. This file only adds Vitest-specific overrides and patterns. Mechanical assertion-API substitutions when the inherited text mentions node:test assertions: `assert.throws()` → `expect(fn).toThrow(...)`; `assert.rejects()` → `await expect(promise).rejects.toThrow(...)`; `assert.match()` → `expect(str).toMatch(regex)`.
+  </InheritedBaseline>
+
+  <BeliefState>
+
+    <Axiom id="AX_VITEST_RUN_NOT_WATCH">
+      **Primary `test` script MUST invoke `vitest run` (one-shot), never bare `vitest` (defaults to watch in TTY).**
+
+      ```json
+      "test": "vitest run",                    // ✅ one-shot, exits 0/1
+      "test:watch": "vitest",                  // ✅ explicit watch (human dev)
+      "test:coverage": "vitest run --coverage" // ✅ one-shot with coverage
+      ```
+      ```json
+      "test": "vitest"           // ❌ defaults to watch in TTY → agent hangs
+      "test": "vitest --watch"   // ❌ explicit watch
+      ```
+
+      AI agents and CI runners invoke `npm test` and wait for exit. Bare `vitest` in TTY enters interactive watch mode, streams forever, never exits → the session hangs with no way to distinguish «still running» from «ready, waiting for changes». Top cause of stuck infrastructure-setup tickets — see `nodejs-npm-rules.xml#AX_AI_FIRST_SCRIPTS_ONE_SHOT`.
+    </Axiom>
+
+    <Axiom id="AX_VITEST_ASSERT_API_CHOICE">
+      Pick the simplest direct matcher by shape:
+      - `expect(x).toBe(y)` — scalars and reference identity (NOT for structural equality).
+      - `expect(x).toEqual(y)` — deep structural equality; ignores `undefined` properties on the actual side.
+      - `expect(x).toStrictEqual(y)` — deep equality including `undefined`, prototype, sparse arrays. Prefer over `toEqual` when contract distinguishes «absent» from `undefined`.
+      - `expect(fn).toThrow(...)` / `await expect(promise).rejects.toThrow(...)` — thrown failures.
+      - `expect(str).toMatch(regex)` — partial string / error-message checks (inherited `AX_PARTIAL_STRING_VIA_MATCH`).
+      - `expect(x).toMatchInlineSnapshot(...)` — only under inherited `AX_SNAPSHOT_USAGE_GATE`.
+
+      Forbidden idioms: `toContain` on `error.message` (use `toMatch`); `toBeTruthy` / `toBeFalsy` to fold a structured assertion into a boolean (use the structured form); `try/catch + expect.fail` instead of `rejects.toThrow`.
+    </Axiom>
+
+    <Axiom id="AX_MOCK_REQUIRES_OPERATOR_CONFIRM">
+      Introducing a NEW `vi.mock(...)` or `vi.hoisted(...)` call in a test file is a gated action. Execution-agent MUST stop before introducing such a mock and request explicit operator confirmation in chat, presenting:
+      - module being mocked,
+      - why dependency injection cannot be used here (per inherited `AX_MOCK_AS_LAST_RESORT`),
+      - what observable contract the mock preserves.
+
+      Re-using an existing project-level mock helper does NOT require a new confirmation. `vi.mock` is the single biggest lever for fabricating green tests; confirm-gate makes that fabrication visible.
+    </Axiom>
+
+    <Axiom id="AX_PREFER_VI_FN_FOR_INTERACTION">
+      For tracking call interactions on injected collaborators use `vi.fn()` directly. `vi.spyOn(target, 'method')` allowed when the SUT receives a real object (not an injection seam) and a specific method must be observed without replacing the rest. Even then prefer refactoring to an injection seam. `vi.fn()` on an injected port is the cleanest interaction surface.
+    </Axiom>
+
+    <Axiom id="AX_HTTP_BOUNDARY_INJECTION">
+      Default way to test HTTP-touching code is to inject the HTTP client (or a typed `request` port) into the SUT and stub it with `vi.fn()`. Direct `globalThis.fetch` replacement, `vi.mock('node:http')`, full module mocks of HTTP libraries are last-resort and gated by `AX_MOCK_REQUIRES_OPERATOR_CONFIRM`.
+
+      If the project already standardizes on a network-mocking harness (e.g., MSW, in-house helper), reuse it consistently — do NOT introduce a parallel mocking path. Choosing a network-mocking library is an architecture decision, not a per-test decision.
+    </Axiom>
+
+    <Axiom id="AX_MOCK_HYGIENE">
+      Mocks used → lifecycle hygiene mandatory. Either set in `vitest.config`: `clearMocks: true`, plus `unstubEnvs: true` / `unstubGlobals: true` when stubs are used, OR call `vi.clearAllMocks()` in `afterEach`.
+
+      Reset granularity:
+      - `vi.clearAllMocks()` — clear call history; keep implementations.
+      - `vi.resetAllMocks()` — clear history AND reset implementations to empty `vi.fn()`.
+      - `vi.restoreAllMocks()` — restore originals of `vi.spyOn`-created spies.
+      - `vi.unstubAllEnvs()` / `vi.unstubAllGlobals()` — pair every `stubEnv` / `stubGlobal` with these in `afterEach`.
+
+      Without disciplined reset, mock state leaks across cases and creates order-dependent flicker.
+    </Axiom>
+
+    <Axiom id="AX_TIME_ENV_GLOBAL_LIFECYCLE">
+      State-mutating Vitest helpers MUST be paired with their teardown:
+      - `vi.useFakeTimers()` ↔ `vi.useRealTimers()` (use `vi.setSystemTime(date)` for clock).
+      - `vi.stubEnv(...)` ↔ `vi.unstubAllEnvs()` (or `unstubEnvs: true`).
+      - `vi.stubGlobal(...)` ↔ `vi.unstubAllGlobals()` (or `unstubGlobals: true`).
+
+      Forbidden: enabling any of these inside a single case without restoring — leaks into every later case in the same file. Classic source of order-dependent flicker that looks random.
+    </Axiom>
+
+    <Axiom id="AX_EXPLICIT_VITEST_IMPORTS">
+      Import every Vitest API explicitly from `vitest` (`describe`, `it`, `expect`, `vi`, `beforeEach`, `afterEach`, `beforeAll`, `afterAll`). Do NOT rely on `globals: true` in `vitest.config`. Explicit imports make the file self-describing for humans, TypeScript, ESLint, and agent grep.
+    </Axiom>
+
+    <Axiom id="AX_VITEST_ISOLATION_DEFAULT">
+      Vitest's default `isolate: true` is preserved. Do NOT weaken isolation in `vitest.config` without an architectural justification recorded in the project. Disabling isolation trades determinism for speed and re-introduces inter-test leakage.
+    </Axiom>
+
+  </BeliefState>
+
+  <TestPatterns>
+    <Pattern id="PT_UNIFIED_FACTORY_CONTEXT">
+      <Intent>Default shape per inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE` + `AX_PREFER_FACTORY_OVER_HOOKS`: ONE context type + ONE factory for the whole file. Two cases differ only by factory overrides, not by structure.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, expect, vi } from 'vitest';
+        import { OrderLifecycle } from './order-lifecycle.ts';
+        import type { OrderRepository, EventBus } from './ports.ts';
+
+        type OrderLifecycleContext = {
+            sut: OrderLifecycle;
+            saveOrder: ReturnType<typeof vi.fn<OrderRepository['saveOrder']>>;
+            publish: ReturnType<typeof vi.fn<EventBus['publish']>>;
+        };
+
+        function createOrderLifecycleContext(
+            overrides: Partial<{
+                saveOrder: OrderRepository['saveOrder'];
+                publish: EventBus['publish'];
+            }> = {},
+        ): OrderLifecycleContext {
+            const saveOrder = vi.fn(overrides.saveOrder ?? (async () => {}));
+            const publish = vi.fn(overrides.publish ?? (() => {}));
+            const sut = new OrderLifecycle({ saveOrder, publish });
+            return { sut, saveOrder, publish };
+        }
+
+        describe('OrderLifecycle#settleCharge', () => {
+            it('should persist order in PAID state and publish settled event', async () => {
+                // observation focus: persistence args + event payload, not pipeline internals
+                const { sut, saveOrder, publish } = createOrderLifecycleContext();
+
+                await sut.settleCharge('ord-1');
+
+                // #region START_SETTLE_CHARGE_ASSERT_INTERACTIONS
+                expect(saveOrder).toHaveBeenCalledWith({ id: 'ord-1', state: 'PAID' });
+                expect(publish).toHaveBeenCalledWith({
+                    type: 'order.settled',
+                    detail: { orderId: 'ord-1' },
+                });
+                // #endregion END_SETTLE_CHARGE_ASSERT_INTERACTIONS
+            });
+
+            it('should not publish when persistence rejects', async () => {
+                // contract: settled event is emitted ONLY after successful persistence
+                // failure mode: a leaked event after a failed write would corrupt downstream consumers
+                const { sut, publish } = createOrderLifecycleContext({
+                    saveOrder: async () => { throw new Error('db down'); },
+                });
+
+                await expect(sut.settleCharge('ord-1')).rejects.toThrow(/db down/);
+                expect(publish).not.toHaveBeenCalled();
+            });
+        });
+        ```
+      </Snippet>
+      <Why>One context type, one factory; failure case overrides exactly one field and reuses everything else. No describe-scope `let`s; stubs flow through injection seams; no module-level mocks. One-line SETUP and TRIGGER → no anchors; multi-line ASSERT → anchored.</Why>
+    </Pattern>
+
+    <Pattern id="PT_LIFECYCLE_CONTEXT_WITH_CLEANUP">
+      <Intent>Justified hook usage: SUT requires teardown-bound setup (fake timers + env stub). A SINGLE lifecycle context object built in `beforeEach` and disposed in `afterEach`; cases consume fields off that context per inherited `AX_HOOKS_ONLY_FOR_LIFECYCLE` + `AX_NO_DESCRIBE_LET_PILEUP`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+        import { ScheduleRunner } from './schedule-runner.ts';
+
+        type ScheduleRunnerContext = {
+            sut: ScheduleRunner;
+            tick: (ms: number) => Promise<void>;
+        };
+
+        describe('ScheduleRunner#runDueJobs', () => {
+            let ctx: ScheduleRunnerContext;
+
+            beforeEach(() => {
+                vi.useFakeTimers();
+                vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+                vi.stubEnv('SCHEDULE_TICK_MS', '1000');
+
+                const sut = new ScheduleRunner();
+                ctx = { sut, tick: (ms) => vi.advanceTimersByTimeAsync(ms) };
+            });
+
+            afterEach(() => {
+                vi.useRealTimers();
+                vi.unstubAllEnvs();
+            });
+
+            it('should fire a single job exactly once at its due time', async () => {
+                // contract: a job scheduled at t+1000ms fires once at t+1000ms, not before, not twice
+                const onFire = vi.fn();
+                ctx.sut.schedule({ id: 'j1', dueAt: 1000, run: onFire });
+
+                // #region START_DUE_JOBS_TRIGGER_TICK
+                await ctx.tick(999);
+                expect(onFire).not.toHaveBeenCalled();
+                await ctx.tick(1);
+                // #endregion END_DUE_JOBS_TRIGGER_TICK
+
+                expect(onFire).toHaveBeenCalledTimes(1);
+            });
+        });
+        ```
+      </Snippet>
+      <Why>Fake timers and env stubs are teardown-bound — cannot be cleaned by a factory return value. The describe holds exactly ONE `let ctx`, not a pile of `let sut, let tick, let env`. Multi-step TRIGGER (boundary observation between ticks) → anchored.</Why>
+    </Pattern>
+
+    <Pattern id="PT_DI_OVER_MOCK">
+      <Intent>Preferred posture: SUT designed with injection seams is exercised against real `vi.fn()` stubs. No `vi.mock`, no operator confirm-gate triggered, no global patching — yet the test is fully isolated from the network.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, expect, vi } from 'vitest';
+        import { CatalogSync } from './catalog-sync.ts';
+        import type { HttpRequest, CatalogStore } from './ports.ts';
+
+        type CatalogSyncContext = {
+            sut: CatalogSync;
+            httpRequest: ReturnType<typeof vi.fn<HttpRequest>>;
+            store: CatalogStore;
+        };
+
+        function createCatalogSyncContext(
+            overrides: Partial<{
+                response: Awaited<ReturnType<HttpRequest>>;
+                store: CatalogStore;
+            }> = {},
+        ): CatalogSyncContext {
+            const httpRequest = vi.fn<HttpRequest>(async () =>
+                overrides.response ?? { status: 200, body: { items: [] } },
+            );
+            const store = overrides.store ?? { replaceAll: vi.fn(async () => {}) };
+            const sut = new CatalogSync({ httpRequest, store });
+            return { sut, httpRequest, store };
+        }
+
+        describe('CatalogSync#pull', () => {
+            it('should request the catalog endpoint and replace the store with normalized items', async () => {
+                // observation focus: the URL pulled + the items written, not transport internals
+                const { sut, httpRequest, store } = createCatalogSyncContext({
+                    response: {
+                        status: 200,
+                        body: { items: [{ id: '1', title: 'Keyboard ', stock: 3 }] },
+                    },
+                });
+
+                await sut.pull();
+
+                // #region START_PULL_ASSERT_BOUNDARY
+                expect(httpRequest).toHaveBeenCalledWith({ method: 'GET', url: '/v1/catalog' });
+                expect(store.replaceAll).toHaveBeenCalledWith([
+                    { id: '1', title: 'Keyboard', stock: 3 },
+                ]);
+                // #endregion END_PULL_ASSERT_BOUNDARY
+            });
+        });
+        ```
+      </Snippet>
+      <Why>No `vi.mock`, no `vi.spyOn`, no `globalThis.fetch` patching: SUT exposes injection seams (`httpRequest`, `store`) and the test passes typed `vi.fn()`s through them. Unified factory reused; case differs only by `response` override.</Why>
+    </Pattern>
+  </TestPatterns>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_BEFORE_EACH_LET_PILEUP">
+      <Bad>Describe scope hosts `let sut, saveOrder, publish, order, now`; `beforeEach` assigns them; second case re-assigns shared `sut` to a different config (leaks state).</Bad>
+      <WhyBad>Pile of `let`-variables (inherited `AX_NO_DESCRIBE_LET_PILEUP`). Per-case data built in `beforeEach` without teardown reason (inherited `AX_HOOKS_ONLY_FOR_LIFECYCLE` + `AX_PREFER_FACTORY_OVER_HOOKS`). No unified context type/factory (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`).</WhyBad>
+      <Good>ONE context type + ONE `createOrderLifecycleContext(overrides)` factory used by every case. Each case destructures the fields it uses; failure case overrides one field. No `beforeEach`, no shared `let`s.</Good>
+    </AntiPattern>
+
+    <AntiPattern id="AP_PARALLEL_FACTORIES">
+      <Bad>One file declares `createOrderContextHappy()`, `createOrderContextWithDiscount()`, `createOrderContextFailing()`.</Bad>
+      <WhyBad>Three parallel factories for one SUT (inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE`). Each drifts independently; structural changes in `OrderLifecycle` require N edits, not one. Reader-agent must learn three shapes instead of one + a set of overrides.</WhyBad>
+      <Good>Single `createOrderLifecycleContext(overrides)` factory; happy / discount / failure cases pass different overrides through the same factory.</Good>
+    </AntiPattern>
+
+    <AntiPattern id="AP_UNJUSTIFIED_VI_MOCK">
+      <Bad>`vi.mock('./http-client.ts', () => ({ httpClient: { get: vi.fn(...) } }))` for an in-process module; SUT instantiated as `new CatalogSync()` without injection.</Bad>
+      <WhyBad>`vi.mock` introduced without operator confirm and without justification (`AX_MOCK_REQUIRES_OPERATOR_CONFIRM`, inherited `AX_MOCK_AS_LAST_RESORT`). `httpClient` is in-process — the SUT could have accepted it as a constructor argument (`AX_HTTP_BOUNDARY_INJECTION`).</WhyBad>
+      <Good>SUT exposes injection seam: `class CatalogSync { constructor(deps: { httpRequest: HttpRequest }) {} }`. Test uses unified factory + `vi.fn()` stub through the seam (see `PT_DI_OVER_MOCK`).</Good>
+    </AntiPattern>
+
+    <AntiPattern id="AP_LEAKED_LIFECYCLE_AND_GLOBAL_RELIANCE">
+      <Bad>Test file has no imports (relies on `globals: true`). Inside a case: `vi.useFakeTimers(); vi.setSystemTime(...); vi.stubEnv('TICK', '1000');` without paired teardown.</Bad>
+      <WhyBad>Reliance on `globals: true` (`AX_EXPLICIT_VITEST_IMPORTS`). Fake timers and env stubs without paired teardown (`AX_TIME_ENV_GLOBAL_LIFECYCLE`). State leaks into subsequent cases → order-dependent flicker.</WhyBad>
+      <Good>Explicit imports; `beforeEach` enables fake timers + env stubs; `afterEach` calls `vi.useRealTimers()` + `vi.unstubAllEnvs()` (see `PT_LIFECYCLE_CONTEXT_WITH_CLEANUP`).</Good>
+    </AntiPattern>
+
+    <AntiPattern id="AP_CONTAINS_ON_ERROR_AND_PRIVATE_INSPECTION">
+      <Bad>`try { await client.reserveStock(''); expect.fail('should have thrown'); } catch (e) { expect((e as Error).message).toContain('idempotency'); }` AND inspecting `client._inflightCount` with `@ts-expect-error`.</Bad>
+      <WhyBad>Manual `try/catch + expect.fail` instead of `rejects.toThrow` (`AX_VITEST_ASSERT_API_CHOICE`). `toContain` on `error.message` (inherited `AX_PARTIAL_STRING_VIA_MATCH`). Inspecting protected internal field (inherited `AX_CONTRACT_OVER_IMPLEMENTATION`).</WhyBad>
+      <Good>`await expect(client.reserveStock('')).rejects.toThrow(/idempotency.*empty|empty.*idempotency/i);` and subscribe to public lifecycle event for observation.</Good>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_RUN_TESTS">
+      <Command>npx vitest run</Command>
+      <Expected>Exit 0; no `.only` / `.skip` / `.todo` without a deferred-ownership reference.</Expected>
+    </Hook>
+    <Hook id="HOOK_RUN_SINGLE_FILE">
+      <Command>npx vitest run path/to/subject.test.ts</Command>
+      <Expected>Exit 0; targeted file passes.</Expected>
+    </Hook>
+    <Hook id="HOOK_COVERAGE">
+      <Command>npx vitest run --coverage</Command>
+      <Expected>Exit 0; ≥1 happy + ≥1 boundary (when applicable) + ≥1 failure-path per public method (inherited `AX_COVERAGE_BY_CONTRACT_NOT_BY_LINE`). Blockers declared EXPLICITLY.</Expected>
+    </Hook>
+    <Hook id="HOOK_TYPECHECK_BEFORE_TEST">
+      <Command>npx tsc --noEmit</Command>
+      <Expected>Exit 0.</Expected>
+    </Hook>
+    <Hook id="HOOK_FILE_SIZE_BUDGET">
+      <Purpose>Flag test files exceeding inherited `AX_TEST_FILE_SIZE_BUDGET` thresholds.</Purpose>
+      <Command>find . -name '*.test.ts' -not -path '*/node_modules/*' -exec sh -c 'lines=$(grep -cvE "^\s*(//|/\*|\*|$)" "$1"); [ "$lines" -gt 300 ] && echo "$lines $1"' _ {} \; | sort -n</Command>
+      <Expected>No test file exceeds 500 code-LOC. Files over 300 carry a tracked split task or explicit justification.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_FORBIDDEN_TEST_PATTERNS">
+      <Command>rg --no-heading -n "\b(it|describe)\.(only|skip|todo)\b|Step \d|\.message\)?\.toContain\(|expect\.fail\(" -t ts --glob '**/*.test.ts'</Command>
+      <Expected>Empty on new/changed test files (or matches carry explicit deferred-ownership reference).</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_UNJUSTIFIED_VI_MOCK">
+      <Purpose>Every `vi.mock(` / `vi.hoisted(` MUST be paired with a justification comment within 3 lines.</Purpose>
+      <Command>rg --no-heading -n -B1 -A2 "vi\.(mock|hoisted)\(" -t ts --glob '**/*.test.ts'</Command>
+      <Expected>Each match has an immediate-neighbor comment naming the dependency and reason injection is unavailable.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_AUTO_SNAPSHOT_UPDATE">
+      <Purpose>Verify the agent did NOT run snapshot updates autonomously (inherited `AX_SNAPSHOT_OPERATOR_CONFIRM`).</Purpose>
+      <Command>git diff --name-only -- '**/__snapshots__/*.snap' '**/*.test.ts'</Command>
+      <Expected>Snapshot diffs presented to operator BEFORE commit; no `vitest --update` / `vitest -u` in agent's command history.</Expected>
+    </Hook>
+    <Hook id="HOOK_PARALLEL_FACTORIES_GUARD">
+      <Command>rg --no-heading -nU "function create\w+Context" -t ts --glob '**/*.test.ts' | awk -F: '{c[$1]++} END {for (f in c) if (c[f] > 1) print c[f], f}'</Command>
+      <Expected>No file declares more than one `createXxxContext` factory.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ The primary test command uses one-shot `vitest run` and terminates with an observable result.
+    ✅ Assertions use the narrowest diagnostic matcher for scalar, structural, string, and error shapes.
+    ✅ Injected collaborators prefer `vi.fn()`; any new module mock carries operator confirmation and a concrete injection constraint.
+    ✅ Fake timers, environment stubs, globals, spies, and mock history are reset by explicit lifecycle policy.
+    ✅ Vitest, TypeScript, and required coverage gates execute successfully.
+    ❌ Watch mode, leaked mock state, boolean-folded assertions, or autonomous snapshot updates can reach merge.
+    ❌ `vi.mock()` replaces the SUT or an in-process collaborator that has an available injection seam.
+  </RewardCriteria>
+</VitestRules>

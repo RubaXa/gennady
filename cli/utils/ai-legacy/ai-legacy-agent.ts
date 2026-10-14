@@ -1,6 +1,6 @@
 // @file: Legacy AI Agent — wrapper over AiLegacyModel for receiving structured JSON responses.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A
 
 import { unguardOrThrow } from '../../../shared/common/unguard.ts';
 import { AiLegacyModel } from './ai-legacy-model.ts';

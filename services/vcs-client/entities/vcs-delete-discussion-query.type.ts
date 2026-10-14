@@ -1,6 +1,6 @@
 // @file: Value object for delete discussion query parameters.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeDiscussions
-// @tasks: TSK-86
 
 /** @purpose Parameters for deleting an entire MR discussion. */
 export type VcsDeleteDiscussionQuery = {

@@ -1,0 +1,21 @@
+[
+  {
+    "kind": "run",
+    "name": "formatter",
+    "command": "npm",
+    "args": ["run", "format:fix", "--"],
+    "evidence": "npm run format:fix --"
+  },
+  {
+    "kind": "skip",
+    "name": "eslint-project",
+    "reason": "no applicable project-linter targets",
+    "evidence": "eslint-project(skip: no applicable project-linter targets)"
+  },
+  {
+    "kind": "skip",
+    "name": "gennady-contract",
+    "reason": "no applicable .ts/.tsx targets",
+    "evidence": "gennady-contract(skip: no applicable .ts/.tsx targets)"
+  }
+]

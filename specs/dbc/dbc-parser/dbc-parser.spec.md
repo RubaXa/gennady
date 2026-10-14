@@ -1,5 +1,11 @@
 # Module: dbc-parser
 
+<!--SECTION:SPEC_ID-->
+
+DBC-DBC-PARSER
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Единый модуль, содержащий универсальный DBC-контракт парсинга и первую реализацию для JSDoc-подобного синтаксиса. Охватывает всё: типы, интерфейс `DbcParser`, issue-коды, валидацию и JSDoc-парсер.

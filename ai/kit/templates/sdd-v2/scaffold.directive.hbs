@@ -1,0 +1,167 @@
+<SddScaffold keywords="sdd, scaffold, tickets, dag, test-plan, approval" type="directive" ver="2.3">
+  <Mission>
+    Transform operator-approved V2 specifications into actual task tickets and indexes. Validate the
+    real artifacts mechanically, obtain one independent semantic review of those actual artifacts,
+    then obtain operator approval #2 for decomposition and test plan together. Do not write code.
+  </Mission>
+
+  <BeliefState>
+    {{> "axiom/process/ax-stateless-flow"}}
+    {{> "axiom/process/ax-tool-invocation"}}
+    {{> "axiom/process/ax-progressive-disclosure"}}
+    {{> "axiom/process/ax-operator-language"}}
+    {{> "axiom/process/ax-operator-agreement"}}
+    {{> "axiom/process/ax-task-id-uniqueness"}}
+    {{> "axiom/process/ax-ticket-section-names-normative"}}
+    {{> "axiom/scaffold/ax-dag-and-ticket-boundaries"}}
+    {{> "axiom/scaffold/ax-ticket-deduplication"}}
+    {{> "axiom/scaffold/ax-ticket-has-bdd-and-tests"}}
+    {{> "axiom/scaffold/ax-bootstrap-ticket-derivation"}}
+  </BeliefState>
+
+  <Contracts>
+    {{> "contract/process/artifact-approval-flow"}}
+    {{> "contract/process/artifact-approval-marker"}}
+    {{> "contract/scaffold/task-ticket-structure"}}
+    {{> "contract/process/question-rule-slim"}}
+    {{> "contract/spec/decision-log-entry-format"}}
+    {{> "contract/process/deviation-record-format"}}
+  </Contracts>
+
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_SPEC_NOT_APPROVED` | Target spec set has not passed operator approval #1 |
+    | `H_V2_INVALID` | A target is invalid V2; return to its authoring owner, never migrate it |
+    | `H_TICKET_AUTHORING_INVALID` | Mechanical authoring check remains red after one decomposition retreat |
+    | `H_TICKET_REVIEW_FINDING` | Independent reviewer found an unresolved semantic conflict |
+    | `H_OPERATOR_REJECT` | Operator rejected decomposition or test plan |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_PREFLIGHT">
+      <Goal>Resolve the exact approved spec set and existing ticket topology.</Goal>
+      <Action>
+        Use the router snapshot plus actual specs and task indexes. Accept only V2 specs whose current
+        state carries a well-formed `approved` approval #1 marker in
+        `ARTIFACT_APPROVAL_MARKER` format. Check its paths and use Git evidence
+        plus semantic judgment for staleness; a marker is not a byte/hash gate. Missing, malformed, or
+        stale approval stops with `H_SPEC_NOT_APPROVED`. Structurally invalid V2 stops with
+        `H_V2_INVALID` and returns to the owning V2 authoring flow. Auto-detect `initial`
+        or `extend-dag`; preserve existing IDs and
+        completed tickets in extend mode. Every runtime, package-manager, or configuration
+        prerequisite named by the approved set must resolve to exactly one Bootstrap Requirements row with a named Owner. Missing or ambiguous ownership returns to the owning spec before ticket derivation.
+        Do not create a migration path, `.sdd-session.md`,
+        scaffold-plan JSON, digest, feasibility event, or critic journal (`AX_STATELESS_FLOW`).
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_DERIVE">
+      <Goal>Reason about a coherent ticket DAG before writing it.</Goal>
+      <Action>
+        Read the approved specs and derive the smallest useful tickets per
+        `AX_DAG_AND_TICKET_BOUNDARIES` and `AX_TICKET_DEDUPLICATION`. Each ticket has one observable
+        outcome, bounded target files, explicit dependencies, phase order, verification commands, and
+        requirement references. Infrastructure providers precede consumers: package manager and
+        dependency materialization precede scripts, configs, tests, or commands that consume them.
+
+        Perform a local coherence pass in reasoning: every requirement has an owner, dependencies are
+        acyclic, shared writers are serialized, no ticket invents requirements, and infrastructure is
+        not fragmented without an independently verifiable outcome. Derive any necessary bootstrap
+        work per `AX_BOOTSTRAP_TICKET_DERIVATION`. This pass needs no subagent and
+        no intermediate JSON. It prepares the artifacts; it does not approve them.
+        Record a disputed autonomous ticket-boundary choice once in the narrowest task-index Decision
+        Log per `DEVIATION_RECORD_FORMAT`; do not pause the batch for it.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_MATERIALIZE">
+      <Goal>Create actual tickets and indexes.</Goal>
+      <Action>
+        For each derived node call exactly one applicable `sdd-new` command and fill the returned file.
+        <ToolCall owner="this-step" result="flatInfraTaskManifest">npx gennady sdd-new task --owner infrastructure-flat --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        <ToolCall owner="this-step" result="scopeBootstrapTaskManifest">npx gennady sdd-new task --owner scope-bootstrap --scope &lt;scope&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        <ToolCall owner="this-step" result="moduleTaskManifest">npx gennady sdd-new task --owner module --scope &lt;scope&gt; --module &lt;module&gt; --id &lt;ACR&gt;-&lt;slug&gt;</ToolCall>
+        Consume exactly the applicable `flatInfraTaskManifest`, `scopeBootstrapTaskManifest`, or
+        `moduleTaskManifest`; never call the other owner variants for that node.
+
+        Preserve globally unique IDs per `AX_TASK_ID_UNIQUENESS` and the normative section names per
+        `AX_TICKET_SECTION_NAMES_NORMATIVE`. Fill every ticket from owning spec anchors. Per
+        `AX_TICKET_HAS_BDD_AND_TESTS`, the BDD/Test Plan must contain requirement IDs in
+        the scenarios and mapped test cases. Happy-path-only is invalid: every behavior-bearing
+        ticket contains at least one applicable negative/failure scenario, plus boundary or trust
+        scenarios required by the spec. A scenario without a test mapping or a mandatory requirement
+        without a scenario is incomplete.
+
+        Create missing index skeletons with the canonical commands, then fill their tracker and DAG
+        rows from the actual tickets.
+        <ToolCall owner="this-step" result="moduleIndexManifest">npx gennady sdd-new module-index --scope &lt;scope&gt; --module &lt;module&gt;</ToolCall>
+        <ToolCall owner="this-step" result="scopeIndexManifest">npx gennady sdd-new scope-index --scope &lt;scope&gt;</ToolCall>
+        <ToolCall owner="this-step" result="projectIndexManifest">npx gennady sdd-new project-index</ToolCall>
+        Consume each produced `moduleIndexManifest`, `scopeIndexManifest`, and
+        `projectIndexManifest` before filling its tracker and DAG rows.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_MECHANICAL_CHECK">
+      <Goal>Prove actual ticket structure before semantic review.</Goal>
+      <Action>
+        Run the authoring check on every created or changed ticket. It checks required sections,
+        anchors, resolvable spec references, dependencies/phases, requirement-to-scenario-to-test
+        traceability, and required negative scenarios. A red result is a decomposition defect: do not
+        patch the failed ticket locally. Use the retreat command `return to STEP_1_DERIVE`, rederive
+        the affected node boundaries/ownership from the specs, then rematerialize and check once. If
+        that remains red, stop with `H_TICKET_AUTHORING_INVALID`. Do not ask a reviewer to compensate
+        for malformed artifacts.
+        <ToolCall owner="this-step" result="authoringGate">npx gennady sdd-check --task &lt;ticket-path&gt; --authoring</ToolCall>
+        Consume `authoringGate`; its findings explain why decomposition must retreat.
+
+        Then run the complete structural check over actual specs, tickets, and indexes. It checks ID
+        uniqueness, dependency resolution/acyclicity, tracker sync, and declared ownership/order.
+        <ToolCall owner="this-step" result="integrityGate">npx gennady sdd-check --all .</ToolCall>
+        Consume `integrityGate`; do not proceed to semantic review while it is red.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_INDEPENDENT_TICKET_REVIEW">
+      <Goal>Judge the actual ticket set against approved specifications.</Goal>
+      <Action>
+        Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,
+        indexes, and their approved specs. The reviewer checks: coherent decomposition; provider before
+        consumer; no conflicting/shared writes; phases form an executable order; each requirement is
+        owned; negative/failure behavior is represented; test cases would demonstrate the declared
+        requirement; and no ticket adds product meaning absent from specs.
+
+        The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The
+        reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON
+        plan. If a finding changes ticket meaning, edit the actual ticket, repeat STEP_3, and obtain one
+        fresh review of the new actual set. An unresolved semantic conflict stops with
+        `H_TICKET_REVIEW_FINDING`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_OPERATOR_APPROVAL_2">
+      <Goal>Approve decomposition and test plan in one decision.</Goal>
+      <Action>
+        Present a compact card based on actual tickets: ordered ticket list with dependencies and
+        outcomes; infrastructure provider/consumer order; Requirement-ID → scenario → planned test
+        mapping; negative/failure scenarios; declared real verification commands; independent verdict.
+        Ask `Approve tickets and test plan` or `Return for correction` per `AX_OPERATOR_AGREEMENT`. Do not ask approval for an
+        abstract pre-ticket plan. On approval, write approval #2 to the narrowest owning task index in
+        the human-readable `ARTIFACT_APPROVAL_MARKER` format. Any later semantic ticket/index edit
+        resets it to `pending`; no fingerprint, digest, or JSON approval record exists.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_HANDOFF">
+      <Goal>Leave a directly executable durable queue.</Goal>
+      <Action>
+        Rerun the complete mechanical check after the approval marker is recorded.
+        <ToolCall owner="this-step" result="finalIntegrityGate">npx gennady sdd-check --all .</ToolCall>
+        Consume `finalIntegrityGate`. Report exact ticket
+        paths and the next command `/sdd-execute &lt;Task-ID|next|all&gt;`. Stopping here is safe because
+        the whole continuation state lives in tickets, indexes, specs, Execution Logs, and Git.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SddScaffold>

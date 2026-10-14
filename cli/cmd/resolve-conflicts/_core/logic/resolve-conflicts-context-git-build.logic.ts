@@ -1,6 +1,6 @@
 // @file: Build merge context from git for resolve-conflicts prompt generation.
+// @spec: CLI
 // @consumers: resolve-conflicts-command-run.logic
-// @tasks: N/A
 
 import fs from 'node:fs';
 import path from 'node:path';

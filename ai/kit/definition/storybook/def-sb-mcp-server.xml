@@ -1,0 +1,4 @@
+<!-- source: infra/storybook-setup.xml -->
+<Definition id="DEF_SB_MCP_SERVER">
+      An MCP-compliant server exposing Storybook capabilities (documentation retrieval, story preview, story-test execution) to an agent runner. Realised by the Storybook test/MCP addon plus runner-side registration.
+    </Definition>

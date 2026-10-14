@@ -1,0 +1,19 @@
+<!-- source: coding/typescript-rules.xml -->
+    <AntiPattern id="AP_REDUNDANT_JSDOC_DUPLICATION">
+      <Bad>`/** @purpose User DTO. @param id The id field, type string. @param name The name field, type string. @returns Returns a User object with id and name. */ export type User = { id: string; name: string; };`.</Bad>
+      <WhyBad>`@param`/`@returns` used on a type, not a function (`AX_TAG_USAGE_MATRIX`). JSDoc duplicates TS structure (`AX_FLAT_JSDOC_FOR_PROPERTIES`). `User DTO` carries no business meaning.</WhyBad>
+      <Good language="typescript">
+        ```typescript
+        // @file: Identity shape exposed by session-related APIs.
+        // @consumers: SessionRouter
+
+        /** @purpose Authenticated user identity surfaced to API consumers. */
+        export type User = {
+            /** @purpose Stable user identifier | @invariant UUIDv7 format */
+            id: string;
+            /** @purpose Display name shown in UI | @invariant Not unique across users */
+            name: string;
+        };
+        ```
+      </Good>
+    </AntiPattern>

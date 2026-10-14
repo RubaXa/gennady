@@ -1,6 +1,6 @@
 // @file: Typed error class and error code union for the agent-run module.
+// @spec: AGENT-RUN-CORE
 // @consumers: run, registry, AgentEngine implementations, CLI commands
-// @tasks: TSK-62, TSK-64
 
 /**
  * @purpose Exhaustive set of failure modes in the agent-run module.

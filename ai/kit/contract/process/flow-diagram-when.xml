@@ -1,0 +1,12 @@
+<!-- source: sdd-opt-v1 FLOW_DIAGRAM_WHEN -->
+<Contract id="FLOW_DIAGRAM_WHEN">
+  When a decision is about a flow — data moving, state transitions, start / stop conditions — draw
+  a tiny ASCII diagram; one glance beats a paragraph. This is the one place a fenced block is
+  allowed inside an operator message (alignment matters). Keep it small.
+
+  ```
+  [сеть] [auth] [конфиг]  ──всё есть──►  ОПРОС идёт
+          ▲                                  │
+          └──── снова есть ──── ПАУЗА ◄───────┘  что-то пропало
+  ```
+</Contract>

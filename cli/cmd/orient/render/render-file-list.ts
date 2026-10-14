@@ -1,6 +1,6 @@
 // @file: Render universal file list line format — `path — @file: ... | @tasks: ... | @consumers: ... | @exports: N`.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile } from '../orient.types.ts';
 import { relative } from 'node:path';

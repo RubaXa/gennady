@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Hook id="HOOK_NO_LEGACY_REACTIVE">
+  <Purpose>Smoke-grep for forbidden `$:` reactive statements and `on:event` directives.</Purpose>
+  <Command>find . \( -name '*.svelte' -o -name '*.svelte.ts' -o -name '*.svelte.js' \) -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -print0 | xargs -0 grep -nE '(^|\s)\$:\s|(\s|^)on:[a-z]+=' || true</Command>
+  <Expected>Empty output. Matches must migrate to `$derived` / `$effect` or attribute handlers.</Expected>
+</Hook>

@@ -1,7 +1,8 @@
 // @file: Resolve the gennady state directory and its sub-paths (single --state-dir override).
-// @consumers: inbox.cmd, vcs-worktree.cmd
-// @tasks: N/A
+// @spec: AGENT-INBOX
+// @consumers: inbox.cmd, vcs-worktree.cmd, inbox-review-plan.cmd
 
+import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
@@ -26,11 +27,86 @@ export const registryPath = (stateDir: string): string => join(stateDir, 'inbox-
 /** @purpose Drafts output dir under the state dir (inbox-out). */
 export const outDir = (stateDir: string): string => join(stateDir, 'inbox-out');
 
-/** @purpose Worktrees root under the state dir. */
-export const worktreesRoot = (stateDir: string): string => join(stateDir, 'worktrees');
-
 /** @purpose Clones cache under the state dir. */
 export const clonesRoot = (stateDir: string): string => join(stateDir, 'clones');
 
+/** @purpose Config file path under the state dir (agent-inbox/config.json). */
+export const configPath = (stateDir: string): string =>
+  join(stateDir, 'agent-inbox', 'config.json');
+
 /** @purpose repos.json path under the state dir. */
 export const reposMapPath = (stateDir: string): string => join(stateDir, 'repos.json');
+
+/** @purpose Report TTL — reports GC like worktrees: 7 days from last access (TSK-106). */
+export const REPORTS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * @purpose Stable per-MR directory-name key, flat (`/` → `__`) so it is a single path segment.
+ * @param ref MR reference `group/project!iid`.
+ * @returns `<group__proj>-<iid>`.
+ */
+export function mrKey(ref: string): string {
+  const sep = ref.lastIndexOf('!');
+  const project = sep === -1 ? ref : ref.slice(0, sep);
+  const iid = sep === -1 ? '' : ref.slice(sep + 1);
+  return `${project.replace(/\//g, '__')}-${iid}`;
+}
+
+/** @purpose Root of every per-MR dir — shared parent holding `worktree/`+`report/` (TSK-131). */
+export const mrsRoot = (stateDir: string): string => join(stateDir, 'agent-inbox', 'mrs');
+
+/** @purpose Per-MR shared parent directory — `<mrsRoot>/<key>`, sandbox boundary for its sessions. */
+export const mrRoot = (stateDir: string, ref: string): string =>
+  join(mrsRoot(stateDir), mrKey(ref));
+
+/** @purpose Per-MR worktree directory — sibling of `mrReportsDir` under the same `mrRoot`. */
+export const mrWorktreeDir = (stateDir: string, ref: string): string =>
+  join(mrRoot(stateDir, ref), 'worktree');
+
+/**
+ * @purpose Per-MR report directory for the review-document pipeline.
+ * @invariant One dir per MR, iterated in place across visits; sibling of `mrWorktreeDir`.
+ * @param stateDir Gennady state root.
+ * @param ref MR reference `group/project!iid`.
+ * @returns Absolute path `<mrRoot>/report`.
+ * @consumer inbox-review-plan.cmd
+ */
+export function mrReportsDir(stateDir: string, ref: string): string {
+  return join(mrRoot(stateDir, ref), 'report');
+}
+
+/**
+ * @purpose GC: remove per-MR `report/` dirs under `mrsRoot` whose mtime is older than `ttlMs`.
+ * @invariant Same idea as `gcStaleWorktrees` — best-effort, mtime-based, skips non-directories;
+ *   targets the `report/` child of each `<mrsRoot>/<key>/`, leaving a sibling `worktree/` untouched.
+ * @param root MRs root (`mrsRoot`).
+ * @param ttlMs Max age in ms before a report dir is stale.
+ * @param nowMs Current time in ms (injected for testability).
+ * @returns Paths that were removed.
+ * @sideEffect FS: removes stale report directories recursively.
+ * @consumer inbox.cmd, inbox-context.cmd
+ */
+export function gcStaleReports(root: string, ttlMs: number, nowMs: number): string[] {
+  if (!existsSync(root)) return [];
+  const removed: string[] = [];
+  for (const name of readdirSync(root)) {
+    const path = join(root, name, 'report');
+    let mtimeMs: number;
+    try {
+      const st = statSync(path);
+      if (!st.isDirectory()) continue;
+      mtimeMs = st.mtimeMs;
+    } catch {
+      continue;
+    }
+    if (nowMs - mtimeMs > ttlMs) {
+      try {
+        rmSync(path, { recursive: true, force: true });
+        removed.push(path);
+      } catch {
+        // best-effort: a locked/undeletable report dir must not block inbox/inbox-context
+      }
+    }
+  }
+  return removed;
+}

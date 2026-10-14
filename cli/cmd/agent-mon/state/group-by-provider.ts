@@ -1,6 +1,6 @@
 // @file: Group sessions by provider and sort within each column.
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: state/create-state-manager
-// @tasks: TSK-45
 
 import type { AgentSession } from '../../../../services/agent-mon/model/agent-session.type.ts';
 import type { ProviderColumn, SessionCard } from './view-model.type.ts';

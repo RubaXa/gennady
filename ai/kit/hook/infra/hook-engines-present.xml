@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Hook id="HOOK_ENGINES_PRESENT">
+  <Purpose>`package.json` contains `engines.node`.</Purpose>
+  <Command>node -e "const p=require('./package.json'); if(!p.engines?.node) process.exit(1); console.log('engines.node:', p.engines.node)"</Command>
+  <Expected>Prints `engines.node: <range>`; exit 0.</Expected>
+</Hook>

@@ -1,0 +1,6 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Contract id="LIBRARY_SPEC_STRUCTURE">
+      ```markdown
+      {{> "sdd-skeleton-library"}}
+      ```
+    </Contract>

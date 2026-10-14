@@ -1,6 +1,6 @@
 // @file: VCS URL value object — parsed GitLab MR / GitHub PR URL result.
+// @spec: VCS-VCS-CLIENT
 // @consumers: parseVcsUrl, VcsClient factory
-// @tasks: TSK-27
 
 /**
  * @purpose Parsed merge request / pull request URL result.

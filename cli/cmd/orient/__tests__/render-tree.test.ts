@@ -1,6 +1,6 @@
 // @file: Unit tests for renderTree — project tree view with depth control and annotations (S1 scenario).
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import type { ScannedFile } from '../orient.types.ts';
 function makeFile(absPath: string, fileHeader?: string): ScannedFile {
   return {
     absPath,
-    header: { file: fileHeader ?? 'test file', tasks: ['TSK-01'], consumers: ['ConsumerA'] },
+    header: { file: fileHeader ?? 'test file', tasks: ['DP-fields'], consumers: ['ConsumerA'] },
     exports: [],
   };
 }

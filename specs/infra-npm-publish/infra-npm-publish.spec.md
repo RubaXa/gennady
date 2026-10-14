@@ -1,12 +1,25 @@
 # infra-npm-publish: Infrastructure Specification
 
+<!--SECTION:SPEC_ID-->
+
+INFRA-NPM-PUBLISH
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 infrastructure
 
 ## 1. Vision
 
-Безопасная локальная публикация npm-пакета одной командой `npm run release`: интерактивный выбор версии (major/minor/patch), автоматический прогон проверок до изменений, git tag + commit + push, OTP и публикация в npm. Пакет включает не только собранный JS (`dist/`), но и всю директорию `ai/` (директивы, агенты, flow). Никакого ручного `npm version` / `npm publish` / `git push --tags`.
+> **Current UV-27B contract (supersedes executable publication below):** текущий deliverable —
+> reviewed main cutover, а npm publication запрещена до отдельного будущего design/ACK. Исторические
+> D-001..D-005 и workflow ниже сохранены как provenance прежнего infra scope, но не являются
+> исполняемым acceptance current track.
+
+Пакетная структура и build/export остаются проверяемыми, однако все repository-owned registry
+publication entrypoints обязаны остановиться одним `UV27B_NPM_PUBLICATION_DENIED` до version write,
+build, npm whoami/view/publish, git commit/tag/push или registry access.
 
 ## 2. Tool Stack
 
@@ -33,17 +46,14 @@ linting, formatting, test-unit, type-check, bundler, ci — исключены: 
 ## 3. Developer Workflow Example
 
 ```bash
-# === Релиз ===
+# Historical flow — DENIED in current track
 npm run release
-# → Интерактивно: Select version (major / minor / patch)
-# → release-it запускает before:init: npm run lint && npm test
-# → Если проверки упали — стоп, ничего не изменено
-# → Если ОК: поднимает версию в package.json
-# → git commit + git tag vX.Y.Z + git push
-# → Запрашивает OTP
-# → npm publish
-# → Готово
+# → UV27B_NPM_PUBLICATION_DENIED before release-it side effects
 ```
+
+Одинаковый deny вызывают `prepublishOnly`, `publish-next`, `publish-draft`, package `release` и
+direct `release-it` через первый `before:init` hook. `pack-draft` остаётся локальным pack/install
+инструментом и registry package не публикует.
 
 ## 4. File Structure
 
@@ -60,8 +70,7 @@ npm run release
 │       │   ├── coding/
 │       │   ├── testing/
 │       │   ├── infra/
-│       │   ├── perf-auditor/
-│       │   └── knowledge.xml
+│       │   └── embedded rule prompts
 │       ├── agents/
 │       └── flow/
 └── scripts/
@@ -69,6 +78,35 @@ npm run release
 ```
 
 ## 5. Effective Rules (for cascade)
+
+### R3 — Current declared local package surface
+
+The existing four ESM entrypoints are retained, not replaced by the old helper facade or retired
+stack engine. Build emits executable JavaScript; declarations close over shipped `dist/**` files.
+
+| Import                       | Runtime target                              | Types target                                            |
+| ---------------------------- | ------------------------------------------- | ------------------------------------------------------- |
+| `gennady`                    | `dist/index.js` (current agent-mon barrel)  | `dist/services/agent-mon/index.d.ts`                    |
+| `gennady/providers/claude`   | `dist/providers/claude.js`                  | `dist/services/agent-mon/providers/claude/index.d.ts`   |
+| `gennady/providers/opencode` | `dist/providers/opencode.js`                | `dist/services/agent-mon/providers/opencode/index.d.ts` |
+| `gennady/stack`              | `dist/stack.js` (current Verify plugin API) | `dist/shared/verify/plugin-api.d.ts`                    |
+
+Conditional `types`/`import`/`default` targets are published paths; package `main`/`types` agree
+with the declared root monitor API. Source-only package aliases and `.ts` references, including
+`import("...")` types, are normalized in declarations. Built-in plugin runtime imports resolve
+the current source API by relative owner paths: source CLI must work from a foreign cwd without
+any dist artifact. External consumers continue using the public dist-backed entry, never a
+source-path or tsconfig-path fallback.
+
+Acceptance uses a real isolated build → local npm pack → offline npm install of the exact manifest
+→ plain Node cold imports and a strict NodeNext consumer (`skipLibCheck: false`, no source paths or
+tsx loader). The fixture provides physical copies of the installed locked runtime dependency
+closure, local file resolutions and explicit Node/undici types; it matches existing
+`legacy-peer-deps=true`. It is not a fresh registry/native-build readiness proof. No provider scan,
+agent process, network or publication is authorized. Every traversed JS/declaration relative target
+must be shipped and stay inside the installed package; unbundled runtime bare imports must be Node
+builtins or backed by declared runtime dependencies. Existing D60 experimental composition and
+release-readiness status are unchanged. Frozen directive/skill/tarball source goldens do not change.
 
 | Rule             | Category | Source             |
 | ---------------- | -------- | ------------------ |
@@ -83,16 +121,17 @@ npm run release
 | lint-command      | `npm run lint`                                                           |
 | format-command    | `npm run format:check`                                                   |
 | check-command     | `npm run type-check && npm test && npm run lint && npm run format:check` |
-| release-dry-run   | `npx release-it --dry-run`                                               |
+| publication-lock  | `npm run audit:release-boundary`                                         |
+| cutover-inspect   | `npm run release:boundary -- --candidate --json`                         |
 
 ## 7. Decision Log
 
 ### D-001 — Выбор release-it как npm-publish-tool
 
-- **Status:** active
+- **Status:** historical; executable publication superseded by D-006 for current track
 - **Recorded:** session Discovery, infra-npm-publish
 - **Why:** Интерактивный bump (major/minor/patch), хуки до изменений (безопасно — при падении ничего не испорчено), OTP, git tag/push, публикация. При необходимости можно добавить CI позже (`--ci`).
-- **Risk accepted:** release-it пока отсутствует в knowledge.xml как rule — дефолтное поведение release-it является достаточной дисциплиной.
+- **Risk accepted:** release-it пока не имеет embedded rule prompt — дефолтное поведение release-it является достаточной дисциплиной.
 - **Rejected alternatives:** np (нет CI, нет хуков), bumpp + ручной npm publish (нет единого flow, нет OTP)
 
 ### D-002 — git как vcs
@@ -111,20 +150,34 @@ npm run release
 
 ### D-004 — release-it hooks вместо husky
 
-- **Status:** active
+- **Status:** historical; `before:init` retained only as one deny integration point
 - **Recorded:** session Discovery, infra-npm-publish
 - **Why:** release-it предоставляет встроенные хуки (`before:init`). Запускаются до bump — при падении ничего не изменено, откат не нужен.
 - **Rejected alternatives:** husky (избыточен — не нужны commit-hooks для этого скоупа), без хуков (риск публикации без проверок)
 
 ### D-005 — Публикация ai/ в npm-пакете
 
-- **Status:** active
+- **Status:** deferred package-content intent; no publication in current track
 - **Recorded:** session Discovery, infra-npm-publish, refine (sync)
 - **Why:** Команда `gennady sync` (scope `cli`) синхронизирует `ai/directives/` из npm-пакета в проект-потребитель. Чтобы это работало, `ai/` должна физически присутствовать в опубликованном пакете. В пакет включается **вся `ai/`** (directives, agents, flow) — фильтрация до `ai/directives/` и исключение конкретных файлов происходит на стороне команды `sync`. Два изменения: (1) `package.json#files` — добавить `"ai/**/*"`, чтобы npm включил всю директорию `ai/`; (2) `prepare-publish-artifacts.ts` — добавить копирование `ai/ → dist/ai/`.
 - **Risk accepted:** В пакет попадают все поддиректории `ai/` — раздувание размера пакета. Смягчается тем, что XML/MD-файлы — это килобайты, не мегабайты.
 - **Rejected alternatives:**
   - Копировать только `ai/directives/` в пакет — преждевременная оптимизация; если в будущем понадобятся `ai/agents/` или `ai/flow/`, придётся снова менять публикацию
   - Хранить директивы в отдельном npm-пакете `@gennady/directives` — два пакета вместо одного, сложнее распространение
+
+### D-006 — Repository-owned npm publication is fail-closed DENY
+
+- **Status:** active; implemented by UV-27B.
+- **Decision:** единая exported denial function вызывается первой во всех supported publish paths.
+  Она не читает registry/auth, не меняет package/version/git и возвращает stable
+  `UV27B_NPM_PUBLICATION_DENIED`. Main cutover authorization не может открыть npm path.
+- **Coverage:** causal tests запускают direct scripts и package commands с fake next binaries и
+  доказывают отсутствие следующего child/mutation; config contract требует deny первым release-it
+  hook. Local `pack-draft` намеренно не блокируется.
+- **Threat boundary:** `npm publish --ignore-scripts` обходит repo lifecycle технически. Репозиторий
+  не обещает перехват произвольной внешней команды с пользовательским token; вместо этого current
+  cutover требует отсутствия npm auth env/embedded workflow authority. Credentials/OTP/protected
+  publishing authority выдаются только будущим отдельным publication plan/ACK.
 
 ## 8. Scope Dependencies
 
@@ -138,7 +191,7 @@ npm run release
 | `release-it`                                      | package    | this-scope-task | `npm i -D release-it`                                        |
 | `.release-it.json`                                | file       | this-scope-task | создать конфиг release-it в корне                            |
 | `"release"` script в `package.json`               | structural | this-scope-task | добавить `"release": "release-it"` в scripts                 |
-| npm login                                         | env        | operator-action | оператор должен быть залогинен (`npm whoami`)                |
+| npm login                                         | env        | deferred        | credentials обязаны отсутствовать в current cutover process  |
 | `"ai/**/*"` в `package.json#files`                | structural | this-scope-task | добавить `"ai/**/*"` в массив `"files"`                      |
 | `ai/ → dist/ai/` в `prepare-publish-artifacts.ts` | structural | this-scope-task | добавить `{ source: 'ai', target: 'dist/ai' }` в `copyPairs` |
 
@@ -149,5 +202,6 @@ npm run release
 - **Verification Commands ready for cascade:** см. раздел 6
 - **Bootstrap tickets ready for cascade:** см. раздел 9
 - **Open risks:**
-  - взаимодействие с существующим `prepublishOnly` (двойной прогон lint — безопасно, избыточно; при необходимости можно убрать `lint` из `prepublishOnly`)
+  - Intentional external `npm publish --ignore-scripts` не контролируется repo hook; current track
+    полагается на отсутствие credentials/authority, а не на ложное обещание interception.
   - `files` glob `ai/**/*` включает ВСЕ поддиректории — при добавлении новых исключаемых категорий в sync, они всё равно попадут в пакет (фильтруются на стороне sync)

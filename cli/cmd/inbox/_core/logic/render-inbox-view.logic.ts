@@ -1,6 +1,6 @@
 // @file: Render a grouped inbox view into a terminal string.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A
 
 import { style } from '../../../../../shared/common/style.ts';
 import type { VcsActionableRole } from '../../../../../services/vcs-client/entities/vcs-actionable-mr.type.ts';

@@ -1,6 +1,6 @@
 // @file: AgentMonitor Service — provider registry and scan coordination
+// @spec: AGENT-MON-MONITOR
 // @consumers: observe, CLI
-// @tasks: TSK-36
 
 import { logger } from '#logger';
 import type { AgentProvider } from '../model/agent-provider.type.js';

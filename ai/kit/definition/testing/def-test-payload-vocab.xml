@@ -1,0 +1,4 @@
+<!-- source: testing/common.xml -->
+<Definition id="DEF_TEST_PAYLOAD_VOCAB">
+      Closed vocabulary for intent comments inside tests: `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`, `contract`, `observation focus`. Same base as production code (`coding/typescript-rules`), plus test-specific `contract` and `observation focus`.
+    </Definition>

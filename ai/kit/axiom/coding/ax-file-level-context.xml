@@ -1,0 +1,13 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_FILE_LEVEL_CONTEXT">
+File-level meta uses line-comments (`// @tag`), never a JSDoc block — distinct syntactic class from entity JSDoc so LLMs and grep distinguish file-scope from entity-scope unambiguously.
+
+Block of consecutive `//` lines at the very top of the file, before any `import`:
+`// @file: <what the file holds>` *(mandatory)*
+`// @spec: <CANONICAL-SPEC-ID>` *(one resolved semantic owner)*
+`// @consumers: <ConsumerName>` *(named consumers from the owning spec)*
+
+`@purpose` is NOT a file-level tag — it belongs exclusively to entities. Local entities inherit `@consumers` from file level and MUST NOT redeclare it unless their consumer diverges.
+
+Resolve the owning spec before creating a V2 header; when ownership is unavailable, ask for the owning spec instead of inventing it. Legacy `@tasks` is read-only V1 migration evidence, never a new-header field or routing authority. Migration owns removal of existing legacy header bytes.
+</Axiom>

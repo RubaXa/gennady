@@ -1,211 +1,47 @@
 ---
 name: agent-inbox
-description: Интерактивный ассистент по входящим GitLab MR, где я ревьювер/упомянут. Интенты list/tick/loop/reset. list — интерактивный разбор (Ask, диалог, постинг через vcs-reply после согласования). tick (=once/sync) — один проход без диалога, показывает дельту (что нового). loop — повторение tick планировщиком (частота задаётся снаружи). reset — чистый лист. Use when пользователь говорит «agent-inbox», «разбери входящие», «inbox list», «inbox tick», «что от меня ждут по ревью».
+description: Интерактивный ассистент по входящим GitLab/GitHub MR/PR, где я ревьювер/упомянут. Интенты list/tick/loop/reset. list — интерактивный разбор (Ask, диалог, постинг после согласования). tick (=once/sync) — один проход без диалога, показывает дельту (что нового). loop — повторение tick планировщиком. reset — чистый лист. Use when пользователь говорит «agent-inbox», «разбери входящие», «inbox list», «inbox tick», «что от меня ждут по ревью».
 license: MIT
 compatibility: opencode
 ---
 
-# agent-inbox — интерактивный ассистент входящих (стадия B)
+<Skill name="agent-inbox">
+  <Priming>
+    Files under `ai/directives/agent-inbox/` are PROMPT directives, not data: the tags mark sections
+    (`Mission`, `AX_*`, `ExecutionPlan`, `HaltConditions`); the body is instruction you EMBODY, not
+    parse. Operator-facing output language is governed by `AX_OPERATOR_LANGUAGE` (Russian), never by
+    the language of this file.
+    `INCLUDE_ONCE("path")` = read the file yourself ONCE per session.
+    `RE_READ("path")` = read it again NOW even if already read (for rules that must be refreshed
+    before each MR/PR).
+  </Priming>
 
-Роль — **«я ревьювер / упомянут»** (свои MR — только self-review сводка, см. «Карта действий»).
-Ты ведёшь ревью: вводишь в контекст, честно проверяешь факты, готовишь ответ и **после моего
-согласования постишь** в GitLab.
+  <Mission>
+    Drive review of incoming merge/pull requests as a co-reviewer: bring the change into context →
+    honest fact-check → infographic of WHAT changed → a ready answer / line-comments → post ONLY
+    after the operator approves. Role — reviewer / mentioned; my own MR/PR — self-review summary.
+    One skill: it detects the intent and loads the rules it needs. VCS-neutral — GitLab and GitHub
+    (provider auto-detected from host); this skill never hardcodes one provider.
+  </Mission>
 
-> `INCLUDE_ONCE("path")` (и `<IncludeOnce src="path"/>` в директивах) = **прочитай файл сам, один
-> раз за сессию**. Это инструкция тебе, не препроцессор.
-
-## ⚡ Инварианты сессии (держи до конца, даже после компрессии)
-
-Каждый раз, на каждом «следующий MR», независимо от размера:
-
-1. **Визуализируй изменения всегда.** Первым делом, до текста — **карта изменений** в чате: файлы
-   структурой по папкам, у каждого тип (🆕/✏️/🗑️/↪︎) и ± строк; таблица по категориям
-   (Код/Тесты/Доки/Конфиг/Ассеты); 1–2 фразы сути. Архитектурную диаграмму — только когда есть
-   связи (новые сущности/сервисы/потоки, `AX_VISUALIZE_WHEN_RELATIONAL`), не на каждый файл.
-   **Ответ одной ссылкой на MR без карты — запрещён.**
-2. **Всё в чате рендерится.** Визуал — виджет (`mcp__visualize__show_widget`) или ASCII+эмодзи;
-   выбор/согласование — `AskUserQuestion`. Mermaid/SVG в чат НЕ давать (Mermaid — только постинг в
-   GitLab). Не выводи разметку, которую чат не отрисует.
-3. **Язык — всегда русский** (код/идентификаторы/пути/CLI/токены — English); регистр и детали —
-   `AX_OPERATOR_LANGUAGE`.
-
-## Интенты
-
-- **(по умолчанию / `list` / «разбери входящие»)** — интерактивный разбор: actionable-список →
-  предложить ≤5 задач галочками → вести по одной. Я рулю, ты ведёшь.
-- `tick` (=`once`/`sync`) — ОДИН немой проход для планировщика: `gennady inbox`, показать дельту,
-  стоп. Без Ask и постинга.
-- `loop` — планировщик повторяет `tick`; частота задаётся снаружи (`/loop 10m` — пока сессия;
-  launchd `StartInterval`/cron — фоном). Скилл частоту не задаёт; `tick` идемпотентен через реестр
-  `~/.gennady/inbox-registry.json` (показывает только дельту).
-- `reset` — `gennady inbox --reset` (сносит реестр, черновики, worktrees).
-
-Не из GitLab-репозитория → `--vcs-host=<host>` во все вызовы. Нужен `GITLAB_PERSONAL_TOKEN`.
-
-## Презентация инбокса
-
-Данные — `gennady inbox --json [--vcs-host=<host>]`: по MR `ref`/`webUrl`/`title`/`description`/
-`author`/`reviewers`/`role`/`stage`/`delta`/`age`/`openQuestions`/`lastAuthor`/`events`; сверху
-`total`/`hidden`/`delta`.
-
-**Список уже отфильтрован до actionable кодом** (скрыты влитые/closed, мой approve,
-`awaiting_reply`/`idle`; счётчики в `hidden`). Всё в `groups` реально ждёт меня — вручную не
-фильтруй. Полный список — `--all`.
-
-- **дельта >0** → **виджет** (или ASCII-дашборд): карточки только `new`/`updated` (бейдж
-  `Reply`/`Review` + `ref`→`webUrl` + `age`; ниже `title`; мелко автор/ревьюверы/`openQuestions`/
-  `lastAuthor` + строка сути из `description`), `idle` свернуть в «без изменений — N». Виджет: 2
-  колонки, только Tabler-иконки/цвет (без эмодзи), акцент Reply=danger, Review=warning,
-  `✗ci`/`⚠` по `events`.
-- **дельты нет** → `😴 Без изменений · 📥 {total} actionable · 🙈 скрыто {hidden}`.
-- **`total`=0** → `✅ Инбокс чист`.
-
-Эмодзи (для текста в чате, не в виджете): 📥 inbox · 💬 reply · 👀 review · ⏳ жду · 🆕 new ·
-🔼 updated · ❓ вопросы · ❌ ci · ⚠️ unmergeable · 🙈 скрыто · 😴 тихо · ✅ чисто.
-
-## Жёсткие правила
-
-1. **Визуализируй всегда** (инвариант 1) — без карты изменений ответ не отдаёшь.
-2. **Постинг только после Ask.** Галочка в меню = согласие на показанный текст (показывай тексты
-   рядом с галочками). Без отметки не постишь. **Без dry-run** (Ask уже подтвердил; флаг в CLI — для
-   ручной отладки).
-3. **Код read-only** — только читаешь; не запускаешь build/тесты/скрипты MR.
-4. **Не выдумываешь** — факт-чек по треду+коду; не уверен → ⚠ и спроси.
-5. **Один MR за раз**, с фокусом.
-6. **Постинг в GitLab** (Mermaid-only, гранулярность, 🤖) — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` (`AX_POSTING_MERMAID_ONLY`/`_GRANULARITY`/`_BOT_PREFIX`).
-7. **Анализ — до вопросов.** Если задача уже названа (я сказал «возьми первую/эту» или дал через
-   tick) — НЕ переспрашивай и не задавай уточнений. Сразу: контекст → анализ (что изменено / что от
-   меня требуется), и ТОЛЬКО ПОСЛЕ анализа предлагай действия. Ask до анализа запрещён (кроме выбора
-   задачи, когда я её не назвал).
-8. **Ничего на диск.** Отчёт, анализ, итог — только в чат. Файлы не пишешь (`inbox-registry.json`
-   для дельты — внутреннее состояние команд, его не трогаешь).
-
-## VCS-инструменты
-
-| Инструмент | Команда | Когда |
-|---|---|---|
-| Список | `gennady inbox [--json] [--all] [--pick <ref>] [--reset]` | старт; `--pick` — пакет одного MR; `--all` — снять фильтр |
-| **Контекст MR** | `gennady inbox-context --ref <ref> [--skip-worktree] [--skip-threads]` | **ОДИН вызов вместо 4:** worktree + changeset + stage + threads + drafts + package |
-| Рабочая копия | `gennady vcs-worktree --ref <ref>` · `--cleanup <path>` | read-only код + `diff_refs`; снять после разбора |
-| Дифф/файл | `gennady vcs-diff --ref <ref> [--path <file>]` | список файлов или содержимое файла без клона |
-| Треды | `gennady review-issues --ref <ref> --all` · `--draft` | что уже писали / мои черновики |
-| CI | `gennady vcs-pipeline --ref <ref> [--all] [--logs] [--json] [--status <s>]` · `vcs-job ... --action status\|play\|cancel\|retry` · `vcs-job-log ... [--raw]` | `--all --logs` = passed+failed+логи упавших; `--status failed` по умолчанию; джобы — перезапуск/отмена; `--raw` — сырой лог |
-| Постинг | `gennady vcs-reply --project=<g/p> --iid=<iid>` (JSON-массив stdin) | ответы/замечания/треды/резолв/правка/suggestion |
-| Черновики | `gennady vcs-draft-note --ref <ref> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>]` | черновики в MR |
-| Approve | `gennady vcs-approve --project=<g/p> --iid=<iid> [--revoke]` | approve / `--revoke` снять |
-| Todo | `gennady vcs-todo --done <ref>` (или `--id <todoId>`) | погасить pending-todo (финализация) |
-
-**`vcs-reply` (JSON-массив).** Формы reply/line/suggestion — `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CommentFormat. Только в этом скилле:
-- `{"noteId":…,"body":…}` править / `{"noteId":…,"delete":true}` удалить — **свою** заметку;
-- `{"discussionId":…,"resolve":true}` закрыть (± `body` = ответить+закрыть) / `"resolve":false` переоткрыть.
-
-**Политика:**
-- **Suggestion** — точную механическую правку с известным итогом (опечатка `TYPO`, очевидная замена) → suggestion, не проза. Спорное → замечание с вопросом.
-- **Resolve** — когда вопрос исчерпан (я ответил / автор поправил и я согласен). Не резолвить там, где не ответил или спор открыт. Обычно reply+resolve вместе.
-- **Approve / `--revoke`** — апрув только без моих блокирующих замечаний; `--revoke`, если MR изменился после approve или нашлась проблема. Approve по MR, resolve по треду — разное.
-- **Править/удалять — только свои** заметки (`noteId` из `review-issues --all`).
-- **Todo done** — после реакции `vcs-todo --done <ref>`.
-- Любой постинг — после Ask (правило 2), сразу live, без dry-run.
-
-## Ревью MR: когда → скаут → разбивка → сборка
-
-**Когда запускать полный ревью:** при первом ревью MR (`review_needed`). Тогда — ДВА прохода, оба
-в отчёт: (1) `arch-interrogation` (архитектура/сущности, см. ниже) и (2) **отдельный сабагент со
-своими скиллами code-review** — какие есть в этом харнессе/у агента (имя не хардкодим) — по диффу MR
-(`base..HEAD`), корректность/баги. **НЕ запускай ревью**, если от
-меня нужен только ответ в уже открытых тредах (`reply_needed`/`awaiting`) — там лишь факт-чек и ответ.
-
-Дёшево по умолчанию, опционально, портативно: инлайн по умолчанию; fan-out — только когда MR
-реально крупный И окупается И харнесс умеет сабагентов. Скаут бесплатный (сам). Правила простые, по
-пути/расширению.
-
-**Дорожки:** `security` (ВСЕГДА отдельно — auth/token/secret/crypto/permission в пути или коде,
-валидация недоверенного ввода, SQL/shell/exec, deps/lock/манифесты, CI/`Dockerfile`/env) · `ui`
-(`*.tsx/jsx/vue/svelte/css`) · `logic` (прочий код) · `tests` (`*.test/spec`, `__tests__`) · `docs`
-(`*.md`, конфиги без секретов).
-
-**Разбивка:** малый/средний (≤6 файлов И ≤300 строк И ≤1 содержательная дорожка кода) → **инлайн
-один проход** (`security` всё равно обязателен). Крупный/многодорожечный → **fan-out ≤~5 сабагентов**
-(мелкие/смежные дорожки объедини, `security` отдельный; дорожка >15 файлов → дроби по верхним
-папкам). Сомневаешься, окупится ли → инлайн.
-
-**Диспетчеризация** (параллель — оптимизация, не обязалово): есть инструмент сабагентов (Claude
-`Agent`/Task, OpenCode task) → параллельно по дорожке; **нет в харнессе** → попроси оператора/харнесс
-заспаунить ревьюера; **иначе** → ревьюй дорожки последовательно сам, инлайн. Каждому проходу дай:
-директивы + `path`/`diff_refs`/`base` + `ref`/`webUrl` + `prior_threads`/`my_drafts`/`my_login` +
-список файлов дорожки. `security`-проход смотрит **весь дифф** (уязвимость бывает где угодно).
-
-**Сборка:** находки → ОДИН helicopter-отчёт (дедуп, сквозные [E/R/Q]-ID, одна C4-диаграмма, общая
-таблица кандидатов).
-
-## Карта действий
-
-| роль / стадия | механизм |
-|---|---|
-| `reply_needed` | факт-чек собеседника → краткий ответ → Ask → `vcs-reply` (reply; при закрытии — reply+resolve) |
-| `review_needed` (первый ревью) | контекст → `arch-interrogation` + сабагент со своими скиллами code-review → helicopter-отчёт+вердикты → постинг (спека = 1 коммент к строке 1; код = line, точные правки = suggestion; уже поднятое = reply в тред; разобранное = resolve) → чисто = `vcs-approve` |
-| `author` (свой MR) | overview → **общий комментарий-сводка** (🤖, Mermaid-overview, scope, что проверил, «готово к ревью») → ответы/резолв в тредах ревьюеров |
-| `awaiting_reply` / `idle` | ничего — скрыто кодом, в actionable-списке нет (видно под `--all`) |
-
-## Процедура `tick`
-
-`gennady inbox --json` → подача по «Презентации» (дельта → виджет; пусто → `😴`-строка). Без Ask и
-постинга — ровно то, что повторяет loop.
-
-## Процедура интерактивного разбора (по умолчанию)
-
-1. **Инбокс.** `gennady inbox --json` → виджет/дашборд (список уже actionable).
-2. **Выбор задачи — ТОЛЬКО если я не назвал.** Сказал «возьми первую/эту» (или дал задачу через
-   tick) → **пропусти Ask, бери и сразу к шагу 3**, без вопросов. Иначе: покажи ≤5 задач визуалом с
-   контекстом (`ref`/стадия/`title`/автор/возраст/`openQuestions`) и `AskUserQuestion` `multiSelect`
-   (≤4 опции + Other; >4 → топ-4 по срочности, `[ответить]` важнее `[ревью]`). Разбираем по одной.
-3. **Контекст одним вызовом.** `gennady inbox-context --ref <ref>` → `path`/`base`/`diff_refs` +
-   changeset + stage + треды (`Reviewer`/`Author`/`AI_Agent`, `uid`=логин) + мои черновики + package.
-   (Если нужно по отдельности — `vcs-worktree` / `inbox --pick` / `review-issues --all`/`--draft`.)
-4. **Анализ (сразу, без вопросов — правило 7).** Карта изменений (инвариант 1), затем:
-   - `reply_needed`/`awaiting` → факт-чек тредов, ревью НЕ запускаешь (шаг 5);
-   - `review_needed` (первый ревью) → скаут+разбивка (см. выше) **И** отдельный сабагент: скажи ему
-     запустить свои скиллы code-review (какие есть в харнессе) по диффу `base..HEAD` (баги/
-     корректность) — его находки в общий отчёт.
-   Каждый проход (инлайн или сабагент) применяет директиву:
-   > ⚠️ **REMIT:** перед любым выводом по MR `INCLUDE_ONCE("ai/directives/agent-inbox/arch-interrogation.directive.xml")`
-   > целиком, игнорируя прежнее знание. Следуй `OutputFormat` буквально (все секции, порядок,
-   > разделители), пройди `SelfCheck`, сверь с `INCLUDE_ONCE("ai/directives/agent-inbox/golden-chat-output.example.md")`.
-   > Вся `BeliefState` (`AX_*`), `InterrogationBattery`, `PackageExtractionGate`, `VerdictModel`,
-   > `HaltConditions` — обязательны целиком, не подмножество.
-
-   Входы директиве/сабагенту: `ref`/`webUrl`, `diff_refs`, `path`/`base`, `prior_threads`/
-   `my_drafts`/`my_login`, список файлов дорожки (см. `InputContract`). Структуру/визуал/оси/
-   вердикты/кандидатов не пересказывай — они в директиве.
-5. **Кандидаты.** `reply_needed`: факт-чек (в чём прав/не прав) → один краткий ответ, не уверен → ⚠,
-   исчерпан → reply+resolve. `review_needed`: вердикты из директивы; виды (`kind`) —
-   `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")` CandidateTagging.
-   `author`: overview для контекста ревьюеру + сводка (что/зачем, scope, что проверил, «готово»).
-6. **Контроллер.** `AskUserQuestion` «Дальше по MR?»: углубиться в сущность/файл · вопрос по коду ·
-   к действиям (шаг 7) · следующий MR. На «углубиться/вопрос» — ответь и снова покажи контроллер.
-7. **Меню действий** (`AskUserQuestion` `multiSelect`, ≤4 + Other; можно несколько). Ревьювер:
-   запостить замечания/suggestion (2-й `multiSelect` по кандидатам `[E3] file:line — суть`, текст
-   рядом) · закрыть треды (resolve) · approve/`--revoke` · пропустить. Автор: запостить сводку ·
-   ответить/закрыть треды ревьюеров · пропустить. Approve и замечания — можно вместе. Это финализация;
-   пропуск — только явной галочкой.
-8. **Постинг live** (Ask = подтверждение, без dry-run). Загрузи
-   `INCLUDE_ONCE("ai/directives/agent-inbox/posting-rules.directive.xml")`. Через `vcs-reply`
-   (reply/line/discussion/suggestion/edit/delete/resolve) одним JSON-массивом; approve —
-   `vcs-approve [--revoke]`. Команда недоступна — скажи мне.
-9. **Закрытие.** `vcs-todo --done <ref>` (гасит pending-todo, чтобы MR не всплыл снова) →
-   `vcs-worktree --cleanup <path>`. Итог — короткой сводкой **в чат** (правило 8: на диск ничего). →
-   следующий MR.
-
-## Когда НЕ пропускать
-
-Скрытое кодом (`awaiting`/`idle`/approved) в список не попадает — всё взятое требует реакции.
-Пропуск — **только явной галочкой** «пропустить» (чужой MR, мне нечего добавить, в тредах меня нет).
-НЕ пропускать: `review_needed` без сделанного ревью (даже крупный или «нечего сказать»); незакрытый
-тред, где ждут моего ответа. Даже одна строка кода требует ревью.
-
-## Вне скоупа
-
-- Полный автор-цикл (merge/rebase/draft↔ready/ревьюверы) — позже; self-review сводка и треды своих
-  MR — в скоупе.
-- Запуск тестов/сборки MR (исполнение чужого кода) — нужна docker-изоляция.
-- GitHub — только GitLab.
+  <ExecutionPlan>
+    <Step id="GATHER">
+      One parallel batch (do NOT serialize): read in full
+      `ai/directives/agent-inbox/inbox-flow.directive.xml` — the whole working process: session
+      invariants, intents, inbox presentation, hard rules, VCS tools, action map, the single-MR
+      review pipeline, and finalization — AND run `npx gennady inbox --json`.
+      You EMBODY the directive. Response has `"configured": false` → do NOT exit: run the setup flow
+      from inbox-flow (two `AskUserQuestion` — `reposBase`, then `vcsHost` → `inbox config --set` →
+      retry). `"configured": true` → EMBODY. Not inside a repo → pass `--vcs-host=<host>` on every
+      call. Token: `GITLAB_PERSONAL_TOKEN` or `GITHUB_PERSONAL_TOKEN`/`GITHUB_TOKEN`, by provider
+      (auto-detected from host).
+    </Step>
+    <Step id="EMBODY">
+      Detect the intent from the operator message and follow inbox-flow: `list` (default —
+      interactive review) · `tick` (one silent pass, delta) · `loop` (scheduler repeats tick) ·
+      `reset` (`inbox --reset`). Single-MR analysis, posting, and self-review — inbox-flow loads
+      their rules on the way (`posting-rules`, `arch-interrogation`, `visual-vocabulary`,
+      `update-review`). Hold the session invariants to the end, even after context compression.
+    </Step>
+  </ExecutionPlan>
+</Skill>

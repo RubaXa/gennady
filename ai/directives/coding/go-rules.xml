@@ -1,14 +1,15 @@
-<GoCodingRules keywords="go, golang, gofmt, govet, errors, wrapping, naming, testing, ai_to_ai" type="coding-rules" ver="1.0">
-  <!--
-    Thin Go baseline. Inherits the language-agnostic coding + testing baselines; adds only the Go
-    idioms the community broadly agrees on. Not an exhaustive style guide — deliberately small.
-    Grounded in: Effective Go, Go Code Review Comments, go.dev/blog/go1.13-errors, official tooling
-    (gofmt, go vet, golangci-lint) — the intersection Uber/Google style guides also share.
-  -->
-  <DependsOn>
-    - ai/directives/coding/baseline-rules.xml
-    - ai/directives/testing/baseline-testing.xml
-  </DependsOn>
+<GoCodingRules rule-id="go-rules" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When language="go"/>
+  <DependsOn rule="coding-baseline"/>
+</Meta>
+  <Mission>
+    Thin Go baseline inheriting coding-baseline. testing-baseline is selected independently for test artifacts,
+    never pulled into production by this language rule. Grounding: Effective Go, Go Code Review Comments
+    and go.dev/blog/go1.13-errors; formatter, error, visibility and naming idioms remain unchanged.
+    Rules are agent instructions, not a second command pipeline. Only the configured selector/DAG
+    determines authority gates; examples below are not defaults and must not be run as extra gates.
+  </Mission>
 
   <BeliefState>
     <Axiom id="AX_GO_GOFMT">
@@ -58,33 +59,34 @@
 
   <VerificationHooks>
     <Hook id="HOOK_GO_FMT">
-      <Purpose>Code is gofmt-clean.</Purpose>
-      <Command>gofmt -l &lt;target-files&gt;</Command>
-      <Expected>Empty output (no unformatted files).</Expected>
+      <Purpose>Code is gofmt-clean; formatting checks are read-only and use the configured exact scope.</Purpose>
+      <Example>gofmt -l <target-files></Example>
+      <Expected>No unformatted files in the configured required formatter report.</Expected>
     </Hook>
     <Hook id="HOOK_GO_VET">
-      <Purpose>Vet catches the baseline bug classes.</Purpose>
-      <Command>go vet ./...</Command>
-      <Expected>Exit 0.</Expected>
+      <Purpose>Vet catches baseline bug classes when declared by the selected DAG.</Purpose>
+      <Example>go vet ./...</Example>
+      <Expected>The configured required step passes.</Expected>
     </Hook>
     <Hook id="HOOK_GO_LINT">
-      <Purpose>golangci-lint default set (govet, errcheck, staticcheck, ineffassign, unused).</Purpose>
-      <Command>golangci-lint run</Command>
-      <Expected>Exit 0 (skip if the project does not install it; go vet is the floor).</Expected>
+      <Purpose>Honor the project's declared linter (for example golangci-lint with govet, errcheck,
+      staticcheck, ineffassign and unused). Do not silently skip a missing required linter.</Purpose>
+      <Example>golangci-lint run</Example>
+      <Expected>A missing required executable is BLOCKED/ENV_FAIL, not PASS; this example installs no default gate.</Expected>
     </Hook>
     <Hook id="HOOK_GO_TESTS">
-      <Purpose>The behavior's tests pass.</Purpose>
-      <Command>go test ./...</Command>
-      <Expected>Exit 0.</Expected>
+      <Purpose>The behavior's tests pass under the project's configured test step.</Purpose>
+      <Example>go test ./...</Example>
+      <Expected>The declared test step passes; production rule selection does not add a test phase.</Expected>
     </Hook>
   </VerificationHooks>
 
   <RewardCriteria>
-    ✅ `gofmt`/`goimports`-clean; `go vet ./...` passes.
+    ✅ `gofmt`/`goimports`-clean; any configured required vet step passes (for example `go vet ./...`).
     ✅ Every error checked; context added with `%w`; inspected via `errors.Is`/`As`.
     ✅ Library code returns errors, never panics on expected failures.
     ✅ No stutter; minimal exported surface; short consistent receiver names; small `-er` interfaces.
-    ✅ Table-driven tests with `t.Run` subtests and `t.Helper()` in helpers; stdlib `testing` only at baseline.
+    ✅ When authoring tests with the declared stdlib `testing` runner: table-driven cases, `t.Run` and `t.Helper()` in helpers; no imposed third-party framework.
     ❌ An ignored/`_`-discarded error without justification.
     ❌ `panic` in library code for an expected failure.
     ❌ `%v` wrapping where `%w` is meant.

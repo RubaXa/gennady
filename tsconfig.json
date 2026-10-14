@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -29,19 +29,18 @@
     "baseUrl": ".",
     "paths": {
       "#logger": ["./services/logger/logger.ts"],
+      "#utils/*": ["./utils/*"],
       "@shared/*": ["shared/*"],
       "@services/*": ["services/*"],
-      "gennady": ["./index.ts"],
-      "gennady/stack": ["./services/stack/plugin-api.ts"]
+      "gennady/stack": ["./shared/verify/plugin-api.ts"]
     }
   },
   "include": [
     "shared/**/*",
     "services/**/*",
-    "plugins/**/*",
     "cli/**/*",
     "scripts/**/*",
-    "assistant/**/*",
+    "utils/**/*",
     "index.ts",
     "vite.config.ts"
   ],
@@ -50,7 +49,6 @@
     "dist",
     "**/*.test.ts",
     "**/__tests__/fixtures/**",
-    "**/__tests__/e2e/fixtures/**",
-    "plugins/*/e2e/fixtures/**"
+    "cli/__tests__/e2e/fixtures/**"
   ]
 }

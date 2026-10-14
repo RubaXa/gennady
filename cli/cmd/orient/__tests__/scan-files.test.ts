@@ -1,6 +1,6 @@
 // @file: Unit tests for scanFiles — recursive .ts/.tsx scanner with exclusion and EACCES handling.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

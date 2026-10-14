@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Hook id="HOOK_SK_BUILD">
+<Purpose>Production build verifies SSR, adapter, and boundary violations the dev server tolerates.</Purpose>
+<Command>npm run build</Command>
+<Expected>Exit 0.</Expected>
+</Hook>

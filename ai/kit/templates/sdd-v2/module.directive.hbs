@@ -1,0 +1,115 @@
+<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.4">
+  <Mission>
+    Materialize the smallest cohesive module hierarchy from an actual scope draft. The autonomous
+    route is skeleton → orient → one whole-document Write → soft check → handoff. Tasks belong to
+    scaffold; dialogue ceremony belongs to the optional interactive profile.
+  </Mission>
+
+  <BeliefState deps="AX_TOOL_INVOCATION, AX_SCALE_PROPORTIONAL_DEPTH">
+    {{> "axiom/process/ax-tool-invocation"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+
+    {{> "axiom/spec/ax-refine-module-preserves-contracts"}}
+
+    {{> "axiom/process/ax-artifact-style-self-check"}}
+  </BeliefState>
+
+  <Contracts>
+    {{> "contract/process/deviation-record-format"}}
+  </Contracts>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_CREATE">
+      <Goal>Create actual module artifacts first.</Goal>
+      <Action>
+        Resolve initial/add/refine from disk once. For each new cohesive module, call the ToolCall
+        before reading optional formats. A function/fix scope creates one Function/Service module
+        without invented Port or parallel owner.
+        <ToolCall owner="this-step" result="moduleManifest">npx gennady sdd-new module --scope <scope> --module <module></ToolCall> Inputs <scope>, <module>: scope and cohesive module name resolved in this step. Use moduleManifest.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_ORIENT">
+      <Goal>Reuse existing ownership and dependencies.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
+        `sdd-orient` is the only unconditional foreign-context read. Depth here is proportional to
+        the confirmed SCALE, never self-assessed (`AX_SCALE_PROPORTIONAL_DEPTH`):
+        <LogicSwitch on="SCALE and orientation ambiguity">
+        - WHEN SCALE is `fix` or `function` AND orientation exposes no real ambiguity -> EXPRESS:
+          skip interview, research, and registry protocols entirely — no gate is dropped,
+          STEP_4_CHECK and STEP_5_CLOSE still run in full.
+        - WHEN SCALE is `product`, or orientation exposes a real ambiguity -> load interview,
+          research, or registry protocols as needed.
+        </LogicSwitch>
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_FILL">
+      <Goal>Generate and write the complete module specification once.</Goal>
+      <Action>
+        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before
+        writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
+        the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
+        writes are forbidden in authoring. Retain every SECTION marker and replace every
+        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a
+        closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,
+        file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats
+        only from the comments inside their owning sections, at the moment each section is filled.
+        Remove every instructional comment. The scope owns its requirement IDs. With no narrower
+        obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
+        A disputed autonomous boundary choice is one module Decision Log line per
+        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
+        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a
+        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed
+        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings
+        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` for the list
+        format.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_RECONCILE_MAP">
+      <Goal>Make the scope Module Map match actual module files.</Goal>
+      <Action>
+        Validate that the scope's already generated whole document names the exact relative module
+        links and dependency direction. Do not patch its Module Map here: the scope writer owns that
+        map, and authoring never creates a second sectional writer.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_CHECK">
+      <Goal>Consume mechanical draft receipts.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="moduleReceipt">npx gennady sdd-check --spec <module-spec-path> --authoring</ToolCall> Inputs <module-spec-path>: exact path from moduleManifest. Use moduleReceipt.
+        The receipt auto-fixes trivial format. If a content hint remains, report authoring incomplete;
+        never switch to sectional Edit/Patch repair. Rerun once only after checker auto-fix for the
+        final receipt. For scale=function|fix, check
+        the scope and its one module in this same pass and treat both receipts as one manifest result.
+      </Action>
+    </Step>
+
+    <ScalePath when="scale=function|fix">
+      One Function/Service module without invented Port/Adapter; one authoring pass, one combined
+      manifest, no repeated boundary discussion.
+    </ScalePath>
+
+    <Step id="STEP_5_CLOSE">
+      <Goal>Make module authoring completion durable.</Goal>
+      <Action>
+        Only after the final moduleReceipt has no hints, close authoring atomically.
+        <ToolCall owner="this-step" result="moduleAuthoringReceipt">npx gennady sdd-log &lt;module-spec-path&gt; authoring-complete</ToolCall> Inputs &lt;module-spec-path&gt;: exact checked path from STEP_4_CHECK. Use moduleAuthoringReceipt.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_HANDOFF">
+      <Goal>Leave an actual checked hierarchy.</Goal>
+      <Action>
+        If an operator explicitly requested live interaction, lazily
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/authoring-interactive.directive.xml")`.
+        Otherwise record deviations and continue to the mechanical close/scaffold route.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SddModule>

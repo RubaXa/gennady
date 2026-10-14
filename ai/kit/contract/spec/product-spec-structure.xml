@@ -1,0 +1,6 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Contract id="PRODUCT_SPEC_STRUCTURE">
+      ```markdown
+      {{> "sdd-skeleton-product"}}
+      ```
+    </Contract>

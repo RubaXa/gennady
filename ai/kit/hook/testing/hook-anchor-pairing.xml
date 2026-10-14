@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Hook id="HOOK_ANCHOR_PAIRING">
+<Purpose>Verify anchor parity and enable agent grep-navigation: every `// #region START_X` must have `// #endregion END_X` in the same file.</Purpose>
+<Command>rg --follow --no-heading -n "#(region|endregion)\s+(START|END)_[A-Z0-9_]+" -t ts</Command>
+<Expected>For every `START_NAME` occurrence there is a matching `END_NAME` in the same file; counts equal per file.</Expected>
+</Hook>

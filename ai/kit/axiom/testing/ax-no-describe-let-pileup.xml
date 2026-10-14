@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_NO_DESCRIBE_LET_PILEUP">
+`describe`-scope MUST NOT host mutable `let` variables populated by hooks. Static fixtures (frozen constants, fixture paths, factory definitions, type aliases) are allowed. Anything mutable per-case lives either inside the case (factory result) or inside the SINGLE lifecycle context object exposed by the hook. Mutable describe-scope state is the structural source of inter-test leakage.
+</Axiom>

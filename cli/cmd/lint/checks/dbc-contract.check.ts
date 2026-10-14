@@ -1,6 +1,6 @@
 // @file: DBC contract validation adapter — bridges DbcTsLinter into the lint command pipeline.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-15
 
 import { logger } from '#logger';
 import { DbcJsDocParser } from '../../../../services/dbc/parser/implementations/jsdoc/dbc-jsdoc-parser.ts';

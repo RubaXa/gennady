@@ -1,0 +1,30 @@
+<!-- source: testing/svelte-testing.xml -->
+<Pattern id="PT_SVELTE_TEST_EFFECT_ROOT_FOR_RUNES">
+      <Intent>Testing a `.svelte.ts` reactive module directly — outside any component — via `$effect.root`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // counter-store.svelte.test.ts
+        import { describe, expect, it } from 'vitest';
+        import { flushSync } from 'svelte';
+        import { createCounter } from './counter-store.svelte';
+
+        describe('createCounter', () => {
+          it('should publish derived doubled value reactively', () => {
+            const cleanup = $effect.root(() => {
+              const counter = createCounter(2);
+              let observed = 0;
+              $effect(() => { observed = counter.doubled; });
+              flushSync();
+              expect(observed).toBe(4);
+
+              counter.increment();
+              flushSync();
+              expect(observed).toBe(6);
+            });
+            cleanup();
+          });
+        });
+        ```
+      </Snippet>
+      <Why>`$effect.root` provides the disposal boundary required for `$effect` outside a component; `flushSync` between mutation and assertion; explicit `cleanup()` disposes the root.</Why>
+    </Pattern>

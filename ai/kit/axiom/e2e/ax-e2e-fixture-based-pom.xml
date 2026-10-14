@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Axiom id="AX_E2E_FIXTURE_BASED_POM">
+      Page Objects extend Playwright's `test.extend` fixtures — they are NOT standalone classes the test instantiates by hand. Fixture lifecycle (setup per test, teardown after) is the framework's job; bypassing it by `new SomePage(page)` reintroduces the cleanup problem the fixtures solve.
+
+      One fixture file per business domain (e.g. `auth.fixture.ts`, `checkout.fixture.ts`); unrelated domains do NOT merge into one fixture file.
+    </Axiom>

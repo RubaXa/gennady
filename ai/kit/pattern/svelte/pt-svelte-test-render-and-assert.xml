@@ -1,0 +1,22 @@
+<!-- source: testing/svelte-testing.xml -->
+<Pattern id="PT_SVELTE_TEST_RENDER_AND_ASSERT">
+      <Intent>Minimal render + role-based query + assertion. No state mutation, so no `flushSync` needed.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // Counter.svelte.test.ts
+        import { afterEach, describe, expect, it } from 'vitest';
+        import { cleanup, render, screen } from '@testing-library/svelte';
+        import Counter from './Counter.svelte';
+
+        afterEach(() => cleanup());
+
+        describe('Counter', () => {
+          it('should render the initial count from props', () => {
+            render(Counter, { props: { initial: 5, label: 'Count' } });
+            expect(screen.getByRole('button')).toHaveTextContent('Count: 5');
+          });
+        });
+        ```
+      </Snippet>
+      <Why>`.svelte.test.ts` extension; explicit `cleanup` in `afterEach`; role-based query; no mutation so no flush boundary.</Why>
+    </Pattern>

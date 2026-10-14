@@ -1,6 +1,6 @@
 // @file: Unit tests for Go project detection — modules, vendoring, lint config, diagnostics.
+// @spec: CLI-VERIFY
 // @consumers: CI
-// @tasks: TSK-95
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

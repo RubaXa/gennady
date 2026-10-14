@@ -1,0 +1,13 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      # Without `requires` this gate would sleep to its timeout and report TIMEOUT with no
+      # cause — the exact shape `requires` exists to prevent.
+      - id: e2e
+        argv: [sh, -c, 'sleep 60; echo unreachable > ran.txt']
+        timeout: 30s
+        requires:
+          - argv: [sh, -c, 'echo "cannot reach docker daemon" >&2; exit 1']
+            hint: 'start docker (colima start / Docker Desktop), then re-run'

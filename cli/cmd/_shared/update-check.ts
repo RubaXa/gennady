@@ -1,6 +1,6 @@
 // @file: Non-blocking update check — service orchestrator, cache value object, platform helpers.
+// @spec: CLI
 // @consumers: cli/gennady.ts
-// @tasks: TSK-33
 
 import { spawn } from 'node:child_process';
 import { readFileSync, mkdirSync } from 'node:fs';

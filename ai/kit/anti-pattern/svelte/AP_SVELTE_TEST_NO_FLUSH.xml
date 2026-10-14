@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<AntiPattern id="AP_SVELTE_TEST_NO_FLUSH">
+  <Bad>`await userEvent.click(button); expect(button).toHaveTextContent('Count: 1');` — assertion immediately after the mutation, no `flushSync`.</Bad>
+  <WhyBad>Mutation asserted before the effect graph settles (`AX_SVELTE_TEST_FLUSH_BEFORE_ASSERT`). Sometimes green (when the implicit microtask flush happened to run), sometimes red, never trustworthy. Order-dependent flakiness for the next agent to debug.</WhyBad>
+  <Good>`await userEvent.click(button); flushSync(); expect(button).toHaveTextContent('Count: 1');` — explicit boundary makes the assertion deterministic.</Good>
+</AntiPattern>

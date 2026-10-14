@@ -1,6 +1,6 @@
 // @file: Describe a single conflicting file in the merge context.
+// @spec: CLI
 // @consumers: resolve-conflicts-artifact-build.xml, resolve-conflicts-artifact.type, resolve-conflicts-context-git-build.logic
-// @tasks: N/A
 
 import type { GitRemoteInfo } from '../../../../../shared/backend/git/git-core.ts';
 

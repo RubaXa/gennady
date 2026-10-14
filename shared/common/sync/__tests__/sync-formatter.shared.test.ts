@@ -1,6 +1,6 @@
 // @file: Unit tests for shared sync formatter — formatSyncOutput
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Hook id="HOOK_SVELTE_TEST_EXTENSION_DISCIPLINE">
+  <Purpose>Detect Svelte component imports inside plain `.test.ts` files.</Purpose>
+  <Command>find . -name '*.test.ts' -not -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -lE "from\s+['\"][^'\"]+\.svelte['\"]" || true</Command>
+  <Expected>Empty output. Matches must be renamed to `*.svelte.test.ts`.</Expected>
+</Hook>

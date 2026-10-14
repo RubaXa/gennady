@@ -1,6 +1,6 @@
 // @file: Unit tests for resolveCatUrl — URL validation, tokens, filters, baseUrl.
+// @spec: CLI-CAT
 // @consumers: node:test runner
-// @tasks: TSK-31
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

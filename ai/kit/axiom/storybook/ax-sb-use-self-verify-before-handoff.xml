@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<Axiom id="AX_SB_USE_SELF_VERIFY_BEFORE_HANDOFF">
+  A story task is not complete until `run-story-tests` (the project's MCP-exposed runner) passes for every story in the affected component file — not just the new one. A new story may break an existing one through a shared mock or a shared decorator; running only the new story hides those breakages.
+
+  `run-story-tests` failure is NEVER silenced by deleting the failing story or by adding `.skip` — the failure is fixed (component or story), surfaced as a real blocker, or paired with a tracked deferred-ownership reference.
+</Axiom>

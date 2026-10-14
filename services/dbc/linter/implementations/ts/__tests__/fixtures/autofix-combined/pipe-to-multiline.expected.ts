@@ -1,6 +1,6 @@
 // @file: Fixture
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinterTest
-// @tasks: test
 
 /**
  * @purpose Function 2-tag pipe.

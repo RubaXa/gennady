@@ -1,0 +1,12 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_DX_FIRST" status="draft">
+      For product / library scopes the Approved Usage Example precedes Design Variants. DX shape:
+      - For library: the public-API DX (init / happy path / error path with commentary).
+      - For product app / spa / mobile / desktop: UX-flow DX.
+      - For product cli-utility: CLI DX (commands, flags, exit codes, sample sessions).
+      - For product service-module-sdk: API DX at the transport boundary.
+
+      DX is the consumer-driven baseline for downstream design; without it, Design Variants accumulate accidental complexity (over-engineering, speculative surface).
+
+      For product / library — this is the initial draft; ownership transfers post-first-`add-module` per `AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP` in module-decomposition.
+    </Axiom>

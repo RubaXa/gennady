@@ -1,0 +1,165 @@
+// @file: Thin SDD-owned task/phase facade over the universal Verify planner and runner.
+// @spec: CLI-SDD-VERIFY
+// @consumers: sdd-verify/index.ts
+
+import fs from 'node:fs';
+import { relative } from 'node:path';
+import { validateTicketReviewPaths } from '../../../shared/sdd/audit-group.ts';
+import { extractSection } from '../../../shared/sdd/section.ts';
+import { parsePhaseDetail, parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
+import { resolveTicketArg } from '../../../shared/sdd/ticket-resolve.ts';
+import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
+import { runWithSddAttemptJournal } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
+import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
+import type { RemotePipelineObserver } from '../../../shared/verify/execution/remote-watcher.ts';
+import { runVerifyCommand } from '../verify/verify.cmd.ts';
+import { resolveRemotePipelineObserver } from '../verify/remote-provider.ts';
+
+type SddFacadeOutcome = Awaited<ReturnType<typeof runVerifyCommand>>;
+
+function failure(detail: string): SddFacadeOutcome {
+  return {
+    exitCode: 1,
+    stdout: '',
+    stderr: `[sdd-verify] ERR_CLI_SDD_VERIFY_PHASE_CONTEXT: ${detail}\n`,
+  };
+}
+
+/**
+ * @purpose Resolve exact SDD task/phase scope and selector, then invoke the universal Verify engine.
+ * @invariant The SDD-owned attempt journal consumes the universal report; no compatibility
+ *   receipt projection or second runner is reachable.
+ * @param root Repository root selected by the process cwd.
+ * @param task Exact ticket path or Task-ID accepted by the SDD resolver.
+ * @param phaseId Exact phase identity from the ticket.
+ * @param [options] Process cancellation and isolated personal-config inputs.
+ * @returns The same report projection and exit semantics as `runVerifyCommand`.
+ */
+export async function runSddVerifyFacade(
+  root: string,
+  task: string,
+  phaseId: string,
+  options: {
+    readonly signal?: AbortSignal;
+    readonly cancellationSignal?: 'SIGINT' | 'SIGTERM';
+    readonly homeDirectory?: string;
+    /** @purpose Injectable exact-SHA observer used by deterministic facade contract tests. */
+    readonly remoteObserver?: RemotePipelineObserver;
+    readonly resolveRemoteObserver?: typeof resolveRemotePipelineObserver;
+  } = {}
+): Promise<SddFacadeOutcome> {
+  let canonicalRoot: string;
+  try {
+    canonicalRoot = fs.realpathSync(root);
+  } catch (cause) {
+    return failure(
+      `project root is unreadable: ${cause instanceof Error ? cause.message : String(cause)}`
+    );
+  }
+
+  const resolved = resolveTicketArg(task, canonicalRoot, 'execution');
+  if (!resolved.ok) {
+    const detail = 'detail' in resolved ? resolved.detail : resolved.reason;
+    return failure(`cannot resolve ticket ${JSON.stringify(task)}: ${detail}`);
+  }
+  const overview = extractSection(resolved.content, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') return failure('ticket has no readable PHASES_OVERVIEW');
+  const phases = parsePhasesOverview(overview.content);
+  const phaseIndex = phases.findIndex((candidate) => candidate.id === phaseId);
+  const phase = phases[phaseIndex];
+  if (phase === undefined) {
+    return failure(`phase ${JSON.stringify(phaseId)} is absent from the ticket`);
+  }
+  const phaseSection = extractSection(resolved.content, `PHASE_${phase.id}`);
+  if (phaseSection.status !== 'ok') {
+    return failure(`phase ${JSON.stringify(phase.id)} has no readable PHASE_${phase.id} section`);
+  }
+  const executionLog = extractSection(resolved.content, 'EXECUTION_LOG');
+  if (executionLog.status !== 'ok' && executionLog.status !== 'empty') {
+    return failure('ticket has no unique readable EXECUTION_LOG');
+  }
+
+  try {
+    return await runWithSddAttemptJournal({
+      root: canonicalRoot,
+      ticketPath: resolved.path,
+      sddPhase: phase.id,
+      run: async () => {
+        const paths = validateTicketReviewPaths(canonicalRoot, resolved.content, {
+          phaseIds: [phase.id],
+          targetExpectation: 'existing',
+          deletedPhaseIds: phases.slice(0, phaseIndex + 1).map((candidate) => candidate.id),
+          handoffPhaseIds: [],
+        });
+        if (!paths.ok) {
+          return failure(
+            `${relative(canonicalRoot, resolved.path)} declares invalid path ${JSON.stringify(paths.path)}: ${paths.detail}`
+          );
+        }
+        const deletedFiles = [...paths.paths.deleted].sort((left, right) =>
+          left.localeCompare(right)
+        );
+        const scope = {
+          mode: 'files' as const,
+          files: [...new Set([...paths.paths.targets, ...deletedFiles])].sort((left, right) =>
+            left.localeCompare(right)
+          ),
+        };
+        let ruleDispatch: ReturnType<typeof resolveSddRuleSnapshot>;
+        try {
+          const detail = parsePhaseDetail(phaseSection.content);
+          const ticketPath = relative(canonicalRoot, fs.realpathSync(resolved.path))
+            .split('\\')
+            .join('/');
+          ruleDispatch = resolveSddRuleSnapshot({
+            root: canonicalRoot,
+            declaredSources: detail.rules,
+            declarationFile: ticketPath,
+            declarationProvenance: `${ticketPath}#PHASE_${phase.id}.Rules`,
+            targetFiles: paths.paths.targets,
+            plannedFiles: paths.paths.targets,
+            tombstoneFiles: deletedFiles,
+            intents: [phase.kind],
+          });
+        } catch (cause) {
+          return failure(
+            `phase ${JSON.stringify(phase.id)} RuleSnapshot cannot be resolved before Verify: ${cause instanceof Error ? cause.message : String(cause)}`
+          );
+        }
+
+        let selection: ReturnType<typeof resolveProjectSddVerifySelector>;
+        try {
+          selection = resolveProjectSddVerifySelector(canonicalRoot, phase.kind, {
+            scope,
+            ...(options.homeDirectory === undefined
+              ? {}
+              : { homeDirectory: options.homeDirectory }),
+          });
+        } catch (cause) {
+          return failure(
+            `phase ${JSON.stringify(phase.id)} Verify selector cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+          );
+        }
+
+        return runVerifyCommand(
+          canonicalRoot,
+          { phase: selection.selector, planOnly: false, format: 'text' },
+          {
+            ...options,
+            request: {
+              scope,
+              knownDeletedFiles: deletedFiles,
+              rules: ruleDispatch.snapshot,
+              workflow: {
+                task: relative(canonicalRoot, resolved.path).split('\\').join('/'),
+                phase: phase.id,
+              },
+            },
+          }
+        );
+      },
+    });
+  } catch (cause) {
+    return failure(cause instanceof Error ? cause.message : String(cause));
+  }
+}

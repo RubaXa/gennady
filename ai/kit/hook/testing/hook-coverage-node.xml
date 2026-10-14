@@ -1,0 +1,5 @@
+<!-- source: testing/node-test.xml -->
+<Hook id="HOOK_COVERAGE">
+  <Command>node --test --experimental-test-coverage</Command>
+  <Expected>Exit 0; coverage report generated.</Expected>
+</Hook>

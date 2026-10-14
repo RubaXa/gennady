@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Pattern id="AP_SURFACE">Reading headers only. Read full content.</Pattern>

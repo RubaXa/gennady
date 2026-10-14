@@ -1,0 +1,2 @@
+<!-- source: ai/directives/perf-auditor/rules/iteration-fusion.xml -->
+<Axiom id="AX_AI_READABILITY">Человеческая привычка писать "декларативные цепочки" (chaining) не имеет ценности для ИИ. Однопроходный императивный `for...of` с условиями работает быстрее и потребляет меньше памяти.</Axiom>

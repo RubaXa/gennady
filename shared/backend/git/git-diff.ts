@@ -1,6 +1,6 @@
 // @file: Describe one file from parsed git diff: flags, name, category, language, hunks and token count.
+// @spec: SHARED
 // @consumers: git-core
-// @tasks: N/A
 
 import { getProgrammingLanguage } from '../../common/language.ts';
 import { countTokens } from '../../common/tokens.ts';

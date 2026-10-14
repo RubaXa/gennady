@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<AntiPattern id="AP_SVELTE_TEST_DIRECT_QUERYSELECTOR">
+  <Bad>`const button = container.querySelector('.submit-btn'); expect(button.textContent).toBe('Go');`</Bad>
+  <WhyBad>Direct DOM query coupled to a CSS class (`AX_SVELTE_TEST_NO_DIRECT_DOM_QUERY`, `AX_SVELTE_TEST_ROLE_QUERIES_PREFERRED`). `.submit-btn` is implementation detail with no contract status. Refactor that renames the class turns the test red without any behavioural change.</WhyBad>
+  <Good>`expect(screen.getByRole('button', { name: 'Go' })).toBeInTheDocument();` — role + accessible name, the contract surface a user perceives.</Good>
+</AntiPattern>

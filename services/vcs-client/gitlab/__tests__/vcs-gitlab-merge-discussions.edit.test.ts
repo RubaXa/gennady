@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeDiscussions.{updateNote,deleteNote} — happy path, ownership guard, 404 propagation.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-77
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

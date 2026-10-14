@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<AntiPattern id="AP_MISSING_DATA_STATE">
+<Bad>Component relies on CSS `:hover` pseudo-class for hover styling, with no `data-state` attribute.</Bad>
+<WhyBad>Headless test environments cannot trigger `:hover` programmatically (`AX_DATA_STATE_FOR_TESTABILITY`). The hover variant is untestable — visual regression tests pass trivially without actually verifying hover appearance.</WhyBad>
+<Good>Add `data-state={resolvedState}` attribute and use `.btn[data-state="hover"]` selectors. Tests assert `toHaveAttribute('data-state', 'hover')`.</Good>
+</AntiPattern>

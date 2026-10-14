@@ -1,0 +1,8 @@
+<!-- source: sdd/phase-execution-protocol.xml -->
+<Contract id="ROUND_CLOSE_FORMAT">
+      Emitted by orchestrator after the LAST phase of a Round. Phase agent does NOT write this block. Tracker sync is orchestrator's mechanical work — no `sync` log line (the work happens, not informationally noteworthy).
+      ```markdown
+      #### Round close
+      - [x] `<ts>` DONE
+      ```
+    </Contract>

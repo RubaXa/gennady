@@ -1,0 +1,4 @@
+<!-- source: coding/svelte5-runes.xml -->
+<Definition id="DEF_SVELTE_RUNE">
+      A Svelte 5 rune: a compiler directive prefixed with `$`. Recognized: `$state`, `$state.raw`, `$derived`, `$derived.by`, `$effect`, `$effect.pre`, `$effect.root`, `$effect.tracking`, `$props`, `$bindable`, `$inspect`, `$host`.
+    </Definition>

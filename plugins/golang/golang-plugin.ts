@@ -1,13 +1,14 @@
 // @file: StackPlugin implementation for Go repositories — wires detect, scope and plan.
+// @spec: CLI-VERIFY
 // @consumers: stack-registry
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';
 import type { StackDetection, StackPlugin } from 'gennady/stack';
 import { detectGoProject, type GoProject } from './golang-detect.logic.ts';
-import { resolveGoScope, type GoScope } from './golang-scope.logic.ts';
+import { isGolangScopePath, resolveGoScope, type GoScope } from './golang-scope.logic.ts';
 import { GO_GATE_ORDER, planGoGates } from './golang-plan.logic.ts';
+import { createGolangVerifyPreset, evaluateGolangReadiness } from './golang-target.logic.ts';
 
 /**
  * @purpose Build the `key: value` summary lines shown by `verify --plan` for a Go project.
@@ -77,5 +78,14 @@ export const golangPlugin: StackPlugin = {
     planGates(detection, scope, options) {
       return planGoGates(detection.details as GoProject, scope.details as GoScope, options);
     },
+  },
+  target: {
+    affectsScope(_detection, scope) {
+      return (
+        scope.mode === 'all' || scope.files.length === 0 || scope.files.some(isGolangScopePath)
+      );
+    },
+    createPreset: createGolangVerifyPreset,
+    evaluateReadiness: evaluateGolangReadiness,
   },
 };

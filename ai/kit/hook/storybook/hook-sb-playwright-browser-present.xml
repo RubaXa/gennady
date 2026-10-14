@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<Hook id="HOOK_SB_PLAYWRIGHT_BROWSER_PRESENT">
+  <Purpose>Chromium is installed for story tests.</Purpose>
+  <Command>npx playwright install --dry-run chromium 2>&amp;1 | grep -E "browser is already installed|is downloaded" || echo MISSING</Command>
+  <Expected>Output indicates Chromium is already installed. `MISSING` means the browser still needs `npx playwright install chromium`.</Expected>
+</Hook>

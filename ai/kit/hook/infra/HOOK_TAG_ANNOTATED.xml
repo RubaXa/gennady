@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Hook id="HOOK_TAG_ANNOTATED">
+  <Purpose>Verify all release tags are annotated (object type = tag, not commit).</Purpose>
+  <Command>for t in $(git tag); do test "$(git cat-file -t $t)" = "tag" || echo "FAIL: $t is lightweight"; done; echo "OK"</Command>
+  <Expected>Prints only `OK`; exit 0.</Expected>
+</Hook>

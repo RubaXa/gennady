@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<AntiPattern id="AP_RESTATED_ARGS">
+      <Bad>`SmallHover` story restates all args from `SmallNormal` instead of composing.</Bad>
+      <WhyBad>Args restated instead of composed (`AX_COMPOSE_FROM_BASE_STORY`). When `SmallNormal` gains a new prop, `SmallHover` silently falls behind without any test pointing at the drift.</WhyBad>
+      <Good>`args: { ...SmallNormal.args, state: 'hover' }` — composition makes the diff visible.</Good>
+    </AntiPattern>

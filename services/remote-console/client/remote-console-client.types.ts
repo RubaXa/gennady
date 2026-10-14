@@ -1,6 +1,6 @@
 // @file: Defines the supported browser console levels for remote mirroring.
+// @spec: SHARED
 // @consumers: remote-console, remote-console-client, remote-console-client-serializer, remote-console-server.types, remote-console-stdout-writer
-// @tasks: N/A
 
 /** @purpose Defines the supported browser console levels for remote mirroring. */
 export type RemoteConsoleLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Hook id="HOOK_DATA_STATE_PRESENT">
+<Purpose>Verify every uikit component exposes `data-state` attribute.</Purpose>
+<Command>find src/ui -name '*.svelte' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l 'data-state=' || echo MISSING</Command>
+<Expected>Every `.svelte` file in `src/ui/` must appear in output. `MISSING` means at least one component lacks `data-state`.</Expected>
+</Hook>

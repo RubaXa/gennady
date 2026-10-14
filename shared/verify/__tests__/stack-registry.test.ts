@@ -1,0 +1,91 @@
+// @file: Unit tests for the registry — detection order, multi-stack activation, gate vocabulary.
+// @spec: SHARED
+// @consumers: CI
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import type { StackDetection, StackPlugin } from '../verify.types.ts';
+
+const { detectStacks, BUILTIN_STACK_PLUGINS, BUILTIN_GATE_IDS } =
+  await import('../stack-registry.ts');
+
+/** @purpose A plugin recognizing either everything or nothing. */
+function plugin(id: string, matches: boolean): StackPlugin {
+  return {
+    id,
+    marker: 'any',
+    description: id,
+    gateIds: [],
+    detect: (root: string): StackDetection | null =>
+      matches ? { stack: id, root, summary: [], diagnostics: [], details: null } : null,
+    verify: {
+      resolveScope: (_detection, request) => ({ mode: request.mode, note: '', details: null }),
+      planGates: () => [],
+    },
+  };
+}
+
+describe('detectStacks', () => {
+  it('activates every plugin that recognizes the repository, not just the first', () => {
+    const registry = [plugin('anystack', true), plugin('node', true), plugin('golang', false)];
+    assert.deepStrictEqual(
+      detectStacks('/repo', null, registry).map(({ plugin: p }) => p.id),
+      ['anystack', 'node'],
+      'anystack + a real stack is a normal multi-stack run'
+    );
+  });
+
+  it('restricts candidates to stack.use, so a placeholder can be selected alone', () => {
+    const registry = [plugin('anystack', true), plugin('node', true)];
+    assert.deepStrictEqual(
+      detectStacks('/repo', { use: ['anystack'] }, registry).map(({ plugin: p }) => p.id),
+      ['anystack']
+    );
+  });
+
+  it('keeps NO_STACK_DETECTED reachable when use names a stack that does not match', () => {
+    const registry = [plugin('anystack', true), plugin('golang', false)];
+    assert.deepStrictEqual(
+      detectStacks('/repo', { use: ['golang'] }, registry),
+      [],
+      'an empty active set is what verify turns into exit 5'
+    );
+  });
+
+  it('accepts a non-built-in plugin id without a compatibility cast', () => {
+    const registry = [plugin('acme-rust', true)];
+    const active = detectStacks('/repo', { use: ['acme-rust'] }, registry);
+
+    assert.deepStrictEqual(
+      active.map(({ plugin: activePlugin, detection }) => ({
+        plugin: activePlugin.id,
+        detection: detection.stack,
+      })),
+      [{ plugin: 'acme-rust', detection: 'acme-rust' }]
+    );
+  });
+});
+
+describe('registry composition', () => {
+  it('orders plugin detectors by id and exposes the full config vocabulary', () => {
+    const ids = BUILTIN_STACK_PLUGINS.map((p) => p.id);
+    assert.deepStrictEqual(ids, [...ids].sort(), 'report order must not depend on readdir order');
+    assert.deepStrictEqual(Object.keys(BUILTIN_GATE_IDS).sort(), [
+      'anystack',
+      'golang',
+      'node',
+      'swift',
+    ]);
+    assert.deepStrictEqual(
+      BUILTIN_GATE_IDS.anystack,
+      [],
+      'the placeholder declares no gates; extraGates supply them all'
+    );
+  });
+
+  it('anystack recognizes any directory, so it is always available', () => {
+    const anystack = BUILTIN_STACK_PLUGINS.find((p) => p.id === 'anystack');
+    assert.ok(anystack, 'anystack must be a built-in');
+    assert.notStrictEqual(anystack.detect('/nowhere/at/all'), null);
+  });
+});

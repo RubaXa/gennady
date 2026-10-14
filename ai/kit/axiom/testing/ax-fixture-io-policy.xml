@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_FIXTURE_IO_POLICY">
+Reading fixture files is allowed. Writing files inside unit tests is NOT. Writes from a test make the runtime stateful, break parallelism, and leave artifacts in FS that mutate between runs.
+</Axiom>

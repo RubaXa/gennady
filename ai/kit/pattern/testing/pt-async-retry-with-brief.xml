@@ -1,0 +1,48 @@
+<!-- source: testing/node-test.xml -->
+<Pattern id="PT_ASYNC_RETRY_WITH_BRIEF">
+      <Intent>Async scenario with retry policy: opening brief records invariant + failure mode; phase anchors separate multi-line SETUP, the TRIGGER call, and the composite ASSERT with main + orthogonal observation.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, beforeEach, afterEach } from 'node:test';
+        import assert from 'node:assert/strict';
+        import { setupMockAgent } from '#utils/test/mock-http.ts';
+
+        describe('VendorClient', () => {
+            let mockEnv: ReturnType<typeof setupMockAgent>;
+            let client: VendorClient;
+
+            beforeEach(() => {
+                mockEnv = setupMockAgent();
+                client = new VendorClient({ baseUrl: 'https://vendor.test' });
+            });
+
+            afterEach(() => { mockEnv.cleanup(); });
+
+            it('should retry once and return the normalized payload', async () => {
+                // contract: one transient failure is tolerated before success is returned
+                // failure mode: do not wrap the returned result into a synthetic summary object
+
+                // #region START_FETCH_ITEM_SETUP_MOCKS
+                const url = 'https://vendor.test/items/42';
+                const tracker = mockEnv.interceptMultiple('GET', url, [
+                    () => ({ status: 503, body: 'Service Unavailable' }),
+                    () => ({ status: 200, body: { id: 42, name: 'Keyboard', inStock: true } }),
+                ]);
+                // #endregion END_FETCH_ITEM_SETUP_MOCKS
+
+                const result = await client.fetchItem(url);
+
+                // #region START_FETCH_ITEM_ASSERT_RESULT
+                assert.deepStrictEqual(result, {
+                    ok: true,
+                    status: 200,
+                    data: { id: 42, name: 'Keyboard', inStock: true },
+                });
+                assert.strictEqual(tracker.getAttemptCount(), 2);
+                // #endregion END_FETCH_ITEM_ASSERT_RESULT
+            });
+        });
+        ```
+      </Snippet>
+      <Why>Brief reveals retry invariant; SETUP has multiple statements + intercept policy → anchored; TRIGGER is a single call → no anchor; ASSERT carries two related observations → anchored. Orthogonal `attemptCount` lives next to the main contract assertion without aggregation noise.</Why>
+    </Pattern>

@@ -1,0 +1,12 @@
+stack:
+  use: [golang]
+  golang:
+    skipGates: [generate, build, vet, fmt, lint, test]
+    extraGates:
+      - id: classified
+        argv: [sh, -c, 'exit 1']
+        timeout: 1m
+        envFail:
+          - exitCodeMatches: ['>=64', '<=78']
+            stderrMatches: 'daemon'
+            hint: 'start the daemon'

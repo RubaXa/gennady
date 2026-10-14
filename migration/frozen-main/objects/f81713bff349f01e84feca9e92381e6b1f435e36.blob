@@ -1,0 +1,32 @@
+<ROUTE name="development">
+  <PRIMING_CONTEXT>
+    keywords: "development, code, coding, bug, fix, performance, improve, routing, capability-routing"
+    hint: "This route receives USER_INTENT and is the sole decision point: whether to execute the task, how (e.g. delegate via RUN_AGENT_TASK), or decline. Logic for writing code, fixing bugs, improving performance, etc."
+  </PRIMING_CONTEXT>
+  <PLAN_FORMAT>
+    General structure of the plan file (not strict; adapt to the task):
+    - plan — root; id and session_env_id optional.
+    - role — which role to use (path to ai/framework/roles/… or role name).
+    - goal — short description of what to achieve.
+    - context — user_intent, project, constraints, anything that helps the agent.
+    - steps — ordered list of steps (step with order or free-form); each step is a clear, actionable item.
+    Order and nesting may vary; machine-readable.
+  </PLAN_FORMAT>
+  <EXECUTE_INSTRUCTIONS>
+    $: Don't forget WATCHDOG_CHECK — every response must end with the status footer.
+    $: Development route loaded. This route decides whether and how to execute the user's task (USER_INTENT). Prepare environment and current instructions.
+    
+    $: Strategy: build a plan. Analyze user intent from a programming perspective — break it down and understand what the user wants (fix bugs, don't fix bugs, improve performance, etc.). Fully understand: which language, dev context, what they are asking for in terms of programming. Our intention at this point is to understand the user.
+    
+    $: Then run the Universal route with the understood intentions.
+      RUN_SUB_PROMPT("ai/framework/routes/universal.xml");
+
+    $: Prepare the development plan from the previous step: format it, make it visible. Assign to DEV_PLAN (the agreed plan from Universal output).
+    $: Assign task_id: unique identifier for this task within the session (e.g. sequential 1, 2, 3 for first, second, third agreed task; or short slug from goal). Ensure task_id is unique under ai/plans/{SESSION_ENV_ID}/.
+    $: Create directory ai/plans/{SESSION_ENV_ID}/ if it does not exist. Write DEV_PLAN to ai/plans/{SESSION_ENV_ID}/{task_id}.plan.xml. Plan format: root element plan, include element role with path ai/framework/roles/developer.xml (or role name) so the agent knows which role to use; include goal, steps, context. This file is the canonical plan; edit it later if the plan is refined.
+    @: plan_file_path = "ai/plans/{SESSION_ENV_ID}/{task_id}.plan.xml";
+    @: agent_result = RUN_AGENT_TASK(plan_file_path);
+    
+    $: Display the result of agent execution in a structured form suitable for MR description or code review: what was done, which files were changed/created, which artifacts (methods, modules, etc.) were added or modified — so that someone can write an MR description or perform a code review from this summary.
+  </EXECUTE_INSTRUCTIONS>
+</ROUTE>

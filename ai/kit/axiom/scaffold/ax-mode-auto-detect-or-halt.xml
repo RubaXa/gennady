@@ -1,0 +1,6 @@
+<!-- source: sdd/discovery + scaffold + module-decomposition (thin kernel; detection table is directive-specific) -->
+<Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+  Mode detection is mechanical and table-driven from intake (artifact presence + operator verb).
+  Ambiguous intake never defaults silently → HALT and ask the operator (binary disambiguation
+  where possible). The detection table is directive-specific.
+</Axiom>

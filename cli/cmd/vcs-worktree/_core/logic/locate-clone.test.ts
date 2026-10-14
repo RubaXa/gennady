@@ -1,6 +1,6 @@
 // @file: Unit tests for projectFromRemoteUrl.
+// @spec: CLI
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

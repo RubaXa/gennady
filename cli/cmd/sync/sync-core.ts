@@ -1,6 +1,6 @@
 // @file: Sync core — scanDirectives, collectAndCompare
+// @spec: CLI-SYNC
 // @consumers: sync.cmd.ts, sync-core.test.ts
-// @tasks: TSK-53, TSK-54, TSK-56
 
 import { readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
@@ -12,19 +12,8 @@ import {
 } from '../../../shared/common/sync/sync-core.shared.ts';
 import { normalize, SYNC_PATH_RULES } from '../../../shared/common/sync/path-normalizer.ts';
 
-/** @purpose Entries excluded from sync: empty architecture dir, deprecated/domain-specific directives. @invariant Must be kept in sync with cli spec §3.4 exclusion list. */
-export const EXCLUDED_ENTRIES = new Set([
-  'architecture',
-  'dbc-audit.directive.xml',
-  'dev-review.directive.xml',
-  'semantic-change-extractor.directive.xml',
-]);
-
-// `knowledge.xml` is the rule registry: a non-Node project rewrites it for its own stack (Python,
-// Go, Swift, …), and blindly restoring the package's TypeScript registry silently wiped that work.
-// Keyed by path relative to ai/directives/ (knowledge.xml sits at the root).
-/** @purpose Files the project owns: sync seeds them when absent but never overwrites an existing one. */
-export const PROJECT_OWNED_ENTRIES = new Set(['knowledge.xml']);
+/** @purpose Entries excluded from sync: empty architecture dir. @invariant Must be kept in sync with cli spec §3.4 exclusion list. */
+export const EXCLUDED_ENTRIES = new Set(['architecture']);
 
 /** @purpose DI port for SyncCore — abstracts filesystem access for testability. @invariant All deps must be provided; no optional fields. */
 export interface SyncCoreDeps {
@@ -58,6 +47,11 @@ export interface SyncCoreDeps {
    * @returns File names.
    */
   readdir: (path: string) => string[];
+  /**
+   * @purpose Delete one stale target file during full mirror sync.
+   * @param path Absolute stale target file path.
+   */
+  unlink?: (path: string) => void;
   /** @purpose Current working directory. */
   cwd: string;
 }
@@ -73,65 +67,6 @@ export function resolvePackageDir(cwd: string, subdir = 'ai/directives'): string
 }
 
 /**
- * @purpose Map every directive path to the root that provides it, so plugin-owned directives sync.
- * @invariant A requested subdir must exist in at least one root, not in every root; the base
- *   root wins a path collision.
- * @param roots Directive roots, base first.
- * @param [subdirs] Optional subdirectory filter, checked against the union.
- * @throws If a requested subdir exists in none of the roots.
- * @returns Relative path → absolute source path, sorted by relative path.
- */
-export function scanSourceRoots(roots: readonly string[], subdirs?: string[]): Map<string, string> {
-  const found = new Map<string, string>();
-  const seenSubdirs = new Set<string>();
-
-  for (const root of roots) {
-    let available: string[] = [];
-    try {
-      available = readdirSync(root).filter((name) => {
-        if (EXCLUDED_ENTRIES.has(name)) {
-          return false;
-        }
-        // A single throwing statSync (a broken symlink, a racing delete) must not take out the
-        // whole root — it would silently drop every directive under it (review P2).
-        try {
-          return statSync(join(root, name)).isDirectory();
-        } catch {
-          return false;
-        }
-      });
-    } catch {
-      continue;
-    }
-    for (const name of available) {
-      seenSubdirs.add(name);
-    }
-
-    const wanted = subdirs === undefined ? undefined : subdirs.filter((s) => available.includes(s));
-    if (subdirs !== undefined && wanted!.length === 0) {
-      continue;
-    }
-    for (const relativePath of scanDirectives(root, wanted)) {
-      if (!found.has(relativePath)) {
-        found.set(relativePath, join(root, relativePath));
-      }
-    }
-  }
-
-  for (const subdir of subdirs ?? []) {
-    if (!seenSubdirs.has(subdir)) {
-      const error = new Error(
-        `[scanSourceRoots] ai/directives/${subdir}/ not found in package.\nAvailable: ${[...seenSubdirs].sort().join(', ')}`
-      );
-      (error as Error & { code: string }).code = ERR_SYNC_SUBDIR_NOT_FOUND;
-      throw error;
-    }
-  }
-
-  return new Map([...found].sort(([a], [b]) => a.localeCompare(b)));
-}
-
-/**
  * @purpose Recursively collect a list of files in sourceDir with filter and exclusion support.
  * @param sourceDir Source directory to scan.
  * @param [subdirs] Optional list of subdirectories to scan.
@@ -139,18 +74,27 @@ export function scanSourceRoots(roots: readonly string[], subdirs?: string[]): M
  * @returns List of relative file paths.
  */
 export function scanDirectives(sourceDir: string, subdirs?: string[]): string[] {
+  return scanDirectivesChecked(sourceDir, subdirs).paths;
+}
+
+/**
+ * @purpose Like scanDirectives, but also reports which subtrees a read error cut short (SO-7):
+ *   a source subtree gennady failed to read must never be mistaken for one the source lacks.
+ * @param sourceDir Source directory to scan.
+ * @param [subdirs] Optional list of subdirectories to scan.
+ * @throws If subdir does not exist in sourceDir.
+ * @returns Relative file paths, plus the relative prefixes whose contents were cut short.
+ */
+function scanDirectivesChecked(
+  sourceDir: string,
+  subdirs?: string[]
+): { paths: string[]; incompletePrefixes: string[] } {
+  const incompletePrefixes: string[] = [];
+
   if (subdirs && subdirs.length > 0) {
-    const available = readdirSync(sourceDir).filter((name) => {
-      if (EXCLUDED_ENTRIES.has(name)) {
-        return false;
-      }
-      // A single throwing statSync must not abort the whole subdir scan (review P2).
-      try {
-        return statSync(join(sourceDir, name)).isDirectory();
-      } catch {
-        return false;
-      }
-    });
+    const available = readdirSync(sourceDir).filter(
+      (name) => !EXCLUDED_ENTRIES.has(name) && statSync(join(sourceDir, name)).isDirectory()
+    );
 
     for (const subdir of subdirs) {
       if (!available.includes(subdir)) {
@@ -163,21 +107,127 @@ export function scanDirectives(sourceDir: string, subdirs?: string[]): string[] 
 
     const files: string[] = [];
     for (const subdir of subdirs) {
-      collectRecursive(join(sourceDir, subdir), subdir, files);
+      collectRecursive(join(sourceDir, subdir), subdir, files, incompletePrefixes);
     }
-    return files.sort();
+    return { paths: files.sort(), incompletePrefixes };
   }
 
   const files: string[] = [];
-  collectRecursive(sourceDir, '', files);
-  return files.sort();
+  collectRecursive(sourceDir, '', files, incompletePrefixes);
+  return { paths: files.sort(), incompletePrefixes };
 }
 
-function collectRecursive(dir: string, relativePrefix: string, result: string[]): void {
+/**
+ * @purpose Whether relativePath falls under a subtree a read error cut short (SO-7).
+ * @param relativePath Candidate path, `/`-separated.
+ * @param incompletePrefixes Prefixes `collectRecursive` could not fully read; `''` is the root.
+ * @returns True when relativePath is inside (or equal to) one of the incomplete prefixes.
+ */
+function isUnderIncompletePrefix(
+  relativePath: string,
+  incompletePrefixes: readonly string[]
+): boolean {
+  return incompletePrefixes.some(
+    (prefix) => prefix === '' || relativePath === prefix || relativePath.startsWith(`${prefix}/`)
+  );
+}
+
+/**
+ * @purpose List top-level subdirectory names the package (source) owns, for scoping mirror deletion.
+ * @param sourceDir Source directory to inspect.
+ * @returns Directory names directly under sourceDir, excluding EXCLUDED_ENTRIES and non-directories.
+ */
+function listOwnedSubdirs(sourceDir: string): string[] {
+  let entries: string[];
+  try {
+    entries = readdirSync(sourceDir);
+  } catch {
+    return [];
+  }
+  return entries.filter((name) => {
+    if (EXCLUDED_ENTRIES.has(name)) return false;
+    const st = statSync(join(sourceDir, name), { throwIfNoEntry: false });
+    return st?.isDirectory() ?? false;
+  });
+}
+
+/**
+ * @purpose Scan the target for mirror-deletion candidates, never throwing on a missing directory —
+ *   an absent target subdirectory simply has nothing to delete.
+ * @invariant Only source-owned subdirs prove mirror ownership. Unknown root files and
+ *   project-added subdirectories remain untouched and are reported as warnings.
+ * @param targetDir Target directory to scan.
+ * @param ownedSubdirs Top-level subdirectory names the package owns for this sync.
+ * @param ownedRootFiles Root files present in the current package; compared separately.
+ * @param filtered True when an explicit subdir filter was passed — root files and out-of-filter
+ *   directories are then out of scope, not warned about.
+ * @returns Relative file paths eligible for mirror deletion, plus warnings for target
+ *   subdirectories the package does not own.
+ */
+function scanTargetMirrorSpace(
+  targetDir: string,
+  ownedSubdirs: Set<string>,
+  ownedRootFiles: Set<string>,
+  filtered: boolean
+): { paths: string[]; warnings: string[] } {
+  let topEntries: string[];
+  try {
+    topEntries = readdirSync(targetDir);
+  } catch {
+    return { paths: [], warnings: [] };
+  }
+
+  const files: string[] = [];
+  const warnings: string[] = [];
+
+  for (const name of topEntries) {
+    if (name.startsWith('.') || EXCLUDED_ENTRIES.has(name)) continue;
+
+    const fullPath = join(targetDir, name);
+    const st = statSync(fullPath, { throwIfNoEntry: false });
+    if (!st) continue;
+
+    if (st.isDirectory()) {
+      if (ownedSubdirs.has(name)) {
+        collectRecursive(fullPath, name, files);
+      } else if (!filtered) {
+        warnings.push(
+          `unknown subdirectory in target (not owned by package, left untouched): ${name}`
+        );
+      }
+      // Filtered mode: a directory outside the requested filter is out of scope, not a warning.
+    } else if (st.isFile() && !filtered && !ownedRootFiles.has(name)) {
+      // Absence in this package is not evidence a root file ever belonged to the package.
+      // Present source files are compared separately; without historical ownership proof,
+      // root deletion is unsafe (including custom knowledge kept as user data, not a registry).
+      warnings.push(`root file in target (ownership not proven, left untouched): ${name}`);
+    }
+  }
+
+  return { paths: files.sort(), warnings };
+}
+
+/**
+ * @purpose Recursively list files under dir, `/`-separated relative to the original root.
+ * @invariant SO-7: a `readdirSync` failure records `relativePrefix` in `incomplete` (when given)
+ *   instead of silently returning as if the subtree were empty — the two are not the same thing
+ *   to a caller deciding what to delete.
+ * @param dir Directory to scan.
+ * @param relativePrefix Path prefix relative to the scan root, `/`-separated.
+ * @param result Accumulator for discovered file paths.
+ * @param [incomplete] Accumulator for prefixes whose contents could not be fully read.
+ */
+function collectRecursive(
+  dir: string,
+  relativePrefix: string,
+  result: string[],
+  incomplete?: string[]
+): void {
   let entries: string[];
   try {
     entries = readdirSync(dir);
   } catch {
+    incomplete?.push(relativePrefix.split(sep).join('/'));
     return;
   }
 
@@ -191,7 +241,7 @@ function collectRecursive(dir: string, relativePrefix: string, result: string[])
     if (!st) continue;
 
     if (st.isDirectory()) {
-      collectRecursive(fullPath, relativePath, result);
+      collectRecursive(fullPath, relativePath, result, incomplete);
     } else if (st.isFile()) {
       result.push(relativePath.split(sep).join('/'));
     }
@@ -214,10 +264,50 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
     throw error;
   }
 
-  const sources = scanSourceRoots([opts.sourceDir, ...(opts.extraSourceDirs ?? [])], opts.subdirs);
+  const { paths: relativePaths, incompletePrefixes } = scanDirectivesChecked(
+    opts.sourceDir,
+    opts.subdirs
+  );
   const entries: SyncFileEntry[] = [];
+  const sourcePaths = new Set(relativePaths);
 
-  for (const [relativePath, sourcePath] of sources) {
+  // Sync is a package-owned mirror, not an additive copy. A removed directive must disappear from
+  // the target too, otherwise an update can keep executing stale flow logic indefinitely. The
+  // mirror is scoped to what the package owns in the SOURCE — an absent target subdirectory is
+  // simply empty of stale files (not an error), and a target subdirectory the package never
+  // shipped is a project customization, left untouched and reported via `warnings`.
+  const filtered = Boolean(opts.subdirs && opts.subdirs.length > 0);
+  const ownedSubdirs = new Set(filtered ? opts.subdirs! : listOwnedSubdirs(opts.sourceDir));
+  const { paths: targetPaths, warnings } = scanTargetMirrorSpace(
+    opts.targetDir,
+    ownedSubdirs,
+    new Set(relativePaths.filter((relativePath) => !relativePath.includes('/'))),
+    filtered
+  );
+
+  // SO-7: a source subtree a read error cut short is NOT the same as a source subtree the
+  // package genuinely stopped shipping — treating the two alike turned one `EACCES` into the
+  // silent deletion of every target file underneath. Fail-safe: skip, warn, never guess.
+  for (const prefix of incompletePrefixes) {
+    warnings.push(`source could not be fully read, skipping deletion under: ${prefix || '(root)'}`);
+  }
+
+  for (const relativePath of targetPaths) {
+    if (sourcePaths.has(relativePath)) continue;
+    if (isUnderIncompletePrefix(relativePath, incompletePrefixes)) continue;
+    entries.push({ relativePath, status: 'deleted' });
+    if (!opts.dryRun) {
+      if (!deps.unlink) {
+        throw new Error(
+          `[collectAndCompare] unlink dependency missing for stale file: ${relativePath}`
+        );
+      }
+      deps.unlink(join(opts.targetDir, relativePath));
+    }
+  }
+
+  for (const relativePath of relativePaths) {
+    const sourcePath = join(opts.sourceDir, relativePath);
     const targetPath = join(opts.targetDir, relativePath);
     const sourceData = deps.readFile(sourcePath);
     const normalizedContent = normalize(sourceData.toString('utf-8'), SYNC_PATH_RULES);
@@ -236,9 +326,6 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
       status = 'added';
     } else if (!compareBytes(normalizedData, targetData)) {
       status = 'unchanged';
-    } else if (PROJECT_OWNED_ENTRIES.has(relativePath)) {
-      // Present, differs, and project-owned: keep the project's version, never restore the package's.
-      status = 'preserved';
     } else {
       status = 'updated';
     }
@@ -250,12 +337,11 @@ export function collectAndCompare(deps: SyncCoreDeps, opts: SyncOptions): SyncRe
       targetSize: targetData?.length,
     });
 
-    // `unchanged` needs no write; `preserved` must NOT be written (that is the whole point).
-    if (!opts.dryRun && status !== 'unchanged' && status !== 'preserved') {
+    if (!opts.dryRun && status !== 'unchanged') {
       deps.mkdir(join(opts.targetDir, relativePath, '..'), { recursive: true });
       deps.writeFile(targetPath, normalizedData);
     }
   }
 
-  return new SyncResult(entries);
+  return new SyncResult(entries, warnings);
 }

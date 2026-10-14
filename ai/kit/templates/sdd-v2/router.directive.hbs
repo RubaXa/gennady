@@ -1,0 +1,148 @@
+<SddRouter keywords="sdd, router, entry, intent, scale, route, stateless" type="directive" ver="2.3">
+  <Mission>
+    Route one operator intent from one read-only `sdd-state` snapshot to exactly one owner. The
+    router writes no artifacts and maintains no persistent session. Durable artifacts and current
+    repository state are the only continuation context.
+  </Mission>
+  <BeliefState>
+    {{> "axiom/process/ax-operator-language"}}
+    {{> "axiom/process/ax-tool-invocation"}}
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+    {{> "axiom/process/ax-dialogue-discipline"}}
+    {{> "axiom/process/ax-operator-safeguard"}}
+    {{> "axiom/process/ax-no-process-narration"}}
+    {{> "axiom/process/ax-operator-output-live-text"}}
+    {{> "axiom/process/ax-diverge-before-recommend"}}
+    {{> "axiom/process/ax-scale-proportional-depth"}}
+    {{> "axiom/process/ax-stateless-flow"}}
+    {{> "axiom/spec/ax-stateless-artifact"}}
+    <Axiom id="AX_READER_WITHOUT_SESSION_CONTEXT" cross-cutting="true">
+      Repo artifacts (specs, tickets, Decision Log entries) outlive the session that wrote them and
+      are read by someone with zero memory of it. Before writing artifact text, apply the reader
+      test: would an engineer who never saw this session understand it and act on it? Session-plan
+      labels, «оператор попросил» as a justification, «рабочий дифф» meaning this session's working
+      set — forbidden in artifacts; they belong to the session log. Introduce every term inline
+      before using it. The artifact explains the thing; it never reports the work of making it.
+    </Axiom>
+    <Axiom id="AX_DECISION_LOG_NON_OBVIOUS" cross-cutting="true">
+      A Decision Log entry is insider information for a future agent — the «why THIS way» it could
+      not derive from the task alone: a real alternative rejected, an accepted risk, an operator's
+      explicit exception to a rule, a deliberately non-optimal choice. Obvious rationale («split for
+      readability», «named constant instead of a magic number») is noise that buries the genuine
+      entries — fold it into a one-line reason at the entity (e.g. `Usage Waiver`) or drop it.
+
+      A tool/technology pick already recorded in its own table or section of the spec (Tool Stack,
+      Verification Commands, dependency list) is NEVER also a Decision Log entry — the table already
+      is the record, and a DL row that just restates row `X → tool Y` is pure duplication, not insider
+      information. DL is reserved for the pick that needed a real trade-off behind it: a choice that
+      looks wrong until you know the constraint that forced it, a rejected alternative worth naming so
+      nobody re-proposes it, a risk the operator knowingly accepted, or an explicit exception to a
+      standing rule. Test before writing any entry: «could a future agent reading only the spec's own
+      tables and prose re-derive this decision on its own?» — yes → do not write a DL entry, the spec
+      already carries it; no (there is a real compromise, rejection, or risk that only the operator's
+      reasoning explains) → DL entry.
+    </Axiom>
+    <Axiom id="AX_V2_HAS_NO_INTERNAL_MIGRATION">
+      `sdd-migrate` is exclusively the explicit V1→V2 boundary. Invalid or stale V2 artifacts return
+      to their owning V2 authoring flow. Never invent V2→V2 migration, schema upgrade, compatibility
+      route, or migration session.
+    </Axiom>
+  </BeliefState>
+  <KernelGrammar>
+    {{> "definition/process/def-logic-switch"}}
+    {{> "definition/process/def-read-and-use-directive"}}
+  </KernelGrammar>
+  <Contracts>
+    {{> "contract/process/artifact-approval-flow"}}
+    {{> "contract/process/artifact-approval-marker"}}
+    {{> "contract/process/readiness-preflight-gate"}}
+    {{> "contract/process/question-rule-slim"}}
+    {{> "contract/process/halt-format"}}
+  </Contracts>
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_AMBIGUOUS_INTENT` | Repository state and operator message support several materially different routes |
+    | `H_ASK_WITHOUT_CARD` | An interview question is asked before the `sdd-state` card was shown as its own fenced block, or restates the card instead of showing it verbatim |
+    | `H_SPEC_NOT_APPROVED` | Scaffold targets specs that have not passed approval #1 |
+    | `H_V2_INVALID` | A V2 artifact is structurally invalid; return to its authoring owner, never migrate it |
+    | `H_WRONG_REPO` | Operator says this is the wrong repository |
+  </HaltConditions>
+  <ExecutionPlan>
+    <Step id="STEP_0_STATE">
+      <Goal>Show the exact read-only repository snapshot.</Goal>
+      <Action>
+        Consume exact result alias `routerState` from the entry skill. Do not repeat `sdd-state`.
+        Show its card as a fenced block before the first question. Do not summarize the card into an
+        Ask — an Ask that precedes the card, or that restates it instead of showing it verbatim, is
+        `H_ASK_WITHOUT_CARD`, not a shortcut. Emit operator-visible results as live text per
+        `AX_OPERATOR_OUTPUT_LIVE_TEXT`, without narrating internal mechanics per
+        `AX_NO_PROCESS_NARRATION`. Per `AX_STATELESS_FLOW`, this step performs no write and creates no
+        hidden resume state. If the operator identifies this as the wrong repository, stop with
+        `H_WRONG_REPO`.
+      </Action>
+    </Step>
+    <Step id="STEP_1_CLASSIFY">
+      <Goal>Resolve current intent and, only for spec authoring, proportional depth.</Goal>
+      <Action>
+        A forced intent from a direct skill is authoritative: `scaffold`, `execute`, `critic`, or
+        `reconcile`. Preserve the rest of the message as owner payload.
+
+        Otherwise classify from current message plus `routerState`: project-setup · new-scope ·
+        evolve-scope · module-decomposition · multi-scope · recover-from-code · execute. Resolve
+        scope type for scope work. Ask one concise question only when alternatives would change the
+        owner or artifact boundary.
+
+        Apply the artifact reader test from `AX_READER_WITHOUT_SESSION_CONTEXT`: the selected owner
+        must produce artifacts understandable without memory of this conversation.
+
+        When alternatives exist, apply `AX_DIVERGE_BEFORE_RECOMMEND`; do not collapse them before the
+        operator can see the material trade-off. Confirm SCALE only for project/scope/module authoring
+        where it changes interview depth per `AX_SCALE_PROPORTIONAL_DEPTH`.
+        Execute, scaffold, critic, reconcile, and recovery do not need SCALE.
+
+        Apply `READINESS_PREFLIGHT_GATE` once to the read-only snapshot. Missing repository gate
+        scripts return to their owning infrastructure/spec authoring path; they never create a
+        session or migration branch.
+
+        `FLOW_VERSION=v1` may route to the explicit V1→V2 migration directive after operator
+        confirmation. `FLOW_VERSION=v2` never routes to migration. Invalid V2 structure is
+        `H_V2_INVALID` and returns to the relevant V2 authoring owner.
+      </Action>
+    </Step>
+    <Step id="STEP_2_ROUTE">
+      <Goal>Load exactly one owner.</Goal>
+      <Action>
+        <LOGIC_SWITCH>
+          WHEN flow version is v1 AND operator explicitly requests migration
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")
+          WHEN forced intent = scaffold
+            -> require well-formed, semantically current approval #1 markers in actual specs, else `H_SPEC_NOT_APPROVED`; READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")
+          WHEN forced intent = execute OR intent = execute
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")
+          WHEN forced intent = critic
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")
+          WHEN forced intent = reconcile
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")
+          WHEN intent = project-setup
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
+          WHEN intent = recover-from-code
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/recover-from-code.directive.xml")
+          WHEN intent = module-decomposition
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type = infrastructure
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type = interface
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type in {product, library}
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
+          OTHERWISE -> H_AMBIGUOUS_INTENT
+        </LOGIC_SWITCH>
+        Per `AX_STATELESS_ARTIFACT`, multi-scope work processes scopes in dependency order and obtains approval #1 for the complete
+        changed spec set. It is iteration over owners, not another workflow or session. Any durable
+        choice recorded by the selected owner follows `AX_DECISION_LOG_NON_OBVIOUS`: Decision Log
+        captures only non-obvious trade-offs, exceptions, and accepted risks.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SddRouter>

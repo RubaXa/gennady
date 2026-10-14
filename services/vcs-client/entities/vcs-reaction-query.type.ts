@@ -1,6 +1,6 @@
 // @file: Parameters for adding/removing an emoji reaction on a merge request note.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientReactions
-// @tasks: TSK-98
 
 /**
  * @purpose Parameters for an emoji reaction: project, MR/PR iid, note id, emoji name.

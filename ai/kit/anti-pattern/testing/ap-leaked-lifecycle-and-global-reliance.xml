@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<AntiPattern id="AP_LEAKED_LIFECYCLE_AND_GLOBAL_RELIANCE">
+  <Bad>Test file has no imports (relies on `globals: true`). Inside a case: `vi.useFakeTimers(); vi.setSystemTime(...); vi.stubEnv('TICK', '1000');` without paired teardown.</Bad>
+  <WhyBad>Reliance on `globals: true` (`AX_EXPLICIT_VITEST_IMPORTS`). Fake timers and env stubs without paired teardown (`AX_TIME_ENV_GLOBAL_LIFECYCLE`). State leaks into subsequent cases → order-dependent flicker.</WhyBad>
+  <Good>Explicit imports; `beforeEach` enables fake timers + env stubs; `afterEach` calls `vi.useRealTimers()` + `vi.unstubAllEnvs()` (see `PT_LIFECYCLE_CONTEXT_WITH_CLEANUP`).</Good>
+</AntiPattern>

@@ -1,0 +1,6 @@
+<!-- source: sdd-opt-v1 HALT_FORMAT -->
+<Contract id="HALT_FORMAT">
+  A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+  🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+</Contract>

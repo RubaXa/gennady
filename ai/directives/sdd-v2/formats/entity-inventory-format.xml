@@ -1,0 +1,54 @@
+<Contract id="ENTITY_INVENTORY_FORMAT">
+  `AX_SPEC_TABLE_IS_INDEX` (v2, `shared/sdd/check.ts`): a table is an index, not text — `Purpose` is
+  one short line (checked: ≤120 chars, one sentence, no `<br>`); anything longer moves to that
+  entity's `### <EntityName>` block in Entity Surfaces, not into this cell.
+
+  ```markdown
+  ## Entity Inventory
+
+  _Это полный список сущностей модуля. Любое введение сущности execution-агентом помимо этого списка считается drift'ом и требует обновления spec._
+
+  | Name | Type | Purpose |
+  |------|------|---------|
+  | `OrderProcessor` | Service | Композитная обработка lifecycle заказа |
+  | `PaymentGatewayPort` | Port | Абстракция для списания средств |
+  | `StripePaymentAdapter` | Adapter | Реализация PaymentGatewayPort через Stripe |
+  | `RefundLedger` | Service | Учёт возвратов — Deferred Implementation: INP-rel-dep |
+  ```
+
+  **`Deferred Implementation: <TSK-id>`** — a declared entity whose build is deliberately owned
+  by a FUTURE ticket, not this module's current Round. Append it to that row's `Purpose` cell (or
+  to a bullet-row's tail, same style as `Deferred Test Ownership:` in Test Scenario Coverage): the
+  entity may exist in this Inventory with no code behind it yet without being drift. `gennady
+  lint --spec=<spec> --inventory-reverse <code-root>` reads the marker and reports that row as an
+  informational line, never `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` — the reverse sweep still
+  flags every OTHER declared-but-unbuilt entity as drift exactly as before.
+
+  **Errors ownership is first-class**, not an afterthought: either one row above is the explicit
+  errors owner (its `Purpose` says so, e.g. «Владеет обработкой/показом ошибок платежа»), or the
+  inventory carries one extra line right under the table:
+
+  ```markdown
+  Ошибки: <механизм — throw | Result | event | …> → <владелец: EntityName>
+  ```
+
+  A BDD ticket downstream cannot require behavior on an error whose owner is absent from this
+  inventory — that gap is caught here, before approval, not discovered later at scaffold time.
+
+  **ER sketch — mandatory once ≥2 entities are relationally connected** (one references, owns,
+  or is composed of another): the table alone shows WHAT exists, not HOW the entities relate,
+  and a relationship among ≥2 elements is exactly the case a picture beats a paragraph
+  (`AX_INFOGRAPHIC_FIRST`, `formats/diagram-vocabulary.xml`). Add it directly under the table:
+
+  ```markdown
+  Order ──1:N──▶ OrderLine
+    - id (PK)      - id (PK)
+    - customerId   - orderId (FK)
+  ```
+
+  A single-entity inventory (nothing to relate) or a set of genuinely unrelated entities skips
+  the sketch — state which case applies, never leave the reader guessing. This ASCII form is
+  shown in chat during the STEP_2_ENTITY_INVENTORY interview, at the point the entities and
+  their relations are confirmed (`AX_CHAT_BEFORE_SPEC`); the mermaid `erDiagram` version below
+  the table is the same shape, not a fresh diagram invented at write time.
+</Contract>

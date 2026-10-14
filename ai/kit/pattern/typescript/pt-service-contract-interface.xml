@@ -1,0 +1,28 @@
+<!-- source: coding/typescript-rules.xml -->
+<Pattern id="PT_SERVICE_CONTRACT_INTERFACE">
+      <Intent>Service interface: precise optional-tag order, SLA in `@invariant`, side effects exposed explicitly.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // @file: Contract surface for vendor reservation integration.
+        // @consumers: OrderFulfillmentPipeline
+
+        /**
+         * @purpose Gateway for interacting with a vendor API.
+         * @invariant Retry Policy: Idempotent methods (GET) are retried up to 3 times.
+         * @invariant Error Policy: All HTTP 5xx are wrapped into VendorNetworkError.
+         */
+        export interface VendorGateway {
+            /**
+             * @purpose Synchronous reservation registration: lock stock at the vendor warehouse.
+             * @invariant Idempotency-Ref must be propagated unchanged across retries; vendor error boundary not normalized before cause-chaining.
+             * @param idempotencyKey Key (UUIDv4) to prevent duplicated reservations during network retries.
+             * @throws {VendorStockError} Item is out of stock at the vendor.
+             * @returns Internal identifier of the created reservation in the vendor system.
+             * @sideEffect Network: POST /v2/reservations
+             */
+            reserveStock(idempotencyKey: string): Promise<string>;
+        }
+        ```
+      </Snippet>
+      <Why>`interface` because this is a polymorphism point (Port), not a data shape. Invariants encode resilience policy that would otherwise be lost in the implementation.</Why>
+    </Pattern>

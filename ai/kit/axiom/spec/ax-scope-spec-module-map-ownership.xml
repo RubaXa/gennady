@@ -1,0 +1,17 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP" status="draft">
+  The `module` flow owns TWO sections in the scope spec (`specs/<scope>/<scope>.spec.md`):
+
+  - **Module Map** (`Module Map`) — append-only rows per module.
+  - **Approved Usage Example** (`Usage Example` section — library / product) — composition view. Every `module` flow invocation (`initial` / `add-module` / `refine-module`) rewrites this section as one user-facing flow over the current module set. Module-level snippets NOT inlined — anchor-link to each module's `Module Usage Example`. Skip rewrite only when scope has zero modules with public surface.
+
+  **Bidirectional consistency check** before handoff — both directions must pass:
+  - (→) every named abstraction in scope-spec Usage Example has a home in some module's `Entity Inventory`;
+  - (←) every module with public surface (≥1 entry in `Entity Surfaces`) either appears in scope-spec Usage Example OR carries `internal-only — not in composition view` in its `Module Decision Log`.
+
+  Failure of either direction → fix the gap before STEP_6 hands off.
+
+  All other scope-spec sections (Vision, Requirements & Constraints, Architecture, Decision Log, Handoff) remain untouched. Cross-scope module dependencies → `Scope Reference` in module-spec `Inter-Module Dependencies`, never a direct reference to another product scope's modules.
+
+  The `module` flow does NOT write to `specs/README.md` (that is the `root` flow's sole property).
+</Axiom>

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // @file: vcs-diff CLI command — list changed files in MR via getChanges; show file content via getFileContent.
+// @spec: CLI
 // @consumers: vcs-diff
-// @tasks: TSK-81
 
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
@@ -142,10 +143,7 @@ async function fetchChanges(
   context: VcsCliContext,
   iid: number
 ): Promise<VcsMergeRequestChanges[]> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   logger.info(`[fetchChanges] [idle → fetching] ${context.project}!${iid}`);
   const changes = await client.MergeRequests.getChanges({
@@ -172,10 +170,7 @@ async function fetchFileContent(
   path: string,
   ref: string
 ): Promise<string | null> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   logger.debug(`[fetchFileContent] [idle → fetching] ${context.project} path=${path} ref=${ref}`);
   const result = await client.RepositoryFiles!.getFileContent({
@@ -215,12 +210,14 @@ export async function run(
     ref: { aliases: ['ref'], takesValue: true },
     path: { aliases: ['path'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
 
   const vcsArgs: VcsCliArgs = {
     ref: args.ref as string | undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   const filePath = args.path as string | undefined;

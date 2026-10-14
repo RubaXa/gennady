@@ -1,0 +1,20 @@
+<!-- source: sdd/discovery.directive.xml -->
+<Pattern id="EXAMPLE_CONTRACTS">
+      ```markdown
+      # api-contracts: Contracts Specification
+
+      ## 2. Interface Declaration
+      - Schema format: OpenAPI 3.1
+      - Versioning: date-based (`/v2026-05-01/...`)
+      - Namespace: `api.example.com`
+
+      ## 3. Versioning Policy
+      Breaking changes требуют новой date-версии + 6 мес deprecation окна; non-breaking — same version, additive only.
+
+      ## 4. Compatibility Matrix
+      | Consumer | Min version | Breaking protocol |
+      |---|---|---|
+      | backend | 2026-05-01 | dual-publish on transition |
+      | web | 2026-05-01 | client codegen via openapi-typescript |
+      ```
+    </Pattern>

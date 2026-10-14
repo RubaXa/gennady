@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<Axiom id="AX_SNAPSHOT_FILE_LOCATION">
+      `t.assert.snapshot()` / `t.assert.fileSnapshot()` outputs live in a dedicated `snapshots/` directory next to the test area. Updates go ONLY through the runner's snapshot-update flow under inherited `AX_SNAPSHOT_OPERATOR_CONFIRM` — manual edits to snapshot files are forbidden (they enable silent contract drift).
+    </Axiom>

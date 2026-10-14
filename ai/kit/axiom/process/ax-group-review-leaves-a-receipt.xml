@@ -1,0 +1,15 @@
+<Axiom id="AX_GROUP_REVIEW_LEAVES_A_RECEIPT">
+      The same durable-fact rule holds for the behavioural `sdd-code-review` half of the group hook: a
+      group is not "reviewed" until the CLI has recorded ONE `SDD_REVIEW_RECEIPT` on the owning spec. A
+      skipped behavioural review is at least as dangerous as a skipped audit, so it leaves the same kind
+      of receipt — and only the ran+verdict FACT, never the findings (findings route per
+      `AX_EPHEMERAL_OUTPUT`).
+
+      After the group audit passes and the read-only `sdd-code-review` returns, the execute orchestrator —
+      never the review worker — runs `sdd-log <group> review-receipt <verdict>`. The CLI re-resolves the
+      group, refuses unless every member is `[x] DONE`, binds to the reviewed git ref, and writes the
+      CLI-owned block atomically on the owning spec. `sdd-check` re-derives the group and emits
+      `SDD_GROUP_REVIEW_MISSING` when a complete group has no valid, non-stale review receipt; a reopen
+      invalidates it until re-review. This is a second group invariant, distinct from
+      `AX_VERIFICATION_BEFORE_HANDOFF` (which stays the per-phase impl/test receipt and is unchanged).
+    </Axiom>

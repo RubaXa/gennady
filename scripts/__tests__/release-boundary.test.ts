@@ -1,0 +1,885 @@
+// @file: Causal UV-27B cutover identity, external ACK and npm-denial contract tests.
+// @spec: INFRA-BASE
+// @consumers: package audit:release-boundary; UV-27B review evidence
+
+import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
+import {
+  existsSync,
+  chmodSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { afterEach, describe, it } from 'node:test';
+import {
+  authorizeCutoverCandidate,
+  denyNpmPublication,
+  inspectCutoverCandidate,
+  type ReleaseBoundaryPolicy,
+  type ReleaseBoundaryPorts,
+} from '../release-boundary.ts';
+
+const projectRoot = resolve(import.meta.dirname, '../..');
+const temporaryRoots: string[] = [];
+const digest = 'a'.repeat(64);
+const denialCode = 'UV27B_NPM_PUBLICATION_DENIED';
+
+function temporaryRoot(name: string): string {
+  const root = mkdtempSync(join(tmpdir(), `gennady-${name}-`));
+  temporaryRoots.push(root);
+  return root;
+}
+
+afterEach(() => {
+  while (temporaryRoots.length > 0) rmSync(temporaryRoots.pop()!, { recursive: true, force: true });
+});
+
+function git(root: string, ...args: string[]): string {
+  return execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  }).trim();
+}
+
+function write(root: string, path: string, value: string): void {
+  const target = join(root, path);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, value, 'utf8');
+}
+
+function commit(root: string, message: string): string {
+  git(root, 'add', '-A');
+  git(root, 'commit', '-m', message);
+  return git(root, 'rev-parse', 'HEAD');
+}
+
+type Fixture = {
+  root: string;
+  remote: string;
+  mainSha: string;
+  sourceCommit: string;
+  candidateHead: string;
+  policy: ReleaseBoundaryPolicy;
+  ports: ReleaseBoundaryPorts;
+};
+
+function createFixture(): Fixture {
+  const holder = temporaryRoot('uv27b');
+  const root = join(holder, 'repo');
+  const remote = join(holder, 'remote.git');
+  mkdirSync(root);
+  git(holder, 'init', '--bare', remote);
+  git(root, 'init', '-b', 'main');
+  git(root, 'config', 'user.name', 'UV27B Test');
+  git(root, 'config', 'user.email', 'uv27b@example.invalid');
+  write(root, 'package.json', '{"name":"fixture","version":"1.0.0"}\n');
+  write(root, 'checker.ts', '// immutable UV-25 checker\n');
+  write(root, 'checker-e18.ts', '// immutable UV-26 checker\n');
+  write(root, 'obsolete.txt', 'removed by product source\n');
+  const mainSha = commit(root, 'main base');
+  git(root, 'remote', 'add', 'origin', remote);
+  git(root, 'push', '-u', 'origin', 'main');
+  git(root, 'checkout', '-b', 'codex/sdd-v2-rc52-followup');
+  rmSync(join(root, 'obsolete.txt'));
+  write(root, 'src/product.ts', 'export const product = 1;\n');
+  const sourceCommit = commit(root, 'product source');
+  write(
+    root,
+    'evidence/manifest.json',
+    `${JSON.stringify(
+      {
+        schema: 'gennady.rc-evidence-pack.v2',
+        sourceCommit,
+        commands: [{ logFile: 'logs/result.log' }],
+      },
+      null,
+      2
+    )}\n`
+  );
+  write(root, 'evidence/README.md', '# evidence\n');
+  write(root, 'evidence/logs/result.log', 'PASS\n');
+  write(
+    root,
+    'evidence/e18.json',
+    `${JSON.stringify({
+      schema: 'gennady.e18-exact-evidence.v2',
+      sourceCommit,
+      status: 'PASS',
+      environment: 'cloud-ios',
+    })}\n`
+  );
+  const candidateHead = commit(root, 'evidence only');
+  git(root, 'push', '-u', 'origin', 'codex/sdd-v2-rc52-followup');
+  const policy: ReleaseBoundaryPolicy = {
+    schemaVersion: 'gennady.release-boundary-policy.v1',
+    releaseBranch: 'codex/sdd-v2-rc52-followup',
+    releaseUpstream: 'origin/codex/sdd-v2-rc52-followup',
+    mainRef: 'origin/main',
+    uv25Manifest: 'evidence/manifest.json',
+    uv25Checker: 'checker.ts',
+    uv26Evidence: 'evidence/e18.json',
+    uv26Checker: 'checker-e18.ts',
+    relevantFiles: ['package.json'],
+    authorityScanPaths: ['.github/workflows', '.gitlab-ci.yml', '.npmrc', '.yarnrc.yml'],
+    forbiddenAuthEnvironment: ['NODE_AUTH_TOKEN', 'NPM_CONFIG__AUTH', 'NPM_TOKEN'],
+  };
+  const ports: ReleaseBoundaryPorts = {
+    runMainCarry: () => ({
+      status: 0,
+      stdout: JSON.stringify({ rows: 520, commits: 117, manifestDigest: digest }),
+      stderr: '',
+    }),
+    environment: {},
+    runUv27a: () => ({
+      status: 0,
+      stdout: JSON.stringify({
+        schemaVersion: 'gennady.v1-eradication-report.v1',
+        ok: true,
+        policyDigest: digest,
+        inventoryDigest: digest,
+      }),
+      stderr: '',
+    }),
+    runUv25Checker: () => ({ status: 0, stdout: 'PASS\n', stderr: '' }),
+    runUv26Checker: (_root, _checker, evidence) => {
+      const bytes = readFileSync(join(root, evidence));
+      return {
+        status: 0,
+        stdout: JSON.stringify({
+          schema: 'gennady.e18-exact-check.v1',
+          ok: true,
+          derivedStatus: 'PASS',
+          sourceCommit,
+          evidenceDigest: createHash('sha256').update(bytes).digest('hex'),
+        }),
+        stderr: '',
+      };
+    },
+  };
+  return { root, remote, mainSha, sourceCommit, candidateHead, policy, ports };
+}
+
+function codes(report: ReturnType<typeof inspectCutoverCandidate>): string[] {
+  return report.blockers.map(({ code }) => code);
+}
+
+function repointRelease(fixture: Fixture): void {
+  git(fixture.root, 'push', '--force', 'origin', 'HEAD:codex/sdd-v2-rc52-followup');
+}
+
+function fakePublishEnvironment(name: string): { env: NodeJS.ProcessEnv; sentinel: string } {
+  const root = temporaryRoot(name);
+  const bin = join(root, 'bin');
+  const sentinel = join(root, 'spawned');
+  mkdirSync(bin);
+  for (const command of ['git', 'npm', 'release-it']) {
+    const path = join(bin, command);
+    writeFileSync(path, `#!/bin/sh\nprintf invoked > "${sentinel}"\n`, { mode: 0o755 });
+  }
+  return { env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ''}` }, sentinel };
+}
+
+describe('UV-27B cutover candidate', () => {
+  it('accepts one exact evidence-only descendant and binds both full SHAs', () => {
+    const fixture = createFixture();
+    const first = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    const second = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(first.eligible, true, JSON.stringify(first.blockers));
+    assert.equal(first.identity.evidenceSourceCommit, fixture.sourceCommit);
+    assert.equal(first.identity.headSha, fixture.candidateHead);
+    assert.equal(first.candidateDigest, second.candidateDigest);
+    assert.deepEqual(
+      first.diff.evidenceSourceToCandidate.entries.map(({ path }) => path),
+      [
+        'evidence/README.md',
+        'evidence/e18.json',
+        'evidence/logs/result.log',
+        'evidence/manifest.json',
+      ]
+    );
+    const deletion = first.diff.mainToCandidate.entries.find(({ path }) => path === 'obsolete.txt');
+    assert.equal(deletion?.status, 'D');
+    assert.match(deletion?.oldObject ?? '', /^[0-9a-f]{40}$/u);
+    assert.equal(deletion?.newObject, '0'.repeat(40));
+    assert.equal(
+      authorizeCutoverCandidate(fixture.root, first.challenge, fixture.ports, fixture.policy)
+        .candidateDigest,
+      first.candidateDigest
+    );
+  });
+
+  it('rejects an arbitrary ancestor whose delta includes product bytes', () => {
+    const fixture = createFixture();
+    const manifestPath = join(fixture.root, 'evidence/manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+    manifest.sourceCommit = fixture.mainSha;
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    commit(fixture.root, 'point at arbitrary ancestor');
+    repointRelease(fixture);
+    assert.ok(
+      codes(inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy)).includes(
+        'CUTOVER_PRODUCT_DRIFT_AFTER_EVIDENCE_SOURCE'
+      )
+    );
+  });
+
+  it('rejects one product byte committed after evidence source', () => {
+    const fixture = createFixture();
+    write(fixture.root, 'src/product.ts', 'export const product = 2;\n');
+    commit(fixture.root, 'product drift');
+    repointRelease(fixture);
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_PRODUCT_DRIFT_AFTER_EVIDENCE_SOURCE'));
+    assert.match(
+      report.blockers.find(({ code }) => code === 'CUTOVER_PRODUCT_DRIFT_AFTER_EVIDENCE_SOURCE')!
+        .detail,
+      /src\/product\.ts/u
+    );
+  });
+
+  it('rejects an extra file in the evidence root', () => {
+    const fixture = createFixture();
+    write(fixture.root, 'evidence/undeclared.txt', 'not in manifest\n');
+    commit(fixture.root, 'extra evidence');
+    repointRelease(fixture);
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_PRODUCT_DRIFT_AFTER_EVIDENCE_SOURCE'));
+  });
+
+  it('rejects a source commit that is not an ancestor', () => {
+    const fixture = createFixture();
+    git(fixture.root, 'checkout', '--orphan', 'unrelated');
+    git(fixture.root, 'rm', '-rf', '.');
+    write(fixture.root, 'unrelated.txt', 'unrelated\n');
+    const unrelated = commit(fixture.root, 'unrelated');
+    git(fixture.root, 'checkout', 'codex/sdd-v2-rc52-followup');
+    const manifestPath = join(fixture.root, 'evidence/manifest.json');
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+    manifest.sourceCommit = unrelated;
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    commit(fixture.root, 'non-ancestor source');
+    repointRelease(fixture);
+    assert.ok(
+      codes(inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy)).includes(
+        'CUTOVER_EVIDENCE_SOURCE_NOT_ANCESTOR'
+      )
+    );
+  });
+
+  it('fails closed for branch/upstream divergence, dirty tree and stale main ancestry', () => {
+    const fixture = createFixture();
+    git(fixture.root, 'checkout', '-b', 'wrong-branch');
+    write(fixture.root, 'dirty.txt', 'dirty\n');
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_WRONG_BRANCH'));
+    assert.ok(codes(report).includes('CUTOVER_WRONG_UPSTREAM'));
+    assert.ok(codes(report).includes('CUTOVER_DIRTY_WORKTREE'));
+  });
+
+  it('rejects local HEAD that is not the exact upstream HEAD', () => {
+    const fixture = createFixture();
+    write(fixture.root, 'evidence/README.md', '# local-only evidence change\n');
+    commit(fixture.root, 'local only');
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_UPSTREAM_DIVERGED'));
+  });
+
+  it('rejects a stale local main remote-tracking ref', () => {
+    const fixture = createFixture();
+    git(fixture.root, 'push', 'origin', `${fixture.candidateHead}:refs/heads/main`);
+    git(fixture.root, 'update-ref', 'refs/remotes/origin/main', fixture.mainSha);
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_MAIN_REF_STALE'));
+  });
+
+  it('rejects strict frozen-MAIN drift before candidate and ACK even when archive integrity passed', () => {
+    const fixture = createFixture();
+    const ports = {
+      ...fixture.ports,
+      runMainCarry: () => ({
+        status: 1,
+        stdout: '',
+        stderr: 'MAIN_DISPOSITION_REF_DRIFT: origin/main advanced',
+      }),
+    };
+    const report = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_FROZEN_MAIN_INVALID'));
+    assert.throws(
+      () => authorizeCutoverCandidate(fixture.root, report.challenge, ports, fixture.policy),
+      /UV27B_CUTOVER_BLOCKED/
+    );
+  });
+
+  it('binds the independently checked frozen manifest identity into the exact challenge', () => {
+    const fixture = createFixture();
+    const before = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    const after = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runMainCarry: () => ({
+          status: 0,
+          stdout: JSON.stringify({ rows: 520, commits: 117, manifestDigest: 'b'.repeat(64) }),
+          stderr: '',
+        }),
+      },
+      fixture.policy
+    );
+    assert.notEqual(before.challenge, after.challenge);
+    assert.throws(
+      () =>
+        authorizeCutoverCandidate(
+          fixture.root,
+          before.challenge,
+          {
+            ...fixture.ports,
+            runMainCarry: () => ({
+              status: 0,
+              stdout: JSON.stringify({ rows: 520, commits: 117, manifestDigest: 'b'.repeat(64) }),
+              stderr: '',
+            }),
+          },
+          fixture.policy
+        ),
+      /UV27B_ACK_MISMATCH/
+    );
+  });
+
+  it('rejects malformed, false-count and invalid-digest frozen MAIN observations', () => {
+    const fixture = createFixture();
+    for (const stdout of [
+      'not-json',
+      '{}',
+      JSON.stringify({ rows: 519, commits: 117, manifestDigest: digest }),
+      JSON.stringify({ rows: 520, commits: 116, manifestDigest: digest }),
+      JSON.stringify({ rows: 520, commits: 117, manifestDigest: 'not-a-digest' }),
+    ]) {
+      assert.ok(
+        codes(
+          inspectCutoverCandidate(
+            fixture.root,
+            { ...fixture.ports, runMainCarry: () => ({ status: 0, stdout, stderr: '' }) },
+            fixture.policy
+          )
+        ).includes('CUTOVER_FROZEN_MAIN_INVALID')
+      );
+    }
+  });
+
+  it('the production observer always invokes strict pre-reconciliation, not integrity-only mode', () => {
+    const fixture = createFixture();
+    mkdirSync(join(fixture.root, 'node_modules'));
+    // Explicit loader tooling for the owned child, not a runtime/source consumer dependency.
+    symlinkSync(join(projectRoot, 'node_modules/tsx'), join(fixture.root, 'node_modules/tsx'));
+    write(
+      fixture.root,
+      'scripts/main-carry-disposition.ts',
+      `process.stderr.write('observed-strict:' + JSON.stringify(process.argv.slice(2))); process.exitCode = 1;\n`
+    );
+    const { runMainCarry: _seam, ...ports } = fixture.ports;
+    const report = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
+    const blocker = report.blockers.find(({ code }) => code === 'CUTOVER_FROZEN_MAIN_INVALID');
+    assert.ok(blocker);
+    assert.ok(blocker.detail.includes('observed-strict:["--pre-reconciliation"]'), blocker.detail);
+  });
+
+  it('rejects missing/malformed evidence and a non-PASS UV-27A report', () => {
+    const fixture = createFixture();
+    rmSync(join(fixture.root, 'evidence/e18.json'));
+    const ports: ReleaseBoundaryPorts = {
+      ...fixture.ports,
+      runUv27a: () => ({ status: 1, stdout: '{}', stderr: 'inventory drift' }),
+      runUv25Checker: () => ({ status: 1, stdout: '', stderr: 'manifest invalid' }),
+    };
+    const report = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_UV27A_INVALID'));
+    assert.ok(codes(report).includes('CUTOVER_UV25_INVALID'));
+    assert.equal(report.evidence.uv26.status, 'DEFERRED');
+    assert.ok(!codes(report).includes('CUTOVER_UV26_MISSING'));
+  });
+
+  it('defers genuinely absent optional E18 without executing its checker or disabling consumer gates', () => {
+    const fixture = createFixture();
+    rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+    commit(fixture.root, 'remove optional native proof');
+    repointRelease(fixture);
+    const report = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runUv26Checker: () => {
+          throw new Error('absent checker must not run');
+        },
+      },
+      fixture.policy
+    );
+    assert.equal(report.eligible, true, JSON.stringify(report.blockers));
+    assert.equal(report.evidence.uv26.status, 'DEFERRED');
+    assert.equal(report.evidence.uv26.checkerPassed, false);
+    assert.equal(report.swiftSupport.tier, 'UNVERIFIED');
+    assert.equal(report.swiftSupport.consumerPhaseGates, 'BLOCKING');
+    assert.equal(report.swiftSupport.policy.schema, 'gennady.swift-release-validation.v2');
+    assert.equal(report.swiftSupport.policy.e18Validation, 'DEFERRED_POST_MAIN_CUTOVER');
+  });
+
+  it('binds the unverified policy scope and optional evidence status into the exact ACK', () => {
+    const fixture = createFixture();
+    const before = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(before.evidence.uv26.status, 'PASS');
+    assert.equal(before.swiftSupport.tier, 'UNVERIFIED');
+    rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+    commit(fixture.root, 'defer optional proof');
+    repointRelease(fixture);
+    const after = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(after.eligible, true);
+    assert.notEqual(before.candidateDigest, after.candidateDigest);
+    const {
+      candidateDigest: _digest,
+      challenge: _challenge,
+      eligible: _eligible,
+      blockers: _blockers,
+      ...projection
+    } = after;
+    const canonical = (value: unknown): unknown =>
+      Array.isArray(value)
+        ? value.map(canonical)
+        : value !== null && typeof value === 'object'
+          ? Object.fromEntries(
+              Object.entries(value)
+                .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+                .map(([key, entry]) => [key, canonical(entry)])
+            )
+          : value;
+    assert.equal(
+      createHash('sha256')
+        .update(JSON.stringify(canonical(projection)))
+        .digest('hex'),
+      after.candidateDigest
+    );
+    const changed = {
+      ...projection,
+      swiftSupport: { ...projection.swiftSupport, tier: 'VERIFIED' },
+    };
+    assert.notEqual(
+      createHash('sha256')
+        .update(JSON.stringify(canonical(changed)))
+        .digest('hex'),
+      after.candidateDigest
+    );
+    assert.throws(
+      () =>
+        authorizeCutoverCandidate(fixture.root, before.challenge, fixture.ports, fixture.policy),
+      /UV27B_ACK_MISMATCH/
+    );
+  });
+
+  for (const variant of [
+    'symlink',
+    'dangling',
+    'directory',
+    'oversize',
+    'unreadable',
+    'ancestor-symlink',
+    'ancestor-file',
+  ] as const) {
+    it(`rejects unsafe optional E18 (${variant}) without checker execution or secret output`, () => {
+      const fixture = createFixture();
+      let path = join(fixture.root, fixture.policy.uv26Evidence);
+      rmSync(path);
+      if (variant === 'ancestor-symlink' || variant === 'ancestor-file') {
+        fixture.policy.uv26Evidence = 'unsafe/e18.json';
+        if (variant === 'ancestor-symlink')
+          symlinkSync(join(fixture.root, 'evidence'), join(fixture.root, 'unsafe'));
+        else write(fixture.root, 'unsafe', 'secret-never-print');
+      } else if (variant === 'symlink' || variant === 'dangling') {
+        symlinkSync(variant === 'symlink' ? 'manifest.json' : 'absent-secret-never-print', path);
+      } else if (variant === 'directory') mkdirSync(path);
+      else if (variant === 'oversize') writeFileSync(path, Buffer.alloc(32 * 1024 * 1024 + 1));
+      else {
+        writeFileSync(path, 'secret-never-print');
+        chmodSync(path, 0);
+      }
+      try {
+        const report = inspectCutoverCandidate(
+          fixture.root,
+          {
+            ...fixture.ports,
+            runUv26Checker: () => {
+              throw new Error('unsafe checker must not run');
+            },
+          },
+          fixture.policy
+        );
+        assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+        assert.equal(report.evidence.uv26.status, 'INVALID');
+        assert.equal(report.evidence.uv26.checkerPassed, false);
+        assert.doesNotMatch(JSON.stringify(report), /secret-never-print/);
+      } finally {
+        if (variant === 'unreadable') chmodSync(path, 0o600);
+      }
+    });
+  }
+
+  it('does not expose secret checker diagnostics for invalid optional evidence', () => {
+    const fixture = createFixture();
+    const report = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runUv26Checker: () => ({
+          status: 1,
+          stdout: 'secret-never-print',
+          stderr: 'token=secret-never-print',
+        }),
+      },
+      fixture.policy
+    );
+    assert.equal(report.evidence.uv26.status, 'INVALID');
+    assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    assert.doesNotMatch(JSON.stringify(report), /secret-never-print/);
+    write(
+      fixture.root,
+      fixture.policy.uv26Evidence,
+      JSON.stringify({ schema: 'secret-never-print', sourceCommit: 'secret-never-print' })
+    );
+    const malformed = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(malformed.evidence.uv26.status, 'INVALID');
+    assert.doesNotMatch(JSON.stringify(malformed), /secret-never-print/);
+  });
+
+  for (const variant of ['missing', 'symlink', 'unreadable'] as const) {
+    it(`rejects ${variant} optional checker when proof is present, but never reads it for absent proof`, () => {
+      const fixture = createFixture();
+      const checker = join(fixture.root, fixture.policy.uv26Checker);
+      if (variant === 'unreadable') chmodSync(checker, 0);
+      else {
+        rmSync(checker);
+        if (variant === 'symlink') symlinkSync('checker.ts', checker);
+      }
+      const ports = {
+        ...fixture.ports,
+        runUv26Checker: () => {
+          throw new Error('unsafe checker must not execute');
+        },
+      };
+      try {
+        const present = inspectCutoverCandidate(fixture.root, ports, fixture.policy);
+        assert.equal(present.evidence.uv26.status, 'INVALID');
+        assert.ok(codes(present).includes('CUTOVER_UV26_INVALID'));
+        rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+        assert.equal(
+          inspectCutoverCandidate(fixture.root, ports, fixture.policy).evidence.uv26.status,
+          'DEFERRED'
+        );
+      } finally {
+        if (variant === 'unreadable') chmodSync(checker, 0o600);
+      }
+    });
+  }
+
+  for (const variant of [
+    'leaf-before-open',
+    'ancestor-after-open',
+    'ancestor-after-read',
+  ] as const) {
+    it(`rejects optional proof replacement race ${variant} with nonblocking open`, (t) => {
+      const fixture = createFixture();
+      const evidence = join(fixture.root, fixture.policy.uv26Evidence);
+      const originalOpen = fs.openSync;
+      const originalRead = fs.readSync;
+      let swapped = false;
+      const replace = () => {
+        if (swapped) return;
+        swapped = true;
+        if (variant === 'leaf-before-open') {
+          renameSync(evidence, `${evidence}.old`);
+          writeFileSync(evidence, 'replacement');
+        } else {
+          renameSync(join(fixture.root, 'evidence'), join(fixture.root, 'replaced-evidence'));
+          symlinkSync('replaced-evidence', join(fixture.root, 'evidence'));
+        }
+      };
+      t.mock.method(fs, 'openSync', (path: fs.PathLike, flags: string | number, mode?: fs.Mode) => {
+        if (String(path) === evidence) {
+          assert.equal(typeof flags, 'number');
+          assert.ok((Number(flags) & fs.constants.O_NONBLOCK) !== 0);
+          if (variant === 'leaf-before-open') replace();
+          const fd = originalOpen(path, flags, mode);
+          if (variant === 'ancestor-after-open') replace();
+          return fd;
+        }
+        return originalOpen(path, flags, mode);
+      });
+      if (variant === 'ancestor-after-read')
+        t.mock.method(
+          fs,
+          'readSync',
+          (
+            fd: number,
+            buffer: NodeJS.ArrayBufferView,
+            offset: number,
+            length: number,
+            position: number | null
+          ) => {
+            const count = originalRead(fd, buffer, offset, length, position);
+            replace();
+            return count;
+          }
+        );
+      syncBuiltinESMExports();
+      try {
+        const report = inspectCutoverCandidate(
+          fixture.root,
+          {
+            ...fixture.ports,
+            runUv26Checker: () => {
+              throw new Error('raced checker must not execute');
+            },
+          },
+          fixture.policy
+        );
+        assert.equal(swapped, true);
+        assert.equal(report.evidence.uv26.status, 'INVALID');
+        assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+      } finally {
+        t.mock.restoreAll();
+        syncBuiltinESMExports();
+      }
+    });
+  }
+
+  it('never defers ENOENT caused by an observed ancestor becoming a dangling symlink', (t) => {
+    const fixture = createFixture();
+    const evidence = join(fixture.root, fixture.policy.uv26Evidence);
+    const original = fs.lstatSync;
+    let swapped = false;
+    t.mock.method(fs, 'lstatSync', (path: fs.PathLike, options?: fs.StatOptions) => {
+      if (String(path) === evidence && !swapped) {
+        swapped = true;
+        renameSync(join(fixture.root, 'evidence'), join(fixture.root, 'replaced-evidence'));
+        symlinkSync('absent', join(fixture.root, 'evidence'));
+      }
+      return original(path, options);
+    });
+    syncBuiltinESMExports();
+    try {
+      const report = inspectCutoverCandidate(
+        fixture.root,
+        {
+          ...fixture.ports,
+          runUv26Checker: () => {
+            throw new Error('unsafe checker must not run');
+          },
+        },
+        fixture.policy
+      );
+      assert.equal(swapped, true);
+      assert.equal(report.evidence.uv26.status, 'INVALID');
+      assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    } finally {
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+    }
+  });
+
+  it('still requires UV25 raw logs and manifest despite optional E18 absence', () => {
+    const fixture = createFixture();
+    rmSync(join(fixture.root, fixture.policy.uv26Evidence));
+    rmSync(join(fixture.root, 'evidence/logs/result.log'));
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.equal(report.evidence.uv26.status, 'DEFERRED');
+    assert.ok(
+      report.blockers.some(
+        ({ code, detail }) =>
+          code === 'CUTOVER_EVIDENCE_FILE_MISSING' && detail === 'evidence/logs/result.log'
+      )
+    );
+  });
+
+  it('rejects evidence bytes or checker identity changed during optional strict checking', () => {
+    for (const path of ['evidence/e18.json', 'checker-e18.ts']) {
+      const fixture = createFixture();
+      const report = inspectCutoverCandidate(
+        fixture.root,
+        {
+          ...fixture.ports,
+          runUv26Checker: (root, checker, evidence) => {
+            const result = fixture.ports.runUv26Checker!(root, checker, evidence);
+            write(fixture.root, path, 'changed during checker');
+            return result;
+          },
+        },
+        fixture.policy
+      );
+      assert.equal(report.evidence.uv26.status, 'INVALID');
+      assert.equal(report.evidence.uv26.checkerPassed, false);
+      assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    }
+  });
+
+  it('rejects authored UV-26 PASS when the independent checker cannot derive it', () => {
+    const fixture = createFixture();
+    const report = inspectCutoverCandidate(
+      fixture.root,
+      {
+        ...fixture.ports,
+        runUv26Checker: () => ({
+          status: 1,
+          stdout: JSON.stringify({
+            schema: 'gennady.e18-exact-check.v1',
+            ok: false,
+            derivedStatus: 'INVALID',
+            sourceCommit: fixture.sourceCommit,
+            evidenceDigest: digest,
+          }),
+          stderr: 'fabricated PASS',
+        }),
+      },
+      fixture.policy
+    );
+    assert.ok(codes(report).includes('CUTOVER_UV26_INVALID'));
+    assert.equal(report.evidence.uv26.checkerPassed, false);
+  });
+
+  it('requires an external exact non-reusable ACK and rechecks candidate drift', () => {
+    const fixture = createFixture();
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.throws(
+      () => authorizeCutoverCandidate(fixture.root, undefined, fixture.ports, fixture.policy),
+      /UV27B_ACK_MISSING/u
+    );
+    assert.throws(
+      () => authorizeCutoverCandidate(fixture.root, 'approved=true', fixture.ports, fixture.policy),
+      /UV27B_ACK_MISMATCH/u
+    );
+    write(fixture.root, 'evidence/README.md', '# changed evidence\n');
+    commit(fixture.root, 'evidence projection changed');
+    repointRelease(fixture);
+    assert.throws(
+      () =>
+        authorizeCutoverCandidate(fixture.root, report.challenge, fixture.ports, fixture.policy),
+      /UV27B_ACK_MISMATCH/u
+    );
+  });
+
+  it('rejects npm auth environment without exposing values', () => {
+    const fixture = createFixture();
+    const report = inspectCutoverCandidate(
+      fixture.root,
+      { ...fixture.ports, environment: { NPM_TOKEN: 'never-print-this-secret' } },
+      fixture.policy
+    );
+    assert.ok(codes(report).includes('CUTOVER_NPM_AUTH_PRESENT'));
+    assert.doesNotMatch(JSON.stringify(report), /never-print-this-secret/u);
+  });
+
+  it('rejects embedded workflow publication authority', () => {
+    const fixture = createFixture();
+    write(
+      fixture.root,
+      '.github/workflows/publish.yml',
+      'env:\n  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}\nsteps:\n  - run: npm publish\n'
+    );
+    commit(fixture.root, 'embedded authority');
+    repointRelease(fixture);
+    const report = inspectCutoverCandidate(fixture.root, fixture.ports, fixture.policy);
+    assert.ok(codes(report).includes('CUTOVER_EMBEDDED_PUBLISH_AUTHORITY'));
+  });
+
+  it('rejects malformed runtime policy before candidate inspection', () => {
+    const fixture = createFixture();
+    write(fixture.root, 'scripts/release-boundary.policy.json', '{"schemaVersion":"unknown"}\n');
+    assert.throws(
+      () => inspectCutoverCandidate(fixture.root, fixture.ports),
+      /release-boundary policy keys must be exactly|unsupported release-boundary policy schema/u
+    );
+  });
+
+  it('rejects unsafe and option-like Git refs before remote observation', () => {
+    const fixture = createFixture();
+    let remoteObservations = 0;
+    const ports: ReleaseBoundaryPorts = {
+      ...fixture.ports,
+      resolveRemoteRef: () => {
+        remoteObservations += 1;
+        throw new Error('remote observation must not run for an invalid policy');
+      },
+    };
+    const invalidPolicies: ReleaseBoundaryPolicy[] = [
+      { ...fixture.policy, releaseBranch: '-codex/release' },
+      { ...fixture.policy, releaseBranch: 'codex//release' },
+      { ...fixture.policy, releaseBranch: 'codex/.hidden' },
+      { ...fixture.policy, releaseBranch: 'codex/release.' },
+      { ...fixture.policy, releaseBranch: 'codex/release.lock' },
+      { ...fixture.policy, releaseBranch: 'codex/release@{upstream}' },
+      { ...fixture.policy, releaseBranch: 'codex\\release' },
+      {
+        ...fixture.policy,
+        releaseUpstream: '--upload-pack=evil/codex/sdd-v2-rc52-followup',
+      },
+      {
+        ...fixture.policy,
+        releaseUpstream: 'origin/other/codex/sdd-v2-rc52-followup',
+      },
+      { ...fixture.policy, mainRef: '-evil/main' },
+      { ...fixture.policy, mainRef: 'origin/../main' },
+    ];
+    for (const policy of invalidPolicies) {
+      assert.throws(
+        () => inspectCutoverCandidate(fixture.root, ports, policy),
+        /safe Git ref|safe remote|branch must equal/u
+      );
+    }
+    assert.equal(remoteObservations, 0);
+  });
+});
+
+describe('UV-27B npm publication denial', () => {
+  it('uses one stable exported denial', () => {
+    assert.throws(() => denyNpmPublication('test'), new RegExp(denialCode, 'u'));
+  });
+
+  for (const script of ['scripts/publish-next.ts', 'scripts/publish-draft.ts']) {
+    it(`${script} denies before child or manifest mutation`, () => {
+      const { env, sentinel } = fakePublishEnvironment('publish-deny');
+      const beforePackage = readFileSync(join(projectRoot, 'package.json'));
+      const result = spawnSync(process.execPath, ['--import', 'tsx', script], {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        env,
+      });
+      assert.notEqual(result.status, 0);
+      assert.match(`${result.stdout}${result.stderr}`, new RegExp(denialCode, 'u'));
+      assert.deepEqual(readFileSync(join(projectRoot, 'package.json')), beforePackage);
+      assert.equal(existsSync(sentinel), false);
+    });
+  }
+
+  for (const entrypoint of ['prepublishOnly', 'release'] as const) {
+    it(`package ${entrypoint} denies before its next command`, () => {
+      const { env, sentinel } = fakePublishEnvironment(`package-${entrypoint}`);
+      const packageJson = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8')) as {
+        scripts: Record<string, string>;
+      };
+      const result = spawnSync('/bin/sh', ['-c', packageJson.scripts[entrypoint]!], {
+        cwd: projectRoot,
+        encoding: 'utf8',
+        env,
+      });
+      assert.notEqual(result.status, 0);
+      assert.match(`${result.stdout}${result.stderr}`, new RegExp(denialCode, 'u'));
+      assert.equal(existsSync(sentinel), false);
+    });
+  }
+});

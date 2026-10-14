@@ -1,19 +1,19 @@
 // @file: SyncCommand — CLI entry point for gennady sync: parseArgs, resolve package, compare + copy directives.
+// @spec: CLI-SYNC
 // @consumers: gennady.ts
-// @tasks: TSK-53, TSK-54, TSK-56
 
-import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, statSync, readdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { collectAndCompare, resolvePackageDir } from './sync-core.ts';
-import { pluginSurfaceDirs } from '../../../services/plugins/plugin-assets.ts';
 import { formatSyncOutput } from '../../../shared/common/sync/sync-formatter.shared.ts';
 import type { SyncFileEntry, SyncOptions } from './sync.types.ts';
 import { ERR_SYNC_SUBDIR_NOT_FOUND } from './sync.types.ts';
 import type { SyncCoreDeps } from './sync-core.ts';
 import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
+import { v1ConsumerSyncRefusal } from '../../../shared/common/sync/v1-consumer-guard.ts';
 
 export type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 
@@ -57,6 +57,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   const _mkdir = deps?.mkdir ?? mkdirSync;
   const _stat = deps?.stat ?? statSync;
   const _readdir = deps?.readdir ?? readdirSync;
+  const _unlink = deps?.unlink ?? unlinkSync;
   const _resolvePackageDir = deps?.resolvePackageDir ?? resolvePackageDir;
   const _stdout = deps?.stdout ?? process.stdout;
   const _stderr = deps?.stderr ?? process.stderr;
@@ -74,6 +75,12 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
 
   const cwd = process.cwd();
 
+  const v1Refusal = v1ConsumerSyncRefusal(cwd);
+  if (v1Refusal) {
+    _stderr.write(`${v1Refusal}\n`);
+    return 1;
+  }
+
   // #region START_RESOLVE_PACKAGE — invariant: local node_modules > import.meta.resolve
   const packageDir = _resolvePackageDir(cwd, 'ai/directives');
   if (!packageDir) {
@@ -88,7 +95,6 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
 
   const opts: SyncOptions = {
     sourceDir: packageDir,
-    extraSourceDirs: pluginSurfaceDirs(_resolvePackageDir(cwd, 'plugins'), 'directives'),
     targetDir,
     subdirs: positional.length > 0 ? positional : undefined,
     dryRun,
@@ -102,11 +108,15 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
       mkdir: _mkdir as (p: string, opts?: { recursive: boolean }) => void,
       stat: (p: string) => _stat(p),
       readdir: _readdir,
+      unlink: _unlink,
       cwd,
     };
 
     const result = collectAndCompare(coreDeps, opts);
     formatAndWrite(result.entries, dryRun, _stdout, cwd, version);
+    for (const warning of result.warnings) {
+      _stdout.write(`Warning: ${warning}\n`);
+    }
     return 0;
   } catch (err) {
     const error = err as Error & { code?: string };

@@ -1,0 +1,441 @@
+// @file: Unit tests for the pure mechanical SDD checks.
+// @spec: SHARED
+// @consumers: check
+
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import {
+  checkTicket,
+  checkTicketAuthoringStructure,
+  isTicket,
+  scanBlockerTrail,
+  parsePhaseHandoffs,
+} from '../check.ts';
+
+const AUTHORING_CORRECTED = readFileSync(
+  new URL(
+    '../../../cli/cmd/sdd-check/__tests__/fixtures/authoring/corrected.task.md',
+    import.meta.url
+  ),
+  'utf-8'
+);
+
+const CLEAN = [
+  '<!--SECTION:META-->',
+  '- **Task-ID:** cli-foo',
+  '- **Status:** [x] DONE',
+  '<!--/SECTION:META-->',
+  '<!--SECTION:EXECUTION_LOG-->',
+  '### Round 1 — 2026-06-21, initial',
+  '#### P1',
+  '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+  '- [x] `2026-06-21T10:00:00Z` DONE',
+  '#### Round close',
+  '- [x] `2026-06-21T10:00:01Z` DONE',
+  '<!--/SECTION:EXECUTION_LOG-->',
+].join('\n');
+
+function codes(content: string): string[] {
+  return checkTicket('t.md', content).map((f) => f.code);
+}
+
+describe('checkTicketAuthoringStructure', () => {
+  it('accepts the complete corrected authoring fixture', () => {
+    assert.deepStrictEqual(checkTicketAuthoringStructure('ticket.md', AUTHORING_CORRECTED), []);
+  });
+
+  it('limits phase mode to the requested phase plus its dependency boundary', () => {
+    const brokenLaterPhase = AUTHORING_CORRECTED.replace(
+      '- **Objective:** prove the toolchain contract behavior',
+      '- **Objective:** <objective>'
+    );
+    assert.deepStrictEqual(checkTicketAuthoringStructure('ticket.md', brokenLaterPhase, 'P1'), []);
+    assert.ok(
+      checkTicketAuthoringStructure('ticket.md', brokenLaterPhase, 'P2').some(
+        (finding) =>
+          finding.code === 'SDD_AUTHORING_PHASE_INCOMPLETE' &&
+          finding.message.startsWith('[PHASE_P2] Fix:')
+      )
+    );
+  });
+
+  it('reports dependency, contract, and test-phase mapping drift with stable codes and lines', () => {
+    const broken = AUTHORING_CORRECTED.replace('- **Inputs:** P1 handoff', '- **Inputs:** none')
+      .replace('[`contract`]', '[`unit`]')
+      .replace('`test/toolchain.test.ts` ::', '`test/unowned.test.ts` ::');
+    const findings = checkTicketAuthoringStructure('ticket.md', broken);
+
+    for (const code of [
+      'SDD_AUTHORING_PHASE_DEPENDENCY',
+      'SDD_AUTHORING_BDD_CONTRACT',
+      'SDD_AUTHORING_BDD_PHASE',
+    ]) {
+      const finding = findings.find((candidate) => candidate.code === code);
+      assert.ok(finding, `missing ${code}`);
+      assert.ok((finding.line ?? 0) > 0, `${code} must carry an absolute file line`);
+      assert.match(finding.message, /^\[[A-Z0-9_]+\] (?:Fix:|Example:)/);
+    }
+  });
+
+  it('teaches the bootstrap command-probe repair without sending the author to another example', () => {
+    const bootstrapOnly = AUTHORING_CORRECTED.replace(
+      '| P1 | impl | — | [ ] |',
+      '| P1 | bootstrap | — | [ ] |'
+    )
+      .replace('\n| P2 | test | P1 | [ ] |', '')
+      .replace(/\n<!--SECTION:PHASE_P2-->[\s\S]*?<!--\/SECTION:PHASE_P2-->/, '')
+      .replace(
+        '- creates the project toolchain → `test/toolchain.test.ts` :: `[INF-REQ-1] creates the project toolchain`',
+        '- creates the project toolchain → `package.json` :: `[INF-REQ-1] creates the project toolchain` :: command `npm run type-check`'
+      )
+      .replace(
+        '- rejects an invalid project root → `test/toolchain.test.ts` :: `[INF-REQ-2] rejects an invalid project root`',
+        '- rejects an invalid project root → `package.json` :: `[INF-REQ-2] rejects an invalid project root`'
+      );
+
+    const finding = checkTicketAuthoringStructure('infra.task.IB-gates.md', bootstrapOnly).find(
+      (candidate) => candidate.code === 'SDD_AUTHORING_BDD_PHASE'
+    );
+
+    assert.ok(finding);
+    assert.match(finding.message, /command-probe/i);
+    assert.match(finding.message, /test phase/i);
+    assert.match(finding.message, /future CREATE/i);
+    assert.match(finding.message, /package\.json is not test evidence/i);
+  });
+
+  it('accepts infrastructure target ownership without capability-program fields', () => {
+    const infrastructurePhase = AUTHORING_CORRECTED.replace(
+      '- **Objective:** create the toolchain contract implementation',
+      '- **Objective:** install the TypeScript toolchain dependency'
+    ).replace('  - src/toolchain.ts', '  - package.json\n  - package-lock.json');
+
+    assert.deepStrictEqual(
+      checkTicketAuthoringStructure('ticket.md', infrastructurePhase, 'P1'),
+      []
+    );
+  });
+});
+
+describe('isTicket', () => {
+  it('recognizes a ticket by META + EXECUTION_LOG', () => {
+    assert.strictEqual(isTicket(CLEAN), true);
+    assert.strictEqual(isTicket('<!--SECTION:META-->\nx\n<!--/SECTION:META-->'), false);
+  });
+});
+
+describe('checkTicket', () => {
+  it('clean DONE ticket → no findings', () => {
+    assert.deepStrictEqual(checkTicket('t.md', CLEAN), []);
+  });
+
+  it('flags a fabricated DONE — [x] line with an unreplaced placeholder', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] `2026-06-21T10:00:00Z` ver `<cmd>` → pass exit=0'
+    );
+    assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('flags a fabricated DONE — real [x] checkbox with a placeholder outside backticks', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] finished <task-name> outside backticks'
+    );
+    assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('does NOT flag the TASK_SKELETON Execution Log hint — its `[x]` and placeholder are both inline code', () => {
+    const c = CLEAN.replace(
+      '<!--SECTION:EXECUTION_LOG-->',
+      '<!--SECTION:EXECUTION_LOG-->\n' +
+        '*(A `[x]` line with an unreplaced `<…>` placeholder is a fabricated DONE — forbidden.)*'
+    );
+    assert.ok(!codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('does NOT flag a real type signature quoted in backticks (`Promise<TodoStore>`) on a checked line', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] `2026-06-21T10:00:00Z` returns `Promise<TodoStore>` → pass exit=0'
+    );
+    assert.ok(!codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('still flags a bare unbackticked placeholder (`<cmd>`) on a checked line', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] `2026-06-21T10:00:00Z` ver <cmd> → pass exit=0'
+    );
+    assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('still flags a whole-span backticked placeholder (`` `<ts>` ``) on a checked line', () => {
+    const c = CLEAN.replace(
+      '- [x] `2026-06-21T10:00:00Z` ver `npm run check` → pass exit=0',
+      '- [x] `<ts>` ver `npm run check` → pass exit=0'
+    );
+    assert.ok(codes(c).includes('SDD_FABRICATED_DONE'));
+  });
+
+  it('flags an unbalanced anchor', () => {
+    const c = CLEAN.replace('<!--/SECTION:META-->', '');
+    assert.ok(codes(c).includes('SDD_ANCHOR_UNBALANCED'));
+  });
+
+  it('flags a missing EXECUTION_LOG section', () => {
+    const c = [
+      '<!--SECTION:META-->',
+      '- **Task-ID:** cli-foo',
+      '- **Status:** [ ] TODO',
+      '<!--/SECTION:META-->',
+    ].join('\n');
+    // not a ticket by isTicket, but checkTicket still reports the missing log
+    assert.ok(codes(c).includes('SDD_MISSING_EXECUTION_LOG'));
+  });
+
+  it('flags DONE with an active blocker', () => {
+    const c = CLEAN.replace('#### P1', '#### P1\n- 🛑 BLOCKED waiting on operator');
+    assert.ok(codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+  });
+
+  it('does not flag DONE when the blocker was resolved later', () => {
+    const c = CLEAN.replace(
+      '#### P1',
+      '#### P1\n- 🛑 BLOCKED waiting\n- ✅ RESOLVED operator chose B'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+  });
+
+  // V-BATCH-15 F-2: checkTicket must read a `## Blocker Trail` resolution too — the mutation
+  // that drops the section's body from hasActiveBlocker left 217/217 tests green (no lock at
+  // all), because no existing case fed `## Blocker Trail` through checkTicket. Both directions:
+  it('a ## Blocker Trail resolution with a Round/phase back-reference clears an active blocker whose Round is already closed', () => {
+    const c =
+      CLEAN.replace('#### P1', '#### P1\n- 🛑 BLOCKED waiting on operator') +
+      '\n\n## Blocker Trail\n\n- [x] `2026-06-22T10:00:00Z` ✅ RESOLVED (Round 1 / P1): fixed\n';
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+    assert.ok(!codes(c).includes('SDD_BLOCKER_OPEN'));
+  });
+
+  it('the same ticket without a ## Blocker Trail section still flags the active blocker', () => {
+    const c = CLEAN.replace('#### P1', '#### P1\n- 🛑 BLOCKED waiting on operator');
+    assert.ok(codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+  });
+
+  it('warns (not errors) on an open blocker while Status is not DONE', () => {
+    const c = CLEAN.replace('- **Status:** [x] DONE', '- **Status:** [~] IN_PROGRESS').replace(
+      '#### P1',
+      '#### P1\n- 🛑 BLOCKED waiting on operator'
+    );
+    const findings = checkTicket('t.md', c);
+    const blocker = findings.find((f) => f.code === 'SDD_BLOCKER_OPEN');
+    assert.ok(blocker, 'expected an SDD_BLOCKER_OPEN finding');
+    assert.strictEqual(blocker?.severity, 'warn');
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_ACTIVE_BLOCKER'));
+  });
+
+  it('does not warn when a non-DONE ticket has no open blocker', () => {
+    const c = CLEAN.replace('- **Status:** [x] DONE', '- **Status:** [~] IN_PROGRESS');
+    assert.ok(!codes(c).includes('SDD_BLOCKER_OPEN'));
+  });
+
+  it('warns on DONE with leftover placeholders', () => {
+    const c = CLEAN.replace('- **Task-ID:** cli-foo', '- **Task-ID:** cli-foo\n- **Note:** <TBD>');
+    assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('does NOT warn on DONE when the only angle brackets are a backticked type signature', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Returns:** `Promise<TodoStore>`'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('does NOT warn when a formatter wraps an inline-code path across one line break', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Path:** `ai/directives/sdd-v2/<name>/\nsteps/<step-id>.xml`'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('does NOT warn when PascalCase angle brackets name an HTML-like directive tag', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Markup:** existing generic in a <Snippet>'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('does NOT warn on an array generic containing square brackets', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Returns:** Promise<string[]>'
+    );
+    assert.ok(!codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('still warns when a bare backticked scaffold token remains', () => {
+    const c = CLEAN.replace('- [x] `2026-06-21T10:00:00Z` DONE', '- [x] `<ts>` DONE');
+    assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('still warns on bare lowercase metanotation outside inline code', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Rule:** <contract>'
+    );
+    assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('an unmatched backtick does not mask a placeholder later in the document', () => {
+    const c = CLEAN.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Note:** `unclosed inline code\n- **Later:** <TBD>'
+    );
+    assert.ok(codes(c).includes('SDD_DONE_WITH_PLACEHOLDERS'));
+  });
+
+  it('warns on missing Task-ID and unparseable status', () => {
+    const c = [
+      '<!--SECTION:META-->',
+      '- **Purpose:** x',
+      '<!--/SECTION:META-->',
+      '<!--SECTION:EXECUTION_LOG-->',
+      'log',
+      '<!--/SECTION:EXECUTION_LOG-->',
+    ].join('\n');
+    const cs = codes(c);
+    assert.ok(cs.includes('SDD_MISSING_TASK_ID'));
+    assert.ok(cs.includes('SDD_STATUS_UNPARSEABLE'));
+  });
+});
+
+describe('scanBlockerTrail', () => {
+  it('no blockers → empty', () => {
+    assert.deepStrictEqual(scanBlockerTrail('#### P1\n- did the thing'), []);
+  });
+
+  it('one active blocker → its line text', () => {
+    const log = '#### P1\n- 🛑 BLOCKED waiting on operator';
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED waiting on operator']);
+  });
+
+  it('a resolved blocker leaves no active entries', () => {
+    const log = '#### P1\n- 🛑 BLOCKED waiting\n- ✅ RESOLVED operator chose B';
+    assert.deepStrictEqual(scanBlockerTrail(log), []);
+  });
+
+  it('FIFO pairing: two blockers, one resolved → the older stays active', () => {
+    const log = [
+      '- 🛑 BLOCKED first issue',
+      '- 🛑 BLOCKED second issue',
+      '- ✅ RESOLVED fixed first',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED second issue']);
+  });
+
+  it('pairs per phase block, not globally FIFO: a later phase resolution never closes an older, unrelated phase blocker', () => {
+    // Defect repro: P1 opens a blocker; P3 opens its OWN blocker; P3's own resolution (logged in
+    // its re-run block) must close P3's blocker, not P1's older, unrelated one. The old global-FIFO
+    // scan shifted the OLDEST push regardless of phase, so P1's blocker read as resolved and P3's
+    // own (the one actually fixed) stayed active — backwards.
+    const log = [
+      '#### P1',
+      '- 🛑 BLOCKED P1 issue',
+      '#### P3',
+      '- 🛑 BLOCKED P3 issue',
+      '#### P3 — re-run: fix',
+      '- ✅ RESOLVED P3 fixed',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED P1 issue']);
+  });
+
+  it('a re-run block of the SAME phase shares its pool with the original block (P5/P3/P7 live-ticket shape)', () => {
+    const log = [
+      '#### P5',
+      '- 🛑 BLOCKED P5 issue',
+      '#### P5 — re-run: fix F-x',
+      '- [x] `<ts>` ✅ RESOLVED: P5 issue fixed',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), []);
+  });
+
+  it('a bare mention of the word BLOCKED (no 🛑 marker) is never counted as a blocker', () => {
+    // Defect repro: a discovery/annotation line ABOUT a blocker (no 🛑 emoji) used to match the
+    // old `/🛑|BLOCKED/` OR-regex on the bare word alone.
+    const log = [
+      '#### P2',
+      '- [x] `<ts>` discovery second BLOCKED (00:21) was an unrelated lint issue, already fixed',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), []);
+  });
+
+  it('a bare mention of the word RESOLVED (no ✅ marker) never closes a real blocker', () => {
+    const log = [
+      '#### P1',
+      '- 🛑 BLOCKED real issue',
+      '#### P1 — re-run: fix',
+      '- [x] `<ts>` env-fix note ← the issue above is not actually RESOLVED yet, still investigating',
+    ].join('\n');
+    assert.deepStrictEqual(scanBlockerTrail(log), ['- 🛑 BLOCKED real issue']);
+  });
+});
+
+describe('parsePhaseHandoffs', () => {
+  it('a real Handoff line is captured verbatim, keyed by phase id', () => {
+    const log = [
+      '#### P1',
+      '- [x] `2026-06-21T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {
+      P1: '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    });
+  });
+
+  it('skips the Round-1 skeleton placeholder (artifacts/decisions/open all `[...]`) and picks up the later real close', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [ ] `<ts>` DONE',
+      '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+      '### Round 2 — 2026-06-22, execute',
+      '#### P1',
+      '- [x] `2026-06-22T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {
+      P1: '**Handoff →** artifacts: [src/foo.ts]; decisions: [none]; open: [none]',
+    });
+  });
+
+  it('a phase with only the skeleton placeholder — never actually closed — carries no entry at all', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [ ] `<ts>` DONE',
+      '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {});
+  });
+
+  it('a fix-repeat of the same phase in a later round overrides the earlier real close', () => {
+    const log = [
+      '### Round 1 — 2026-06-21, initial',
+      '#### P1',
+      '- [x] `2026-06-21T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/old.ts]; decisions: [none]; open: [none]',
+      '### Round 2 — 2026-06-22, fix F-01',
+      '#### P1',
+      '- [x] `2026-06-22T10:00:00Z` DONE',
+      '**Handoff →** artifacts: [src/new.ts]; decisions: [none]; open: [none]',
+    ].join('\n');
+    assert.deepStrictEqual(parsePhaseHandoffs(log), {
+      P1: '**Handoff →** artifacts: [src/new.ts]; decisions: [none]; open: [none]',
+    });
+  });
+});

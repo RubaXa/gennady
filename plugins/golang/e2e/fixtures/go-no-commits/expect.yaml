@@ -1,6 +1,6 @@
 notes: >
-  A git repo without a single commit cannot be replicated, so a drift gate is ENV_FAIL rather than a
-  code finding: there is no baseline to diff drift against.
+  A git repo without a single commit cannot measure guarded drift, so a drift gate is ENV_FAIL
+  rather than a code finding: there is no HEAD baseline.
 requires: [go]
 noCommit: true
 argv: ['--all']

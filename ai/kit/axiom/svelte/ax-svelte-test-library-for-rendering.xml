@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Axiom id="AX_SVELTE_TEST_LIBRARY_FOR_RENDERING">
+  Component rendering and querying go through `@testing-library/svelte`: `render(Component, { props })` for mounting; `screen.getByRole` / `getByLabelText` / `getByText` for querying. Direct `document.querySelector` / `container.querySelector` is forbidden as the default — it bypasses the accessibility-aware query layer that protects the test from CSS-coupling.
+
+  Reserved exception: an element with no semantic role AND no test-id where a selector is the only way to reach it; in that case the selector is paired with a comment naming the missing semantic.
+</Axiom>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-todo — mark todos done via Inbox.markTodoDone
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-76
 
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
@@ -12,6 +12,8 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { style } from '../../../shared/common/style.ts';
 import { logger } from '#logger';
 import { getGitRemote } from '../../../shared/backend/git/git-core.ts';
+import { loadRegistry, saveRegistry } from '../inbox/_core/logic/inbox-registry.logic.ts';
+import { resolveStateDir, registryPath } from '../inbox/_core/logic/state-paths.logic.ts';
 
 /** @purpose Options consumed by the vcs-todo main function. */
 type MainOpts = {
@@ -41,6 +43,37 @@ function resolveHost(host?: string): string | undefined {
 }
 // #endregion END_RESOLVE_HOST
 
+// #region START_PROMOTE_HEAD_ON_DONE
+/**
+ * @purpose After review completion, update lastReviewedHeadSha in the registry
+ *   so the next inbox-context can measure the delta correctly.
+ * @param ref MR ref in group/proj!iid format.
+ * @param dryRun Skip update in dry-run mode.
+ * @sideEffect Reads and writes inbox registry file.
+ */
+function promoteIfNotDry(ref: string, dryRun: boolean): void {
+  if (dryRun) return;
+  try {
+    const stateDir = resolveStateDir(process.argv.slice(2));
+    const path = registryPath(stateDir);
+    const registry = loadRegistry(path);
+    const sep = ref.lastIndexOf('!');
+    if (sep === -1) return;
+    const project = ref.slice(0, sep);
+    const iid = ref.slice(sep + 1);
+    const key = Object.keys(registry.entries).find(
+      (k) => registry.entries[k].project === project && registry.entries[k].iid === iid
+    );
+    if (!key) return;
+    // lastReviewedHeadSha is already written by inbox-context; no promotion needed.
+    saveRegistry(path, registry);
+  } catch (cause) {
+    const message = (cause as Error).message ?? String(cause);
+    console.error(style.yellow(`Warning: Failed to update reviewed head in registry: ${message}`));
+  }
+}
+// #endregion END_PROMOTE_HEAD_ON_DONE
+
 /**
  * @purpose Mark GitLab todos as done: either all todos for a given MR (--done <ref>)
  *   or a specific todo by id (--id <todoId>). Supports --dry-run.
@@ -52,19 +85,20 @@ function resolveHost(host?: string): string | undefined {
 export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: number }> {
   const dryRun = !!opts.dryRun;
 
-  const token = opts.vcsContext?.token ?? process.env.GITLAB_PERSONAL_TOKEN;
+  const token = opts.vcsContext?.token;
   const host = opts.vcsContext?.host ?? resolveHost(opts.host);
 
   if (!token) {
-    console.error(style.redBright.bold('✖ Ошибка:'), 'Не найден токен доступа GitLab.');
-    console.error('  Установите переменную окружения:');
-    console.error(style.cyan('  export GITLAB_PERSONAL_TOKEN="your_token_here"'));
+    console.error(style.redBright.bold('✖ Ошибка:'), 'Не найден токен доступа.');
+    console.error('  Установите переменную окружения для вашего провайдера:');
+    console.error(style.cyan('  GitHub: export GITHUB_PERSONAL_TOKEN="..."'));
+    console.error(style.cyan('  GitLab: export GITLAB_PERSONAL_TOKEN="..."'));
     return { ok: false, code: 1 };
   }
   if (!host) {
     console.error(
       style.redBright.bold('✖ Ошибка:'),
-      'Не определён GitLab-host. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
+      'Не определён VCS-хост. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
     );
     return { ok: false, code: 1 };
   }
@@ -115,21 +149,25 @@ export async function main(opts: MainOpts = {}): Promise<{ ok: boolean; code: nu
       if (!mr || mr.todoIds.length === 0) {
         console.info(style.yellow('ℹ No pending todos for this MR'));
         logger.info(`[vcs-todo] [fetching → no-todos] ${opts.doneRef}`);
+        promoteIfNotDry(opts.doneRef, dryRun);
         return { ok: true, code: 0 };
       }
 
       logger.info(`[vcs-todo] [fetching → marking] ${mr.todoIds.length} todos for ${opts.doneRef}`);
 
-      for (const todoId of mr.todoIds) {
-        if (dryRun) {
+      if (dryRun) {
+        for (const todoId of mr.todoIds) {
           console.info(`Would mark todo done: ${todoId}`);
-        } else {
+        }
+      } else {
+        for (const todoId of mr.todoIds) {
           await vcs.Inbox!.markTodoDone({ todoId });
           console.info(`${style.green('✔')} Todo marked done: ${todoId}`);
         }
       }
 
       logger.info(`[vcs-todo] [marking → done] ${mr.todoIds.length} todos for ${opts.doneRef}`);
+      promoteIfNotDry(opts.doneRef, dryRun);
       return { ok: true, code: 0 };
     } catch (cause) {
       const error = new Error(`[vcs-todo] Failed to process todos for ${opts.doneRef}`, { cause });
@@ -157,10 +195,13 @@ export async function run(rawArgs: string[] = process.argv): Promise<number> {
       id: { aliases: ['id'], takesValue: true },
       'dry-run': ['dry-run', 'dry'],
       'vcs-host': { aliases: ['vcs-host', 'host', 'vcs-source'], takesValue: true },
+      url: { aliases: ['url'], takesValue: true },
     });
 
     const vcsCliArgs: VcsCliArgs = {
       host: (args['vcs-host'] as string) || undefined,
+      url: args.url as string | undefined,
+      ref: args.done as string | undefined,
     };
 
     const vcsContext = await resolveVcsContext(vcsCliArgs);

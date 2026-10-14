@@ -1,6 +1,6 @@
 // @file: OpenCode model JSON parser — extracts model id
+// @spec: AGENT-MON
 // @consumers: OpenCodeProvider
-// @tasks: TSK-40
 
 /**
  * @purpose Extract the model id from a raw OpenCode model JSON string.

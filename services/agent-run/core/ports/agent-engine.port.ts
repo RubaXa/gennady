@@ -1,6 +1,6 @@
 // @file: Port contract for agent engine implementations.
+// @spec: AGENT-RUN-CORE
 // @consumers: registry, run
-// @tasks: TSK-62, TSK-64
 
 import type { RunOptions } from '../run-options.type.ts';
 import type { RunResult } from '../run-options.type.ts';

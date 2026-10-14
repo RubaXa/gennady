@@ -1,0 +1,53 @@
+$ node --import tsx --test cli/__tests__/tool-behavior/rules.test.ts shared/rules/__tests__/rule-resolver.test.ts shared/rules/__tests__/rule-snapshot.test.ts shared/rules/__tests__/rule-migration-equivalence.test.ts
+
+--- stdout ---
+(node:39175) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ gennady rules
+  ✔ lists the complete deterministic inventory and rejects stale stack/phase filters (1497.112708ms)
+  ✔ shows one exact prompt body and fails closed for an unknown id (1930.955542ms)
+  ✔ resolves exact/glob files with the same real snapshot digest as SDD dispatch and Verify (420.764417ms)
+  ✔ uses one selector-matched ticket phase and leaves dirty files, ticket and sentinel unchanged (409.828334ms)
+  ✔ materializes changed-from existing files and tombstones deterministically (881.407125ms)
+  ✔ fails closed for ambiguous/missing scope, escape, symlink and malformed embedded source (1661.593542ms)
+✔ gennady rules (6802.729625ms)
+(node:39176) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ embedded rule migration equivalence
+  ✔ preserves every old entry body, predicate intent, dependency and source exactly once (21.317375ms)
+  ✔ has no runtime central registry and no production consumer of its former filename (216.463125ms)
+✔ embedded rule migration equivalence (238.911542ms)
+(node:39177) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ RuleResolver predicate semantics
+  ✔ evaluates When clauses as OR, attributes as same-artifact AND, and comma values as OR (18.067875ms)
+  ✔ lets any matching Unless veto an otherwise matching rule (0.8625ms)
+  ✔ selects TS core + test-light + Vitest for tests while excluding production strictness (0.780041ms)
+  ✔ matches mixed artifact and phase/project facts without primary-stack fallback (0.942875ms)
+  ✔ fails closed when a descriptor supplies an unsupported predicate fact (0.605333ms)
+✔ RuleResolver predicate semantics (25.221333ms)
+▶ RuleResolver dependencies and overrides
+  ✔ closes dependencies transitively in deterministic topological then id order (0.429583ms)
+  ✔ fails closed for missing dependencies and cycles anywhere in the registry (0.201042ms)
+  ✔ applies reasoned add/skip overrides with provenance and preserves exact prompt identity (0.184ms)
+  ✔ rejects empty override evidence, conflicts, unknown ids, and skipped required dependencies (0.233833ms)
+✔ RuleResolver dependencies and overrides (1.2195ms)
+(node:39178) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+▶ RuleSnapshot canonical identity
+  ✔ is byte-identical and deeply frozen independent of registry and fact insertion order (18.679583ms)
+  ✔ changes for body, predicate, facts, override reason and override provenance drift (5.889208ms)
+  ✔ rejects absolute source identity instead of hashing host-specific paths (4.305875ms)
+✔ RuleSnapshot canonical identity (29.860291ms)
+ℹ tests 20
+ℹ suites 5
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7364.221583
+
+
+--- stderr ---
+

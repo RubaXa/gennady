@@ -1,3 +1,6 @@
+// @file: services/dbc/linter/implementations/ts/__tests__/fixtures/implements-see/only-param-redundant.ts
+// @spec: DBC-DBC-LINTER
+// @consumers: N/A
 /** @purpose Agent interface. */
 interface Agent {
   getInfo(id: string): void;

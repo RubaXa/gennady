@@ -1,6 +1,6 @@
 // @file: Unit tests for ps.ts — psInfo batch process inspection and parseClaudeArgs
+// @spec: AGENT-MON
 // @consumers: ClaudeProvider, monitor
-// @tasks: TSK-39
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

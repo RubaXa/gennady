@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<Axiom id="AX_SB_USE_AI_GENERATED_TAG">
+  Every agent-authored story carries the reserved tag (project canonical: `'ai-generated'`) in its `tags` array. This separates machine-authored from human-authored stories so human curators can audit, batch-update, or selectively re-test the agent output without scanning every file. Stripping or omitting the tag from an agent-authored story is forbidden.
+</Axiom>

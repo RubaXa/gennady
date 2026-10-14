@@ -1,0 +1,8 @@
+<!-- source: sdd/module-decomposition + discovery (converged); trimmed to invariant per AUTHORING.md §7 — the Stage A/B mechanics live in the executing step (scope STEP_7_RULE_ACTIVATION) -->
+<Axiom id="AX_RULE_ACTIVATION">
+  **Every rule activates through an explicit operator decision — never silently.** The decision is
+  two-staged: Stage A locks the relevance shortlist per category with the operator; Stage B walks
+  the axioms of `architecture/*` and `infra/*` rules for Accept (default) / Adapt / Override. Every
+  deviation from a rule default lands in the Decision Log. `coding/*` / `testing/*` rules stay
+  deferred — the phase-subagent loads them at phase entry per `phase-execution-protocol`.
+</Axiom>

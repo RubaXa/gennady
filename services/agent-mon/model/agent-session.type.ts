@@ -1,6 +1,6 @@
 // @file: Unified agent session model — single data format from all providers
+// @spec: AGENT-MON-MODEL
 // @consumers: monitor, diff, observe, providers/claude, providers/opencode
-// @tasks: TSK-35
 
 /** @purpose Normalized representation of an agent session across all providers. */
 export type AgentSession = {

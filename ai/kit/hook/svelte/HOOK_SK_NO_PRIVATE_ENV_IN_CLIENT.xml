@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Hook id="HOOK_SK_NO_PRIVATE_ENV_IN_CLIENT">
+<Purpose>Smoke-grep for private env imported from universal/client files.</Purpose>
+<Command>find src -type f \( -name '*.svelte' -o -name '+page.ts' -o -name '+layout.ts' \) -print0 | xargs -0 grep -nE "\\\$env/(static|dynamic)/private" || true</Command>
+<Expected>Empty output. Matches must move to `+page.server.ts` / `+layout.server.ts` / `$lib/server/`.</Expected>
+</Hook>

@@ -1,0 +1,74 @@
+<!-- source: coding/uikit-component-storybook.xml -->
+<Pattern id="PT_CANONICAL_STORIES_FILE">
+      <Intent>Complete canonical `.stories.ts` file for a uikit Button component.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import type { Meta, StoryObj } from '@storybook/svelte';
+        import { expect, within } from '@storybook/test';
+        import Button from './button.svelte';
+
+        const meta: Meta<typeof Button> = {
+          component: Button,
+          tags: ['autodocs', 'ai-generated'],
+          parameters: { a11y: { test: 'error' } },
+        };
+        export default meta;
+
+        type Story = StoryObj<typeof meta>;
+
+        // Accent / Primary / Small
+        export const AccentPrimarySmallNormal: Story = {
+          args: {
+            appearance: 'accent',
+            mode: 'primary',
+            size: 's',
+            state: 'normal',
+            label: 'Button',
+          },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders button with correct role and state', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toBeInTheDocument();
+              await expect(btn).toHaveAttribute('data-state', 'normal');
+            });
+          },
+        };
+
+        export const AccentPrimarySmallHover: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'hover' },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders hover state with correct attribute', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toHaveAttribute('data-state', 'hover');
+            });
+          },
+        };
+
+        export const AccentPrimarySmallActive: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'active' },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders active state with correct attribute and aria-pressed', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toHaveAttribute('data-state', 'active');
+            });
+          },
+        };
+
+        export const AccentPrimarySmallDisabled: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'disabled', disabled: true },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            await step('Renders disabled state with aria-disabled', async () => {
+              const btn = canvas.getByRole('button');
+              await expect(btn).toHaveAttribute('data-state', 'disabled');
+              await expect(btn).toHaveAttribute('aria-disabled', 'true');
+            });
+          },
+        };
+        ```
+      </Snippet>
+      <Why>One file per component; `meta` with `ai-generated` tag and a11y error-level; stories compose from base; every story has `play` with `getByRole` and `toHaveAttribute`; variant params are explicit; kebab-case import path.</Why>
+    </Pattern>

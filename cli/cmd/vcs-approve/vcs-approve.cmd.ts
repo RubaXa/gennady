@@ -1,7 +1,6 @@
-#!/usr/bin/env node
 // @file: Approve a GitLab merge request via CLI — resolve context, locate MR, call approve API.
+// @spec: CLI
 // @consumers: vcs-approve
-// @tasks: TSK-69, TSK-74
 
 import {
   resolveVcsContext,
@@ -9,6 +8,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
@@ -224,10 +224,7 @@ async function approveMr(
   webUrl: string | undefined,
   deps: VcsApproveDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   const query: VcsMergeRequestApproveQuery = {
     repository: context.project,
@@ -258,10 +255,7 @@ async function unapproveMr(
   webUrl: string | undefined,
   deps: VcsApproveDeps
 ): Promise<void> {
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   const query: VcsMergeRequestApproveQuery = {
     repository: context.project,
@@ -300,6 +294,7 @@ export async function run(
     iid: { aliases: ['iid'], takesValue: true },
     branch: { aliases: ['branch'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     'dry-run': ['dry-run', 'dry'],
     revoke: ['revoke', 'unapprove'],
   }) as Record<string, unknown>;
@@ -310,6 +305,7 @@ export async function run(
     iid: args.iid !== undefined ? Number(args.iid) : undefined,
     branch: args.branch as string | undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   const dryRun = !!args['dry-run'];

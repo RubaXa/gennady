@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Pattern id="AP_DISMISS_CONFUSION">Ignoring "I don't understand X". Always fix.</Pattern>

@@ -1,11 +1,11 @@
 // @file: Narrow a golang verify run to the packages actually under change, instead of the whole repo.
+// @spec: CLI-VERIFY
 // @consumers: golang-plugin, golang-plan.logic
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ScopeRequest } from 'gennady/stack';
-import { execFileTrimSafe } from 'gennady/stack';
+import { execFileTrimSafe } from '../../shared/verify/plugin-api.ts';
 import type { GoProject } from './golang-detect.logic.ts';
 
 /** Path segments whose packages are never worth verifying directly. */
@@ -123,6 +123,15 @@ function goFilesOf(root: string, changed: readonly string[]): string[] {
  */
 const WIDENING_RE =
   /^(?:go\.mod|go\.sum|go\.work|go\.work\.sum|\.golangci\.(?:yml|yaml|toml|json)|vendor\/)/;
+
+/**
+ * @purpose Identify a Go-owned source or build-definition path for multistack scope selection.
+ * @param relative Normalized repository-relative scope path.
+ * @returns True when the path belongs to Go source or project definition scope.
+ */
+export function isGolangScopePath(relative: string): boolean {
+  return relative.endsWith('.go') || WIDENING_RE.test(relative);
+}
 
 /**
  * @purpose Build the shared module-resolution flags so vendored repos never reach the network.

@@ -1,0 +1,39 @@
+<!-- source: stateless SDD v2 human-readable approval evidence -->
+<Contract id="ARTIFACT_APPROVAL_MARKER">
+  Approval evidence is ordinary, human-readable content in the canonical artifact. It is not a
+  session record, JSON sidecar, digest, fingerprint, or byte-level lock.
+
+  Approval #1 is a Decision Log entry in every specification in the reviewed set:
+
+  ```markdown
+  ### Approval #1 — current specification set
+  - **Status:** pending | approved
+  - **Reviewed set:** `specs/...`, `specs/...`
+  - **Independent review:** pending | clean | findings resolved
+  - **Operator decision:** pending | approved
+  - **Recorded:** YYYY-MM-DD
+  ```
+
+  Approval #2 is a section in the narrowest task index that owns the complete reviewed ticket set
+  (module, scope, or project index):
+
+  ```markdown
+  ## Approval #2 — decomposition and test plan
+  - **Status:** pending | approved
+  - **Reviewed tickets:** `specs/...task....md`, `specs/...task....md`
+  - **Independent review:** pending | clean | findings resolved
+  - **Operator decision:** pending | approved
+  - **Recorded:** YYYY-MM-DD
+  ```
+
+  Authoring starts with `pending`. A clean independent review updates only the review field. Operator
+  approval changes `Status` and `Operator decision` to `approved`. These metadata-only marker edits do
+  not require another review. Any later semantic edit to a listed spec, ticket, or owning index resets
+  the applicable marker to `pending`; for approval #1, reset every marker whose Reviewed set contains
+  the edited path. If staleness is uncertain, treat the marker as pending and repeat the boundary.
+
+  Mechanical checks own only marker presence, accepted field values, path existence, and membership.
+  The model owns the semantic question whether current Git changes make an apparently approved marker
+  stale. Git diff/history are evidence for that judgment, not a cryptographic gate. The agent never
+  computes or copies a content hash for approval.
+</Contract>

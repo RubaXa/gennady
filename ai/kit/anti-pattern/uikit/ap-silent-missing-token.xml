@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<AntiPattern id="AP_SILENT_MISSING_TOKEN">
+      <Bad>Пропуск строки в Token Mapping, когда токен не найден.</Bad>
+      <WhyBad>Измерение теряется. SpecValidator не может проверить, что все измерения покрыты.</WhyBad>
+      <Good>Строка с `⚠️ no token` в колонке Token и `Action = ⚠️`.</Good>
+</AntiPattern>

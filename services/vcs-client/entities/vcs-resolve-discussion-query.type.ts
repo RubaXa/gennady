@@ -1,6 +1,6 @@
 // @file: Value object for resolve discussion query parameters.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeDiscussions
-// @tasks: TSK-71
 
 /** @purpose Parameters for resolving or reopening an MR discussion. */
 export type VcsResolveDiscussionQuery = {

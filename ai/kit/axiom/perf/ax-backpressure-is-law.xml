@@ -1,0 +1,2 @@
+<!-- source: ai/directives/perf-auditor/rules/async-latency.xml -->
+<Axiom id="AX_BACKPRESSURE_IS_LAW">Чтение данных быстрее, чем их может обработать потребитель, накапливает бесконечный буфер в RAM. Игнорирование Backpressure — это прямой путь к OOM на устройствах с 4-8 GB памяти.</Axiom>

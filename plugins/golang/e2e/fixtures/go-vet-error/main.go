@@ -1,3 +1,6 @@
+// @file: plugins/golang/e2e/fixtures/go-vet-error/main.go
+// @spec: CLI-VERIFY
+// @consumers: N/A
 package main
 
 import "io"

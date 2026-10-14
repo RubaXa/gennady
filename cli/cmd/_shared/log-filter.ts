@@ -1,6 +1,6 @@
 // @file: Universal log filter — strips ANSI, keeps structural error lines, skips minified code.
+// @spec: CLI
 // @consumers: vcs-job-log, vcs-pipeline
-// @tasks: TSK-85
 
 /** @purpose ANSI escape sequence regex. */
 const ANSI_RE =

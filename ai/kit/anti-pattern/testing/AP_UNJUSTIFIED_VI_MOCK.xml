@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<AntiPattern id="AP_UNJUSTIFIED_VI_MOCK">
+  <Bad>`vi.mock('./http-client.ts', () => ({ httpClient: { get: vi.fn(...) } }))` for an in-process module; SUT instantiated as `new CatalogSync()` without injection.</Bad>
+  <WhyBad>`vi.mock` introduced without operator confirm and without justification (`AX_MOCK_REQUIRES_OPERATOR_CONFIRM`, inherited `AX_MOCK_AS_LAST_RESORT`). `httpClient` is in-process — the SUT could have accepted it as a constructor argument (`AX_HTTP_BOUNDARY_INJECTION`).</WhyBad>
+  <Good>SUT exposes injection seam: `class CatalogSync { constructor(deps: { httpRequest: HttpRequest }) {} }`. Test uses unified factory + `vi.fn()` stub through the seam (see `PT_DI_OVER_MOCK`).</Good>
+</AntiPattern>

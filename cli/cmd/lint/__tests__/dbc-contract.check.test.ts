@@ -1,6 +1,6 @@
 // @file: Integration tests for DbcContractCheck — SKIPPED: depends on tree-sitter native module.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-17
 
 import { describe, it } from 'node:test';
 

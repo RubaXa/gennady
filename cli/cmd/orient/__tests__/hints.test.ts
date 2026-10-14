@@ -1,6 +1,6 @@
 // @file: Unit tests for generateHints — contextual hint generation for each orient mode.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,7 +42,7 @@ describe('generateHints', () => {
   });
 
   it('contract hints token format: uses --flag=<value> syntax', () => {
-    const hints = generateHints(defaultArgs({ task: ['TSK-01'] }));
+    const hints = generateHints(defaultArgs({ task: ['DP-fields'] }));
     for (const h of hints) {
       assert.match(h, /orient /);
     }
@@ -55,7 +55,7 @@ describe('generateHints', () => {
   });
 
   it('task mode hints', () => {
-    const hints = generateHints(defaultArgs({ task: ['TSK-01'] }));
+    const hints = generateHints(defaultArgs({ task: ['DP-fields'] }));
     assert.ok(hints.length > 0);
   });
 

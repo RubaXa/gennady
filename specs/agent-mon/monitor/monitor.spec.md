@@ -1,5 +1,11 @@
 # Module: monitor
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-MONITOR
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Ядро библиотеки — Service `AgentMonitor`. Владеет реестром провайдеров, координирует сканирование, делегирует `diff` и `observe` в соответствующие модули.

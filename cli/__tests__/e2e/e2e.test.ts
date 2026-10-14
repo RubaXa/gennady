@@ -1,6 +1,6 @@
 // @file: E2E orchestrator — setup error-path tests + sequential lint → orient → sync → sync-skills.
+// @spec: CLI-E2E
 // @consumers: E2eContext, setupE2e
-// @tasks: TSK-60
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,10 +18,8 @@ import {
 import { registerLintTests } from './lint.e2e.test.ts';
 import { registerOrientTests } from './orient.e2e.test.ts';
 import { registerSyncTests } from './sync.e2e.test.ts';
-import {
-  registerSyncSkillsCheckoutTests,
-  registerSyncSkillsTests,
-} from './sync-skills.e2e.test.ts';
+import { registerSyncSkillsTests } from './sync-skills.e2e.test.ts';
+import { registerMigrationBootstrapTests } from './migration-bootstrap.e2e.test.ts';
 
 describe('setup', () => {
   it('should export setupE2e function', () => {
@@ -130,7 +128,7 @@ describe('cleanup', () => {
 describe('setup error paths', () => {
   function createExecSyncMock(failOn: 'none' | 'pack' | 'install') {
     return mock.fn((cmd: string, opts?: { encoding?: string }) => {
-      if (failOn === 'pack' && cmd === 'npm pack') {
+      if (failOn === 'pack' && cmd.startsWith('npm pack')) {
         const err = Object.assign(new Error('pack error'), { stderr: 'pack: ENOENT' });
         throw err;
       }
@@ -138,7 +136,7 @@ describe('setup error paths', () => {
         const err = Object.assign(new Error('install error'), { stderr: 'install: ENOENT' });
         throw err;
       }
-      if (cmd === 'npm pack') return 'gennady-1.0.0.tgz';
+      if (cmd.startsWith('npm pack')) return '[{"filename":"gennady-1.0.0.tgz"}]';
       return Buffer.from('ok');
     });
   }
@@ -276,9 +274,9 @@ if (isE2eRun) {
 
     registerLintTests();
     registerOrientTests();
+    registerMigrationBootstrapTests();
     registerSyncTests();
     registerSyncSkillsTests();
-    registerSyncSkillsCheckoutTests();
 
     describe('agents-rules', () => {
       it('should output README content', async () => {

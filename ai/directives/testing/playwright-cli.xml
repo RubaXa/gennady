@@ -1,4 +1,8 @@
-<PlaywrightCli keywords="playwright, playwright-cli, e2e-exploration, ax-tree, trace-viewer, codegen, debug, headless, locator-picker, aria-snapshot, screenshot, self-verify" type="testing-rules" ver="2.0">
+<PlaywrightCli rule-id="playwright-cli" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When tool="playwright-cli"/>
+  <When operation="ui-exploration"/>
+</Meta>
   <Mission>
     Canonical rules for exploring a running web application through Playwright CLI BEFORE codifying a committed e2e test. This directive gives every execution-agent perception (AX tree, screenshots, trace viewer) and interaction (role-based locators, codegen) so it can see the page, manipulate it, and confirm that the rendered structure matches intent.
 

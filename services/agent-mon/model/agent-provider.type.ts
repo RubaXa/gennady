@@ -1,6 +1,6 @@
 // @file: Provider contract — extension point for new agent systems
+// @spec: AGENT-MON-MODEL
 // @consumers: monitor, providers/claude, providers/opencode
-// @tasks: TSK-35
 
 import type { AgentSession } from './agent-session.type.js';
 import type { ScanOpts } from './scan-opts.type.js';

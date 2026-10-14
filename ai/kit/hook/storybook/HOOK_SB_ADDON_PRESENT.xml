@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<Hook id="HOOK_SB_ADDON_PRESENT">
+  <Purpose>Test/MCP addon is listed in Storybook config.</Purpose>
+  <Command>find .storybook -maxdepth 2 -type f \( -name 'main.ts' -o -name 'main.js' -o -name 'main.mts' \) -print0 | xargs -0 grep -nE 'addon-test|addon-mcp' || true</Command>
+  <Expected>At least one match. Empty output means the addon is not registered in `.storybook/main.*`.</Expected>
+</Hook>

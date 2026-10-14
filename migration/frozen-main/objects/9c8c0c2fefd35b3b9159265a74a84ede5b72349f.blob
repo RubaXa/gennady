@@ -1,0 +1,16 @@
+notes: >
+  The scope filter drops directories that are not packages; a package the change BROKE is not one
+  of them. Dropping on any `go list -e` error left this tree with no packages in scope, so build
+  and vet were skipped and the run was ALL_GATES_PASS while `go build ./...` failed. Deterministic
+  by construction: one package, one error, so there is no second package to catch it by luck.
+requires: [go]
+commit:
+  p/b.go: |
+    package other
+
+    func G() {}
+exitCode: 1
+gates:
+  golang:build:
+    status: fail
+    outputIncludes: ['found packages']

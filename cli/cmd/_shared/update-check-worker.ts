@@ -1,6 +1,6 @@
 // @file: Fire-and-forget npm registry check — isolated worker spawned by UpdateCheck service.
+// @spec: CLI
 // @consumers: UpdateCheck (spawn via cli/cmd/_shared/update-check.ts)
-// @tasks: TSK-33
 
 import { writeFileSync, readFileSync, renameSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';

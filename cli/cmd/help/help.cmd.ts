@@ -1,6 +1,6 @@
 // @file: CLI command: help
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-45, TSK-55, TSK-57, TSK-59, TSK-65, TSK-85
 
 console.info('Gennady CLI');
 console.info('');
@@ -27,17 +27,32 @@ console.info('  remote-console    Mirror browser console output into local stdou
 console.info(
   '  lint              Validate .ts files: headers, anchors, DBC contracts, invariants, disables'
 );
-console.info('  alt-opinion       Get alternative opinions from AI models with optional synthesis');
 console.info(
-  '  sync              Synchronize ai/directives/ from npm package into current project'
+  '  sync              Synchronize v2 ai/directives/ (refuses an SDD v1 consumer before writes)'
 );
-console.info('  sync-skills       Synchronize SDD skills from ai/skills/ to .claude/skills/');
+console.info(
+  '  sync-skills       Synchronize v2 SDD skills (refuses v1; --with-directives is opt-in)'
+);
 console.info(
   '  agent-mon         Interactive terminal dashboard for monitoring active AI agent sessions'
 );
 console.info(
   '  orient            Navigate file headers and DBC contracts — project map, search, dependency graph'
 );
+console.info('  sdd-orient        Show one spec or scope neighbourhood in the SDD graph');
+console.info('  sdd-state         Report deterministic project SDD state and readiness');
+console.info('  sdd-check         Run mechanical integrity checks over SDD artifacts');
+console.info('  sdd-extract       Extract one anchored section from an SDD artifact');
+console.info('  sdd-new           Scaffold one SDD v2 artifact');
+console.info('  sdd-verify        Thin SDD task/phase facade over universal Verify');
+console.info('  verify            Run one unified Verify phase; text or stable JSON report');
+console.info(
+  '  rules             Read-only embedded rule inventory, detail, and scoped resolution'
+);
+console.info('  sdd-log           Append an event or atomically complete a verified ticket phase');
+console.info('  sdd-sync          Propagate ticket status into task trackers');
+console.info('  sdd-task          Show the execution map or one ticket phase context');
+console.info('  sdd-migrate       Run deterministic SDD v1-to-v2 migration steps');
 console.info(
   '  agents-rules      Print usage instructions for AI agents (navigate public entities, DBC contracts, file headers)'
 );
@@ -46,9 +61,8 @@ console.info(
   '  testcov           Visual test coverage tree (vitest/jest/node:test auto-detection)'
 );
 console.info(
-  '  verify            Stack-agnostic verification gates (node + golang + anystack, gennady.yaml overrides)'
+  '  yagni             Flag added/changed symbols with fewer than 2 production-code usages'
 );
-console.info('  fix               Run mutating fixers (codegen, formatters) in the working tree');
 console.info('');
 console.info('Examples:');
 console.info('  npx gennady');

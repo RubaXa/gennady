@@ -1,0 +1,758 @@
+// @file: SddTaskCommand — CLI entry for gennady sdd-task: emit the ticket planning surface (Meta + phases + manifests + gates).
+// @spec: CLI-SDD-TASK
+// @consumers: gennady.ts
+
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { resolve, relative, join, dirname } from 'node:path';
+import { logger } from '#logger';
+import { parseArgs } from '../../../shared/common/parse-args.ts';
+import { extractSection, extractHeadingSection } from '../../../shared/sdd/section.ts';
+import {
+  parseMetaInfo,
+  parsePhasesOverview,
+  parsePhaseDetail,
+  parseVerificationTable,
+  parseTicketCoveragePolicy,
+  type PhaseDetail,
+} from '../../../shared/sdd/ticket.ts';
+import {
+  pickabilityBlockers,
+  pickableTasks,
+  type PickableAuditContext,
+} from '../../../shared/sdd/check.ts';
+import { scanBlockerTrail, parsePhaseHandoffs } from '../../../shared/sdd/execution-log.ts';
+import {
+  nodeReadinessAdapter,
+  resolveReadinessAdapter,
+  type ReadinessResult,
+} from '../../../shared/sdd/readiness.ts';
+import { detectRepoStack, primaryStackOf } from '../../../shared/verify/stack-detection.ts';
+import { resolveProjectSddVerifySelector } from '../../../shared/verify/planning/resolve-multistack.ts';
+import { loadStackConfig } from '../../../shared/verify/stack-config.ts';
+import { BUILTIN_GATE_IDS } from '../../../shared/verify/stack-registry.ts';
+import { parseScopes } from '../../../shared/sdd/portal.ts';
+import {
+  phaseOwnsMissingReadinessGate,
+  queuedInfraGateTicketIds,
+  type GateQueueResult,
+} from '../../../shared/sdd/gate-queue.ts';
+import {
+  collectTicketCorpus,
+  resolveTicketArg,
+  resolutionLine as buildResolutionLine,
+  type TicketCorpusRef,
+} from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  boundGroupChangedFiles,
+  resolveAuditGroup,
+  resolveOwningSpec,
+  validateTicketReviewPaths,
+  validateTicketTargetClaims,
+} from '../../../shared/sdd/audit-group.ts';
+import { hasValidGroupReceipt } from '../../../shared/sdd/group-receipt.ts';
+import { getChangedFiles } from '../../../shared/common/changed-files.ts';
+import { checkPhaseDependencies } from '../../../shared/sdd/phase-dependencies.ts';
+import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
+import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
+import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
+import { deviationIsOpen, parseDeviationRecords } from '../../../shared/sdd/deviation.ts';
+import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
+import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
+import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
+import {
+  phaseVerificationArtifactPaths,
+  resolvePhaseVerificationPlan,
+} from '../../../shared/sdd/phase-verification-plan.ts';
+import {
+  fileError,
+  formatPlan,
+  formatPhase,
+  phaseNotFound,
+  notATicket,
+  unknownIdError,
+  ambiguousIdError,
+  auditGroupError,
+  infraNotReadyError,
+  infraExemptionLine,
+  dependencyNotReadyError,
+  verificationTableError,
+  scopeEvidenceError,
+  phaseEvidenceError,
+  ticketCorpusError,
+  badInvocation,
+  formatAuditGroup,
+  formatGroupScope,
+  buildAuditGroupLine,
+  type TaskOutcome,
+  type GroupScopeGit,
+  type CoverageGate,
+} from './sdd-task.types.ts';
+
+function shellToken(value: string): string {
+  return /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+function verifyInvocation(ticket: string, phase: string): string {
+  return ['npx', 'gennady', 'sdd-verify', `--task=${ticket}`, `--phase=${phase}`]
+    .map(shellToken)
+    .join(' ');
+}
+
+/**
+ * @purpose Resolve the primary stack and effective config shared by readiness and phase planning.
+ * @invariant Bootstrap-sensitive: a missing `package.json` may mean a node project mid-bootstrap,
+ *   not anystack; `detectRepoStack` owns that fallback for every command (V-05b/L-24).
+ * @param root Absolute project root.
+ * @returns The selected primary stack plus valid merged config (or null after config errors).
+ */
+function resolveProjectStack(root: string): {
+  stack: ReturnType<typeof primaryStackOf>;
+  config: ReturnType<typeof loadStackConfig>['config'];
+} {
+  const stackConfigLoad = loadStackConfig(root, BUILTIN_GATE_IDS);
+  const stackConfig = stackConfigLoad.errors.length === 0 ? stackConfigLoad.config : null;
+  return {
+    stack: primaryStackOf(detectRepoStack(root, stackConfig)),
+    config: stackConfig,
+  };
+}
+
+/**
+ * @purpose Resolve one root's readiness through the stack resolution shared with phase planning.
+ * @param root Absolute project root.
+ * @param [stack] Already-resolved primary stack when the caller also builds a phase plan.
+ * @returns The resolved adapter's readiness verdict for this root.
+ */
+function resolveProjectReadiness(
+  root: string,
+  stack = resolveProjectStack(root).stack
+): ReadinessResult {
+  const adapter = resolveReadinessAdapter(stack) ?? nodeReadinessAdapter;
+  return adapter.evaluate(adapter.gather(root));
+}
+
+/**
+ * @purpose Named infra-scope TODO tickets already building the missing gate scripts, plus queue diagnostics.
+ * @param refs Every ticket's graph ref (Task-ID, status, owning scope).
+ * @param root Absolute project root — reads `package.json` and `specs/README.md`.
+ * @returns Queued infra TODO Task-IDs and fail-closed diagnostics.
+ */
+function infraGateQueue(
+  refs: TicketCorpusRef[],
+  root: string,
+  readiness: ReadinessResult
+): GateQueueResult {
+  let portalContent: string;
+  try {
+    portalContent = readFileSync(join(root, 'specs', 'README.md'), 'utf-8');
+  } catch (cause) {
+    return {
+      ticketIds: [],
+      owners: [],
+      diagnostics: [
+        {
+          kind: 'gate-contract-missing',
+          message: `portal/GATE_QUEUE cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`,
+        },
+      ],
+    };
+  }
+  return queuedInfraGateTicketIds(refs, parseScopes(portalContent), readiness, root);
+}
+
+/**
+ * @purpose Re-derive V2 cross-spec audit evidence for the execution map from one corpus snapshot.
+ * @invariant V1 refs never enter the owner/receipt model; their dependency semantics stay status-only.
+ * @param refs Complete immutable ticket corpus from `collectTicketCorpus`.
+ * @returns Exact owner identities plus owners carrying a current valid audit receipt.
+ */
+function pickableAuditContext(refs: TicketCorpusRef[]): PickableAuditContext {
+  const ownerByTaskId = new Map<string, string>();
+  const membersByOwner = new Map<string, TicketCorpusRef[]>();
+  for (const ref of refs) {
+    if (ref.flowVersion !== 'v2' || !ref.taskId) continue;
+    const owner = resolveOwningSpec(ref.file);
+    if (!owner.ok) continue;
+    const canonicalOwner = realpathSync(owner.specPath);
+    ownerByTaskId.set(ref.taskId, canonicalOwner);
+    const members = membersByOwner.get(canonicalOwner) ?? [];
+    members.push(ref);
+    membersByOwner.set(canonicalOwner, members);
+  }
+
+  const validAuditOwners = new Set<string>();
+  for (const [owner, members] of membersByOwner) {
+    let specContent: string;
+    try {
+      specContent = readFileSync(owner, 'utf-8');
+    } catch {
+      continue;
+    }
+    if (hasValidGroupReceipt(specContent, members, 'audit')) validAuditOwners.add(owner);
+  }
+  return { ownerByTaskId, validAuditOwners };
+}
+
+/** @purpose Render the execution map — tickets ready now and those still blocked, by which deps.
+ * @invariant Every pickable/blocked line carries the ticket's relative path, so the map is self-sufficient without a follow-up lookup.
+ * @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
+function formatMap(refs: TicketCorpusRef[], root: string): string {
+  const canonicalRoot = realpathSync(root);
+  const readiness = resolveProjectReadiness(canonicalRoot);
+  const gateQueue = infraGateQueue(refs, canonicalRoot, readiness);
+  const auditContext = pickableAuditContext(refs);
+  const graphPickable = pickableTasks(refs, auditContext).filter((ref) => ref.flowVersion === 'v2');
+  const gateTicketFiles = new Set(gateQueue.owners.map((owner) => owner.ticketFile));
+  const queuePickable = refs.filter(
+    (ref) =>
+      ref.flowVersion === 'v2' &&
+      gateTicketFiles.has(ref.file) &&
+      !/\bDONE\b/i.test(ref.status ?? '') &&
+      pickabilityBlockers(ref, refs, auditContext).length === 0
+  );
+  const pickable = readiness.executionReady ? graphPickable : queuePickable;
+  const pickableIds = new Set(pickable.map((r) => r.taskId));
+  const graphPickableIds = new Set(graphPickable.map((r) => r.taskId));
+  const blocked = refs.filter(
+    (r) => /\bTODO\b/i.test(r.status ?? '') && !pickableIds.has(r.taskId)
+  );
+  const relPath = (file: string): string => relative(canonicalRoot, file) || file;
+  const lines = [
+    `[sdd-task] execution map — ${pickable.length} pickable, ${blocked.length} blocked`,
+    `root: ${canonicalRoot}`,
+  ];
+  if (pickable.length === 0) {
+    lines.push('pickable (ready now): — none');
+  } else {
+    lines.push('pickable (ready now):');
+    for (const r of pickable) lines.push(`  ${r.taskId} → ${relPath(r.file)}`);
+  }
+  for (const b of blocked) {
+    const unmet = pickabilityBlockers(b, refs, auditContext);
+    if (b.flowVersion === 'v1')
+      unmet.push('V1→V2 migration required; npx gennady sdd-migrate bootstrap .');
+    if (!readiness.executionReady && graphPickableIds.has(b.taskId))
+      unmet.push('EXECUTION_READY=no');
+    lines.push(`blocked: ${b.taskId} ← ${unmet.join(', ')}  →  ${relPath(b.file)}`);
+  }
+  lines.push(
+    readiness.level === 'provisional'
+      ? `READINESS=provisional (stubs: ${readiness.stubbed.join(', ')} — impl/refactor/test-фазы заблокированы, начинай с infra-очереди)`
+      : `READINESS=${readiness.level}`
+  );
+  lines.push(`EXECUTION_READY=${readiness.executionReady ? 'yes' : 'no'}`);
+  if (gateQueue.ticketIds.length > 0) {
+    lines.push(
+      `GATE_QUEUE=${gateQueue.ticketIds.join(',')} · гейты отсутствуют, их строят эти тикеты — для исполнения это штатно, начинай с них`
+    );
+  } else {
+    lines.push('GATE_QUEUE=none');
+  }
+  for (const d of gateQueue.diagnostics) {
+    lines.push(`GATE_QUEUE_DIAG: ${d.message}`);
+  }
+  const needsScaffold = gateQueue.diagnostics.some(
+    (diagnostic) => diagnostic.kind === 'infra-spec-no-tickets'
+  );
+  lines.push(
+    '',
+    pickable.length
+      ? readiness.executionReady
+        ? 'next: возьми Task-ID из pickable и вызови `sdd-task <id>` за планом фаз.'
+        : 'next: возьми Task-ID из GATE_QUEUE/pickable и вызови `sdd-task <id>` за bootstrap-планом.'
+      : needsScaffold
+        ? 'next: bootstrap-тикетов ещё нет — запусти `/sdd-scaffold` по готовым спецификациям.'
+        : blocked.length > 0
+          ? 'next: pickable пуст — разблокируй одну из blocked (закрой её зависимости), затем повтори.'
+          : 'next: активных TODO-тикетов нет — вызови `sdd-state` для следующего шага.'
+  );
+  return lines.join('\n');
+}
+
+/** @purpose Prepend the bare-id resolution line to a successful outcome; pass everything else through unchanged. | @param outcome The formatted plan/phase outcome. | @param line The resolution line from `resolveTicketArg`, or null when a path was given directly. */
+function withResolutionLine(outcome: TaskOutcome, line: string | null): TaskOutcome {
+  if (!outcome.ok || !line) return outcome;
+  return { ok: true, text: `${line}\n${outcome.text}` };
+}
+
+/**
+ * @purpose Execute gennady sdd-task — read only the planning sections of a ticket and emit the orchestrator's read surface.
+ * @invariant A sole positional naming an existing directory is the map's project root, not a ticket — a ticket never resolves to a directory.
+ * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [projectRoot] Canonical ticket-resolution root; defaults to cwd (injectable for isolated tests).
+ * @returns TaskOutcome — the planning surface on success, else an actionable failure.
+ */
+async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskOutcome> {
+  let args: Record<string, unknown> & { _: string[] };
+  try {
+    args = parseArgs(
+      rawArgs,
+      {
+        phase: { aliases: ['phase'], takesValue: true },
+        auditGroup: { aliases: ['audit-group'], takesValue: true },
+        groupScope: { aliases: ['group-scope'], takesValue: true },
+        taskScope: { aliases: ['task-scope'], takesValue: true },
+      },
+      { strict: true }
+    );
+  } catch (cause) {
+    return badInvocation(cause instanceof Error ? cause.message : String(cause));
+  }
+  const parsedPositionals = args._ as string[];
+  const positional =
+    parsedPositionals[0] === 'sdd-task' ? parsedPositionals.slice(1) : parsedPositionals;
+  const invalidValue = [
+    ['--phase', args.phase],
+    ['--audit-group', args.auditGroup],
+    ['--group-scope', args.groupScope],
+    ['--task-scope', args.taskScope],
+  ].find(([, value]) => value !== undefined && (typeof value !== 'string' || value.length === 0));
+  if (invalidValue) return badInvocation(`${invalidValue[0]} requires exactly one value`);
+
+  const phaseId = typeof args.phase === 'string' ? args.phase : null;
+  const auditGroupArg = typeof args.auditGroup === 'string' ? args.auditGroup : null;
+  const groupScopeArg = typeof args.groupScope === 'string' ? args.groupScope : null;
+  const taskScopeArg = typeof args.taskScope === 'string' ? args.taskScope : null;
+  const groupModes = [auditGroupArg, groupScopeArg, taskScopeArg].filter(Boolean);
+  if (groupModes.length > 1) return badInvocation('choose only one group mode');
+  if (phaseId && groupModes.length > 0)
+    return badInvocation('--phase cannot be combined with a group mode');
+  if (groupModes.length > 0 && positional.length > 0)
+    return badInvocation(`unexpected positional argument(s): ${positional.join(' ')}`);
+  if (phaseId && positional.length !== 1)
+    return badInvocation('--phase requires exactly one ticket path or Task-ID');
+  if (!phaseId && groupModes.length === 0 && positional.length > 1)
+    return badInvocation(`unexpected positional argument(s): ${positional.slice(1).join(' ')}`);
+
+  const defaultRoot = resolve(projectRoot);
+
+  if (auditGroupArg) {
+    const resolution = resolveAuditGroup(auditGroupArg, defaultRoot);
+    if (!resolution.ok) return auditGroupError(resolution, auditGroupArg, defaultRoot);
+    return formatAuditGroup(resolution.specPath, resolution.group, resolution.allRefs, defaultRoot);
+  }
+
+  if (groupScopeArg || taskScopeArg) {
+    const scopeArg = groupScopeArg ?? (taskScopeArg as string);
+    const resolution = resolveAuditGroup(scopeArg, defaultRoot);
+    if (!resolution.ok) return auditGroupError(resolution, scopeArg, defaultRoot);
+    const selectedGroup = taskScopeArg
+      ? resolution.group.filter((ticket) => resolve(ticket.file) === resolution.ticketPath)
+      : resolution.group;
+    if (selectedGroup.length === 0)
+      return scopeEvidenceError(
+        'the resolved ticket is absent from its own exact owning-spec group'
+      );
+    const targetFiles: string[] = [];
+    const handoffArtifacts: string[] = [];
+    const contractAnchors: string[] = [];
+    const coverageGates: CoverageGate[] = [];
+    for (const r of selectedGroup) {
+      const groupTicketContent = resolution.ticketContents.get(resolve(r.file));
+      if (groupTicketContent === undefined)
+        return scopeEvidenceError(
+          `${relative(defaultRoot, r.file)} disappeared from the ticket snapshot`
+        );
+      const verification = extractSection(groupTicketContent, 'VERIFICATION');
+      const verificationTable =
+        verification.status === 'ok'
+          ? parseVerificationTable(verification.content)
+          : parseVerificationTable('');
+      if (!verificationTable.ok) return verificationTableError(r.file, verificationTable.issues);
+      const coverage =
+        verification.status === 'ok'
+          ? parseTicketCoveragePolicy(verification.content)
+          : { status: 'legacy' as const };
+      coverageGates.push({ taskId: r.taskId ?? '(no-id)', ...coverage });
+      const reviewPaths = validateTicketReviewPaths(defaultRoot, groupTicketContent);
+      if (!reviewPaths.ok)
+        return scopeEvidenceError(
+          `${relative(defaultRoot, r.file)} declares invalid path \`${reviewPaths.path}\`: ${reviewPaths.detail}`
+        );
+      for (const f of [...reviewPaths.paths.targets, ...reviewPaths.paths.deleted]) {
+        if (!targetFiles.includes(f)) targetFiles.push(f);
+      }
+      for (const a of reviewPaths.paths.handoffs) {
+        if (!handoffArtifacts.includes(a)) handoffArtifacts.push(a);
+      }
+      const metaSection = extractSection(groupTicketContent, 'META');
+      if (metaSection.status === 'ok') {
+        for (const ref of parseMetaInfo(metaSection.content).specRefs) {
+          const rawAnchor = ref.anchor || ref.name;
+          const [rawPath, fragment] = rawAnchor.split('#', 2);
+          const anchor = rawPath?.endsWith('.md')
+            ? `${relative(defaultRoot, rawPath.startsWith('specs/') ? resolve(defaultRoot, rawPath) : resolve(dirname(r.file), rawPath))}${fragment ? `#${fragment}` : ''}`
+            : rawAnchor;
+          if (anchor && !contractAnchors.includes(anchor)) contractAnchors.push(anchor);
+        }
+      }
+    }
+    const targetRoots = new Set(targetFiles.map((file) => dirname(file)));
+    const changedScan = getChangedFiles(defaultRoot);
+    if (changedScan.status === 'error')
+      return scopeEvidenceError(
+        `git ${changedScan.operation} failed (exit ${changedScan.exitCode ?? 'spawn'}): ${changedScan.stderr || 'no stderr'}`
+      );
+    const gitChangedFiles = changedScan.files;
+    const allTicketTargets = new Map<string, string[]>();
+    if (!taskScopeArg) {
+      for (const ticket of resolution.allRefs) {
+        const content = resolution.ticketContents.get(resolve(ticket.file));
+        if (content === undefined)
+          return scopeEvidenceError(
+            `${relative(defaultRoot, ticket.file)} disappeared from the ticket snapshot`
+          );
+        const claims = validateTicketTargetClaims(defaultRoot, content);
+        if (!claims.ok)
+          return scopeEvidenceError(
+            `${relative(defaultRoot, ticket.file)} declares invalid path \`${claims.path}\`: ${claims.detail}`
+          );
+        allTicketTargets.set(ticket.file, claims.targets);
+      }
+    }
+    const changedFiles = taskScopeArg
+      ? gitChangedFiles.filter((file) =>
+          [...targetRoots].some((root) => file === root || file.startsWith(`${root}/`))
+        )
+      : boundGroupChangedFiles(
+          defaultRoot,
+          gitChangedFiles,
+          resolution.specPath,
+          selectedGroup,
+          targetFiles,
+          allTicketTargets
+        );
+    const git: GroupScopeGit = {
+      baseline: changedScan.status === 'ok' ? 'head' : 'empty-tree',
+      files: changedFiles,
+    };
+    const allFiles = [...new Set([...targetFiles, ...changedFiles])];
+    const lintFiles = allFiles.filter(
+      (file) => existsSync(resolve(defaultRoot, file)) && isGennadyLintTarget(file)
+    );
+    const candidateRoots = [...new Set(lintFiles.map((file) => dirname(file)))].sort(
+      (left, right) => left.length - right.length
+    );
+    const codeRoots = candidateRoots.filter(
+      (root, index) =>
+        !candidateRoots.slice(0, index).some((parent) => root.startsWith(`${parent}/`))
+    );
+    return formatGroupScope(
+      resolution.specPath,
+      selectedGroup,
+      defaultRoot,
+      targetFiles,
+      handoffArtifacts,
+      git,
+      contractAnchors,
+      lintFiles,
+      codeRoots,
+      coverageGates
+    );
+  }
+
+  const ticket = positional[0];
+  if (!ticket) {
+    // No Task-ID → emit the execution map (deterministic pickable set from the trackers, not eyeballed).
+    const corpus = collectTicketCorpus(defaultRoot);
+    return corpus.ok
+      ? { ok: true, text: formatMap(corpus.refs, defaultRoot) }
+      : ticketCorpusError(defaultRoot, corpus.detail);
+  }
+
+  // A bare positional naming an existing directory is a map-mode project root, not a ticket —
+  // gives `sdd-task [project-root]` the same shape as `sdd-state [project-root]`.
+  let ticketArgIsDir = false;
+  try {
+    ticketArgIsDir = statSync(resolve(ticket)).isDirectory();
+  } catch {
+    // not a directory (or doesn't exist) — fall through to ticket resolution below
+  }
+  if (ticketArgIsDir) {
+    const altRoot = resolve(ticket);
+    const corpus = collectTicketCorpus(altRoot);
+    return corpus.ok
+      ? { ok: true, text: formatMap(corpus.refs, altRoot) }
+      : ticketCorpusError(altRoot, corpus.detail);
+  }
+
+  const root = defaultRoot;
+  const resolved = resolveTicketArg(ticket, root, 'execution');
+  if (!resolved.ok) {
+    if (resolved.reason === 'unreadable') return fileError(ticket);
+    if (resolved.reason === 'unsafe-path' || resolved.reason === 'unsafe-corpus') {
+      return fileError(`${ticket} (${resolved.detail})`);
+    }
+    if (resolved.reason === 'unknown-id') return unknownIdError(ticket, resolved.refs);
+    if (resolved.reason === 'ambiguous-id') return ambiguousIdError(ticket, resolved.matches, root);
+    return fileError(ticket);
+  }
+  const { content } = resolved;
+  const resolutionLine =
+    resolved.resolvedFrom === 'id'
+      ? buildResolutionLine('sdd-task', resolved.id, resolved.path, root)
+      : null;
+
+  const metaSec = extractSection(content, 'META');
+  if (metaSec.status !== 'ok') return notATicket(ticket);
+
+  const meta = parseMetaInfo(metaSec.content);
+
+  const ovSec = extractSection(content, 'PHASES_OVERVIEW');
+  const phases = ovSec.status === 'ok' ? parsePhasesOverview(ovSec.content) : [];
+
+  const verSec = extractSection(content, 'VERIFICATION');
+  const verificationTable =
+    verSec.status === 'ok' ? parseVerificationTable(verSec.content) : parseVerificationTable('');
+  if (!verificationTable.ok) return verificationTableError(resolved.path, verificationTable.issues);
+  const gates = verificationTable.gates;
+
+  const logSec = extractSection(content, 'EXECUTION_LOG');
+  // B2-19/V-BATCH-15 F-1: a resolution can live in `## Blocker Trail` too — pass its body through,
+  // matching check.ts's checkTicket so the two tools agree on which blockers are still active.
+  const blockerTrailSec = extractHeadingSection(content, 'blocker-trail');
+  const activeBlockers =
+    logSec.status === 'ok'
+      ? scanBlockerTrail(
+          logSec.content,
+          blockerTrailSec.status === 'ok' ? blockerTrailSec.content : ''
+        )
+      : [];
+  const handoffs = logSec.status === 'ok' ? parsePhaseHandoffs(logSec.content) : {};
+
+  // #region START_PHASE_DETAILS — invariant: extract only each phase's own section, never the whole body
+  const detailsById: Record<string, PhaseDetail | undefined> = {};
+  for (const p of phases) {
+    const sec = extractSection(content, `PHASE_${p.id}`);
+    if (sec.status === 'ok') detailsById[p.id] = parsePhaseDetail(sec.content);
+  }
+  // #endregion END_PHASE_DETAILS
+
+  if (phaseId) {
+    logger.debug(`[SddTaskCommand#run] ${meta.taskId ?? '?'}: --phase ${phaseId}`);
+    if (!phases.some((phase) => phase.id === phaseId)) {
+      return withResolutionLine(phaseNotFound(phaseId, phases), resolutionLine);
+    }
+    const phaseIndex = phases.findIndex((phase) => phase.id === phaseId);
+    const phasePaths = validateTicketReviewPaths(root, content, {
+      phaseIds: [phaseId],
+      targetExpectation: 'dispatch',
+      deletedPhaseIds: phases.slice(0, phaseIndex + 1).map((phase) => phase.id),
+      handoffPhaseIds: phases.slice(0, phaseIndex).map((phase) => phase.id),
+    });
+    if (!phasePaths.ok) {
+      return phaseEvidenceError(
+        `${relative(root, resolved.path)} declares invalid path \`${phasePaths.path}\`: ${phasePaths.detail}`
+      );
+    }
+    const dependencyIssue = checkPhaseDependencies(
+      content,
+      phaseId,
+      (receipt, dependencyPhase) =>
+        phaseReceiptIssue(root, receipt, dependencyPhase, resolved.path),
+      (dependencyPhase) => {
+        const proof = validateCurrentSddPhaseAttempt(root, resolved.path, dependencyPhase);
+        return proof.ok ? null : proof.issue;
+      }
+    );
+    if (dependencyIssue) return dependencyNotReadyError(phaseId, dependencyIssue);
+    const phaseKind = phases[phaseIndex]?.kind ?? '';
+    const phaseDetail = detailsById[phaseId];
+    if (phaseDetail === undefined) {
+      return phaseEvidenceError(`phase '${phaseId}' has no readable phase detail`);
+    }
+    const ticketPath = relative(realpathSync(root), realpathSync(resolved.path))
+      .split('\\')
+      .join('/');
+    let ruleDispatch: ReturnType<typeof resolveSddRuleSnapshot>;
+    try {
+      ruleDispatch = resolveSddRuleSnapshot({
+        root,
+        declaredSources: phaseDetail.rules,
+        declarationFile: ticketPath,
+        declarationProvenance: `${ticketPath}#PHASE_${phaseId}.Rules`,
+        targetFiles: phasePaths.paths.targets,
+        plannedFiles: phasePaths.paths.targets,
+        tombstoneFiles: phasePaths.paths.deleted,
+        intents: [phaseKind],
+      });
+    } catch (cause) {
+      return phaseEvidenceError(
+        `phase '${phaseId}' RuleSnapshot cannot be resolved before dispatch: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    }
+    let verifySelection: ReturnType<typeof resolveProjectSddVerifySelector>;
+    try {
+      verifySelection = resolveProjectSddVerifySelector(root, phaseKind, {
+        scope: {
+          mode: 'files',
+          files: [...phasePaths.paths.targets, ...phasePaths.paths.deleted].sort((left, right) =>
+            left.localeCompare(right)
+          ),
+        },
+      });
+    } catch (cause) {
+      return phaseEvidenceError(
+        `phase '${phaseId}' Verify selector cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    }
+    let infraExemptionNote: string | null = null;
+    // Keep the frozen readiness gate only for zero-YAML builtin mapping. A project-authored
+    // selector owns its own target readiness and must not inherit unrelated legacy npm gates.
+    // Builtin setup kinds remain the explicit bootstrap exception.
+    const readinessKind = phaseKind.toLowerCase();
+    const UNGATED_KINDS = ['bootstrap', 'config', 'doc'];
+    const projectStack = resolveProjectStack(root);
+    if (verifySelection.source.startsWith('builtin:') && !UNGATED_KINDS.includes(readinessKind)) {
+      const readiness = resolveProjectReadiness(root, projectStack.stack);
+      if (!readiness.executionReady) {
+        // The infra tickets BUILDING the missing gates are exempt — they are the way out of this
+        // state, and blocking them would deadlock the flow against its own remedy (an infra ticket
+        // that authors a `.ts` gets impl+test phases, since impl and test never share a phase).
+        // Same queue the execution map prints as GATE_QUEUE, so the exemption needs no new field.
+        const corpus = collectTicketCorpus(root);
+        if (!corpus.ok) return ticketCorpusError(root, corpus.detail);
+        const queue = infraGateQueue(corpus.refs, root, readiness);
+        if (!meta.taskId || !phaseOwnsMissingReadinessGate(queue, meta.taskId, phaseId)) {
+          return infraNotReadyError(
+            phaseId,
+            phaseKind,
+            readiness.level,
+            readiness.level === 'provisional' ? readiness.stubbed : readiness.missing
+          );
+        }
+        logger.debug(
+          `[SddTaskCommand#run] ${meta.taskId}: infra-queue exemption — ${phaseKind} phase runs at readiness=${readiness.level}`
+        );
+        infraExemptionNote = infraExemptionLine(
+          readiness.level,
+          readiness.level === 'provisional' ? readiness.stubbed : readiness.missing
+        );
+      }
+    }
+    // `## Audit Rounds` is a plain heading section (TICKET_AUDIT_ROUND_FORMAT), not a
+    // <!--SECTION:...--> anchor — the fix-worker needs its findings' bodies, not just the `fix:
+    // F-NNN` tag, so it stops grepping the repo for what the audit actually found.
+    const auditSec = extractHeadingSection(content, 'audit-rounds');
+    const auditRounds = auditSec.status === 'ok' ? auditSec.content : null;
+    const corpus = collectTicketCorpus(root);
+    if (!corpus.ok) return ticketCorpusError(root, corpus.detail);
+    let scripts: Record<string, string> = {};
+    try {
+      scripts =
+        (
+          JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')) as {
+            scripts?: Record<string, string>;
+          }
+        ).scripts ?? {};
+    } catch {
+      scripts = {};
+    }
+    let verificationPlan: ReturnType<typeof resolvePhaseVerificationPlan>;
+    try {
+      verificationPlan = resolvePhaseVerificationPlan({
+        refs: corpus.refs,
+        ticketFile: resolved.path,
+        phaseId,
+        scripts,
+        availableArtifacts: new Set(
+          phaseVerificationArtifactPaths().filter((path) => existsSync(join(root, path)))
+        ),
+        mode: 'runtime',
+        stack: projectStack.stack,
+        config: projectStack.config,
+        root,
+      });
+    } catch (cause) {
+      return phaseEvidenceError(
+        `phase '${phaseId}' verification plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
+      );
+    }
+    const phaseOutcome = formatPhase(
+      meta,
+      phases,
+      detailsById,
+      gates,
+      handoffs,
+      phaseId,
+      auditRounds,
+      {
+        readFiles: phasePaths.paths.targets.filter(
+          (target) => !phasePaths.paths.createTargets.includes(target)
+        ),
+        createFiles: phasePaths.paths.createTargets,
+      },
+      verificationPlan ?? undefined,
+      {
+        invocation: verifyInvocation(ticketPath, phaseId),
+        selector: verifySelection.selector,
+        source: verifySelection.source,
+      },
+      ruleDispatch.snapshot
+    );
+    return withResolutionLine(
+      infraExemptionNote && phaseOutcome.ok
+        ? { ok: true, text: `${infraExemptionNote}\n${phaseOutcome.text}` }
+        : phaseOutcome,
+      resolutionLine
+    );
+  }
+
+  logger.debug(
+    `[SddTaskCommand#run] ${meta.taskId ?? '?'}: ${phases.length} phase(s), ${gates.length} gate(s)`
+  );
+  // audit-group context — best-effort: a ticket whose filename doesn't follow the v2 `.task.` naming
+  // convention (or whose owning spec is missing) simply omits the line, never fails the plan.
+  const groupRes = resolveAuditGroup(ticket, root);
+  const auditGroupLine = groupRes.ok
+    ? buildAuditGroupLine(groupRes.specPath, groupRes.group, root, meta.taskId ?? ticket)
+    : null;
+  const openDeviations = parseDeviationRecords(content)
+    .filter(deviationIsOpen)
+    .map((record) => `${record.id} [verdict: ${record.rawVerdict}]`);
+  return withResolutionLine(
+    {
+      ok: true,
+      text: formatPlan(
+        meta,
+        phases,
+        detailsById,
+        gates,
+        activeBlockers,
+        auditGroupLine,
+        openDeviations
+      ),
+    },
+    resolutionLine
+  );
+}
+
+/**
+ * @purpose Execute sdd-task and append the mandatory workspace boundary to every successful state surface.
+ * @param rawArgs Raw command-line arguments (process.argv).
+ * @param [projectRoot] Canonical ticket-resolution and worker root; defaults to cwd.
+ * @returns Planning state ending with WORKING_DIR/TMP_DIR, or the original actionable failure.
+ */
+export async function run(rawArgs: string[], projectRoot = resolve('.')): Promise<TaskOutcome> {
+  const root = resolve(projectRoot);
+  const outcome = await runCommand(rawArgs, root);
+  if (outcome.ok) return { ok: true, text: appendSddSessionBoundary(outcome.text, root) };
+  return {
+    ...outcome,
+    message: normalizeSddToolFailure(
+      {
+        tool: 'sdd-task',
+        code: outcome.code,
+        object: rawArgs.slice(2).join(' ') || projectRoot,
+        action: 'repair the named ticket or phase evidence, then repeat the same state query',
+        example: 'npx gennady sdd-task specs/demo/core/core.task.DEM-work.md --phase P1',
+      },
+      outcome.message
+    ),
+  };
+}
+
+// Self-executing for CLI: gennady sdd-task <ticket-path|Task-ID>
+const outcome = await run(process.argv);
+console.log(outcome.ok ? outcome.text : outcome.message);
+process.exit(outcome.ok ? 0 : outcome.exitCode);

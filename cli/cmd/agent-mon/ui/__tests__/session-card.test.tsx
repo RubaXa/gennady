@@ -1,6 +1,6 @@
 // @file: Unit tests for SessionCard — status badge rendering
+// @spec: AGENT-MON-CLI-UI
 // @consumers: test
-// @tasks: TSK-46
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

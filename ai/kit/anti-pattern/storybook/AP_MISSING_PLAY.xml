@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<AntiPattern id="AP_MISSING_PLAY">
+      <Bad>Story has `args: { ... }` but no `play` function.</Bad>
+      <WhyBad>Play function required by `AX_PLAY_FUNCTION_REQUIRED`. Without `play`, `run-story-tests` passes trivially without asserting any contract. The story is documentation, not an executable spec mirror.</WhyBad>
+      <Good>Every story has `play` with `getByRole` + `toHaveAttribute('data-state', ...)` at minimum.</Good>
+    </AntiPattern>

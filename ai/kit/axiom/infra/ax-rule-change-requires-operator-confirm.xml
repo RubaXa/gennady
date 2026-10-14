@@ -1,0 +1,13 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_RULE_CHANGE_REQUIRES_OPERATOR_CONFIRM">
+      Adding, removing, or relaxing a rule in `eslint.config.ts` is a gated action that REQUIRES explicit operator confirmation.
+
+      Agent presents:
+      1. Rule name, source (core / plugin / custom), link to docs.
+      2. Has real `fix`? (per `HOOK_AUDIT_NEW_RULE`).
+      3. If non-autofix: proposed explanatory comment + channel-coverage check (per `AX_NON_AUTOFIX_PREFER_DELEGATION`) showing nothing else owns this concern.
+      4. Intended severity (must be `'error'` per `AX_BINARY_SEVERITY`).
+      5. Dry-run impact: how many files `eslint --fix` will touch (autofix) or how many findings (non-autofix); resulting diff summary.
+
+      Agent does NOT commit a config change autonomously, even if dry-run looks clean. The lint config is a mechanical contract for the whole repo. Silent agent-driven config edits are the highest-leverage fabrication path.
+    </Axiom>

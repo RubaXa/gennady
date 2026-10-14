@@ -1,6 +1,6 @@
 // @file: Value object for update note query parameters.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeDiscussions
-// @tasks: TSK-77
 
 /** @purpose Parameters for editing an existing MR discussion note. */
 export type VcsUpdateNoteQuery = {

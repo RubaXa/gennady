@@ -1,6 +1,6 @@
 // @file: Unit tests for UpdateCheck service orchestration — temp cache dirs, spawn tracking.
-// @consumers: TSK-34
-// @tasks: TSK-34
+// @spec: CLI
+// @consumers: UC-tests
 
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

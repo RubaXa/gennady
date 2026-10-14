@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<AntiPattern id="AP_WARN_LEVEL_USAGE">
+      <Bad>Config has rules at `'warn'` (e.g., `'@typescript-eslint/no-explicit-any': 'warn'`, `'no-console': 'warn'`, `'@typescript-eslint/no-floating-promises': ['warn']`).</Bad>
+      <WhyBad>Forbidden by `AX_BINARY_SEVERITY`. A warning is a finding nobody owns: CI green, agent moves on, warning rots. `no-floating-promises` as warning is especially dangerous — a class of bugs (lost errors, broken ordering) discovered and ignored on every CI run. No path back from `'warn'` to a real fix the agent will take on its own.</WhyBad>
+      <Good>Each rule resolved to `'error'` (with motivation comment if non-autofix) or `'off'` (with one-line reason).</Good>
+    </AntiPattern>

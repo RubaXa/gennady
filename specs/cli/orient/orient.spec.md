@@ -1,8 +1,22 @@
 # Module: orient
 
+<!--SECTION:SPEC_ID-->
+
+CLI-ORIENT
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
-Навигация по проекту через file-header разметку (`@file:`, `@tasks:`, `@consumers:`) и DBC-контракты. Карта файлов, поиск по задачам/потребителям/сущностям/ключевым словам, граф зависимостей, поиск по спекам. Код зрелый: S1-S9 хендлеры, DBC-парсер, рендереры.
+Навигация по проекту через file-header разметку (`@file:`, V2 `@spec:`, legacy `@tasks:`,
+`@consumers:`), DBC-контракты и общий FO-2 resolver. `orient --file` показывает bounded
+semantic-owner/work relations; `--history` меняет только детализацию, `--json` возвращает
+детерминированную schema `gennady.orient.file-relations`, version `1`.
+
+`orient --task` использует canonical resolver relations. Legacy `@tasks` matches показываются
+отдельно как read-only migration evidence и никогда не назначают owner или execution authority;
+guidance ведёт к `sdd-migrate bootstrap` и V1→V2 guide. Нет canonical matches → явное сообщение
+`No canonical V2 files found`, независимо от наличия historical header evidence.
 
 → Parent scope: [../../cli/cli.spec.md](../../cli/cli.spec.md) (§3.5 orient DX).
 
@@ -44,6 +58,8 @@
   - `--consumer=<name>` → S3 (поиск потребителей)
   - `<keyword>` (позиционный) → S4 (поиск по ключевым словам)
   - `--file=<path>` → S5 (детальный взгляд на файл)
+  - `--file=<path> --history` → тот же classified result с развёрнутым history
+  - `--file=<path> --json` → versioned deterministic relation document
   - `--entity=<name>` → S6 (поиск сущности)
   - `--graph` → S7 (граф зависимостей)
   - `--specs` → S8 (обзор всех спек)
@@ -119,8 +135,8 @@ $ gennady orient
 $ gennady orient --detail
 
 # --- S2: поиск по задаче ---
-$ gennady orient --task=TSK-01
-$ gennady orient --task=TSK-01 --task=TSK-02
+$ gennady orient --task=DP-fields
+$ gennady orient --task=DP-fields --task=DP-jsdoc
 
 # --- S3: поиск потребителей ---
 $ gennady orient --consumer=DbcTsLinter

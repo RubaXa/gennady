@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<Hook id="HOOK_SB_AI_TAG_PRESENT">
+      <Purpose>Verify 'ai-generated' tag is present in every stories file.</Purpose>
+      <Command>find src/ui -name '*.stories.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -l "'ai-generated'" || echo MISSING_TAG</Command>
+      <Expected>Every `.stories.ts` file must appear. `MISSING_TAG` means the reserved tag is absent.</Expected>
+    </Hook>

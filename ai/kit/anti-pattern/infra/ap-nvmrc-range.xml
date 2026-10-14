@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<AntiPattern id="AP_NVMRC_RANGE">
+  <Bad>`.nvmrc` contains `22` (range) or `lts/iron` (alias).</Bad>
+  <WhyBad>`nvm use 22` resolves to whatever the latest 22.x is at install time — different on different machines and at different moments.</WhyBad>
+  <Good>`.nvmrc` contains `22.14.0` exact.</Good>
+</AntiPattern>

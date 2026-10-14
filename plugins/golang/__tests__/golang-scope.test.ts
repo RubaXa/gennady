@@ -1,6 +1,6 @@
 // @file: Unit tests for golang scope resolution — file-to-package mapping, exclusions, all-mode targets.
+// @spec: CLI-VERIFY
 // @consumers: CI
-// @tasks: TSK-95
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

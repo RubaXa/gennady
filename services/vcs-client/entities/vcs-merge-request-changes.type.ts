@@ -1,6 +1,6 @@
 // @file: Merge Request / Pull Request changed files — list with metadata.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeRequests.getChanges
-// @tasks: TSK-27
 
 /**
  * @purpose One changed file in MR/PR: path, status, branch, change metrics.

@@ -1,0 +1,52 @@
+<!-- source: sdd/module-decomposition.directive.xml; textual-agnostic per AX_CONTRACTS_TEXTUAL_AGNOSTIC -->
+<Contract id="DBC_PORT_FORMAT">
+      Conditions are plain-language statements per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` — one testable
+      statement per line, shared vocabulary, code syntax stays out (target-language code lives only
+      in the Approved Usage Example). Optional fields marked «omit when none» are omitted, not
+      filled with placeholders.
+
+      ```markdown
+      #### Port: `<PortName>`
+      - **Purpose:** <1 sentence>
+      - **Consumers:** <internal: path · external: description>
+      - **Supporting Artifacts:** <links — omit when none>
+      - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+      - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+      - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
+      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [<ACR>-DL-N — only when a Decision Log entry actually backs the reason]
+
+      **Contract (DbC)** — one block per operation, not one shared block for the whole Port:
+      - `<operationName>`:
+        - Pre: <what must hold before this operation may be called>
+        - Post: <what this operation guarantees on completion>
+        - On pre-violation: <observable behavior when a precondition does not hold — e.g. a
+          non-existent id — error kind and mechanism, never silent>
+      - `<operationName2>`:
+        - Pre: <…>
+        - Post: <…>
+        - On pre-violation: <…>
+
+      **Invariants** (omit when none): what stays true across the entity's ENTIRE lifetime,
+      independent of any single operation — a genuine class-level invariant, not a restatement of
+      one operation's postcondition.
+      ```
+
+      Preconditions / postconditions / invariants are decided by the DECISION being contracted, not
+      by whether a Port happens to exist: when the module consciously forgoes a Port (single
+      implementation, no confirmed variability or test seam per
+      `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`), this same per-operation shape lives directly on the
+      Service or Adapter instead — that choice is recorded in the Decision Log
+      (`AX_DECISION_LOG_REQUIRED`), not silently assumed.
+
+      **Usage Waiver** (`AX_USAGE_WAIVER_DISCIPLINE`, gennady yagni): a `<2` production-code usages
+      entity is a YAGNI finding unless its contract carries this field with a real reason — an empty
+      reason does not gate the finding. Cite an `<ACR>-DL-N` only when the reason IS a Decision Log entry (a
+      genuine, non-obvious call — not "split for readability"); when cited, it must actually have a
+      heading in some Decision Log, or the citation does not gate the finding. The agent sets the
+      label, never the operator; omit the field entirely when usage already clears the threshold (no
+      placeholder text). Two forms:
+
+      - Internal entity: `- **Usage Waiver:** <reason>` (or `<ACR>-DL-N — <reason>` when a decision backs it)
+      - Public API for an external consumer (does NOT disable the rule — it still needs the label):
+        `- **Usage Waiver (external: <named consumer>):** <reason>` (same `<ACR>-DL-N` rule)
+    </Contract>

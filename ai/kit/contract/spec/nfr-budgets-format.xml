@@ -1,0 +1,22 @@
+<!-- source: sdd-v2 amplify-nfr -->
+<Contract id="NFR_BUDGETS_FORMAT">
+  Legacy read/migration shape only. Current amplifiers MUST NOT write this subsection: they load
+  `REQUIREMENT_ENTRY_FORMAT` and emit one flat requirement per observable outcome. This contract
+  remains solely so an old spec can be understood and migrated without inventing semantics. A
+  consciously skipped legacy dimension remains source evidence, never a new requirement by itself:
+
+  ```markdown
+  ### Non-Functional Constraints
+
+  | Показатель | Бюджет | Условия измерения | Источник |
+  |---|---|---|---|
+  | Latency | p95 ≤ NNN ms | операция + профиль нагрузки | default / operator / research |
+  | Throughput | NNN RPS | профиль запросов | … |
+  | Масштаб | NNN <единиц> | горизонт роста (напр. 12 мес) | … |
+  | Availability | NN.N % | окно измерения + error budget | … |
+  | Consistency | <модель> | где допустима staleness | … |
+
+  **Узкие места:** [компонент, где бюджет ломается первым, + причина]
+  **Деградация под нагрузкой:** [что отключаем / шеддим первым; поведение на пределе]
+  ```
+</Contract>

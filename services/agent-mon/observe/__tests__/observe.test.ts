@@ -1,6 +1,6 @@
 // @file: Unit tests for observe — continuous async iterable over session changes
+// @spec: AGENT-MON-OBSERVE
 // @consumers: observe, cli
-// @tasks: TSK-38
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

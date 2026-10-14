@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Edit a GitLab merge request — title, description, draft/ready, labels, assignee, reviewer.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-92
 
 import {
   resolveVcsContext,
@@ -9,9 +9,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
-import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import type { VcsMergeRequestUpdateQuery } from '../../../services/vcs-client/entities/vcs-merge-request-update-query.type.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
@@ -32,12 +30,6 @@ function defaultDeps(): Deps {
   };
 }
 
-function createClient(ctx: VcsCliContext): VcsClient {
-  return ctx.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: ctx.token })
-    : new VcsGitlabClient({ baseUrl: `https://${ctx.host}/api/v4`, token: ctx.token });
-}
-
 /**
  * @purpose Edit a GitLab MR — title, description, draft/ready, labels, assignee, reviewer.
  *   Uses vcs-context-resolver for auto-detection.
@@ -55,6 +47,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     description: { aliases: ['description'], takesValue: true },
     'target-branch': { aliases: ['target-branch'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     label: { aliases: ['label'], takesValue: true },
     unlabel: { aliases: ['unlabel'], takesValue: true },
     assignee: { aliases: ['assignee'], takesValue: true },
@@ -86,7 +79,13 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
-  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid };
+  const vcsArgs: VcsCliArgs = {
+    host,
+    ref,
+    project,
+    iid: validIid,
+    url: args.url as string | undefined,
+  };
   let context: VcsCliContext;
   try {
     context = await deps.resolveVcsContext(vcsArgs);
@@ -101,7 +100,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   let resolvedIid = context.iid ?? validIid;
 
   if ((!resolvedIid || isNaN(resolvedIid) || resolvedIid <= 0) && context.branch) {
-    const client = createClient(context);
+    const client = createVcsClient(context);
     const mr = (await client.MergeRequests.getOne({
       project: context.project,
       sourceBranch: context.branch,
@@ -112,7 +111,9 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   }
 
   if (!resolvedIid || isNaN(resolvedIid) || resolvedIid <= 0) {
-    deps.stderr.write('✖ Specify --ref <group/repo>!<iid> or --project and --iid\n');
+    deps.stderr.write(
+      '✖ Specify --url <mr-url> (preferred) or --ref <group/repo>!<iid> with --host\n'
+    );
     deps.exit(1);
   }
 
@@ -125,7 +126,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const reviewerId = args.reviewer as string | undefined;
   const milestoneId = args.milestone as string | undefined;
 
-  const client = createClient(context);
+  const client = createVcsClient(context);
 
   const updateQuery: VcsMergeRequestUpdateQuery = {
     project: context.project,

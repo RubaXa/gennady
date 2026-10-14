@@ -1,6 +1,6 @@
 // @file: Hint generation — up to 4 contextual hints for each orient output mode.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { OrientArgs } from '../orient.types.ts';
 

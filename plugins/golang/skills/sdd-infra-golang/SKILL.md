@@ -32,12 +32,12 @@ Machine-readable form for a subagent: `npx gennady verify --plan --json`.
 
 ## 2. Read the diagnostics honestly
 
-| Diagnostic | Meaning | Correct response |
-| --- | --- | --- |
-| `TOOLCHAIN_MISSING` | No `go` toolchain (neither repo-pinned `./bin/go` nor PATH) — blocking, the run has no verdict | Install Go or put it on PATH |
-| `GOLANGCI_CONFIG_MISSING` | Makefile points at a config absent from the checkout | Restore it, or rely on the config the plugin discovered (shown as `config:` in `--plan`) |
-| `NESTED_MODULES` | Nested `go.mod` outside `./...` | Verify each with `--root=<dir>`, or state which modules are uncovered |
-| `CONFIG_ERROR` | Stack config is broken or has unknown keys/types | Fix it — verify refuses to run on a config it does not understand (exit 4) |
+| Diagnostic                | Meaning                                                                                        | Correct response                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `TOOLCHAIN_MISSING`       | No `go` toolchain (neither repo-pinned `./bin/go` nor PATH) — blocking, the run has no verdict | Install Go or put it on PATH                                                             |
+| `GOLANGCI_CONFIG_MISSING` | Makefile points at a config absent from the checkout                                           | Restore it, or rely on the config the plugin discovered (shown as `config:` in `--plan`) |
+| `NESTED_MODULES`          | Nested `go.mod` outside `./...`                                                                | Verify each with `--root=<dir>`, or state which modules are uncovered                    |
+| `CONFIG_ERROR`            | Stack config is broken or has unknown keys/types                                               | Fix it — verify refuses to run on a config it does not understand (exit 4)               |
 
 ## 3. Wire the gate into the SDD loop
 
@@ -61,9 +61,9 @@ npx gennady verify --stack=golang             # one-shot stack.use
 
 Contract (all stacks): **RUN-ALL** · **SUPPRESS-ON-SUCCESS** · exit `0` all pass, `1` gate failed, `4` bad invocation/config, `5` no stack detected.
 
-Every gate runs in an ephemeral working-tree replica (one per verify run) — the real tree is physically untouched; a gate that mutates files reports `VIOLATION` (move the mutation to fixers, or mark the gate `driftMeansFailure: true` if drift is its verdict).
+Full verification starts only on a clean committed tree. Every gate runs sequentially in that real tree under one clean-tree guard; non-ignored mutation reports `VIOLATION` and is rolled back before the next gate (move the mutation to fixers, or mark the gate `driftMeansFailure: true` if drift is its verdict). Ignored cache/generated paths are legal and survive.
 
-Codegen loop: `golang:generate` runs `go generate` in that replica BEFORE build and fails with the drifted file list; `gennady fix golang:generate` materializes the generated code in the real tree for you to commit. Works whether generated files are committed or gitignored. Generator binaries must be reachable outside the tree (`go install`, go.mod `tool` directive) — gitignored binaries are not replicated into the sandbox; a missing generator reports ENV_FAIL with an install hint, not a code finding.
+Codegen loop: `golang:generate` runs `go generate` in the guarded real tree BEFORE build and fails with the non-ignored drifted file list; the guard then rolls that drift back. `gennady fix golang:generate` materializes generated code for you to commit. Gitignored generated output is legal and remains in place. A missing generator reports ENV_FAIL with an install hint, not a code finding.
 
 ## 4. Encode repo deviations in `gennady.yaml`, not in prose
 
@@ -75,7 +75,7 @@ stack:
     skipGates: [lint] # golangci-lint built with an older Go — restore after the image update
     overrideGates:
       test: { argv: [make, test], timeout: 15m }
-      build: { env: { GOPROXY: "https://goproxy.example.com/" } }
+      build: { env: { GOPROXY: 'https://goproxy.example.com/' } }
     extraGates:
       - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }
 ```
@@ -103,11 +103,11 @@ Full reasoning in `plugins/golang/directives/infra/golang-setup.xml`; the short 
 
 ## 7. Designing a new Go infra scope
 
-When the operator wants tooling *designed* rather than merely run:
+When the operator wants tooling _designed_ rather than merely run:
 
 1. **Extract intent.** Confirm scope-type=`infrastructure`, language=`go`. Resolve the scope name (e.g. `infra-golang`).
-2. **Load & activate.** Read in full: `~/Developer/gennady/ai/directives/sdd/discovery.directive.xml`, then `~/Developer/gennady/plugins/golang/directives/infra/golang-setup.xml`.
-   Announce: `🔒 DIRECTIVE ACTIVATED: SddDiscovery | infrastructure | golang`
+2. **Load & activate.** Read in full: `~/Developer/gennady/ai/directives/sdd-v2/router.directive.xml`, then `~/Developer/gennady/plugins/golang/directives/infra/golang-setup.xml`.
+   Pass forced intent `author` with scope-type `infrastructure` and language `go`; the v2 router owns discovery.
 3. **Ground every requirement in observed state** — the `--plan --json` output above, not assumptions about how Go projects usually look.
 4. **Apply.** Follow the discovery Execution_Plan end-to-end. Every proposed gate must be expressible as a `gennady verify` invocation or a `gennady.yaml` entry — or justified as to why it is not.
 

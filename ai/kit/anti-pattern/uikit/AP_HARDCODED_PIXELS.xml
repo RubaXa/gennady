@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<AntiPattern id="AP_HARDCODED_PIXELS">
+<Bad>`.module.css` with `height: 28px;` instead of `var(--vkui--size_button_small_height--compact)`.</Bad>
+<WhyBad>Token not consumed via custom property (`AX_CSS_TOKENS_VIA_ROOT`). The value cannot be overridden, themed, or traced back to the VKUI token system. When the design system updates the token, this component silently stays at the old value.</WhyBad>
+<Good>`height: var(--vkui--size_button_small_height--compact);` — the token from `.tokens.css` flows through.</Good>
+</AntiPattern>

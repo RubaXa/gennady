@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeRequests.getChanges.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-29
 
 import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

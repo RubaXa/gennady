@@ -1,0 +1,15 @@
+{
+  "capturedFor": "REL-17 / GAP-B-1 (Бриф 0/5, SDD v2 RC baseline, D-38)",
+  "commit": "227c03a83830124fe2aa22541dd5374beb8a53c6",
+  "tag": "rc-baseline-1",
+  "capturedAt": "2026-09-07T22:25:27.186Z",
+  "node": "v22.19.0",
+  "npm": "10.9.3",
+  "os": {
+    "uname": "Darwin k-lebedev 23.6.0 Darwin Kernel Version 23.6.0: Tue Feb 24 20:49:05 PST 2026; root:xnu-10063.141.1.711.7~1/RELEASE_ARM64_T6030 arm64",
+    "productName": "macOS",
+    "productVersion": "14.8.5",
+    "buildVersion": "23J423"
+  },
+  "packageLockSha256": "324e04c77de935dfc8595439b689f02d6850a390a031b68173d60278546c1c2d"
+}

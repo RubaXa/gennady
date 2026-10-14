@@ -1,0 +1,6 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Pattern id="PT_NVMRC">
+      <Intent>Correct `.nvmrc`: one line, exact semver.</Intent>
+      <Snippet language="plaintext">22.14.0</Snippet>
+      <Why>Single exact version. `nvm use` resolves unambiguously. No range, no alias, no comments.</Why>
+    </Pattern>

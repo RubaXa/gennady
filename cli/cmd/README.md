@@ -1,6 +1,6 @@
 # cli/cmd — Команды CLI
 
-27 команд для AI-агентов: работа с git, генерация commit-сообщений, ревью, merge-конфликты, линтинг, навигация по коду, синхронизация, мониторинг, покрытие тестами, VCS-операции (GitLab MR).
+28 команд для AI-агентов: работа с git, генерация commit-сообщений, ревью, merge-конфликты, линтинг, навигация по коду, синхронизация, мониторинг, покрытие тестами, VCS-операции (GitLab MR).
 
 ---
 
@@ -25,7 +25,7 @@ npx gennady commit --task=MAILCORE-123
 # Линтинг директории
 npx gennady lint ./src
 
-# Только staged .ts файлы
+# Existing staged ACMR + untracked .ts/.tsx; staged deletions ignored
 npx gennady lint --staged
 
 # Автофикс DbC-контрактов
@@ -39,7 +39,7 @@ npx gennady lint ./src --autofix
 npx gennady orient
 
 # Найти файлы по задаче
-npx gennady orient --task=TSK-03
+npx gennady orient --task=DP-snaps
 
 # Кто потребляет модуль
 npx gennady orient --consumer=DbcTsLinter
@@ -52,6 +52,15 @@ npx gennady orient --file=path/to/file.ts
 
 # Встроить orient-инструкции в AGENTS.md
 npx gennady agents-rules
+```
+
+`agents-rules` teaches agents how to navigate code entities. The separate `rules` command projects
+the embedded prompt-rule registry and resolver:
+
+```bash
+npx gennady rules list --format json
+npx gennady rules show typescript-rules --format text
+npx gennady rules resolve --phase code --files 'src/**/*.ts' --format json
 ```
 
 ### 4. Ревью MR/PR
@@ -114,18 +123,7 @@ npx gennady sync-skills
 npx gennady sync-skills --dry-run
 ```
 
-### 9. Мульти-модельный анализ
-
-```bash
-# Мнение двух моделей с синтезом
-npx gennady alt-opinion \
-  --model="llmproxy/kimi-k2.6" \
-  --model="llmproxy/glm-5.1" \
-  --synthModel="llmproxy/deepseek-v4-pro" \
-  --file="./spec.md"
-```
-
-### 10. Мониторинг AI-агентов
+### 9. Мониторинг AI-агентов
 
 ```bash
 # Live-дашборд
@@ -133,6 +131,27 @@ npx gennady agent-mon
 
 # Одноразовый снапшот
 npx gennady agent-mon --once
+```
+
+### 10. Unified Verify
+
+```bash
+# Выполнить выбранный срез; человекочитаемый отчёт по умолчанию
+npx gennady verify --phase=code
+
+# Стабильный machine-readable отчёт
+npx gennady verify --phase=unit --json
+
+# Только спланировать, не запускать шаги и не менять workspace
+npx gennady verify --plan --json --phase=full
+
+# SDD phase получает selector из preset defaults + verify.sdd.mapping override
+npx gennady sdd-task CLI-example --phase P2
+
+# Worker исполняет ровно выданную SDD-facade команду; facade доказывает ticket/phase/scope/selector,
+# вызывает общий Verify engine и сохраняет append-only attempt evidence
+npx gennady sdd-verify --task=specs/app/app.task.CLI-example.md --phase=P2
+
 ```
 
 ### 11. Визуализация покрытия тестами
@@ -158,63 +177,62 @@ npx gennady testcov --flat --json
 npx gennady testcov src/core --files
 ```
 
-### 12. Верификация проекта (любой стек)
+### 12. YAGNI-проверка диффа
 
 ```bash
-# План без запуска: детекция стеков, диагностика, argv каждого гейта
-npx gennady verify --plan
+# Символы диффа с < 2 использований в прод-коде (тесты не считаются)
+npx gennady yagni
 
-# Гейты по изменениям от базовой ветки (по умолчанию)
-npx gennady verify
-
-# Явная цель (golang сузит до её пакетов)
-npx gennady verify internal/userapi
-
-# Весь репозиторий / подмножество гейтов / один стек
-npx gennady verify --all
-npx gennady verify --only=golang:build,golang:vet
-npx gennady verify --skip=lint
-npx gennady verify --stack=golang
-
-# JSON для CI/агентов
-npx gennady verify --plan --json
+# Против конкретного корня
+npx gennady yagni /path/to/repo
 ```
 
 ---
 
 ## Все команды
 
-| Команда             | Назначение                                                      |
-| ------------------- | --------------------------------------------------------------- |
-| `commit`            | Генерация commit message из staged-изменений через AI           |
-| `cat`               | Вывод файлов в XML/Markdown для AI-контекста                    |
-| `review`            | AI-ревью staged изменений                                       |
-| `review-verify`     | Сборка промпта для верификации MR/PR discussions                |
-| `review-issues`     | XML-артефакт issues из MR/PR                                    |
-| `vcs-reply`         | Постинг ответов в GitLab MR discussions                         |
-| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR                |
-| `vcs-approve`       | Approve / отзыв approve GitLab MR через API                     |
-| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR              |
-| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)                   |
-| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших                  |
-| `vcs-job`           | Управление джобой (status/play/cancel/retry)                    |
-| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна                     |
-| `vcs-worktree`      | Подготовка read-only git worktree для MR review                 |
-| `inbox`             | Интерактивный разбор входящих GitLab MR                         |
-| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads)        |
-| `run`               | Запуск задания через AI-движок (opencode)                       |
-| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                       |
-| `remote-console`    | Зеркалирование браузерной консоли в stdout                      |
-| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants         |
-| `alt-opinion`       | Мульти-модельные мнения с синтезом                              |
-| `sync`              | Синхронизация `ai/directives/` из npm-пакета                    |
-| `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`                   |
-| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов                    |
-| `orient`            | Навигация по file-header и DBC-контрактам                       |
-| `agents-rules`      | Инструкция по orient для AI-агентов                             |
-| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)              |
-| `verify`            | Стек-агностичные гейты (node + golang + anystack, gennady.yaml) |
-| `fix`               | Мутирующие fixer'ы (кодоген, форматтеры) в рабочем дереве       |
+| Команда             | Назначение                                                                |
+| ------------------- | ------------------------------------------------------------------------- |
+| `commit`            | Генерация commit message из staged-изменений через AI                     |
+| `cat`               | Вывод файлов в XML/Markdown для AI-контекста                              |
+| `review`            | AI-ревью staged изменений                                                 |
+| `review-verify`     | Сборка промпта для верификации MR/PR discussions                          |
+| `review-issues`     | XML-артефакт issues из MR/PR                                              |
+| `vcs-reply`         | Постинг ответов в GitLab MR discussions                                   |
+| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR                          |
+| `vcs-approve`       | Approve / отзыв approve GitLab MR через API                               |
+| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR                        |
+| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)                             |
+| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших                            |
+| `vcs-job`           | Управление джобой (status/play/cancel/retry)                              |
+| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна                               |
+| `vcs-worktree`      | Подготовка read-only git worktree для MR review                           |
+| `inbox`             | Интерактивный разбор входящих GitLab MR                                   |
+| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads)                  |
+| `run`               | Запуск задания через AI-движок (opencode)                                 |
+| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                                 |
+| `remote-console`    | Зеркалирование браузерной консоли в stdout                                |
+| `lint`              | Валидация .ts; references из canonical owner/active task relations        |
+| `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности                      |
+| `sync`              | V2-синхронизация `ai/directives/`; V1 отказывает до записи                |
+| `sync-skills`       | V2-навыки в `.claude/skills/`; V1 отказывает до записи                    |
+| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов                              |
+| `orient`            | V2 resolver relations; legacy headers — read-only migration evidence      |
+| `sdd-orient`        | SDD-граф; legacy headings — read-only migration context                   |
+| `sdd-state`         | Детерминированный снимок SDD-состояния проекта                            |
+| `sdd-check`         | V2 checks; legacy diagnostics grandfathered, no append-only header gate   |
+| `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                            |
+| `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
+| `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine               |
+| `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
+| `rules`             | Embedded rules: inventory/detail/explicit-scope resolve                   |
+| `sdd-log`           | V2 lifecycle writes; legacy/historical input stays read-only              |
+| `sdd-sync`          | V2 tracker writes; legacy scope requires migration                        |
+| `sdd-task`          | V2 execution map/phase; legacy scopes are migration-blocked               |
+| `sdd-migrate`       | SDD v1 → v2: bootstrap, anchors, IDs, move и headers                      |
+| `agents-rules`      | Инструкция по orient для AI-агентов                                       |
+| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)                        |
+| `yagni`             | Символы диффа с < 2 использований, гейт по Usage Waiver                   |
 
 ---
 
@@ -236,10 +254,21 @@ cli/cmd/<name>/
 
 - `specs/cli/cli.spec.md` — общая спека CLI
 - `specs/cli/lint/lint.spec.md` — линтинг
-- `specs/cli/alt-opinion/alt-opinion.spec.md` — alt-opinion
 - `specs/cli/cat/cat.spec.md` — cat
 - `specs/cli/sync/sync.spec.md` — sync
 - `specs/cli/sync-skills/sync-skills.spec.md` — sync-skills
 - `specs/cli/agents-rules/agents-rules.spec.md` — agents-rules
+- `specs/cli/sdd-orient/sdd-orient.spec.md` — sdd-orient
+- `specs/cli/sdd-state/sdd-state.spec.md` — sdd-state
+- `specs/cli/sdd-check/sdd-check.spec.md` — sdd-check
+- `specs/cli/sdd-extract/sdd-extract.spec.md` — sdd-extract
+- `specs/cli/sdd-new/sdd-new.spec.md` — sdd-new
+- `specs/cli/sdd-verify/sdd-verify.spec.md` — sdd-verify
+- `specs/cli/rules/rules.spec.md` — rules
+- `specs/cli/sdd-log/sdd-log.spec.md` — sdd-log
+- `specs/cli/sdd-sync/sdd-sync.spec.md` — sdd-sync
+- `specs/cli/sdd-task/sdd-task.spec.md` — sdd-task
+- `specs/cli/sdd-migrate/sdd-migrate.spec.md` — sdd-migrate
 - `specs/cli/e2e/e2e.spec.md` — e2e-тестирование
 - `specs/cli/testcov/testcov.spec.md` — testcov
+- `specs/cli/yagni/yagni.spec.md` — yagni

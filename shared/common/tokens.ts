@@ -1,6 +1,6 @@
 // @file: Estimate approximate token count in text.
+// @spec: SHARED
 // @consumers: git-diff
-// @tasks: N/A
 
 /** @purpose Estimate approximate token count in text. */
 export const countTokens = (text: string): number => {

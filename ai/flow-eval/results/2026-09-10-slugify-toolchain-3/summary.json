@@ -1,0 +1,46 @@
+{
+  "scenarioId": "slugify-toolchain",
+  "date": "2026-09-10",
+  "timestamp": "2026-09-10T18:59:33.358Z",
+  "sha": "bc2e8d34e3237ea42be6e318ca2e6becb19290c1",
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 20,
+    "observeEveryMs": 60000,
+    "stuckAfter": 4,
+    "tailLimit": 20
+  },
+  "verdict": "fail",
+  "status": "running",
+  "outcome": "fail",
+  "actions": 20,
+  "durationMs": 300186,
+  "usage": {
+    "messages": 70,
+    "input": 90690,
+    "output": 13139,
+    "reasoning": 15010,
+    "cacheRead": 3120512,
+    "cacheWrite": 0,
+    "total": 118839,
+    "cost": 0
+  },
+  "quality": {
+    "rule": "R-COMPLETE",
+    "pass": false,
+    "detail": "artifact built but no group audit receipt on spec (no receipt recorded); no group code-review receipt on spec (no receipt recorded)"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "/private/tmp/claude-503/-Users-k-lebedev-Developer-gennady--claude-worktrees-nice-panini-8aa14e/6bba198d-7bf3-4cf3-97b7-328c67565acc/scratchpad/e09-sandboxes/run1/sdd-flow-eval-qFQLoF/specs/slugify/core/core.spec.md",
+    "/private/tmp/claude-503/-Users-k-lebedev-Developer-gennady--claude-worktrees-nice-panini-8aa14e/6bba198d-7bf3-4cf3-97b7-328c67565acc/scratchpad/e09-sandboxes/run1/sdd-flow-eval-qFQLoF/specs/slugify/slugify.spec.md"
+  ]
+}

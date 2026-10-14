@@ -1,6 +1,6 @@
 // @file: Resolve review launch intent from arguments (url/ref/project+iid/branch).
+// @spec: CLI-REVIEW
 // @consumers: run-review-command.logic
-// @tasks: N/A
 
 import type { ReviewCommandArgs } from '../types/review-command-args.type.ts';
 import type { ReviewIntent } from '../types/review-intent.type.ts';

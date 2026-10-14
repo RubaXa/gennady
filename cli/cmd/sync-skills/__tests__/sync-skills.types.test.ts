@@ -1,6 +1,6 @@
 // @file: Type validation tests for SyncSkills types — SyncSkillsResult, constants
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsOptions, SyncSkillsFileEntry, SyncSkillsResult, SyncSkillsFileStatus
-// @tasks: TSK-57
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

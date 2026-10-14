@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-approve CLI command — happy path, dry-run, error cases, revoke path.
+// @spec: CLI
 // @consumers: CI
-// @tasks: TSK-69, TSK-74
 
 import { describe, it, mock, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

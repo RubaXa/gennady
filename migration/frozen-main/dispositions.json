@@ -1,0 +1,1614 @@
+{
+  "groups": [
+    {
+      "disposition": "adapt",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": ".gitignore",
+      "reason": "Current fixture/tooling exclusions are explicit; importing MAIN spelling cannot reactivate old framework/runtime fixtures.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": [".gitignore"]
+    },
+    {
+      "disposition": "retain",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": null,
+      "reason": "Exact MAIN postimage bytes already exist at this path. Byte retention is not a claim that an old fixture/command executes or that dependencies/API behavior have runtime parity.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": [
+        ".npmignore",
+        "plugins/anystack/e2e/fixtures/any-detected-everywhere/expect.yaml",
+        "plugins/anystack/e2e/fixtures/any-detected-everywhere/main.exotic",
+        "plugins/anystack/e2e/fixtures/any-dirty-tree/expect.yaml",
+        "plugins/anystack/e2e/fixtures/any-dirty-tree/gennady.yaml",
+        "plugins/anystack/e2e/fixtures/any-env-fail-rule/expect.yaml",
+        "plugins/anystack/e2e/fixtures/any-env-fail-rule/gennady.yaml",
+        "plugins/anystack/e2e/fixtures/any-env-fail-rule/main.exotic",
+        "plugins/anystack/e2e/fixtures/any-extra-gates-only/expect.yaml",
+        "plugins/anystack/e2e/fixtures/any-extra-gates-only/gennady.yaml",
+        "plugins/anystack/e2e/fixtures/any-extra-gates-only/src/main.exotic",
+        "plugins/anystack/e2e/fixtures/any-ignored-workspace/.gitignore",
+        "plugins/anystack/e2e/fixtures/any-ignored-workspace/expect.yaml",
+        "plugins/anystack/e2e/fixtures/any-ignored-workspace/gennady.yaml",
+        "plugins/anystack/e2e/fixtures/any-no-gates-configured/expect.yaml",
+        "plugins/anystack/e2e/fixtures/any-no-gates-configured/gennady.yaml",
+        "plugins/anystack/e2e/fixtures/any-no-gates-configured/main.exotic",
+        "plugins/anystack/e2e/fixtures/any-with-node-stack/expect.yaml",
+        "plugins/anystack/e2e/fixtures/any-with-node-stack/gennady.yaml",
+        "plugins/anystack/e2e/fixtures/any-with-node-stack/src/main.exotic",
+        "plugins/anystack/plugin.json",
+        "plugins/golang/directives/infra/golang-setup.xml",
+        "plugins/golang/e2e/fixtures/go-broken-package-not-dropped/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-broken-package-not-dropped/go.mod",
+        "plugins/golang/e2e/fixtures/go-build-error/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-build-error/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-build-error/go.mod",
+        "plugins/golang/e2e/fixtures/go-changed-scope/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-changed-scope/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-changed-scope/go.mod",
+        "plugins/golang/e2e/fixtures/go-clean-full/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-clean-full/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-clean-full/go.mod",
+        "plugins/golang/e2e/fixtures/go-dirty-tree/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-dirty-tree/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-dirty-tree/go.mod",
+        "plugins/golang/e2e/fixtures/go-empty-scope/docs/README.md",
+        "plugins/golang/e2e/fixtures/go-empty-scope/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-empty-scope/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-empty-scope/go.mod",
+        "plugins/golang/e2e/fixtures/go-envfail-catchall/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-catchall/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-catchall/go.mod",
+        "plugins/golang/e2e/fixtures/go-envfail-hint-precedence/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-hint-precedence/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-hint-precedence/go.mod",
+        "plugins/golang/e2e/fixtures/go-envfail-rules/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-rules/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-rules/go.mod",
+        "plugins/golang/e2e/fixtures/go-envfail-streams/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-streams/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-envfail-streams/go.mod",
+        "plugins/golang/e2e/fixtures/go-extra-gate/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-extra-gate/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-extra-gate/go.mod",
+        "plugins/golang/e2e/fixtures/go-extra-requires-missing/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-extra-requires-missing/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-extra-requires-missing/go.mod",
+        "plugins/golang/e2e/fixtures/go-extra-requires-ok/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-extra-requires-ok/go.mod",
+        "plugins/golang/e2e/fixtures/go-fix-missing-tool/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-fix-missing-tool/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-fix-missing-tool/go.mod",
+        "plugins/golang/e2e/fixtures/go-fmt-drift/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-fmt-drift/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-fmt-drift/go.mod",
+        "plugins/golang/e2e/fixtures/go-fmt-excludes-nested-testdata/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-fmt-excludes-nested-testdata/go.mod",
+        "plugins/golang/e2e/fixtures/go-full-output/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-full-output/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-full-output/go.mod",
+        "plugins/golang/e2e/fixtures/go-gate-fixer/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-gate-fixer/generated.txt",
+        "plugins/golang/e2e/fixtures/go-gate-fixer/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-gate-fixer/go.mod",
+        "plugins/golang/e2e/fixtures/go-generate-fix-loop/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-fix-loop/gen.out",
+        "plugins/golang/e2e/fixtures/go-generate-fix-loop/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-fix-loop/go.mod",
+        "plugins/golang/e2e/fixtures/go-generate-ignored/.gitignore",
+        "plugins/golang/e2e/fixtures/go-generate-ignored/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-ignored/go.mod",
+        "plugins/golang/e2e/fixtures/go-generate-missing-tool/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-missing-tool/go.mod",
+        "plugins/golang/e2e/fixtures/go-generate-new-directive/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-new-directive/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-new-directive/go.mod",
+        "plugins/golang/e2e/fixtures/go-generate-none/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-none/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-none/go.mod",
+        "plugins/golang/e2e/fixtures/go-generate-ok/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-ok/gen.out",
+        "plugins/golang/e2e/fixtures/go-generate-ok/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-ok/go.mod",
+        "plugins/golang/e2e/fixtures/go-generate-stale/gen.out",
+        "plugins/golang/e2e/fixtures/go-generate-stale/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-stale/go.mod",
+        "plugins/golang/e2e/fixtures/go-hang-envfail/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-hang-envfail/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-hang-envfail/go.mod",
+        "plugins/golang/e2e/fixtures/go-hang/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-hang/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-hang/go.mod",
+        "plugins/golang/e2e/fixtures/go-lint-exit2/.golangci.yml",
+        "plugins/golang/e2e/fixtures/go-lint-exit2/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-lint-exit2/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-lint-exit2/go.mod",
+        "plugins/golang/e2e/fixtures/go-make-lint-exit2/Makefile",
+        "plugins/golang/e2e/fixtures/go-make-lint-exit2/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-make-lint-exit2/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-make-lint-exit2/go.mod",
+        "plugins/golang/e2e/fixtures/go-mutating-gate/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-mutating-gate/go.mod",
+        "plugins/golang/e2e/fixtures/go-no-commits/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-no-commits/go.mod",
+        "plugins/golang/e2e/fixtures/go-override-argv/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-override-argv/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-override-argv/go.mod",
+        "plugins/golang/e2e/fixtures/go-override-env-timeout/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-override-env-timeout/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-override-env-timeout/go.mod",
+        "plugins/golang/e2e/fixtures/go-plan-describe/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-plan-describe/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-plan-describe/go.mod",
+        "plugins/golang/e2e/fixtures/go-proxy-blocked/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-proxy-blocked/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-proxy-blocked/go.mod",
+        "plugins/golang/e2e/fixtures/go-requires-config-error/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-requires-config-error/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-requires-config-error/go.mod",
+        "plugins/golang/e2e/fixtures/go-root-subdir/README.md",
+        "plugins/golang/e2e/fixtures/go-root-subdir/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-root-subdir/sub/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-root-subdir/sub/go.mod",
+        "plugins/golang/e2e/fixtures/go-sandbox-drift/artifact.txt",
+        "plugins/golang/e2e/fixtures/go-sandbox-drift/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-sandbox-drift/go.mod",
+        "plugins/golang/e2e/fixtures/go-scope-build-constraints/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-scope-build-constraints/go.mod",
+        "plugins/golang/e2e/fixtures/go-scope-nested-module/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-scope-nested-module/go.mod",
+        "plugins/golang/e2e/fixtures/go-scope-nested-module/nested/go.mod",
+        "plugins/golang/e2e/fixtures/go-scope-widen-on-gomod/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-scope-widen-on-gomod/go.mod",
+        "plugins/golang/e2e/fixtures/go-skip-cli-wins/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-cli-wins/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-cli-wins/go.mod",
+        "plugins/golang/e2e/fixtures/go-skip-flag/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-flag/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-flag/go.mod",
+        "plugins/golang/e2e/fixtures/go-skip-gates/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-gates/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-gates/go.mod",
+        "plugins/golang/e2e/fixtures/go-skip-lifted-by-only/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-lifted-by-only/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-skip-lifted-by-only/go.mod",
+        "plugins/golang/e2e/fixtures/go-test-fail/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-test-fail/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-test-fail/go.mod",
+        "plugins/golang/e2e/fixtures/go-test-panic/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-test-panic/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-test-panic/go.mod",
+        "plugins/golang/e2e/fixtures/go-vet-error/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-vet-error/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-vet-error/go.mod",
+        "plugins/golang/e2e/fixtures/go-violation-envfail/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-violation-envfail/gennady.yaml",
+        "plugins/golang/e2e/fixtures/go-violation-envfail/go.mod",
+        "plugins/golang/plugin.json",
+        "plugins/node/plugin.json"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": ".prettierignore",
+      "reason": "Current fixture/tooling exclusions are explicit; importing MAIN spelling cannot reactivate old framework/runtime fixtures.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": [".prettierignore"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": [
+        "AGENTS.md",
+        "ai/directives/sdd/README.md",
+        "ai/skills/sdd-execute/scripts/README.md",
+        "specs/ai-skills/ai-skills.spec.md",
+        "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+        "specs/ai-skills/skill-contract/skill-contract.spec.md"
+      ]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": [
+        "README.md",
+        "ai/directives/coding/README.md",
+        "ai/directives/infra/README.md",
+        "ai/skills/README.md",
+        "cli/AGENTS.md",
+        "cli/cmd/README.md",
+        "specs/infra-base/infra-base.spec.md"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/coding/baseline-rules.xml",
+      "reason": "Reviewed R2 carries frozen axioms via lexical Meta/When/Unless/deps with explicit source/delta proof. Project gates only, no Python provider/pytest default or registry.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/coding/baseline-rules.xml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/coding/go-rules.xml",
+      "reason": "Reviewed R2 carries frozen axioms via lexical Meta/When/Unless/deps with explicit source/delta proof. Project gates only, no Python provider/pytest default or registry.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/coding/go-rules.xml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/coding/python-rules.xml",
+      "reason": "Reviewed R2 carries frozen axioms via lexical Meta/When/Unless/deps with explicit source/delta proof. Project gates only, no Python provider/pytest default or registry.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/coding/python-rules.xml"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": null,
+      "reason": "Project-specific @tessell/core/result/ESLint identifiers and public Result policy are not universal configured V2 defaults. Preserve original axioms, no dependency or invented rule metadata.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "ai/directives/coding/typescript-rules.xml",
+        "shared/rules/builtin-rule-sources.ts"
+      ],
+      "paths": ["ai/directives/coding/result-conventions.xml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "ai/directives/coding/uikit-spec-drafting.xml",
+      "target": "ai/directives/coding/uikit-spec-drafting.xml",
+      "reason": "Specialized UIKit drafting prompt retains six-section/DRAFT principles. It has no lexical Meta and is not a registered RuleSource; MAIN inline VerificationHooks are intentionally omitted, not resolver/gate parity. Configured verification authority remains independent.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/coding/uikit-spec-drafting.xml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/infra/eslint-setup.xml",
+      "reason": "Current lexical rule owner retains public-contract/runner principles under configured verification authority; source additions are raw provenance, not a parallel command pipeline.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/infra/eslint-setup.xml"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": null,
+      "reason": "Central rule registry is explicitly retired; embedded lexical Meta/When/Unless and Registry/PhaseFacts/Resolver own selection. Never load or seed source registry.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/builtin-rule-sources.ts",
+        "shared/rules/rule-registry.ts"
+      ],
+      "paths": ["ai/directives/knowledge.xml"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "target": null,
+      "reason": "Legacy control-plane, durable lifecycle or bash pipeline is intentionally replaced by stateless V2 router/step packages and thin loaders. No second runtime or shell verifier.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "ai/directives/sdd-v2/router.directive.xml",
+        "ai/skills/sdd-execute/SKILL.md"
+      ],
+      "paths": [
+        "ai/directives/sdd/audit.directive.xml",
+        "ai/directives/sdd/critic-protocol.xml",
+        "ai/directives/sdd/critic.directive.xml",
+        "ai/directives/sdd/discovery.directive.xml",
+        "ai/directives/sdd/fix.directive.xml",
+        "ai/directives/sdd/interview-protocol.xml",
+        "ai/directives/sdd/module-decomposition.directive.xml",
+        "ai/directives/sdd/phase-execution-protocol.xml",
+        "ai/directives/sdd/scaffold.directive.xml",
+        "ai/directives/sdd/setup.directive.xml",
+        "ai/directives/sdd/svelte-ui-discovery.directive.xml",
+        "ai/directives/sdd/visual-vocabulary.xml",
+        "ai/skills/sdd-audit/SKILL.md",
+        "ai/skills/sdd-check/SKILL.md",
+        "ai/skills/sdd-execute-batch/SKILL.md",
+        "ai/skills/sdd-execute/SKILL.md",
+        "ai/skills/sdd-execute/scripts/_sdd-lib.sh",
+        "ai/skills/sdd-execute/scripts/check.sh",
+        "ai/skills/sdd-execute/scripts/classify-scripts.js",
+        "ai/skills/sdd-execute/scripts/classify-scripts.ts",
+        "ai/skills/sdd-execute/scripts/extract-section.sh",
+        "ai/skills/sdd-execute/scripts/lint-artifacts.sh",
+        "ai/skills/sdd-execute/scripts/scan.sh",
+        "ai/skills/sdd-execute/scripts/sdd",
+        "ai/skills/sdd-execute/scripts/verify.sh",
+        "ai/skills/sdd-infra/SKILL.md"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/testing/baseline-testing.xml",
+      "reason": "Reviewed R2 carries frozen axioms via lexical Meta/When/Unless/deps with explicit source/delta proof. Project gates only, no Python provider/pytest default or registry.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/testing/baseline-testing.xml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/testing/common.xml",
+      "reason": "Current lexical rule owner retains public-contract/runner principles under configured verification authority; source additions are raw provenance, not a parallel command pipeline.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/testing/common.xml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/testing/node-test.xml",
+      "reason": "Current lexical rule owner retains public-contract/runner principles under configured verification authority; source additions are raw provenance, not a parallel command pipeline.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/testing/node-test.xml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/rules/rules.spec.md",
+      "target": "ai/directives/testing/vitest-rules.xml",
+      "reason": "Current lexical rule owner retains public-contract/runner principles under configured verification authority; source additions are raw provenance, not a parallel command pipeline.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["ai/directives/testing/vitest-rules.xml"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "target": null,
+      "reason": "MAIN and current V2 both delete this obsolete framework/loader preimage; preserve raw preimage history, never resurrect the removed framework.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "ai/directives/sdd-v2/router.directive.xml"
+      ],
+      "paths": [
+        "ai/fw-draft/README.md",
+        "ai/fw-draft/bin/discovery.sh",
+        "ai/fw-draft/gennady.xml",
+        "ai/fw-draft/provider/claude.xml",
+        "ai/fw-draft/provider/cursor.xml",
+        "ai/fw-draft/provider/default.xml",
+        "ai/fw-draft/roles/developer.xml",
+        "ai/fw-draft/router.xml",
+        "ai/fw-draft/routes/development.xml",
+        "ai/fw-draft/routes/universal.xml",
+        "ai/fw-draft/rules/dev/base/file-structure-rules.xml",
+        "ai/fw-draft/rules/dev/typescript/contacts.xml",
+        "ai/fw/v1/architecture/blueprint-factory.xml",
+        "ai/fw/v1/core/mental-model.xml",
+        "ai/fw/v1/discovery/intent-reactor.xml",
+        "ai/fw/v1/production/swarm-protocol.xml",
+        "ai/fw/v1/review/quality-pipeline.xml",
+        "ai/fw/v2/arch-universal.xml",
+        "ai/skills/sdd-hooks-install/SKILL.md"
+      ]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "MAIN-only legacy helper/acceptance is not restored as runtime. Complete original bytes remain for review; current V2 owns equivalent scope without parity claim.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": [
+        "cli/__tests__/e2e/bundle-smoke.e2e.test.ts",
+        "cli/__tests__/e2e/publish-contents.e2e.test.ts",
+        "cli/cmd/_shared/prompt/logic/verify-commands/__tests__/resolve-verify-commands.test.ts"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/e2e/e2e.spec.md",
+      "target": "cli/__tests__/e2e/e2e.test.ts",
+      "reason": "Current installed-CLI acceptance owns artifact surface. Historical build/registry/retry changes remain raw history; real local pack/install exercises current packaging, not fresh-registry/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/__tests__/e2e/e2e.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/e2e/e2e.spec.md",
+      "target": "cli/__tests__/e2e/setup.ts",
+      "reason": "Current installed-CLI acceptance owns artifact surface. Historical build/registry/retry changes remain raw history; real local pack/install exercises current packaging, not fresh-registry/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/__tests__/e2e/setup.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/e2e/e2e.spec.md",
+      "target": "cli/__tests__/e2e/sync-skills.e2e.test.ts",
+      "reason": "Current installed-CLI acceptance owns artifact surface. Historical build/registry/retry changes remain raw history; real local pack/install exercises current packaging, not fresh-registry/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/__tests__/e2e/sync-skills.e2e.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/e2e/e2e.spec.md",
+      "target": "cli/__tests__/e2e/sync.e2e.test.ts",
+      "reason": "Current installed-CLI acceptance owns artifact surface. Historical build/registry/retry changes remain raw history; real local pack/install exercises current packaging, not fresh-registry/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/__tests__/e2e/sync.e2e.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/cli.spec.md",
+      "target": "cli/cmd/_shared/__tests__/vcs-context-resolver.test.ts",
+      "reason": "MAIN change is descriptive/comment/formatting only; current VCS public responsibilities remain, with additive later APIs. No data or provider behavior loss is inferred from changed bytes.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/cmd/_shared/__tests__/vcs-context-resolver.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/cli.spec.md",
+      "target": "cli/cmd/_shared/prompt/logic/verify-commands/resolve-verify-commands.logic.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/_shared/prompt/logic/verify-commands/resolve-verify-commands.logic.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/agents-rules/agents-rules.spec.md",
+      "target": "cli/cmd/agents-rules/__tests__/agents-rules.cmd.test.ts",
+      "reason": "Current V2 dispatch/help/rule instruction surface supersedes old gate/fix spelling; original MAIN source remains reviewable without a runtime parity claim.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/cmd/agents-rules/__tests__/agents-rules.cmd.test.ts"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Old --only/--skip/--stack gate/fixer CLI is superseded by configured selectors/DAG and guarded exact-target repair lifecycle. No standalone old fix/verify engine.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/verify/verify.cmd.ts",
+        "cli/cmd/verify/__tests__/verify.cmd.test.ts"
+      ],
+      "paths": [
+        "cli/cmd/fix/__tests__/fix.cmd.test.ts",
+        "cli/cmd/fix/fix.cmd.ts",
+        "cli/cmd/fix/help.ts",
+        "cli/cmd/fix/index.ts",
+        "cli/cmd/verify/__tests__/verify.cmd.test.ts",
+        "cli/cmd/verify/help.ts",
+        "cli/cmd/verify/index.ts",
+        "cli/cmd/verify/verify.cmd.ts"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/cli.spec.md",
+      "target": "cli/cmd/help/help.cmd.ts",
+      "reason": "Current V2 dispatch/help/rule instruction surface supersedes old gate/fix spelling; original MAIN source remains reviewable without a runtime parity claim.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/cmd/help/help.cmd.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/lint/lint.spec.md",
+      "target": "cli/cmd/lint/__tests__/lint.cmd.test.ts",
+      "reason": "R1 import-safe implementation/explicit bootstrap preserve CLI exit/output/autofix parity; current lint validates V2 ownership instead of old self-executing imports.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/lint/__tests__/lint.cmd.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/lint/lint.spec.md",
+      "target": "cli/cmd/lint/__tests__/resolve-targets.test.ts",
+      "reason": "R1 import-safe implementation/explicit bootstrap preserve CLI exit/output/autofix parity; current lint validates V2 ownership instead of old self-executing imports.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/lint/__tests__/resolve-targets.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/lint/lint.spec.md",
+      "target": "cli/cmd/lint/index.ts",
+      "reason": "R1 import-safe implementation/explicit bootstrap preserve CLI exit/output/autofix parity; current lint validates V2 ownership instead of old self-executing imports.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/lint/index.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/lint/lint.spec.md",
+      "target": "cli/cmd/lint/lint.cmd.ts",
+      "reason": "R1 import-safe implementation/explicit bootstrap preserve CLI exit/output/autofix parity; current lint validates V2 ownership instead of old self-executing imports.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/lint/lint.cmd.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/orient/orient.spec.md",
+      "target": "cli/cmd/orient/__tests__/damerau-levenshtein.test.ts",
+      "reason": "MAIN helper relocation is superseded by current orient-local fuzzy matcher; query behavior retained with current resolvable metadata owners.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/orient/__tests__/damerau-levenshtein.test.ts"
+      ],
+      "paths": ["cli/cmd/orient/__tests__/damerau-levenshtein.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/orient/orient.spec.md",
+      "target": "cli/cmd/orient/core/query-consumer.ts",
+      "reason": "MAIN helper relocation is superseded by current orient-local fuzzy matcher; query behavior retained with current resolvable metadata owners.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/orient/__tests__/damerau-levenshtein.test.ts"
+      ],
+      "paths": ["cli/cmd/orient/core/query-consumer.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/orient/orient.spec.md",
+      "target": "cli/cmd/orient/core/query-entity.ts",
+      "reason": "MAIN helper relocation is superseded by current orient-local fuzzy matcher; query behavior retained with current resolvable metadata owners.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/orient/__tests__/damerau-levenshtein.test.ts"
+      ],
+      "paths": ["cli/cmd/orient/core/query-entity.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/orient/orient.spec.md",
+      "target": "cli/cmd/orient/core/query-keyword.ts",
+      "reason": "MAIN helper relocation is superseded by current orient-local fuzzy matcher; query behavior retained with current resolvable metadata owners.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/orient/__tests__/damerau-levenshtein.test.ts"
+      ],
+      "paths": ["cli/cmd/orient/core/query-keyword.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/review/review.spec.md",
+      "target": "cli/cmd/review/__tests__/review-issues.cmd.test.ts",
+      "reason": "MAIN change is descriptive/comment/formatting only; current VCS public responsibilities remain, with additive later APIs. No data or provider behavior loss is inferred from changed bytes.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/cmd/review/__tests__/review-issues.cmd.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync-skills/sync-skills.spec.md",
+      "target": "cli/cmd/sync-skills/__tests__/sync-skills-core.test.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync-skills/__tests__/sync-skills-core.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync-skills/sync-skills.spec.md",
+      "target": "cli/cmd/sync-skills/__tests__/sync-skills.cmd.test.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync-skills/__tests__/sync-skills.cmd.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync-skills/sync-skills.spec.md",
+      "target": "cli/cmd/sync-skills/sync-skills-core.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync-skills/sync-skills-core.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync-skills/sync-skills.spec.md",
+      "target": "cli/cmd/sync-skills/sync-skills.cmd.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync-skills/sync-skills.cmd.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync-skills/sync-skills.spec.md",
+      "target": "cli/cmd/sync-skills/sync-skills.types.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync-skills/sync-skills.types.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync/sync.spec.md",
+      "target": "cli/cmd/sync/__tests__/sync-core.test.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync/__tests__/sync-core.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync/sync.spec.md",
+      "target": "cli/cmd/sync/__tests__/sync.cmd.test.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync/__tests__/sync.cmd.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync/sync.spec.md",
+      "target": "cli/cmd/sync/sync-core.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync/sync-core.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync/sync.spec.md",
+      "target": "cli/cmd/sync/sync.cmd.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync/sync.cmd.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/sync/sync.spec.md",
+      "target": "cli/cmd/sync/sync.types.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["cli/cmd/sync/sync.types.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/cli.spec.md",
+      "target": "cli/cmd/vcs-reply/vcs-reply.cmd.ts",
+      "reason": "MAIN change is descriptive/comment/formatting only; current VCS public responsibilities remain, with additive later APIs. No data or provider behavior loss is inferred from changed bytes.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/cmd/vcs-reply/vcs-reply.cmd.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/cli.spec.md",
+      "target": "cli/cmd/vcs-worktree/help.ts",
+      "reason": "MAIN change is descriptive/comment/formatting only; current VCS public responsibilities remain, with additive later APIs. No data or provider behavior loss is inferred from changed bytes.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/cmd/vcs-worktree/help.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/cli.spec.md",
+      "target": "cli/gennady.ts",
+      "reason": "Current V2 dispatch/help/rule instruction surface supersedes old gate/fix spelling; original MAIN source remains reviewable without a runtime parity claim.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["cli/gennady.ts"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "target": null,
+      "reason": "Original adaptive orchestration/audit authority/backflow narrative retained without executable second flow.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["docs/sdd-flow.md"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Old stack project config is not an active default; configured Verify selectors/presets and script readiness own current gates. Preserve original config bytes.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": ["gennady.yaml"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/infra-npm-publish/infra-npm-publish.spec.md",
+      "target": "package-lock.json",
+      "reason": "R3 current four declared APIs ship dist JS/types with coherent root fallback; locked closure and publication DENY supersede old engine exports/release wiring. Local pack/install is not publish/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "scripts/__tests__/publish-contract.test.ts"
+      ],
+      "paths": ["package-lock.json"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/infra-npm-publish/infra-npm-publish.spec.md",
+      "target": "package.json",
+      "reason": "R3 current four declared APIs ship dist JS/types with coherent root fallback; locked closure and publication DENY supersede old engine exports/release wiring. Local pack/install is not publish/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "scripts/__tests__/publish-contract.test.ts"
+      ],
+      "paths": ["package.json"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/anystack/anystack-plugin.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/anystack/anystack-plugin.ts"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Changed old-engine expected-output/config is not a V2 fixture substitution. Preserve original contract; current provider acceptance, not old runtime results, is authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": [
+        "plugins/anystack/e2e/fixtures/any-with-node-stack/package.json",
+        "plugins/golang/e2e/fixtures/go-broken-package-not-dropped/p/a.go",
+        "plugins/golang/e2e/fixtures/go-build-error/main.go",
+        "plugins/golang/e2e/fixtures/go-changed-scope/pkga/a.go",
+        "plugins/golang/e2e/fixtures/go-changed-scope/pkgb/b.go",
+        "plugins/golang/e2e/fixtures/go-clean-full/main.go",
+        "plugins/golang/e2e/fixtures/go-clean-full/main_test.go",
+        "plugins/golang/e2e/fixtures/go-dirty-tree/main.go",
+        "plugins/golang/e2e/fixtures/go-empty-scope/main.go",
+        "plugins/golang/e2e/fixtures/go-envfail-catchall/main.go",
+        "plugins/golang/e2e/fixtures/go-envfail-hint-precedence/main.go",
+        "plugins/golang/e2e/fixtures/go-envfail-rules/main.go",
+        "plugins/golang/e2e/fixtures/go-envfail-streams/main.go",
+        "plugins/golang/e2e/fixtures/go-extra-gate/main.go",
+        "plugins/golang/e2e/fixtures/go-extra-requires-missing/main.go",
+        "plugins/golang/e2e/fixtures/go-extra-requires-ok/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-extra-requires-ok/main.go",
+        "plugins/golang/e2e/fixtures/go-fix-missing-tool/main.go",
+        "plugins/golang/e2e/fixtures/go-fmt-drift/main.go",
+        "plugins/golang/e2e/fixtures/go-fmt-excludes-nested-testdata/cmd/c.go",
+        "plugins/golang/e2e/fixtures/go-fmt-excludes-nested-testdata/internal/i.go",
+        "plugins/golang/e2e/fixtures/go-fmt-excludes-nested-testdata/internal/testdata/golden.go",
+        "plugins/golang/e2e/fixtures/go-full-output/main.go",
+        "plugins/golang/e2e/fixtures/go-gate-fixer/main.go",
+        "plugins/golang/e2e/fixtures/go-generate-fix-loop/main.go",
+        "plugins/golang/e2e/fixtures/go-generate-ignored/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-ignored/main.go",
+        "plugins/golang/e2e/fixtures/go-generate-missing-tool/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-missing-tool/main.go",
+        "plugins/golang/e2e/fixtures/go-generate-new-directive/main.go",
+        "plugins/golang/e2e/fixtures/go-generate-none/main.go",
+        "plugins/golang/e2e/fixtures/go-generate-ok/main.go",
+        "plugins/golang/e2e/fixtures/go-generate-stale/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-generate-stale/main.go",
+        "plugins/golang/e2e/fixtures/go-hang-envfail/main.go",
+        "plugins/golang/e2e/fixtures/go-hang/main.go",
+        "plugins/golang/e2e/fixtures/go-lint-exit2/main.go",
+        "plugins/golang/e2e/fixtures/go-make-lint-exit2/main.go",
+        "plugins/golang/e2e/fixtures/go-mutating-gate/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-mutating-gate/main.go",
+        "plugins/golang/e2e/fixtures/go-no-commits/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-no-commits/main.go",
+        "plugins/golang/e2e/fixtures/go-override-argv/main.go",
+        "plugins/golang/e2e/fixtures/go-override-env-timeout/main.go",
+        "plugins/golang/e2e/fixtures/go-plan-describe/main.go",
+        "plugins/golang/e2e/fixtures/go-proxy-blocked/main.go",
+        "plugins/golang/e2e/fixtures/go-requires-config-error/main.go",
+        "plugins/golang/e2e/fixtures/go-root-subdir/sub/main.go",
+        "plugins/golang/e2e/fixtures/go-sandbox-drift/expect.yaml",
+        "plugins/golang/e2e/fixtures/go-sandbox-drift/main.go",
+        "plugins/golang/e2e/fixtures/go-scope-build-constraints/constrained/c.go",
+        "plugins/golang/e2e/fixtures/go-scope-build-constraints/good/good.go",
+        "plugins/golang/e2e/fixtures/go-scope-nested-module/good/good.go",
+        "plugins/golang/e2e/fixtures/go-scope-nested-module/nested/nested.go",
+        "plugins/golang/e2e/fixtures/go-scope-widen-on-gomod/good/good.go",
+        "plugins/golang/e2e/fixtures/go-skip-cli-wins/main.go",
+        "plugins/golang/e2e/fixtures/go-skip-flag/main.go",
+        "plugins/golang/e2e/fixtures/go-skip-gates/main.go",
+        "plugins/golang/e2e/fixtures/go-skip-lifted-by-only/main.go",
+        "plugins/golang/e2e/fixtures/go-test-fail/main.go",
+        "plugins/golang/e2e/fixtures/go-test-fail/main_test.go",
+        "plugins/golang/e2e/fixtures/go-test-panic/main.go",
+        "plugins/golang/e2e/fixtures/go-test-panic/main_test.go",
+        "plugins/golang/e2e/fixtures/go-vet-error/main.go",
+        "plugins/golang/e2e/fixtures/go-violation-envfail/main.go"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/anystack/specs/anystack.spec.md",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/anystack/specs/anystack.spec.md"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/__tests__/golang-detect.test.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/__tests__/golang-detect.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/__tests__/golang-plan.test.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/__tests__/golang-plan.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/__tests__/golang-scope.test.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/__tests__/golang-scope.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/golang-detect.logic.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/golang-detect.logic.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/golang-plan.logic.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/golang-plan.logic.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/golang-plugin.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/golang-plugin.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/golang-scope.logic.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/golang-scope.logic.ts"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Old unshipped Go instruction narrative still names gennady fix/legacy flags and plugin assets. Exclude its instruction delta, not claim adaptation to current capabilities. Current Go provider/readiness and stateless SDD flow own execution; complete source stays inert history.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/skills/sdd-infra-golang/SKILL.md"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/golang/specs/golang.spec.md",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/golang/specs/golang.spec.md"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/index.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/index.ts"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Old Node npm-script classifier surface is replaced by current script readiness/planner/target facets, not restored closed runner.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": [
+        "plugins/node/__tests__/node-plugin.test.ts",
+        "plugins/node/classify-npm-scripts.ts",
+        "plugins/node/specs/node.spec.md"
+      ]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Legacy fixture-specific config/expected-output is not mechanically substituted into current selector/DAG acceptance. Preserve exact source contracts; no current runtime PASS.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": [
+        "plugins/node/e2e/fixtures/node-clean-full/expect.yaml",
+        "plugins/node/e2e/fixtures/node-clean-full/package.json",
+        "plugins/node/e2e/fixtures/node-invalid-manifest/expect.yaml",
+        "plugins/node/e2e/fixtures/node-invalid-manifest/package.json",
+        "plugins/node/e2e/fixtures/node-missing-modules/.gitignore",
+        "plugins/node/e2e/fixtures/node-missing-modules/expect.yaml",
+        "plugins/node/e2e/fixtures/node-missing-modules/package.json",
+        "plugins/node/e2e/fixtures/node-mutating-lint/expect.yaml",
+        "plugins/node/e2e/fixtures/node-mutating-lint/package.json",
+        "plugins/node/e2e/fixtures/node-mutating-overridden/expect.yaml",
+        "plugins/node/e2e/fixtures/node-mutating-overridden/gennady.yaml",
+        "plugins/node/e2e/fixtures/node-mutating-overridden/package.json",
+        "plugins/node/e2e/fixtures/node-no-scripts/expect.yaml",
+        "plugins/node/e2e/fixtures/node-no-scripts/package.json",
+        "plugins/node/e2e/fixtures/node-plus-golang/expect.yaml",
+        "plugins/node/e2e/fixtures/node-plus-golang/go.mod",
+        "plugins/node/e2e/fixtures/node-plus-golang/main.go",
+        "plugins/node/e2e/fixtures/node-plus-golang/package.json",
+        "plugins/node/e2e/fixtures/node-repo-wide/expect.yaml",
+        "plugins/node/e2e/fixtures/node-repo-wide/package.json",
+        "plugins/node/e2e/fixtures/node-repo-wide/src/a.ts",
+        "plugins/node/e2e/fixtures/node-script-mutates/expect.yaml",
+        "plugins/node/e2e/fixtures/node-script-mutates/package.json",
+        "plugins/node/e2e/fixtures/node-test-fail/expect.yaml",
+        "plugins/node/e2e/fixtures/node-test-fail/package.json",
+        "plugins/node/e2e/fixtures/node-typecheck-fail/expect.yaml",
+        "plugins/node/e2e/fixtures/node-typecheck-fail/package.json"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": "plugins/node/node-plugin.ts",
+      "reason": "Language detection/scope/configured-script capability is adapted to current Verify presets/provider scopes/open plugin API; closed StackId/old runner policy is not retained.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "plugins/golang/__tests__/golang-plan.test.ts",
+        "plugins/node/__tests__/node-target.test.ts"
+      ],
+      "paths": ["plugins/node/node-plugin.ts"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Old bash/legacy command assertions or golden are archived, not active V2 acceptance. Current SDD/rules/Verify suites replace the owner; no golden rewrite.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+        "shared/rules/__tests__/main-carry-rules.test.ts"
+      ],
+      "paths": [
+        "scripts/__tests__/critic-directive-contract.test.ts",
+        "scripts/__tests__/deployed-surface.golden.txt",
+        "scripts/__tests__/deployed-surface.test.ts",
+        "scripts/__tests__/directive-markup-contract.test.ts",
+        "scripts/__tests__/sdd-adaptive-execution-contract.test.ts",
+        "scripts/__tests__/sdd-check-log.test.ts",
+        "scripts/__tests__/sdd-check-rules.test.ts",
+        "scripts/__tests__/sdd-review-lifecycle-contract.test.ts",
+        "scripts/__tests__/sdd-task-id.test.ts",
+        "scripts/__tests__/sdd-verify-delegation.test.ts",
+        "scripts/__tests__/testing-rule-contract.test.ts"
+      ]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": "scripts/publish-next.ts",
+      "reason": "R3 current four declared APIs ship dist JS/types with coherent root fallback; locked closure and publication DENY supersede old engine exports/release wiring. Local pack/install is not publish/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "scripts/__tests__/publish-contract.test.ts"
+      ],
+      "paths": ["scripts/publish-next.ts"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Old closed runner/config/plugin-asset resolver and old-engine acceptance are superseded by open Verify DAG/WorkspaceGuard/plugin API. Source implementation/assertions remain history, not runtime parity.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "shared/verify/plugin-api.ts",
+        "cli/cmd/verify/__tests__/verify.cmd.test.ts"
+      ],
+      "paths": [
+        "scripts/stack-e2e.ts",
+        "services/plugins/__tests__/plugin-locality.test.ts",
+        "services/plugins/__tests__/resolve-plugins.test.ts",
+        "services/plugins/plugin-assets.ts",
+        "services/plugins/resolve-plugins.ts",
+        "services/stack/__tests__/e2e/config.e2e.test.ts",
+        "services/stack/__tests__/e2e/fixture-integrity.test.ts",
+        "services/stack/__tests__/e2e/fixture.ts",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-all-errors/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-all-errors/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-all-errors/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-array-replace/.gennadyrc",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-array-replace/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-array-replace/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-array-replace/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-bad-duration/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-bad-duration/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-bad-duration/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-broken-yaml/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-broken-yaml/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-broken-yaml/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-deep-merge/.gennadyrc",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-deep-merge/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-deep-merge/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-deep-merge/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-empty-array-reenable/.gennadyrc",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-empty-array-reenable/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-empty-array-reenable/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-empty-array-reenable/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-foreign-models/.gennadyrc",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-foreign-models/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-foreign-models/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-home-rc/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-home-rc/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-home-rule-attribution/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-home-rule-attribution/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-none/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-none/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-override-unknown-gate/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-override-unknown-gate/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-override-unknown-gate/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-override-unplanned-gate/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-override-unplanned-gate/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-override-unplanned-gate/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-stack-flag-oneshot/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-stack-flag-oneshot/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-stack-flag-oneshot/go.mod",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-stack-flag-oneshot/main.go",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-stack-flag-oneshot/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-unknown-key/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-unknown-key/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-unknown-key/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-unknown-plugin/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-unknown-plugin/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-unknown-plugin/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-use-narrows/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-use-narrows/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-use-narrows/go.mod",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-use-narrows/main.go",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-use-narrows/package.json",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-yaml-only/expect.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-yaml-only/gennady.yaml",
+        "services/stack/__tests__/e2e/fixtures/config/cfg-yaml-only/package.json",
+        "services/stack/__tests__/e2e/plugin-suite.e2e.test.ts",
+        "services/stack/__tests__/e2e/setup.ts",
+        "services/stack/__tests__/e2e/suite.ts",
+        "services/stack/__tests__/env-fail.test.ts",
+        "services/stack/__tests__/gate-runner.test.ts",
+        "services/stack/__tests__/gate-spec-parity.test.ts",
+        "services/stack/__tests__/stack-config.test.ts",
+        "services/stack/__tests__/stack-registry.test.ts",
+        "services/stack/__tests__/tree-guard.test.ts",
+        "services/stack/env-fail.ts",
+        "services/stack/gate-runner.ts",
+        "services/stack/plugin-api.ts",
+        "services/stack/stack-config.ts",
+        "services/stack/stack-registry.ts",
+        "services/stack/stack.types.ts",
+        "services/stack/tree-guard.ts"
+      ]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/agent-run/opencode/opencode.spec.md",
+      "target": null,
+      "reason": "Old data-URL/temp workaround is replaced by deterministic copied dist/chunks/readonly.config.json. Real installed artifact bytes and emitted bundle resolve path are checked without agent/network launch.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/prepare-publish-artifacts.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "services/agent-run/engines/opencode/opencode-engine.ts"
+      ],
+      "paths": ["services/agent-run/engines/opencode/opencode-engine.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "services/config/__tests__/config-loader.test.ts",
+      "reason": "Current loader retains source discovery/deep-merge/per-key provenance; active Verify section validation has its own open config owner, not old closed stack schema.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "services/config/__tests__/config-loader.test.ts"
+      ],
+      "paths": ["services/config/__tests__/config-loader.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "services/config/config-loader.ts",
+      "reason": "Current loader retains source discovery/deep-merge/per-key provenance; active Verify section validation has its own open config owner, not old closed stack schema.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "services/config/__tests__/config-loader.test.ts"
+      ],
+      "paths": ["services/config/config-loader.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/vcs/vcs-client/vcs-client.spec.md",
+      "target": "services/vcs-client/__tests__/github/vcs-github-client.test.ts",
+      "reason": "MAIN change is descriptive/comment/formatting only; current VCS public responsibilities remain, with additive later APIs. No data or provider behavior loss is inferred from changed bytes.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["services/vcs-client/__tests__/github/vcs-github-client.test.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/vcs/vcs-client/vcs-client.spec.md",
+      "target": "services/vcs-client/github/vcs-github-client.ts",
+      "reason": "MAIN change is descriptive/comment/formatting only; current VCS public responsibilities remain, with additive later APIs. No data or provider behavior loss is inferred from changed bytes.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["services/vcs-client/github/vcs-github-client.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "shared/backend/rc/rc-config.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["shared/backend/rc/rc-config.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/cli/orient/orient.spec.md",
+      "target": "cli/cmd/orient/core/damerau-levenshtein.ts",
+      "reason": "MAIN relocation served its central closed config runner. Current three query consumers retain the orient-local matcher. Preserve both rename sides; do not restore a redundant shared module for a retired consumer.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/orient/core/damerau-levenshtein.ts",
+        "cli/cmd/orient/__tests__/damerau-levenshtein.test.ts"
+      ],
+      "paths": ["shared/common/damerau-levenshtein.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "shared/common/exec.ts",
+      "reason": "execFileTrimSafe argv/cwd/no-shell helper is carried verbatim; current headers and execSyncSafe expected-exit options are additive. No legacy shell Verify engine.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "plugins/golang/__tests__/golang-scope.test.ts"
+      ],
+      "paths": ["shared/common/exec.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "shared/common/sync/__tests__/sync-core.shared.test.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["shared/common/sync/__tests__/sync-core.shared.test.ts"]
+    },
+    {
+      "disposition": "exclude",
+      "owner": "specs/cli/sync/sync.spec.md",
+      "target": null,
+      "reason": "Only MAIN plugin-directive staging adapter is excluded: current preparation copies ai, not plugin assets; builtin lexical sources live in ai/directives. Old plugin refs remain only in an unshipped asset tree. Current normalization stays unchanged.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/prepare-publish-artifacts.ts",
+        "shared/rules/builtin-rule-sources.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "shared/common/sync/path-normalizer.ts"
+      ],
+      "paths": ["shared/common/sync/path-normalizer.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "shared/common/sync/sync-core.shared.ts",
+      "reason": "Reviewed R1 preserves unknown root data, removes only proven-owned stale files, resolves package layouts strictly, isolates RC sections and makes Go prompt read-only; current migration/readiness guard remains authoritative.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["shared/common/sync/sync-core.shared.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "shared/common/sync/sync-deps.type.ts",
+      "reason": "Injection key remains rmdir for compatibility, but the actual default closure uses rmSync({recursive:true,force:true}); MAIN safe recursive removal is not lost.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/sync-skills/sync-skills.cmd.ts",
+        "cli/cmd/sync-skills/__tests__/sync-skills-core.test.ts"
+      ],
+      "paths": ["shared/common/sync/sync-deps.type.ts"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/shared/shared.spec.md",
+      "target": "shared/common/sync/sync-formatter.shared.ts",
+      "reason": "Old preserved-status union is superseded: R1 preserves unknown roots and reports explicit sync-core warnings printed by sync.cmd. Retain non-destruction/reporting, not old output spelling.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "cli/cmd/sync/sync-core.ts",
+        "cli/cmd/sync/sync.cmd.ts",
+        "cli/__tests__/tool-behavior/main-carry-safety.test.ts"
+      ],
+      "paths": ["shared/common/sync/sync-formatter.shared.ts"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/README.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/README.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/agent-inbox/agent-inbox.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/agent-inbox/agent-inbox.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/cli.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/cli/cli.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/e2e/e2e.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/cli/e2e/e2e.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/sync-skills/sync-skills.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/cli/sync-skills/sync-skills.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Historical three-source config/provenance/peer registry and closed stack schema. Current open Verify config owner does not activate old skipGates/overrideGates.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/config/config.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": null,
+      "reason": "Historical artifact/STRICT/CI doctrine, suite registry and measured costs; current gates/publication denial authoritative.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/infra-e2e/infra-e2e.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Historical locality/resolver/submodule and asset-staging contract; distinct current plugin API/builtin registry is not claimed equivalent.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/plugins/plugins.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Historical fixture doctrine/matrix and recorded STRICT results, not current V2 PASS.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/stack/e2e/e2e.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Historical closed StackId, runner/sandbox/fixer/environment requirements and decisions, not restoration of old engine.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/stack/stack.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/vcs/vcs-cli/vcs-cli.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/vcs/vcs-cli/vcs-cli.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/vcs/vcs-mr-management/vcs-mr-management.spec.md",
+      "target": null,
+      "reason": "Original MAIN specification/index/instructions delta is archived separately; old links/status/command spelling are not silently imported into current V2 owners.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["specs/vcs/vcs-mr-management/vcs-mr-management.spec.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "Historical original task-layout tracker/index, links, status and ownership remain frozen, never active new tracker rows.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["tasks/README.md", "tasks/stack/README.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "target": null,
+      "reason": "Historical original task-layout tracker/index, links, status and ownership remain frozen, never active new tracker rows.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["tasks/ai-skills/README.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/ai-skills/sdd-skills/sdd-skills.spec.md",
+      "target": null,
+      "reason": "TSK-97 original DONE, three phases, five reopens, eight execution/ten audit rounds have no semantic-equivalent current ticket. SS-run-all is NOT equivalent. No synthetic active state.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["tasks/ai-skills/sdd-skills/sdd-skills.task-97.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/vcs/vcs-mr-management/vcs-mr-management.spec.md",
+      "target": null,
+      "reason": "MAIN only reformatted VCS history tables; preserve complete original journal without active identity rewrite. Original Meta Scope is vcs-mr-management, not Verify.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": [
+        "tasks/cli/vcs-discussions/vcs-discussions.task-93.md",
+        "tasks/cli/vcs-discussions/vcs-integration.task-94.md"
+      ]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "TSK-95 original closed stack/config/runner/codegen/e2e journal; historical PASS is not current Verify evidence.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["tasks/stack/stack-library.task-95.md"]
+    },
+    {
+      "disposition": "archive",
+      "owner": "specs/cli/verify/verify.spec.md",
+      "target": null,
+      "reason": "TSK-96 original verify/fix/shell-delegation journal; preserve all rounds, not current runtime receipts.",
+      "proof": ["scripts/__tests__/main-carry-disposition.test.ts"],
+      "paths": ["tasks/stack/verify-command.task-96.md"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": "tsconfig.json",
+      "reason": "Current fixture/tooling exclusions are explicit; importing MAIN spelling cannot reactivate old framework/runtime fixtures.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts"
+      ],
+      "paths": ["tsconfig.json"]
+    },
+    {
+      "disposition": "adapt",
+      "owner": "specs/infra-base/infra-base.spec.md",
+      "target": "vite.config.ts",
+      "reason": "R3 current four declared APIs ship dist JS/types with coherent root fallback; locked closure and publication DENY supersede old engine exports/release wiring. Local pack/install is not publish/native readiness.",
+      "proof": [
+        "scripts/__tests__/main-carry-disposition.test.ts",
+        "scripts/__tests__/declared-exports.test.ts",
+        "scripts/__tests__/publish-contract.test.ts"
+      ],
+      "paths": ["vite.config.ts"]
+    }
+  ]
+}

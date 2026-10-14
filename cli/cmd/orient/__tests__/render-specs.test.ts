@@ -1,6 +1,6 @@
 // @file: Unit tests for renderSpecsOverview and renderSpecSearch — S8/S9 spec rendering.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,14 +11,14 @@ describe('renderSpecsOverview', () => {
   it('specs overview render: shows spec path with task IDs', () => {
     const overview: SpecOverview = {
       specPath: 'specs/cli/cli.spec.md',
-      taskIds: ['TSK-01', 'TSK-02'],
+      taskIds: ['DP-fields', 'DP-jsdoc'],
       isLibraryLevel: false,
       subSpecs: [],
     };
     const lines = renderSpecsOverview([overview]);
     const output = lines.join('\n');
     assert.match(output, /cli\.spec\.md/);
-    assert.match(output, /TSK-01, TSK-02/);
+    assert.match(output, /DP-fields, DP-jsdoc/);
   });
 
   it('specs overview render: shows library-level spec with sub-spec count', () => {
@@ -56,14 +56,14 @@ describe('renderSpecSearch', () => {
   it('spec search render: shows spec path and task IDs', () => {
     const overview: SpecOverview = {
       specPath: 'specs/cli/cli.spec.md',
-      taskIds: ['TSK-01', 'TSK-02'],
+      taskIds: ['DP-fields', 'DP-jsdoc'],
       isLibraryLevel: false,
       subSpecs: [],
     };
     const lines = renderSpecSearch(overview);
     const output = lines.join('\n');
     assert.match(output, /cli\.spec\.md/);
-    assert.match(output, /TSK-01/);
-    assert.match(output, /TSK-02/);
+    assert.match(output, /DP-fields/);
+    assert.match(output, /DP-jsdoc/);
   });
 });

@@ -1,6 +1,6 @@
 // @file: Fixture — indented multi-tag multi-line JSDoc with varying indentation.
+// @spec: DBC-DBC-LINTER
 // @consumers: DbcTsLinterTest
-// @tasks: TSK-21
 
 /**
  * @purpose Service class for testing indentation preservation in autofix.

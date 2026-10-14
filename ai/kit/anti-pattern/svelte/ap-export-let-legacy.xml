@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<AntiPattern id="AP_EXPORT_LET_LEGACY">
+  <Bad>`export let userId: string; export let onConfirm: () => void;` at the top of a `<script>`.</Bad>
+  <WhyBad>Svelte 4 prop syntax. Forbidden by `AX_LEGACY_PATTERNS_FORBIDDEN` and `AX_PROPS_VIA_DESTRUCTURING`. Bypasses the single `$props()` destructure that is the only authoritative props surface in Svelte 5; mixing it with `$props()` in the same component is undefined behaviour.</WhyBad>
+  <Good>`let { userId, onConfirm } = $props();` — single destructure at the top of the script, defaults inline if needed.</Good>
+</AntiPattern>

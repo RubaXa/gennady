@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<Axiom id="AX_VITEST_ISOLATION_DEFAULT">
+  Vitest's default `isolate: true` is preserved. Do NOT weaken isolation in `vitest.config` without an architectural justification recorded in the project. Disabling isolation trades determinism for speed and re-introduces inter-test leakage.
+</Axiom>

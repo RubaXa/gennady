@@ -1,7 +1,6 @@
-#!/usr/bin/env node
 // @file: Add/remove emoji reactions on MR/PR comments — 👍 🚀 ❤️ etc.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-98
 
 import {
   resolveVcsContext,
@@ -9,9 +8,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
-import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import type { VcsReactionQuery } from '../../../services/vcs-client/entities/vcs-reaction-query.type.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
@@ -53,12 +50,6 @@ function defaultDeps(): Deps {
   };
 }
 
-function createClient(ctx: VcsCliContext): VcsClient {
-  return ctx.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: ctx.token })
-    : new VcsGitlabClient({ baseUrl: `https://${ctx.host}/api/v4`, token: ctx.token });
-}
-
 /**
  * @purpose Add or remove an emoji reaction on an MR/PR comment.
  * @param rawArgs CLI arguments (process.argv).
@@ -74,6 +65,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     comment: { aliases: ['comment'], takesValue: true },
     emoji: { aliases: ['emoji'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     remove: ['remove'],
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
@@ -107,7 +99,13 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
-  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid };
+  const vcsArgs: VcsCliArgs = {
+    host,
+    ref,
+    project,
+    iid: validIid,
+    url: args.url as string | undefined,
+  };
   let context: VcsCliContext;
   try {
     context = await deps.resolveVcsContext(vcsArgs);
@@ -121,11 +119,13 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
 
   const resolvedIid = context.iid ?? validIid;
   if (!resolvedIid) {
-    deps.stderr.write('✖ Specify --ref or --project and --iid\n');
+    deps.stderr.write(
+      '✖ Specify --url <mr-url> (preferred) or --ref <group/repo>!<iid> with --host\n'
+    );
     deps.exit(1);
   }
 
-  const client = createClient(context);
+  const client = createVcsClient(context);
   if (!client.Reactions) {
     deps.stderr.write('✖ Reactions not available for this host\n');
     deps.exit(1);

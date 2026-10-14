@@ -1,6 +1,6 @@
 // @file: Pure function — parse GitLab MR / GitHub PR URL → VcsUrl.
+// @spec: VCS-VCS-CLIENT
 // @consumers: cat --url, CLI commands
-// @tasks: TSK-27
 
 import type { VcsUrl } from './entities/vcs-url.type.ts';
 

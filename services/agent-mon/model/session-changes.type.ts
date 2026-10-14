@@ -1,6 +1,6 @@
 // @file: Diff result shape — added, removed, updated session arrays
+// @spec: AGENT-MON-MODEL
 // @consumers: diff, observe, cli
-// @tasks: TSK-35
 
 import type { AgentSession } from './agent-session.type.js';
 

@@ -1,0 +1,138 @@
+<SddDiscoverFromCode keywords="discover, from-code, reverse-engineer, brownfield, recover-specs, general-picture, understanding-block, incremental, lazy, align-code, sdd-discover-from-code" type="directive" ver="2.1">
+  <Mission>
+    Recover the GENERAL PICTURE of an existing codebase as SDD specs — project-scale, brownfield.
+    Entered from `root` when the portal is absent but the `sdd-state` snapshot reports `CODE=present`: the
+    repo already holds code, so we do not invent a vision over it — we read what is there and formalize
+    the big picture first. Loaded by `root` (which runs only after the router); the router-core beliefs it
+    relies on are declared in `BeliefState deps` (inherited, not repeated).
+
+    The primary deliverable is the portal: an operator-confirmed Vision + Scope Graph + a recovered infra
+    scope. That is a complete, valid outcome on its own. Deep elaboration — module specs, rule extraction,
+    contract/style alignment tasks — is INCREMENTAL: done per scope, only when the operator asks to go
+    deeper, with the flow loading spec-elaboration only for that part. We recover the map first; we do not
+    recover the whole repo at once, and we do not overload the operator.
+
+    Key interaction rule: the vision is not fully in the code, so the agent does not ask the operator to
+    supply it from scratch — it presents what it understood (coarse first, marking how confident it is in
+    each item) and the operator agrees, augments, or corrects in free text. This is a review, not a
+    multiple-choice question.
+
+    Reuses the branches — portal via the portal format, infra via `infra`, modules via `module`, tasks
+    via `scaffold`; it does NOT re-enter `root` (which routed here — re-entry would loop). Distinct from
+    `reconcile-from-code` (one change/module against an existing spec triangle).
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION, AX_OPERATOR_OUTPUT_LIVE_TEXT, AX_READER_WITHOUT_SESSION_CONTEXT">
+    Inherited from the loading directive (already in context): AX_PROGRESSIVE_DISCLOSURE, HALT_FORMAT, MESSAGE_LAYOUT, QUESTION_RULE_SLIM, UNDERSTANDING_BLOCK_FORMAT
+
+    <Axiom id="AX_EVIDENCE_HYGIENE">
+      Separate Facts / Assumptions / Hypotheses in every intake-style frame.
+      - **Facts** — directly observable from input artifacts (spec, sibling specs, rule files, extracted measurements).
+      - **Assumptions** — working assumptions awaiting confirmation; mark explicitly.
+      - **Hypotheses** — conjectures that require operator validation before they are promoted to requirements.
+
+      Conflating the three causes downstream decisions to be made on unvalidated assumptions, producing requirements mismatches that surface only at integration; surface them in distinct lists.
+    </Axiom>
+
+    <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+      Before writing any operator-facing artifact, recall the language rules —
+      `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+      and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+      and hold the text about to be written to them. This is the author's own pass, done in the moment
+      of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+      and unchanged — this pass does not replace it.
+    </Axiom>
+  </BeliefState>
+
+  <KernelGrammar>
+    <Definition id="DEF_READ_AND_USE_DIRECTIVE">
+      `READ_AND_USE_DIRECTIVE(src)` tells the agent to READ the file at `src` and apply it as part
+      of the current task. It is a runtime lazy-load, not text to inline into any output.
+
+      - The loaded branch directive INHERITS this kernel's cross-cutting core (language, dialogue,
+        stateless) and carries only its own deltas; it MUST NOT repeat the core.
+      - Loading is lazy: a branch is read only when its route fires, so the kernel stays small and
+        context is not polluted by branches that do not apply.
+      - The reference is a file path on purpose — a directive delivered as a file keeps full
+        instruction priority, unlike command stdout.
+    </Definition>
+  </KernelGrammar>
+
+  <ChatProtocol>
+  </ChatProtocol>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_CODE` | the `sdd-state` snapshot reports `CODE=absent` — wrong branch; return to `root` greenfield init |
+    | `H_OPERATOR_REJECT` | Operator rejects the recovered picture outright — stop; nothing is written |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_CARTOGRAPHY">
+      <Goal>Read the COARSE picture — cheap, write nothing.</Goal>
+      <Action>
+        From the `sdd-state` probe facts (`code-dirs`, `configs`) + a coarse read — `package.json` (name,
+        workspaces, deps), entry points, top-level layout — infer **candidate scopes** (workspace
+        packages, else top-level domain dirs) and a rough module list, the toolchain, and a light read of
+        conventions + a contract signal. Do NOT deep-read every module; the goal here is the map, not the
+        detail. Read-only.
+      </Action>
+    </Step>
+    <Step id="STEP_1_PICTURE">
+      <Goal>Show the general picture; let the operator steer.</Goal>
+      <Action>
+        Present the **general picture** (`UNDERSTANDING_BLOCK_FORMAT`), plain Russian, coarse first:
+        inferred **vision** (what the code does — but marked operator-owned: «зачем и куда — твоё»),
+        the **scope graph**, the **infra/toolchain**, and a short note on conventions + contract state.
+        Mark **confidence** per item — read-for-sure vs guessed vs «не смог отнести к scope/модулю, реши
+        ты» (facts / assumptions / hypotheses kept apart, `AX_EVIDENCE_HYGIENE`) — and steer the
+        operator's attention to the unsure spots. Frame: «вот общая картина как я
+        понял — согласись, дополни, поправь». Open free-text — NOT a multiple-choice question.
+        Fold corrections into the locked picture. Outright rejection → `H_OPERATOR_REJECT`. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_PERSIST_PICTURE">
+      <Goal>Persist the picture — the primary, self-sufficient outcome.</Goal>
+      <Action>
+        Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. `specs/README.md`
+        does not exist yet on this path — create its skeleton via portalManifest ToolCall below first (never
+        overwrites, prints the section manifest). Assemble the
+        portal (Vision + Scope Graph + Scopes table) directly in that skeleton — do NOT re-enter
+        `root` (it routed here — re-entry would loop). Recover the infra scope from the configs via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")`. The repo now has a portal —
+        a valid place to stop.
+        <ToolCall owner="this-step" result="portalManifest">npx gennady sdd-new portal</ToolCall> Use portalManifest.
+      </Action>
+    </Step>
+    <Step id="STEP_3_DEEPEN">
+      <Goal>Go deeper — by parts, only what the operator picks (optional, incremental).</Goal>
+      <Action>
+        Offer to elaborate; the picture already stands, so this is opt-in and incremental. For each
+        scope the operator chooses: recover its module specs via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")` (behavioral truth — what the
+        code does); record the de-facto rules + the contract gap; and, when the operator wants the code
+        aligned, scaffold **behavior-preserving** alignment tasks via
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")` — prioritized, not one per
+        gap (contract alignment on pre-DbC code is a large effort — scope it). Loop per chosen scope; the
+        operator can stop anytime. Load these branches only for the part being deepened.
+      </Action>
+    </Step>
+    <Step id="STEP_4_VERIFY">
+      <Goal>Prove what was produced is coherent.</Goal>
+      <Action>
+        Whatever exists now (at minimum portal + infra; plus any deepened scopes) is coherent;
+        exact integrityCheck ToolCall below clean. Hand the produced portal/scope paths to the root
+        owner, which chooses the next scope or pause. The artifacts themselves are the saved result;
+        no session continuation or close operation exists.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all .</ToolCall> Use integrityCheck.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `🧭 DFC_R<N> · scopes=<n> · deepened=<n> · step=<id>`.
+
+  </ChatOutput>
+</SddDiscoverFromCode>

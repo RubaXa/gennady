@@ -1,6 +1,6 @@
 // @file: AI Legacy Model initialization config: name, URL, optional key and additional parameters.
+// @spec: CLI
 // @consumers: ai-legacy-agent, ai-legacy-core
-// @tasks: N/A
 
 import { unguardOrThrow } from '../../../shared/common/unguard.ts';
 import { removeThink } from '../../../shared/common/think.ts';

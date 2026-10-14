@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_TEST_ANCHOR_NAMING">
+Anchor names describe intent, not raw syntax. `START_FETCH_ITEM_OBSERVE_RETRY_SUMMARY` — yes; `START_FETCH_ITEM_ASSERT_2` — no. Uppercase, high-signal tokens. CASE = short scenario id; INTENT = what this phase is about.
+</Axiom>

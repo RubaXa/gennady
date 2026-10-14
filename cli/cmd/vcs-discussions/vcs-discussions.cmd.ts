@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Show MR discussions — human-readable output of GitLab MR discussion threads.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-93
 
 import {
   resolveVcsContext,
@@ -9,9 +9,8 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
-import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
 
@@ -31,12 +30,6 @@ function defaultDeps(): Deps {
   };
 }
 
-function createClient(ctx: VcsCliContext): VcsClient {
-  return ctx.provider === 'github'
-    ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: ctx.token })
-    : new VcsGitlabClient({ baseUrl: `https://${ctx.host}/api/v4`, token: ctx.token });
-}
-
 /**
  * @purpose Show MR discussions — human-readable output of GitLab MR discussion threads.
  *   Thin wrapper over existing VcsClientMergeDiscussions.getAll().
@@ -51,8 +44,11 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     project: { aliases: ['project'], takesValue: true },
     iid: { aliases: ['iid'], takesValue: true },
     host: { aliases: ['host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     all: ['all'],
     json: ['json'],
+    my: ['my'],
+    'with-drafts': ['with-drafts', 'drafts'],
     'dry-run': ['dry-run', 'dry'],
   }) as Record<string, unknown>;
 
@@ -63,6 +59,24 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const json = !!args.json;
   const dryRun = !!args['dry-run'];
   const host = args.host as string | undefined;
+  const urlArg = args.url as string | undefined;
+  const my = !!args.my;
+  const withDrafts = !!args['with-drafts'];
+
+  if (withDrafts && !my) {
+    if (json) {
+      deps.stdout.write(
+        JSON.stringify({
+          ok: false,
+          error: 'INVALID_ARGS',
+          detail: '--with-drafts requires --my',
+        }) + '\n'
+      );
+      deps.exit(2);
+    }
+    deps.stderr.write('✖ Ошибка: --with-drafts requires --my\n');
+    deps.exit(1);
+  }
 
   if (ref && !/^.+\!\d+$/.test(ref)) {
     deps.stderr.write('✖ Invalid ref format. Expected: <group/repo>!<iid>\n');
@@ -72,7 +86,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const iid = ref ? Number(ref.split('!').pop()) : iidRaw ? Number(iidRaw) : undefined;
   const validIid = iid !== undefined && !isNaN(iid) && iid > 0 ? iid : undefined;
 
-  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid };
+  const vcsArgs: VcsCliArgs = { host, ref, project, iid: validIid, url: urlArg };
   let context: VcsCliContext;
   try {
     context = await deps.resolveVcsContext(vcsArgs);
@@ -87,7 +101,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   let resolvedIid = context.iid ?? validIid;
 
   if ((!resolvedIid || isNaN(resolvedIid) || resolvedIid <= 0) && context.branch) {
-    const client = createClient(context);
+    const client = createVcsClient(context);
     const mr = (await client.MergeRequests.getOne({
       project: context.project,
       sourceBranch: context.branch,
@@ -98,7 +112,9 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   }
 
   if (!resolvedIid || isNaN(resolvedIid) || resolvedIid <= 0) {
-    deps.stderr.write('✖ Specify --ref <group/repo>!<iid> or --project and --iid\n');
+    deps.stderr.write(
+      '✖ Specify --url <mr-url> (preferred) or --ref <group/repo>!<iid> with --host\n'
+    );
     deps.exit(1);
   }
 
@@ -110,26 +126,87 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   }
 
   try {
-    const client = createClient(context);
+    const client = createVcsClient(context);
 
     const discussions = (await client.MergeDiscussions!.getAll({
       project: context.project,
       iid: resolvedIid,
     })) as Array<Record<string, unknown>>;
 
-    const filtered = showAll ? discussions : discussions.filter((d) => !d.resolved);
+    const filtered = showAll
+      ? discussions
+      : discussions.filter((d) => {
+          const firstNote = (d.notes as Array<Record<string, unknown>> | undefined)?.[0];
+          return firstNote?.resolved !== true;
+        });
+
+    let resultDiscussions = filtered;
+    let drafts: unknown[] | undefined;
+
+    if (my) {
+      // #region START_APPLY_MY_FILTER
+      try {
+        const gitlabClient = client as VcsGitlabClient;
+        const me = await gitlabClient.getCurrentUser();
+        resultDiscussions = resultDiscussions.filter((d) => {
+          const notes = (d.notes as Array<Record<string, unknown>>) ?? [];
+          return notes.some((n) => {
+            const author = n.author as { username?: string } | undefined;
+            return author?.username === me.login;
+          });
+        });
+      } catch (cause) {
+        if (json) {
+          deps.stdout.write(
+            JSON.stringify({
+              ok: false,
+              error: 'NETWORK',
+              detail: (cause as Error).message ?? 'Не удалось определить текущего пользователя',
+            }) + '\n'
+          );
+          deps.exit(2);
+        }
+        deps.stderr.write(
+          `✖ Ошибка: ${(cause as Error).message ?? 'Не удалось определить текущего пользователя'}\n`
+        );
+        deps.exit(1);
+      }
+      // #endregion END_APPLY_MY_FILTER
+
+      if (withDrafts) {
+        // #region START_LOAD_DRAFT_NOTES
+        try {
+          drafts = await client.MergeDiscussions!.listDraftNotes({
+            project: context.project,
+            iid: resolvedIid,
+          });
+        } catch (cause) {
+          deps.stderr.write(
+            `⚠ Не удалось загрузить черновики: ${(cause as Error).message ?? 'неизвестная ошибка'}\n`
+          );
+          drafts = [];
+        }
+        // #endregion END_LOAD_DRAFT_NOTES
+      }
+    }
 
     if (json) {
-      deps.stdout.write(JSON.stringify(filtered.map(mapToJson), null, 2) + '\n');
+      if (withDrafts) {
+        deps.stdout.write(
+          JSON.stringify({ discussions: resultDiscussions.map(mapToJson), drafts }, null, 2) + '\n'
+        );
+      } else {
+        deps.stdout.write(JSON.stringify(resultDiscussions.map(mapToJson), null, 2) + '\n');
+      }
       deps.exit(0);
     }
 
-    if (filtered.length === 0) {
+    if (resultDiscussions.length === 0) {
       deps.stdout.write(`No discussions found for ${context.project}!${resolvedIid}\n`);
       deps.exit(0);
     }
 
-    for (const d of filtered) {
+    for (const d of resultDiscussions) {
       const shortId = String(d.id ?? '').slice(0, 8);
       const notes = (d.notes as Array<Record<string, unknown>> | undefined) ?? [];
       const firstNote = notes[0];
@@ -148,7 +225,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
         const line = position.new_line as number | undefined;
         extra = file + (line ? `:${line}` : '');
       }
-      if (d.resolved) extra += ' (resolved)';
+      if (firstNote.resolved) extra += ' (resolved)';
       if (!body) extra += ' (no text)';
 
       deps.stdout.write(
@@ -179,9 +256,11 @@ function mapToJson(d: Record<string, unknown>) {
     body: firstNote?.body ?? '',
     file: position?.new_path ?? undefined,
     line: position?.new_line ?? undefined,
-    resolved: !!d.resolved,
+    resolved: firstNote?.resolved ?? null,
     notes: notes.map((n) => ({
+      id: n.id,
       author: (n.author as { name?: string })?.name ?? 'unknown',
+      username: (n.author as { username?: string })?.username ?? undefined,
       body: n.body ?? '',
       createdAt: n.created_at ?? '',
     })),

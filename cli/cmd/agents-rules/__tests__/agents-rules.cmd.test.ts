@@ -1,10 +1,10 @@
 // @file: Integration tests for gennady agents-rules command — run() with mocked fs
+// @spec: CLI-AGENTS-RULES
 // @consumers: agents-rules.cmd.ts, run
-// @tasks: TSK-59
 
 import { describe, it, mock, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, symlinkSync, unlinkSync } from 'node:fs';
+import { symlinkSync, unlinkSync } from 'node:fs';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,9 +51,6 @@ mock.module('node:fs', {
 
 let symlinkCreated = false;
 try {
-  // invariant: the node_modules parent may be absent (e.g. git worktree without its own install) —
-  // ensure it exists so import.meta.resolve('gennady') has a real path to follow.
-  mkdirSync(dirname(gennadyLink), { recursive: true });
   symlinkSync(projectRoot, gennadyLink, 'dir');
   symlinkCreated = true;
 } catch (e: any) {

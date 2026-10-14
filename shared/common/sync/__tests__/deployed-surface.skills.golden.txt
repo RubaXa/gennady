@@ -1,0 +1,13 @@
+agent-inbox/SKILL.md
+opencode-get-session/SKILL.md
+prd-interview/PRD_TEMPLATE.md
+prd-interview/SKILL.md
+sdd-audit/SKILL.md
+sdd-check/SKILL.md
+sdd-code-review/SKILL.md
+sdd-critic/SKILL.md
+sdd-execute/SKILL.md
+sdd-reconcile/SKILL.md
+sdd-scaffold/SKILL.md
+sdd/SKILL.md
+workspace-permission-setup/SKILL.md

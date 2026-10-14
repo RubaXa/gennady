@@ -1,0 +1,11 @@
+$ node --import tsx cli/gennady.ts sdd-migrate move . --scope ai-skills
+
+--- stdout ---
+[sdd-migrate move] DRY-RUN · scope ai-skills
+  no-op scope ai-skills — уже мигрирован в v2
+
+(dry-run — повторить с --write, чтобы применить)
+
+
+--- stderr ---
+

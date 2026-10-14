@@ -1,10 +1,14 @@
-<BaselineCodingRules keywords="baseline, language_agnostic, contracts, error_handling, naming, yagni, ai_to_ai" type="coding-rules" ver="1.0">
-  <!--
-    Language-agnostic coding baseline. The few things that hold in ANY language. Language rule files
-    (python-rules, go-rules, typescript-rules, …) inherit this and add their own idioms; do not
-    restate these axioms there. Activated for source code files of a scope that declares no more
-    specific language rule, and as the transitive parent of the language rules that reference it.
-  -->
+<BaselineCodingRules rule-id="coding-baseline" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When language="javascript,typescript,go,python,swift,bash,shell"/>
+</Meta>
+  <Mission>
+    Language-agnostic coding baseline for classified code artifacts; language-specific rules add idioms.
+    This generic contract does not impose TypeScript machine annotations on tests or standalone helpers.
+    The public surface means caller-facing APIs, not each test case or private fixture function.
+    Rules are agent instructions, not a second command pipeline. Only the configured selector/DAG
+    determines authority gates; examples below are not defaults and must not be run as extra gates.
+  </Mission>
 
   <BeliefState>
     <Axiom id="AX_TELEOLOGICAL_NAMING">
@@ -73,15 +77,14 @@
 
   <VerificationHooks>
     <Hook id="HOOK_PROJECT_GATE">
-      <Purpose>The scope's own quality gate (formatter + linter + type/compile check + tests, as the
-      project declares them) passes on the changed files.</Purpose>
-      <Command>&lt;sdd-path&gt; verify --wip &lt;target-files&gt;</Command>
-      <Expected>Exit 0. If the scope has not declared its gate yet, that is the finding to fix first.</Expected>
+      <Purpose>The configured selector/DAG owns the project's formatter, linter, type/compile and test gates.
+      A missing required gate/capability is a finding, never an implicit successful skip.</Purpose>
+      <Expected>Use the workflow owner's reviewed Verify invocation and actual report; this prompt registers no command.</Expected>
     </Hook>
     <Hook id="HOOK_NO_SCAFFOLD_LEFTOVER">
-      <Purpose>No placeholder/scaffold markers survive in shipped code.</Purpose>
-      <Command>rg --no-heading -n "TODO|FIXME|XXX|&lt;[A-Z_]+&gt;|placeholder" &lt;target-files&gt;</Command>
-      <Expected>Empty on changed lines; a real deferred item belongs in a ticket, not a bare marker.</Expected>
+      <Purpose>No placeholder/scaffold markers survive on changed shipped lines; real deferred items belong in a ticket.</Purpose>
+      <Example>Review changed lines for TODO, FIXME, XXX, <NAME> and placeholder markers.</Example>
+      <Expected>No bare leftovers; an example is not an added Verify gate.</Expected>
     </Hook>
   </VerificationHooks>
 
@@ -96,6 +99,6 @@
     ❌ Pattern-shaped names that hide the business goal.
     ❌ Comments that restate the code, or doc blocks duplicating the signature.
     ❌ An abstraction introduced for a single caller with no confirmed second consumer.
-    ❌ Placeholder/scaffold markers (`TODO`, `&lt;NAME&gt;`) left in shipped code.
+    ❌ Placeholder/scaffold markers (`TODO`, `<NAME>`) left in shipped code.
   </RewardCriteria>
 </BaselineCodingRules>

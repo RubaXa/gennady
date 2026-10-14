@@ -1,0 +1,22 @@
+[
+  {
+    "kind": "run",
+    "name": "formatter",
+    "command": "npm",
+    "args": ["run", "format:fix", "--", "src/a.css"],
+    "evidence": "npm run format:fix -- src/a.css"
+  },
+  {
+    "kind": "run",
+    "name": "project-linter",
+    "command": "npm",
+    "args": ["run", "lint:fix", "--", "src/a.css"],
+    "evidence": "npm run lint:fix -- src/a.css"
+  },
+  {
+    "kind": "skip",
+    "name": "gennady-contract",
+    "reason": "no applicable .ts/.tsx targets",
+    "evidence": "gennady-contract(skip: no applicable .ts/.tsx targets)"
+  }
+]

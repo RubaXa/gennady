@@ -1,6 +1,6 @@
 // @file: XML tree node — tag, attributes, child nodes or text.
+// @spec: SHARED
 // @consumers: commit-gen
-// @tasks: N/A
 
 /**
  * @purpose XML tree node — tag, attributes, child nodes or text.

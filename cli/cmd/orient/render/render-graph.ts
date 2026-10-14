@@ -1,6 +1,6 @@
 // @file: Render architecture dependency graph — S7 scenario (flat and recursive).
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { GraphNode } from '../orient.types.ts';
 

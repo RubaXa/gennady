@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-worktree — prepare/cleanup a read-only worktree for MR review.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: N/A, TSK-70
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, existsSync, readdirSync, readFileSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { style } from '../../../shared/common/style.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import {
   resolveStateDir,
-  worktreesRoot,
+  mrsRoot,
+  mrWorktreeDir,
   clonesRoot,
   reposMapPath,
 } from '../inbox/_core/logic/state-paths.logic.ts';
@@ -20,13 +20,13 @@ import {
   removeWorktreeAt,
   gcStaleWorktrees,
   removeAllWorktrees,
+  WORKTREE_TTL_MS,
 } from './_core/logic/worktree-ops.logic.ts';
+import type { WorktreeLinkFsDeps } from './_core/logic/worktree-links.logic.ts';
 import { ensureClone } from './_core/logic/locate-clone.logic.ts';
 import { resolveVcsContext } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs } from '../_shared/vcs-context-resolver.ts';
-
-/** @purpose Staleness TTL: worktrees older than this are GC'd on prepare. */
-const WORKTREE_TTL_MS = 3 * 60 * 60 * 1000;
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 
 function parseValue(argv: string[], flag: string): string | undefined {
   const inline = argv.find((a) => a.startsWith(`${flag}=`));
@@ -41,21 +41,26 @@ async function run(): Promise<number> {
     const stateDir = resolveStateDir(argv);
 
     if (argv.includes('--cleanup-all')) {
-      const removed = removeAllWorktrees(worktreesRoot(stateDir));
+      const removed = await removeAllWorktrees(mrsRoot(stateDir));
       console.info(style.gray(`worktrees removed: ${removed.length}`));
       return 0;
     }
 
     const cleanup = parseValue(argv, '--cleanup');
     if (cleanup) {
-      removeWorktreeAt(cleanup);
+      await removeWorktreeAt(cleanup);
       console.info(style.gray(`worktree removed: ${cleanup}`));
       return 0;
     }
 
     const ref = parseValue(argv, '--ref');
-    if (!ref || !ref.includes('!')) {
-      console.error(style.redBright.bold('✖ Ошибка:'), 'Укажите --ref group/project!iid');
+    const url = parseValue(argv, '--url');
+    // --url is the preferred form (host inferred). --ref is an override; require one of them.
+    if (!url && (!ref || !ref.includes('!'))) {
+      console.error(
+        style.redBright.bold('✖ Ошибка:'),
+        'Укажите --url <mr-url> (предпочтительно) или --ref group/project!iid'
+      );
       return 1;
     }
 
@@ -66,6 +71,7 @@ async function run(): Promise<number> {
     const vcsCliArgs: VcsCliArgs = {
       ref,
       host: vcsSource,
+      url,
     };
 
     const context = await resolveVcsContext(vcsCliArgs);
@@ -74,8 +80,7 @@ async function run(): Promise<number> {
     const host = context.host;
     const token = context.token;
 
-    const baseUrl = `https://${host}/api/v4`;
-    const client = new VcsGitlabClient({ token, baseUrl });
+    const client = createVcsClient(context);
     // #endregion END_RESOLVE_VCS_CONTEXT
 
     const mr = (await client.MergeRequests.getByIid({ project, iid })) as {
@@ -85,22 +90,38 @@ async function run(): Promise<number> {
     const targetBranch = mr?.target_branch ?? '';
     const diffRefs = mr?.diff_refs;
 
-    const clonePath = ensureClone(project, host, token, {
+    const clonePath = await ensureClone(project, host, token, {
       reposBase,
       reposMapPath: reposMapPath(stateDir),
       clonesRoot: clonesRoot(stateDir),
     });
 
-    const root = worktreesRoot(stateDir);
-    mkdirSync(root, { recursive: true });
-    // GC safety net: prune leaked worktrees older than TTL on every prepare,
-    // so they cannot grow unbounded even if --cleanup is never called.
-    const gced = gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
-    if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
-    const worktreePath = join(root, `${project.replace(/\//g, '__')}-${iid}`);
+    // --worktree-dir: explicit override for where the worktree is created/reused (e.g. an existing
+    // worktree from before the mrs/<key>/worktree layout, TSK-131) — bypasses the default root's GC
+    // entirely, since a caller-managed path has its own lifecycle, not this command's.
+    const worktreeDirFlag = parseValue(argv, '--worktree-dir');
+    let worktreePath: string;
+    if (worktreeDirFlag) {
+      worktreePath = worktreeDirFlag;
+    } else {
+      const root = mrsRoot(stateDir);
+      mkdirSync(root, { recursive: true });
+      // GC safety net: prune leaked worktrees older than TTL on every prepare,
+      // so they cannot grow unbounded even if --cleanup is never called.
+      const gced = await gcStaleWorktrees(root, WORKTREE_TTL_MS, Date.now());
+      if (gced.length > 0) console.info(style.gray(`gc: removed ${gced.length} stale worktree(s)`));
+      worktreePath = mrWorktreeDir(stateDir, `${project}!${iid}`);
+    }
 
-    const prepared = prepareMrWorktree(clonePath, iid, worktreePath);
-    const baseSha = targetBranch ? resolveBaseSha(clonePath, targetBranch, prepared.headSha) : '';
+    // FR-WT-07: composition root for real fs deps — the only call site that links
+    // dependency directories into the prepared worktree (best-effort, secrets excluded).
+    const linkFsDeps: WorktreeLinkFsDeps = { existsSync, readdirSync, readFileSync, symlinkSync };
+    // FR-WT-08: this command reviews MR code directly in the worktree, so submodules must be
+    // present too (best-effort) — unlike other prepareMrWorktree callers, which don't opt in.
+    const prepared = await prepareMrWorktree(clonePath, iid, worktreePath, linkFsDeps, true);
+    const baseSha = targetBranch
+      ? await resolveBaseSha(clonePath, targetBranch, prepared.headSha, diffRefs?.base_sha)
+      : '';
 
     console.info(style.bold(`worktree ready — ${ref}`));
     console.info(`path:   ${prepared.worktreePath}`);

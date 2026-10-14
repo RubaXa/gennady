@@ -1,0 +1,451 @@
+<SddInterviewProtocol keywords="interview, coverage-map, triage, amplification, rounds, defaults-first, weak-spots, closure, stakes-split, one-question-per-message, ask-tool-binding, failure-categories, uncomfortable-questions, sdd-interview-protocol" type="directive" ver="2.2">
+  <Mission>
+    Run ONE operator interview for an authoring step. Loaded lazily by a branch step (scope
+    STEP_2 / STEP_3, infra STEP_2, interface STEP_2, module STEP_2) via `READ_AND_USE_DIRECTIVE`; the calling
+    step supplies the scope-type + its focus and stays the owner of what gets written. Inherits
+    the router core (language, dialogue, safeguard, diverge, no-narration) — not repeated here.
+
+    This protocol equips the interview declared by `AX_OPERATOR_SAFEGUARD` with instruments: a
+    live coverage map, a mandatory failure-category block (`AX_UNCOMFORTABLE_QUESTIONS`), an
+    amplification triage, defaults-first rounds, and a map-based closure criterion. The safeguard
+    axiom stays the source of the interviewing instinct; this directive only gives it structure.
+
+    Input — scope-type, calling-step focus, intake gathered so far. Output — a closed coverage
+    map + the captured answers and decisions, returned to the calling step. This directive writes
+    no artifact; control returns to the caller at CLOSE.
+
+    **Single-fork fast path.** When the caller hands the protocol exactly one named fork (not a
+    whole authoring step), skip `STEP_1_INIT_MAP` and `STEP_2_TRIAGE`; enter `STEP_3_ROUNDS` with a
+    one-item map (the fork), close it per `AX_STAKES_SPLIT` / `AX_ASK_TOOL_BINDING`, return.
+
+    Every question this protocol emits is governed by the full `QUESTION_FORMAT` contract. Skipping
+    that format halts locally as `H_UNFORMATTED_ASK`; the interview protocol owns the violation.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_DIALOGUE_DISCIPLINE, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION">
+    <Axiom id="AX_COVERAGE_MAP_CLOSURE">
+      The interview ends when the coverage map is closed — every topic `✅` or explicitly skipped
+      with a recorded reason — never when a question count is reached, and never by a silent Approval
+      Check. After every operator answer, re-check the map: an answer that opens a new hole or risk
+      adds a topic or reopens a closed one (thread-pulling per `AX_OPERATOR_SAFEGUARD` — that axiom
+      owns the instinct; this one binds it to the map). A skip on a high-stakes topic goes through
+      `H_HIGH_STAKES_SKIP`.
+
+      `🟡` (partial, `COVERAGE_MAP_FORMAT`) is NEVER read as closed. Explicit operator input is already
+      an answer: a topic stated completely and without contradiction in the intake or pasted brief may
+      start `✅`; incomplete or ambiguous text starts `🟡`. The agent may not promote its own inference.
+      A partial topic becomes `✅` only through a later operator answer or an explicit «принято как
+      есть» note recorded in the spec. `STEP_4_CLOSE`-style gates treat remaining `🟡` exactly like
+      `◻️`/`👷` — not closed, sends the flow back to closing rounds.
+    </Axiom>
+
+    <Axiom id="AX_DEFAULTS_FIRST">
+      Where a defensible default exists, lead with it: propose one concrete option drawn from real
+      production practice and ask the operator to confirm or correct — instead of an open question.
+      The default MUST be the result of `AX_DIVERGE_BEFORE_RECOMMEND`, not the first typical answer.
+      Reserve open questions for decisions that are genuinely operator-owned (business goals, risk
+      acceptance, priorities) or where no defensible default exists; open-ended deepening on any
+      topic happens when the operator asks for it.
+    </Axiom>
+
+    <Axiom id="AX_AMPLIFICATION_OPT_IN">
+      Amplifications are opt-in: after triage the agent PROPOSES a set from the catalog, the operator
+      confirms; the default for small tasks is «none active». State an empty proposal explicitly —
+      «усиления не нужны, потому что …» — it is a valid triage outcome, not a silent omission. A
+      confirmed amplification becomes a map topic and its directive loads lazily via
+      `READ_AND_USE_DIRECTIVE` at the moment its topic opens, never up front.
+    </Axiom>
+
+    <Axiom id="AX_DELTA_ONLY_ASK">
+      Ask only for a decision that is still open. Intake, portal/state output, and an earlier
+      operator answer are binding evidence: carry them forward by reference and never ask the
+      operator to confirm the same value again. A contradiction or genuinely new consequence
+      reopens only the affected decision, with the delta named explicitly.
+    </Axiom>
+
+    <Axiom id="AX_UNCOMFORTABLE_QUESTIONS">
+      Every meaningful frame includes ≥1 uncomfortable question — the kind that exposes hidden
+      assumptions, degradation paths, or trust boundaries. Canonical seeds:
+      - What is the canonical source of truth for this entity / capability?
+      - What happens on dependency unavailability (graceful degradation vs hard failure)?
+      - Where does simulation end and real runtime begin?
+      - Who validates input at this trust boundary?
+      - Which assumption, if wrong, invalidates the design?
+
+      Skipping uncomfortable questions = false consensus.
+    </Axiom>
+
+    <Axiom id="AX_STAKES_SPLIT">
+      The stakes of a question decide its delivery form — this overrides any round-grouping default:
+      - A **развилка** (architecture, a trust boundary, an irreversible or hard-to-undo choice) → ONE
+        question per message, full form per `QUESTION_MESSAGE_FORMAT`, answered via `AskUserQuestion`
+        before the next question is composed.
+      - A **default confirmation** (naming, a low-risk default, an obvious yes/no) → batched, up to 4
+        per `AskUserQuestion` call, per `BATCH_CONFIRM_FORMAT`.
+      Unsure which it is → treat as развилка. Burying a genuine fork inside a batch is the exact
+      failure this axiom exists to prevent.
+    </Axiom>
+
+    <Axiom id="AX_ONE_QUESTION_SEQUENTIAL">
+      Развилки go strictly one at a time: compose question N+1 only after the answer to question N is
+      in. Each next question MUST account for every prior answer in the interview — a question whose
+      premise an earlier answer already invalidated is a protocol defect, not a style issue. The
+      counter in `## Вопрос <X> из <Y>` is owned here: X is this question's ordinal in the interview;
+      Y is questions already asked plus развилки still open on the coverage map. When thread-pulling
+      opens a new topic, Y grows and the growth shows in the next map line — never silently.
+    </Axiom>
+
+    <Axiom id="AX_ASK_TOOL_BINDING">
+      Every развилка ends in one `AskUserQuestion` call, bound to its chat message:
+      - The chat message carries the full material (`QUESTION_MESSAGE_FORMAT`); the ASK call carries
+        only short option labels + one-line descriptions — never move the argument itself into the ASK.
+      - Options appear in the ASK in the SAME order they were printed in the message.
+      - A recommendation prints first in the message too (letter A) and carries «(рекомендую)» in its
+        ASK label — printed order and recommended-first then agree.
+      - «Other» is supplied by the tool automatically; never add a manual equivalent.
+      - Tool unavailable → drop only the ASK call; the развилка message still follows
+        `QUESTION_MESSAGE_FORMAT` and the answer arrives as free text, otherwise falling back to
+        `QUESTION_FORMAT`'s plain-text fallback when one applies. Batched default confirmations use one
+        ASK call covering 2–4 questions.
+    </Axiom>
+
+    <Axiom id="AX_VISUAL_WHEN_RELATIONAL">
+      When a question's subject is relational — a flow, a boundary, a structure, a lifecycle, or
+      variants that differ in shape — draw a compact ASCII picture BEFORE the variants, per
+      `formats/diagram-vocabulary.xml` (`AX_DIAGRAM_DISCIPLINE`: ≤7 nodes, one diagram per idea). A
+      question about a single scalar choice stays text; a diagram of one node is noise, not clarity.
+      The same relation later lands in the spec as mermaid — the module/scope Overview if it is the
+      floor diagram (`AX_OVERVIEW_DIAGRAM_FLOOR`), else inline where the section needs it. The chat
+      ASCII is the operator's preview of the shape they are approving.
+
+      Two topics are NOT a judgment call — they are always relational and always draw: closing
+      «Потребители» (who consumes + what they expect — actors, ≥1 relation to the scope) and, for
+      `product` scope-type, «Худший сценарий» (the worst plausible scenario) both feed the Use
+      Cases diagram the calling scope step owns (`AX_SPEC_MANDATORY_DIAGRAM` in
+      `scope.directive.xml`) — the caller draws it when these topics close, this axiom does not
+      leave that one to "when it seems relational".
+    </Axiom>
+
+    <Axiom id="AX_SCANNABLE_TEXT">
+      The operator surfs a question message, they do not wade through it: bold marks the load-bearing
+      word inside a bullet, not the whole sentence; each block opens with its own emoji anchor;
+      paragraphs stay ≤3 lines; no monolithic wall of text. Emotion is seasoning, not paint — anchors and
+      an occasional marker, never an emoji on every line.
+    </Axiom>
+  </BeliefState>
+
+  <TopicCatalog>
+    Base topics — every interview starts with these (map labels in Russian):
+
+    | Topic | Substance |
+    |---|---|
+    | Цель и не-цель | what this scope delivers; what it explicitly refuses to do in this iteration |
+    | Потребители | who consumes the result and what they expect from it |
+    | Слабые места | MANDATORY: holes, contradictions, unstated expectations of the intake — name them to the operator, per `AX_OPERATOR_SAFEGUARD` |
+    | Внешние зависимости | what outside this scope must exist / hold for the design to stand |
+    | Встраивание в систему | MANDATORY: which existing mechanism this extends (or the cited neighbour invariant that justifies a new one); which neighbour specs and requirements the change touches — closes ONLY from the calling directive's `STEP_*_SYSTEM_FIT` `sdd-orient` output, never from a guess (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
+
+    «Встраивание в систему» is answered by the tool, not by agent recall: when the calling
+    directive's `STEP_*_SYSTEM_FIT` already ran before this interview instance, this topic opens
+    pre-closed (`✅`) with a one-line pointer to that step's recorded answers; when `STEP_*_SYSTEM_FIT`
+    runs AFTER this interview instance (later in the same directive's flow), the calling step narrows
+    it out of THIS map — per the narrowing rule below — and it closes directly at that later step
+    instead of inside this loop. Either way this topic never closes on the agent's own inference
+    (`AX_COVERAGE_MAP_CLOSURE`).
+
+    scope-type block — append per the caller's scope-type:
+
+    | scope-type | Topics |
+    |---|---|
+    | product | Пользователи (who exactly, how many) · Метрика успеха/провала (both, not only success) · Зачем сейчас (why this, why now) · Худший сценарий (the worst plausible scenario and who pays for it) |
+    | library | Разработчики-потребители (which teams / repos) · DX (how consumption should feel; feeds the Usage Example) · Версии (versioning + compatibility promises) |
+    | infrastructure | Окружения (dev / CI / prod parity) · Доставка (how changes reach consumers) |
+    | interface | Стороны контракта (producers and consumers, who owns the schema) · Эволюция (how the contract changes without breaking consumers) |
+
+    The calling step MAY narrow or extend the block for its focus (e.g. scope STEP_3 keeps only
+    what the Requirements Gate still misses); «Слабые места» stays on every map.
+
+    **Категории отказов** — mandatory on every map, every scope-type, no narrowing. Closed
+    together as ONE combined round, not one topic at a time (the one exception to
+    `STEP_3_ROUNDS`'s usual one-topic-per-round loop):
+
+    | Topic | Substance |
+    |---|---|
+    | Негативные сценарии | invalid / empty / duplicate input |
+    | Отказ внешней зависимости | graceful degradation vs a hard failure |
+    | Лимиты и нагрузка | a concrete numeric threshold — rate, volume, concurrency ceiling |
+    | Конкурентность и гонки | concurrent access / race conditions |
+    | Границы доверия | who confirms rights here; what happens when an outsider reaches this |
+
+    Rules for this block:
+    - **Budget.** At most 5 questions total across all five categories, spent only on the gaps
+      the intake and prior answers leave open — never one question per category by reflex.
+      More than 5 gaps compete → prioritize by impact × uncertainty and leave the rest `◻️` for a
+      later round, never silently skipped.
+    - **No closure by agent guess.** A category never turns `✅` on the agent's own inference —
+      per `AX_COVERAGE_MAP_CLOSURE`, only a direct operator answer, or an explicit «не применимо,
+      потому что …» the agent records in the spec, closes it. Anything else stays `🟡` at best.
+    - **Delivery form.** ONE `AskUserQuestion` batch of 3–5 independent sub-questions — the five
+      categories are independent of each other, so this is `BATCH_CONFIRM_FORMAT`'s shape, not
+      `QUESTION_MESSAGE_FORMAT`'s one-at-a-time развилка. A second batch is allowed ONLY for a
+      sub-question whose premise depends on an answer just received; cap — two batches for this
+      whole block per spec, never more.
+    - **Closing report.** One line to the operator at the end of this round: what exactly was
+      asked about the off-nominal flow. Criterion per `AX_UNCOMFORTABLE_QUESTIONS`: the happy
+      path is known going into every spec by default — understanding of the actual task shows up
+      in the off-nominal flow instead. No question asked here reads as poor understanding, not
+      as a small scope.
+  </TopicCatalog>
+
+  <AmplificationCatalog>
+    Deep-dive modules; each is a separate directive authored elsewhere and loaded lazily
+    (`AX_AMPLIFICATION_OPT_IN`):
+
+    | Amplification | Directive | Triage trigger |
+    |---|---|---|
+    | security | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-security.directive.xml")` | external users, or data crossing a trust boundary |
+    | nfr | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-nfr.directive.xml")` | load / latency / volume significant enough to shape the design |
+    | storage | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-storage.directive.xml")` | state persisted beyond a single run |
+    | observability | `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/amplify-observability.directive.xml")` | someone must diagnose this in production |
+  </AmplificationCatalog>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_HIGH_STAKES_SKIP` | Operator insists on skipping an unclosed high-stakes topic — name the concrete cost (per `AX_OPERATOR_SAFEGUARD`); on a confirmed skip record `✗ skip: <причина>` in the map and proceed |
+    | `H_UNFORMATTED_ASK` | An interview question skips `QUESTION_FORMAT`: no explanation before the tool call, or a bare option list in the plain-text fallback |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_1_INIT_MAP">
+      <Goal>Build and show the coverage map.</Goal>
+      <Action>
+        Assemble the map: base topics + «Категории отказов» + the scope-type block from
+        `TopicCatalog`, narrowed / extended by the calling step's focus (не narrow «Категории
+        отказов» — it stays whole on every map). Text the operator already brought (intake, a
+        pasted draft) is a direct operator answer: mark a fully explicit, non-contradictory topic
+        `✅`, an incomplete or ambiguous one `🟡`, and never fill a gap by agent inference
+        (`AX_COVERAGE_MAP_CLOSURE`). Render per `COVERAGE_MAP_FORMAT` with a
+        one-line plan («что осталось закрыть»); proceed straight to triage.
+      </Action>
+    </Step>
+    <Step id="STEP_2_TRIAGE">
+      <Goal>Decide which amplifications this task deserves.</Goal>
+      <Action>
+        Evaluate the `AmplificationCatalog` triggers from already-known intake first. Ask one compact
+        closed batch only for triggers whose answer remains unknown; zero unknown triggers means
+        zero Ask. Propose the resulting amplification set with the small-task default «none active»
+        (`AX_AMPLIFICATION_OPT_IN`). A set fully implied by accepted answers is carried forward
+        without a second confirmation (`AX_DELTA_ONLY_ASK`). Confirmed amplifications become map
+        topics on the «Усиления» line.
+      </Action>
+    </Step>
+    <Step id="STEP_3_ROUNDS">
+      <Goal>Close the map, one topic at a time, in the shape its stakes demand.</Goal>
+      <Action>
+        Loop until the map is closed (`AX_COVERAGE_MAP_CLOSURE`); each round:
+        1. Show the map per `COVERAGE_MAP_FORMAT`, pick the next open topic, mark it `👷` — the
+           active topic ALWAYS carries `👷`, never a bare unmark, per `BREADCRUMB_FORMAT`.
+        2. Split by stakes (`AX_STAKES_SPLIT`): a развилка → one message per
+           `QUESTION_MESSAGE_FORMAT`, answered before the next question is composed
+           (`AX_ONE_QUESTION_SEQUENTIAL`); a default confirmation → collect it and batch up to 4
+           per `BATCH_CONFIRM_FORMAT`.
+        3. Shape each question per `AX_DEFAULTS_FIRST` and `AX_DELTA_ONLY_ASK` — a concrete default to confirm or correct —
+           and bind its chat message to the `AskUserQuestion` call per `AX_ASK_TOOL_BINDING`.
+        4. After each answer, update the map and pull the thread per `AX_COVERAGE_MAP_CLOSURE`
+           (new hole → new / reopened topic; a развилка whose premise the answer invalidated is
+           recomposed, not asked as planned — `AX_ONE_QUESTION_SEQUENTIAL`).
+        5. An amplification topic opens → `READ_AND_USE_DIRECTIVE` its directive from
+           `AmplificationCatalog` and run its questions as this round, split by stakes the same way.
+        6. «Категории отказов» opens as ONE combined round, not one topic per loop-pass (the
+           `TopicCatalog` rules for this block override the usual one-topic-at-a-time shape):
+           batch 3–5 independent sub-questions — one per open category — into a single
+           `AskUserQuestion` per `BATCH_CONFIRM_FORMAT`; a second batch only for a sub-question a
+           received answer now depends on (cap two batches, ever, for this block). Budget ≤5
+           questions total, spent on gaps only; a category with no gap closes `✅` without a
+           question. Per `AX_UNCOMFORTABLE_QUESTIONS`, never let this round pass with zero
+           questions asked when a gap remains — skipping it silently is exactly the false
+           consensus that axiom exists to catch. Close the round with the one-line closing report
+           («что спросили про нештатное»).
+        A skip request on a high-stakes topic → `H_HIGH_STAKES_SKIP`.
+      </Action>
+    </Step>
+    <Step id="STEP_4_CLOSE">
+      <Goal>Verify closure and return to the caller.</Goal>
+      <Action>
+        Gate per `AX_COVERAGE_MAP_CLOSURE`: every topic `✅` or `✗ skip: <причина>` — an open
+        (`◻️`), active (`👷`), or partial (`🟡`) topic sends the flow back to STEP_3. Show the final map + a compact digest of
+        answers and decisions (Russian), including skips with reasons. Hand the digest to the
+        calling step. The digest is evidence, not a new approval surface: the caller asks again only
+        for a newly introduced delta (`AX_DELTA_ONLY_ASK`).
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    <Contract id="QUESTION_FORMAT">
+      Explain, then ask through the tool — a question never fires as bare free-form text. A
+      `### 💡 <О чём решаем>` section header names the decision in plain words, without numbering and
+      without semantic question IDs; under it, ordinary language explains the question BEFORE any tool
+      call fires — the context, the real options, and a recommendation gated by
+      `AX_DIVERGE_BEFORE_RECOMMEND` (low-stakes: a direct pick is fine; high-stakes / architecture: do
+      not pre-anchor one option — lay out the strongest candidates, a tail one included, or pair the
+      recommendation with its strongest rival and the reason it might win instead). Only once the
+      explanation stands does `AskUserQuestion` fire; its option list mirrors the printed order, short
+      labels only — the argument itself lives in the message, never moved into the tool call.
+
+      Batching rule: one `AskUserQuestion` call may carry several questions ONLY when they are mutually
+      independent — answering one does not change the meaning or the options of another (several facets
+      of one single complex decision qualify as one batched call). Dependent questions, and any interview
+      sequence, go one call at a time: compose the next question only after the previous answer is in.
+
+      Channel: use `AskUserQuestion` whenever the tool is available. When it is not, fall back to plain
+      text carrying the same shape — the explanation, then an explicit list of named options the operator
+      can answer by name; skipping the explanation and firing a bare list of options is itself the
+      violation this contract forbids (`H_UNFORMATTED_ASK`).
+
+      Low-stakes — a recommendation is allowed, but only as the result of `AX_DIVERGE_BEFORE_RECOMMEND`
+      (not the first typical answer):
+
+      Пример — иллюстрация формата, не задание:
+
+      ### 💡 Куда положить ресёрч-документ
+      Документ можно держать рядом со спекой — виден в контексте скоупа, проще найти, пока читаешь
+      её — или в общем каталоге ресёрчей, если он пригодится за пределами одного скоупа; для разового
+      ресёрча под конкретную спеку разница небольшая.
+      ✅ **Рядом со спекой** `[specs/<scope>/research/]` — виден в контексте скоупа, не потеряется.
+      Иначе:
+      - **Общий каталог** `[docs/research/]` — _за: виден без привязки к одному скоупу · против:
+        сложнее понять, к какой спеке относится_
+
+      (AskUserQuestion: «Рядом со спекой (рекомендую)» · «Общий каталог»)
+
+      High-stakes / architecture — do NOT pre-anchor one pick. List the strongest candidates (include a
+      non-obvious / tail one) with «за / против» and let the operator choose; or give a recommendation
+      only alongside its strongest alternative and the reason it might win:
+
+      Пример — иллюстрация формата, не задание:
+
+      ### 💡 Граница нового скоупа
+      Функциональность можно оформить отдельным скоупом или модулем внутри существующего — от этого
+      зависит, где заводить спеку и как считать её границы; пре-анкоринг здесь дороже, чем в
+      низкоставочном случае.
+      - **Отдельный скоуп** `[new-scope]` — _за: чистая граница, не тащит чужие инварианты · против:
+        больше координации между скоупами_
+      - **Модуль внутри существующего скоупа** `[module-in-scope]` — _за: меньше накладных расходов,
+        общий контекст уже есть · против: граница скоупа расползается со временем_
+      - **Отложить решение до следующей итерации** `[defer]` — нетипичный вариант, но снимает риск
+        закрепить границу раньше, чем видно реальное использование
+
+      (AskUserQuestion: «Отдельный скоуп» · «Модуль внутри существующего» · «Отложить (нетипичный)»)
+
+      A plain binary question needs no list — recommendation + inline alternative, still explained
+      before the call:
+
+      Пример — иллюстрация формата, не задание:
+
+      ### 💡 Нужен ли отдельный interface-скоуп
+      Все текущие потребители — web; про API и будущих клиентов явно не говорили.
+      ✅ **Пока не выделять** — можно добавить позже без миграции. _или сразу выделить, если API уже в
+      планах?_
+
+      (AskUserQuestion: «Пока не выделять (рекомендую)» · «Выделить сразу»)
+
+      A counter-question in reply to a gate is a side-dive, not a rejection: (a) answer the counter-question
+      in full, on its own merits, before returning to the gate; (b) bring the gate back exactly once,
+      marked as a repeat pass, enriched with whatever the counter-question surfaced — «повторяю вопрос»
+      plus a fact or option the side-dive added (e.g. operator asked "как ты делаешь ресёрч?" → the repeat
+      pass adds an option «сначала ресёрч, потом решаем»); a verbatim repeat of the first gate carries no
+      delta and is itself the violation. (c) if the operator answers the repeat pass with another
+      counter-question instead of a pick, do not fire a third pass — stop and ask directly what is blocking
+      the decision.
+    </Contract>
+
+    `QUESTION_FORMAT` is the base explain-then-ask discipline and its plain-text fallback; inside
+    this protocol `AX_STAKES_SPLIT` specializes its batching rule into the развилка /
+    default-confirmation split, and `QUESTION_MESSAGE_FORMAT` / `BATCH_CONFIRM_FORMAT` below
+    specialize its message shape — neither contradicts it, both narrow it for the interview loop.
+
+    The map per `COVERAGE_MAP_FORMAT` opens every round — it is the operator's progress view, so
+    keep it current and compact (per `AX_NO_PROCESS_NARRATION`, the map replaces narration about
+    what the interview is doing).
+
+    <Contract id="COVERAGE_MAP_FORMAT">
+      Live coverage map, shown to the operator compactly before every round. Topic labels in Russian;
+      ≤ 72 columns; statuses per `BREADCRUMB_FORMAT` — `✅` closed · `👷` in progress (the topic this
+      round is closing) · `◻️` open — plus two map-only extensions: `✗ skip: <причина>` for a topic the
+      operator explicitly waived, and `🟡` partial — the intake text already speaks to this topic, or
+      one sub-category of a multi-part topic (e.g. one of the категории отказов) is addressed and the
+      rest is not. `🟡` is NEVER a closure state: only a confirmed dialogue answer, or an explicit
+      «принято как есть» note recorded in the spec, promotes a topic from `🟡` to `✅`
+      (`AX_COVERAGE_MAP_CLOSURE`).
+
+      Покрытие: Цель/не-цель ✅ · Потребители 👷 · Слабые места ◻️ · Зависимости 🟡 · Категории отказов ◻️
+      Усиления:  security 👷 · storage ✗ skip: прототип, данных нет
+
+      4–6 topics per line; the «Усиления» line appears only when at least one amplification is
+      active or skipped. The map is ephemeral state for the current dialogue — the calling step decides what
+      from the answers lands in the artifact; the map itself stays out of the spec.
+    </Contract>
+
+    <Contract id="QUESTION_MESSAGE_FORMAT">
+      The развилка message — one question, full context, live markdown (never fenced). Blocks in
+      order; skip a block only when genuinely empty:
+
+      1. Coverage map line (`COVERAGE_MAP_FORMAT`).
+      2. `## Вопрос <X> из <Y> · <topic, no question mark>` — X/Y per `AX_ONE_QUESTION_SEQUENTIAL`.
+      3. `**Решаем одной строкой:** <the fork, one sentence>`.
+      4. An ASCII diagram — only when the subject is relational (`AX_VISUAL_WHEN_RELATIONAL`).
+      5. `**📌 Что известно**` — 2–5 bullets, load-bearing words bold, specific to THIS question —
+         not a restate of the session (`AX_SCANNABLE_TEXT`).
+      6. `**⚖️ Варианты**` — each variant: `**<Letter>. <name>**` then `✅ <pros, · -separated>` /
+         `⚠️ <cons, · -separated>`. 3+ variants with comparable criteria → a criteria×variant table
+         INSTEAD of the lists (rows = criteria, columns = variants; the killer cell bold).
+      7. `**🎯 Куда клонюсь:** <letter> — <why, one sentence>` — omit on high-stakes questions where
+         pre-anchoring is wrong (`AX_DEFAULTS_FIRST`).
+      8. The `AskUserQuestion` call (`AX_ASK_TOOL_BINDING`) — options in printed order.
+
+      <Example>
+        Покрытие: Цель/не-цель ✅ · Потребители ✅ · **формат спеки 👷** · Зависимости ◻️ · Слабые места ◻️
+
+        ## Вопрос 3 из 6 · Куда переезжает разросшаяся ячейка Entity Inventory
+
+        **Решаем одной строкой:** ячейка таблицы с абзацем на восемь предложений не читается во
+        вьювере — куда девать текст при миграции на v2-формат.
+
+        ```
+        [ячейка: 8 предложений] ──migrate──► ??? ──рендер во вьювере──► [читаемая таблица]
+                                              │
+                                     куда: подсекция? свернуть? урезать?
+        ```
+
+        **📌 Что известно**
+        - Правило F2 запрещает **абзацы и списки внутри ячейки** — только одна короткая строка.
+        - Развёрнутый текст должен **переехать в подсекцию под таблицей**, а не исчезнуть.
+        - `sdd-check` уже умеет **считать длину ячейки** — порог просто пока не задан.
+
+        **⚖️ Варианты**
+
+        **A. Короткая ячейка + подсекция `### <ID> — детали`**
+        ✅ таблица остаётся индексом · ничего не теряется · механически проверяемо
+        ⚠️ спека становится длиннее на число подсекций
+
+        **B. Урезать ячейку до одной фразы, остальное — в Decision Log**
+        ✅ таблица короче любой подсекции
+        ⚠️ решение теряет прямую связь со строкой таблицы — придётся искать отдельно
+
+        **🎯 Куда клонюсь:** A — подсекция держит связь «строка → детали», ничего не отрывается от
+        таблицы.
+
+        (AskUserQuestion: «A. Подсекция под таблицей (рекомендую)» · «B. В Decision Log»)
+      </Example>
+    </Contract>
+
+    <Contract id="BATCH_CONFIRM_FORMAT">
+      Default confirmations — one compact block, then ONE `AskUserQuestion` call with 2–4 questions.
+      Per item: one bold line (the default) + one plain line (the alternative and when it wins). No
+      «Что известно» blocks, no diagrams. An item that provokes discussion is promoted to a развилка
+      in the next message, not resolved inside the batch.
+    </Contract>
+  </ChatOutput>
+</SddInterviewProtocol>

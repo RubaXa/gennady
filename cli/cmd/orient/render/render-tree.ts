@@ -1,6 +1,6 @@
 // @file: Render tree view of the project — S1 scenario with depth control and annotations.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile } from '../orient.types.ts';
 import { relative, sep as pathSep } from 'node:path';

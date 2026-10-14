@@ -1,5 +1,11 @@
 # vcs-github-cli: Scope Specification
 
+<!--SECTION:SPEC_ID-->
+
+VCS-VCS-GITHUB-CLI
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 product
@@ -12,17 +18,17 @@ product
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name                           | Type         | Purpose                                                             |
-| ------------------------------ | ------------ | ------------------------------------------------------------------- |
-| `resolveVcsContext` (extended) | Function     | Убрать `/gitlab/i` check; добавить `provider: 'github'` авто-детект |
-| `VcsGithubClient` (extended)   | Adapter      | Добавить конструктор для CLI (host + token → baseUrl)               |
-| `VcsCliContext.provider`       | Value Object | Добавить `'github'` как валидное значение                           |
+| Name                           | Type         | Purpose                                                |
+| ------------------------------ | ------------ | ------------------------------------------------------ |
+| `resolveVcsContext` (extended) | Function     | Убрать GitLab-only check и добавить авто-детект GitHub |
+| `VcsGithubClient` (extended)   | Adapter      | Добавить конструктор для CLI (host + token → baseUrl)  |
+| `VcsCliContext.provider`       | Value Object | Добавить `'github'` как валидное значение              |
 
 ### Существующие сущности (reused)
 
 | Name                        | Source                                                    | Как используется                                                         |
 | --------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `VcsGithubMergeRequests`    | `services/vcs-client/github/vcs-github-merge-requests.ts` | Уже реализован (create, update, getList, getByIid) — TSK-90              |
+| `VcsGithubMergeRequests`    | `services/vcs-client/github/vcs-github-merge-requests.ts` | Уже реализован (create, update, getList, getByIid) — VMM-gh-crud         |
 | `VcsGithubClient`           | `services/vcs-client/github/vcs-github-client.ts`         | Требует доработки: передача token → GitHub REST API                      |
 | `VcsClientMergeDiscussions` | Deferred (stub)                                           | GitHub Discussions не реализованы; vcs-discussions для GitHub — deferred |
 
@@ -69,11 +75,11 @@ cli/cmd/vcs-pipeline/ (REUSE — already uses VcsClient)
 
 ## 5. Parent Spec Amendments
 
-| Parent Spec             | What Changes                                                                               |
-| ----------------------- | ------------------------------------------------------------------------------------------ |
-| `cli.spec.md` FR-CTX-17 | Убрать `/gitlab/i` restriction. Provider: `host.includes('github')` → github, иначе gitlab |
-| `vcs.spec.md` FR-02     | Добавить `create`, `update` в список методов порта                                         |
-| `vcs.spec.md` FR-11     | Расширить GitHub adapter: + `getList`, `getByIid`, `create`, `update`                      |
+| Parent Spec             | What Changes                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `cli.spec.md` FR-CTX-17 | Убрать GitLab-only restriction; `host.includes('github')` выбирает GitHub, иначе GitLab |
+| `vcs.spec.md` FR-02     | Добавить `create`, `update` в список методов порта                                      |
+| `vcs.spec.md` FR-11     | Расширить GitHub adapter: + `getList`, `getByIid`, `create`, `update`                   |
 
 ## 6. Decision Log
 

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Hook id="HOOK_SK_NO_CLIENT_FETCH_IN_COMPONENT">
+<Purpose>Detect direct `fetch('/api/...')` calls inside `.svelte` files used to populate initial data.</Purpose>
+<Command>find src/routes -name '*.svelte' -print0 | xargs -0 grep -nE "fetch\(['\"]/" || true</Command>
+<Expected>Each match must be either an explicit progressive-update path with no server data dependency, or migrated to a `load` function.</Expected>
+</Hook>

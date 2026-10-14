@@ -1,14 +1,10 @@
 // @file: Unit tests for Damerau-Levenshtein distance and fuzzy matching functions.
+// @spec: CLI-ORIENT
 // @consumers: QueryKeyword, QueryConsumer, QueryEntity
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  damerauLevenshtein,
-  isFuzzyMatch,
-  fuzzyDistance,
-} from '../../../../shared/common/damerau-levenshtein.ts';
+import { damerauLevenshtein, isFuzzyMatch, fuzzyDistance } from '../core/damerau-levenshtein.ts';
 
 describe('damerauLevenshtein', () => {
   it('contract distance type: returns number', () => {

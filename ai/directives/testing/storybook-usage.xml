@@ -1,4 +1,8 @@
-<StorybookUsageRules keywords="storybook, mcp, component-development, stories, play-function, ai-generated, self-verify" type="testing-rules" ver="2.0">
+<StorybookUsageRules rule-id="storybook-usage" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When framework="storybook"/>
+  <When tool="storybook"/>
+</Meta>
   <Mission>
     Canonical rules for using an installed Storybook instance to develop and test UI components. Every execution-agent MUST use the MCP integration as the primary source for component documentation, stories, and tests. Hand-written guesses about component props are forbidden — the prop surface comes from `get-documentation` (or its current MCP equivalent), not from memory.
 

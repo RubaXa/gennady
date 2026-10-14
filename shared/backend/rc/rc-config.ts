@@ -1,6 +1,6 @@
 // @file: Describe AI model configuration in rc-file (name, URL, optional key).
+// @spec: SHARED
 // @consumers: ai-legacy-core
-// @tasks: N/A
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join as pathJoin } from 'node:path';
@@ -19,14 +19,12 @@ export type RcModel = {
 };
 
 /**
- * @purpose Root configuration data structure for Gennady RC (model list + stack section).
+ * @purpose Root configuration data structure for Gennady RC (model list).
  * @consumer GennadyRc
  */
 export type GennadyRcData = {
   /** @purpose List of configured AI models. */
   models: RcModel[];
-  /** @purpose Stack plugin configuration section; validated by services/stack/stack-config. */
-  stack?: unknown;
 };
 
 /**
@@ -71,21 +69,17 @@ export class GennadyRc {
 
         if (Array.isArray(data)) {
           this._data.models = data as RcModel[];
-        } else if (data && typeof data === 'object' && !Array.isArray(data)) {
-          // Sections are independent: `models` may be absent when only `stack`
-          // (or another section) is configured. A present `models` must be an array.
-          const candidate = data as Partial<GennadyRcData>;
-          if (candidate.models !== undefined && !Array.isArray(candidate.models)) {
-            this._error = new Error(
-              `[GENNADY_RC_ERROR_CONFIG] Invalid "models" in "${this._filename}" config`,
-              { cause: data }
-            );
+        } else if (data && typeof data === 'object') {
+          const models = (data as Partial<GennadyRcData>).models;
+          // Other sections have independent V2 owners; absent models is an empty model list,
+          // not an invalid verify/rules-only RC. Present malformed models must still fail.
+          if (models === undefined || Array.isArray(models)) {
+            this._data.models = models ?? [];
           } else {
-            this._data = {
-              ...this._data,
-              ...candidate,
-              models: candidate.models ?? this._data.models,
-            };
+            this._error = new Error(
+              `[GENNADY_RC_ERROR_CONFIG] Invalid "${this._filename}" models data`,
+              { cause: models }
+            );
           }
         } else {
           this._error = new Error(

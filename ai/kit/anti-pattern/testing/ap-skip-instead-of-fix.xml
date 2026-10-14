@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<AntiPattern id="AP_SKIP_INSTEAD_OF_FIX">
+      <Bad>Failing story is marked `.skip` or deleted to make `run-story-tests` green.</Bad>
+      <WhyBad>Failure silenced instead of fixed. The story was the only test coverage for that code path — skipping it removes the failure signal without removing the defect. The self-verification loop is now blind to that variant.</WhyBad>
+      <Good>Fix the component or the story, re-run until green. If the failure is environment-dependent, surface as a blocker with deferred-ownership reference.</Good>
+    </AntiPattern>

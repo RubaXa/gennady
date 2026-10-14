@@ -1,6 +1,6 @@
 // @file: Initial review request intent: explicit MR or branch search.
+// @spec: CLI-REVIEW
 // @consumers: load-review-context-mr.logic, resolve-review-intent.logic, run-review-command.logic
-// @tasks: N/A
 
 /**
  * @purpose Initial review request intent: explicit MR or branch search.

@@ -1,0 +1,28 @@
+<!-- source: sdd-v2 amplify-security -->
+<Contract id="SECURITY_SECTION_FORMAT">
+  Legacy read/migration shape only. Current amplifiers MUST NOT write this subsection: they load
+  `REQUIREMENT_ENTRY_FORMAT` and emit one flat requirement per observable outcome. This contract
+  remains solely so an old spec can be understood and migrated without inventing semantics:
+
+  ```markdown
+  ### Security
+
+  #### Trust Boundaries
+  | Граница | Кто по ту сторону | Валидация на входе |
+  |---|---|---|
+
+  #### AuthN / AuthZ
+  - **Аутентификация:** [механизм + хранение сессии/токена]
+  - **Авторизация:** [модель (RBAC / ABAC / owner-check) + точка enforcement]
+
+  #### Secrets
+  [Где живут секреты, как попадают в runtime. Per `AX_SECRETS_DISCIPLINE`.]
+
+  #### Data Classification & PII
+  | Данные | Класс | PII | Хранение / маскирование |
+  |---|---|---|---|
+
+  #### Dependencies (SCA)
+  [Делегировано инструменту: какой SCA + канал реакции на findings. В спеке — только решение.]
+  ```
+</Contract>

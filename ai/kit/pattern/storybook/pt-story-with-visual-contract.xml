@@ -1,0 +1,20 @@
+<!-- source: coding/uikit-component-storybook.xml -->
+<Pattern id="PT_STORY_WITH_VISUAL_CONTRACT">
+      <Intent>Story with visual style assertion for state-dependent rendering.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        export const AccentPrimarySmallHover: Story = {
+          args: { ...AccentPrimarySmallNormal.args, state: 'hover' },
+          play: async ({ canvasElement, step }) => {
+            const canvas = within(canvasElement);
+            const btn = canvas.getByRole('button');
+            await step('Hover state has correct background', async () => {
+              await expect(btn).toHaveAttribute('data-state', 'hover');
+              await expect(btn).toHaveStyle({ background: 'rgb(0, 115, 247)' });
+            });
+          },
+        };
+        ```
+      </Snippet>
+      <Why>Adds `toHaveStyle` assertion on top of the role+attribute baseline. Background color values come from the spec's BDD scenarios (hex → rgb conversion for jsdom). Only add when the spec specifies an exact color; don't fabricate colors.</Why>
+    </Pattern>

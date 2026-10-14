@@ -1,0 +1,18 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Axiom id="AX_A11Y_REQUIREMENTS">
+Every interactive uikit component MUST declare:
+- `role` — WAI-ARIA role (button, checkbox, etc.).
+- `aria-label` — computed from label + counter (when present).
+- `aria-disabled` — bound to the disabled state.
+- `tabindex` — `0` when interactive, `-1` when disabled.
+- Keyboard support — Enter and Space for activation.
+
+For Button specifically:
+- `role="button"`
+- `aria-label={label}` (plus counter if present: `` `${label} ${counter}` ``)
+- `aria-disabled={disabled}`
+- `aria-pressed={state === 'active'}` (optional, for toggle mode)
+- `tabindex={disabled ? -1 : 0}`
+
+Focus styles use `:focus-visible` with appearance-dependent styling. No custom focus ring that overrides the browser default without providing equivalent visual feedback.
+</Axiom>

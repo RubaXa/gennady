@@ -1,0 +1,11 @@
+$ node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon-cli
+
+--- stdout ---
+[sdd-migrate move] DRY-RUN · scope agent-mon-cli
+  no-op scope agent-mon-cli — уже мигрирован в v2
+
+(dry-run — повторить с --write, чтобы применить)
+
+
+--- stderr ---
+

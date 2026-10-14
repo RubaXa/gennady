@@ -1,0 +1,24 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_SCOPE_GRAPH_DETECTION" status="draft">
+      Scope names, types, and statuses come from the `sdd-state` snapshot already in context
+      (its `[SCOPES]` section). Portal absent → no specs → HALT.
+
+      `specs/README.md` itself is read for the one thing that snapshot does not carry: the
+      dependency edges A→B (from the Mermaid `graph TD` Scope Graph, or the Scopes table
+      `depends-on` column).
+
+      The scaffold target set is the operator's current target plus its transitive `depends-on` closure
+      from the portal graph and the scopes' declared module links. If the request targets the whole
+      approved project or carries no narrower target, every ✅ scope from the same snapshot is the
+      explicit bounded fallback. Typed diagnostics name missing/ambiguous evidence and its next owner.
+
+      Cascade computation requires full scope graph traversal:
+      - **Traversed-scopes** for a target scope = all scopes reachable via `depends-on` edges (transitive closure).
+      - **Cascade** = union of Effective Rules from traversed-scopes + target-scope rules + (module rules if product/library) + task additions.
+
+      | Scopes present | Result |
+      |---|---|
+      | Only infrastructure scopes | scaffold infra tasks only; no module trackers |
+      | Mix of product/library + infra/contracts | full project; infra tasks = DAG roots |
+      | No scopes at all | HALT: no spec input |
+    </Axiom>

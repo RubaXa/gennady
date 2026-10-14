@@ -1,0 +1,39 @@
+<!-- source: all 7 sdd directives (converged to principle; per-directive field lists stay in their directives) -->
+<Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
+  **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+  section headings, action/status tokens) — English.**
+
+  **Operator-facing artifact text and operator-facing messages — Russian.** This covers
+  spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+  `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+  free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+  of its own artifact fields are operator-facing.
+
+  **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+  axiom IDs (`AX_*`), Trace anchors, IDs (`<ACR>-DL-N` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+  severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+
+  **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
+  «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
+  автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
+  тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
+  раздела, не переводится). «Usage Example» — тоже имя раздела, не переводится (как Tool Stack).
+
+  **Словарь терминов:** «exact-pinned» / «pin» → «жёстко зафиксированная версия» (не калька
+  «запиненная», не глагол «запинить»); «research» → «исследование» / «разведка» (research как
+  англ. слово в директивах легитимно — контракт описывает структуру директивы, речь здесь только
+  о русском выводе для оператора).
+
+  **Терминологическая дисциплина.** Доменное понятие определяется при первом введении в owning
+  specification и дальше используется дословно. Спека — единственный долговечный источник
+  терминологии. Тикет ссылается на термин и spec anchor, но не создаёт параллельный словарь.
+
+  Автор или reviewer может предложить уточнение термина обычным finding. Принятое уточнение
+  редактирует owning specification и снова проходит semantic review. Никакой session glossary,
+  временный JSON или скрытая память агента не являются источником истины.
+
+  **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
+  канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
+  в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
+  ей в диалоге — не считается.
+</Axiom>

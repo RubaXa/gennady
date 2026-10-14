@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Axiom id="AX_SK_MUTATIONS_VIA_ACTIONS">
+State mutations from the browser go through form `actions` in `+page.server.ts`: `export const actions = { default: async ({ request, cookies, locals, fetch }) => { ... } }`. The page submits `<form method="POST" use:enhance>` — progressive enhancement gives a working flow even without JavaScript.
+
+`fetch('/api/...', { method: 'POST' })` from a component to mutate state is forbidden as the default path. It re-implements what actions already give (CSRF, redirect, validation result) and reintroduces the server/client boundary problem one route at a time.
+</Axiom>

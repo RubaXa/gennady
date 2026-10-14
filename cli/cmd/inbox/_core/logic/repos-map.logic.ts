@@ -1,6 +1,6 @@
 // @file: Map of GitLab project path → local clone path, for worktree-based review.
+// @spec: AGENT-INBOX
 // @consumers: inbox.cmd
-// @tasks: N/A
 
 import { readFileSync, existsSync } from 'node:fs';
 

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<AntiPattern id="AP_OVERRIDE_WITHOUT_COMMENT">
+<Bad>`.tokens.css` with `--vkui--size_button_tertiary_small_padding_horizontal_icon--regular: 14px;` and no override comment.</Bad>
+<WhyBad>Override without audit trail (`AX_TOKEN_OVERRIDE_COMMENT`). Cannot distinguish intentional override from accidental drift. SpecValidator cannot trace the value back to the Token Mapping table.</WhyBad>
+<Good>`/* override: was 8px */` on the line above the declaration.</Good>
+</AntiPattern>

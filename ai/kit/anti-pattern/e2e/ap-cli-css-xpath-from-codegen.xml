@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<AntiPattern id="AP_CLI_CSS_XPATH_FROM_CODEGEN">
+      <Bad>Agent runs `playwright codegen`, copies `page.locator('#root > div:nth-child(3) > button.submit')` straight into the committed test.</Bad>
+      <WhyBad>Codegen output committed without review (`AX_CLI_CODEGEN_IS_RECORDER_NOT_AUTHOR`). The structural path breaks on the first DOM reordering, and the CSS class is implementation-coupled. Codegen is a recorder, not an author.</WhyBad>
+      <Good>Read the AX snapshot of the same region, replace the generated locator with the role-based equivalent (`getByRole('button', { name: 'Submit' })`) before any line of codegen output lands in the test.</Good>
+    </AntiPattern>

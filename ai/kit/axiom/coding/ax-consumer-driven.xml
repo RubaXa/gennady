@@ -1,0 +1,8 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_CONSUMER_DRIVEN">
+      No consumer — no component (YAGNI). Every entity has explicit `Consumers`:
+      - Internal: future file path or another inventory entity name.
+      - External: textual description (CLI, External API, Browser, OS Event Bus, …).
+
+      Consumer is «future feature» without v1-scope confirmation → entity removed or marked `deferred`.
+    </Axiom>

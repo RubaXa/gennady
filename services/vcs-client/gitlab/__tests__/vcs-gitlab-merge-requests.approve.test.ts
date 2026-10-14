@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabMergeRequests.approve — success, idempotent, forbidden, conflict, type contract.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-67
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

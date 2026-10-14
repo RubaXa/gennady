@@ -1,0 +1,12 @@
+<!-- source: new for sdd-v2 router kernel -->
+<Definition id="DEF_LOGIC_SWITCH">
+  `LOGIC_SWITCH` is the routing construct of a kernel directive. The agent — as the
+  interpreter — reads its cases top-to-bottom and acts on the FIRST whose condition holds.
+
+  Authoring rules (a switch that breaks them is a kernel defect):
+  - Every `WHEN` condition resolves from data ALREADY in context — `sdd-state` output and the
+    classified operator intent — never from a fact the agent would have to guess.
+  - Cases are mutually exclusive; if two could match, the one listed first wins.
+  - A `DEFAULT` case is mandatory, so the agent never stalls on "nothing matched".
+  - A case body is exactly one action — normally a single `READ_AND_USE_DIRECTIVE`.
+</Definition>

@@ -1,0 +1,40 @@
+<!-- source: testing/node-test.xml -->
+<Pattern id="PT_MOCK_FN_INTERACTION_CONTRACT">
+      <Intent>Native `mock.fn()` for tracking calls on injected collaborators + assertions on interaction contract without inspecting SUT internals.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, mock } from 'node:test';
+        import assert from 'node:assert/strict';
+
+        describe('OrderLifecycle#settleCharge', () => {
+            it('should persist order in PAID state and emit settled event after successful charge', async () => {
+                // observation focus: persistence call args + emitted event payload, not pipeline internals
+
+                // #region START_SETTLE_CHARGE_SETUP_DOUBLES
+                const repoSave = mock.fn(async (_order: Order) => {});
+                const onSettled = mock.fn();
+                const lifecycle = new OrderLifecycle({ saveOrder: repoSave });
+                lifecycle.on('settled', onSettled);
+                // #endregion END_SETTLE_CHARGE_SETUP_DOUBLES
+
+                await lifecycle.settleCharge('ord-1');
+
+                // #region START_SETTLE_CHARGE_ASSERT_INTERACTIONS
+                assert.strictEqual(repoSave.mock.callCount(), 1);
+                assert.deepStrictEqual(repoSave.mock.calls[0].arguments[0], {
+                    id: 'ord-1',
+                    state: 'PAID',
+                });
+
+                assert.strictEqual(onSettled.mock.callCount(), 1);
+                assert.deepStrictEqual(onSettled.mock.calls[0].arguments[0], {
+                    type: 'order.settled',
+                    detail: { orderId: 'ord-1' },
+                });
+                // #endregion END_SETTLE_CHARGE_ASSERT_INTERACTIONS
+            });
+        });
+        ```
+      </Snippet>
+      <Why>Demonstrates `AX_PREFER_NATIVE_MOCK_FN` and contract-boundary observation of an emitted event (per inherited `AX_CONTRACT_OVER_IMPLEMENTATION`). Multi-statement SETUP and multi-statement ASSERT anchored; single-line TRIGGER is not.</Why>
+    </Pattern>

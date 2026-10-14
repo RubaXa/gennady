@@ -1,0 +1,12 @@
+<!-- source: sdd-opt-v1 UNDERSTANDING_BLOCK_FORMAT -->
+<Contract id="UNDERSTANDING_BLOCK_FORMAT">
+  The agent's compressed read of the task — its own confirmation of blind spots so the operator can
+  catch a misread. A `### 🤔 Как я понял задачу` section near the TOP, then an italic blockquote,
+  2–3 sentences: the essence + the single riskiest assumption, with the assumption linked to the
+  question that resolves it BY WORDING — there are no question numbers or IDs left to point at, so
+  name the question itself. Never a restate of settled content.
+
+  ### 🤔 Как я понял задачу
+  > квинтэссенция — что считаю главным.
+  > **Где могу ошибаться:** самое хрупкое допущение — это вопрос «<формулировка вопроса>».
+</Contract>

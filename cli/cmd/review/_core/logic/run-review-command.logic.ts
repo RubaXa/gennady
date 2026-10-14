@@ -1,6 +1,6 @@
 // @file: Execute common review command pipeline and return the final output.
+// @spec: CLI-REVIEW
 // @consumers: review-issues.cmd, review-verify.cmd
-// @tasks: N/A, TSK-70
 
 import { style } from '../../../../../shared/common/style.ts';
 import { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';

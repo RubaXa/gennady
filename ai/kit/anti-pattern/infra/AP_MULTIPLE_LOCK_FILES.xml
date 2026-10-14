@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<AntiPattern id="AP_MULTIPLE_LOCK_FILES">
+  <Bad>Repo has both `package-lock.json` AND `yarn.lock` AND/OR `pnpm-lock.yaml`.</Bad>
+  <WhyBad>Each manager resolves transitive deps differently. `npm ci` reads `package-lock.json`; developer running `yarn` writes `yarn.lock` with different versions. Builds diverge silently.</WhyBad>
+  <Good>Only `package-lock.json` tracked. Foreign locks deleted + added to `.gitignore`.</Good>
+</AntiPattern>

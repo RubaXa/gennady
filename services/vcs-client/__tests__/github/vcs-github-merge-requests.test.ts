@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGithubMergeRequests.getChanges (updated for head.ref + Promise.all).
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-30
 
 import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

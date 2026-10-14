@@ -1,6 +1,6 @@
 // @file: Base artifact of review commands: MR + discussions + XML.
+// @spec: CLI-REVIEW
 // @consumers: review-command-result.type
-// @tasks: N/A
 
 import type { ReviewContextMr } from './review-context-mr.type.ts';
 import type { ReviewContextMrDiscussion } from './review-context-mr.type.ts';

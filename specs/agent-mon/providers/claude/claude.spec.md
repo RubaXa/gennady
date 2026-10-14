@@ -1,5 +1,11 @@
 # Module: providers/claude
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-PROVIDERS-CLAUDE
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Adapter для Claude Code. Реализует `AgentProvider`: сканирует `~/.claude/sessions/<PID>.json`, проверяет живость через `ps`, извлекает model/title из аргументов процесса и JSONL.

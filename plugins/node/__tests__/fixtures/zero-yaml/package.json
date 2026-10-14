@@ -1,0 +1,13 @@
+{
+  "name": "node-zero-yaml",
+  "private": true,
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint:fix": "eslint --fix",
+    "lint": "gennady lint cli shared services",
+    "format:fix": "prettier --write",
+    "format": "prettier --check .",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage"
+  }
+}

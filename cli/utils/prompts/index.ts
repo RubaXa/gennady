@@ -1,6 +1,6 @@
 // @file: Centralized access to prompt templates (agent, commit, review) from .md files.
+// @spec: CLI
 // @consumers: commit-gen, create-providers, review-gen
-// @tasks: N/A
 
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

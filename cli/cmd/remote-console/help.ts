@@ -1,4 +1,5 @@
 // @file: remote-console command help output
+// @spec: CLI
 // @consumers: help command
 /**
  * @purpose Print CLI help for the remote-console command.

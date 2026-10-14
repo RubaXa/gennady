@@ -1,0 +1,174 @@
+# Flow-verification ledger — durable record (nothing lost)
+
+Append-only knowledge base for the flow-result-verification redesign. Every finding, rejected approach,
+and accepted decision lives here with its evidence, so no knowledge is lost between sessions. Originally
+a companion to two now-retired docs (GAP-E-5, D-46: the flow-eval doc corpus was consolidated to
+`EVAL-SPEC.md` + `RUNBOOK.md` + this ledger) — the redesign plan they were paired with is superseded by
+sections C/E below (the decisions it proposed, landed), and the round-trip findings doc's one still-open
+architectural finding is folded in as A7.
+
+## A. CONFIRMED — works / true (file:line-backed)
+
+- **A1. The blind spot is systemic (H1–H4 all confirmed).** The whole stack guards a _fraudulent_ DONE,
+  never an _abandoned_ artifact (code built, ticket `[ ] TODO`, no closed round, no audit).
+- **A2. impl-phase verification is real and forge-resistant.** `sdd-verify --task --phase` writes an
+  atomic, containment-checked, re-validated `SDD_PHASE_RECEIPT` (`phase-run.ts` O_EXCL|O_NOFOLLOW;
+  `phase-receipt-validation.ts` re-derives plan+bytes). `sdd-log complete` refuses without it
+  (`sdd-log.types.ts:284-286`). This is the model to copy.
+- **A3. Adaptive-via-hint is correct FOR GATES.** `sdd-verify` takes the phase as an explicit arg
+  (`phase-context.ts:98-129`); it never self-infers the phase. Confirmed operator principle — for gates.
+- **A4. The SwiftLint toolchain works headless (one-time).** Swift 6.2 toolchain in ~/Library + rpath
+  shim; the SIGBUS was a trailing-slash `//` in TMPDIR. Artur's guard = 80/82 on the frozen bench.
+  (Host-setup procedure now lives in [`../RUNBOOK.md`](../RUNBOOK.md), § "Host-setup для SwiftLint-бенча".)
+- **A5. The round-trip CYCLE works.** Given a completable pass, flash regenerates a functioning guard +
+  its own probe stand (rt4: 71/82, fc2: 70/82 soft).
+- **A6. Artur's edge-case knowledge was EMPIRICAL, discovered by the flow (execute+audit agents) against
+  the real swiftlint, not written up-front; it reached the spec late and only at altitude.** Confirmed
+  from the RCA pack (01/03-\*.md): 6 rounds + 3 audits; checks 6/7/8 not in the initial 5-check spec.
+- **A7. Round-trip wall 3 is an unreconciled branch divergence, not a migration loss (GAP-E-5 — folded
+  in from the retired `roundtrip-wall3-assessment.md`).** Regenerating the cloud-ios guard via
+  `sdd-execute` hard-blocks on `EXECUTION_READY=no`: `shared/sdd/readiness.ts:15`'s
+  `REQUIRED_SCRIPTS` is a literal node-script-name list, and `executionReady` (`:498-510`) requires a
+  `package.json` with all 8 of them — a package.json-less Swift repo can never satisfy it
+  (`sdd-task.cmd.ts:123,459-487` hard-blocks impl/test/fix phases on `!executionReady`). The
+  language-adaptive verify (`StackPlugin`, `plugins/{node,golang,anystack}`, `gennady.yaml`
+  `stack.use`/`extraGates`) exists on `main` (matured Aug 2026) but diverged from this flow branch at
+  2026-06-29 and was never merged in — cloud-ios's own `gennady.yaml` (`stack.use: [anystack]`,
+  swiftlint/xcodebuild extraGates) targets a mechanism absent here. Proven workaround (smallest,
+  0 source changes): shim `package.json` in the fixture so `type-check`/`test`/`lint`/… shell out to
+  swiftlint/xcodebuild — `phase-verification-plan.ts:252` runs `npm run <script>` verbatim, so
+  readiness goes green and execute proceeds on the real ticket. Two other walls on the same round-trip
+  were migration-format gaps, not architecture (ticket §5 verification tables 2-column instead of the
+  v2 form → `SDD_VERIFICATION_TABLE_INVALID` ×7; spec using `<!--SCOPE-TYPE: x-->` instead of the
+  `SCOPE_TYPE` section). Open: reconcile `main`'s adaptive verify into this flow branch, or make this
+  branch's readiness/verify derive its gate list from `gennady.yaml` directly — not yet decided, tracked
+  here so the finding is not lost with the retired assessment doc.
+  **Update (layered diagnosis, `EXPERIMENTS-LOG.md` §H-iOS): the readiness workaround above unblocks
+  readiness, not closure.** `sdd-verify --phase P1`'s own gate for the P1 phase IS `sdd verify --wip
+--only=swiftlint`, which has no receipt adapter on this flow branch (`runner sdd has no receipt input
+adapter`) — no readiness shim fixes this, because the phase gate itself is swiftlint. The full closure
+  ceremony (TODO→DONE + phase/audit/review receipts) on Swift therefore stays architecturally blocked at
+  this deepest layer; it can only be "passed" by faking the verify gate. The honest fix is unchanged:
+  port `main`'s adaptive/anystack verify into this branch. Full execute-lifecycle IS proven, but on the
+  node fixture instead (`EXPERIMENTS-LOG.md` §H-node). Two independent real bugs found along the way:
+  `upgrade-verification-tables.py:role_for` tags the probe stand `probe` instead of `extra`; the
+  readiness shim stubs gates with inline `node -e`, which `verify` cannot fingerprint (needs a
+  file-backed no-op instead).
+
+## B. REFUTED / REJECTED — does NOT work, with WHY (so we never retry these)
+
+- **B1. One universal axiom `AX_PHASE_VERIFIED_BEFORE_CLOSE` over ALL phases — REJECTED.** Audit is not a
+  phase: group-scoped, post-close, read-only, ephemeral-on-pass by design (`AX_REOPEN_ROUNDS_IN_TICKET`,
+  `AX_EPHEMERAL_OUTPUT`, `AX_AUDIT_HOOK`). One axiom mislabels audit.
+- **B2. Require an audit receipt at `sdd-log close` — REJECTED (deadlock).** close (STEP_5) precedes audit
+  (STEP_6); group audit runs only after the last ticket is DONE. Enforce at the GROUP-COMPLETION boundary.
+- **B3. Per-ticket durable audit receipt / persisting findings — REJECTED.** Fights the ephemeral-on-pass
+  invariant. Persist only the group ran+verdict FACT; findings stay ephemeral.
+- **B4. Receipt in a sidecar file (`audits/…`) — REJECTED.** `AX_REOPEN_ROUNDS_IN_TICKET`/`AX_EPHEMERAL_OUTPUT`
+  say sidecars were "overkill"; pollutes the tree.
+- **B5. Receipt in a git-note — REJECTED.** Not in the corpus `sdd-check --all` scans; lost across git ops.
+- **B6. Enriching the forward spec alone makes flash succeed in ONE pass — REFUTED (rt5/rt7).** A complete
+  spec drives flash toward the RIGHT hard implementation (YAML node-position parser) but it can't finish
+  it in one pass; the hard implementation needs iteration.
+- **B7. "Never scan state" as a universal rule — REFUTED.** Coherence queries (`sdd-check --all`,
+  group-completion) MUST scan — but against an EXPLICIT expected set, never self-inferred. The real
+  migration lesson is "freeze/explicit reference," not "never scan."
+- **B8. Purely text/hint-only completion query — REFUTED.** Abandoned-vs-never-started needs repo/git/
+  receipt evidence.
+- **B9. Trailing-slash TMPDIR / full .mise.toml in the sandbox — REJECTED (env).** `//` → SwiftLint SIGBUS;
+  `.mise.toml` with npm:/http: tools → mise network auto-install offline. Fixed: TMPDIR no trailing slash,
+  trimmed .mise.toml.
+- **B10. Clearing the execution log at reset AND expecting Artur-depth — REFUTED as a test design.** The
+  edge-case knowledge lived only in the log; but the log is runtime output, not the forward spec — the
+  honest conclusion is the spec was incomplete, not that the log should be restored.
+
+## C. ACCEPTED — design decisions (current)
+
+- **C1. Keep `AX_VERIFICATION_BEFORE_HANDOFF`** for impl/test/code phases (copy its receipt model).
+- **C2. Add `AX_GROUP_AUDIT_LEAVES_A_RECEIPT`** + **`AX_GROUP_REVIEW_LEAVES_A_RECEIPT`** — durable group
+  ran+verdict fact, findings ephemeral, git-ref-bound, reopen-invalidated.
+- **C3. Receipt via the `atomicTicketWrite` primitive, CLI-written + re-validated by re-derivation**, on
+  the owning spec; enforced at the group-completion boundary.
+- **C4. Tests assert receipts read FROM DISK in the mechanical gate**; telemetry trace = soft corroboration.
+- **C5. Build order = RED-FIRST** (prove the defect leaks today), then contract → tool → flow → green →
+  regression (grandfather existing DONE) → Artur simplified eval last.
+
+## D. METRICS — deterministic, per-session (the improvement proof)
+
+Every execute session emits a deterministic metrics record (see `session-metrics.py`), so any change is
+proven to IMPROVE or at least NOT REGRESS. Tracked per run: `tool_calls_total`, `by_tool`, `steps`,
+`reasoning_tokens`, `output_tokens`, `writes`, `guard_written`, `guard_lines`, `ticket_status`,
+`round_closed`, `impl_receipt`, `audit_receipt`, `review_receipt`, `bench_soft`, `stuck`. Non-regression
+rule: after a flow change, for the same scenario+model, `steps` and `tool_calls_total` must be ≤ baseline
+(or within a stated tolerance) AND completion signals (`ticket_status=DONE`, receipts present) must not
+regress. Baselines recorded in `ai/flow-eval/results/metrics-ledger.jsonl` (permanent, D-62; moved from the gitignored `.results/` in E-03/batch 22).
+
+## E. LANDED (this session) + follow-on
+
+- **E1. Group-audit/review receipt mechanism LANDED & green.** `shared/sdd/group-receipt.ts`,
+  `sdd-log <group> audit-receipt|review-receipt <verdict>` (CLI-written on the owning spec, refuses unless
+  all members DONE, SHA-256 member-state signature ⇒ reopen-invalidation), check codes
+  `SDD_GROUP_AUDIT_MISSING`/`SDD_GROUP_REVIEW_MISSING` (изначально WARN; после самомиграции и A13 —
+  ERROR, а каноническое v2-имя само включает structural Execution Log и group-receipt contract),
+  axioms `AX_GROUP_AUDIT_LEAVES_A_RECEIPT`/`AX_GROUP_REVIEW_LEAVES_A_RECEIPT`, and STEP_6 now carries real
+  `<ToolCall>`s for both receipts (no longer prose). `npm run check` = ALL PASS (5/5); unit tests cover
+  writer-refusal/valid-mint, forge+stale rejection, warn-missing/clean-valid/reopen-invalid, grandfather.
+  Commits `4bb00f4b` (feature) + `94164668` (durable snapshot of these docs + scripts).
+- **E2. RED-FIRST gate proven & wired.** `session-metrics.py gate` exits 1 on the abandoned-artifact state
+  (guard built, ticket TODO, round not closed, receipts absent) — deterministic, no LLM. Wired into
+  `roundtrip-eval.sh` execute summary (fixes H4). Baseline `fc2-baseline` recorded in metrics-ledger.jsonl.
+- **E3. CLOSED — migration emits the full v2 ticket schema; the filename is also authoritative.** E-14
+  migrated the repository to canonical `*.task.<ID>.md` tickets. B2-16b makes that filename sufficient
+  to activate structural Execution Log and group-receipt checks even if a marker is accidentally missing;
+  B2-20/A13 therefore promotes missing or stale group audit/review receipts to blocking errors. Legacy
+  scopes without the marker stay isolated to the frozen V1 compatibility layer.
+
+### B2-16b — evidence-reviewed normalization ledger
+
+Нормализация не добавляет receipts, DONE, результаты или новые event-строки. Проверяется весь файл
+(не только Execution Log, потому что `CLI-draft` переносит ошибочно размещённые evidence-строки из
+phase definition): event — строка, буквально начинающаяся с `- [x] `; Handoff — строка, совпадающая с
+`^[[:space:]]*\*\*Handoff →\*\*`. Число строк и SHA-256 их C-locale-sorted byte stream воспроизводятся
+до/после такой командой (временные файлы находятся вне repository):
+
+```sh
+BASE=8ea0d8efe2737ba09b2279fab84900cc0ad7dce9
+for file in specs/cli/cli.task.CLI-alt-cli.md specs/cli/cli.task.CLI-alt-core.md specs/cli/cli.task.CLI-alt-test.md specs/cli/cli.task.CLI-diff.md specs/cli/cli.task.CLI-draft.md specs/cli/lint/lint.task.LIN-headers.md; do
+  git show "$BASE:$file" | awk '$0 ~ /^- \[x\] / || $0 ~ /^[[:space:]]*\*\*Handoff →\*\*/ { print }' > /tmp/gennady-evidence-base.txt
+  awk '$0 ~ /^- \[x\] / || $0 ~ /^[[:space:]]*\*\*Handoff →\*\*/ { print }' "$file" > /tmp/gennady-evidence-head.txt
+  for snapshot in /tmp/gennady-evidence-base.txt /tmp/gennady-evidence-head.txt; do
+    printf '%s lines=' "$file"; wc -l < "$snapshot" | tr -d ' '
+    LC_ALL=C sort "$snapshot" | openssl dgst -sha256
+  done
+done
+```
+
+| Ticket         | Исходное доказательство                                                                                                                  | Однозначная принадлежность                                                                                                                | Минимальная структурная правка                                                              | Строки / SHA-256                                                            |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `CLI-alt-cli`  | Round 1 содержит только файлы/символы `alt-opinion` command, prompts и регистрацию; в тикете одна фаза P1 `cmd + prompts + registration` | Единственная фаза и exact Target Files совпадают со всеми event-строками                                                                  | Добавлен только heading `#### P1` перед существующими строками                              | `18→18`, `57474f3c150c0864a550864fc2e44bd776d7dd4bb8efb2bcedf2eb5e96db7763` |
+| `CLI-alt-core` | `### Round 2 — initial, P2 runner` уже содержит `#### P2` и только `alt-opinion-runner.ts`; P1 в предыдущем блоке содержит types/parser  | Название, существующий phase heading и exact Target Files независимо указывают на P2                                                      | Удалён ошибочный level-3 Round boundary; существующий P2-блок присоединён к initial Round 1 | `94→94`, `a42d86869a55b2eae4ff7821884b83146fe0e698433e7048bca4657e56fbfd65` |
+| `CLI-alt-test` | Три строки файлов буквально называют parser, runner и cmd tests; две команды отдельно называют parser+runner и cmd                       | Каждая строка файла совпадает с единственным Target File P1/P2/P3; combined parser+runner command остаётся в P2 после уже наблюдённого P1 | Добавлены P1/P2/P3 headings; строка cmd-file перенесена вместе с cmd verification под P3    | `19→19`, `1fa107fda8adfc7f05bc574cb1ac4e8283c1ffa325ffe909cf91d6705c8a865e` |
+| `CLI-diff`     | `### Round 2 — P2 test` уже содержит `#### P2` и exact `vcs-diff.test.ts`; Round 1 содержит P1 implementation                            | Название, heading и Target Files однозначно совпадают с P2                                                                                | Удалён ошибочный level-3 Round boundary; существующий P2-блок присоединён к initial Round 1 | `18→18`, `c3913d4403eb09eabe3e31f6f68a5869dfdff700c75b49d8dfd274993b24f422` |
+| `CLI-draft`    | Checked test events и Handoff ошибочно лежали внутри `PHASE_P2`, но называют оба exact P2 Target Files и `sdd verify`                    | Target Files и test-only события однозначно принадлежат P2; байты уже существовали, это не восстановление результата                      | Verbatim P2 evidence перемещено из phase definition в Execution Log Round 1 под `#### P2`   | `12→12`, `60f29871a58ff633a601a03bc7d989a60c248667768790e60f3d7c07249dbaf2` |
+| `LIN-headers`  | `##### P1` стоит над `file-header.check.ts`, а тикет имеет единственную P1 с этим exact Target File                                      | ID и Target File совпадают без альтернатив                                                                                                | Исправлен только heading level `#####` → `####`                                             | `7→7`, `8534aa662161a6970fbdca1515238913413547ba066b0c296c2be5e00a1cdb2c`   |
+
+## F. Batch 23 split — acceptance status
+
+- **23A — E-22 + E-23 + V14-3: implemented by deterministic corpora.**
+  `ai/flow-eval/__tests__/fixtures/golden-v1/contract.json` pins the complete immutable
+  `rc-baseline-1^{}` tree (`227c03a83830124fe2aa22541dd5374beb8a53c6`), expected red exit, and
+  warning movement separately from the zero-new-error predicate. The test extracts that local Git
+  object into an isolated root, reconstructs its unchanged `HEAD`, and compares findings by
+  `(code,file,severity)` against the versioned baseline — no V1 edits and no rebaseline.
+  `ai/flow-eval/__tests__/fixtures/adversarial-v2/contract.json` binds collision, ambiguous legacy
+  lookup, malformed coverage, skipped/todo tests, and stale phase/group receipts to their explicit
+  outcomes, with valid and V1 counterparts. Its single V14-3 injection changes only the second
+  Task-ID and flips exactly `SDD_TASK_ID_COLLISION` plus exit `0→1`.
+- **23B — E-17: IMPLEMENTED.** V14-2a..d activates the agent-owned Decision Log deviation card,
+  exposes it through `sdd-task`, makes pending DONE tickets/group receipts fail closed, persists an
+  operator verdict through `sdd-log deviation-verdict`, and records observation-vs-wall-clock budget
+  detail plus unresolved count while keeping `budget-exhausted` outside aggregate statistics.
+- **23C — exact E-18: DEFERRED to release validation.** The Swift runtime smoke accepted for Batch 12
+  is not relabelled as the exact cloud-ios E-18 round-trip, and 23A makes no live-LLM/eval claim.
+- **Batch 23 as a whole remains OPEN** until 23C is discharged; 23A also does not perform E-14
+  self-migration, remove `tasks/`, regrade warnings as errors, or alter the V1 corpus.

@@ -1,0 +1,9 @@
+<!-- new for TSK-136: mission-adequacy brick (D-122/AI-43) -->
+<Axiom id="AX_COMPLEXITY_BUDGET">
+  Complexity — branching, indirection, state held in memory, number of concepts a reader must
+  hold at once — is a budget spent against the problem's ACTUAL shape, not the imagined future
+  one. Judge whether the complexity the diff adds is proportional to what today's requirement
+  needs; generality/config/abstraction built for a need that is not yet real is over-spend, flagged
+  regardless of how clean the code looks in isolation. This is a language-independent practice no
+  linter measures — it is read from the diff against the stated problem, not from style rules.
+</Axiom>

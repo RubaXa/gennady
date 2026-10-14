@@ -1,0 +1,4 @@
+<!-- source: testing/common.xml -->
+<Definition id="DEF_PHASE_ANCHOR_FORMAT">
+      `// #region START_[CASE]_[PHASE]_[INTENT]` and paired `// #endregion END_[CASE]_[PHASE]_[INTENT]`. PHASE ∈ {`SETUP`, `TRIGGER`, `OBSERVE`, `ASSERT`, `CLEANUP`}. CASE = uppercase short scenario id; INTENT = uppercase intent token.
+    </Definition>

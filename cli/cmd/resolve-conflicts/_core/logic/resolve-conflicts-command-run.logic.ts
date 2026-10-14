@@ -1,6 +1,6 @@
 // @file: Execute resolve-conflicts pipeline and return the final prompt.
+// @spec: CLI
 // @consumers: resolve-conflicts.cmd
-// @tasks: N/A
 
 import { style } from '../../../../../shared/common/style.ts';
 import { buildResolveConflictsContextGit } from './resolve-conflicts-context-git-build.logic.ts';

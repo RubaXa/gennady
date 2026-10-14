@@ -1,5 +1,11 @@
 # Module: sync
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SYNC
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Команда `gennady sync` в `cli/cmd/sync/`: синхронизирует `ai/directives/` из npm-пакета gennady в текущий проект. Приоритет у локальной установки (`node_modules/gennady`), fallback — резолв запущенного процесса. Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`ai/directives/...`, `npx gennady`).** Вывод: `+` (added), `~` (updated), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Поддержка `--dry-run`.
@@ -34,6 +40,7 @@ _Это полный список сущностей модуля. Любое в
 | `SyncFormatEntry`       | Value Object | `{ status: 'added'\|'updated'\|'deleted'\|'unchanged'; relativePath: string }` (shared)      |
 | `SyncFormatOptions`     | Value Object | `{ dryRun?: boolean }` (shared)                                                              |
 | `SyncCmdDeps` (shared)  | Port         | Расширенная версия с `unlink?`, `rmdir?` для sync-skills (shared)                            |
+| `v1ConsumerSyncRefusal` | Function     | D-23: pre-write отказ для consumer с canonical marker v1 `tasks/`; `null` для v2             |
 
 ## 3. Entity Surfaces
 
@@ -81,7 +88,7 @@ _Это полный список сущностей модуля. Любое в
 - **Type:** Service (чистые функции, без I/O к stdout)
 - **Purpose:** Ядро синхронизации: обнаружение пакета, сканирование, сравнение
 - **Public Operations:**
-  - `resolvePackageDir(cwd: string): string | null` — приоритет: `node_modules/gennady` > `import.meta.resolve('gennady')`
+  - `resolvePackageDir(cwd: string): string | null` — приоритет: local `node_modules/gennady` > explicit self-repo с `package.json name: gennady` > invoking tool owner через `import.meta.resolve('gennady')`. Чужой `cwd` не доказывает ownership.
   - `scanDirectives(sourceDir: string, subdirs?: string[]): string[]` — список относительных путей всех файлов; применяет `EXCLUDED_ENTRIES`
   - `collectAndCompare(deps: SyncCmdDeps, opts: SyncOptions): SyncResult` — главная точка входа. Применяет `PathNormalizer` с `SYNC_PATH_RULES` к содержимому каждого файла перед сравнением и записью
 - **Lifecycle:** Stateless. Вызывается `sync.cmd.ts`
@@ -154,7 +161,11 @@ None.
   - `EXCLUDED_ENTRIES` не попадают в результат
 - **Invariants:**
   - Никогда не пишет в stdout/stderr
+  - Mirror deletion ограничена текущими package-owned top-level подкаталогами источника. Stale файлы внутри них удаляются; неизвестные каталоги и root-файлы сохраняются с warning. Отсутствие root-файла в текущем пакете не доказывает прежнюю ownership; имена не являются whitelist ownership.
+  - Root-файлы, присутствующие в текущем source, сравниваются/обновляются штатно. Custom root `knowledge.xml` — только пользовательские bytes: не registry, не загружается и не seed-ится из legacy package file. Историческое удаление root-файла требует отдельного доказанного migration ownership, не угадывается sync.
+  - Неполный source scan запрещает deletion в затронутом prefix; dry-run не пишет и не удаляет.
   - `resolvePackageDir` всегда возвращает путь с `ai/directives` на конце
+  - Fallback обнаруживает package root по ближайшему ancestor `package.json` с `name: gennady`, независимо от source/dist/nested entry layout. Чужой cwd не считается package root; отсутствующий subdir возвращает `null`.
   - `scanDirectives` всегда возвращает пути с прямыми слешами (`/`)
 
 ### 4.3 Service: `SyncFormatter`
@@ -207,6 +218,7 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 ├── sync-core.shared.ts         # resolvePackageDir(subdir), compareBytes
 ├── sync-formatter.shared.ts    # formatSyncOutput(entries, opts) — общие маркеры, dry-run, итог
 ├── sync-deps.type.ts           # SyncCmdDeps (расширен unlink, rmdir)
+├── v1-consumer-guard.ts        # SO-12/D-23: общий pre-write отказ на SDD v1 consumer
 └── __tests__/
     ├── sync-core.shared.test.ts
     └── sync-formatter.shared.test.ts
@@ -282,6 +294,31 @@ shared/common/sync/             # shared с sync-skills (D-M004)
 - **Rejected alternatives:**
   - Не нормализовать директивы — в директивах есть ссылки на `~/.claude/skills/...` и `npx gennady`; dev-версии этих путей будут битые в продакшене
   - Отдельный `PathNormalizer` для sync — дублирование; shared через `shared/common/sync/`
+
+### D-M006 — EXCLUDED_ENTRIES: dbc-audit/dev-review/semantic-change-extractor исключения снесены вместе с директивами
+
+- **Status:** active
+- **Recorded:** session Cleanup, cli, sync
+- **Why:** DbC-проверки давно живут в `gennady lint`; `dbc-audit.directive.xml`, `dev-review.directive.xml`, `semantic-change-extractor.directive.xml` устарели и снесены из `ai/directives/` целиком (не только исключены из sync). Хардкод-список исключений в `EXCLUDED_ENTRIES` больше не нужен — исключать нечего, файлов не существует.
+- **Was → Now:** `EXCLUDED_ENTRIES = new Set(['architecture', 'dbc-audit.directive.xml', 'dev-review.directive.xml', 'semantic-change-extractor.directive.xml'])` → `EXCLUDED_ENTRIES = new Set(['architecture'])`.
+- **Risk accepted:** Нет — удалённые директивы не имели живых читателей (проверено: только упоминались в этом списке исключений и в спеках).
+- **Rejected alternatives:**
+  - Оставить пустые записи в `EXCLUDED_ENTRIES` «на будущее» — мёртвый код, список должен отражать текущую реальность файловой системы пакета
+
+### D-M007 — Full sync ждёт явного migration bootstrap (SO-12/D-23, superseded)
+
+- **Status:** active
+- **Recorded:** Batch 23B / Wave 5
+- **Why:** `tasks/` — canonical marker SDD v1. Обычный full sync не владеет purge/migration
+  transaction и остаётся закрыт. Пересмотрённый D-23 вводит явный
+  `sdd-migrate bootstrap`: он сначала fail-closed доказывает ownership/hash всех V1 runtime bytes,
+  затем одной rollback-capable транзакцией удаляет V1 tooling и устанавливает полный текущий V2
+  migration runtime. Diagnostic ведёт в bootstrap, а не сразу в `plan`.
+- **Risk accepted:** sync недоступен до штатной migration. Автоматически поддерживается exact
+  известный V1 package snapshot; неизвестная или локально изменённая версия блокируется с перечнем
+  путей и требует сохранения/разбора человеком.
+- **Rejected alternatives:** `.gennady-synced` как доказательство migration — это только ownership
+  manifest синхронизированных навыков.
 
 ## 8. Inter-Module Dependencies
 

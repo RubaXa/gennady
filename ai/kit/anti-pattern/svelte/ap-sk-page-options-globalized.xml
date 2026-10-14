@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<AntiPattern id="AP_SK_PAGE_OPTIONS_GLOBALIZED">
+<Bad>`svelte.config.js` sets `kit: { prerender: { entries: ['*'] }, csr: false }` to disable SSR/CSR project-wide.</Bad>
+<WhyBad>Page options globalized into framework config (`AX_SK_PAGE_OPTIONS_PER_ROUTE`). Discards per-route trade-offs — a marketing landing page that benefits from prerender forces the same on dynamic dashboards. Hidden behavior at the framework level surprises every later contributor.</WhyBad>
+<Good>Per-route in the relevant `+page.ts`: `export const prerender = true;` for static pages; leave dynamic routes default.</Good>
+</AntiPattern>

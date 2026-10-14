@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<AntiPattern id="AP_SNAPSHOT_FOR_SCALAR">
+      <Bad>`it('returns 42', (t) => { const result = compute(); t.assert.snapshot(result); });`</Bad>
+      <WhyBad>Snapshot for a scalar — violates inherited `AX_SNAPSHOT_USAGE_GATE`. Failure shows diff of snapshot blobs instead of «42 ≠ 41».</WhyBad>
+      <Good>`assert.strictEqual(result, 42)` — direct, clear, no snapshot file overhead.</Good>
+    </AntiPattern>

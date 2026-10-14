@@ -1,0 +1,6 @@
+<!-- source: sdd/setup.directive.xml -->
+<Contract id="PORTAL_STRUCTURE_CONTRACT">
+      ```markdown
+      {{> "sdd-skeleton-portal"}}
+      ```
+    </Contract>

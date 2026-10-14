@@ -1,0 +1,107 @@
+<ChangeInterrogation keywords="change rationale, why did this change, deeper problem, architecture symptom, churn, shotgun surgery, wrong layer, workaround detection, root cause review" type="directive" ver="1.0">
+  <Mission>
+    Interrogate every MODIFICATION to existing code: why did this line have to change, and is
+    the edit a symptom of a problem that lives deeper than the edit site. Complements
+    `arch-interrogation.directive.xml` (whether new entities should EXIST) and
+    `code-interrogation.directive.xml` (whether code inside them is written well): this
+    directive judges whether the CHANGE ITSELF points at an architectural problem.
+
+    Cognitive role: Root-Cause Interrogator. A modified line is never "just an edit" — someone
+    had a reason to touch working code. The reviewer's reflex question is "зачем это меняли?
+    может, проблема глубже?" — this battery makes that reflex systematic.
+
+    Consumer: the agent-inbox review pipeline (skill subagent pass or a dedicated review
+    session). Findings feed the shared helicopter report: candidate table «Ось» column carries
+    the probe code; no separate report is produced.
+  </Mission>
+
+  <InputContract>
+    - **Required:** worktree `path` + `base` + the review diff (`base..HEAD`).
+    - **Optional (scout dossier):** entity inventory, per-file edit history, MR description /
+      linked spec. When history is absent, compute it locally (`git -C <path> log --oneline
+      -- <file>`); when that is impossible → degrade per `H_NO_HISTORY`.
+    - **Optional:** `prior_threads` / `my_drafts` — de-duplicate per arch-interrogation
+      `AX_PRIOR_DISCUSSION_AWARENESS`; a thread may already contain the author's stated cause.
+    Operator-facing output language and register — per arch-interrogation `AX_OPERATOR_LANGUAGE`.
+  </InputContract>
+
+  <BeliefState>
+    <Axiom id="AX_EVERY_CHANGE_HAS_A_CAUSE">
+      Every modified line was modified for a reason. Harvest the stated cause (MR description,
+      commit message, linked ticket, thread) or reconstruct the implied one. A change whose
+      cause cannot be stated in one sentence is itself a finding — ask the author, do not guess.
+    </Axiom>
+
+    <Axiom id="AX_SYMPTOM_OVER_SITE">
+      The edit site is where the symptom SHOWS, not necessarily where the problem LIVES. For
+      every fix ask: is this the layer where the problem originates? Patching a handler when
+      the real defect is missing validation at the entry point fixes one path and leaves the
+      class of bugs alive. A fix on the wrong layer is a finding even when the fix works.
+    </Axiom>
+
+    <Axiom id="AX_CHURN_IS_A_SIGNAL">
+      Repeated edits to the same region mean the construction resists its purpose. History is
+      evidence: a file or function edited for the same kind of reason the Nth time recently is
+      not "actively developed" by default — it is a candidate for a deeper problem. Ground the
+      claim in actual history (`git log`), never in impression.
+    </Axiom>
+
+    <Axiom id="AX_RESISTANCE_MARKERS">
+      The architecture fighting back leaves fingerprints in the diff itself: a workaround with
+      an apologetic comment (hack / temporary / костыль), a special-case `if` for one caller, a
+      copy-paste of a neighbouring block with small edits, a parameter added to thread data
+      through layers, a widened type to silence the compiler. Each marker is a probe trigger —
+      the question is not "is this line correct" but "what is this line evidence OF".
+    </Axiom>
+  </BeliefState>
+
+  <Probes>
+    Applied to modified hunks (new files belong to arch-interrogation). Report only flags;
+    codes appear in the «Ось» column of the shared candidate table.
+
+    | Code    | Проба (один вопрос) | Flag когда |
+    |---------|---------------------|------------|
+    | `CAUSE` | Зачем менялась эта строка/блок? Причина заявлена или восстановима? | Причину нельзя сформулировать одним предложением → кандидат «спросить автора: зачем?» |
+    | `LAYER` | Проблема чинится на том слое, где живёт? Что чинит фикс — класс ошибок или один путь? | Фикс на месте симптома, а не причины: точечный патч там, где нужна проверка на границе / инвариант в модели |
+    | `CHURN` | Как часто это место правили (git log по файлу/функции)? По схожему поводу? | ≥3 правки схожего характера за последние ~90 дней → «конструкция сопротивляется», кандидат на рефакторинг вместо N+1 патча |
+    | `FIGHT` | Есть ли маркеры сопротивления (AX_RESISTANCE_MARKERS)? | Workaround / special-case if / копипаста соседа / сквозной параметр через слои / расширенный тип ради компилятора |
+    | `RIPPLE`| Сколько мест пришлось тронуть ради ОДНОГО логического изменения? | Одна причина → правки в 4+ файлах разных модулей (shotgun surgery) = граница проведена не там; кандидат уровня MR, не per-line |
+  </Probes>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_SCOPE">
+      Collect modified hunks from the diff (status `M`, plus edited parts of renames). Pure
+      additions (only new files) → `H_PURE_ADDITION`. Group hunks by logical change when the MR
+      description names several.
+    </Step>
+    <Step id="STEP_1_CAUSE_HARVEST">
+      Per logical change: harvest the stated cause (MR description → commit messages → linked
+      ticket → prior_threads). Mark `cause: stated` (with source) or `cause: absent` →
+      reconstruct one implied sentence and tag it as reconstruction (`CAUSE` flag when even
+      reconstruction is guesswork).
+    </Step>
+    <Step id="STEP_2_HISTORY">
+      For each touched file with non-trivial edits: `git -C <path> log --oneline -n 20 -- <file>`
+      (and blame around the hunk when the region matters). Feed `CHURN`. History unavailable →
+      `H_NO_HISTORY` (state "история недоступна", do not guess).
+    </Step>
+    <Step id="STEP_3_PROBES">
+      Run `LAYER` / `FIGHT` / `RIPPLE` per logical change at the depth its blast radius earns.
+      Every flag needs evidence: the marker quoted, the history cited, the deeper layer named
+      concretely ("валидация принадлежит `parseConfig`, не каждому потребителю").
+    </Step>
+    <Step id="STEP_4_EMIT">
+      Emit findings in the shared format: probe code in «Ось», file/line, one-sentence problem,
+      kind per posting-rules CandidateTagging. Deeper-problem findings phrase as a QUESTION to
+      the author when the reconstruction is uncertain — this lens raises «зачем?», it does not
+      convict. De-duplicate against prior_threads.
+    </Step>
+  </ExecutionPlan>
+
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_PURE_ADDITION` | Diff contains no modifications to existing code — nothing for this lens; entities are arch-interrogation's job. Report one line and stop. |
+    | `H_NO_HISTORY` | Git history unavailable (shallow clone, no repo access) — `CHURN` degrades to "inconclusive", other probes still run. |
+  </HaltConditions>
+</ChangeInterrogation>

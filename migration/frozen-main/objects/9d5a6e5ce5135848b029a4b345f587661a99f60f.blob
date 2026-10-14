@@ -1,0 +1,6 @@
+notes: A vet finding is a code FAIL; vet's panic predicate must not swallow it.
+requires: [go]
+argv: ['--all', '--only=golang:vet']
+exitCode: 1
+gates:
+  golang:vet: { status: fail }

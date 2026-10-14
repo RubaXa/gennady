@@ -1,3 +1,6 @@
+// @file: services/remote-console/__tests__/remote-console-server.test.ts
+// @spec: SHARED
+// @consumers: N/A
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { startRemoteConsoleServer } from '../remote-console.ts';

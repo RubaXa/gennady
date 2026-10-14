@@ -1,6 +1,6 @@
 // @file: Unit tests for opencodeErrorMap — pure mapping function, no subprocess needed.
+// @spec: AGENT-RUN-OPENCODE
 // @consumers: CI test suite
-// @tasks: TSK-63, TSK-64
 
 /**
  * Test Graph:

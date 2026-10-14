@@ -1,6 +1,6 @@
 // @file: Unit tests for queryEntity — find exported entities by name (S6 scenario).
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,11 +1,9 @@
 // @file: Sync command types — SyncOptions, SyncFileEntry, SyncResult
+// @spec: CLI-SYNC
 // @consumers: sync-core.ts, sync-formatter.ts, sync.cmd.ts
-// @tasks: TSK-53, TSK-54
 
-// `preserved` = a project-owned file (e.g. knowledge.xml) that differs from the package and was
-// deliberately NOT overwritten, so the project keeps its own version.
-/** @purpose Discriminated status of a synced file: added, updated, unchanged, or preserved. */
-export type SyncFileStatus = 'added' | 'updated' | 'unchanged' | 'preserved';
+/** @purpose Discriminated status of a synced file: new, changed, or identical. */
+export type SyncFileStatus = 'added' | 'updated' | 'deleted' | 'unchanged';
 
 /** @purpose Options for the sync command. */
 export interface SyncOptions {
@@ -15,8 +13,6 @@ export interface SyncOptions {
   targetDir: string;
   /** @purpose Optional filter: subdirectory names inside ai/directives/. */
   subdirs?: string[];
-  /** @purpose Extra directive roots contributed by plugins; the base root wins on collision. */
-  extraSourceDirs?: readonly string[];
   /** @purpose Preview without writing. */
   dryRun?: boolean;
 }
@@ -37,13 +33,17 @@ export interface SyncFileEntry {
 export class SyncResult {
   /** @purpose List of all synced file entries. */
   readonly entries: SyncFileEntry[];
+  /** @purpose Non-fatal warnings, e.g. a target subdirectory not owned by the package left untouched. */
+  readonly warnings: string[];
 
   /**
    * @purpose Construct a SyncResult from a list of entries.
    * @param entries File entries.
+   * @param [warnings] Non-fatal warnings to surface alongside the result.
    */
-  constructor(entries: SyncFileEntry[]) {
+  constructor(entries: SyncFileEntry[], warnings: string[] = []) {
     this.entries = entries;
+    this.warnings = warnings;
   }
 
   /** @purpose Files with status "added". | @returns Array of added entries. */
@@ -61,19 +61,18 @@ export class SyncResult {
     return this.entries.filter((e) => e.status === 'unchanged');
   }
 
-  /** @purpose Project-owned files kept as-is (not overwritten). | @returns Array of preserved entries. */
-  get preserved(): SyncFileEntry[] {
-    return this.entries.filter((e) => e.status === 'preserved');
+  /** @purpose Stale target files removed because the installed package no longer owns them. | @returns Array of deleted entries. */
+  get deleted(): SyncFileEntry[] {
+    return this.entries.filter((e) => e.status === 'deleted');
   }
 
-  /** @purpose Human-readable summary of added/updated/unchanged/preserved counts. | @returns Summary string. */
+  /** @purpose Human-readable summary of added/updated/unchanged counts. | @returns Summary string. */
   get summary(): string {
     const a = this.added.length;
     const u = this.updated.length;
     const s = this.unchanged.length;
-    const p = this.preserved.length;
-    const base = `Synced: ${a} added, ${u} updated, ${s} skipped (unchanged)`;
-    return p > 0 ? `${base}, ${p} preserved (project-owned)` : base;
+    const d = this.deleted.length;
+    return `Synced: ${a} added, ${u} updated, ${s} skipped (unchanged), ${d} deleted`;
   }
 
   /** @purpose Dry-run summary message. | @returns Dry-run message. */

@@ -1,5 +1,11 @@
 # Module: providers/opencode
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-PROVIDERS-OPENCODE
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Adapter для OpenCode. Реализует `AgentProvider`: запрашивает `opencode.db` через `node:sqlite`, парсит `model` JSON, извлекает `lastMessage`.
@@ -8,12 +14,12 @@ Adapter для OpenCode. Реализует `AgentProvider`: запрашива�
 
 ## 2. Entity Inventory (Closed-World)
 
-| Name               | Type     | Purpose                                                          |
-| ------------------ | -------- | ---------------------------------------------------------------- |
-| `OpenCodeProvider` | Adapter  | Реализует `AgentProvider` для OpenCode                           |
-| `querySessions`    | Function | SQL: `SELECT ... FROM session WHERE time_archived IS NULL`       |
-| `queryLastMessage` | Function | SQL: `SELECT data FROM message WHERE session_id = ? ... LIMIT 1` |
-| `parseModelJson`   | Function | Парсинг `model` JSON → `id`                                      |
+| Name               | Type     | Purpose                                 |
+| ------------------ | -------- | --------------------------------------- |
+| `OpenCodeProvider` | Adapter  | Реализует `AgentProvider` для OpenCode  |
+| `querySessions`    | Function | SQL query of active sessions            |
+| `queryLastMessage` | Function | SQL query of the latest session message |
+| `parseModelJson`   | Function | Парсинг `model` JSON → `id`             |
 
 ## 3. Entity Surfaces
 

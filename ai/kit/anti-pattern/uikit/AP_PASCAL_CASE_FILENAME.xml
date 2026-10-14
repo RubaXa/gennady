@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<AntiPattern id="AP_PASCAL_CASE_FILENAME">
+<Bad>Component file named `Button.svelte` or `Button.module.css`.</Bad>
+<WhyBad>Violates kebab-case convention (`AX_FILE_STRUCTURE_KEBAB_CASE`, D-UC03). Inconsistent with existing project files (`app.svelte`, `app.stories.ts`). Breaks the closed-world `ComponentArtefact` contract.</WhyBad>
+<Good>`button.svelte`, `button.module.css`, `button.tokens.css`, `button.stories.ts`.</Good>
+</AntiPattern>

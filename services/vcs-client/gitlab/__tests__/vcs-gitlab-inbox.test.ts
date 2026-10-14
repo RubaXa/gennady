@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGitlabInbox — getActionable todoIds, markTodoDone GraphQL mutation, connection-only sources.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-75
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -141,5 +141,47 @@ describe('VcsGitlabInbox', () => {
     assert.deepStrictEqual(result[0].todoIds, []);
     assert.deepStrictEqual(result[1].todoIds, []);
     // #endregion END_CONNECTION_ONLY_ASSERT
+  });
+
+  it('getActionable — exposes GraphQL approvalsRequired for the poll-tier approval denominator', async () => {
+    // contract: inbox-vcs receives the real required-approval count from the concrete GitLab client
+    // failure mode: do not silently replace an unavailable REST detail field with a synthetic denominator
+
+    // #region START_APPROVALS_REQUIRED_SETUP_GRAPHQL_RESULT
+    const { graphqlFn, inbox } = createInboxTestContext({
+      graphqlImpl: async () => ({
+        currentUser: {
+          todos: { nodes: [] },
+          reviewRequestedMergeRequests: { nodes: [] },
+          authoredMergeRequests: {
+            nodes: [
+              {
+                iid: '42',
+                webUrl: 'https://gitlab.com/group/repo/-/merge_requests/42',
+                title: 'Approval-backed MR',
+                updatedAt: '2026-08-08T00:00:00Z',
+                draft: false,
+                state: 'opened',
+                description: '',
+                author: { username: 'me' },
+                reviewers: { nodes: [] },
+                approvedBy: { nodes: [{ username: 'reviewer' }] },
+                approvalsRequired: 2,
+                project: { fullPath: 'group/repo' },
+              },
+            ],
+          },
+        },
+      }),
+    });
+    // #endregion END_APPROVALS_REQUIRED_SETUP_GRAPHQL_RESULT
+
+    const result = await inbox.getActionable();
+
+    // #region START_APPROVALS_REQUIRED_ASSERT_RUNTIME_FACT
+    assert.strictEqual(result[0].approvalsRequired, 2);
+    const [query] = graphqlFn.mock.calls[0].arguments as [string];
+    assert.match(query, /approvalsRequired/);
+    // #endregion END_APPROVALS_REQUIRED_ASSERT_RUNTIME_FACT
   });
 });

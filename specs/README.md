@@ -27,17 +27,10 @@ graph TD
     agent-inbox --> cli
     agent-inbox --> ai-skills
     shared --> infra-base
-    infra-e2e --> infra-base
-    infra-e2e --> infra-npm-publish
-    config --> infra-base
-    plugins --> stack
-    plugins --> config
-    stack --> config
-    cli --> config
-    stack --> infra-base
-    stack --> shared
-    cli --> stack
-    ai-skills --> stack
+    mr-stats --> infra-base
+    mr-stats --> vcs
+    mr-stats --> cli
+    mr-stats --> dbc
 ```
 
 ## Scopes
@@ -46,16 +39,13 @@ graph TD
 | -------------------------------------------------------------------- | -------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`infra-base`](./infra-base/infra-base.spec.md)                      | infrastructure | ✅   | Node.js 22+, npm, tsc, prettier, git-hooks (pre-commit), node:test, vite                                                                                                                                        |
 | [`shared`](./shared/shared.spec.md)                                  | infrastructure | ✅   | Фундаментальный слой: logger, parse-args, exec, files, style, xml, tokens, think, git-core                                                                                                                      |
-| [`cli`](./cli/cli.spec.md)                                           | product        | ✅   | CLI-модуль: lint, alt-opinion, cat, review, run, help, orient, sync, e2e, agents-rules                                                                                                                          |
+| [`cli`](./cli/cli.spec.md)                                           | product        | ✅   | CLI-модуль: lint, cat, review, run, help, orient, sync, e2e, agents-rules                                                                                                                                       |
 | [`vcs`](./vcs/vcs.spec.md)                                           | product        | ✅   | VCS-клиент (GitLab + GitHub): Merge Requests, Discussions, Repository Files, Inbox (GraphQL). CLI: vcs-approve, vcs-diff, vcs-draft-note, vcs-job, vcs-job-log, vcs-pipeline, vcs-reply, vcs-todo, vcs-worktree |
 | [`dbc`](./dbc/dbc.spec.md)                                           | library        | ✅   | DBC-фреймворк: парсинг и валидация текстовых контрактов                                                                                                                                                         |
 | [`agent-mon`](./agent-mon/agent-mon.spec.md)                         | library        | ✅   | Пассивный мониторинг активных сессий AI-агентов через провайдеры                                                                                                                                                |
 | [`agent-mon-cli`](./agent-mon-cli/agent-mon-cli.spec.md)             | product        | ✅   | TUI-дашборд для мониторинга сессий агентов (ink + React)                                                                                                                                                        |
 | [`infra-npm-publish`](./infra-npm-publish/infra-npm-publish.spec.md) | infrastructure | ✅   | Автоматизированная публикация npm-пакета через release-it                                                                                                                                                       |
-| [`ai-skills`](./ai-skills/ai-skills.spec.md)                         | library        | ✅   | AI-навыки для агентов: SDD-воркфлоу + alt-opinion                                                                                                                                                               |
+| [`ai-skills`](./ai-skills/ai-skills.spec.md)                         | library        | ✅   | AI-навыки для агентов: SDD-воркфлоу                                                                                                                                                                             |
 | [`agent-run`](./agent-run/agent-run.spec.md)                         | library        | ✅   | Запуск внешнего AI-движка (opencode первым) с заданием и директориями, readonly                                                                                                                                 |
-| [`agent-inbox`](./agent-inbox/agent-inbox.spec.md)                   | product        | 🚧   | Ассистент входящих GitLab MR: actionable-инбокс, стадии, факт-чек, ответ/ревью (research-спайк)                                                                                                                 |
-| [`plugins`](./plugins/plugins.spec.md)                               | infrastructure | ✅   | Локальность плагинов: `plugins/<id>/` — единственное хранилище файлов стека (код, спека, директивы, скиллы, фикстуры); манифест + резолвер; дизайн внешних плагинов (D-STACK-001)                               |
-| [`config`](./config/config.spec.md)                                  | infrastructure | ✅   | Per-repo конфиг: `gennady.yaml` + `.gennadyrc`, deep-merge трёх источников с per-key провенансом, строгая валидация; реестр top-level секций (`stack`, …)                                                       |
-| [`infra-e2e`](./infra-e2e/infra-e2e.spec.md)                         | infrastructure | ✅   | Доктрина E2E-тестирования: артефакт, политика скипов, CI/CD, покрытие флагов; наборы `cli/e2e`, `stack/e2e`, `config`                                                                                           |
-| [`stack`](./stack/stack.spec.md)                                     | library        | ✅   | Плагины стеков: StackPlugin (anystack, golang, node), команда `verify`, конфиг `gennady.yaml` ([config](./config/config.spec.md))                                                                               |
+| [`agent-inbox`](./agent-inbox/agent-inbox.spec.md)                   | product        | 🚧   | Локальный reviewer-assistant: полный review/cross-review, детерминированный coverage control loop, решения и реальные GitLab effects                                                                            |
+| [`mr-stats`](./mr-stats/mr-stats.spec.md)                            | product        | 🚧   | Статистика по одному GitLab MR: классификация изменений, строки кода, сущности, дубликаты (awaiting setup sync)                                                                                                 |

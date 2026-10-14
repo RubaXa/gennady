@@ -1,8 +1,14 @@
 # Module: sync-skills
 
+<!--SECTION:SPEC_ID-->
+
+CLI-SYNC-SKILLS
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
-Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует скилы из npm-пакета gennady в `<cwd>/.claude/skills/`. Набор скилов не зашит в код: источник — все каталоги `ai/skills/*` с `SKILL.md` (SDD-семейство `sdd-*`, alt-opinion, agent-inbox, prd-interview, workspace-permission-setup) плюс `plugin.skills` каждого плагина (например, `sdd-infra-golang` из плагина golang). Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Синхронизация с orphan-удалением по манифесту владения: **удаляются только скилы, записанные в `.claude/skills/.gennady-synced`** — чужие скилы в целевой директории не трогаются (D-M006). Файлы сравниваются побайтово (`Buffer.compare`). **Корень пакета ищется вверх по `package.json`, а не отрезанием `/dist/`:** опубликованная установка резолвится внутрь `dist/`, а склонированная или `npm link`-нутая — прямо в исходник, и отрезание `dist` для второй давало путь к файлу и отказ «gennady package not found». **Источников скиллов несколько:** базовый `ai/skills/**` плюс `plugin.skills` каждого плагина (в пакете каталоги плагинов лежат рядом, в чекауте — тоже), фильтр по именам применяется к объединению, а пустой каталог никогда не перекрывает реальные файлы. **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
+Команда `gennady sync-skills` в `cli/cmd/sync-skills/`: синхронизирует скилы из `ai/skills/` npm-пакета gennady в `<cwd>/.claude/skills/`. 12 скилов: `sdd` (единая дверь-роутер), `sdd-scaffold`, `sdd-execute` (с scripts/), `sdd-audit`, `sdd-check`, `sdd-code-review`, `sdd-critic`, `sdd-reconcile` — SDD-воркфлоу; `agent-inbox`, `opencode-get-session`, `prd-interview`, `workspace-permission-setup` — не-SDD. Каждый скил — директория с `SKILL.md` и ресурсами (scripts, prompts). Полная синхронизация с orphan-удалением (rsync --delete). Файлы сравниваются побайтово (`Buffer.compare`). **При копировании применяется нормализация путей: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые эквиваленты (`npx gennady`, `.claude/skills/...`, `ai/directives/...`).** Вывод: `+` (added), `~` (updated), `-` (deleted), `=` (unchanged). Zero runtime dependencies (только Node.js built-in). Shared core с `sync`: `resolvePackageDir`, `compareBytes`, `PathNormalizer`, `SyncFormatter`, `SyncCmdDeps` вынесены в `shared/common/sync/`. Поддержка `--dry-run`.
 
 → Parent scope: [`../cli.spec.md`](../cli.spec.md) (раздел 5.7 sync-skills).
 
@@ -22,11 +28,6 @@ _Это полный список сущностей модуля. Любое в
 | `syncFile`                    | Helper       | Копирует отдельный файл из source в target с проверкой изменений                                    |
 | `collectOrphanFiles`          | Helper       | Собирает список сиротских файлов в target                                                           |
 | `deleteOrphan`                | Helper       | Удаляет сиротский файл/директорию с graceful degradation                                            |
-| `MANIFEST_NAME`               | Constant     | Имя файла манифеста владения: `.gennady-synced`                                                     |
-| `readSyncManifest`            | Helper       | Читает набор имён скилов, установленных предыдущим sync; `null` если манифеста нет                  |
-| `writeSyncManifest`           | Helper       | Записывает набор владения после синхронизации (no-op при `--dry-run`)                               |
-| `adoptPackageInstalled`       | Helper       | Миграция при отсутствии манифеста: присваивает только имена, которые пакет отдаёт сейчас            |
-| `nextManifestNames`           | Helper       | Считает содержимое манифеста для следующего запуска: merge, а не replace                            |
 | `SyncSkillsFormatter`         | Service      | Форматтер: `format(entries, opts) → string[]` — маркеры + отступы для вложенных файлов              |
 | `SyncSkillsFormatOptions`     | Type         | Опции форматирования: `{ dryRun?: boolean }`                                                        |
 | `PathNormalizer`              | Service      | Нормализация путей: заменяет dev-пути (`~/Developer/gennady/...`) на продуктовые (shared с `sync`)  |
@@ -34,6 +35,7 @@ _Это полный список сущностей модуля. Любое в
 | `SyncCmdDeps`                 | Port         | Импортируется из `shared/common/sync/sync-deps.type.ts` (shared с `sync`)                           |
 | `ERR_SKILLS_SOURCE_NOT_FOUND` | Error code   | Source directory not found                                                                          |
 | `ERR_SKILLS_SKILL_NOT_FOUND`  | Error code   | Skill name not found in source                                                                      |
+| `v1ConsumerSyncRefusal`       | Function     | SO-12/D-23: общий pre-write отказ при `tasks/`; manifest — только diagnostic hint                   |
 
 ## 3. Entity Surfaces
 
@@ -93,32 +95,11 @@ _Это полный список сущностей модуля. Любое в
 - `scanSkills` → бросает ошибку если указанный скил не существует (с перечислением доступных). Это hard error — прерывает синхронизацию, exit 1
 - `collectAndCompareSkills` → бросает ошибку если `sourceDir` не существует
 - Если `sourceDir` существует, но является файлом (а не директорией) → фатальная ошибка `[sync-skills] sourceDir is not a directory: <path>`, exit 1
-- Ошибка удаления orphan (EACCES, EBUSY) → `status: 'deleteFailed'`, не прерывает синхронизацию; имя остаётся в манифесте, следующий запуск повторит попытку
-- Ошибка чтения/записи манифеста (`.gennady-synced`) → проглатывается, не прерывает синхронизацию. Нечитаемый манифест трактуется как отсутствующий; худший исход — запуск, который ничего не удаляет
+- Ошибка удаления orphan (EACCES, EBUSY) → `status: 'deleteFailed'`, не прерывает синхронизацию
 - `.claude/` существует как директория без прав на запись → фатальная ошибка `[sync-skills] cannot write to .claude/skills/: <EACCES>`
 - Ошибка записи (writeFile fail) → фатальная: бросает `Error` с anchor-префиксом `[sync-skills]`, прерывает синхронизацию
 - **Consumers:** `sync-skills.cmd.ts`
 - **Uses shared:** `compareBytes` из `shared/common/sync/sync-core.shared.ts`. `resolvePackageDir` НЕ вызывается ядром — cmd.ts резолвит путь через `deps.resolvePackageDir` и передаёт готовый `sourceDir` в `SyncSkillsOptions`
-
-### Ownership manifest (`MANIFEST_NAME`, `readSyncManifest`, `writeSyncManifest`, `adoptPackageInstalled`, `nextManifestNames`)
-
-- **Type:** Constant + Helpers (чистые функции над `SyncCmdDeps`)
-- **Purpose:** Ограничить orphan-удаление только теми скилами, которые установил `gennady sync-skills`
-- **File:** `cli/cmd/sync-skills/sync-skills-core.ts`
-- **Public Operations:**
-  - `MANIFEST_NAME = '.gennady-synced'` — файл в `targetDir`. Точка в начале обязательна: все readdir-фильтры уже отбрасывают `.`-имена, поэтому манифест не может быть принят за скил
-  - `readSyncManifest(targetDir, deps): Set<string> | null` — построчный список имён, `#`-строки и пустые строки игнорируются. `null` = «манифеста нет» (в том числе если он нечитаем)
-  - `writeSyncManifest(targetDir, names, dryRun, deps): void` — пишет отсортированный список с комментарием-шапкой. При `dryRun` — no-op
-  - `adoptPackageInstalled(targetSkillNames, shippedNames): Set<string>` — политика миграции при отсутствии манифеста: присваиваются ровно те существующие директории, имена которых пакет отдаёт **сейчас**
-  - `nextManifestNames(owned, syncedNames, prunedNames, present): string[]` — `(owned − prunedNames − отсутствующие на диске) ∪ syncedNames`
-- **Lifecycle:** Stateless. Вызываются `collectAndCompareSkills`: чтение — перед orphan-проходом, запись — после него
-- **Invariants:**
-  - Кандидаты на удаление = orphan-скилы ∩ набор владения. Скил вне манифеста не удаляется никогда
-  - Первый запуск (манифеста нет) не удаляет ничего: `adoptPackageInstalled` присваивает только имена, которые в этом же запуске перезаписываются пакетом, поэтому orphan'ов среди них нет
-  - Остатки от старых версий пакета не отличимы от скилов проекта (маркера владения в файлах скила нет) — они не присваиваются и не удаляются, пользователь удаляет их вручную
-  - Merge, а не replace: фильтрованный запуск (`gennady sync-skills sdd-execute`) не теряет владение скилами, которых не касался
-  - `present === null` (readdir цели не удался) трактуется не как «директория пуста»: ни одно имя не выбрасывается из манифеста по причине «его нет на диске»
-- **Consumers:** `SyncSkillsCore.collectAndCompareSkills`
 
 ### `SyncSkillsFormatter`
 
@@ -136,11 +117,12 @@ _Это полный список сущностей модуля. Любое в
   - `unchanged` → `  = <skillName>/                                                   (unchanged)`
   - dryRun `added` → `      <relativePath>                                   (would add)`
   - dryRun `updated` → `      <relativePath>                                   (would update)`
-  - dryRun `deleted` → `  - <skillName>/                                            (would delete)` — файлы перечислены без суффикса (`rm` recursive — одна операция)
+  - dryRun, весь скилл удаляется (orphan-скилл, sentinel-запись `relativePath: ''`) → `  - <skillName>/                                            (would delete)` — файлы перечислены без суффикса (rmdir recursive — одна операция)
+  - dryRun, удаляется часть файлов ещё поддерживаемого скила (SO-2b — скилл переживает прогон) → заголовок несёт маркер `~`/`+` по остальным файлам группы, а каждый удаляемый файл печатается СВОЕЙ строкой `      <relativePath>                                   (would delete)` — ни один файл группы не помечается меткой чужого статуса, ни один живой файл не объявляется удалённым (SO-4, находка S5-bis)
   - dryRun `unchanged` → `  = <skillName>/                                   (unchanged, skip)`
   - Отступы в примерах иллюстративны (визуальное выравнивание). Реализатор вычисляет padding динамически по максимальной длине имени скила среди отображаемых.
   - Итоговая строка: `Synced: N added, M updated, K skipped, D deleted`. При наличии `deleteFailed`: `Synced: N added, M updated, K skipped, D deleted, F delete failed`
-  - dryRun итоговая: `Dry-run: no files written.`
+  - dryRun итоговая (SO-4 — печатает плановые счётчики того, что было бы сделано, а не только факт «ничего не записано»; числа планового и реального прогона могут расходиться, если реальный прогон меняет состояние манифеста): `Would sync: N added, M updated, K skipped, D deleted. Dry-run: no files written.`
 - **Consumers:** `sync-skills.cmd.ts`
 - **Uses shared:** `SyncFormatter` базовые маркеры из `shared/common/sync/sync-formatter.shared.ts`
 
@@ -177,7 +159,6 @@ _Это полный список сущностей модуля. Любое в
   6. `/Users/k.lebedev/Developer/gennady/ai/` → `ai/` (абсолютные dev-пути → относительные)
   7. `/Users/k.lebedev/Developer/gennady/cli/gennady.ts` → `npx gennady` (абсолютный путь к CLI)
   8. `$HOME/Developer/gennady/cli/gennady.ts` → `~/Developer/gennady/cli/gennady.ts` (нормализация `$HOME` в тильду, `RULE_CLI_HOME`)
-  9. `plugins/<id>/directives/` → `ai/directives/` (`RULE_PLUGIN_DIRECTIVES`): директиву в чекауте держит плагин, а потребитель получает её под `ai/` — тот же dev/prod дуализм, что у остальных путей
 - **Lifecycle:** Константа в `sync-skills-core.ts`. Передаётся в `PathNormalizer.normalize()`
 - **Consumers:** `SyncSkillsCore.collectAndCompareSkills`
 
@@ -189,7 +170,7 @@ _Это полный список сущностей модуля. Любое в
   - `readFile: (path: string) => Buffer`
   - `writeFile: (path: string, data: Buffer) => void`
   - `unlink: (path: string) => void`
-  - `rm: (path: string, options?: { recursive: boolean; force: boolean }) => void`
+  - `rmdir: (path: string, options?: { recursive: boolean }) => void`
   - `mkdir: (path: string, options?: { recursive: boolean }) => void`
   - `stat: (path: string) => Stats`
   - `readdir: (path: string) => string[]`
@@ -205,7 +186,7 @@ _Это полный список сущностей модуля. Любое в
 
 ### `SyncCmdDeps` (Port)
 
-Shared с `sync`. Расширен полями `unlink`, `rm` для orphan-удаления.
+Shared с `sync`. Расширен полями `unlink`, `rmdir` для orphan-удаления.
 
 **Invariant:** `resolvePackageDir(cwd, 'ai/skills')` всегда возвращает путь, заканчивающийся на `ai/skills` (см. §3 SyncCmdDeps, shared core). Эта инварианта принадлежит shared-функции, не ядру.
 
@@ -220,22 +201,18 @@ Shared с `sync`. Расширен полями `unlink`, `rm` для orphan-у�
 **Contract (DbC):**
 
 - **Preconditions:**
-  - `deps.unlink` и `deps.rm` — не-null (обязательны для sync-skills; для sync эти поля присутствуют в типе, но не используются)
+  - `deps.unlink` и `deps.rmdir` — не-null (обязательны для sync-skills; для sync эти поля присутствуют в типе, но не используются)
   - `opts.sourceDir` — существующая директория с `ai/skills/`
   - `opts.targetDir` — корректный путь (может не существовать). Родительская директория (`.claude/`) должна быть либо отсутствующей, либо директорией. `mkdirSync({ recursive: true })` создаёт и `.claude/` и `.claude/skills/` за один вызов. Если `.claude` существует как файл — ошибка с anchor-сообщением `[sync-skills] .claude exists but is not a directory`
 - **Postconditions:**
-  - Если `dryRun` — ни один `writeFile` / `unlink` / `rm` не вызван; манифест не записывается, ни один скил не удаляется, ни одно имя не выбывает из владения
+  - Если `dryRun` — ни один `writeFile` / `unlink` / `rmdir` не вызван
   - Если не `dryRun` — для каждого `added`/`updated` файла вызван `writeFile` с **нормализованным** содержимым (dev-пути заменены на продуктовые)
-  - Если не `dryRun` — для каждого `deleted` файла/директории вызван `unlink`/`rm`
+  - Если не `dryRun` — для каждого `deleted` файла/директории вызван `unlink`/`rmdir`
   - Возвращённый `SyncSkillsResult.entries` отсортирован: скилы лексикографически, файлы внутри скила лексикографически
   - Скрытые файлы (`.`-префикс) и `.DS_Store` не попадают в результат
-  - При фильтрации (`skillNames`) — orphan-удаление только для указанных скилов, и манифест обновляется merge'ем (владение остальными скилами сохраняется)
-  - Удаляются только orphan'ы из набора владения (манифест, либо `adoptPackageInstalled` при первом запуске) — см. §3 Ownership manifest
-  - Если не `dryRun` — после orphan-прохода записан манифест со значением `nextManifestNames(owned, синхронизированные, успешно удалённые, listing цели)`
+  - При фильтрации (`skillNames`) — orphan-удаление только для указанных скилов
 - **Invariants:**
   - Никогда не пишет в stdout/stderr
-  - Скил, отсутствующий в манифесте, не удаляется ни при каком запуске; первый запуск без манифеста не удаляет ничего
-  - Сбой IO по манифесту не влияет на успех синхронизации (degradation: следующий запуск удалит меньше, но не больше)
   - `scanSkills` всегда возвращает пути с прямыми слешами (`/`)
   - Целевые пути (`.claude/`, `.claude/skills/`) должны быть реальными директориями. Символические ссылки не обрабатываются специально — orphan-удаление через symlink может задеть файлы вне ожидаемого target. Пользователь обязуется не использовать symlink в целевом пути.
   - Нормализация применяется к содержимому ВСЕХ файлов (`.md`, `.sh`, `.xml`, `.prompt.md`). Бинарные файлы в скиллах отсутствуют по определению.
@@ -257,7 +234,7 @@ Shared с `sync`. Расширен полями `unlink`, `rm` для orphan-у�
   - Порядок групп: added → updated → deleted → unchanged, лексикографически внутри каждой группы.
   - Конкретные маркеры, dry-run-суффиксы, отступы и итоговая строка описаны в §3 (Format).
   - При пустом `entries` — только итоговая строка `Synced: 0 added, 0 updated, 0 skipped, 0 deleted`.
-  - `deleted` статус — только на уровне целого скила. Смешанные статусы (часть файлов added, часть deleted) внутри одного скила невозможны.
+  - `deleted` статус встречается на двух уровнях: целый скил (когда пакет больше не поставляет манифестированный скил — `relativePath: ''`) и отдельный файл внутри ещё поддерживаемого скила (когда манифестированный файл пропал из пакета, SO-2b). Смешанные статусы внутри одного скила (часть файлов `added`/`updated`, часть — `deleted`) возможны и должны отображаться правдиво (SO-4).
 - **Invariants:**
   - Не делает I/O
   - Формат строки: `  <marker> <skillName>/<padding><status_label>`
@@ -281,13 +258,12 @@ Shared с `sync`. Расширен полями `unlink`, `rm` для orphan-у�
 
 ## 5. Public Options & Policies
 
-| Option            | Binding                                                     | Status   |
-| ----------------- | ----------------------------------------------------------- | -------- |
-| `--dry-run`       | `SyncSkillsOptions.dryRun`                                  | ✅ bound |
-| Позиционные args  | `SyncSkillsOptions.skillNames`                              | ✅ bound |
-| Скрытые файлы     | Константа в `sync-skills-core.ts`                           | ✅ bound |
-| `.DS_Store`       | Константа в `sync-skills-core.ts`                           | ✅ bound |
-| Манифест владения | `MANIFEST_NAME` (`.gennady-synced`) в `sync-skills-core.ts` | ✅ bound |
+| Option           | Binding                           | Status   |
+| ---------------- | --------------------------------- | -------- |
+| `--dry-run`      | `SyncSkillsOptions.dryRun`        | ✅ bound |
+| Позиционные args | `SyncSkillsOptions.skillNames`    | ✅ bound |
+| Скрытые файлы    | Константа в `sync-skills-core.ts` | ✅ bound |
+| `.DS_Store`      | Константа в `sync-skills-core.ts` | ✅ bound |
 
 Все опции привязаны. Нет отложенных.
 
@@ -309,41 +285,35 @@ shared/common/sync/                    # shared с командой sync
 ├── sync-core.shared.ts               # resolvePackageDir(subdir), compareBytes (~30 lines)
 ├── sync-formatter.shared.ts          # formatSyncOutput(entries, opts) — базовые маркеры (~40 lines)
 ├── path-normalizer.ts                # PathNormalizer: замена dev-путей на продуктовые (~30 lines)
-└── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rm (~15 lines)
+└── sync-deps.type.ts                 # SyncCmdDeps (порт) — расширен unlink, rmdir (~15 lines)
 
-ai/skills/                            # скилы — физические артефакты в репозитории (16 на момент записи)
+ai/skills/                            # 12 скилов (физические артефакты в репозитории)
 ├── agent-inbox/SKILL.md
-├── alt-opinion/                       # SKILL.md + opinion.prompt.md + synth.prompt.md
+├── opencode-get-session/SKILL.md
 ├── prd-interview/                     # SKILL.md + PRD_TEMPLATE.md
+├── sdd/SKILL.md                       # единая дверь-роутер
 ├── sdd-audit/SKILL.md
 ├── sdd-check/SKILL.md
-├── sdd-continue/SKILL.md
+├── sdd-code-review/SKILL.md
 ├── sdd-critic/SKILL.md
-├── sdd-discover/SKILL.md
-├── sdd-execute/                       # SKILL.md + scripts/
-├── sdd-execute-batch/SKILL.md
-├── sdd-fix/SKILL.md
-├── sdd-infra/SKILL.md
-├── sdd-module-decomposition/SKILL.md
+├── sdd-execute/                       # SKILL.md + scripts/ (11 файлов)
+├── sdd-reconcile/SKILL.md
 ├── sdd-scaffold/SKILL.md
-├── sdd-setup/SKILL.md
 └── workspace-permission-setup/SKILL.md
-
-plugins/<stack>/skills/               # скилы плагинов (plugin.skills), напр. golang/skills/sdd-infra-golang
 ```
 
 **File Mapping:**
 
-| File                                           | Entity                                                         | Notes                                                                            |
-| ---------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `cli/cmd/sync-skills/sync-skills.types.ts`     | `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult` | Value Objects                                                                    |
-| `cli/cmd/sync-skills/sync-skills-core.ts`      | `SyncSkillsCore`                                               | `scanSkills`, `collectAndCompareSkills`, манифест владения, константы исключений |
-| `cli/cmd/sync-skills/sync-skills-formatter.ts` | `SyncSkillsFormatter`                                          | `format(entries, opts)` — pure transformer с группировкой по скилам              |
-| `cli/cmd/sync-skills/sync-skills.cmd.ts`       | `run()`, `SyncCmdDeps`                                         | CLI-обвязка: `parseArgs`, DI, вызов core + formatter, вывод                      |
-| `cli/cmd/sync-skills/index.ts`                 | —                                                              | `import { run } from './sync-skills.cmd.ts'; run(process.argv)`                  |
-| `shared/common/sync/sync-core.shared.ts`       | `resolvePackageDir`, `compareBytes`                            | Shared: `sync` + `sync-skills`                                                   |
-| `shared/common/sync/sync-formatter.shared.ts`  | `formatSyncOutput`                                             | Shared: базовые маркеры `+`/`~`/`-`/`=`, dry-run, итоговая строка                |
-| `shared/common/sync/sync-deps.type.ts`         | `SyncCmdDeps`                                                  | Shared DI-порт, расширен `unlink`/`rm` для orphan-удаления                       |
+| File                                           | Entity                                                         | Notes                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `cli/cmd/sync-skills/sync-skills.types.ts`     | `SyncSkillsOptions`, `SyncSkillsFileEntry`, `SyncSkillsResult` | Value Objects                                                       |
+| `cli/cmd/sync-skills/sync-skills-core.ts`      | `SyncSkillsCore`                                               | `scanSkills`, `collectAndCompareSkills`, константы исключений       |
+| `cli/cmd/sync-skills/sync-skills-formatter.ts` | `SyncSkillsFormatter`                                          | `format(entries, opts)` — pure transformer с группировкой по скилам |
+| `cli/cmd/sync-skills/sync-skills.cmd.ts`       | `run()`, `SyncCmdDeps`                                         | CLI-обвязка: `parseArgs`, DI, вызов core + formatter, вывод         |
+| `cli/cmd/sync-skills/index.ts`                 | —                                                              | `import { run } from './sync-skills.cmd.ts'; run(process.argv)`     |
+| `shared/common/sync/sync-core.shared.ts`       | `resolvePackageDir`, `compareBytes`                            | Shared: `sync` + `sync-skills`                                      |
+| `shared/common/sync/sync-formatter.shared.ts`  | `formatSyncOutput`                                             | Shared: базовые маркеры `+`/`~`/`-`/`=`, dry-run, итоговая строка   |
+| `shared/common/sync/sync-deps.type.ts`         | `SyncCmdDeps`                                                  | Shared DI-порт, расширен `unlink`/`rmdir` для orphan-удаления       |
 
 **Namespace:** `sync-skills` — единый префикс.
 
@@ -356,7 +326,7 @@ plugins/<stack>/skills/               # скилы плагинов (plugin.skil
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, cli, sync-skills
 - **Why:** `sync` и `sync-skills` используют одинаковый механизм обнаружения пакета, побайтового сравнения и форматирования вывода. Вынос в `shared/common/sync/` предотвращает дублирование ~100 строк и гарантирует консистентность формата между командами.
-- **Risk accepted:** Изменение shared-кода влияет на обе команды. Смягчается тестами обеих команд. `SyncCmdDeps` расширен полями `unlink`, `rm` — для `sync` они опциональны (не используются), для `sync-skills` обязательны.
+- **Risk accepted:** Изменение shared-кода влияет на обе команды. Смягчается тестами обеих команд. `SyncCmdDeps` расширен полями `unlink`, `rmdir` — для `sync` они опциональны (не используются), для `sync-skills` обязательны.
 - **Supersedes:** sync.spec.md D-M001 (Pattern C) — не отменяет, но изменяет File Structure модуля `sync` (перенос `sync-formatter.ts` в shared)
 - **Rejected alternatives:**
   - Copypaste — дублирование кода, расхождение формата вывода
@@ -366,29 +336,27 @@ plugins/<stack>/skills/               # скилы плагинов (plugin.skil
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, cli, sync-skills
 - **Why:** `sync-skills` — отдельная команда (не флаг `--skills` в `sync`), потому что источник (`ai/skills/` vs `ai/directives/`), целевая директория (`.claude/skills/` vs `ai/directives/`), структура данных (директории с вложенными файлами vs плоский список) и семантика (orphan-удаление vs только добавление/обновление) принципиально отличаются. Shared core через `shared/common/sync/` минимизирует дублирование без смешивания доменных моделей.
-- **Risk accepted:** Две команды с похожим интерфейсом могут запутать пользователя. Смягчается консистентным форматом вывода и именованием. Orphan-удаление деструктивно, но ограничено манифестом владения (D-M006): пользовательские скилы не удаляются, dry-run даёт предпросмотр.
+- **Risk accepted:** Две команды с похожим интерфейсом могут запутать пользователя. Смягчается консистентным форматом вывода и именованием. Orphan-удаление ограничено манифестом владения (см. D-M006): удаляется только то, что этот инструмент сам когда-то установил и что пакет больше не поставляет — пользовательские скилы и пользовательские файлы внутри поддерживаемых скилов не удаляются никогда, dry-run позволяет предпросмотр.
 - **Rejected alternatives:**
   - Флаг `--skills` в `sync` — смешивает две доменные модели
-  - Отдельный npm-пакет `@gennady/skills` — overkill для такого набора скилов
+  - Отдельный npm-пакет `@gennady/skills` — overkill для 14 скилов
 
-### D-M006 — Orphan-удаление: по манифесту владения, а не полная синхронизация
+### D-M006 — Orphan-удаление: только по манифесту владения (SO-2/SO-2b)
 
-- **Status:** active
-- **Recorded:** session ModuleDecomposition, cli, sync-skills
-- **Why:** Удаляются только скилы, которые установил сам `gennady sync-skills` — они перечислены в `.claude/skills/.gennady-synced`. `.claude/skills/` — общая директория: там лежат и скилы проекта, и скилы других инструментов, поэтому rsync-семантика (`--delete` всего, чего нет в source) уничтожала чужую работу. Манифест даёт удалению явное основание: скил был установлен нами, потом исчез из пакета — значит его надо убрать. При фильтрации по позиционным аргументам удаление ограничено указанными скилами, а манифест обновляется merge'ем. Ошибки удаления (EACCES, EBUSY) не прерывают синхронизацию — скил помечается `!` и `deleteFailed` и остаётся во владении, чтобы следующий запуск повторил попытку.
-- **Why (первый запуск):** Манифеста нет — присваиваются ровно те существующие директории, имена которых пакет отдаёт сейчас (`adoptPackageInstalled`); удалить в таком запуске нечего. Остатки от старых версий пакета не присваиваются и не удаляются: файлы скила пишутся дословно, маркера владения в них нет, поэтому такой остаток не отличим от скила, написанного проектом.
-- **Risk accepted:** Скилы, удалённые из пакета до появления манифеста, остаются в проекте навсегда — их удаляет пользователь руками. Цена принята: альтернатива — удалять чужое.
-- **Risk accepted:** Манифест можно потерять (стёрли, не закоммитили) — тогда владение пересобирается по текущему пакету и один цикл удалений пропускается. Сбои IO по манифесту проглатываются с тем же исходом: запуск, который ничего не удаляет.
+- **Status:** active (заменяет прежнюю формулировку «полная синхронизация rsync --delete» — она приводила к удалению проектных скилов и проектных файлов внутри поддерживаемых скилов, issue akkrat #9.4)
+- **Recorded:** session ModuleDecomposition, cli, sync-skills; пересмотрено треком SYNC-OWNERSHIP (SO-2/SO-2b)
+- **Why:** `<targetDir>/.gennady-synced` — построчный манифест владения. Строка без `/` — скил, установленный этим инструментом (может быть удалён целиком, если пакет перестал его поставлять). Строка `<skill>/<relativePath>` — отдельный файл, который этот инструмент когда-то записал внутрь ещё поддерживаемого скила (может быть удалён только он, а не весь скил). Ничего, не отмеченного в манифесте, никогда не удаляется — ни целый скил, ни файл внутри поддерживаемого скила. На дереве без манифеста (первый прогон новой версии на уже существующем `.claude/skills/`) владение по умолчанию присваивается только тем именам скилов, которые пакет поставляет прямо сейчас (`adoptPackageInstalled`) — так устаревший от предыдущей версии пакета скил и посторонний проектный скил остаются нетронутыми одинаково. При фильтрации по позиционным аргументам манифест не перезаписывается, а сливается с прежним. Ошибки удаления (EACCES, EBUSY) не прерывают синхронизацию — скил помечается `!` и `deleteFailed`, а запись остаётся в манифесте для повторной попытки; то же — для отдельного файла внутри ещё поддерживаемого скила (SO-2c): файл помечается `deleteFailed`, остальные файлы того же скила и остальные скилы синхронизируются как обычно, а запись `<skill>/<relativePath>` остаётся в манифесте для повторной попытки.
+- **Risk accepted:** Скил или файл, который сам инструмент когда-то установил, а затем перестал поставлять пакет, удаляется автоматически — dry-run позволяет предпросмотр. Манифест — обычный файл в `.claude/skills/`; ручное удаление `.gennady-synced` откатывает владение к политике первого прогона (только то, что пакет ставит сейчас).
 - **Rejected alternatives:**
-  - Полная синхронизация (rsync --delete) — исходное решение; удаляет чужие скилы в общей директории
-  - Сохранение orphan-файлов вообще — устаревшие скилы пакета остаются навсегда
-  - Маркер владения внутри файлов скила — скилы синхронизируются дословно, вставка метаданных ломает побайтовое сравнение и сам контент
-  - Предупреждение без удаления / интерактивный prompt — требует интерактивного режима (YAGNI для v1); dry-run даёт предпросмотр
+  - Полная синхронизация без манифеста (прежнее поведение) — удаляет чужие данные (issue #9.4), отклонено
+  - Хэш-манифест побайтового содержимого (SO-3, `sha256(relpath)`) — единая модель владения для `sync` и `sync-skills`, целевая архитектура следующего шага; не обязательна для закрытия #9.4/S5-bis минимальным набором
+  - Предупреждение без удаления — требует интерактивного режима (YAGNI для v1)
 
 ## 8. Inter-Module Dependencies
 
 - **Depends on:** `shared/common/sync/` (resolvePackageDir, compareBytes, SyncFormatter, SyncCmdDeps)
 - **Depends on (refactoring):** `cli/cmd/sync/` — извлечение shared core. Sync-форматтер переносится в shared
+- **Depends on (D-M008):** `cli/cmd/sync/sync-core.ts` (`collectAndCompare`) и `cli/cmd/sync/sync.types.ts` (`SyncOptions`, `ERR_SYNC_SOURCE_NOT_FOUND`) — `sync-skills.cmd.ts` вызывает directives-sync программно, только под `--with-directives` (SO-9, off by default). Однонаправленная зависимость: `sync` не знает о `sync-skills`
 - **Scope Reference (cross-scope):** [`infra-base`](../../infra-base/infra-base.spec.md) — Node.js 22+, TypeScript, node:test, Vite
 - **Scope Reference (cross-scope):** [`infra-npm-publish`](../../infra-npm-publish/infra-npm-publish.spec.md) — `ai/skills/` попадает в npm-пакет через существующий glob `"ai/**/*"` (D-005). Обновлений не требуется
 - **Provides to:** `cli/gennady.ts` (регистрация `case 'sync-skills'`)
@@ -398,6 +366,7 @@ graph TD
     gennady.ts --> sync-skills
     sync-skills --> shared[shared/common/sync/]
     sync --> shared
+    sync-skills -. "D-M008: --with-directives (opt-in, SO-9)" .-> sync[cli/cmd/sync/sync-core.ts]
     sync-skills -. Runtime .-> npm-package[gennady npm package]
     sync-skills -. Bootstrap prereq .-> infra-npm-publish
 ```
@@ -408,7 +377,7 @@ graph TD
   - `shared/common/sync/sync-core.shared.ts`
   - `shared/common/sync/sync-formatter.shared.ts`
   - `shared/common/sync/path-normalizer.ts` (D-M007)
-  - `shared/common/sync/sync-deps.type.ts` (расширить `unlink`/`rm`)
+  - `shared/common/sync/sync-deps.type.ts` (расширить `unlink`/`rmdir`)
   - `cli/cmd/sync-skills/sync-skills.types.ts`
   - `cli/cmd/sync-skills/sync-skills-core.ts`
   - `cli/cmd/sync-skills/sync-skills-formatter.ts`
@@ -439,8 +408,8 @@ graph TD
 - **Open risks & validation needs:**
   - `import.meta.resolve('gennady')` + `/ai/skills/` — поведение в разных рантаймах (tsx, npx, глобальная установка) требует проверки (общее с `sync`)
   - Интеграционные тесты sync-skills.cmd.test.ts требуют временной директории с мок-файлами — использовать `fs.mkdtempSync` + очистку
-  - Orphan-удаление директорий: `fs.rmSync` с `{ recursive: true, force: true }` доступен в Node.js 20+ и не использует удалённый recursive-контракт `rmdirSync`
-  - `SyncCmdDeps` расширен `unlink`/`rm` — проверить, что существующие тесты `sync` не ломаются (добавить поля в моки)
+  - Orphan-удаление директорий: `fs.rmdirSync` с `{ recursive: true }` доступен с Node.js 12 — OK для Node 22+
+  - `SyncCmdDeps` расширен `unlink`/`rmdir` — проверить что существующие тесты `sync` не ломаются (добавить поля в моки)
   - Нормализация путей (D-M007): проверить что регекс-правила не задевают пути в frontmatter или других структурных элементах, где замена нежелательна
   - Нормализация путей (D-M007): убедиться что `compareBytes` для нормализованного содержимого работает корректно — сравнение идёт ПОСЛЕ нормализации
   - `package.json#files` уже включает `"ai/**/*"` — `ai/skills/` попадёт в пакет автоматически. Проверить после публикации
@@ -481,6 +450,18 @@ graph TD
 - **Fix:** Added `mkdir` parameter to `syncFile` signature; caller passes `deps.mkdir`. Parent directory created before every `writeFile`.
 - **Lesson:** Any file-writing function in a sync context must ensure parent directories exist. Tests MUST cover the "target directory doesn't exist yet" path.
 
+### D-M008 — sync-skills синхронизирует directives только по `--with-directives`, off by default (SO-9)
+
+- **Status:** active (заменяет прежнюю формулировку «всегда синхронизирует directives первым, безусловно» — та создавала независимо найденный сценарий потери данных, см. ниже)
+- **Recorded:** session Reconcile, cli, sync-skills; пересмотрено треком SYNC-OWNERSHIP (SO-9, D-4 доски `32-TRACK-SYNC-OWNERSHIP.md`)
+- **Why:** прежний инвариант («`sync-skills` СНАЧАЛА выполняет ПОЛНУЮ синхронизацию `ai/directives/`, без `subdirs`, безусловно») страховал от дрейфа директив, но независимая верификация нашла обратную сторону: самая узкая, отфильтрованная команда (`gennady sync-skills sdd-execute` — один скилл) выполняла САМОЕ широкое разрушительное действие в треке — нефильтрованный зеркальный `sync` директив с удалением. Воспроизведено буквально: один такой прогон одновременно стирал rule metadata и удалял prompt files, хотя оператор просил синхронизировать один скилл. Узкая команда не должна выполнять самое широкое действие молча. Новый инвариант: директивный проход — флаг `--with-directives`, по умолчанию **выключен**. Без флага `sync-skills` синхронизирует только `ai/skills/ → .claude/skills/`, директивы не трогает вовсе (ни чтения, ни удаления). С флагом — поведение идентично прежнему безусловному варианту (`collectAndCompare` из `cli/cmd/sync/sync-core.ts`, вызван программно, без `subdirs`, `--dry-run` распространяется на оба блока, тот же двухблочный вывод). Рекомендуемая практика для проектов, которым нужны оба шага: `gennady sync && gennady sync-skills` (или `gennady sync-skills --with-directives`) — задокументировано в `gennady --help`.
+- **Risk accepted:** директивы теперь МОГУТ отстать от версии пакета, если оператор запускает только `sync-skills` без флага и без отдельного `sync`, — тот самый дрейф, который D-M008 изначально страховал. Принято сознательно: дрейф директив — синхронизируемая, наблюдаемая проблема (директивы просто не обновились, диагностируется); безусловное разрушительное удаление одним узким вызовом — нет. Кросс-модульная зависимость `sync-skills → sync` (`collectAndCompare`/`SyncOptions`/`ERR_SYNC_SOURCE_NOT_FOUND` из `cli/cmd/sync/sync-core.ts`, `sync.types.ts`) сохранена — нужна для флаговой ветки.
+- **Rejected alternatives:**
+  - Прежнее безусловное поведение (эта же запись, предыдущая редакция) — отклонено находкой верификации выше
+  - `syncDirectivesFirst` уважает фильтр `--skillNames` при вызове (частичная синхронизация директив, только связанных с указанными скилами) — сложнее (нужен граф скилл→директива, которого не существует) и не устраняет риск полностью: при отсутствии фильтра (`gennady sync-skills` без позиционных args) проблема остаётся
+  - Спавн дочернего процесса `npx gennady sync` из `sync-skills` — лишний процесс, ломает DI-тестируемость (`SyncCmdDeps`), плюс portable-door requirement (npx может не резолвить локальный пакет в тестовом окружении)
+  - Обратное направление (`sync` тоже тянет skills) — явно исключено: директивы самодостаточны, `sync` не должен неявно трогать `.claude/skills/`
+
 ### D-M007 — PathNormalizer: замена dev-путей на продуктовые при синхронизации
 
 - **Status:** active
@@ -492,3 +473,16 @@ graph TD
   - Переменные `${SKILL_DIR}` / `${GENNADY_CLI}` вместо dev-путей — агент не резолвит их в dev-режиме (там нет хостера, который подставит значения)
   - Два набора файлов (dev + prod) — дублирование, расхождение
   - Пост-обработка отдельной командой — требует от пользователя двух шагов; нормализация — часть контракта sync
+
+### D-M009 — Full skill sync ждёт migration bootstrap (SO-12/D-23, superseded)
+
+- **Status:** active
+- **Recorded:** Batch 23B / Wave 5
+- **Why:** `sync-skills`, включая `--with-directives`, не является мигратором. При `tasks/` общий
+  guard возвращает teaching diagnostic до первой записи. Явный `sdd-migrate bootstrap` использует
+  `.gennady-synced` + known historical hashes, purges доказанный V1 runtime и materializes полный
+  текущий V2 runtime; только он имеет такой preflight/rollback contract.
+- **Risk accepted:** сначала требуется bootstrap и завершение `sdd-migrate`; путь зафиксирован в
+  `guides/v1-to-v2-migration.md`.
+- **Rejected alternatives:** молча заменить v1 surface — sync не владеет решениями о semantic
+  ownership, Task IDs и ticket destinations.

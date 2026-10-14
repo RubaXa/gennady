@@ -1,6 +1,6 @@
 // @file: Composition root for the agent-run module — registers engines and re-exports public API.
+// @spec: AGENT-RUN-OPENCODE
 // @consumers: CLI commands, agent consumers
-// @tasks: TSK-63, TSK-64
 
 import { register } from './core/registry.ts';
 import { OpencodeEngine } from './engines/opencode/opencode-engine.ts';

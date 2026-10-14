@@ -1,0 +1,313 @@
+{
+  "schemaVersion": "gennady.v1-eradication-policy.v1",
+  "markers": [
+    { "id": "v1-word", "pattern": "\\b[Vv]1\\b" },
+    { "id": "old-directive-path", "literal": "ai/directives/sdd/" },
+    { "id": "old-skill-script-path", "literal": "ai/skills/sdd-execute/scripts/" },
+    { "id": "old-flow-state", "literal": "FLOW_VERSION=v1" },
+    { "id": "old-sdd-token", "pattern": "\\bsdd-v1\\b" },
+    { "id": "old-runtime-label", "literal": "Legacy-V1-only" },
+    {
+      "id": "retired-skill-command",
+      "pattern": "/sdd-(?:setup|discover|continue|infra|module-decomposition|fix|execute-batch)\\b"
+    },
+    {
+      "id": "retired-skill-path",
+      "pattern": "ai/skills/sdd-(?:setup|discover|continue|infra|module-decomposition|fix|execute-batch)(?:/|\\b)"
+    },
+    { "id": "old-whole-project-runner", "literal": "sdd-verify --profile" }
+  ],
+  "forbiddenPaths": [
+    "ai/directives/sdd/",
+    "ai/skills/sdd-execute/scripts/",
+    "ai/skills/sdd-setup/",
+    "ai/skills/sdd-discover/",
+    "ai/skills/sdd-continue/",
+    "ai/skills/sdd-infra/",
+    "ai/skills/sdd-fix/",
+    "ai/skills/sdd-execute-batch/",
+    "ai/skills/sdd-module-decomposition/",
+    ".claude/skills/sdd-setup/",
+    ".claude/skills/sdd-discover/",
+    ".claude/skills/sdd-continue/",
+    ".claude/skills/sdd-infra/",
+    ".claude/skills/sdd-fix/",
+    ".claude/skills/sdd-execute-batch/",
+    ".claude/skills/sdd-module-decomposition/",
+    "tasks/",
+    "verify.sh"
+  ],
+  "protectedPaths": [
+    {
+      "path": "ai/skills/sdd-execute/SKILL.md",
+      "classification": "canonical-v2",
+      "requiredLiteral": "ai/directives/sdd-v2/router.directive.xml"
+    },
+    {
+      "path": "ai/directives/sdd-v2/router.directive.xml",
+      "classification": "canonical-v2",
+      "requiredLiteral": "ai/directives/sdd-v2/migration-v1-v2.directive.xml"
+    },
+    {
+      "path": "ai/directives/sdd-v2/migration-v1-v2.directive.xml",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "requiredLiteral": "FLOW_VERSION=v1"
+    },
+    {
+      "path": "shared/sdd/migration-bootstrap.ts",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "requiredLiteral": "KNOWN_V1_BYTES"
+    },
+    {
+      "path": "shared/common/sync/v1-consumer-guard.ts",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "requiredLiteral": "Refuse a destructive first v2 sync"
+    },
+    {
+      "path": "shared/sdd/__tests__/fixtures/v1-sdd-critic.SKILL.md",
+      "classification": "historical-test-evidence",
+      "requiredLiteral": "ai/directives/sdd-v2/migration-v1-v2.directive.xml"
+    },
+    {
+      "path": "shared/sdd/__tests__/fixtures/v1-sdd-setup.SKILL.md",
+      "classification": "historical-test-evidence",
+      "requiredLiteral": "ai/directives/sdd/setup.directive.xml"
+    },
+    {
+      "path": "services/agent-mon/model/agent-session.type.ts",
+      "classification": "unrelated-product-version",
+      "requiredLiteral": "V1 optional"
+    }
+  ],
+  "markerConstraints": [
+    {
+      "markerId": "old-runtime-label",
+      "forbiddenClassifications": [
+        "canonical-v2",
+        "unrelated-product-version",
+        "required-v1-to-v2-migration-boundary"
+      ]
+    },
+    {
+      "markerId": "old-directive-path",
+      "forbiddenClassifications": ["canonical-v2", "unrelated-product-version"],
+      "allowContexts": [
+        {
+          "pathPattern": "^ai/kit/(?:axiom|anti-pattern)/",
+          "kind": "source-provenance-comment"
+        }
+      ]
+    },
+    {
+      "markerId": "old-skill-script-path",
+      "forbiddenClassifications": ["canonical-v2", "unrelated-product-version"]
+    },
+    {
+      "markerId": "retired-skill-path",
+      "forbiddenClassifications": ["canonical-v2", "unrelated-product-version"]
+    },
+    {
+      "markerId": "old-whole-project-runner",
+      "forbiddenClassifications": ["canonical-v2", "unrelated-product-version"]
+    }
+  ],
+  "classifiers": [
+    {
+      "path": "scripts/main-carry-disposition.ts",
+      "classification": "canonical-v2",
+      "reason": "frozen MAIN integrity checker pins the current eradication policy; no retired runtime or active old-rule reference"
+    },
+    {
+      "path": "package.json",
+      "classification": "canonical-v2",
+      "reason": "active repository gate registration; checker name is not a runtime generation"
+    },
+    {
+      "path": "scripts/release-boundary.policy.json",
+      "classification": "canonical-v2",
+      "reason": "active UV-27B main-cutover identity policy binds the versioned UV-27A report"
+    },
+    {
+      "path": "scripts/release-boundary.ts",
+      "classification": "canonical-v2",
+      "reason": "active UV-27B cutover inspector consumes the versioned UV-27A report"
+    },
+    {
+      "path": "scripts/e18-exact-evidence.ts",
+      "classification": "canonical-v2",
+      "reason": "active UV-26 exact evidence collector/checker; schema v1 tokens are its own versioned inputs"
+    },
+    {
+      "prefix": "ai/directives/sdd-v2/",
+      "classification": "canonical-v2",
+      "reason": "active SDD v2 prompt surface, including its explicit migration owner"
+    },
+    {
+      "prefix": "ai/directives/",
+      "classification": "canonical-v2",
+      "reason": "active embedded rule/directive corpus; version examples are not SDD runtime generations"
+    },
+    {
+      "prefix": "ai/skills/",
+      "classification": "canonical-v2",
+      "reason": "active thin v2 skill loaders and documented retired-name aliases"
+    },
+    {
+      "prefix": "ai/kit/__tests__/",
+      "classification": "historical-test-evidence",
+      "reason": "causal v1-to-v2 migration and directive assembly regression evidence"
+    },
+    {
+      "prefix": "ai/kit/",
+      "classification": "canonical-v2",
+      "reason": "active v2 source templates with preserved v1 provenance comments"
+    },
+    {
+      "prefix": "shared/sdd/__tests__/",
+      "classification": "historical-test-evidence",
+      "reason": "frozen migration, grandfathering and marker-only fixtures"
+    },
+    {
+      "pattern": "^shared/sdd/(?:flow|anchor-inject|id-replace|migration-(?:tasks-header|bootstrap(?:\\.types)?|file-headers|move|plan))\\.ts$",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "reason": "exact V1-to-V2 migrator, legacy input parser or layout detector"
+    },
+    {
+      "prefix": "shared/sdd/",
+      "classification": "canonical-v2",
+      "reason": "current V2 runtime; historical read-only formats are not alternate authoring/execution authority"
+    },
+    {
+      "path": "shared/common/sync/v1-consumer-guard.ts",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "reason": "sync refuses old consumer layouts before writing"
+    },
+    {
+      "prefix": "shared/common/sync/__tests__/",
+      "classification": "historical-test-evidence",
+      "reason": "sync ownership and deployed-surface regression evidence"
+    },
+    {
+      "pattern": "^cli/cmd/sdd-migrate/(?:help|index|sdd-migrate\\.cmd|sdd-migrate\\.types)\\.ts$",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "reason": "exact deterministic V1-to-V2 migration command entrypoints"
+    },
+    {
+      "pattern": "^cli/cmd/sdd-(?:check|state|task|sync|verify)/(?!__tests__/)",
+      "classification": "canonical-v2",
+      "reason": "ordinary V2 command with read-only legacy guidance/grandfathering, never V1 authoring/execution"
+    },
+    {
+      "pattern": "^cli/(?:AGENTS\\.md|cmd/README\\.md|cmd/help/)",
+      "classification": "canonical-v2",
+      "reason": "active CLI documentation and dispatch help"
+    },
+    {
+      "pattern": "^(?:cli|plugins|scripts)/.+/__tests__/",
+      "classification": "historical-test-evidence",
+      "reason": "causal regression evidence, never a deployed v1 runtime"
+    },
+    {
+      "prefix": "cli/__tests__/",
+      "classification": "historical-test-evidence",
+      "reason": "end-to-end migration evidence"
+    },
+    {
+      "prefix": "scripts/__tests__/",
+      "classification": "historical-test-evidence",
+      "reason": "repository contract evidence"
+    },
+    {
+      "prefix": "plugins/",
+      "classification": "unrelated-product-version",
+      "reason": "plugin command/report schema or tool version, not an SDD runtime generation"
+    },
+    {
+      "prefix": "shared/verify/",
+      "classification": "unrelated-product-version",
+      "reason": "Verify evidence/config protocol version, not an SDD runtime generation"
+    },
+    {
+      "prefix": "shared/rules/",
+      "classification": "unrelated-product-version",
+      "reason": "Rules snapshot/report schema version, not an SDD runtime generation"
+    },
+    {
+      "prefix": "services/",
+      "classification": "unrelated-product-version",
+      "reason": "service API/schema/product version, not an SDD runtime generation"
+    },
+    {
+      "prefix": "test/",
+      "classification": "historical-test-evidence",
+      "reason": "cross-service regression corpus"
+    },
+    {
+      "prefix": "scripts/git-hooks/",
+      "classification": "unrelated-product-version",
+      "reason": "Git porcelain protocol version, not an SDD runtime generation"
+    },
+    {
+      "prefix": "cli/",
+      "classification": "unrelated-product-version",
+      "reason": "command/report schema or unrelated product version, not an SDD runtime generation"
+    },
+    {
+      "prefix": "ai/flow-eval/",
+      "classification": "historical-test-evidence",
+      "reason": "frozen evaluation baselines and migration corpus"
+    },
+    {
+      "prefix": "ai/flow-sim/",
+      "classification": "historical-test-evidence",
+      "reason": "migration simulation corpus"
+    },
+    {
+      "prefix": "ai/inspector/",
+      "classification": "historical-test-evidence",
+      "reason": "directive routing regression evidence"
+    },
+    {
+      "prefix": "migration/",
+      "classification": "historical-test-evidence",
+      "reason": "immutable migration evidence, not runtime"
+    },
+    {
+      "prefix": "specs/agent-mon",
+      "classification": "unrelated-product-version",
+      "reason": "agent-mon product version, not SDD flow generation"
+    },
+    {
+      "prefix": "services/agent-mon/",
+      "classification": "unrelated-product-version",
+      "reason": "agent-mon product version, not SDD flow generation"
+    },
+    {
+      "prefix": "specs/",
+      "classification": "historical-test-evidence",
+      "reason": "living decision history and completed task evidence"
+    },
+    {
+      "prefix": "guides/v1-to-v2-migration.md",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "reason": "current operator migration guide"
+    },
+    {
+      "path": "README.md",
+      "classification": "required-v1-to-v2-migration-boundary",
+      "reason": "current operator migration entry point"
+    }
+  ],
+  "excludedInventoryPaths": [
+    "scripts/check-v1-eradication.ts",
+    "scripts/v1-eradication.policy.json",
+    "scripts/__tests__/v1-eradication.test.ts"
+  ],
+  "expectedInventoryDigest": "610cf3b7c281d2a5548c6cba104c423dcc5a369a859b170448be27d0ed0f31f4",
+  "expectedCounts": {
+    "canonical-v2": 234,
+    "required-v1-to-v2-migration-boundary": 15,
+    "historical-test-evidence": 344,
+    "unrelated-product-version": 69
+  }
+}

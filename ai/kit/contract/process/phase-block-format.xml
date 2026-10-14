@@ -1,0 +1,20 @@
+<!-- source: sdd/phase-execution-protocol.xml; token list de-hardcoded (B2-03: shared/sdd/execution-log.ts TOKEN_VOCABULARY is the one home, cited here rather than copied) -->
+<Contract id="PHASE_BLOCK_FORMAT">
+      Event-driven: optional event lines (0+ each) appear ONLY when their event happened, opening
+      with a token from the CLOSED vocabulary `sdd-check` enforces mechanically
+      (`SDD_EXECUTION_LOG_UNKNOWN_TOKEN` on anything else) — never hand-copy that list here, it has
+      exactly one home. STEP_5 atomically inserts the paired structured `SDD_PHASE_RECEIPT` block;
+      the agent never authors it. Semantic closing lines remain `DONE` + Handoff.
+
+      ```markdown
+      #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
+      <!-- Event lines (optional; appended as events happen, in chronological order): -->
+      - [x] `<ts>` <token> <per the token's own grammar — e.g. `intro <Entity> ← <reason>`, `decision <key>=<value> ← <reason>`>
+      <!-- CLI-owned receipt appears here after successful STEP_5. -->
+      <!-- Semantic closing lines (mandatory): -->
+      - [x] `<ts>` DONE
+      **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]; deviations: [<id: text, …>]
+      ```
+
+      Trivial phase: one receipt + `DONE` + Handoff. That is valid and preferred over padding.
+    </Contract>

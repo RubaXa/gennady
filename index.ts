@@ -1,3 +1,6 @@
+// @file: index.ts
+// @spec: INFRA-BASE
+// @consumers: N/A
 export * from './cli/utils/ai-legacy/ai-legacy-model.ts';
 export * from './shared/backend/rc/rc-config.ts';
 export * from './shared/common/unguard.ts';

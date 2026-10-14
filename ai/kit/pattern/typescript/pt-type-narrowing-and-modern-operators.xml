@@ -1,0 +1,36 @@
+<!-- source: coding/typescript-rules.xml -->
+<Pattern id="PT_TYPE_NARROWING_AND_MODERN_OPERATORS">
+      <Intent>Plain branching without anchors where control flow is self-evident; modern operators yield density without losing intent.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // @file: Strategy selection helpers for path-aware processing.
+        // @consumers: StrategyPlanner
+
+        import { logger } from '#logger';
+
+        /** @purpose Configuration for choosing a processing strategy. */
+        export type DecideStrategyConfig = {
+          /** @purpose Path to the target resource | @invariant Absent value triggers fallback strategy */
+          path?: string;
+        };
+
+        /**
+         * @purpose Decides a processing strategy based on whether the config contains a path.
+         * @param config Configuration parameters.
+         * @returns Identifier of the chosen strategy.
+         */
+        export function decideStrategy(config: DecideStrategyConfig): string {
+          logger.debug('[decideStrategy] [ready → choosing]');
+
+          if (!config?.path) {
+            logger.debug('[decideStrategy] [choosing → fallback] No config path provided');
+            return 'fallback';
+          }
+
+          logger.debug(`[decideStrategy] [choosing → primary] ${config.path}`);
+          return 'primary';
+        }
+        ```
+      </Snippet>
+      <Why>Branch is trivial (no independent policy / side effect / refactor hazard) → anchors redundant per `AX_ANCHOR_TRIVIAL_EXCEPTION`. `?.` provides narrowing without verbose checks.</Why>
+    </Pattern>

@@ -1,6 +1,8 @@
 # Logs
 logs
 *.log
+!ai/flow-eval/.baseline/rc-evidence-pack/logs/
+!ai/flow-eval/.baseline/rc-evidence-pack/logs/*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -26,11 +28,27 @@ coverage
 .wisehub.app.js.map
 
 .gennadyrc
-# ...except inside E2E fixtures, where a personal rc IS the thing under test. Without this the
-# three config fixtures shipped without their rc and the suite was red from any fresh clone.
-!**/e2e/fixtures/**/.gennadyrc
 ai/drafts
 .claude/
+.codex-agent-status/
 *.tgz
 # agent-inbox runtime state (registry, drafts, worktrees)
 .gennady/
+
+# e2e (Playwright) artifacts — screenshots, traces, reports
+e2e/**/test-results/
+playwright-report/
+test-results/
+.sdd-session.md
+
+# transient test fixtures accidentally written into the tree (belong in os.tmpdir)
+.tmp-*/
+
+# sandbox/dev-environment npm-install marker (not a build artifact, not meant to be versioned;
+# pre-existing in this checkout — see REL-17 before-report.md)
+.npm-ci-done
+
+# TRANSIENT whole-batch artifacts, extracted from sandboxes before teardown (ai/flow-eval/cli.ts) —
+# note the leading dot: this is NOT ai/flow-eval/results/ (GAP-E-6/D-62), the PERMANENT per-scenario
+# result archive, which is intentionally NOT gitignored — its raw data belongs in the repository.
+ai/flow-eval/.results/

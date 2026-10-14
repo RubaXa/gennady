@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_ANCHOR_TRIVIAL_EXCEPTION">
+Do NOT wrap a trivial guard or single-action branch. Block has no independent policy, no meaningful side effect, no refactor hazard → anchors not needed. An anchor around a single line is noise that dilutes the signal of mandatory anchors and erodes trust in their semantics.
+</Axiom>

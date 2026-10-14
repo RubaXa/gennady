@@ -1,0 +1,2 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Definition id="DEF_EXACT_PIN">A version string with no range operator: `5.2.11`, not `^5.2.0`, `~5.2`, or `5.x`.</Definition>

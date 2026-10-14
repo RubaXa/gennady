@@ -1,6 +1,6 @@
 // @file: View model types — ViewModel, ProviderColumn, SessionCard for the agent-mon dashboard.
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: ui, state/create-state-manager, state/group-by-provider
-// @tasks: TSK-45
 
 /**
  * @purpose Full dashboard state snapshot consumed by the UI layer.

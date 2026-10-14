@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Hook id="HOOK_E2E_NO_ONLY_OR_SKIP">
+      <Purpose>No committed `.only` / `.skip` without a deferred-ownership reference.</Purpose>
+      <Command>find e2e -name '*.spec.ts' -o -name '*.test.ts' 2>/dev/null | xargs grep -nE '\b(test|describe)\.(only|skip|fixme)\b' || true</Command>
+      <Expected>Empty output, or each match accompanied by an inline `TASK-` reference.</Expected>
+    </Hook>

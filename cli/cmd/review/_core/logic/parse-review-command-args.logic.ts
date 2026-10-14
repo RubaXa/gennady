@@ -1,6 +1,6 @@
 // @file: Normalize review command CLI arguments into a single contract.
+// @spec: CLI-REVIEW
 // @consumers: review-issues.cmd, review-verify.cmd
-// @tasks: N/A
 
 import { parseArgs } from '../../../../../shared/common/parse-args.ts';
 import type { ReviewCommandArgs } from '../types/review-command-args.type.ts';

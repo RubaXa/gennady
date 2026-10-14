@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Axiom id="AX_E2E_AUTH_VIA_STORAGE_STATE">
+      Authentication is handled exclusively via `storageState`: a setup project runs the login flow once, writes `storageState.json`, and dependent projects reuse it. Inline login inside every test is forbidden — it slows the suite, couples every test to the login UI, and turns a login regression into a cascading red across the entire suite.
+    </Axiom>

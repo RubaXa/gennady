@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<AntiPattern id="AP_CLI_SKIP_TRACE_ON_FAILURE">
+      <Bad>Test fails red; agent edits the assertion (`toMatch` → `toContain` → eventual deletion of the assertion) until the test passes, never running `--trace=on`.</Bad>
+      <WhyBad>Failure diagnosed by mutation of the test instead of inspection of the actual run (`AX_CLI_TRACE_FOR_FAILURE_DIAGNOSIS`). Real regressions get silenced by progressively weaker assertions; the trace would have shown what actually happened in 30 seconds.</WhyBad>
+      <Good>`npx playwright test --trace=on path/to/failing.spec.ts`; `npx playwright show-trace test-results/.../trace.zip`; identify whether the failure is in the component (fix component) or in the test's contract (fix test, with the new contract documented).</Good>
+    </AntiPattern>

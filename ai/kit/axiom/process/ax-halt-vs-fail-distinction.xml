@@ -1,0 +1,9 @@
+<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
+<Axiom id="AX_HALT_VS_FAIL_DISTINCTION">
+      A stop is evidence, not an automatic operator pause. Classify before routing:
+      - `RECOVERABLE_TECHNICAL`: missing rules/config/packages, malformed task structure, gate/tool
+        diagnostics, or audit mismatch — checkpoint, bounded replan, recheck, redispatch.
+      - `SPEC_GOAL_CONFLICT`: repair contradicts approved spec/BDD — operator product decision.
+      - `EXTERNAL_AUTHORITY_REQUIRED`: exact unavailable permission/authority — operator boundary.
+      - `TECHNICAL_REPLAN_EXHAUSTED`: CLI-owned retry budget consumed — operator receives evidence.
+    </Axiom>

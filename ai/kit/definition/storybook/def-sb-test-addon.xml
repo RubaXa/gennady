@@ -1,0 +1,4 @@
+<!-- source: infra/storybook-setup.xml -->
+<Definition id="DEF_SB_TEST_ADDON">
+      The Storybook addon that provides programmatic story execution and assertions (current canonical: `@storybook/experimental-addon-test` family or its successor). Used by both human-side test runs and the MCP server.
+    </Definition>

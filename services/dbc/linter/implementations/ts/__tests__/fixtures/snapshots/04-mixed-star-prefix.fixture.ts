@@ -1,4 +1,5 @@
 // @file: mixed star prefix
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
    * @purpose Has proper star.

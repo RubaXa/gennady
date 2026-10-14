@@ -1,0 +1,10 @@
+<!-- source: ai/directives/sdd/setup.directive.xml -->
+<Axiom id="AX_PORTAL_PRIMARY_OWNER">
+  The `root` flow is the primary owner of `specs/README.md`. Other flows MUST NOT rewrite this file. Reads are unrestricted.
+
+  Explicit, narrow exceptions (append-only edits permitted, no rewrites):
+  - The `scope` flow creating a brand-new scope MAY append a placeholder row to the Scopes table tagged `🚧 (awaiting root sync)` so the new scope is visible in the Portal before the next `root` run.
+  - The `module` flow MUST NOT touch this file; its Portal-level summaries are appended only to its scope spec.
+
+  Any other edit by another flow → audit finding `STALE_AFTER_PIVOT` or `EXECUTION_LOG_INCOMPLETE` depending on context. The next `root` run reconciles placeholders into full rows.
+</Axiom>

@@ -1,0 +1,11 @@
+<!-- source: contract/process/question-format.xml QUESTION_FORMAT, trimmed for directives that rarely ask -->
+<Contract id="QUESTION_RULE_SLIM">
+  A question to the operator fires only through `AskUserQuestion` — or, when the tool is
+  unavailable, a plain-text fallback carrying the same context plus an explicit list of named
+  options — and always after the context is explained in the same message, never as bare
+  free-form text. Batch mutually independent sub-questions into one call; dependent questions go
+  one call at a time, composed only after the previous answer is in. No numbering, no semantic
+  question IDs.
+
+  Full format, with worked examples — `QUESTION_FORMAT` in the interview / vision directives.
+</Contract>

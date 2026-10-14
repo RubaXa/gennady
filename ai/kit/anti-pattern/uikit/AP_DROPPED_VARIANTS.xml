@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<AntiPattern id="AP_DROPPED_VARIANTS">
+      <Bad>Пропуск строки в таблице Variants, потому что «этот вариант не в extraction».</Bad>
+      <WhyBad>Closed-world нарушен. Последующий SpecValidator не сможет отличить «пропущен осознанно» от «забыли».</WhyBad>
+      <Good>Строка присутствует, но состояния помечены `⚠️ not in extraction`.</Good>
+</AntiPattern>

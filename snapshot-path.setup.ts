@@ -1,3 +1,6 @@
+// @file: snapshot-path.setup.ts
+// @spec: INFRA-BASE
+// @consumers: N/A
 import path from 'node:path';
 import { snapshot } from 'node:test';
 

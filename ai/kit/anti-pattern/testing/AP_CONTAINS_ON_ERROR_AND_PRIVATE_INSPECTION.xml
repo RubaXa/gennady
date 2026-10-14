@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<AntiPattern id="AP_CONTAINS_ON_ERROR_AND_PRIVATE_INSPECTION">
+  <Bad>`try { await client.reserveStock(''); expect.fail('should have thrown'); } catch (e) { expect((e as Error).message).toContain('idempotency'); }` AND inspecting `client._inflightCount` with `@ts-expect-error`.</Bad>
+  <WhyBad>Manual `try/catch + expect.fail` instead of `rejects.toThrow` (`AX_VITEST_ASSERT_API_CHOICE`). `toContain` on `error.message` (inherited `AX_PARTIAL_STRING_VIA_MATCH`). Inspecting protected internal field (inherited `AX_CONTRACT_OVER_IMPLEMENTATION`).</WhyBad>
+  <Good>`await expect(client.reserveStock('')).rejects.toThrow(/idempotency.*empty|empty.*idempotency/i);` and subscribe to public lifecycle event for observation.</Good>
+</AntiPattern>

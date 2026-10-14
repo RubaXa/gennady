@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-job CLI command — job status, play, cancel, retry, dry-run, error cases.
+// @spec: CLI
 // @consumers: CI
-// @tasks: TSK-85
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

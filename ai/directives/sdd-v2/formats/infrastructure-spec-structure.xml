@@ -1,0 +1,181 @@
+<Contract id="INFRASTRUCTURE_SPEC_STRUCTURE">
+  Every top-level `##` section is wrapped with `<!--SECTION:UPPER_SNAKE-->…<!--/SECTION:UPPER_SNAKE-->` markers so any agent can pull a single section via the `sdd-extract` CLI (`gennady sdd-extract <file> <NAME>`). Open marker IMMEDIATELY before the header; close marker IMMEDIATELY before the next same-level header (or EOF). Sub-sections (`###`) and entity-level headers are NOT wrapped — they live inside the containing anchor. Section names are author-discretionary (the four templates below illustrate idiomatic choices); no name registry is enforced. Grammar source of truth: the `sdd-extract` CLI, name grammar `^[A-Z][A-Z0-9_]*$`. The four `SPEC_STRUCTURE` templates emit anchors by default — copy verbatim.
+
+  ```markdown
+  # <scope-name>: Infrastructure Specification
+
+  <!--SECTION:SPEC_ID-->
+  <SPEC-ID>
+  <!--/SECTION:SPEC_ID-->
+
+  <!--SECTION:SCOPE_TYPE-->
+  ## scope-type
+  infrastructure
+  <!--/SECTION:SCOPE_TYPE-->
+
+  <!--SECTION:VISION-->
+  ## Vision
+  [Что включает dev/ops experience.]
+  <!--/SECTION:VISION-->
+
+  <!--SECTION:OVERVIEW-->
+  ## Overview
+  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram up top (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one — the developer workflow or the tool pipeline at a glance; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
+
+  ```
+  edit ──► typecheck ──► lint ──► test ──► pre-commit ──► CI
+  ```
+  _Что здесь главное, одной фразой._
+  <!--/SECTION:OVERVIEW-->
+
+  <!--SECTION:SCOPE_DEPENDENCIES-->
+  ## Scope Dependencies
+  - **Depends on:** None (infrastructure scopes are typically leaves)
+  - **Provides rules to:** [list of product/library scopes that depend on this]
+  <!--/SECTION:SCOPE_DEPENDENCIES-->
+
+  <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+  ## Requirements & Constraints
+
+  ### Requirements
+  <!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
+
+  ### <ACR>-REQ-1 [должен · нештатная]
+  **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
+
+  > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
+
+  <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+  <!--SECTION:TOOL_STACK-->
+  ## Tool Stack
+
+  ### Categories Covered
+  [Список категорий + краткое обоснование исключений.]
+
+  ### Tool Choices
+  | Category | Tool | Rationale |
+  |---|---|---|
+  | <category> | <tool> | <ACR>-DL-N |
+
+  ### Integration Detail
+  [Для каждого выбранного инструмента — поля интеграции ниже. Заполняются на стадии решения; если
+  на момент написания неизвестно — ресёрчем (`gennady sdd-new research`), не угадыванием.]
+
+  - **<tool>**
+    - Версия/API: [<версия пакета / API version>]
+    - Нужные методы: [<конкретные методы/эндпоинты, которые реально вызываем>]
+    - Эскиз интеграции: [<как подключается — конфиг/адаптер/CLI-вызов, в двух-трёх словах>]
+    - Ограничения: [<лимиты, quota, версийные требования, licensing>]
+  <!--/SECTION:TOOL_STACK-->
+
+  <!--SECTION:WORKFLOW_EXAMPLE-->
+  ## Developer Workflow Example
+  [Shell-script: setup, daily flow, commit flow, debug flow.]
+  <!--/SECTION:WORKFLOW_EXAMPLE-->
+
+  <!--SECTION:FILE_STRUCTURE-->
+  ## File Structure
+  [ASCII tree + File Mapping.]
+  <!--/SECTION:FILE_STRUCTURE-->
+
+  <!--SECTION:EFFECTIVE_RULES-->
+  ## Effective Rules (for cascade)
+  [One-line human summary — how many rules, which categories. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+  <details>
+  <summary>Таблица правил</summary>
+
+  | Rule | Category | Source |
+  |---|---|---|
+  | <rule-name> | coding | infra (<ACR>-DL-N) |
+
+  </details>
+  <!--/SECTION:EFFECTIVE_RULES-->
+
+  <!--SECTION:VERIFICATION_COMMANDS-->
+  ## Verification Commands
+  **Mandatory for infrastructure scopes.** After tool stack is finalized, record a table:
+  | Command Name      | Invocation          |
+  | typecheck-command | <actual invocation> |
+  | test-command      | <actual invocation> |
+  | coverage-command  | <actual read/check invocation — name the coverage provider too, e.g. `@vitest/coverage-v8`; MUST NOT rerun the suite> |
+  | lint-command      | <actual invocation> |
+  | format-command    | <actual invocation> |
+  | check-command     | <actual invocation> |
+  | fix-command       | <actual invocation> |
+
+  Include only command names for tools present in the chosen stack. `coverage-command` is **required**
+  whenever the project declares a coverage threshold gate — a threshold with no declared provider is a
+  gate nobody can run. It reads/checks the report produced by the platform's phase/full verifier and
+  MUST NOT own a second test-suite run.
+  `check-command` and `fix-command` are wrappers for humans, CI, and the pre-commit hook — with the
+  runtime setup rule (`nodejs-npm-setup` or equivalent) active they resolve to universal
+  `npx gennady verify --phase full` and a whole-project wrapper that passes broad roots to the
+  declared argument-forwarding repair prefixes. The phase runtime boundary, not this static shape,
+  enforces the actual write-zone. Task tickets do NOT cite them, and they do NOT put the phase
+  ladder line in §Verification either: STEP_5 already runs
+  `npx gennady sdd-verify --task <ticket-path> --phase <PhaseID>`, so a row for it would make every
+  phase run the ladder twice. §Verification carries ONLY the extra commands
+  beyond that gate — one row per additional alias here (e.g. `coverage-command`).
+
+  [Инвариант: команды образуют конвейер, а не список — артефакты одной команды не должны ронять
+  другую (типичный случай: `coverage/`, `dist/` попадают под lint/format и генерируют ложные findings).
+  Сгенерированные каталоги исключи из lint/format явно (ignore-файл/флаг инструмента) и зафиксируй это
+  исключение как требование в Requirements & Constraints — не только как настройку тула.]
+  <!--/SECTION:VERIFICATION_COMMANDS-->
+
+  <!--SECTION:RESEARCH-->
+  ## Research
+  [Опционально. Реестр ресёрчей, на которые опирается эта спека — по одной строке на документ.
+  Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`).]
+
+  | Документ | Что ресёрчили | Что дал для спеки |
+  |---|---|---|
+  | [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+  <!--/SECTION:RESEARCH-->
+
+  <!--SECTION:DECISION_LOG-->
+  ## Decision Log
+  [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+  <details>
+  <summary>Полные записи Decision Log</summary>
+
+  [<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
+
+  </details>
+  <!--/SECTION:DECISION_LOG-->
+
+  <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+  ## Prerequisites
+  [One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+  <details>
+  <summary>Таблица предусловий</summary>
+
+  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|
+  | No external bootstrap required. | — | — | — | — | — |
+
+  <!-- Kind ∈ package | workspace-link | tool | file | external-type | env | service | structural -->
+  <!-- Owner ∈ this-scope-task | external-prereq-scope | operator-action -->
+  <!-- NO external bootstrap (e.g. a pure function): KEEP the "No external bootstrap required." row above and the table — do not delete the table or replace it with prose. Otherwise REPLACE that row with real requirement rows. Always keep exactly one table with all six columns. -->
+  <!-- Every shared manifest/lock write has an owning phase/task; all writers of the same file are strictly DAG-serialized. -->
+
+
+  </details>
+  <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
+
+  <!--SECTION:HANDOFF-->
+  ## Handoff
+  - **Setup tasks to scaffold:** [list]
+  - **Effective rules ready for cascade:** see Effective Rules
+  - **Verification Commands ready for cascade:** see Verification Commands
+  - **Bootstrap tickets ready for cascade:** see Prerequisites
+  - **Open risks:** [not-closed items]
+
+  <!-- Pivot Invalidation List — only in pivot mode -->
+  <!--/SECTION:HANDOFF-->
+  ```
+</Contract>

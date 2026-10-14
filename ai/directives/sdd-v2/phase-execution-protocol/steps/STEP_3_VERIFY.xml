@@ -1,0 +1,64 @@
+2.0.0-draft.1
+
+<Step id="STEP_3_VERIFY">
+      <Action>
+        Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands, staying
+        within `AX_PERMITTED_BASH_COMMANDS`. Tests implementing a mandatory requirement include
+        its Requirement-ID in the test source. Implement applicable negative/failure cases, not only
+        the happy path. Report command, exit status, and concise result without suppressing errors.
+        A successful CLI-owned receipt is evidence to return, not permission to edit phase status,
+        DONE, or Handoff. If the tool rejects the transition, return its exact diagnostic to the
+        orchestrator; never inspect Gennady source or bundled chunks to reinterpret it. A stop that
+        is NOT a simple retry-and-continue routes through `AX_BLOCKER_ESCALATION`'s typed outcome as
+        `RETURN_SUMMARY_FORMAT`, evidence attached — never silently downgraded to a plain diagnostic.
+      </Action>
+    </Step>
+
+<Axiom id="AX_VERIFICATION_BEFORE_HANDOFF">
+      Phase cannot emit Handoff without one successful `sdd-verify --task <ticket-path> --phase <PhaseID>`. The SDD facade, not the phase agent, freezes scope/rules/selector, invokes the universal Verify engine once, and atomically terminalizes its runner-owned attempt evidence from the exact `VerifyRunReport`. Failed, blocked, interrupted, timed-out, cancelled, environment-failed and violation attempts remain in append-only history; the phase stays `[~] IN_PROGRESS` until resolved or escalated.
+
+      **MANDATORY (PROTOCOL) — Canonical Gate Rule:** The ticket kind resolves one composed selector and the preset/config owns its steps; the agent never chooses or substitutes individual gates. Diagnostics may run while fixing, but only the canonical phase command can create completion evidence; a hand-written `ver` line is not evidence. A frozen legacy receipt is produced only by an explicitly provenance-bearing compatibility overlay whose commands bind exactly before spawn; it is never the no-overlay default.
+
+      The canon covers the script's BODY, not just its name in §5. Editing what a §5 script actually runs
+      (e.g. rewriting `"typecheck"` in `package.json` so it does less, or points elsewhere) while logging the
+      unchanged §5 command name is the same violation — the command stayed canonical on paper while its
+      behavior was substituted underneath it. The one exception: `package.json`
+      (or the script body) is itself among this phase's Target Files AND the change to that script IS the
+      phase's stated Objective (a `bootstrap` / `config` phase whose job is exactly to define or rewire the
+      script) — then the edit is legitimate work, not a gate dodge, and MUST be recorded as its own decision
+      line in the Execution Log (`<ts> decision <script> rewritten ← <reason>`) before the gate runs.
+
+      `sdd-verify --task <ticket-path> --phase <PhaseID>` is NOT supplemental — it owns STEP_5 through the same Verify planner/runner as standalone `verify` (see `AX_PERMITTED_BASH_COMMANDS`). The ticket does not copy a static gate ladder and never repeats `sdd-verify`.
+
+      Phase kind `doc` typically has no verification — empty section is acceptable.
+    </Axiom>
+
+<Contract id="RETURN_SUMMARY_FORMAT">
+  JSON-like return to orchestrator:
+  ```
+  {
+    "status": "DONE" | "NEEDS_ORCHESTRATOR",
+    "outcome": "CONTINUE" | "CONTEXT_ROTATION" | "RECOVERABLE_TECHNICAL" | "SPEC_GOAL_CONFLICT" | "EXTERNAL_AUTHORITY_REQUIRED" | "TECHNICAL_REPLAN_EXHAUSTED",
+    "task_id": "<TSK-NN>",
+    "phase_id": "<P<N>>",
+    "kind": "<kind>",
+    "reason": "<specific observed cause>",
+    "attempt": { "current": <N>, "budget": <N> },
+    "evidence": ["<repo-relative ref>", ...],
+    "technical_plan": { "summary": "<bounded repair>", "task_edits": [], "dag_edits": [], "artifact_edits": [] } | null,
+    "artifacts": ["<path>", ...],
+    "decisions": ["<key=value>", ...],
+    "open": ["<id: text>", ...],
+    "deviations": ["<id: text>", ...],
+    "handoff": "<ticket#EXECUTION_LOG>"
+  }
+  ```
+  `artifacts` / `decisions` / `open` / `deviations` mirror the **Handoff →** line — orchestrator
+  threads `artifacts` / `decisions` / `open` into the next phase's prompt, and collects
+  `deviations` across the run for the end-of-cycle batched report (`AX_DEVIATION_SELF_RESOLVE`).
+  The worker reports facts; the orchestrator owns technical replan and operator routing. Missing
+  `@types/node` or config, `eslint-config-prettier`, a repair-command contract mismatch, a missing
+  CREATE target, or a decomposition edge is `RECOVERABLE_TECHNICAL`. A worker does not repair
+  Gennady internals for a project failure. Only a proven spec-goal conflict, required external
+  authority, or exhausted bounded technical replan uses the corresponding escalation outcome.
+</Contract>

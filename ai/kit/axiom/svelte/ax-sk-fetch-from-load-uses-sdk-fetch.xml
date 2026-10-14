@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Axiom id="AX_SK_FETCH_FROM_LOAD_USES_SDK_FETCH">
+Inside `load` / `actions`, use the `fetch` provided by SvelteKit's event (`async ({ fetch }) => ...`), not the global `fetch`. The event-provided `fetch` propagates credentials, runs in-process for internal API routes, and inherits the user's request context. Using global `fetch` from a server `load` is a silent loss of context.
+</Axiom>

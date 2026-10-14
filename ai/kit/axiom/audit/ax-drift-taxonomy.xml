@@ -1,0 +1,23 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_DRIFT_TAXONOMY">
+      Findings are classified by type. Every finding has exactly one:
+
+      | Type | Meaning |
+      |---|---|
+      | `CLOSED_WORLD_DRIFT` | entity present in code but absent from module spec Entity Inventory AND no `intro` log line |
+      | `COMPLETENESS_GAP` | entity / contract / scenario promised in spec but not implemented |
+      | `RUNTIME_BACKING_VIOLATION` | declared `real-runtime` actually backed by simulation seam without deferred marker; OR declared `Verification Level` not achievable in test setup |
+      | `RULES_COMPLIANCE_VIOLATION` | code violates rules listed in a phase's `Rules:` (any category); OR diff has artefact whose category is unhandled by any active phase |
+      | `RULES_CASCADE_MISMATCH` | a phase's `Rules:` list ≠ what scaffolder would derive now from cascade × that phase's `Target Files` + kind |
+      | `FILE_RELATION_DRIFT` | V2 `@spec` is unresolved/ambiguous; active writers collide; active ticket spec mismatches the semantic owner; OR a migrated V2 header still carries legacy `@tasks` |
+      | `TASK_ID_DRIFT` | Task-ID duplicated across ticket files or conflicts in the task DAG; untouched V1 `@tasks` compatibility remains tool-owned migration evidence |
+      | `BDD_COVERAGE_MISMATCH` | canonical case names in ticket Test Scenario Coverage ≠ real test cases |
+      | `EXECUTION_LOG_INCOMPLETE` | mandatory closing lines missing (`ver` / `DONE` per phase, `DONE` at Round close); OR `intro` line absent for an entity that appears in code but not in module Inventory; OR a previous round was edited (round log is append-only); OR `[x]` line with unreplaced `<…>` placeholder (fabricated done) |
+      | `INSIGHT_BACKFLOW` | Phase agent discovered something that changes contract / requirement understanding; should flow back into spec |
+      | `STALE_AFTER_PIVOT` | scope spec was reworked in `pivot` mode (Pivot Invalidation List exists) but downstream artifacts named in the list have not been refined / reopened / updated |
+      | `RULE_FILE_INCOMPLETE` | activated rule file lacks one of the universal checkable sections (`<BeliefState>` / `<AntiPatterns>` / `<VerificationHooks>` / `<RewardCriteria>`) per `AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`; audit can partially proceed but the gap blocks full coverage |
+      | `LANGUAGE_QUALITY` | operator-facing text fails `AX_LANGUAGE_QUALITY_CHECK` — calques (from the `SDD_LANGUAGE_CALQUE` pre-filter) or literary/ornate style the deterministic lint cannot catch |
+      | `YAGNI_WAIVER_INCOMPLETE` | a contract `Usage Waiver` label exists for a symbol, but the round's Execution Log has no matching `yagni <name> ← <reason>` line (`AX_AUDIT_YAGNI_CROSSCHECK`) |
+      | `ENVIRONMENT_GATE_UNAVAILABLE` | a required gate command (`sdd-verify`, `gennady lint`, `gennady testcov`, or a ticket §5 command) could not execute at all — missing runner, missing script, no network, crashed before producing a pass/fail — as opposed to executing and reporting a red result |
+      | `DEAD_CODE_SUSPECT` | an incidental probe exposes apparently dead code outside the current ticket's bounded remediation scope; audit reports it for a separate task and does not widen this run |
+    </Axiom>

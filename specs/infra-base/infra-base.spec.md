@@ -1,5 +1,11 @@
 # infra-base: Infrastructure Specification
 
+<!--SECTION:SPEC_ID-->
+
+INFRA-BASE
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 infrastructure
@@ -23,6 +29,234 @@ infrastructure
 
 ### 2.1 Formatter Fixture Exclusion
 
-`.prettierignore` **обязан** содержать `**/__tests__/fixtures/**` и `**/__tests__/e2e/fixtures/**` (второй паттерн не выводится из первого: `**/__tests__/fixtures/**` не матчит `__tests__/e2e/fixtures/` — проверено) — тестовые фикстуры могут содержать намеренно сломанный синтаксис (parse-failed scenarios), и prettier не должен их обрабатывать. `tsconfig.json` также исключает фикстуры из type-check (`"exclude": ["**/__tests__/fixtures/**", "**/__tests__/e2e/fixtures/**"]`). E2E-фикстуры стековых наборов содержат намеренно невалидные `gennady.yaml`/`package.json` — их переформатирование ломает сами сценарии (см. [`infra-e2e`](../infra-e2e/infra-e2e.spec.md)).
+`.prettierignore` **обязан** содержать `**/__tests__/fixtures/**` — тестовые фикстуры могут содержать намеренно сломанный синтаксис (parse-failed scenarios), и prettier не должен их обрабатывать. `tsconfig.json` также исключает фикстуры из type-check (`"exclude": ["**/__tests__/fixtures/**"]`).
 
 > Полный Decision Log (Design Variants, rationale, Effective Rules для cascade) — запусти `discovery infra-base`.
+
+### 2.2 UV-27A — V1-only SDD eradication inventory
+
+Перед main-cutover repository gate `npm run audit:v1-eradication` строит deterministic sorted inventory
+всех tracked и non-ignored candidate-файлов по versioned lexical policy
+`scripts/v1-eradication.policy.json`. Директивы при этом читаются как opaque text; XML parser/validator
+не используется.
+
+Каждый candidate обязан иметь одну причинную классификацию:
+
+- `canonical-v2` — действующий v2 loader/directive/source, который нельзя удалить по историческому
+  имени;
+- `required-v1-to-v2-migration-boundary` — bootstrap, flow detection, consumer guard и
+  grandfathering, нужные для безопасной миграции внешних consumers;
+- `historical-test-evidence` — frozen fixture, completed task/spec history либо eval corpus, который не
+  является runtime;
+- `unrelated-product-version` — schema/API/product `v1`, не обозначающий поколение SDD.
+
+Старые runtime roots (`ai/directives/sdd/`, bundled `sdd-execute/scripts/`, retired standalone skill
+directories, consumer `.claude/skills/sdd-*`, repository-root `tasks/` и `verify.sh`) являются
+безусловным forbidden residue. Само имя или path prefix не доказывают класс: protected canonical-v2
+файлы дополнительно проверяются по causal identity marker. Active canonical/product code не может
+содержать old runtime reference даже после принятия нового digest; исключение — только exact
+`<!-- source: ai/directives/sdd/... -->` provenance comment в `ai/kit/axiom|anti-pattern`.
+Новый marker без policy-classification, исчезновение protected v2, forbidden active reference,
+forbidden residue и любое изменение frozen inventory digest fail closed.
+Machine report `gennady.v1-eradication-report.v1` отдаёт sorted entries, counts, policy digest и
+SHA-256 inventory digest для последующего UV-27B candidate binding. Inventory digest включает
+versioned policy и причинные classifications/reasons, поэтому изменение самой разрешающей политики
+тоже требует review.
+
+#### Acceptance
+
+- Реальный old-runtime residue даёт `V1_ERADICATION_FORBIDDEN_RESIDUE`.
+- `ai/skills/sdd-execute/SKILL.md` остаётся canonical v2 loader; потеря его router identity красная.
+- `migration-bootstrap`, sync consumer guard, V1 fixtures/grandfathering и agent-mon product-version
+  остаются в своих явных классах и не удаляются.
+- Новый classified или unclassified candidate меняет frozen inventory и блокирует gate до явного
+  review policy/digest.
+- Current inventory содержит zero V1-only runtime files. UV-27A не фабрикует deletion: единственный
+  найденный active stale reference в Go skill переведён с удалённого v1 directive path на v2 router.
+
+### 2.3 UV-27B — main-cutover boundary
+
+`npm run release:boundary -- --candidate --json` является read-only inspection одного exact
+main-cutover candidate. Versioned projection связывает expected release branch/upstream, local и
+upstream HEAD, current `origin/main` full SHA, candidate tree, deterministic raw `--no-renames`
+diff identities (status, path, modes и old/new Git object ids), relevant config/spec hashes и
+отдельный evidence-only delta.
+
+UV-25 выполняется на clean product commit `evidenceSourceCommit`. Candidate HEAD может быть только
+его descendant, добавляющим frozen UV-25 pack (`manifest.json`, `README.md` и ровно declared raw
+logs) и optional exact UV-26 E-18 evidence file. Любой product/config/rules/cutover/policy/package/workflow byte
+между этими commits, undeclared evidence file, deletion или mode/blob drift блокирует candidate.
+Independent UV-25 checker проверяет manifest/log inventory и hashes; exact manifest/checker bytes,
+`generatedAt`, оба full SHA и evidence delta digest входят в candidate identity. Предъявленный UV-26 обязан иметь
+schema `gennady.e18-exact-evidence.v2`, ссылаться на тот же `evidenceSourceCommit` и пройти
+independent `scripts/e18-exact-evidence.ts --check`: release boundary не доверяет authored
+`status/environment`. Checker digest и derived PASS входят в candidate identity.
+
+**Approved UV-28 amendment (2026-10-13):** source-owned versioned
+`gennady.swift-release-validation.v2` policy откладывает real E-18 validation до post-main-cutover.
+Global Swift support остаётся `UNVERIFIED` prototype; waiver ограничен release/main-cutover и
+не отключает consumer selected Swift build/test/coverage gates: `FAIL`/`ENV_FAIL`/`BLOCKED` blocking.
+Genuine absent optional E-18 → `DEFERRED`, checker не запускается, `checkerPassed=false`.
+Present invalid proof → `CUTOVER_UV26_INVALID` / `INVALID`, не deferred: symlink (включая dangling),
+unsafe ancestor, nonregular file, unreadable file, oversize (>32 MiB), read-time drift или
+несовпадающий strict checker/source. Reader не открывает nonregular files, не следует links,
+читает bounded bytes, не раскрывает OS errors/content/checker stderr. Optional strict `PASS`
+не меняет support tier. Candidate JSON/text явно несут support tier, consumer-gate scope,
+reason, policy identity/hash и observed E-18 status; весь projection bind-ится digest/exact ACK.
+Нет project/YAML/env waiver switches и static ACK. UV-25 manifest/README/все declared raw logs
+остаются обязательными; unsafe optional proof не маскируется как отсутствие.
+
+Fresh UV-27A JSON report исполняется на candidate tree; `policyDigest`, `inventoryDigest` и полный
+report digest входят в identity. Candidate также требует clean tree, current main ancestor,
+отсутствие embedded npm authority и `NPM_TOKEN`/`NODE_AUTH_TOKEN`/npm auth env в cutover process.
+Inspection не checkout/merge/reset/commit/tag/push и не авторизует cutover.
+
+Authorization — отдельная read-only проверка с внешним exact
+`gennady-main-cutover-ack-v1:<candidateDigest>`. ACK не хранится в repo, не является подписью и не
+заменяется PR merge/plan/boolean `approved=true`; candidate полностью пересчитывается перед
+сравнением, поэтому challenge другого дерева/доказательства повторно использовать нельзя. Checker
+только наблюдает: reconciliation main остаётся отдельной reviewed операцией.
+
+#### UV-27B acceptance
+
+- Wrong branch/upstream, local/upstream divergence, dirty tree, missing/stale main ref или main,
+  который не ancestor candidate, дают typed blocker без mutation.
+- Release branch, release upstream и main ref проходят conservative Git-ref grammar validation до
+  любого remote observation: option-like/leading-hyphen, empty/dot segments, `..`, `@{`, control,
+  backslash, trailing dot/slash/`.lock` запрещены; upstream branch обязан в точности равняться
+  release branch, а `git ls-remote` отделяет options literal `--`.
+- Arbitrary ancestor не считается evidence source: delta допускает только exact manifest-derived
+  UV-25 allowlist и exact UV-26 path; extra/missing evidence и любой product byte fail closed.
+- UV-25/UV-27A missing, malformed, stale или non-PASS блокируют authorization; UV-26 genuine
+  absence deferred, но supplied invalid/unsafe/non-PASS proof блокирует authorization.
+- Candidate digest детерминирован; exact ACK проходит в обе стороны только для одного повторно
+  вычисленного eligible candidate.
+- Historical pre-reconciliation snapshot был blocked wrong branch/upstream, UV-25 drift, missing
+  E-18 и отсутствием MAIN ancestry. R1–R5/#113 уже reviewed/merged на release c622; после UV-28/UV-29
+  product changes требуется fresh UV-25 на final immutable source, independent review и новый
+  exact scope-bound ACK. Этот amendment не делает старый source eligible и не даёт npm authority.
+
+### 2.4 R4 — Frozen MAIN preservation and exhaustive disposition
+
+Before R5 history reconciliation and final candidate materialization, `npm run audit:main-carry`
+must pass as part of normal pre-commit. It is read-only and shares the versioned
+`migration/frozen-main/manifest.json` / `dispositions.json` source of truth; no parallel runtime
+registry is introduced. The exact MAIN/audit-release/merge-base/reviewed-release refs are frozen.
+
+Acceptance requires all 117 MAIN-only commits and all 520 rename-aware delta rows (521 raw path
+identities, including both sides of the one relocation), original Git blob/mode plus SHA-256/size,
+and explicit retain/adapt/archive/exclude owner, reason and current proof mappings. Every source
+and preimage byte is retained as inert content-addressed `.blob`, including excluded old runtime.
+No historical ticket is made active, no DONE/receipt/phase is synthesized, and SS-run-all is not
+TSK-97 equivalence. Historical specs/config/trackers/flow docs remain frozen, not auto-imported.
+
+The archive is outside package files and active Markdown scans. Checker rejects omitted/extra/
+duplicate rows/objects, wrong source refs/commits/blobs, corrupt archive, traversal/symlink paths,
+false retained bytes or current mapped owner/target/proof drift. Declared source @spec owners use
+the existing ownership-header and Spec-ID parsers. Permanent integrity reconstructs immutable
+historical refs, so legitimate post-cutover main advancement does not permanently break normal
+commit gates. Before R5, `npm run audit:main-carry -- --pre-reconciliation` additionally requires
+HEAD to descend from reviewed release base and current origin/release, with origin/main still
+equal frozen MAIN. A moved-ahead or divergent upstream is not accepted merely because both refs
+share an ancestor. Existing release-boundary candidate/ACK inspection unconditionally runs this
+strict mode and binds its manifest digest; no production policy/environment opt-out exists.
+Historical integrity PASS after main advancement is not approval of a new reconciliation delta.
+
+Proof hashes bind actual final files after R4 commit/R5, not an impossible self-commit SHA or only
+old release bytes. Any relevant change needs a reviewed disposition/proof refresh. Mechanical
+archive generation is explicit authoring, not an automatic way to accept a red checker.
+Byte retention does not imply API/dependency/runtime parity. The old OpenCode data-URL/temp
+workaround is excluded only with real installed copied-config/emitted-path acceptance; this is
+not real OpenCode agent/network E2E. Existing goldens, D38 baseline, publication DENY and D60 scope
+remain unchanged. Historical R4 snapshot above preceded reviewed R5/#112 and UV25/#113.
+UV-28 allows only reviewed currentProof hashes for actually changed `scripts/release-boundary.ts`,
+`specs/cli/verify/verify.spec.md`, `specs/infra-base/infra-base.spec.md`; every other proof, frozen
+ref/117 commits/520 rows/521 identities/disposition/542 raw blobs/parityClaim=false is unchanged.
+After the last reviewed UV-28/UV-29 product change, fresh final UV25 and exact candidate review/ACK
+remain pending. Real E18 is deferred post-main-cutover, not PASS. Publication remains denied.
+
+<!--SECTION:ENTITY_INVENTORY-->
+
+## UV-27B Entity Inventory
+
+| Name                        | Type         | Purpose                                                      |
+| --------------------------- | ------------ | ------------------------------------------------------------ |
+| `ReleaseBoundaryPolicy`     | Value Object | Strict versioned release-boundary policy                     |
+| `CutoverCandidateReport`    | Value Object | Safe deterministic candidate identity and blockers           |
+| `ReleaseBoundaryPorts`      | Port         | Injectable read-only Git/checker boundary for causal tests   |
+| `inspectCutoverCandidate`   | Service      | Read-only exact cutover candidate inspection                 |
+| `authorizeCutoverCandidate` | Service      | Exact external ACK comparison against a recomputed candidate |
+| `denyNpmPublication`        | Service      | Shared fail-closed npm publication denial                    |
+| `checkE18Evidence`          | Service      | Derive E-18 verdict from embedded raw terminal facts         |
+| `preflightE18Environment`   | Service      | Reject host before project/network/write                     |
+| `collectE18Evidence`        | Service      | Verify receipts/remote/xcresult/xccov and write one JSON     |
+
+<!--/SECTION:ENTITY_INVENTORY-->
+
+<!--SECTION:ENTITY_SURFACES-->
+
+## UV-27B Entity Surfaces
+
+### `inspectCutoverCandidate`
+
+- **Usage Waiver:** один production consumer — `release:boundary --candidate`; export сохраняет
+  injectable read-only ports для causal offline Git fixtures, чтобы tests доказывали exact remote
+  refs/evidence/ACK без реальной сети или credentials. Это deliberate boundary D-INFRA-010, а не
+  будущая abstraction.
+
+### `authorizeCutoverCandidate`
+
+- **Usage Waiver:** один production consumer — `release:boundary --authorize`; export нужен тем же
+  causal fixtures для race/recompute и non-reusable ACK proof. Другого authorization consumer быть
+  не должно: второй путь нарушил бы single-SSOT D-INFRA-010.
+
+### `checkE18Evidence` / `preflightE18Environment` / `collectE18Evidence`
+
+- **Usage Waiver:** production consumers — UV-26 CLI modes и UV-27B independent checker; exports
+  сохраняют injectable host/provider seams для causal offline tests. Это один exact evidence
+  boundary D-INFRA-011, а не общий execution framework.
+
+<!--/SECTION:ENTITY_SURFACES-->
+
+## 3. Decision Log
+
+### D-INFRA-009 — Eradication by causal inventory, never by name
+
+- **Status:** accepted; implemented by UV-27A.
+- **Decision:** удаляется только доказанный V1-only runtime surface. Историческое имя `sdd-execute`,
+  слово `V1`, path prefix или номер schema сами по себе не являются доказательством удаления.
+- **Why:** canonical v2 skills сохраняют исторические trigger names; consumer migration и frozen
+  A13/D-4/V1 evidence остаются частью поддерживаемой v2 границы; agent-mon и Verify/Rules имеют
+  собственные versioned schemas.
+- **Enforcement:** versioned policy + protected identities + frozen sorted inventory digest; pre-commit
+  вызывает `audit:v1-eradication` после directive audits.
+
+### D-INFRA-010 — One inspection SSOT, external exact cutover ACK
+
+- **Status:** accepted; implemented by UV-27B.
+- **Decision:** один shared release-boundary строит immutable main-cutover candidate и отдельно
+  проверяет external exact ACK. Npm publication в current track имеет другой outcome — unconditional
+  DENY, а не ветвь cutover authorization.
+- **Why:** product source и runtime evidence возникают в разные моменты. Bounded evidence-only
+  descendant устраняет невозможную Git self-reference, но не разрешает скрыть product drift.
+- **Threat boundary:** repo hooks покрывают только supported entrypoints. Намеренный внешний
+  `npm publish --ignore-scripts` с пользовательскими credentials технически не перехватывается;
+  поэтому cutover process требует отсутствия auth env и repository-owned publish authority.
+
+### D-INFRA-011 — Exact E-18 is derived from raw runner/provider/coverage evidence
+
+- **Status:** contract implemented by UV-26; real runtime PASS remains open.
+- **Decision:** one versioned JSON embeds bounded raw SDD attempt/group receipt, reviewed Xcode
+  config, safe argv/process facts, production watcher result and xccov payload. Independent checker
+  reparses/re-hashes them and derives PASS; no authored boolean or digest-only projection is proof.
+- **Environment boundary:** macOS 15+/Xcode 16.2+/direct Tuist 4.202.0 preflight precedes all
+  project/network/write work. Collector is read-only except its final atomic canonical evidence
+  write and performs no CI mutation.
+
+## 4. Delivery Trace
+
+| Task   | Status | Product                                                                                   |
+| ------ | ------ | ----------------------------------------------------------------------------------------- |
+| UV-27A | done   | inventory/policy/checker, causal tests, pre-commit gate, zero forbidden runtime residue   |
+| UV-27B | done   | read-only candidate/ACK SSOT, bounded evidence descendant and npm publication prohibition |
+| UV-28+ | open   | Swift UNVERIFIED policy, diagnostics, fresh UV-25, exact candidate/ACK; E-18 post-cutover |

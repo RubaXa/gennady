@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Axiom id="AX_CLI_SNAPSHOT_UPDATE_GATE">
+      `npx playwright test --update-snapshots` (rewriting AX/visual baselines) is a gated action. Allowed without confirmation only for the very FIRST snapshot of a NEW test (no prior baseline existed). For any update to an existing baseline the agent MUST stop, present the old vs new snapshot to the operator, name the cause of the diff (intentional UI change vs unexpected regression), and wait for explicit confirmation.
+
+      Silent `--update-snapshots` on every failure is the single most direct path for an agent to fabricate a green test under e2e.
+    </Axiom>

@@ -1,6 +1,6 @@
 // @file: Integration tests for gennady run CLI command — thin wrapper over @services/agent-run, mocked.
+// @spec: CLI-RUN
 // @consumers: CI
-// @tasks: TSK-65
 
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

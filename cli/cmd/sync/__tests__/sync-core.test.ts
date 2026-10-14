@@ -1,6 +1,6 @@
 // @file: Unit tests for SyncCore — resolvePackageDir, scanDirectives, collectAndCompare
-// @consumers: TSK-54
-// @tasks: TSK-54
+// @spec: CLI-SYNC
+// @consumers: SYN-tests
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,6 +13,7 @@ import {
   readFileSync,
   statSync,
   readdirSync,
+  unlinkSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -48,6 +49,7 @@ function createDeps(cwd: string, overrides?: Partial<SyncCoreDeps>): SyncCoreDep
     mkdir: _mkdir,
     stat: _stat,
     readdir: readdirSync,
+    unlink: unlinkSync,
     cwd,
     ...overrides,
   };
@@ -72,15 +74,10 @@ describe('resolvePackageDir', () => {
   });
   // #endregion
 
-  // #region TEST_CASE_2: no local install falls back to the resolvable package
-  it('falls back to the package this process runs from', () => {
-    // Previously null, because the package root was derived by stripping `/dist/` and a checkout
-    // resolves to a source file. That bug is what broke `npm link` installs: the package is
-    // genuinely reachable here, so a path is the correct answer.
+  // #region TEST_CASE_2: foreign cwd uses actual package fallback
+  it('resolves package source directives when local installation is absent', () => {
     const result = resolvePackageDir(_tmpDir);
-
-    assert.notEqual(result, null, 'gennady resolves from its own checkout');
-    assert.match(result ?? '', /ai[\\/]directives$/);
+    assert.equal(result, new URL('../../../../ai/directives', import.meta.url).pathname);
   });
   // #endregion
 });
@@ -99,14 +96,14 @@ describe('scanDirectives', () => {
   });
 
   it('scans all files without subdir filter', () => {
-    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<xml/>', 'utf-8');
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
     mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
     writeFileSync(join(_sourceDir, 'sdd', 'discovery.xml'), '<d/>', 'utf-8');
     mkdirSync(join(_sourceDir, 'coding'), { recursive: true });
     writeFileSync(join(_sourceDir, 'coding', 'typescript.xml'), '<t/>', 'utf-8');
 
     const files = scanDirectives(_sourceDir);
-    assert.deepStrictEqual(files, ['coding/typescript.xml', 'knowledge.xml', 'sdd/discovery.xml']);
+    assert.deepStrictEqual(files, ['catalog.txt', 'coding/typescript.xml', 'sdd/discovery.xml']);
   });
 
   it('scans only specified subdirectory', () => {
@@ -145,13 +142,11 @@ describe('scanDirectives', () => {
   it('excludes entries from EXCLUDED_ENTRIES set', () => {
     mkdirSync(join(_sourceDir, 'architecture'), { recursive: true });
     writeFileSync(join(_sourceDir, 'architecture', 'should-not-appear.xml'), '', 'utf-8');
-    writeFileSync(join(_sourceDir, 'dbc-audit.directive.xml'), '', 'utf-8');
-    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<k/>', 'utf-8');
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
 
     const files = scanDirectives(_sourceDir);
-    assert.deepStrictEqual(files, ['knowledge.xml']);
+    assert.deepStrictEqual(files, ['catalog.txt']);
     assert.ok(!files.some((f) => f.includes('architecture')));
-    assert.ok(!files.some((f) => f.includes('dbc-audit')));
   });
 
   it('skips hidden files and dot-prefixed names', () => {
@@ -220,34 +215,60 @@ describe('collectAndCompare', () => {
     assert.equal(_writeCalls.length, 1);
   });
 
-  it('preserves a project-owned knowledge.xml that differs: status preserved, never written', () => {
-    const projectVersion = '<AiKnowledge ver="2.0"><!-- python stack --></AiKnowledge>';
-    writeFileSync(
-      join(_sourceDir, 'knowledge.xml'),
-      '<AiKnowledge ver="2.0"><!-- ts --></AiKnowledge>',
-      'utf-8'
-    );
-    writeFileSync(join(_targetDir, 'knowledge.xml'), projectVersion, 'utf-8');
+  it('deletes target directives removed from the installed package', () => {
+    mkdirSync(join(_sourceDir, 'coding'));
+    mkdirSync(join(_targetDir, 'coding'));
+    writeFileSync(join(_sourceDir, 'coding', 'current.xml'), '<current/>', 'utf-8');
+    writeFileSync(join(_targetDir, 'coding', 'current.xml'), '<old/>', 'utf-8');
+    writeFileSync(join(_targetDir, 'coding', 'stale.xml'), '<stale/>', 'utf-8');
 
-    const deps = createDeps(_tmpDir);
-    const result = collectAndCompare(deps, { sourceDir: _sourceDir, targetDir: _targetDir });
+    const result = collectAndCompare(createDeps(_tmpDir), {
+      sourceDir: _sourceDir,
+      targetDir: _targetDir,
+    });
 
-    assert.equal(result.entries[0].status, 'preserved');
-    assert.equal(result.preserved.length, 1);
-    assert.equal(_writeCalls.length, 0);
-    // The project's version is untouched on disk.
-    assert.equal(readFileSync(join(_targetDir, 'knowledge.xml'), 'utf-8'), projectVersion);
+    assert.equal(result.deleted.length, 1);
+    assert.equal(result.deleted[0].relativePath, 'coding/stale.xml');
+    assert.equal(existsSync(join(_targetDir, 'coding', 'stale.xml')), false);
   });
 
-  it('seeds knowledge.xml when absent: status added, written', () => {
-    writeFileSync(join(_sourceDir, 'knowledge.xml'), '<AiKnowledge ver="2.0"/>', 'utf-8');
+  it('filtered sync succeeds when the subdirectory does not exist in target yet', () => {
+    mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
+    writeFileSync(join(_sourceDir, 'sdd', 'd.xml'), '<d/>', 'utf-8');
+    // _targetDir exists but has no 'sdd' subdirectory at all — first sync into a fresh project.
 
-    const deps = createDeps(_tmpDir);
-    const result = collectAndCompare(deps, { sourceDir: _sourceDir, targetDir: _targetDir });
+    const result = collectAndCompare(createDeps(_tmpDir), {
+      sourceDir: _sourceDir,
+      targetDir: _targetDir,
+      subdirs: ['sdd'],
+    });
 
+    assert.equal(result.entries.length, 1);
     assert.equal(result.entries[0].status, 'added');
-    assert.equal(result.preserved.length, 0);
-    assert.equal(_writeCalls.length, 1);
+    assert.equal(result.entries[0].relativePath, 'sdd/d.xml');
+    assert.equal(existsSync(join(_targetDir, 'sdd', 'd.xml')), true);
+  });
+
+  it('leaves a target subdirectory the package does not own untouched, with a warning', () => {
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
+    mkdirSync(join(_sourceDir, 'sdd'), { recursive: true });
+    writeFileSync(join(_sourceDir, 'sdd', 'd.xml'), '<d/>', 'utf-8');
+
+    mkdirSync(join(_targetDir, 'my-custom'), { recursive: true });
+    writeFileSync(join(_targetDir, 'my-custom', 'notes.xml'), '<notes/>', 'utf-8');
+
+    const result = collectAndCompare(createDeps(_tmpDir), {
+      sourceDir: _sourceDir,
+      targetDir: _targetDir,
+    });
+
+    assert.equal(result.deleted.length, 0);
+    assert.equal(existsSync(join(_targetDir, 'my-custom', 'notes.xml')), true);
+    assert.equal(result.warnings.length, 1);
+    assert.match(
+      result.warnings[0],
+      /unknown subdirectory in target \(not owned by package, left untouched\): my-custom/
+    );
   });
 
   it('dryRun skips writeFile for added files', () => {

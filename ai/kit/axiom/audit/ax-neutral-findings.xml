@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_NEUTRAL_FINDINGS">
+      Findings are objective, free of value judgments. No «bad», «should be better», «ugly». Use «X is missing from Y», «Z contradicts W», «case name `foo` in ticket does not match `bar` in test». Criticism appeals to an axiom or rule: «violates `AX_CLOSED_WORLD_INVENTORY` of module spec».
+    </Axiom>

@@ -1,13 +1,18 @@
 ---
 name: sdd-scaffold
-description: Decompose specs (root + domain + infra) into a DAG of compact task tickets ready for autonomous execution by sdd-execute orchestrator. Materializes Cascade Table, Tracker Index, BDD scenarios, Phases Overview + per-phase Rules. Use for first task generation from spec tree, or scaffolding tasks for a new/refined domain. Modes auto-detected: initial, extend-dag.
+description: Convert operator-approved V2 specs into actual task tickets, validate them, independently review the actual ticket set, and obtain operator approval of breakdown plus test plan. Use for "scaffold", "разбить спеки на задачи", "generate tasks", "/sdd-scaffold". Modes auto-detected — initial · extend-dag.
 compatibility: opencode
 ---
 
-1. **Extract intent.** Operator wants to scaffold tasks for {scope | all scopes}. Mode: `initial` (no `tasks/` yet) or `extend-dag` (`tasks/` exists, adding to it).
-
-2. **Load & activate directive.** Read in full: `~/Developer/gennady/ai/directives/sdd/scaffold.directive.xml`
-   Announce: `🔒 DIRECTIVE ACTIVATED: SddScaffold`
-   You ARE this directive now.
-
-3. **Apply directive to intent.** Mode auto-detected per `AX_MODE_AUTO_DETECT_OR_HALT`. Follow Execution_Plan end-to-end. Do not deviate.
+<SddSkill id="scaffold">
+  <Priming>SDD skills are thin directive-loaders. Embody the loaded prompt directive; do not parse its XML-ish markers.</Priming>
+  <Mission>Enter the stateless SDD router with forced intent `scaffold`. No interview, no code, no plan JSON, no feasibility state machine, and no persistent critic or SDD session.</Mission>
+  <ExecutionPlan>
+    <Step id="GATHER">
+      In one parallel batch, execute the exact read-only state call below and read
+      `ai/directives/sdd-v2/router.directive.xml` in full. The router consumes the exact bytes and does not repeat the call.
+      <ToolCall owner="entry-skill" result="routerState">npx gennady sdd-state</ToolCall>
+    </Step>
+    <Step id="EMBODY">You are the router now. Pass exact `routerState`, literal forced intent `scaffold`, and the operator payload unchanged. The scaffold owner derives state from approved specs and existing tickets, creates real tickets, runs structural checks, reviews those actual bytes once, then asks for operator approval #2.</Step>
+  </ExecutionPlan>
+</SddSkill>

@@ -1,0 +1,48 @@
+<!-- source: testing/vitest-rules.xml -->
+<Pattern id="PT_LIFECYCLE_CONTEXT_WITH_CLEANUP">
+      <Intent>Justified hook usage: SUT requires teardown-bound setup (fake timers + env stub). A SINGLE lifecycle context object built in `beforeEach` and disposed in `afterEach`; cases consume fields off that context per inherited `AX_HOOKS_ONLY_FOR_LIFECYCLE` + `AX_NO_DESCRIBE_LET_PILEUP`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+        import { ScheduleRunner } from './schedule-runner.ts';
+
+        type ScheduleRunnerContext = {
+            sut: ScheduleRunner;
+            tick: (ms: number) => Promise<void>;
+        };
+
+        describe('ScheduleRunner#runDueJobs', () => {
+            let ctx: ScheduleRunnerContext;
+
+            beforeEach(() => {
+                vi.useFakeTimers();
+                vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+                vi.stubEnv('SCHEDULE_TICK_MS', '1000');
+
+                const sut = new ScheduleRunner();
+                ctx = { sut, tick: (ms) => vi.advanceTimersByTimeAsync(ms) };
+            });
+
+            afterEach(() => {
+                vi.useRealTimers();
+                vi.unstubAllEnvs();
+            });
+
+            it('should fire a single job exactly once at its due time', async () => {
+                // contract: a job scheduled at t+1000ms fires once at t+1000ms, not before, not twice
+                const onFire = vi.fn();
+                ctx.sut.schedule({ id: 'j1', dueAt: 1000, run: onFire });
+
+                // #region START_DUE_JOBS_TRIGGER_TICK
+                await ctx.tick(999);
+                expect(onFire).not.toHaveBeenCalled();
+                await ctx.tick(1);
+                // #endregion END_DUE_JOBS_TRIGGER_TICK
+
+                expect(onFire).toHaveBeenCalledTimes(1);
+            });
+        });
+        ```
+      </Snippet>
+      <Why>Fake timers and env stubs are teardown-bound — cannot be cleaned by a factory return value. The describe holds exactly ONE `let ctx`, not a pile of `let sut, let tick, let env`. Multi-step TRIGGER (boundary observation between ticks) → anchored.</Why>
+    </Pattern>

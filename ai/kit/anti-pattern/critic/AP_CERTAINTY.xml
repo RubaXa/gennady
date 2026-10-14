@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Pattern id="AP_CERTAINTY">Declaring certainty without verification. "Not sure" > wrong answer.</Pattern>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: Create a GitLab merge request from the current branch.
+// @spec: CLI
 // @consumers: gennady.ts
-// @tasks: TSK-91
 
 import {
   resolveVcsContext,
@@ -9,8 +9,7 @@ import {
   type VcsCliArgs,
   type VcsCliContext,
 } from '../_shared/vcs-context-resolver.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { VcsMergeRequestCreateQuery } from '../../../services/vcs-client/entities/vcs-merge-request-create-query.type.ts';
 import { execFile } from 'node:child_process';
@@ -56,6 +55,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
     'target-branch': { aliases: ['target-branch'], takesValue: true },
     project: { aliases: ['project'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     label: { aliases: ['label'], takesValue: true },
     assignee: { aliases: ['assignee'], takesValue: true },
     reviewer: { aliases: ['reviewer'], takesValue: true },
@@ -80,7 +80,11 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   const milestoneId = args.milestone as string | undefined;
   const host = args.host as string | undefined;
 
-  const vcsArgs: VcsCliArgs = { host, project: args.project as string | undefined };
+  const vcsArgs: VcsCliArgs = {
+    host,
+    project: args.project as string | undefined,
+    url: args.url as string | undefined,
+  };
   let context: VcsCliContext;
 
   try {
@@ -140,13 +144,7 @@ export async function run(rawArgs: string[], deps: Deps = defaultDeps()): Promis
   }
 
   try {
-    const client: VcsClient =
-      context.provider === 'github'
-        ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-        : new VcsGitlabClient({
-            baseUrl: `https://${context.host}/api/v4`,
-            token: context.token,
-          });
+    const client: VcsClient = createVcsClient(context);
     const result = (await client.MergeRequests.create(createQuery)) as {
       webUrl: string;
       iid: string | number;

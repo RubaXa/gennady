@@ -1,5 +1,25 @@
 # Module: e2e
 
+<!--SECTION:SPEC_ID-->
+
+CLI-E2E
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 <!--SECTION:SCOPE_TYPE-->
 
 ## scope-type
@@ -16,9 +36,9 @@ E2E-тестирование CLI-команд через локальный ар
 
 Родительский scope: [`cli`](../cli.spec.md). Не имеет подмодулей.
 
-Внутренний модуль — не экспортирует публичное API. Единственная точка входа — `npm run test:cli-e2e`.
+Внутренний модуль — не экспортирует публичное API. Единственная точка входа — `npm run test:e2e`.
 
-**Out-of-Scope (v1):** E2E для `alt-opinion` (API-ключи), `cat` (сеть), `update-check` (сеть), `sync-skills` orphan-удаление (deferred). CI-интеграция, параллельное выполнение.
+**Out-of-Scope (v1):** E2E для `cat` (сеть), `update-check` (сеть), `sync-skills` orphan-удаление (deferred). CI-интеграция, параллельное выполнение.
 
 <!--/SECTION:MODULE_VISION-->
 
@@ -28,122 +48,21 @@ E2E-тестирование CLI-команд через локальный ар
 
 ```bash
 # === запуск e2e-тестов ===
-$ npm run test:cli-e2e
-
+$ npm run test:e2e
 [build] npm run build
 [build] ✓ dist/gennady.js
-
 [pack] npm pack
 [pack] ✓ gennady-0.7.1.tgz
-
 [setup] git init && git add -A
 [setup] fixtures/ → /tmp/gennady-e2e-a1b2c/
 [setup] npm install ./gennady-0.7.1.tgz
 [setup] ✓ installed
-
-# === lint (8 тестов) ===
-▶ lint clean file
-  $ npx gennady lint src/clean.ts
-  ✓ exit 0
-
-▶ lint missing @file:
-  $ npx gennady lint src/no-header.ts
-  ✓ exit 1
-  ✓ stderr: ERR_CLI_LINT_MISSING_FILE
-
-▶ lint missing @consumers:
-  $ npx gennady lint src/no-consumers.ts
-  ✓ exit 1
-
-▶ lint unpaired anchor
-  $ npx gennady lint src/bad-anchor.ts
-  ✓ exit 1
-
-▶ lint autofix
-  $ npx gennady lint --autofix src/needs-autofix.ts
-  ✓ exit 1
-
-▶ lint --staged
-  $ npx gennady lint --staged
-  ✓ exit 0
-
-▶ lint directory
-  $ npx gennady lint src/
-  ✓ exit 1
-
-▶ lint nonexistent
-  $ npx gennady lint nonexistent/
-  ✓ exit 1
-
-# === orient (6 тестов) ===
-▶ orient project map
-  $ npx gennady orient
-  ✓ exit 0
-
-▶ orient --task=TSK-FIX-01
-  $ npx gennady orient --task=TSK-FIX-01
-  ✓ exit 0
-
-▶ orient --consumer=FixtureConsumer
-  $ npx gennady orient --consumer=FixtureConsumer
-  ✓ exit 0
-
-▶ orient keyword
-  $ npx gennady orient "fixture"
-  ✓ exit 0
-
-▶ orient --file
-  $ npx gennady orient --file=src/service.ts
-  ✓ exit 0
-
-▶ orient --graph
-  $ npx gennady orient --graph
-  ✓ exit 0
-
-# === sync (6 тестов) ===
-▶ sync first run
-  $ npx gennady sync
-  ✓ exit 0
-
-▶ sync repeat (unchanged)
-  $ npx gennady sync
-  ✓ exit 0
-
-▶ sync --dry-run
-  $ npx gennady sync --dry-run
-  ✓ exit 0
-
-▶ sync filter
-  $ npx gennady sync sdd
-  ✓ exit 0
-
-▶ sync nonexistent dir
-  $ npx gennady sync nonexistent/
-  ✓ exit 1
-
-▶ should not contain dev-machine paths in synced directives
-  $ npx gennady sync
-  ✓ exit 0
-
-# === sync skills (4 теста) ===
-# [afterEach: rm -rf ai/directives/]
-▶ sync-skills install + repeat
-  $ npx gennady sync-skills
-  ✓ exit 0
-
-▶ sync-skills --dry-run
-  $ npx gennady sync-skills --dry-run
-  ✓ exit 0
-
-▶ sync-skills filter
-  $ npx gennady sync-skills sdd-execute
-  ✓ exit 0
-
-# === agents-rules (1 тест) ===
-▶ agents-rules
-  $ npx gennady agents-rules
-  ✓ exit 0
-
+# === проверяемые CLI-группы ===
+[lint] clean/header/consumers/anchors/autofix/staged/directory/not-found ✓
+[orient] map/task/consumer/keyword/file/graph ✓
+[sync] first/repeat/dry-run/filter/not-found/path-portability ✓
+[sync-skills] install/repeat/dry-run/filter ✓
+[agents-rules] package rules readable ✓
 # === итог ===
 ✓ 25 passed (14.2s)
 ```
@@ -151,14 +70,11 @@ $ npm run test:cli-e2e
 Альтернативный путь — при падении setup:
 
 ```bash
-$ npm run test:cli-e2e
-
+$ npm run test:e2e
 [build] npm run build
 [build] ✓ dist/gennady.js
-
 [pack] npm pack
-[pack] ✗ npm pack failed: npm ERR! ...
-
+[pack] ✗ npm pack failed: npm ERR!
 # тест падает, cleanup temp-директории
 ```
 
@@ -182,6 +98,8 @@ _Это полный список сущностей модуля `e2e`. Люб�
 <!--SECTION:ENTITY_SURFACES-->
 
 ## 4. Entity Surfaces
+
+<details><summary>Подробности</summary>
 
 ### `E2eContext`
 
@@ -243,11 +161,15 @@ _Это полный список сущностей модуля `e2e`. Люб�
 - **Errors & Degradation:** При отсутствии fixture-директории — `setupE2e` падает с `fixture copy failed`
 - **Consumers:**
   - Internal: `setupE2e` (копирует в temp dir)
-  <!--/SECTION:ENTITY_SURFACES-->
+
+</details>
+<!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### 5.1 Service: `setupE2e`
 
@@ -266,7 +188,7 @@ _Это полный список сущностей модуля `e2e`. Люб�
   - `os.tmpdir()` доступен для записи
 - Postconditions:
   - Возвращает `E2eContext` с готовым `{ cwd, spawn, cleanup }`
-  - `dist/` содержит свежий результат `npm run build:publish` (Vite-бандл + типы + `dist/ai/**`)
+  - `dist/` содержит свежий результат `npm run build` (Vite бандл с чанками)
   - `cwd` указывает на temp-директорию с установленным gennady
   - В temp-директории инициализирован git-репозиторий, все fixture-файлы staged
 - Invariants:
@@ -303,7 +225,9 @@ _Это полный список сущностей модуля `e2e`. Люб�
   - Все файлы с аннотациями `@consumers:` используют `FixtureConsumer`
   - Все файлы с аннотациями `@tasks:` используют `TSK-FIX-01`
   - Fixture-директория исключена из линтинга (`resolveTargets`), форматирования (`.prettierignore`) и type-check (`tsconfig.json`)
-  <!--/SECTION:MODULE_CONTRACTS-->
+
+</details>
+<!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:FILE_STRUCTURE-->
 
@@ -344,6 +268,8 @@ cli/__tests__/e2e/
 
 ## 7. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-014 — Shared Fixture, Sequential (Variant A)
 
 - **Status:** active
@@ -359,12 +285,14 @@ cli/__tests__/e2e/
 
 - **Status:** active
 - **Recorded:** session ModuleDecomposition, cli/e2e
-- **Why:** `npm pack` создаёт `.tgz`, идентичный публикуемому в npm, **при условии предварительного `npm run build:publish`** — `prepublishOnly` на `npm pack` не срабатывает, а один `npm run build` не делает ни `build:types`, ни копирования `ai/**` → `dist/ai/**` (infra-e2e D-IE2E-002). `npm install <путь к .tgz>` симулирует полную установку из реестра. Тесты проверяют ТОЧНО то, что получит пользователь.
-- **Risk accepted:** `npm pack` + `npm install` добавляет ~5s к времени запуска. Смягчается отдельной командой `npm run test:cli-e2e`.
+- **Why:** `npm pack` создаёт `.tgz`, побайтово идентичный публикуемому в npm. `npm install <путь к .tgz>` симулирует полную установку из реестра. Тесты проверяют ТОЧНО то, что получит пользователь.
+- **Risk accepted:** `npm pack` + `npm install` добавляет ~5s к времени запуска. Смягчается отдельной командой `npm run test:e2e`.
 - **Rejected alternatives:**
   - `npm link` — создаёт symlink, не проверяет `package.json#files`
   - Прямой запуск бандла — не тестирует установку и `package.json#bin`
-  <!--/SECTION:MODULE_DECISION_LOG-->
+
+</details>
+<!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
@@ -409,7 +337,7 @@ graph TD
   - `cli/__tests__/e2e/fixtures/src/service.ts`
   - `cli/__tests__/e2e/fixtures/src/helper.ts`
 - **Structural changes:**
-  - `"test:cli-e2e"` script в `package.json`
+  - `"test:e2e"` script в `package.json`
   - `*.tgz` в `.gitignore`
   - `resolveTargets` — добавить `**/__tests__/fixtures/**` в исключения
 - **Stack dependencies:**

@@ -1,0 +1,26 @@
+<!-- source: coding/uikit-component-svelte.xml -->
+<Pattern id="PT_MODULE_CSS_TEMPLATE">
+      <Intent>Canonical structure of a uikit `.module.css` file.</Intent>
+      <Snippet language="css">
+        ```css
+        .btn[data-size='s'] {
+          height: var(--vkui--size_button_small_height--compact);
+        }
+
+        .btn[data-mode='primary'][data-appearance='accent'] {
+          background: var(--vkui--color_background_accent);
+        }
+
+        .btn[data-state='hover'] {
+          /* hover styles via data-state, not :hover pseudo-class */
+        }
+
+        .counter {
+          width: 18px;
+          height: 18px;
+          box-sizing: border-box;
+        }
+        ```
+      </Snippet>
+      <Why>Data-attribute selectors for variant-dependent styles; CSS custom properties for all values; `box-sizing: border-box` on counter; no `:host()`, no hardcoded values, no deep nesting.</Why>
+    </Pattern>

@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Pattern id="AP_SPIN">Re-dispatch with zero edits. Same input → same verdict.</Pattern>

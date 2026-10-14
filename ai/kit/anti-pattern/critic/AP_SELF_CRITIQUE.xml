@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic.directive.xml -->
+<Pattern id="AP_SELF_CRITIQUE">Critiquing artifact yourself. Dispatch isolated critic.</Pattern>

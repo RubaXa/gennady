@@ -1,0 +1,17 @@
+<!-- source: ai/directives/sdd/audit.directive.xml -->
+<Axiom id="AX_RULES_CASCADE_VERIFICATION">
+      For each phase block in Phases: that phase's `Rules:` list must equal what scaffolder would derive now from cascade × THAT PHASE's `Target Files` + `kind` — this re-derivation is irreducibly semantic (it needs the current cascade tiers, not just the declared list), so it stays audit's job.
+
+      Cascade tiers (sources of truth):
+
+      | Tier | Source |
+      |---|---|
+      | traversed-scopes | Cascade Table in `specs/<scope>/<scope>.3-tasks.md` traversed-scope rows |
+      | target-scope | `specs/<scope>/<scope>.3-tasks.md` target-scope row + scope spec Architecture/Rules |
+      | module | `specs/<scope>/<scope>.3-tasks.md` module row + module spec Module Rules Additions |
+      | task | additions appearing as extra entries in a phase's `Rules:` bullet list |
+
+      The transitive `<DependsOn>` closure of the *declared* list is `sdd-check`'s RULES_CASCADE_CLOSURE (`SDD_RULES_CASCADE_UNRESOLVED`, per `AX_MECHANICAL_VIA_SDD_CHECK`) — take that finding as given, do NOT open rule files and walk `<DependsOn>` by hand.
+
+      Plan rows ≠ derived from the cascade tiers → `RULES_CASCADE_MISMATCH` (`MAJOR`, HIGH).
+    </Axiom>

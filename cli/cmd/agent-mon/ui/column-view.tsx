@@ -1,6 +1,6 @@
 // @file: ColumnView ink component — dashboard with provider columns arranged horizontally.
+// @spec: AGENT-MON-CLI-UI
 // @consumers: AgentMonApp
-// @tasks: TSK-46
 
 import { Box, Text } from 'ink';
 import type { ViewModel } from '../state/view-model.type.ts';

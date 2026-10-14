@@ -1,0 +1,21 @@
+<!-- source: coding/sveltekit-rules.xml -->
+<Pattern id="PT_SERVER_LOAD">
+      <Intent>Server-only data fetch with typed return surface.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // src/routes/products/[id]/+page.server.ts
+        import { error } from '@sveltejs/kit';
+        import type { PageServerLoad } from './$types';
+
+        export const load: PageServerLoad = async ({ params, fetch, locals }) => {
+          const response = await fetch(`/api/products/${params.id}`);
+          if (!response.ok) {
+            throw error(404, 'Product not found');
+          }
+          const product = await response.json();
+          return { product, viewer: locals.user };
+        };
+        ```
+      </Snippet>
+      <Why>SDK-provided `fetch` preserves request context; `locals.user` populated by `hooks.server.ts`; `error()` returns the framework's recoverable error shape.</Why>
+    </Pattern>

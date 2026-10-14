@@ -1,0 +1,101 @@
+<PhaseExecutionProtocol keywords="sdd, phase, worker, implementation, verification" type="directive" ver="2.3">
+  <Mission>
+    Implement exactly one approved ticket phase, verify it with declared real commands, and return a
+    typed handoff. The worker never closes the phase or edits the ticket: the thin `sdd-verify` facade
+    owns its append-only attempt evidence from the universal Verify report, while the orchestrator owns
+    the later durable state transition. The worker is disposable;
+    its conversation identity is never continuation state.
+  </Mission>
+  <BeliefState>
+    {{> "axiom/process/ax-stateless-flow"}}
+    {{> "axiom/process/ax-phase-scope-lock"}}
+    {{> "axiom/process/ax-permitted-bash-commands"}}
+    {{> "axiom/process/ax-tool-invocation"}}
+    {{> "axiom/process/ax-verification-before-handoff"}}
+    {{> "axiom/process/ax-handoff-typed"}}
+    {{> "axiom/process/ax-blocker-escalation"}}
+    {{> "axiom/process/ax-blocker-resolution-trail"}}
+    {{> "axiom/process/ax-task-resolution"}}
+    {{> "axiom/coding/ax-file-header-task-traceability"}}
+    {{> "axiom/coding/ax-file-header-append-only"}}
+  </BeliefState>
+  <Contracts>{{> "contract/process/handoff-format"}}{{> "contract/process/phase-block-format"}}{{> "contract/process/blocker-format"}}{{> "contract/process/return-summary-format"}}</Contracts>
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_BLOCKED` | A trigger under `AX_BLOCKER_ESCALATION` fires: a rule file cited in phase Rules is missing, a prior-phase Handoff promised an artifact that doesn't exist, the spec contradicts itself or the ticket, the phase contract requires touching outside Target Files, a declared `Runtime Backing` cannot be honored in this environment, or a verification command cannot execute |
+    | `H_OUT_OF_PHASE_WRITE` | Per `AX_PHASE_SCOPE_LOCK`, the worker creates, edits, or deletes anything outside its declared `Target Files`/`Deleted Files`, or manually mutates the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line instead of leaving SDD evidence persistence to the exact `sdd-verify --task ... --phase ...` facade |
+  </HaltConditions>
+  <ExecutionPlan>
+    <Step id="STEP_1_ORIENT">
+      <Action>
+        Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution
+        Log facts, and Git evidence. Verify targets still match the ticket. Ask the orchestrator for a
+        missing required excerpt; do not explore unrelated repository areas or inspect CLI source.
+        Reconstruct state from these durable inputs per `AX_STATELESS_FLOW` and enforce the declared
+        phase boundary per `AX_PHASE_SCOPE_LOCK`: a phase worker owns failures only inside its own
+        Target Files — a repo-wide gate failing inside ANOTHER phase's Target Files is not this
+        phase's failure to fix, while every other failure is, including a file this phase never opened
+        but whose build its own diff broke. When escalation is warranted instead — per
+        `AX_BLOCKER_ESCALATION` — halt `H_BLOCKED` with typed evidence for the orchestrator; never
+        improvise past it.
+        For every existing Target File or Deleted File call ownershipQuery and consume the shared
+        resolver result per `AX_TASK_RESOLUTION`. The selected ticket must appear as the applicable
+        `planned` or `active` relation and its `semantic-owner` must match the referenced spec; a
+        `blocked` relation stops with `H_BLOCKED`, while `history` alone grants no write authority.
+        A not-yet-created exact target takes its owner Spec ID from the ticket's resolved spec.
+        <ToolCall owner="phase-agent" result="ownershipQuery">npx gennady orient --file &lt;existing-target&gt; --json</ToolCall>
+        Inputs &lt;existing-target&gt;: one exact existing Target File or Deleted File. Use ownershipQuery.
+      </Action>
+    </Step>
+    <Step id="STEP_2_IMPLEMENT">
+      <Action>
+        Implement the smallest change satisfying the phase and its referenced requirements. Stay
+        inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
+        meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+        Create and preserve V2 file headers per `AX_FILE_HEADER_TASK_TRACEABILITY` and
+        `AX_FILE_HEADER_APPEND_ONLY`: semantic ownership is `@spec`; never copy ticket history into
+        the source header.
+        The phase protocol defines the permitted command list per `AX_PERMITTED_BASH_COMMANDS`; every
+        bash invocation while implementing stays within it.
+        Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per
+        intro/decision/tried/discovery/insight, never batched from memory afterward:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; line "&lt;event&gt;" --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;event&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the exact
+        event line per its token's grammar, this phase's id.
+        When stuck (`AX_BLOCKER_ESCALATION`'s triggers — a missing rule file, a broken Handoff
+        promise, a self-contradicting spec, a Target Files boundary, an unhonorable Runtime
+        Backing, a verification command that cannot run), write the reason/axiom/unblock JSON keys
+        with the file-write tool to `&lt;payload-path&gt;`, then open `BLOCKER_FORMAT` and stop:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; blocker --payload-file &lt;payload-path&gt; --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;payload-path&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the
+        just-written `.claude/tmp/<task-id>-<phase-id>-log.json` payload, this phase's id. Once the
+        cause is actually gone, close it per `AX_BLOCKER_RESOLUTION_TRAIL` (`sdd-log resolved`,
+        never a manual edit).
+      </Action>
+    </Step>
+    <Step id="STEP_3_VERIFY">
+      <Action>
+        Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands, staying
+        within `AX_PERMITTED_BASH_COMMANDS`. Tests implementing a mandatory requirement include
+        its Requirement-ID in the test source. Implement applicable negative/failure cases, not only
+        the happy path. Report command, exit status, and concise result without suppressing errors.
+        A successful CLI-owned receipt is evidence to return, not permission to edit phase status,
+        DONE, or Handoff. If the tool rejects the transition, return its exact diagnostic to the
+        orchestrator; never inspect Gennady source or bundled chunks to reinterpret it. A stop that
+        is NOT a simple retry-and-continue routes through `AX_BLOCKER_ESCALATION`'s typed outcome as
+        `RETURN_SUMMARY_FORMAT`, evidence attached — never silently downgraded to a plain diagnostic.
+      </Action>
+    </Step>
+    <Step id="STEP_4_HANDOFF">
+      <Action>
+        Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results,
+        deviations, and the next declared phase. Return the payload in the response only. Do not call
+        `sdd-log`, manually edit the ticket, remove its placeholders, or mark any checkbox. The
+        orchestrator validates the payload against Git plus the CLI-owned receipt and performs the
+        single `sdd-log complete` transition. Do not write JSON checkpoints, worker IDs, session keys,
+        or NEXT state.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</PhaseExecutionProtocol>

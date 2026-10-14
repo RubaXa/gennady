@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_NAMESPACE_NAMING">
+      Single namespace for grepability. Module-wide: `<name>` / `<Name>`. Files: `<name>-*.<ext>`. Types/classes/constants: `<Name>*`. Platform-specific: `<platform>-<name>-*.<ext>`, `<Platform><Name>*`. Goal: `rg <name>` or `rg <platform>-<name>` finds all related code.
+    </Axiom>

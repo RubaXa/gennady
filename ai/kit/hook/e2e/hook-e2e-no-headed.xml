@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Hook id="HOOK_E2E_NO_HEADED">
+      <Purpose>No committed configuration runs Playwright in headed mode.</Purpose>
+      <Command>find . \( -name 'playwright.config.*' -o -name '*.spec.ts' -o -name '*.test.ts' \) -not -path '*/node_modules/*' -print0 | xargs -0 grep -nE 'headless\s*:\s*false|--headed' || true</Command>
+      <Expected>Empty output.</Expected>
+    </Hook>

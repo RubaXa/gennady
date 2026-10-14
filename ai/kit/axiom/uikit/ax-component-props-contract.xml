@@ -1,0 +1,20 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Axiom id="AX_COMPONENT_PROPS_CONTRACT">
+A uikit component receives its variant configuration through Svelte 5 `$props()` destructuring. The prop surface matches the spec's Variants table columns:
+
+```typescript
+let {
+    appearance = 'accent',
+    mode = 'primary',
+    size = 's',
+    state = 'normal',
+    icon = false,
+    label = '',
+    counter = undefined,
+    indicator = false,
+    disabled = false,
+}: Props = $props();
+```
+
+The `disabled` prop takes precedence over `state` — when `disabled={true}`, `data-state` is `disabled` regardless of the `state` prop value. The component derives `aria-disabled` and `tabindex` from `disabled`.
+</Axiom>

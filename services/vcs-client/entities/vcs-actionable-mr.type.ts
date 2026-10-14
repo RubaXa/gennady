@@ -1,6 +1,6 @@
 // @file: Normalized "merge request awaiting my reaction" shape for the inbox port.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-75
 
 /**
  * @purpose My relationship to a merge request — the axis the inbox groups by.
@@ -26,6 +26,22 @@ export type VcsActionableEvent =
   | 'unmergeable'
   | 'merge_train_removed'
   | 'review_submitted';
+
+/** @purpose Independent inclusive signals explaining why one MR is discovered. */
+export type VcsActionableParticipation = {
+  /** @purpose Operator authored the MR */
+  author: boolean;
+  /** @purpose Operator is a requested reviewer */
+  reviewer: boolean;
+  /** @purpose Operator is assigned to the MR */
+  assignee: boolean;
+  /** @purpose Operator was mentioned or directly addressed */
+  mentioned: boolean;
+  /** @purpose Operator appears in provider participants */
+  commented: boolean;
+  /** @purpose Operator approved the MR */
+  approved: boolean;
+};
 
 /**
  * @purpose A merge request that requires the authenticated user's attention,
@@ -62,6 +78,14 @@ export type VcsActionableMr = {
   events: VcsActionableEvent[];
   /** @purpose Whether I was directly addressed in a discussion (sorts to the top) */
   directlyAddressed: boolean;
+  /** @purpose Every independent discovery reason retained after role placement */
+  participation?: VcsActionableParticipation;
   /** @purpose GitLab todo IDs linked to this MR from the todo source | @invariant Empty for connection-only sources (reviewRequested/authored) */
   todoIds: string[];
+  /** @purpose Head commit SHA from GraphQL | @invariant May be absent for poll-only tier; filled by detail tier via getByIid */
+  headSha?: string;
+  /** @purpose CI pipeline status from GraphQL headPipeline | @invariant May be absent for poll-only; filled by detail tier */
+  pipelineStatus?: string;
+  /** @purpose Number of required approvals from project settings | @invariant May be absent when not exposed by VCS */
+  approvalsRequired?: number;
 };

@@ -1,4 +1,5 @@
 // @file: vcs-todo command help output
+// @spec: CLI
 // @consumers: help command
 
 /**

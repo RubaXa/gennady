@@ -1,6 +1,6 @@
 // @file: Unit tests for VcsGithubClient — composition and auth.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-30
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +17,7 @@ describe('VcsGithubClient', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('has MergeDiscussions port', () => {
+  it('has defined MergeDiscussions (optional port)', () => {
     globalThis.fetch = mock.fn(
       async () => new Response('[]', { status: 200 })
     ) as unknown as typeof fetch;

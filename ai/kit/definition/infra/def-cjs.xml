@@ -1,0 +1,2 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Definition id="DEF_CJS">CommonJS. Default when `"type"` is absent or `"commonjs"`. Syntax: `require`/`module.exports`. Synchronous resolution.</Definition>

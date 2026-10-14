@@ -1,6 +1,6 @@
 // @file: Public API surface for Claude provider — re-exports provider class and utilities
+// @spec: AGENT-MON
 // @consumers: agent-mon barrel, monitor
-// @tasks: TSK-39
 
 export { ClaudeProvider } from './claude-provider.ts';
 export { psInfo, parseClaudeArgs } from './ps.ts';

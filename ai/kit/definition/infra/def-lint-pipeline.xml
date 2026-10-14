@@ -1,0 +1,4 @@
+<!-- source: infra/eslint-setup.xml -->
+<Definition id="DEF_LINT_PIPELINE">
+      Mechanical sequence: `prettier --write .` then `eslint --fix .`. A clean run = both commands exit 0. Because every rule is `'error'`, exit 0 means zero findings.
+    </Definition>

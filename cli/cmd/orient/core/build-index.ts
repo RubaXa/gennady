@@ -1,6 +1,6 @@
 // @file: Build inverted word index from file headers and entity DBC contracts.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { FileWordRef, ScannedFile } from '../orient.types.ts';
 

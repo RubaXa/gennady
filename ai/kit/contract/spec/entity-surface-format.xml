@@ -1,0 +1,53 @@
+<!-- source: sdd/module-decomposition.directive.xml -->
+<Contract id="ENTITY_SURFACE_FORMAT">
+      ```markdown
+      ### `<EntityName>`
+      - **Type:** Function | Port | Adapter | Entity | Value Object | Service | Component | Command | Query | Event
+      - **Purpose:** <1 sentence>
+      - **Presentation-Only:** <omit unless claiming the exemption — see `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`> yes — props in, markup out, zero decisions; no Contract section follows
+      - **Public Properties:** <list or N/A>
+      - **Public Operations:** <intent-level list, no language signatures>
+      - **Lifecycle:** <who creates, who owns, when terminates>
+      - **Events Emitted:** <list or N/A>
+      - **Errors & Degradation:** <which errors, by what mechanism (throw | Result | event | …), and
+        who owns handling/display — e.g. "`ValidationError` via `Result`, surfaced by
+        `OrderController`"; not a generic "handles errors gracefully">
+      - **Consumers:**
+        - Internal: `<path/to/file.ts>` or `<OtherEntityName>`
+        - External: <CLI / External API / Browser / OS Event Bus / ...>
+      - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [<ACR>-DL-N — only when a Decision Log entry actually backs the reason]
+      ```
+
+      **Usage Waiver** (`AX_USAGE_WAIVER_DISCIPLINE`, gennady yagni): same rule as `DBC_PORT_FORMAT`
+      (`dbc-contracts.xml`) — a `<2`-usage entity is a YAGNI finding unless this field carries a real
+      reason. Cite an `<ACR>-DL-N` only when the reason IS a Decision Log entry (a genuine, non-obvious
+      call); when cited, it must have a heading in some Decision Log. Set by the agent, never the
+      operator; omit entirely once usage clears the threshold. Public API for a named external
+      consumer uses `- **Usage Waiver (external: <named consumer>):** <reason>` — the rule still
+      applies, the label is just mandatory rather than optional for that case.
+
+      **Presentation-Only** (`AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`): the ONLY way an entity skips
+      the Module Contracts DbC block — contract obligation follows behavior, not `Type`, so a
+      `Component` with local state, a lifecycle, error handling, or user interaction still needs one.
+      Present this field ONLY to claim the exemption; an entity with neither this field nor a
+      Contract block downstream is a spec omission, surfaced before the STEP_4 Approval Check, not a
+      silently accepted style choice.
+
+      **Lifecycle state diagram — mandatory once an entity's Lifecycle carries ≥3 distinct
+      states/transitions** (not just create→terminate — a genuine state machine: draft/pending/
+      active/archived and the like). A lifecycle that shape is a relational structure, not a
+      one-line fact, and stays text only below that threshold. Add it directly under the
+      **Lifecycle** bullet:
+
+      ```markdown
+      [draft] ──submit──▶ [pending] ──approve──▶ [active]
+                              │
+                            reject ──▶ [closed]
+      ```
+
+      A 2-state lifecycle (created → terminated, nothing else) stays the one-line bullet — a
+      diagram of one transition is noise, not clarity. This ASCII form is shown in chat during the
+      STEP_3_ENTITY_SURFACE step, at the point that entity's lifecycle is confirmed
+      (`AX_CHAT_BEFORE_SPEC`); the mermaid `stateDiagram-v2` version is the same shape converted at
+      write time, never a fresh diagram invented then.
+    </Contract>

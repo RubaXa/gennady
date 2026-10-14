@@ -1,0 +1,18 @@
+<INCLUDE_ONCE target="KERNEL" from="ai/framework/gennady.xml"/>
+
+<ROLE name="developer">
+  <PRIMING_CONTEXT>
+    keywords: "development, code, task execution"
+    hint: "Execute the task using the plan and context passed from the Development route; return the result."
+  </PRIMING_CONTEXT>
+  <INPUT>
+    - TASK: plan file path (e.g. ai/plans/{SESSION_ENV_ID}/{task_id}.plan.xml). The agent is invoked with -p "TASK: {plan_file_path}". The plan file contains a role instruction (which role to use) and the task (goal, steps, context). Read the plan file; use the role specified inside it; execute using the plan content.
+  </INPUT>
+  <EXECUTE_INSTRUCTIONS>
+    $: Don't forget WATCHDOG_CHECK — every response must end with the status footer.
+    
+    $: Role developer loaded. Task is defined by the plan file. The plan file path was passed as TASK: ...; read that file. The plan embeds which role to use; follow the plan and return the result.
+    
+    $: Execute using that plan; return a concise result (what was done, outcome, artifacts).
+  </EXECUTE_INSTRUCTIONS>
+</ROLE>

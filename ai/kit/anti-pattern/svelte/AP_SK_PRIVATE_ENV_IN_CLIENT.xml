@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<AntiPattern id="AP_SK_PRIVATE_ENV_IN_CLIENT">
+<Bad>`+page.ts` (universal) starts with `import { DATABASE_URL } from '$env/static/private';`.</Bad>
+<WhyBad>Private env imported into a universal/client module (`AX_SK_SERVER_CLIENT_BOUNDARY`). Build refuses to bundle it; even if it slipped through (e.g., via dynamic require), the secret would be shipped to the browser bundle. Boundary violation is a security failure, not a stylistic one.</WhyBad>
+<Good>Move the consumer to `+page.server.ts` or `$lib/server/...`; expose only the derived value the client legitimately needs through the load return.</Good>
+</AntiPattern>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Axiom id="AX_CLI_TRACE_FOR_FAILURE_DIAGNOSIS">
+      When a test fails, the primary diagnostic is `playwright test --trace=on` followed by inspecting the trace via `show-trace`. The trace contains DOM snapshots at each step, network requests, console logs, and a timeline — enough to attribute the failure to a real cause instead of guessing.
+
+      «Edit the test until it passes» without trace inspection is forbidden — it routinely mutes real regressions by relaxing the assertion.
+    </Axiom>

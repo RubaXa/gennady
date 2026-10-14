@@ -1,6 +1,6 @@
 // @file: Unit tests for classifyMrStage / flattenNotes.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: N/A
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -56,6 +56,14 @@ describe('classifyMrStage', () => {
     const notes = [note('alice', '2026-06-05', true)];
     // only a system note from others → no real activity → reviewer still owes review
     assert.strictEqual(classifyMrStage(notes, ME, 'reviewer'), 'review_needed');
+  });
+
+  it('system note "added commits" after my last note → reply_needed', () => {
+    const notes = [
+      note('me', '2026-06-01', false, 'LGTM'),
+      note('svc', '2026-06-05', true, 'added 3 commits'),
+    ];
+    assert.strictEqual(classifyMrStage(notes, ME, 'reviewer'), 'reply_needed');
   });
 });
 

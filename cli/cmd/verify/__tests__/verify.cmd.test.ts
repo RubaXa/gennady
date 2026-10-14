@@ -1,302 +1,562 @@
-// @file: Unit tests for the verify command — exit codes, fatal config, qualified selectors, merge.
+// @file: UV-11 invocation, report, no-spawn planning and real Node repair contracts.
+// @spec: CLI-VERIFY
 // @consumers: CI
-// @tasks: TSK-96
 
-import { describe, it, mock } from 'node:test';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { describe, it } from 'node:test';
+import { classifyPhaseFacts } from '../../../../shared/rules/phase-facts.ts';
+import { createRuleRegistry } from '../../../../shared/rules/rule-registry.ts';
+import { createRuleSnapshot } from '../../../../shared/rules/rule-snapshot.ts';
+import type { VerifyRunReport } from '../../../../shared/verify/model/verify-report.type.ts';
+import { renderVerifyJson } from '../../../../shared/verify/reporting/json-reporter.ts';
+import { renderVerifyText } from '../../../../shared/verify/reporting/text-reporter.ts';
+import { runVerifyCommand } from '../verify.cmd.ts';
+import { parseVerifyInvocation } from '../verify.types.ts';
+import type { RemotePipelineObserver } from '../../../../shared/verify/execution/remote-watcher.ts';
 
-const { run } = await import('../verify.cmd.ts');
+const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 
-/** @purpose Build argv the way node delivers it: [node, script, command, ...rest]. */
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady.ts', 'verify', ...rest];
 }
 
-/** @purpose Create a temp fixture dir with given files, run fn, clean up. */
-async function withFixture<T>(
-  files: Record<string, string>,
-  fn: (dir: string) => Promise<T>
-): Promise<T> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-cmd-'));
-  try {
-    for (const [rel, content] of Object.entries(files)) {
-      const target = path.join(dir, rel);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, content);
-    }
-    return await fn(dir);
-  } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
+function git(root: string, ...args: string[]): string {
+  return execFileSync(
+    'git',
+    ['-C', root, '-c', 'user.email=verify@test', '-c', 'user.name=verify', ...args],
+    { encoding: 'utf8' }
+  ).trim();
 }
 
-/** @purpose Capture console output produced by a callback. */
-async function captureLog<T>(
-  fn: () => Promise<T>
-): Promise<{ value: T; log: string; err: string }> {
-  const out: string[] = [];
-  const errs: string[] = [];
-  const logMock = mock.method(console, 'log', (...parts: unknown[]) => out.push(parts.join(' ')));
-  const infoMock = mock.method(console, 'info', (...parts: unknown[]) => out.push(parts.join(' ')));
-  const errMock = mock.method(console, 'error', (...parts: unknown[]) =>
-    errs.push(parts.join(' '))
+function createNodeRepo(options: { readonly sentinelTypecheck?: boolean } = {}): string {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'verify-command-'));
+  const gennady = path.join(REPO_ROOT, 'cli', 'gennady.ts');
+  fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'));
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules\n');
+  fs.writeFileSync(
+    path.join(root, 'package.json'),
+    JSON.stringify({
+      name: 'verify-fixture',
+      private: true,
+      scripts: {
+        'type-check': options.sentinelTypecheck
+          ? "node -e \"require('node:fs').writeFileSync('spawned','yes')\""
+          : 'node -e ""',
+        'lint:fix': `node ${gennady} lint --autofix`,
+        lint: `node ${gennady} lint src.ts`,
+        'format:fix': 'prettier --write',
+        format: 'prettier --check src.ts',
+      },
+    })
   );
-  try {
-    const value = await fn();
-    return { value, log: out.join('\n'), err: errs.join('\n') };
-  } finally {
-    logMock.mock.restore();
-    infoMock.mock.restore();
-    errMock.mock.restore();
-  }
+  fs.writeFileSync(
+    path.join(root, 'src.ts'),
+    [
+      '// @file: Deliberately unformatted target used by the verify repair integration.',
+      '// @consumers: N/A',
+      '',
+      '/** @purpose Exercise bounded formatter repair. */',
+      'export const verifyFixture={value:1}',
+      '',
+    ].join('\n')
+  );
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, 'add', '.gitignore', 'package.json', 'src.ts');
+  git(root, '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'fixture');
+  return fs.realpathSync(root);
 }
 
-describe('verify command', () => {
-  it('exits 1, not 5, on an unrecognized repository: anystack matches everything', async () => {
-    // anystack is active in every repository, so the active set is never empty by itself. The
-    // repository is still not verified — ZERO_GATES — but the verdict is a failed run, not a
-    // missing plugin, and the message carries the guidance exit 5 used to give.
-    await withFixture({ 'README.md': 'nothing here' }, async (dir) => {
-      const { value } = await captureLog(() => run(argv(`--root=${dir}`)));
-      assert.equal(value, 1);
+function manualReport(
+  root: string,
+  rules: VerifyRunReport['rules'] = {
+    digest: 'sha256:empty',
+    required: [],
+    suggested: [],
+    skipped: [],
+  }
+): VerifyRunReport {
+  return {
+    context: {
+      request: { root, phase: 'code', scope: { mode: 'all', files: [] } },
+      plugins: ['node'],
+      frameworks: [],
+      headSha: 'a'.repeat(40),
+      rules,
+    },
+    readiness: {
+      status: 'BLOCKED',
+      entries: [
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'ready',
+          status: 'READY',
+          message: 'ready',
+        },
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'degraded',
+          status: 'DEGRADED',
+          message: 'optional tool missing',
+          fix: 'install optional tool',
+        },
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'waiver',
+          stepId: 'node:lint',
+          disposition: 'waived',
+          status: 'WAIVED',
+          message: 'disabled for migration',
+          fix: 'restore lint',
+        },
+        {
+          plugin: 'node',
+          phase: 'code',
+          requirementId: 'blocked',
+          status: 'BLOCKED',
+          message: 'token=not-public',
+          fix: 'set token=not-public',
+          policySource: `${root}/gennady.yaml`,
+          policyReason: 'password=not-public',
+          policyReasonSource: `${root}/gennady.yaml`,
+        },
+      ],
+    },
+    plan: {
+      phase: 'code',
+      trust: { level: 'local-runner', source: 'fixture:selector' },
+      steps: [
+        {
+          id: 'node:lint',
+          plugin: 'node',
+          tags: ['code'],
+          needs: [],
+          executor: 'local',
+          effect: 'observe',
+          command: {
+            argv: ['tool', '--token', 'not-public'],
+            cwd: root,
+            env: { API_KEY: 'not-public' },
+            timeoutMs: 1000,
+          },
+          requires: [],
+          envFail: [
+            {
+              outputMatches: `${root}/cache token=not-public`,
+              hint: `remove password=not-public from ${root}/gennady.yaml`,
+              source: `${root}/gennady.yaml`,
+            },
+          ],
+          timeoutMs: 1000,
+          onFailure: 'stop-phase',
+        },
+      ],
+    },
+    results: [
+      {
+        stepId: 'node:lint',
+        plugin: 'node',
+        status: 'fail',
+        exitCode: 1,
+        durationMs: 2,
+        output: `${root}/src.ts token=not-public`,
+      },
+    ],
+    mutations: [{ path: 'src.ts', stepId: 'node:lint', kind: 'modified', allowed: true }],
+    evidence: [
+      {
+        kind: 'diff',
+        identity: `diff:${root}/src.ts`,
+        summary: `${root}/src.ts password=not-public`,
+      },
+    ],
+    rules,
+    verdict: 'blocked',
+  };
+}
+
+function frozenRuleSnapshot(body = '\nExact dispatched prompt.\n') {
+  const registry = createRuleRegistry([
+    {
+      source: 'ai/rules/typescript.prompt',
+      content: [
+        '<Rule rule-id="typescript" rule-schema="1" type="required" ver="1">',
+        '<Meta>',
+        '  <When language="typescript"/>',
+        '</Meta>',
+        body,
+        '</Rule>',
+        '',
+      ].join('\n'),
+    },
+  ]);
+  const facts = classifyPhaseFacts({ targetFiles: ['src.ts'], plannedFiles: [] });
+  return createRuleSnapshot(registry, facts);
+}
+
+describe('parseVerifyInvocation', () => {
+  it('accepts target execution with text default and explicit JSON', () => {
+    assert.deepStrictEqual(parseVerifyInvocation(argv('--phase=code')), {
+      ok: true,
+      invocation: { phase: 'code', planOnly: false, format: 'text' },
+    });
+    assert.deepStrictEqual(parseVerifyInvocation(argv('--phase', 'unit', '--json')), {
+      ok: true,
+      invocation: { phase: 'unit', planOnly: false, format: 'json' },
     });
   });
 
-  it('exits 5 when the named stack does not recognize the repository', async () => {
-    await withFixture({ 'README.md': 'nothing here' }, async (dir) => {
-      const { value } = await captureLog(() => run(argv(`--root=${dir}`, '--stack=golang')));
-      assert.equal(value, 5);
+  it('keeps --plan --json compatibility read-only and defaults only it to full', () => {
+    assert.deepStrictEqual(parseVerifyInvocation(argv('--plan', '--json')), {
+      ok: true,
+      invocation: { phase: 'full', planOnly: true, format: 'json' },
     });
   });
 
-  it('exits 4 on an unknown --stack id', async () => {
-    await withFixture({ 'package.json': '{"name":"x","scripts":{"test":"true"}}' }, async (dir) => {
-      const { value } = await captureLog(() => run(argv(`--root=${dir}`, '--stack=rust')));
-      assert.equal(value, 4);
-    });
+  it('rejects missing phase, plan without JSON, duplicates, paths and unknown flags', () => {
+    for (const args of [
+      [],
+      ['--json'],
+      ['--plan'],
+      ['--phase=code', '--phase=unit'],
+      ['--phase=code', 'src.ts'],
+      ['--phase=code', '--fix'],
+      ['--phase=code', '--task=ticket.md'],
+      ['--phase=code', '--sdd-phase=P1'],
+      ['--phase=code', '--task=ticket.md', '--sdd-phase=P1'],
+    ]) {
+      const parsed = parseVerifyInvocation(argv(...args));
+      assert.strictEqual(parsed.ok, false, args.join(' '));
+      if (!parsed.ok) assert.match(parsed.message, /ERR_CLI_VERIFY_BAD_INVOCATION/);
+    }
+  });
+});
+
+describe('Verify report projection', () => {
+  it('is deterministic, versioned and strips absolute paths, argv/env values and common secrets', () => {
+    const root = '/private/tmp/private-repo';
+    const report = manualReport(root);
+    const first = renderVerifyJson(report, root);
+    const second = renderVerifyJson(report, root);
+    assert.strictEqual(first, second);
+    const document = JSON.parse(first);
+    assert.strictEqual(document.schemaVersion, 1);
+    assert.strictEqual(document.kind, 'verify-run-report');
+    assert.strictEqual(document.context.request.root, '.');
+    assert.ok(Array.isArray(document.evidence));
+    assert.strictEqual(document.evidence[0].kind, 'diff');
+    assert.match(document.plan.steps[0].command.identity, /^sha256:/);
+    assert.deepStrictEqual(document.plan.steps[0].command.environmentKeys, ['API_KEY']);
+    assert.doesNotMatch(first, new RegExp(root));
+    assert.doesNotMatch(first, /not-public/);
+    assert.doesNotMatch(first, /--token/);
   });
 
-  it('exits 4 when --only names a gate absent from the plan', async () => {
-    await withFixture({ 'package.json': '{"name":"x","scripts":{"test":"true"}}' }, async (dir) => {
-      const { value } = await captureLog(() => run(argv(`--root=${dir}`, '--only=vet')));
-      assert.equal(value, 4);
-    });
+  it('allowlists rule metadata without exposing or sizing output by exact prompt bodies', () => {
+    const root = '/private/tmp/private-repo';
+    const secret = 'RULE_BODY_SECRET_7f15';
+    const rules = frozenRuleSnapshot(`\n${secret}${'x'.repeat(256 * 1024)}\n`);
+    const json = renderVerifyJson(manualReport(root, rules), root);
+    const text = renderVerifyText(manualReport(root, rules), root);
+    const document = JSON.parse(json);
+
+    assert.strictEqual(document.rules.required[0].id, 'typescript');
+    assert.deepEqual(Object.keys(document.rules.required[0]).sort(), [
+      'id',
+      'provenance',
+      'reason',
+    ]);
+    assert.doesNotMatch(json, new RegExp(secret));
+    assert.doesNotMatch(text, new RegExp(secret));
+    assert.ok(Buffer.byteLength(json, 'utf8') < 16 * 1024);
+    assert.ok(Buffer.byteLength(text, 'utf8') < 8 * 1024);
   });
 
-  it('invalid config stops the command before any gate — exit 4 with the error list', async () => {
-    await withFixture(
-      {
-        'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}',
-        'gennady.yaml': 'stack:\n  node:\n    skipGate: [test]\n',
-      },
-      async (dir) => {
-        const { value, err } = await captureLog(() => run(argv(`--root=${dir}`)));
+  it('text shows all non-ready instructions, step outcome, mutation, evidence and final verdict', () => {
+    const root = '/private/tmp/private-repo';
+    const text = renderVerifyText(manualReport(root), root);
+    assert.match(text, /readiness=BLOCKED/);
+    assert.match(text, /DEGRADED node: optional tool missing/);
+    assert.match(text, /WAIVED node node:lint: disabled for migration/);
+    assert.match(text, /BLOCKED node: token=\[redacted\]/);
+    assert.match(text, /fix: install optional tool/);
+    assert.match(text, /FAIL node:lint/);
+    assert.match(text, /MODIFIED src\.ts by=node:lint allowed=true/);
+    assert.match(text, /diff diff:\.\/src\.ts/);
+    assert.match(text, /VERDICT BLOCKED/);
+  });
+});
 
-        // The failing test script proves nothing ran: exit is 4, not 1.
-        assert.equal(value, 4);
-        assert.match(err, /CONFIG_ERROR/);
-        assert.match(err, /did you mean "skipGates"/);
+describe('runVerifyCommand target integration', () => {
+  it('executes declared phase=ci through exact-SHA remote proof and no local command', async () => {
+    const root = createNodeRepo();
+    try {
+      const head = git(root, 'rev-parse', 'HEAD');
+      const calls: string[] = [];
+      const remoteObserver: RemotePipelineObserver = {
+        provider: 'gitlab',
+        project: 'group/repo',
+        pipeline: {
+          async hasCommit(query) {
+            calls.push(`commit:${query.sha}`);
+            return true;
+          },
+          async findPipelinesBySha(query) {
+            calls.push(`find:${query.sha}`);
+            return [
+              {
+                id: '123',
+                sha: query.sha,
+                status: 'success',
+                definitionId: 'source:push',
+              },
+            ];
+          },
+          async getPipeline() {
+            throw new Error('terminal discovery must not require an extra latest lookup');
+          },
+          async getPipelineJobs(query) {
+            calls.push(`jobs:${query.pipelineId}`);
+            return [
+              {
+                id: '1',
+                name: 'test',
+                status: 'success',
+                stage: 'test',
+                ref: 'main',
+                webUrl: '',
+              },
+            ];
+          },
+          async getJobLog() {
+            throw new Error('successful job logs are not fetched');
+          },
+        },
+      };
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'ci', planOnly: false, format: 'json' },
+        { homeDirectory: root, remoteObserver }
+      );
+      assert.equal(result.exitCode, 0, result.stderr);
+      assert.equal(result.report?.verdict, 'pass');
+      assert.equal(result.report?.plan.trust.level, 'remote-provider');
+      assert.equal(result.report?.results[0]?.stepId, 'node:remote-ci');
+      assert.equal(result.report?.results[0]?.status, 'pass');
+      assert.equal(result.report?.remote?.pipelineId, '123');
+      assert.equal(result.report?.remote?.sourceSha, head);
+      assert.deepEqual(calls, [`commit:${head}`, `find:${head}`, 'jobs:123']);
+      assert.doesNotMatch(result.stdout, /PRIVATE-TOKEN|GITHUB_TOKEN/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps ci BLOCKED before spawn when provider credentials/capability are unavailable', async () => {
+    const root = createNodeRepo();
+    try {
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'ci', planOnly: false, format: 'text' },
+        {
+          homeDirectory: root,
+          resolveRemoteObserver: () => ({
+            ok: false,
+            message: 'provider credentials unavailable',
+            fix: 'configure read-only credentials',
+          }),
+        }
+      );
+      assert.equal(result.exitCode, 1);
+      assert.equal(result.report?.verdict, 'blocked');
+      assert.equal(result.report?.results.length, 0);
+      assert.match(result.stdout, /provider credentials unavailable/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+  it('passes one caller-frozen rule snapshot into the report without recomputation', async () => {
+    const root = createNodeRepo();
+    try {
+      const rules = frozenRuleSnapshot();
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: true, format: 'json' },
+        {
+          homeDirectory: root,
+          request: { scope: { mode: 'files', files: ['src.ts'] }, rules },
+        }
+      );
+
+      assert.strictEqual(result.exitCode, 0, result.stderr);
+      assert.strictEqual(result.report?.rules, rules);
+      assert.strictEqual(result.report?.context.rules, rules);
+      assert.equal(result.report?.rules.required[0]?.id, 'typescript');
+      assert.equal(
+        (result.report?.rules.required[0] as { readonly body?: string } | undefined)?.body,
+        '\n\nExact dispatched prompt.\n\n'
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('--plan builds a full target report but never spawns or mutates', async () => {
+    const root = createNodeRepo({ sentinelTypecheck: true });
+    try {
+      const before = fs.readFileSync(path.join(root, 'src.ts'), 'utf8');
+      fs.writeFileSync(path.join(root, 'notes.txt'), 'not a Node repair target\n');
+      fs.writeFileSync(path.join(root, 'deleted.ts'), 'export const deleted = true;\n');
+      git(root, 'add', 'deleted.ts');
+      git(root, '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'add deleted source');
+      fs.rmSync(path.join(root, 'deleted.ts'));
+      fs.symlinkSync('src.ts', path.join(root, 'linked.ts'));
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: true, format: 'json' },
+        { homeDirectory: root }
+      );
+      assert.strictEqual(result.exitCode, 0, result.stderr);
+      const document = JSON.parse(result.stdout);
+      assert.strictEqual(document.kind, 'plan');
+      assert.strictEqual(document.evidence, false);
+      assert.ok(document.plan.steps.some((step: { id: string }) => step.id === 'node:lint-fix'));
+      for (const step of result.report?.plan.steps.filter(
+        (candidate) => candidate.effect === 'repair'
+      ) ?? []) {
+        assert.deepStrictEqual(step.command?.argv.slice(-2), ['--', 'src.ts']);
       }
-    );
+      assert.deepStrictEqual(document.results, []);
+      assert.equal('schema' in (result.report?.rules ?? {}), false);
+      assert.strictEqual(result.report?.rules, result.report?.context.rules);
+      assert.strictEqual(fs.existsSync(path.join(root, 'spawned')), false);
+      assert.strictEqual(fs.readFileSync(path.join(root, 'src.ts'), 'utf8'), before);
+      assert.strictEqual(
+        fs.readFileSync(path.join(root, 'notes.txt'), 'utf8'),
+        'not a Node repair target\n'
+      );
+      assert.strictEqual(fs.readlinkSync(path.join(root, 'linked.ts')), 'src.ts');
+      assert.deepStrictEqual(
+        fs.readdirSync(path.join(root, '.git')).filter((name) => name.startsWith('gennady-')),
+        []
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('--plan --json emits the runs without executing any gate', async () => {
-    await withFixture(
-      { 'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}' },
-      async (dir) => {
-        const { value, log } = await captureLog(() =>
-          run(argv(`--root=${dir}`, '--plan', '--json'))
-        );
-
-        assert.equal(value, 0);
-        const parsed = JSON.parse(log) as { runs: Array<{ detection: { stack: string } }> };
-        assert.equal(parsed.runs[0]?.detection.stack, 'node');
+  it('runs a real Node code slice, applies bounded repair and reports it in text', async () => {
+    const root = createNodeRepo();
+    try {
+      const standaloneTicket = path.join(root, 'standalone.task.md');
+      const ticketBytes = Buffer.from('# ticket must remain byte-identical\n');
+      fs.writeFileSync(standaloneTicket, ticketBytes);
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'text' },
+        { homeDirectory: root }
+      );
+      assert.strictEqual(result.exitCode, 0, result.stderr || result.stdout);
+      assert.strictEqual(result.report?.verdict, 'pass');
+      assert.match(result.stdout, /VERIFY phase=code/);
+      assert.match(result.stdout, /PASS node:lint-fix/);
+      assert.match(result.stdout, /MODIFIED src\.ts by=node:(?:lint|format)-fix allowed=true/);
+      assert.match(result.stdout, /VERDICT PASS/);
+      assert.match(fs.readFileSync(path.join(root, 'src.ts'), 'utf8'), /@file:/);
+      assert.ok(result.report?.mutations.some((mutation) => mutation.path === 'src.ts'));
+      assert.strictEqual(Object.isFrozen(result.report), true);
+      assert.strictEqual(Object.isFrozen(result.report?.context), true);
+      assert.strictEqual(result.report?.context.frameworks.length, 0);
+      assert.strictEqual(result.report?.context.headSha, git(root, 'rev-parse', 'HEAD'));
+      assert.match(result.report?.rules.digest ?? '', /^sha256:/);
+      assert.strictEqual(result.report?.context.rules, result.report?.rules);
+      assert.deepStrictEqual(fs.readFileSync(standaloneTicket), ticketBytes);
+      for (const repair of result.report?.plan.steps.filter((step) => step.effect === 'repair') ??
+        []) {
+        assert.deepStrictEqual(repair.command?.argv.slice(-2), ['--', 'src.ts']);
       }
-    );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('exits 0 and prints the summary line when all gates pass', async () => {
-    await withFixture(
-      { 'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}' },
-      async (dir) => {
-        const { value, log } = await captureLog(() => run(argv(`--root=${dir}`)));
-
-        assert.equal(value, 0);
-        assert.match(log, /ALL_GATES_PASS \(1\/1\)/);
-      }
-    );
+  it('maps a product failure to deterministic report verdict and exit 1', async () => {
+    const root = createNodeRepo();
+    try {
+      const document = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+      document.scripts['type-check'] = 'node -e "process.exit(7)"';
+      fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(document));
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'json' },
+        { homeDirectory: root }
+      );
+      assert.strictEqual(result.exitCode, 1);
+      assert.strictEqual(result.report?.verdict, 'fail');
+      assert.strictEqual(JSON.parse(result.stdout).verdict, 'fail');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('exits 1 and reports the gate when a script fails', async () => {
-    await withFixture(
-      { 'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}' },
-      async (dir) => {
-        const { value, log } = await captureLog(() => run(argv(`--root=${dir}`)));
-
-        assert.equal(value, 1);
-        assert.match(log, /FAIL gate: node:test/);
-      }
-    );
+  it('keeps explicit waivers visible as DEGRADED and never spawns waived nodes', async () => {
+    const root = createNodeRepo({ sentinelTypecheck: true });
+    try {
+      const steps = Object.fromEntries(
+        ['type-check', 'lint-fix', 'lint', 'format-fix', 'format'].map((step) => [
+          step,
+          { enabled: false, reason: `migration waiver for ${step}` },
+        ])
+      );
+      fs.writeFileSync(
+        path.join(root, 'gennady.yaml'),
+        JSON.stringify({ verify: { presets: { node: { steps } } } })
+      );
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'text' },
+        { homeDirectory: root }
+      );
+      assert.strictEqual(result.exitCode, 0, result.stderr || result.stdout);
+      assert.strictEqual(result.report?.readiness.status, 'DEGRADED');
+      assert.strictEqual(
+        result.report?.readiness.entries.filter((entry) => entry.status === 'WAIVED').length,
+        5
+      );
+      assert.ok(result.report?.results.every((entry) => entry.status === 'waived'));
+      assert.match(result.stdout, /WAIVED node node:type-check/);
+      assert.match(result.stdout, /VERDICT PASS \(DEGRADED\)/);
+      assert.strictEqual(fs.existsSync(path.join(root, 'spawned')), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
-  it('accepts qualified stack:gate selectors in --skip; a fully-skipped run is ZERO_GATES, exit 1 (review B2)', async () => {
-    await withFixture(
-      { 'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}' },
-      async (dir) => {
-        const { value, log } = await captureLog(() =>
-          run(argv(`--root=${dir}`, '--skip=node:test'))
-        );
-
-        // The only gate is skipped: nothing was verified — that is not a pass.
-        assert.equal(value, 1);
-        assert.match(log, /SKIP gate: node:test/);
-        assert.match(log, /ZERO_GATES/);
-      }
-    );
-  });
-
-  it('reports ok:false AND a ZERO_GATES diagnostic on an empty run (review B2)', async () => {
-    await withFixture(
-      { 'package.json': '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\""}}' },
-      async (dir) => {
-        const { value, log } = await captureLog(() =>
-          run(argv(`--root=${dir}`, '--skip=node:test', '--json'))
-        );
-
-        assert.equal(value, 1);
-        const parsed = JSON.parse(log) as {
-          ok: boolean;
-          total: number;
-          diagnostics: Array<{ code: string }>;
-        };
-        // `ok` uses the same expression as the exit code, so it cannot say "all green" about a
-        // run that exited 1; the diagnostic names WHY nothing ran. Both are needed: the verdict
-        // for the headline check, the code for the reason.
-        assert.equal(parsed.ok, false);
-        assert.equal(parsed.total, 0);
-        assert.ok(parsed.diagnostics.some((diagnostic) => diagnostic.code === 'ZERO_GATES'));
-      }
-    );
-  });
-
-  it('refuses to run gates on a dirty tree — DIRTY_TREE, exit 4 (D-STACK-017)', async () => {
-    await withFixture(
-      { 'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}' },
-      async (dir) => {
-        const { execFileSync } = await import('node:child_process');
-        const git = (...args: string[]): void => {
-          execFileSync('git', ['-C', dir, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
-            stdio: 'ignore',
-          });
-        };
-        git('init', '-q', '-b', 'main');
-        git('add', '-A');
-        git('commit', '-qm', 'init');
-        fs.writeFileSync(path.join(dir, 'wip.txt'), 'uncommitted');
-
-        const { value, err } = await captureLog(() => run(argv(`--root=${dir}`)));
-
-        assert.equal(value, 4);
-        assert.match(err, /DIRTY_TREE/);
-        assert.match(err, /commit/);
-        // --plan stays available on a dirty tree: it runs nothing.
-        const plan = await captureLog(() => run(argv(`--root=${dir}`, '--plan')));
-        assert.equal(plan.value, 0);
-      }
-    );
-  });
-
-  it('keeps a positional target literally named "verify" (review N2)', async () => {
-    await withFixture(
-      { 'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}', 'verify/.keep': '' },
-      async (dir) => {
-        const { value, log } = await captureLog(() =>
-          run(argv(`--root=${dir}`, '--plan', '--json', 'verify'))
-        );
-
-        assert.equal(value, 0);
-        const parsed = JSON.parse(log) as { runs: Array<{ scope: { mode: string } }> };
-        assert.equal(parsed.runs[0]?.scope.mode, 'files');
-      }
-    );
-  });
-
-  it('truncates gate output in --json unless --full-output is passed (review B11)', async () => {
-    await withFixture(
-      {
-        'package.json':
-          '{"name":"x","scripts":{"test":"node -e \\"for(let i=0;i<500;i++)console.log(i);process.exit(1)\\""}}',
-      },
-      async (dir) => {
-        const truncated = await captureLog(() => run(argv(`--root=${dir}`, '--json')));
-        assert.equal(truncated.value, 1);
-        const parsedTruncated = JSON.parse(truncated.log) as { results: Array<{ output: string }> };
-        assert.match(parsedTruncated.results[0]?.output ?? '', /lines truncated/);
-
-        const full = await captureLog(() => run(argv(`--root=${dir}`, '--json', '--full-output')));
-        const parsedFull = JSON.parse(full.log) as { results: Array<{ output: string }> };
-        assert.ok(!(parsedFull.results[0]?.output ?? '').includes('lines truncated'));
-      }
-    );
-  });
-
-  it('deep-merges gennady.yaml with a personal .gennadyrc and reports config skips with their source', async () => {
-    await withFixture(
-      {
-        'package.json':
-          '{"name":"x","scripts":{"test":"node -e \\"process.exit(1)\\"","type-check":"tsc --noEmit"}}',
-        'gennady.yaml':
-          'stack:\n  node:\n    overrideGates:\n      typecheck:\n        argv: [node, -e, "0"]\n',
-        '.gennadyrc': '{"stack":{"node":{"skipGates":["test"]}}}',
-      },
-      async (dir) => {
-        const { value, log } = await captureLog(() => run(argv(`--root=${dir}`)));
-
-        // typecheck overridden by yaml passes; test skipped by the personal rc.
-        assert.equal(value, 0);
-        assert.match(log, /SKIP gate: node:test — skipGates \(\.gennadyrc\)/);
-        assert.match(log, /ALL_GATES_PASS \(1\/1\)/);
-      }
-    );
-  });
-
-  it('--only explicitly naming a config-skipped gate runs it (expensive-gate workflow)', async () => {
-    await withFixture(
-      {
-        'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}',
-        // The expensive gate is off by default via skipGates, on demand via --only.
-        'gennady.yaml':
-          'stack:\n  node:\n    skipGates: [e2e]\n    extraGates:\n      - id: e2e\n        argv: [node, -e, "0"]\n        timeout: 90s\n',
-      },
-      async (dir) => {
-        const defaultRun = await captureLog(() => run(argv(`--root=${dir}`)));
-        assert.equal(defaultRun.value, 0);
-        assert.match(defaultRun.log, /SKIP gate: node:e2e/);
-
-        const explicit = await captureLog(() => run(argv(`--root=${dir}`, '--only=node:e2e')));
-        assert.equal(explicit.value, 0, explicit.log);
-        assert.match(explicit.log, /ALL_GATES_PASS \(1\/1\)/);
-      }
-    );
-  });
-
-  it('shows config sources and per-gate timeouts in --plan', async () => {
-    await withFixture(
-      {
-        'package.json': '{"name":"x","scripts":{"test":"node -e 0"}}',
-        'gennady.yaml': 'stack:\n  node:\n    overrideGates:\n      test:\n        timeout: 90s\n',
-      },
-      async (dir) => {
-        const { value, log } = await captureLog(() => run(argv(`--root=${dir}`, '--plan')));
-
-        assert.equal(value, 0);
-        assert.match(log, /config: {4}gennady\.yaml/);
-        assert.match(log, /\[90s\]/);
-        assert.match(log, /overridden by gennady\.yaml/);
-      }
-    );
+  it('maps cooperative SIGTERM to exit 143 after restoration and a non-pass report', async () => {
+    const root = createNodeRepo();
+    try {
+      const abort = new AbortController();
+      abort.abort('SIGTERM');
+      const result = await runVerifyCommand(
+        root,
+        { phase: 'code', planOnly: false, format: 'json' },
+        { homeDirectory: root, signal: abort.signal }
+      );
+      assert.strictEqual(result.exitCode, 143);
+      assert.strictEqual(result.report?.results[0]?.status, 'cancelled');
+      assert.strictEqual(result.report?.verdict, 'violation');
+      assert.strictEqual(
+        fs.existsSync(path.join(root, '.git', 'gennady-workspace-guard.lock')),
+        false
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });

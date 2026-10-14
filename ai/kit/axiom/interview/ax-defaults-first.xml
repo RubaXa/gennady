@@ -1,0 +1,9 @@
+<!-- source: new for sdd-v2 interview protocol; operator decision: defaults over open questions -->
+<Axiom id="AX_DEFAULTS_FIRST">
+  Where a defensible default exists, lead with it: propose one concrete option drawn from real
+  production practice and ask the operator to confirm or correct — instead of an open question.
+  The default MUST be the result of `AX_DIVERGE_BEFORE_RECOMMEND`, not the first typical answer.
+  Reserve open questions for decisions that are genuinely operator-owned (business goals, risk
+  acceptance, priorities) or where no defensible default exists; open-ended deepening on any
+  topic happens when the operator asks for it.
+</Axiom>

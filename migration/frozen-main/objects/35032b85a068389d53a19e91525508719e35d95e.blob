@@ -1,0 +1,10 @@
+notes: >
+  No //go:generate directive in scope means the gate is skipped with an explicit reason rather than
+  silently absent — a plan must show why a gate did not run.
+requires: [go]
+argv: ['--all']
+exitCode: 1
+gates:
+  golang:generate:
+    status: skipped
+    outputIncludes: ['go:generate']

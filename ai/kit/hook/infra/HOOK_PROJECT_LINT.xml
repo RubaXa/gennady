@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Hook id="HOOK_PROJECT_LINT">
+<Purpose>Project-level lint pipeline (format + type-check), per `package.json`.</Purpose>
+<Command>npm run lint</Command>
+<Expected>Exit 0.</Expected>
+</Hook>

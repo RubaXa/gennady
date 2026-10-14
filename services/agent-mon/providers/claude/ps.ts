@@ -1,6 +1,6 @@
 // @file: Process inspection helpers for Claude provider — batch ps and argument parsing
+// @spec: AGENT-MON
 // @consumers: ClaudeProvider
-// @tasks: TSK-39
 
 import { execSync } from 'node:child_process';
 import { logger } from '#logger';

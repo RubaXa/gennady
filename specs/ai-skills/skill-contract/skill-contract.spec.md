@@ -1,5 +1,25 @@
 # Module: skill-contract
 
+<!--SECTION:SPEC_ID-->
+
+AI-SKILLS-SKILL-CONTRACT
+
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:OVERVIEW-->
+
+## Обзор
+
+```mermaid
+flowchart LR
+  Contract[Контракт] --> Implementation[Реализация]
+  Implementation --> Verification[Проверка]
+```
+
+_Обзор пути от контракта к реализации и проверке._
+
+<!--/SECTION:OVERVIEW-->
+
 → Parent scope: [`../ai-skills.spec.md`](../ai-skills.spec.md)
 
 <!--SECTION:MODULE_VISION-->
@@ -71,6 +91,8 @@ _Это полный список сущностей модуля. Любое в
 
 ## 4. Entity Surfaces
 
+<details><summary>Подробности</summary>
+
 ### `SkillFrontmatter`
 
 - **Type:** Specification
@@ -128,7 +150,7 @@ _Это полный список сущностей модуля. Любое в
   - Extract intent — извлечь намерение оператора из контекста
   - Load & activate — прочитать `ai/directives/.../*.xml`, активироваться как директива
   - Execute plan — следовать Execution_Plan директивы без отклонений
-- **Consumers:** SDD directive-based навыки (sdd-discover, sdd-setup, sdd-audit, sdd-scaffold, sdd-module-decomposition, sdd-infra, sdd-critic, sdd-continue, sdd-fix)
+- **Consumers:** SDD directive-based навыки (sdd — единая дверь-роутер, sdd-scaffold, sdd-audit, sdd-critic, sdd-reconcile, sdd-code-review)
 
 ### `OrchestratorDispatching`
 
@@ -139,7 +161,7 @@ _Это полный список сущностей модуля. Любое в
   - Dispatch phases — последовательно, каждая в свежем контексте, с typed Handoff между фазами
   - Dispatch audit — обязательный финальный шаг после всех фаз
   - Retry on FAIL — максимум 2 попытки аудита, селективный перезапуск фаз
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute (batch — LOGIC_SWITCH-выбранный intent внутри того же навыка, не отдельный навык)
 
 ### `CliDelegation`
 
@@ -149,7 +171,7 @@ _Это полный список сущностей модуля. Любое в
   - Prepare artifact — сформировать входной файл/аргументы
   - Invoke CLI — один bash-вызов `npx gennady <cmd>`
   - Show result — вернуть вывод CLI пользователю
-- **Consumers:** alt-opinion
+- **Consumers:** sdd-check
 
 ### `SkillScripts`
 
@@ -163,11 +185,15 @@ _Это полный список сущностей модуля. Любое в
   - Все подкоманды уважают `AX_BASH_NO_SILENT_EMPTY`
   - Единый permission-паттерн: `Bash(scripts/<name>/<name> *)`
 - **Consumers:** sdd-execute (скрипты), sdd-check (использует те же скрипты)
+
+</details>
 <!--/SECTION:ENTITY_SURFACES-->
 
 <!--SECTION:MODULE_CONTRACTS-->
 
 ## 5. Module Contracts (DbC)
+
+<details><summary>Подробности</summary>
 
 ### Pattern: `DirectiveActivation`
 
@@ -193,7 +219,7 @@ _Это полный список сущностей модуля. Любое в
 ### Pattern: `OrchestratorDispatching`
 
 - **Purpose:** Оркестрация subagent-фаз с typed Handoff
-- **Consumers:** sdd-execute, sdd-execute-batch
+- **Consumers:** sdd-execute (batch — LOGIC_SWITCH-выбранный intent внутри того же навыка, не отдельный навык)
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`
 - **Deferred Runtime Scope:** None
@@ -202,7 +228,7 @@ _Это полный список сущностей модуля. Любое в
 
 - **Preconditions:**
   - Ticket существует и содержит Meta + Phases Overview + Execution Log
-  - `~/Developer/gennady/ai/skills/sdd-execute/scripts/sdd` доступен (в dev-режиме; при sync-skills → `.claude/skills/sdd-execute/scripts/sdd`)
+  - gennady CLI доступен (`sdd-task` / `sdd-extract` / `sdd-verify` / `sdd-log` / `sdd-check`, per `AX_TOOL_INVOCATION`)
 - **Postconditions:**
   - Все pending-фазы выполнены последовательно
   - Аудит запущен после закрытия раунда
@@ -215,7 +241,7 @@ _Это полный список сущностей модуля. Любое в
 ### Pattern: `CliDelegation`
 
 - **Purpose:** Делегирование CLI-команде
-- **Consumers:** alt-opinion
+- **Consumers:** sdd-check
 - **Runtime Backing:** `real-runtime`
 - **Verification Levels:** `contract`
 - **Deferred Runtime Scope:** None
@@ -231,7 +257,9 @@ _Это полный список сущностей модуля. Любое в
   - Навык делает ровно один bash-вызов
   - Навык не создаёт промежуточные оркестраторы
   - CLI форматирует результат сам — навык не добавляет комментариев
-  <!--/SECTION:MODULE_CONTRACTS-->
+
+</details>
+<!--/SECTION:MODULE_CONTRACTS-->
 
 <!--SECTION:PUBLIC_OPTIONS-->
 
@@ -276,6 +304,8 @@ ai/skills/<name>/
 
 ## 8. Module Decision Log
 
+<details><summary>Подробности</summary>
+
 ### D-M001 — Три execution-паттерна как отдельные сущности
 
 - **Status:** active
@@ -284,19 +314,20 @@ ai/skills/<name>/
 - **Risk accepted:** При добавлении 4-го паттерна потребуется расширение инвентаря.
 - **Rejected alternatives:**
   - Один универсальный `ActivationPattern` — не покрывает специфику OrchestratorDispatching (subagent dispatch) и CliDelegation (CLI invoke)
-  <!--/SECTION:MODULE_DECISION_LOG-->
+
+</details>
+<!--/SECTION:MODULE_DECISION_LOG-->
 
 <!--SECTION:INTER_MODULE_DEPENDENCIES-->
 
 ## 9. Inter-Module Dependencies
 
 - **Depends on:** None (контракт — корень зависимостей)
-- **Provides to:** `sdd-skills`, `alt-opinion`
+- **Provides to:** `sdd-skills`
 
 ```mermaid
 graph TD
     sdd-skills --> skill-contract
-    alt-opinion --> skill-contract
 ```
 
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
@@ -305,7 +336,7 @@ graph TD
 
 ## 10. Handoff to Task Scaffolding
 
-- **Implementation files to be created:** Контракт уже существует в виде 16 навыков; код не требуется — это спецификация формата.
+- **Implementation files to be created:** Контракт уже существует в виде 14 навыков; код не требуется — это спецификация формата.
 - **Test files to be created:** Валидация frontmatter (unit-тесты в sync-skills скоупе)
 - **Stack dependencies:**
   - Language: TypeScript (для валидации в sync-skills)

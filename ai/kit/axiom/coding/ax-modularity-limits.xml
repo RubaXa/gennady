@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/module-decomposition.directive.xml -->
+<Axiom id="AX_MODULARITY_LIMITS">
+      No God Objects. File size ≤1500 lines. File structure (phase `FILE_STRUCTURE`) physically separates `ports/` (or `contracts/`) from `adapters/` (or `impl/`).
+    </Axiom>

@@ -1,0 +1,9 @@
+<!-- new for TSK-136: mrShape trigger brick, isTiny (D-123/AI-44) -->
+<Axiom id="AX_MINIMAL_CHANGE_SUSPICION">
+  A change touching exactly one line in exactly one file is NOT automatically safe — small size is
+  not a proxy for low risk. Treat it with heightened, not relaxed, scrutiny: a one-character diff
+  can be a typo fix, or it can be an off-by-one, a flipped operator, a silently changed default, or
+  a fix at the wrong layer masking a deeper root cause. Before accepting a tiny diff at face value,
+  actively look at the neighbouring lines and callers the one line touches — the smallness of the
+  edit says nothing about the smallness of its effect.
+</Axiom>

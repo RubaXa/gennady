@@ -1,5 +1,11 @@
 # Module: cat
 
+<!--SECTION:SPEC_ID-->
+
+CLI-CAT
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Команда `gennady cat` собирает и выводит содержимое файлов в XML или Markdown-формате для передачи AI-агентам. Поддерживает локальные файлы (через glob) и удалённые (через `--url` — GitLab MR / GitHub PR).
@@ -67,8 +73,8 @@
 | ----------------- | ------ | ---------------------------------------------------------------------------------------------- |
 | Позиционные       | —      | Пути/glob-паттерны для локального сбора (с фильтром по расширениям)                            |
 | `--plain`         | —      | Отключить ANSI-цвета и подсказку pbcopy                                                        |
-| `--exclude`, `-e` | —      | Паттерны исключения (глобы или простые строки). С `--url`: опциональный фильтр                 |
-| `--ext`           | —      | Фильтр расширений (через запятую или повторно). С `--url`: опциональный фильтр                 |
+| `--exclude`, `-e` | —      | Паттерны исключения; с `--url` — опциональный фильтр                                           |
+| `--ext`           | —      | Фильтр расширений; с `--url` — опциональный фильтр                                             |
 | `--output`, `-o`  | `md`   | Формат вывода: `md` (Markdown), по умолчанию — XML                                             |
 | **`--url`**       | —      | **NEW**: URL GitLab MR или GitHub PR. **Берёт ВСЕ изменённые файлы без фильтров по умолчанию** |
 
@@ -224,9 +230,9 @@ cli/utils/cat-gen/
 
 | Requirement | Kind | Owner | Resolution |
 |---|---|---|---|
-| `parseVcsUrl` | external-type | external-prereq-scope | ✅ vcs-client TSK-27 |
-| `VcsGitlabClient` | external-type | external-prereq-scope | ✅ vcs-client TSK-29 |
-| `VcsGithubClient` | external-type | external-prereq-scope | ✅ vcs-client TSK-30 |
+| `parseVcsUrl` | external-type | external-prereq-scope | ✅ vcs-client VC-url |
+| `VcsGitlabClient` | external-type | external-prereq-scope | ✅ vcs-client VC-gitlab |
+| `VcsGithubClient` | external-type | external-prereq-scope | ✅ vcs-client VC-github |
 | `GITLAB_PERSONAL_TOKEN` | env | operator-action | Оператор устанавливает |
 | `GITHUB_PERSONAL_TOKEN` | env | operator-action | Оператор устанавливает |
 

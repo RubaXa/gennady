@@ -1,6 +1,6 @@
 // @file: Unit tests for AgentMonitor — provider registry and scan coordination
+// @spec: AGENT-MON-MONITOR
 // @consumers: monitor
-// @tasks: TSK-36
 
 import { describe, it, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -168,6 +168,20 @@ describe('AgentMonitor', () => {
       assert.strictEqual(sessions[0].provider, 'working');
       assert.strictEqual(sessions[0].sessionId, 'w-1');
       // #endregion END_SCANALL_DEGRADE_ASSERT
+    });
+
+    it('scanAll returns 50 sessions within one second', async () => {
+      const sessions = Array.from({ length: 50 }, (_, index) =>
+        makeSession({ sessionId: `session-${index}`, startedAt: index })
+      );
+      monitor.register('performance', mockProvider('performance', sessions));
+
+      const startedAt = performance.now();
+      const result = await monitor.scanAll();
+      const elapsedMs = performance.now() - startedAt;
+
+      assert.strictEqual(result.length, 50);
+      assert.ok(elapsedMs < 1_000, `scanAll took ${elapsedMs.toFixed(2)}ms`);
     });
   });
 

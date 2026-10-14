@@ -1,0 +1,6 @@
+<!-- source: coding/uikit-component-storybook.xml + testing/storybook-usage.xml (merged) -->
+<Hook id="HOOK_SB_RUN_STORY_TESTS">
+  <Purpose>Run all story tests for the component file. Green run = stories pass type-check, render, and their `play` assertions succeed.</Purpose>
+  <Command>npm run test-storybook -- --url http://localhost:6006</Command>
+  <Expected>Exit 0; all stories pass. Non-zero requires fix or explicit deferred-ownership reference.</Expected>
+</Hook>

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<AntiPattern id="AP_SVELTE_TEST_NO_CLEANUP">
+  <Bad>Multiple `render(Component, ...)` calls across cases; no `afterEach(() => cleanup())`; testing-library auto-cleanup not enabled in config.</Bad>
+  <WhyBad>Mount without paired cleanup (`AX_SVELTE_TEST_MOUNT_AND_CLEANUP`). DOM accumulates between cases; `getByRole` starts returning matches from a previous test's mount, producing «works alone, fails in suite» symptoms that are hard to attribute.</WhyBad>
+  <Good>Either enable testing-library auto-cleanup in `vitest.config.ts`, or explicitly `afterEach(() => cleanup())` in the file.</Good>
+</AntiPattern>

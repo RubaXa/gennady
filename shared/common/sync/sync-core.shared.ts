@@ -1,49 +1,44 @@
 // @file: Shared sync core — resolvePackageDir, compareBytes
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * @purpose Walk up from a resolved entry point to the directory owning its package.json.
- * @invariant Layout-agnostic: published installs resolve inside `dist/`, clones to a source
- *   file; stripping `dist` only worked for the first.
- * @param entryPath Absolute path of a file inside the package.
- * @returns The package root, or null when no package.json sits above it.
+ * @purpose Detect the gennady self-repo (package.json name "gennady") and resolve subdir locally, bypassing node_modules.
+ * @param projectRoot Candidate project root directory.
+ * @param subdir Subdirectory path relative to the repo root (e.g., 'ai/skills').
+ * @returns Absolute path or null when projectRoot is not the gennady repo or subdir is absent.
  */
-function packageRootOf(entryPath: string): string | null {
-  let dir = dirname(entryPath);
-  for (;;) {
-    const manifest = join(dir, 'package.json');
-    if (existsSync(manifest)) {
-      // Must be gennady itself: an unrelated parent manifest would point the sync at a tree
-      // that has no ai/ at all, and the caller would report a confusing absence.
-      try {
-        const name = (JSON.parse(readFileSync(manifest, 'utf-8')) as { name?: string }).name;
-        if (name === 'gennady') {
-          return dir;
-        }
-      } catch {
-        // Unreadable manifest — keep walking.
-      }
-    }
-    const parent = dirname(dir);
-    if (parent === dir) {
-      return null;
-    }
-    dir = parent;
+function resolveSelfRepoDir(projectRoot: string, subdir: string): string | null {
+  try {
+    const pkgJsonPath = join(projectRoot, 'package.json');
+    if (!existsSync(pkgJsonPath)) return null;
+    const pkg = JSON.parse(readFileSync(pkgJsonPath, 'utf-8')) as { name?: string };
+    if (pkg.name !== 'gennady') return null;
+
+    const dirPath = join(projectRoot, subdir);
+    return existsSync(dirPath) ? dirPath : null;
+  } catch {
+    // unreadable/invalid package.json — not the self-repo
+    return null;
   }
 }
 
 /**
- * @purpose Locate a subdirectory inside the installed gennady npm package.
+ * @purpose Locate a subdirectory inside the installed gennady npm package, or the gennady repo itself.
  * @param projectRoot Project root directory (contains node_modules/).
  * @param subdir Subdirectory path inside the gennady package (e.g., 'ai/directives').
+ * @param [resolveEntry] Internal resolution port; production uses import.meta.resolve, tests supply actual fixture entry URLs.
  * @returns Absolute path or null if the package or subdirectory is not found.
  */
-export function resolvePackageDir(projectRoot: string, subdir: string): string | null {
+export function resolvePackageDir(
+  projectRoot: string,
+  subdir: string,
+  resolveEntry: () => string = () => import.meta.resolve('gennady')
+): string | null {
   try {
     const localPath = join(projectRoot, 'node_modules', 'gennady', subdir);
     if (existsSync(localPath)) return localPath;
@@ -51,11 +46,18 @@ export function resolvePackageDir(projectRoot: string, subdir: string): string |
     // EACCES or other filesystem errors — fall through to import.meta.resolve
   }
 
+  // An explicit self-repo is a local source installation, ahead of the invoking tool's owner.
+  const selfRepoDir = resolveSelfRepoDir(projectRoot, subdir);
+  if (selfRepoDir) return selfRepoDir;
+
   try {
-    const pkgRoot = packageRootOf(fileURLToPath(import.meta.resolve('gennady')));
-    if (pkgRoot !== null) {
-      const dirPath = join(pkgRoot, subdir);
-      if (existsSync(dirPath)) return dirPath;
+    let packageRoot = dirname(fileURLToPath(resolveEntry()));
+    while (true) {
+      const dirPath = resolveSelfRepoDir(packageRoot, subdir);
+      if (dirPath) return dirPath;
+      const parent = dirname(packageRoot);
+      if (parent === packageRoot) break;
+      packageRoot = parent;
     }
   } catch {
     // import.meta.resolve may fail

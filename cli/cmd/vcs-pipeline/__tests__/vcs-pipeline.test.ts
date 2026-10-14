@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-pipeline CLI command — pipeline status, no-pipeline, dry-run, error cases.
+// @spec: CLI
 // @consumers: CI
-// @tasks: TSK-83
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

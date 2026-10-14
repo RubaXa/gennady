@@ -1,6 +1,6 @@
 // @file: Minimal MR context for review artifact generation.
+// @spec: CLI-REVIEW
 // @consumers: build-review-artifact.xml, load-review-context-mr.logic, review-artifact.type
-// @tasks: N/A
 
 /**
  * @purpose Minimal MR context for review artifact generation.

@@ -1,0 +1,10 @@
+<!-- source: ai/directives/sdd/svelte-ui-discovery.directive.xml -->
+<Axiom id="AX_SVELTE_CONVENTIONS">
+      Компонент — Svelte 5 с runes. Конвенции из `infra-ui`:
+      - data-атрибуты: `.btn[data-mode="primary"]`, не `:host()`
+      - CSS custom properties: `var(--vkui--...)` через `:root`
+      - Файлы: `<name>.svelte` + `<name>.module.css` + `<name>.tokens.css` + `<name>.stories.ts`
+      - Именование: kebab-case, lower-case
+      - `data-state` для тестируемости hover/active/disabled
+      - Counter: `box-sizing: border-box`
+    </Axiom>

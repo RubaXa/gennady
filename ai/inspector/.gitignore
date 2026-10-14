@@ -1,0 +1,6 @@
+# generated model (rebuild with `npx tsx ai/inspector/generate.ts`)
+web/trace.json
+# e2e artifacts
+e2e/screen-*.png
+test-results/
+playwright-report/

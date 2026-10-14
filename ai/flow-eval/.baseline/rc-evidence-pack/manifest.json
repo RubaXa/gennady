@@ -1,0 +1,521 @@
+{
+  "schema": "gennady.rc-evidence-pack.v2",
+  "sourceCommit": "c9d578c12f84491a97c3bc0e3a46edf10080e465",
+  "generatedAt": "2026-10-13T17:15:57.970Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v26.5.0",
+    "nodeExecutable": "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+    "npm": "11.17.0",
+    "packageLockSha256": "a1eec4356574782eee3d0966aec97f0cda4d9c36ee7790dcfce52b3098bd4988"
+  },
+  "commands": [
+    {
+      "id": "type-check",
+      "command": "npm run type-check",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/type-check.log",
+      "sha256": "d1c5a6642a3f28a9b7ff77deb39c406328ca0712d43d00f0acf9a6903830645b"
+    },
+    {
+      "id": "format-check",
+      "command": "npm run format",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/format-check.log",
+      "sha256": "3a6a47d8c9f9b8763b1dbcf351fc46565bdea343005305158cc9e3168820ec83"
+    },
+    {
+      "id": "lint",
+      "command": "npm run lint",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/lint.log",
+      "sha256": "d3a2d488ac2ec360517a41041a575590aa3050ec91bbd4627dcd96db2862ec03"
+    },
+    {
+      "id": "audit-sdd-templates",
+      "command": "npm run audit:sdd-templates",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/audit-sdd-templates.log",
+      "sha256": "ab1a0379ccb1a0d0fb1f22893eef3bb5875747564aa05328b548a8853631db76"
+    },
+    {
+      "id": "build",
+      "command": "npm run build",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/build.log",
+      "sha256": "7de876fb9bee385b4910fbe3ae0ac6ffc7129c43038da63a944bf18f0fc0adb3"
+    },
+    {
+      "id": "test",
+      "command": "npm test",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/test.log",
+      "sha256": "ab198210c61043e06e9ec24aa74504e048ac6bc5f05be5aa980fc3703935c32c"
+    },
+    {
+      "id": "uv25-node",
+      "command": "node --import tsx --test plugins/node/__tests__/node-target.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-node.log",
+      "sha256": "62ec7161a7b0a85d7a9f1bb3610077f7ace272adbd70b071a8a9de590e26209b",
+      "scenario": {
+        "area": "node",
+        "acceptance": ["U-A2", "U-A9"],
+        "fixtures": [
+          {
+            "path": "plugins/node/__tests__/node-target.test.ts",
+            "sha256": "37921e7fb3ac49b7c9b57379d3e5b3eb051435de5e33abc3ed43a299f009fe4f"
+          },
+          {
+            "path": "plugins/node/__tests__/fixtures/zero-yaml/package.json",
+            "sha256": "7048b1266dd63a667a3ac054e69fe71676dd0c2a8f1e12ee925de77db2216253"
+          },
+          {
+            "path": "plugins/node/__tests__/fixtures/zero-yaml/src/a.ts",
+            "sha256": "b4797f503da2656da1817910a20b8f8135edff6bf56e947191cfcda6ccc9ac76"
+          },
+          {
+            "path": "plugins/node/__tests__/fixtures/zero-yaml/src/b.ts",
+            "sha256": "1433fd8fb9f3770064feb31617a54a9b3ff8b37bb40ecaf6cc7909a91bf9de14"
+          }
+        ],
+        "requiredOutput": [
+          "uses one zero-YAML DAG for code, unit and coverage slices",
+          "blocks only integration/full when test:integration is absent",
+          "materializes strict Vitest JSON stats only from proven package facts"
+        ]
+      }
+    },
+    {
+      "id": "uv25-golang",
+      "command": "node --import tsx --test plugins/golang/__tests__/golang-target.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-golang.log",
+      "sha256": "512ea90b2c249b483267aac5f89ec11dde28172697e93e243b600047d57442f4",
+      "scenario": {
+        "area": "golang",
+        "acceptance": ["U-A2"],
+        "fixtures": [
+          {
+            "path": "plugins/golang/__tests__/golang-target.test.ts",
+            "sha256": "3fcff09616b445f3acfa9ab3311407cfff73070bf8696944e7ca6ab0b5d31a2e"
+          },
+          {
+            "path": "plugins/golang/__tests__/fixtures/zero-yaml/go.mod",
+            "sha256": "3963ad37987c2145e5f9125a3af477256d20e00879b087c877ea83aa157eb40f"
+          },
+          {
+            "path": "plugins/golang/__tests__/fixtures/zero-yaml/main.go",
+            "sha256": "991a74fa69d93112fee377533e9e64091c9d3a690d95eb72bc283fa8b8bcd2e2"
+          }
+        ],
+        "requiredOutput": [
+          "uses one zero-YAML DAG for READY code and unit slices with direct argv",
+          "leaves project-owned integration and coverage commandless and blocks only selected slices",
+          "accepts explicit read-only integration and coverage argv without inventing tags or thresholds"
+        ]
+      }
+    },
+    {
+      "id": "uv25-swift-local",
+      "command": "node --import tsx --test plugins/swift/__tests__/swift-target.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-swift-local.log",
+      "sha256": "d38b4d74f5bff8cb6d647f41289f1797bed4e118a3686152c83aa0584222e085",
+      "scenario": {
+        "area": "swift-local",
+        "acceptance": ["U-A2"],
+        "fixtures": [
+          {
+            "path": "plugins/swift/__tests__/swift-target.test.ts",
+            "sha256": "844e104b65ddc5bece39b56ca417da356462b74975a668123b9b50194669200e"
+          },
+          {
+            "path": "plugins/swift/__tests__/fixtures/zero-yaml/Package.swift",
+            "sha256": "aa080b02ba6a5b9f38fc175119b6c9593918512b95800475cdd3da85c6665601"
+          },
+          {
+            "path": "plugins/swift/__tests__/fixtures/zero-yaml/Sources/ZeroYaml/main.swift",
+            "sha256": "1ec373668d80905d343e29dfd07c6154e2b8104b9ab2418e6c7f05309a243578"
+          }
+        ],
+        "requiredOutput": [
+          "uses root SwiftPM zero-YAML defaults in one dependency-closed DAG",
+          "keeps Xcode build/test commandless and selected readiness BLOCKED without identity",
+          "accepts explicit read-only integration/coverage commands with target provenance"
+        ]
+      }
+    },
+    {
+      "id": "uv25-remote",
+      "command": "node --import tsx --test shared/verify/execution/__tests__/remote-watcher.test.ts services/vcs-client/__tests__/pipeline-observation.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-remote.log",
+      "sha256": "3d527cac11d7ab2ae97526c0a0a395bfbb8c83731849bfe8cbf8c99af6714123",
+      "scenario": {
+        "area": "remote",
+        "acceptance": ["U-A6"],
+        "fixtures": [
+          {
+            "path": "shared/verify/execution/__tests__/remote-watcher.test.ts",
+            "sha256": "23fc602bd023f4047caacb6f97bffdaa282d84107acf898931fa367f250cb5df"
+          },
+          {
+            "path": "services/vcs-client/__tests__/pipeline-observation.test.ts",
+            "sha256": "07eb5e2b5bea5a3976955b0e1ebc631ae278f30ce6f85d4b73115c26406a7adf"
+          }
+        ],
+        "requiredOutput": [
+          "proves pushed SHA, pins one exact pipeline id, and never returns to latest lookup",
+          "fails closed when exact SHA discovery contains distinct workflow definitions",
+          "GitLab queries only the exact SHA then observes the pinned numeric id",
+          "GitHub queries head_sha and pins one workflow run id"
+        ]
+      }
+    },
+    {
+      "id": "uv25-remote-live",
+      "command": "node --import tsx ai/flow-eval/scripts/release-remote-live-smoke.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-remote-live.log",
+      "sha256": "2ec3d3cea7d1d44086272b577a2c24f5c2ab1e0f096c8fd15063a837a0e349d8",
+      "scenario": {
+        "area": "remote-live",
+        "acceptance": ["U-A6"],
+        "fixtures": [
+          {
+            "path": "ai/flow-eval/scripts/release-remote-live-smoke.ts",
+            "sha256": "a24671ce73f61eeed0278ea27160f6be1d995da8240d5800d3ad7416d0cea2b6"
+          },
+          {
+            "path": "services/vcs-client/github/vcs-github-client.ts",
+            "sha256": "fdb06472582259ba4fa7a9ee32ef5066fc19076803345178a52d75d612892572"
+          },
+          {
+            "path": "services/vcs-client/github/vcs-github-pipeline.ts",
+            "sha256": "830c4fd72777f3878674a1ebe101fad77087d06be10f0fd85a42de5787b6f81a"
+          },
+          {
+            "path": "shared/verify/execution/remote-watcher.ts",
+            "sha256": "6a00a4ee34fb759dad2fcaa816aa93b9498514df7f2939edf70ddbe67979c9bb"
+          }
+        ],
+        "requiredOutput": [
+          "UV25_REMOTE_LIVE provider=github project=sindresorhus/p-map readOnly=true",
+          "UV25_REMOTE_LIVE exactSha=2c0934b8312b637f933b752c6054845c2d2d5533",
+          "UV25_REMOTE_LIVE definitionId=4634269 pipelineId=36383812626 state=REMOTE_SUCCESS jobs=5 successfulJobs=5",
+          "UV25_REMOTE_LIVE mutations=0 secretOutput=0 logBodies=0"
+        ],
+        "externalIdentity": {
+          "provider": "github",
+          "project": "sindresorhus/p-map",
+          "sourceSha": "2c0934b8312b637f933b752c6054845c2d2d5533",
+          "definitionId": "4634269",
+          "pipelineId": "36383812626",
+          "terminalState": "REMOTE_SUCCESS",
+          "jobs": 5,
+          "successfulJobs": 5
+        }
+      }
+    },
+    {
+      "id": "uv25-rules",
+      "command": "node --import tsx --test cli/__tests__/tool-behavior/rules.test.ts shared/rules/__tests__/rule-resolver.test.ts shared/rules/__tests__/rule-snapshot.test.ts shared/rules/__tests__/rule-migration-equivalence.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-rules.log",
+      "sha256": "bd77ccf7dede81a40bcde1401e0947dbbfdf277ad5c07c1af55113803f40ff68",
+      "scenario": {
+        "area": "rules",
+        "acceptance": ["U-A7"],
+        "fixtures": [
+          {
+            "path": "cli/__tests__/tool-behavior/rules.test.ts",
+            "sha256": "b3c5a7bb59483745d7372bf20fe7176d42ae7d64c8681773812843a26f3e5e86"
+          },
+          {
+            "path": "shared/rules/__tests__/rule-resolver.test.ts",
+            "sha256": "14df409ced0d98a0c02454200342fa52e43c8662304d67833a9828a060266f35"
+          },
+          {
+            "path": "shared/rules/__tests__/rule-snapshot.test.ts",
+            "sha256": "a0dbd80c893b80c607e00ea7a139baaabe4899ff8fe763867352f3f785114fa3"
+          },
+          {
+            "path": "shared/rules/__tests__/rule-migration-equivalence.test.ts",
+            "sha256": "617e4a6896379c44204986c307837c5d5d1a94d2b4559298b925fffa69466162"
+          },
+          {
+            "path": "shared/rules/__tests__/fixtures/rule-migration-equivalence.json",
+            "sha256": "d4c6d894604f7bf211f83a839543061cb50df289a2a7b9f3ef903624fc6f9ba1"
+          },
+          {
+            "path": "ai/directives/coding/typescript-rules.xml",
+            "sha256": "cf5a85bb6c3e284a01de6c7cc12a3ec4c141e25fa0412ca59e5ab6e64ed02f8b"
+          }
+        ],
+        "requiredOutput": [
+          "lists the complete deterministic inventory and rejects stale stack/phase filters",
+          "resolves exact/glob files with the same real snapshot digest as SDD dispatch and Verify",
+          "evaluates When clauses as OR, attributes as same-artifact AND, and comma values as OR",
+          "preserves every old entry body, predicate intent, dependency and source exactly once"
+        ]
+      }
+    },
+    {
+      "id": "uv25-sdd-evidence",
+      "command": "node --import tsx --test shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/uv25-sdd-evidence.log",
+      "sha256": "36b6b61874f8bb2097dbac9da659dd0795bfa723c41c573940b8b46eff998dd1",
+      "scenario": {
+        "area": "sdd-evidence",
+        "acceptance": ["U-A9"],
+        "fixtures": [
+          {
+            "path": "shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts",
+            "sha256": "27ea8c61acb73948a6e0f3ae954682bb11d998af361e6156c21bc9d13ea83ce7"
+          },
+          {
+            "path": "cli/cmd/sdd-verify/__tests__/sdd-verify.facade.test.ts",
+            "sha256": "9ec88101b892918a5eac85c7f52940d4922101c2a8ea61d0564cf8d547404523"
+          }
+        ],
+        "requiredOutput": [
+          "retains failed attempts after retry and blocks a live concurrent owner",
+          "recovers only an ownerless RUNNING attempt as INTERRUPTED before appending the next run",
+          "persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA provider proof"
+        ]
+      }
+    },
+    {
+      "id": "migration-1-agent-inbox",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-inbox",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-inbox.log",
+      "sha256": "a6388e3306b7af8e3dea45ba5e2b2a8ea4992225aa283c6c32bdf5742134780a"
+    },
+    {
+      "id": "migration-1-agent-mon",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-mon.log",
+      "sha256": "619880dee9f32b66649e7707a62d036160552bc2126a346c4d0e674ced400475"
+    },
+    {
+      "id": "migration-1-agent-mon-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon-cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-mon-cli.log",
+      "sha256": "914889936e88e051d1367df1f4f806c3ae9ab9648f6243b30661250ae9b9903f"
+    },
+    {
+      "id": "migration-1-agent-run",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-run",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-agent-run.log",
+      "sha256": "b0bcf31727e1029a745bc848839d8afb06a5a358d1db410e8edd62b31f3bf540"
+    },
+    {
+      "id": "migration-1-ai-skills",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope ai-skills",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-ai-skills.log",
+      "sha256": "c4f08d1dca87f574a4ded9fa909049dded41a7fe076dc9c866ea9eaeac346e23"
+    },
+    {
+      "id": "migration-1-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-cli.log",
+      "sha256": "1a49ba081a7cd4340640df65415898045d70a266bb7dfc45af8d4faf92b9478a"
+    },
+    {
+      "id": "migration-1-dbc",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope dbc",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-dbc.log",
+      "sha256": "319208124b8fc253d51121940e4ed1ed86bc84274c10fdafe00bba640dd94bc6"
+    },
+    {
+      "id": "migration-1-infra-base",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-base",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-infra-base.log",
+      "sha256": "1c912982a89064e74e98dbc9d338b4702621af28acd283e96786689f3747d7ae"
+    },
+    {
+      "id": "migration-1-infra-npm-publish",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-npm-publish",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-infra-npm-publish.log",
+      "sha256": "51368f8a67f9985073ff8fb11b38ed5c7c79c45ec7a92c71a76ca407967aa4c0"
+    },
+    {
+      "id": "migration-1-mr-stats",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope mr-stats",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-mr-stats.log",
+      "sha256": "37c66c46833aa97cd078b540a1746e36bea80760db33b6036fe798513fbedef9"
+    },
+    {
+      "id": "migration-1-shared",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope shared",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-shared.log",
+      "sha256": "5f3922946bb432d765cdc7c838bec973d03a3c2d2bab8d285d411b308254e36b"
+    },
+    {
+      "id": "migration-1-vcs",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope vcs",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-1-vcs.log",
+      "sha256": "3438c82bbc385e4baf2329d0a773f308c3ef5912cdf2fc72d9ab91156a47b9c8"
+    },
+    {
+      "id": "migration-2-agent-inbox",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-inbox",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-inbox.log",
+      "sha256": "a6388e3306b7af8e3dea45ba5e2b2a8ea4992225aa283c6c32bdf5742134780a"
+    },
+    {
+      "id": "migration-2-agent-mon",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-mon.log",
+      "sha256": "619880dee9f32b66649e7707a62d036160552bc2126a346c4d0e674ced400475"
+    },
+    {
+      "id": "migration-2-agent-mon-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-mon-cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-mon-cli.log",
+      "sha256": "914889936e88e051d1367df1f4f806c3ae9ab9648f6243b30661250ae9b9903f"
+    },
+    {
+      "id": "migration-2-agent-run",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope agent-run",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-agent-run.log",
+      "sha256": "b0bcf31727e1029a745bc848839d8afb06a5a358d1db410e8edd62b31f3bf540"
+    },
+    {
+      "id": "migration-2-ai-skills",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope ai-skills",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-ai-skills.log",
+      "sha256": "c4f08d1dca87f574a4ded9fa909049dded41a7fe076dc9c866ea9eaeac346e23"
+    },
+    {
+      "id": "migration-2-cli",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope cli",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-cli.log",
+      "sha256": "1a49ba081a7cd4340640df65415898045d70a266bb7dfc45af8d4faf92b9478a"
+    },
+    {
+      "id": "migration-2-dbc",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope dbc",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-dbc.log",
+      "sha256": "319208124b8fc253d51121940e4ed1ed86bc84274c10fdafe00bba640dd94bc6"
+    },
+    {
+      "id": "migration-2-infra-base",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-base",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-infra-base.log",
+      "sha256": "1c912982a89064e74e98dbc9d338b4702621af28acd283e96786689f3747d7ae"
+    },
+    {
+      "id": "migration-2-infra-npm-publish",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-npm-publish",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-infra-npm-publish.log",
+      "sha256": "51368f8a67f9985073ff8fb11b38ed5c7c79c45ec7a92c71a76ca407967aa4c0"
+    },
+    {
+      "id": "migration-2-mr-stats",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope mr-stats",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-mr-stats.log",
+      "sha256": "37c66c46833aa97cd078b540a1746e36bea80760db33b6036fe798513fbedef9"
+    },
+    {
+      "id": "migration-2-shared",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope shared",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-shared.log",
+      "sha256": "5f3922946bb432d765cdc7c838bec973d03a3c2d2bab8d285d411b308254e36b"
+    },
+    {
+      "id": "migration-2-vcs",
+      "command": "node --import tsx cli/gennady.ts sdd-migrate move . --scope vcs",
+      "exitCode": 0,
+      "signal": null,
+      "logFile": "logs/migration-2-vcs.log",
+      "sha256": "3438c82bbc385e4baf2329d0a773f308c3ef5912cdf2fc72d9ab91156a47b9c8"
+    }
+  ],
+  "migration": {
+    "scopes": [
+      "agent-inbox",
+      "agent-mon",
+      "agent-mon-cli",
+      "agent-run",
+      "ai-skills",
+      "cli",
+      "dbc",
+      "infra-base",
+      "infra-npm-publish",
+      "mr-stats",
+      "shared",
+      "vcs"
+    ],
+    "rounds": 2,
+    "allNoOp": true
+  },
+  "limitations": {
+    "exactCloudIosE18": "pending-UV-26",
+    "packagePublished": false
+  }
+}

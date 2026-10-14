@@ -1,0 +1,18 @@
+<!-- source: coding/sveltekit-rules.xml -->
+<Pattern id="PT_SERVER_HOOK_AUTH">
+      <Intent>Server hook injecting auth context into `event.locals`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // src/hooks.server.ts
+        import type { Handle } from '@sveltejs/kit';
+        import { decodeSession } from '$lib/server/session';
+
+        export const handle: Handle = async ({ event, resolve }) => {
+          const token = event.cookies.get('session');
+          event.locals.user = token ? await decodeSession(token) : null;
+          return resolve(event);
+        };
+        ```
+      </Snippet>
+      <Why>`$lib/server/session` is automatically server-only; `event.locals.user` becomes the single contract for «who is the caller» downstream.</Why>
+    </Pattern>

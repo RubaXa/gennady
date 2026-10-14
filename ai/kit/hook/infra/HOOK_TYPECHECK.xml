@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Hook id="HOOK_TYPECHECK">
+      <Purpose>Type-aware concerns owned here, not by ESLint.</Purpose>
+      <Command>npx tsc --noEmit</Command>
+      <Expected>Exit 0; no TS errors.</Expected>
+    </Hook>

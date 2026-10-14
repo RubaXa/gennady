@@ -1,6 +1,6 @@
 // @file: Render detailed file view — S5 scenario with full DBC contracts and method listing.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import type { ScannedFile } from '../orient.types.ts';
 import type { DbcEntrySchema } from '../../../../services/dbc/parser/dbc-parser.types.ts';

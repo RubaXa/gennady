@@ -1,13 +1,13 @@
-<VitestRules keywords="vitest, runner, vi_mock, vi_fn, fake_timers, stub_env, vitest_run_not_watch, mock_confirm_gate, explicit_imports" type="testing-rules" ver="3.0">
+<VitestRules rule-id="vitest-rules" rule-schema="1" type="required" ver="3.0">
+<Meta>
+  <When framework="vitest" role="test"/>
+  <DependsOn rule="testing-common"/>
+</Meta>
   <Mission>
     Vitest runner (`vitest`) specifics on top of [`testing/common`](./common.xml). Only the deltas are stated here: one-shot vs watch invocation, `vi`-matcher API, `vi.mock` confirm-gate, mock hygiene, fake timers / env / global lifecycle, explicit imports, default isolation.
 
     Read `testing/common.xml` first. Everything about contract boundary, case flow, phase anchors, unified context, factory-over-hooks, BDD mapping, snapshot operator-confirm, file budget — lives there.
   </Mission>
-
-  <DependsOn>
-    - ai/directives/testing/common.xml
-  </DependsOn>
 
   <InheritedBaseline>
     All axioms in [`testing/common`](./common.xml) `Belief_State` apply here UNCHANGED — reader-agent treats them as binding under this directive. `BDD_Mapping_Hint`, `Definitions`, `Workflow_Outline` likewise inherited. This file only adds Vitest-specific overrides and patterns. Mechanical assertion-API substitutions when the inherited text mentions node:test assertions: `assert.throws()` → `expect(fn).toThrow(...)`; `assert.rejects()` → `await expect(promise).rejects.toThrow(...)`; `assert.match()` → `expect(str).toMatch(regex)`.
@@ -327,14 +327,4 @@
       <Expected>No file declares more than one `createXxxContext` factory.</Expected>
     </Hook>
   </VerificationHooks>
-
-  <RewardCriteria>
-    ✅ The primary test command uses one-shot `vitest run` and terminates with an observable result.
-    ✅ Assertions use the narrowest diagnostic matcher for scalar, structural, string, and error shapes.
-    ✅ Injected collaborators prefer `vi.fn()`; any new module mock carries operator confirmation and a concrete injection constraint.
-    ✅ Fake timers, environment stubs, globals, spies, and mock history are reset by explicit lifecycle policy.
-    ✅ Vitest, TypeScript, and required coverage gates execute successfully.
-    ❌ Watch mode, leaked mock state, boolean-folded assertions, or autonomous snapshot updates can reach merge.
-    ❌ `vi.mock()` replaces the SUT or an in-process collaborator that has an available injection seam.
-  </RewardCriteria>
 </VitestRules>

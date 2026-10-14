@@ -1,27 +1,22 @@
 ---
 name: sdd-audit
-description: Fresh-eyes audit of ONE completed SDD task (or epic across many). Reads ticket, spec, code, diff and rules; verifies execution decisions against required behavior; persists each per-task result and routes findings without audit sidecars. Use when operator says "audit TSK-NN" or after execute rounds close.
+description: Independent audit of a GROUP of tickets in one spec (default — every ticket audited together once the group's last ticket closes), or of ONE task on direct operator request. Reads ticket(s), spec, and the tool-resolved diff; verifies the implementation matches the spec and the execution log is honest. Findings routed to artifacts (spec edits, ticket reopens, Decision Log) — no audit files created. Use when operator says "audit TSK-NN" or after execute closes a ticket group.
 compatibility: opencode
 ---
 
-1. **Extract intent.** Operator wants audit of {TSK-NN | full tree | current changes}. If ambiguous — ask.
+1. **Extract intent.** Operator wants audit of one Task-ID (`per-task`) or the complete sibling group
+   owning that Task-ID (`per-group`, the execute default). No full-tree/current-changes/epic mode exists.
 
-2. **Resolve this installation.** From the actually loaded skill, resolve the matching
-   `audit.directive.xml` and the sibling `sdd-execute/scripts/sdd` entry point to canonical absolute
-   paths. Never substitute a home-directory checkout or another installed copy.
+2. **Load directive.** Read in full `ai/directives/sdd-v2/audit.directive.xml` and follow it directly.
+   Terminology comes from the owning specification and ticket. Do not read or create a persistent
+   session file. Do not narrate directive activation.
+   No `sdd-state`/PREFLIGHT gate here by design: audit runs against a ticket that is already
+   scaffolded and (usually) already executed — v1/readiness/portal state is moot for a task that
+   exists. This skill is the odd one out in the family on purpose, not by omission.
 
-3. **Load & apply directive silently.** Read the resolved audit directive in full. You ARE this
-   directive now; do not narrate activation or internal step transitions. Supply the resolved tool
-   entry point as `<sdd-path>`.
-
-4. **Apply directive to intent.** Mode auto-detected per `AX_AUDIT_MODES`. Run the shared
-   `sdd check --task` surface and deterministic lint, then follow `ExecutionPlan` end-to-end. Treat
-   `decision`/`discovery`/`insight` and Handoff as evidence, not proof. The directive returns a
-   validated terminal candidate and remains read-only.
-
-5. **Commit an accepted per-task result once.** Validate the complete terminal candidate against
-   `AUDIT_SESSION_SUMMARY_FORMAT` and its route/phase/confidence rules before writing history. A
-   malformed candidate is corrected in memory with the same audit number and is never appended. For
-   a valid per-task candidate, add only its Markdown round heading, append the candidate record
-   byte-for-byte under `## Audit Rounds`, and refresh Meta `Reopens` from persisted
-   `triggered-reopen != none` records in the same ticket write. Epic mode remains ephemeral.
+3. **Apply directive to intent.** Mode is explicit: execute dispatch → `per-group`; direct operator
+   request naming one task → `per-task`. Pass that mode and Task-ID unchanged to the directive.
+   The mechanical gates — which tool commands run, in what order, what counts as a BLOCKER — live
+   entirely in `STEP_1_MECHANICAL` of the directive; do not restate or re-derive that list here, it
+   drifts from the source of truth the moment it's duplicated. Follow the Execution_Plan end-to-end
+   (STEP_1_MECHANICAL, STEP_2_SEMANTIC, STEP_3_ROUTE). Do not deviate.

@@ -1,0 +1,5 @@
+<!-- source: ai/directives/coding/result-conventions.xml -->
+<Axiom id="AX_NO_RESULT_ISERR_SHORT_CIRCUIT">
+      `if (isErr(r)) return r` and `if (!isOk(r)) return r` are forbidden. Use `must` + try/catch — that is the whole point of the convention.
+      No autofix: requires restructuring the surrounding function, not a one-line substitution.
+    </Axiom>

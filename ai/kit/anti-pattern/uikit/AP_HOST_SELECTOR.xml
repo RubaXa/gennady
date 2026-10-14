@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<AntiPattern id="AP_HOST_SELECTOR">
+<Bad>`.module.css` containing `:host([mode="primary"]) { background: blue; }`.</Bad>
+<WhyBad>`:host()` compound selectors fail in headless Chromium (`AX_DATA_ATTRS_NOT_HOST`). Padding returns `0px` from `getComputedStyle`, breaking visual tests. The inner-wrapper approach is the proven alternative.</WhyBad>
+<Good>Inner wrapper with data-attribute: `.btn[data-mode="primary"] { background: var(--vkui--color_background_accent); }`.</Good>
+</AntiPattern>

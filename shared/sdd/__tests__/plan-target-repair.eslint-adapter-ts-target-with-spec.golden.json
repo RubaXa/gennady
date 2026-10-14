@@ -1,0 +1,32 @@
+[
+  {
+    "kind": "run",
+    "name": "formatter",
+    "command": "npm",
+    "args": ["run", "format:fix", "--", "src/a.ts"],
+    "evidence": "npm run format:fix -- src/a.ts"
+  },
+  {
+    "kind": "run",
+    "name": "eslint-project",
+    "command": "npm",
+    "args": ["run", "lint:fix", "--", "src/a.ts"],
+    "evidence": "npm run lint:fix -- src/a.ts"
+  },
+  {
+    "kind": "run",
+    "name": "gennady-contract",
+    "command": "npx",
+    "args": [
+      "--no-install",
+      "gennady",
+      "lint",
+      "--autofix",
+      "--include-tests",
+      "--spec=specs/app/app.spec.md",
+      "--",
+      "src/a.ts"
+    ],
+    "evidence": "npx --no-install gennady lint --autofix --include-tests --spec=specs/app/app.spec.md -- src/a.ts"
+  }
+]

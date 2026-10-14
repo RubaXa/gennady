@@ -1,0 +1,14 @@
+<!-- source: coding/svelte5-runes.xml -->
+<Pattern id="PT_BINDABLE_PROP">
+      <Intent>Two-way bindable prop for a form input.</Intent>
+      <Snippet language="svelte">
+        ```svelte
+        <script lang="ts">
+          let { value = $bindable(''), placeholder = '' } = $props();
+        </script>
+
+        <input bind:value placeholder={placeholder} />
+        ```
+      </Snippet>
+      <Why>`$bindable` only inside `$props()` destructure; parent can now use `<TextInput bind:value={form.email} />`.</Why>
+    </Pattern>

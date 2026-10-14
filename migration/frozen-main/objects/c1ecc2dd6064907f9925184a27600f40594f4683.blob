@@ -1,0 +1,11 @@
+notes: >
+  Rules must be inspectable before running: --plan --json renders each predicate instead of
+  serializing a closure as null, which is what made the "declarative rules are reviewable" argument
+  real rather than rhetorical.
+requires: [go]
+argv: ['--all', '--plan', '--json']
+exitCode: 0
+gates:
+  golang:classified:
+    status: pass # not executed by --plan; describeIncludes is the assertion that matters
+    describeIncludes: ['exit >= 64', 'stderr ~']

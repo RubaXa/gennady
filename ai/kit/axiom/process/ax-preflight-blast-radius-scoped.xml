@@ -1,0 +1,13 @@
+<!-- new for sdd-v2: size the FLOW_VERSION/READINESS preflight gate to the task, not the whole repo -->
+<Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
+  `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
+  Size only those broad actions to the task's own blast radius: a narrow edit of an already V2 owning
+  spec may proceed without migrating unrelated legacy tasks or installing unrelated runtime gates.
+  Legacy scopes remain read-only detection/migration input until their migration completes; use
+  `npx gennady sdd-migrate bootstrap .` and the V1→V2 guide before authoring or execution there.
+  Each `AUTHORING_SCOPE`
+  fact is different: it is a target-specific, mechanically checked structural fact and is binding whenever scaffold would create
+  tickets. A red authoring fact blocks scaffold but never blocks the named owning spec flow that repairs
+  the evidence. Product execution always consumes `EXECUTION_READY`; only the exact active GATE_QUEUE
+  setup phase receives its typed exemption.
+</Axiom>

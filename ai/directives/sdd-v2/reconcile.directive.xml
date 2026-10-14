@@ -1,0 +1,497 @@
+<SddReconcile keywords="reconcile, fix, from-code, drift, spec-probe, bug-vs-spec-defect, problem-class, blast-radius, sdd-reconcile" type="directive" ver="2.2">
+  <Mission>
+    Restore the spec ⟷ code ⟷ task triangle after it desynced, then prove the repaired path. A separate
+    skill (`/sdd-reconcile`) activates one of two modes:
+    - **fix** — a finding / bug / review drove it: the spec is presumed right until the probe proves a
+      spec defect.
+    - **from-code** — code ran ahead of the spec: code is evidence, not automatic authority to rewrite
+      the design.
+
+    The probe (`AX_PROBLEM_PROBES_SPEC`) classifies ownership, problem class, blast radius, and whether
+    a spec delta is semantic. Remediation then follows resolver state: one active ticket may continue
+    under its state policy; otherwise the semantic-owner spec creates new work, while history stays
+    read-only context. Semantic design changes go through the artifact-kind authoring flow, independent
+    semantic review, and operator approval #1 before implementation; only genuinely task-free non-semantic metadata with an
+    exact verifier may use the bounded direct path.
+
+    Input — findings / a bug / a review, OR "I changed code, formalize it". Output — merged design when
+    design changed, continued/selected/created tasks when code must move, tracker state owned by ordinary execute,
+    and one non-duplicated evidence chain for the chosen path.
+  </Mission>
+
+  <ContextExpectation>
+    Reconcile adds only one mechanical command beyond the authoring/execute flows it delegates to:
+    bounded-direct verification runs exact
+    `npx gennady sdd-check --all <verification-root>`. STEP_3 freezes `<verification-root>` and
+    STEP_5 records the literal result in `DIRECT_VERIFICATION_RECEIPT`; no runtime `--help` probe or
+    argument inference is allowed.
+  </ContextExpectation>
+
+  <BeliefState deps="AX_READER_WITHOUT_SESSION_CONTEXT">
+    Inherited from the loading directive (already in context): AX_DIALOGUE_DISCIPLINE, AX_NO_PROCESS_NARRATION, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_TOOL_INVOCATION, QUESTION_RULE_SLIM
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+
+    <Axiom id="AX_PREFLIGHT_BLAST_RADIUS_SCOPED">
+      `FLOW_VERSION=v1` migration and runtime `EXECUTION_READY=no` remediation can dwarf a narrow request.
+      Size only those broad actions to the task's own blast radius: a narrow edit of an already V2 owning
+      spec may proceed without migrating unrelated legacy tasks or installing unrelated runtime gates.
+      Legacy scopes remain read-only detection/migration input until their migration completes; use
+      `npx gennady sdd-migrate bootstrap .` and the V1→V2 guide before authoring or execution there.
+      Each `AUTHORING_SCOPE`
+      fact is different: it is a target-specific, mechanically checked structural fact and is binding whenever scaffold would create
+      tickets. A red authoring fact blocks scaffold but never blocks the named owning spec flow that repairs
+      the evidence. Product execution always consumes `EXECUTION_READY`; only the exact active GATE_QUEUE
+      setup phase receives its typed exemption.
+    </Axiom>
+
+    <Axiom id="AX_PROBLEM_PROBES_SPEC">
+      Any reported problem, bug, or freeform change is first a question about the spec, not a line to patch.
+      Before reconciling, establish three things against the spec:
+      - **Bug or spec-defect?** Does the code violate a correct spec (→ fix the code), or is the code right
+        and the spec was wrong (→ fix the spec and cascade downstream)? This decides which corner of the
+        spec ⟷ code ⟷ task triangle moves.
+      - **The class.** Judging by the spec + this problem, where else does the same class occur? One report
+        is a symptom — scan the closed-world inventory / contracts for siblings (`orient`).
+      - **The blast radius.** From the diff, what else did the change touch that must be re-examined?
+
+      Patch only the symptom and you have not done SDD — the spec mediates everything, so reconcile at the
+      right level and propagate.
+    </Axiom>
+
+    <Axiom id="AX_MODE_AUTO_DETECT_OR_HALT">
+      Mode detection is mechanical and table-driven from intake (artifact presence + operator verb).
+      Ambiguous intake never defaults silently → HALT and ask the operator (binary disambiguation
+      where possible). The detection table is directive-specific.
+    </Axiom>
+
+    <Axiom id="AX_TASK_RESOLUTION">
+      Every workflow consumer resolves each affected file with
+      `npx gennady orient --file <repo-relative-path> --json` before classification. The versioned result
+      separates one `semantic-owner` (`@spec`) from `planned`, `active`, `blocked`, and `history` ticket
+      relations. Continue or recover a ticket only from one unambiguous `active` relation and only when
+      its state policy permits it. `history` explains prior work but never authorizes automatic reopen.
+      When no active relation exists, route through the resolved semantic-owner spec to select, create,
+      or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
+      never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
+      migration evidence only and never routing authority for V2.
+    </Axiom>
+
+    <Axiom id="AX_FIX_CLASSIFICATION">
+      A reported symptom is an entry point, never the class. Every finding MUST be classified BEFORE any
+      edit: bug vs spec-defect, ownership, semantic vs editorial spec impact, action category
+      (bounded-direct / authoring-flow / task-continue / ticket-create-or-recover), the full problem class,
+      and the blast radius. Code with one resolver-confirmed `active` relation may continue/recover only
+      that ticket under its state policy. With no active relation, route through the resolved `@spec`
+      owner to select, create, or recover maintenance work; `planned`, `blocked`, and `history` are
+      evidence for that spec-level selection, never direct routing authority. A semantic spec
+      change ALWAYS routes through the artifact-kind authoring flow, independent semantic review, and operator approval #1
+      lifecycle before implementation. Direct editing is reserved for genuinely task-free, non-semantic
+      metadata with a frozen target-set and a known exact verifier. A fix applied without this
+      classification is a symptom patch, not SDD.
+    </Axiom>
+
+    <Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
+      **V2 files carry one semantic owner; task relations come from the deterministic resolver.**
+
+      Required file-level fields in execution profile:
+      - `@file` — mandatory; what the file holds.
+      - `@spec` — mandatory; exactly one stable canonical Spec ID, never a path.
+      - `@consumers` — mandatory; one or more named consumers from the owning spec.
+
+      `@tasks` is legacy V1 migration evidence and is forbidden in a new or migrated V2 header.
+      `planned`, `active`, `blocked`, and `history` task relations are resolved from exact ticket
+      targets and lifecycle state; none is copied into the header. Only an `active` relation may
+      continue/recover under task state policy. `history` is context, never routing authority.
+
+      Canonical header shape:
+      ```
+      // @file: <what the file holds>
+      // @spec: <CANONICAL-SPEC-ID>
+      // @consumers: <consumer-1, consumer-2, ...>
+      ```
+    </Axiom>
+
+    <Axiom id="AX_FILE_HEADER_APPEND_ONLY">
+      Touching a V2 file preserves its semantic-owner header; task history stays in tickets and Git.
+
+      - Required V2 fields, in order: `@file:`, one canonical `@spec:` ID, `@consumers:`.
+      - New V2 file: create all three from the resolved owner spec and its named consumers.
+      - Existing V2 file: preserve `@file:` and `@consumers:`; keep `@spec:` on the resolved semantic
+        owner. A real ownership transfer is a semantic spec change and routes through authoring.
+      - Existing V1 file remains byte-preserved until its migration owns the header rewrite.
+      - Never add a Task-ID to a V2 source header; re-dispatch and later rounds change resolver state,
+        not header history.
+    </Axiom>
+
+    <Axiom id="AX_GROUPING_REDUCES_NOISE">Multiple scattered changes with one shared intent (a mass rename, a parameter added across call sites) MUST be grouped into a single logical task. Per-item entries are noise.</Axiom>
+
+    <Axiom id="AX_REUSE_FIRST">Orchestrator holds full project context — the ONLY actor able to detect duplication against existing code/specs (the isolated critic cannot). For every entity/type/method/contract the artifact introduces, reconcile before accepting it: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (record one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Unjustified new surface is a finding to resolve, not to wave through. Bias toward consolidation — do not let the system grow a duplicate entity each round.</Axiom>
+
+    <Axiom id="AX_OPERATOR_AGREEMENT">
+      Every fix must be operator-approved before execution. The plan is shown as a table.
+      No edits are made before explicit operator "yes" / "go" / "ok".
+      Operator may edit the plan (remove items, change classification, add notes).
+    </Axiom>
+
+    <Axiom id="AX_REOPEN_FORMAT">
+      This format applies only after an independent state policy has authorized the named ticket.
+      A historical relation or legacy `@tasks` header never supplies that authorization.
+      Allocate concrete next-unused PhaseIDs; placeholders are not valid written output. Every
+      task-owned code finding, including a one-line bug, gets at least one concrete `fix` PhaseID
+      and one dependent concrete `test` PhaseID. Multiple findings sharing one owner may share one
+      Round, but none may bypass it.
+
+      **Two forms, chosen by whether the current Round is still open (D-20):**
+      - **Round still open** (no `#### Round close` written yet) — append `#### P<N> — re-run:
+        <reason>` blocks for the new fix/test phases inside that SAME `### Round N`.
+      - **Round already closed** — `— re-run:` is not valid there; append a brand new
+        `### Round N+1 — <YYYY-MM-DD>, fix: <one-line reason>` instead, with its own fix/test phase
+        blocks. A write into an already-closed Round is invalid input regardless of form.
+
+      Either way, `PHASES_OVERVIEW` MUST gain one row per new PhaseID — the Execution Log alone is
+      not read by the phase-graph/dependency checks:
+
+      ```
+      | ID     | Kind | Deps | Status |
+      |--------|------|------|--------|
+      | P<N>   | fix  | —    | [ ]    |
+      | P<N+1> | test | P<N> | [ ]    |
+      ```
+
+      Set ticket Meta Status → `[~] IN_PROGRESS` — this is what `sdd-log round` already sets when
+      opening a new Round; do not write `[ ] TODO` instead, which reads as "not started" and would
+      drift from the tracker row `sdd-check` compares it against. Update `Reopens: <new count>` —
+      count of persisted `@audit … triggered-reopen=Round-N` records, not "how many times I hand-
+      counted `### Round` headers"; `sdd-check` verifies the two agree (`SDD_REOPENS_MISMATCH`) and
+      that every declared `triggered-reopen=Round-N` actually got a matching Round created
+      (`SDD_REOPENS_PENDING` — an announced reopen the orchestrator never executed). Reason string
+      for the new Round comes from a closed vocabulary the CLI itself enforces (`initial |
+      fix: F-NNN | resume | new-audit-session`, `isValidRoundReason` in `execution-log.ts`) —
+      `sdd-log round "<free text>"` now refuses (exit 4) instead of accepting anything.
+      Sync tracker: the owning `*.3-tasks.md` row → `[~] IN_PROGRESS` (same value, not TODO); parent
+      rollups (scope and `specs/3-tasks.md`) → adjust counts.
+
+      `✅ RESOLVED` after a blocker is a related but separate concern owned by the journal's
+      Blocker Trail work, not this axiom.
+    </Axiom>
+
+    <Axiom id="AX_DISPATCH_VIA_BATCH">
+      After all reopens are prepared, dispatch the reopened tasks through execute as one BATCH.
+      The batch orchestrator will plan layers, run phases, close rounds, sync trackers, and keep its
+      ordinary `sdd-task --audit-group` lifecycle unchanged. There is no reconcile-only audit flag:
+      execute remains the sole owner of each affected spec group's audit and code-review. Reconcile
+      retains those returned per-group results and checks them at STEP_6_VERIFY; it never dispatches a
+      second review.
+    </Axiom>
+
+    <Axiom id="AX_VERIFY_AT_END">
+      Every reconcile branch ends with evidence owned by that branch, never a generic duplicate tail:
+      - ordinary execute supplies its per-ticket sync, phase gates, per-group audit, and code-review results;
+      - a semantic spec-only change supplies independent semantic review plus a current human-readable
+        approval #1 marker after operator approval;
+      - a bounded direct metadata correction supplies `DIRECT_VERIFICATION_RECEIPT` for its frozen target-set
+        and exact dedicated command.
+      Missing or red evidence routes back to its owning flow. Never dispatch a second audit/code-review or
+      claim an unexecuted bare tool name as verification.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INPUT` | Neither findings / bug nor a code change to reconcile |
+    | `H_AMBIGUOUS_MODE` | Cannot tell fix from from-code — ask the operator |
+    | `H_OPERATOR_REJECT` | Operator rejected the reconcile plan |
+    | `H_CLASSIFICATION_UNCONFIRMED` | The dispatched probe did not return ownership, problem class, blast radius, and semantic/editorial verdict |
+    | `H_DIRECT_VERIFICATION_UNAVAILABLE` | A proposed direct edit is task-owned, semantic, has no frozen bounded target-set, or lacks an exact dedicated verifier |
+    | `H_SPEC_KIND_UNRESOLVED` | A semantic spec finding cannot be mapped uniquely to scope, module, infrastructure, or interface authoring |
+    | `H_SPEC_REVIEW_NOT_APPROVED` | Semantic spec authoring did not return approval #1 over independently reviewed actual bytes |
+    | `H_VERIFICATION_FAIL` | The evidence owned by the chosen remediation path is missing or red |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Detect the mode.</Goal>
+      <Action>
+        Findings / bug / review present → `fix`. Code already changed / "formalize what I coded" / drift
+        → `from-code` (`AX_MODE_AUTO_DETECT_OR_HALT`; ambiguous → `H_AMBIGUOUS_MODE`).
+      </Action>
+    </Step>
+    <Step id="STEP_0B_PREFLIGHT">
+      <Goal>Clear the FLOW_VERSION/READINESS preflight gate before mapping the affected area.</Goal>
+      <Action>
+        Use the `FLOW_VERSION` / `READINESS` fields from the `sdd-state` snapshot already produced by
+        the skill's GATHER step; do not call `sdd-state` or `sdd-task` again here. Size the gate to this
+        request's own blast radius (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`): v1 intersecting legacy task
+        layout → `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")`;
+        not-ready and this reconcile needs a missing gate →
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/readiness.directive.xml")`;
+        otherwise follow the scoped preflight contract: read-only detection/migration planning is
+        allowed; a bounded edit of an already V2 owning spec may continue; an unconverted legacy
+        owning scope receives bootstrap/migration guidance before authoring or execution.
+      </Action>
+    </Step>
+    <Step id="STEP_1_PICTURE">
+      <Goal>Map the bounded affected area.</Goal>
+      <Action>
+        Intent-search the specs for the area in play and read the current diff. Resolve the finite set
+        of affected specs, code files, tickets, and trackers; inspect only their ownership headers and
+        linked artifacts. This target picture is the probe boundary, not permission to scan or repair
+        unrelated repository state.
+      </Action>
+    </Step>
+    <Step id="STEP_2_PROBE">
+      <Goal>Probe the spec against the problem (`AX_PROBLEM_PROBES_SPEC`).</Goal>
+      <Action>
+        Dispatch the critic on the affected spec, seeded with the finding, to return all four fields:
+        bug vs spec-defect; the full repeated problem class; blast radius; and whether every proposed
+        spec edit is semantic or strictly editorial. The critic MUST be an actually dispatched
+        subagent. An orchestrator self-probe never satisfies this step. Missing any field is
+        `H_CLASSIFICATION_UNCONFIRMED`; there is no size-based shortcut around the probe.
+      </Action>
+    </Step>
+    <Step id="STEP_2B_CLASSIFY">
+      <Goal>Resolve ownership and choose the only legal remediation class before editing (`AX_FIX_CLASSIFICATION`).</Goal>
+      <Action>
+        Build the ownership map first (`AX_TASK_RESOLUTION`): for every affected code file call the
+        ownershipQuery ToolCall below and consume its versioned `semantic-owner`, `planned`, `active`,
+        `blocked`, and `history` fields. For every spec, resolve its canonical artifact kind and
+        scope. Missing or ambiguous code ownership is never permission for a direct edit.
+        <ToolCall owner="this-step" result="ownershipQuery">npx gennady orient --file &lt;repo-relative-path&gt; --json</ToolCall>
+        Inputs &lt;repo-relative-path&gt;: one exact affected code path. Use ownershipQuery; do not infer
+        routing from a historical `@tasks` header.
+
+        Classify every finding into exactly one category:
+        - **task-continue** — a code finding with exactly one resolver-confirmed `active` ticket and a
+          state policy that permits continuation/recovery. Add a `— re-run:` phase block inside its
+          still-open Round per `AX_REOPEN_FORMAT`, allocate concrete next-unused `fix` and dependent
+          regression `test` PhaseIDs, and hand ordinary execute the ticket. A `history` relation never
+          selects this category and never opens a new Round automatically.
+        - **semantic-spec-update** — any change to GOAL, requirements, observable behaviour, contracts,
+          inventory, architecture, dependencies, BDD acceptance, risks, or Decision Log meaning. Route
+          by artifact kind to authoring and complete independent semantic review plus approval #1 before any scaffold,
+          ticket reopen, or execute handoff (`AX_SPEC_LIFECYCLE`).
+        - **editorial-spec-correction** — spelling, formatting, or a mechanical link correction whose
+          already-defined target and meaning do not change. Record an explicit `semantic: no` rationale.
+          Any GOAL or behavioural delta reclassifies it as semantic; editorial must never smuggle one.
+        - **bounded-direct** — only canonical task-free SDD tracker/index metadata, or the editorial
+          spec correction above, when a literal target-set and the dedicated `sdd-check --all` command
+          can be frozen before editing. Code, tickets, semantic content, and unowned executable
+          artifacts are forbidden here.
+        - **ticket-create-or-recover** — no active ticket for a file with a resolved semantic-owner,
+          or any task-free artifact without the bounded-direct contract. Route through that owning
+          merged spec to select, create, or recover maintenance work. `planned`/`blocked` relations
+          are evidence for that spec-level selection, not routing authority. Unresolved/ambiguous `@spec` routes through semantic
+          authoring first. Never patch it directly and never promote `history` to an owner.
+      </Action>
+    </Step>
+    <Step id="STEP_3_PLAN">
+      <Goal>Materialize the remediation order and exact evidence owner.</Goal>
+      <Action>
+        Group findings sharing one intent without crossing owners (`AX_GROUPING_REDUCES_NOISE`). The
+        plan records, per item:
+        - task-continue: resolver-confirmed active ticket path, current open Round, concrete fix/test
+          PhaseIDs, exact Target Files, and dependency from test to fix;
+        - semantic-spec-update: one artifact kind and authoring directive, the integrated bundle that
+          must merge, then the post-merge disposition (`spec-only`, reopen existing tasks, or scaffold
+          uncovered implementation);
+        - bounded-direct: the ordered literal `<direct-target-set>` and exactly one command per
+          `AX_TOOL_INVOCATION`,
+          <ToolLiteral role="future">npx gennady sdd-check --all <verification-root></ToolLiteral>, where `<verification-root>` is
+          `specs/<scope>` for one editorial spec correction or `<project-root>` for canonical tracker/index
+          metadata. Freeze both before editing; no other direct verifier is implied;
+        - ticket-create-or-recover: resolver-confirmed semantic-owner spec plus recovered/new ticket identity.
+
+        Reconcile any genuinely new entity through the existing orient result (`AX_REUSE_FIRST`) and
+        fill the plan's Reuse rationale when the result is JUSTIFY. Present only this delta in
+        `PLAN_TABLE_FORMAT`.
+      </Action>
+    </Step>
+    <Step id="STEP_4_AGREE">
+      <Goal>Obtain operator agreement on the delta (`AX_OPERATOR_AGREEMENT`).</Goal>
+      <Action>
+        Ask through `QUESTION_RULE_SLIM` once for only the new or unresolved plan delta. Preserve every
+        already accepted classification/choice without restating or re-asking it; batch independent
+        unresolved choices. Warn only about newly discovered class/blast-radius impact
+        (`AX_OPERATOR_SAFEGUARD`). Stop while awaiting the answer. Rejected → `H_OPERATOR_REJECT`;
+        rejection is not completion and does not create hidden resume state.
+      </Action>
+    </Step>
+    <Step id="STEP_5_APPLY">
+      <Goal>Apply through the remediation owner, preserving design-before-code order.</Goal>
+      <Action>
+        <LogicSwitch on="approved remediation category">
+        - WHEN **task-continue** → append the planned `— re-run:` block to each resolver-confirmed active
+          ticket's still-open Round exactly per `AX_REOPEN_FORMAT`; write its concrete fix and dependent
+          test PhaseIDs, then dispatch every affected ticket through
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")` as one BATCH per
+          `AX_DISPATCH_VIA_BATCH`: the batch orchestrator plans layers, runs phases, closes rounds,
+          and syncs trackers under its own unchanged `sdd-task --audit-group` lifecycle. There is no
+          reconcile-only audit flag — execute remains the sole owner of each affected group's audit
+          and code-review; reconcile never edits the task-owned code itself and never dispatches a
+          second review. It only retains each group's returned result and checks it at
+          STEP_6_VERIFY.
+
+        - WHEN **semantic-spec-update** → route the approved delta to exactly one owning authoring flow:
+          canonical product/library scope →
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")`; module spec →
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")`; infrastructure spec →
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")`; interface spec →
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")`. Unknown or mixed kind
+          without one owning flow is `H_SPEC_KIND_UNRESOLVED`. The selected authoring flow writes the
+          ordinary V2 artifact and MUST run one
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` for its complete
+          bundle. Require its independent verdict and operator approval #1 with a current marker;
+          missing proof is `H_SPEC_REVIEW_NOT_APPROVED`. Only AFTER that proof may implementation move:
+          reopen impacted existing tickets with new concrete fix/test phases and hand ordinary execute;
+          for uncovered implementation load
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")`, whose actual-ticket
+          review and approval #2 precede ordinary execute. Interface changes first route implementation
+          through their owning product/library module authoring; they never create a flat interface
+          scaffold. No implementation impact ends as the merged spec-only branch.
+
+        - WHEN **bounded-direct** → recheck that every frozen path is genuinely task-free and the
+          approved edit remains editorial/mechanical. Edit only `<direct-target-set>`, then run the
+          one frozen exact command integrityCheck ToolCall below once. Preserve its
+          literal output and exit code in `DIRECT_VERIFICATION_RECEIPT`. Preserve V2 source headers
+          per `AX_FILE_HEADER_TASK_TRACEABILITY` and `AX_FILE_HEADER_APPEND_ONLY`. Any path drift, semantic delta,
+          nonzero exit, or missing literal output is `H_DIRECT_VERIFICATION_UNAVAILABLE`; restore the
+          plan to ticket-create-or-recover rather than substituting a lighter command.
+          <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all <verification-root></ToolCall> Inputs <verification-root>: <verification-root>=exact dedicated root frozen for the bounded-direct target-set in STEP_3. Use integrityCheck.
+
+        - WHEN **ticket-create-or-recover** → recover the matching ticket or load
+          `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")` against the owning
+          already-merged spec to create one. Give it concrete phases and then let scaffold/ordinary
+          execute own implementation. If there is no owning merged spec, reclassify through semantic
+          authoring first; never directly edit the orphan artifact.
+        </LogicSwitch>
+      </Action>
+    </Step>
+    <Step id="STEP_6_VERIFY">
+      <Goal>Consume exactly one evidence chain (`AX_VERIFY_AT_END`).</Goal>
+      <Action>
+        <LogicSwitch on="completed remediation branch">
+        - task-continue or ticket-create-or-recover → consume ordinary execute's per-ticket sync and phase
+          gates plus each affected group's audit `PASS` / `PASS_WITH_ACKNOWLEDGED_RISKS` and code-review
+          outcome. Missing group evidence returns to ordinary execute for that group.
+        - semantic spec-only → consume independent review plus operator approval #1 evidence.
+        - semantic spec plus implementation → require approval #1 to precede the ordinary execute
+          evidence above.
+        - bounded-direct → require the exact `DIRECT_VERIFICATION_RECEIPT` frozen in STEP_3.
+        </LogicSwitch>
+        Do not run a catch-all second audit/code-review or a duplicate sync/check tail. Any missing/red
+        owned evidence is `H_VERIFICATION_FAIL`. Carry non-blocking code-review proposals into
+        `FIX_SUMMARY_FORMAT`.
+
+        Then report the outer result. If task recovery or implementation remains, hand the exact
+        ticket/spec paths to the next ordinary owner. Any blocker, red evidence, unresolved proposal,
+        or operator deferral stops with a concrete resume command. A spec-only branch that cleared
+        review plus operator approval #1, or a bounded-direct branch with its `DIRECT_VERIFICATION_RECEIPT`,
+        reports completion. All continuation state is in artifacts and Git.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    <Contract id="MESSAGE_LAYOUT">
+      A step-boundary / decision message (the decision card) is sectioned with markdown headers, in
+      this order. Skip any section empty for this step. During free dialogue inside a step the agent
+      does NOT print this layout — it just talks.
+
+      `<dim service line>`        — internal anchor + scope + mode + confidence (supplied by the branch)
+
+      `<breadcrumb>`              — per `BREADCRUMB_FORMAT`, its OWN paragraph (a blank line above it,
+      not just a `\n`) — markdown collapses a single newline into a space, so without the blank line
+      the breadcrumb visually fuses onto the service line
+
+      ## `<glyph>` `<scope>` — одной фразой, что делаем
+
+      ### 🤔 Как я понял задачу    — an italic blockquote (`> _…_`), 2–3 sentences max: the task retold
+      in the agent's own words plus the single riskiest assumption, linked by wording to the question
+      that resolves it; never a restate of already-settled content — only what is NEW or could be
+      misread (goes at the TOP)
+      ### 🎯 Главное решение       — the crux in plain words; if the decision is a flow (data moving,
+      state transitions, start/stop conditions), add a small ASCII diagram — the one place a fenced
+      block is allowed in this message, at most one per message
+      ### 💡 <О чём решаем>         — per `QUESTION_RULE_SLIM` (full format with worked examples lives in
+      `QUESTION_FORMAT`, in the interview / vision directives)
+      ### ↓ Детали — по желанию    — reasoning, full comparison, change-list (per `AX_PROGRESSIVE_DISCLOSURE`)
+
+      Glyph dictionary — closed inventory, one assigned meaning each, never a free pick. Every glyph
+      here is chosen to read clearly on BOTH a light and a dark terminal/chat theme — half-tone shading
+      characters (`░ ▒ ▓` and similar) are forbidden anywhere in this layout: they render as near-invisible
+      or vanish outright depending on theme.
+
+      Section-header glyphs (fixed, one per header, in the order above):
+      - `🤔` — the agent's own understanding check, at the top of a decision card
+      - `🎯` — the crux decision, in plain words
+      - `💡` — a decision the agent is proposing for the operator to confirm or pick between
+      - `↓` — folded detail, expand on demand
+
+      Step-TYPE glyphs (fixed, keyed by the step's TYPE, used in the service line / breadcrumb, never a free pick):
+      - `🏗` — creation / scaffold (new spec, new tickets, new files)
+      - `🔍` — audit / review (fresh-eyes read, no write)
+      - `🔧` — fix / reconcile (spec ⟷ code drift repair)
+      - `⚡` — execute (a task ticket's phases running)
+      - `🗺` — routing / overview (intent classification, project-level map)
+
+      Breadcrumb-status glyphs (per `BREADCRUMB_FORMAT`): `✅` done · `👷` active · `◻️` not yet.
+
+      No other emoji appear in message or section headers — the glyphs enumerated above are the only
+      ones this layout permits.
+    </Contract>
+
+    <Contract id="PLAN_TABLE_FORMAT">
+      Shown to operator at STEP_3. Compact table per category. Operator may edit. Carries a
+      "Reuse rationale" column/slot — filled per `AX_REUSE_FIRST` whenever an item introduces a new
+      entity/type/method/contract: the JUSTIFY-level one-line rationale for why the existing surface
+      was insufficient (reuse/extend items leave it empty — nothing to justify).
+    </Contract>
+
+    <Contract id="DIRECT_VERIFICATION_RECEIPT">
+      A direct reconcile edit returns this exact evidence block:
+
+      ```
+      DirectVerificationReceipt:
+        target-set: [<ordered literal repo-relative paths>]
+        command: npx gennady sdd-check --all <verification-root>
+        exit: 0
+        output: <literal unmodified command output>
+      ```
+
+      The target-set is frozen before editing and contains only canonical task-free SDD tracker/index
+      metadata paths, or one canonical spec path proven editorial. `<verification-root>` is
+      `specs/<scope>` for that editorial spec or `<project-root>` for tracker/index metadata. The command
+      is selected before editing and run exactly once after the edit. Missing
+      output, nonzero exit, a changed target-set, an edit outside it, or an artifact without this dedicated
+      verifier invalidates the direct path and routes to ticket recovery/creation instead.
+    </Contract>
+
+    <Contract id="FIX_SUMMARY_FORMAT">
+      ```
+      ## ✅ sdd-reconcile complete
+
+      Direct fixes: N applied
+        ✅ <what> → <file>
+        🔍 receipt: target-set=<literal paths> · command=<exact command> · exit=0
+
+      Spec updates: N applied
+        ✅ <what> → <file> · authoring=<scope|module|infra|interface> · approval1=APPROVED
+
+      Tasks reopened: N
+        🔄 TSK-NN — Round N: <reason> · phases=<fix PhaseID>,<test PhaseID> → ordinary execute
+        🔄 TSK-MM — Round N: <reason> · phases=<fix PhaseID>,<test PhaseID> → ordinary execute
+
+      🔍 path evidence: <execute group results | independent review + approval #1 | direct verification receipt>
+      ```
+      Omit any section whose count is 0. Every file changed on disk MUST appear under exactly one section — a summary whose counts are all zero while the diff is non-empty is a defective summary.
+    </Contract>
+  </ChatOutput>
+</SddReconcile>

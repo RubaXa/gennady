@@ -1,0 +1,11 @@
+$ node --import tsx cli/gennady.ts sdd-migrate move . --scope dbc
+
+--- stdout ---
+[sdd-migrate move] DRY-RUN · scope dbc
+  no-op scope dbc — уже мигрирован в v2
+
+(dry-run — повторить с --write, чтобы применить)
+
+
+--- stderr ---
+

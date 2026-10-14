@@ -1,0 +1,119 @@
+<Contract id="INTERFACE_SPEC_STRUCTURE">
+  ```markdown
+  # <scope-name>: Interface Specification
+
+  <!--SECTION:SPEC_ID-->
+  <SPEC-ID>
+  <!--/SECTION:SPEC_ID-->
+
+  <!--SECTION:SCOPE_TYPE-->
+  ## scope-type
+  interface
+  <!--/SECTION:SCOPE_TYPE-->
+
+  <!--SECTION:VISION-->
+  ## Vision
+  [Что контракт определяет и для кого.]
+  <!--/SECTION:VISION-->
+
+  <!--SECTION:OVERVIEW-->
+  ## Overview
+  [MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram up top (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one — who produces vs consumes this contract, or the version-transition flow; add more by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
+
+  ```mermaid
+  flowchart LR
+    producer -->|implements| Contract
+    Contract -->|consumed by| consumer
+  ```
+  _Что здесь главное, одной фразой._
+  <!--/SECTION:OVERVIEW-->
+
+  <!--SECTION:SCOPE_DEPENDENCIES-->
+  ## Scope Dependencies
+  - **Depends on:** [infra scopes if any]
+  - **Provides interface to:** [product/library scopes]
+  <!--/SECTION:SCOPE_DEPENDENCIES-->
+
+  <!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+  ## Requirements & Constraints
+
+  ### Requirements
+  <!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
+
+  ### <ACR>-REQ-1 [должен · нештатная]
+  **Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
+
+  > Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
+
+  <!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+  <!--SECTION:INTERFACE_DECLARATION-->
+  ## Interface Declaration
+  - **Schema format:** OpenAPI 3.x | gRPC proto3 | JSON Schema | GraphQL SDL
+  - **Versioning scheme:** semver | date-based (YYYY-MM-DD) | none
+  - **Namespace:** <api prefix / package name>
+  - **Interfaces:** [список endpoint groups / message types / operations]
+  <!--/SECTION:INTERFACE_DECLARATION-->
+
+  <!--SECTION:VERSIONING_POLICY-->
+  ## Versioning Policy
+  [Semver rules / breaking-change protocol / deprecation window.]
+  <!--/SECTION:VERSIONING_POLICY-->
+
+  <!--SECTION:COMPATIBILITY_MATRIX-->
+  ## Compatibility Matrix
+  [One-line human summary — how many consumers, any breaking changes pending. Full matrix folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+  <details>
+  <summary>Матрица совместимости</summary>
+
+  | Consumer scope | Min compatible version | Breaking change protocol |
+  |---|---|---|
+
+  </details>
+  <!--/SECTION:COMPATIBILITY_MATRIX-->
+
+  <!--SECTION:RESEARCH-->
+  ## Research
+  [Опционально. Реестр ресёрчей, на которые опирается эта спека — по одной строке на документ.
+  Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`).]
+
+  | Документ | Что ресёрчили | Что дал для спеки |
+  |---|---|---|
+  | [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+  <!--/SECTION:RESEARCH-->
+
+  <!--SECTION:DECISION_LOG-->
+  ## Decision Log
+  [One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+  <details>
+  <summary>Полные записи Decision Log</summary>
+
+  [<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
+
+  </details>
+  <!--/SECTION:DECISION_LOG-->
+
+  <!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+  ## Prerequisites
+  [One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+  <details>
+  <summary>Таблица предусловий</summary>
+
+  | Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+  |---|---|---|---|---|---|
+  <!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+  </details>
+  <!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
+
+  <!--SECTION:HANDOFF-->
+  ## Handoff
+  - **Contract files to scaffold:** [schema files, codegen configs]
+  - **Bootstrap tickets ready for cascade:** see Prerequisites
+  - **Open risks:** [versioning gaps, unconfirmed consumers]
+  <!--/SECTION:HANDOFF-->
+  ```
+</Contract>

@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<Axiom id="AX_SB_USE_MCP_FIRST">
+  MCP tools are the primary source for everything Storybook-related: discovering documentation, reading component props, reading existing stories, executing story tests. Source-code reading is a FALLBACK reserved for when MCP returns an explicit «not available» or incomplete data. Falling back to source must be acknowledged in a story comment naming the MCP gap.
+</Axiom>

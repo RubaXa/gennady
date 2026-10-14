@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Hook id="HOOK_NO_HOST_SELECTOR">
+<Purpose>Detect forbidden `:host()` pseudo-class usage in component CSS.</Purpose>
+<Command>find . -name '*.module.css' -not -path '*/node_modules/*' -print0 | xargs -0 grep -n ':host' || true</Command>
+<Expected>Empty output. Any match is a violation of `AX_DATA_ATTRS_NOT_HOST`.</Expected>
+</Hook>

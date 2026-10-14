@@ -1,6 +1,6 @@
 // @file: Unit tests for registry module: resolve, list, detectAll, _resetForTest.
+// @spec: AGENT-RUN-CORE
 // @consumers: CI test suite
-// @tasks: TSK-62
 
 /**
  * Test Graph:

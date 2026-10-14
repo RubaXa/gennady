@@ -1,6 +1,6 @@
 // @file: Collect file contents (local and VCS) for cat command.
+// @spec: CLI
 // @consumers: cmd/cat
-// @tasks: TSK-31
 
 import fs from 'node:fs';
 import path from 'node:path';

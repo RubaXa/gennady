@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-reply delete discussion — {discussionId, delete:true} → deleteDiscussion.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-87
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

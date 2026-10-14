@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/discovery.directive.xml -->
+<Axiom id="AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION">
+  The `scope` flow reads `specs/README.md` for project context (vision, scope graph, sibling scopes). It MUST NOT rewrite the file. The narrow exception (per the `root` flow's `AX_PORTAL_PRIMARY_OWNER`): when the `scope` flow creates a brand-new scope, it MAY append one placeholder row to the Scopes table tagged `🚧 (awaiting root sync)`. Any other edit is forbidden — run the `root` flow instead.
+</Axiom>

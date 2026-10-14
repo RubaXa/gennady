@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_NO_FALSIFICATION_VIA_MOCKS">
+A test MUST NOT mock the very module that contains the SUT, its direct collaborator under test, or the contract method being verified. Mocking the SUT or its co-tested collaborator turns the test into a tautology — it asserts the mock instead of production code. Non-negotiable; most common form of fabricated green tests in agent-written suites.
+</Axiom>

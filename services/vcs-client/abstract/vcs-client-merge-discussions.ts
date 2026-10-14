@@ -1,6 +1,6 @@
 // @file: Contract surface for merge request discussion operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-71, TSK-86
 
 import type { VcsDraftNote } from '../entities/vcs-draft-note.type.ts';
 import type { VcsDeleteDiscussionQuery } from '../entities/vcs-delete-discussion-query.type.ts';

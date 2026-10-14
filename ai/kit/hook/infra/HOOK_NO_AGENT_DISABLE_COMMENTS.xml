@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Hook id="HOOK_NO_AGENT_DISABLE_COMMENTS">
+      <Purpose>Catch agent-introduced `eslint-disable*` comments in changed files.</Purpose>
+      <Command>git diff --unified=0 | grep -E '^\+.*eslint-disable(-next-line|-line)?\b' | grep -vE '\-\-\s+\S'</Command>
+      <Expected>Empty. Any match is either missing `--` justification (non-compliant form) or agent-authored disable that must be removed.</Expected>
+    </Hook>

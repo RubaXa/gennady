@@ -1,6 +1,6 @@
 // @file: Unit tests for createStateManager lifecycle — loading/ready/error transitions
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: test
-// @tasks: TSK-45
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

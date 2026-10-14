@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Hook id="HOOK_SK_TYPECHECK">
+<Purpose>Generate route types and run Svelte-aware type-check; catches private-env-in-client violations.</Purpose>
+<Command>npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json</Command>
+<Expected>Exit 0; no errors.</Expected>
+</Hook>

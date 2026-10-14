@@ -1,0 +1,11 @@
+$ node --import tsx cli/gennady.ts sdd-migrate move . --scope infra-npm-publish
+
+--- stdout ---
+[sdd-migrate move] DRY-RUN · scope infra-npm-publish
+  no-op scope infra-npm-publish — уже мигрирован в v2
+
+(dry-run — повторить с --write, чтобы применить)
+
+
+--- stderr ---
+

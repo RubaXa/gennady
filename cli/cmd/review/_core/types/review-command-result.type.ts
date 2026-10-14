@@ -1,6 +1,6 @@
 // @file: Review command execution result.
+// @spec: CLI-REVIEW
 // @consumers: run-review-command.logic
-// @tasks: N/A
 
 import type { ReviewArtifact } from './review-artifact.type.ts';
 

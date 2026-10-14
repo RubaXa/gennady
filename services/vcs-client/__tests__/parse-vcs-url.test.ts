@@ -1,6 +1,6 @@
 // @file: Unit tests for parseVcsUrl — GitLab/GitHub URL parsing.
+// @spec: VCS-VCS-CLIENT
 // @consumers: node:test runner
-// @tasks: TSK-27
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

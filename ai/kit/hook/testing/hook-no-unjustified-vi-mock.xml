@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<Hook id="HOOK_NO_UNJUSTIFIED_VI_MOCK">
+  <Purpose>Every `vi.mock(` / `vi.hoisted(` MUST be paired with a justification comment within 3 lines.</Purpose>
+  <Command>rg --no-heading -n -B1 -A2 "vi\.(mock|hoisted)\(" -t ts --glob '**/*.test.ts'</Command>
+  <Expected>Each match has an immediate-neighbor comment naming the dependency and reason injection is unavailable.</Expected>
+</Hook>

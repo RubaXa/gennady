@@ -1,0 +1,2 @@
+<!-- source: ai/directives/sdd/critic-protocol.xml -->
+<Pattern id="AP_FORMAT_BIAS">Assuming quality from formatting. Structure ≠ correctness.</Pattern>

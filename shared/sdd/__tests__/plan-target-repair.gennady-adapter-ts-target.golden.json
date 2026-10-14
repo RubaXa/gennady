@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "run",
+    "name": "formatter",
+    "command": "npm",
+    "args": ["run", "format:fix", "--", "src/a.ts"],
+    "evidence": "npm run format:fix -- src/a.ts"
+  },
+  {
+    "kind": "run",
+    "name": "gennady-contract",
+    "command": "npm",
+    "args": ["run", "lint:fix", "--", "--include-tests", "--", "src/a.ts"],
+    "evidence": "npm run lint:fix -- --include-tests -- src/a.ts"
+  }
+]

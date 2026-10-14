@@ -1,0 +1,4 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Axiom id="AX_MODULE_SYSTEM_EXPLICIT">
+  Module system declared once and never mixed. Mixing `import` and `require` in the same project causes non-deterministic resolution and conditional-exports mismatches. Choose at init; set `"type": "module"` (ESM) or omit/`"commonjs"` (CJS) in `package.json`. Do NOT add `.mjs`/`.cjs` files without an explicit dual-package strategy.
+</Axiom>

@@ -1,0 +1,11 @@
+<!-- source: ai/directives/infra/git-setup.xml -->
+<Axiom id="AX_HOOKS_INTEGRATION">
+  Hooks fire on every commit/push. `pre-commit` is verify-only: first require working tree == index,
+  then run universal `verify --phase full` under its internal staged-candidate policy (types, coverage suite, production
+  contract lint, format check, yagni) and the directive freshness/axiom/contract/halt/budget audits. It never
+  omits formatter/autofix repair nodes and never re-stages bytes; read-only observations stay red until the author runs the
+  project `fix`, stage the result, and retry. Budget is honestly tens of seconds because tests and
+  types are whole-project. `commit-msg` (conventional-commits validator) stays required.
+  Optional: `prepare-commit-msg` (prepend issue ID), `post-merge` (reinstall if lock changed). Hook
+  config committed to repo; one onboarding command registers them (e.g. `lefthook install`).
+</Axiom>

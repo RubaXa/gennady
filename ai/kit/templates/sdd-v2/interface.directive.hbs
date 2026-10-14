@@ -1,0 +1,203 @@
+<SddInterface keywords="interface, schema, versioning, compatibility, consumer, decision-log, sdd-interface" type="directive" ver="2.1">
+  <Mission>
+    Author or evolve an `interface` scope spec — cross-scope interfaces: schema (OpenAPI / gRPC proto
+    / JSON Schema / GraphQL), versioning policy, compatibility matrix, consumer declaration. A
+    self-contained living spec. Loaded lazily by the router; inherits the router core (language,
+    dialogue, safeguard, diverge, no-narration, stateless) — not repeated here.
+
+    Input — scope name + intent (or an existing spec for refine / pivot). Output —
+    `specs/<scope>/<scope>.spec.md` (scope-type interface).
+
+    Out of scope: implementation, module decomposition, product / library design. The project portal
+    is the root branch.
+
+    **Glossary.** Modes: greenfield · refine · pivot · rewrite. Consumers = the scopes that depend on this
+    interface scope.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, AX_OPERATOR_DIALOGUE_STYLE, AX_DIALOGUE_DISCIPLINE, AX_OPERATOR_SAFEGUARD, AX_DIVERGE_BEFORE_RECOMMEND, AX_NO_PROCESS_NARRATION, AX_STATELESS_ARTIFACT, AX_SCALE_PROPORTIONAL_DEPTH">
+    {{> "axiom/process/ax-tool-invocation"}}
+
+    {{> "axiom/scaffold/ax-directive-mode"}}
+
+    {{> "axiom/scaffold/ax-mode-auto-detect-or-halt"}}
+
+    {{> "axiom/boundary/ax-portal-read-only-with-placeholder-exception"}}
+
+    {{> "axiom/spec/ax-living-spec"}}
+
+    {{> "axiom/spec/ax-spec-lifecycle"}}
+
+    {{> "axiom/truth/ax-spec-is-sole-source"}}
+
+    {{> "axiom/spec/ax-interface-flow"}}
+
+    {{> "axiom/spec/ax-decision-log-required"}}
+
+    {{> "axiom/spec/ax-pivot-requires-supersession"}}
+
+    {{> "axiom/boundary/ax-cross-scope-dependencies"}}
+
+    {{> "axiom/spec/ax-parallel-mechanism-requires-justification"}}
+
+    {{> "axiom/truth/ax-evidence-hygiene"}}
+
+    {{> "axiom/boundary/ax-bootstrap-narrow-read"}}
+
+    {{> "axiom/spec/ax-spec-mandatory-diagram"}}
+
+    {{> "axiom/process/ax-artifact-style-self-check"}}
+
+    {{> "axiom/process/ax-close-with-integrity-check"}}
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_INTAKE` | Empty intake |
+    | `H_AMBIGUOUS_MODE` | Spec exists + mode verb absent (per `AX_MODE_AUTO_DETECT_OR_HALT`) |
+    | `H_BREAKING_CHANGE_NO_PROTOCOL` | A breaking interface change without a declared breaking-change protocol |
+    | `H_SYSTEM_FIT_NOT_RUN` | `STEP_3_VERSIONING_POLICY` entered before `STEP_2B_SYSTEM_FIT`'s checklist closed, or "вводим новое" recorded without the specific neighbour invariant/requirement ID it fails (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) |
+    | `H_PIVOT_NO_INVALIDATION_LIST` | `pivot` mode without a Pivot Invalidation List |
+    | `H_REWRITE_WITH_DOWNSTREAM` | `rewrite` mode but the scope already has tickets — not v0, use `pivot` (`AX_PIVOT_REQUIRES_SUPERSESSION`) |
+    | `H_BOOTSTRAP_REQUIREMENTS_MISSING` | External-deps step finished without a Bootstrap Requirements section |
+    | `H_OPERATOR_REJECT` | Operator rejected the spec |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Resolve scope name and mode.</Goal>
+      <Action>
+        State from the router gives the portal + scope-type (interface). Resolve the scope name; stat
+        the spec → `greenfield` or detect the mode per `AX_DIRECTIVE_MODE` / `AX_MODE_AUTO_DETECT_OR_HALT`.
+      </Action>
+    </Step>
+    <Step id="STEP_1_CONFIRM">
+      <Goal>Confirm interface and outline the section set.</Goal>
+      <Action>Confirm scope-type, outline sections. Approval Check. STOP.</Action>
+    </Step>
+    <Step id="STEP_2_INTERFACE_DECLARATION">
+      <Goal>Declare the interface.</Goal>
+      <Action>
+        Per `AX_INTERFACE_FLOW`: schema format (OpenAPI / gRPC proto / JSON Schema / GraphQL),
+        versioning scheme (semver / date-based / none), namespacing — Facts / Assumptions /
+        Hypotheses separated per `AX_EVIDENCE_HYGIENE`. Then run the operator interview —
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interview-protocol.directive.xml")` — passing
+        scope-type `interface` (selects the TopicCatalog block) and the SCALE confirmed for this
+        invocation: per `AX_SCALE_PROPORTIONAL_DEPTH` `fix` / `function` → base topics + the
+        triage minimum; `product` → the full scope-type block. The interview IS the substance of
+        the step. Approval Check. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2B_SYSTEM_FIT">
+      <Goal>Reconcile with the existing system before the versioning policy locks.</Goal>
+      <Action>
+        FIRST action this step: run orientation ToolCall below (this works even before
+        `sdd-new` materializes the interface spec) and read its output in full: the portal line, the
+        one-hop neighbours with their paths,
+        entity/contract NAMES, requirement IDs + titles, the consumers list, and its closing question.
+
+        Then close, in THIS message, the fixed checklist — record every answer in the spec (Decision
+        Log entry when (a)/(b) lands on "new", inline note otherwise):
+        (a) Is this contract / schema shape already an existing kind — does the extract already name
+        it on a neighbour interface or a producer/consumer scope?
+        (b) If not: which existing contract the extract names are we EXTENDING (a new version, a new
+        field) instead of introducing a parallel one?
+        (c) Which neighbour specs (paths, from the extract — producers, consumers) will need work for
+        this to fit the system — each is recorded in the owning dependency/impact section or Pivot
+        Invalidation List?
+        (d) Which neighbour requirements (IDs, from the extract) conflict with the versioning policy
+        we are about to lock, and how is the conflict resolved?
+        "Вводим новое" answers (a)/(b) ONLY together with the specific neighbour invariant/requirement
+        ID the existing contract cannot satisfy, plus its own Decision Log entry
+        (`AX_PARALLEL_MECHANISM_REQUIRES_JUSTIFICATION`) — else `H_SYSTEM_FIT_NOT_RUN`. On a
+        genuinely greenfield project with no neighbours, `sdd-orient` degenerates to its one-line
+        "соседей нет" — the checklist still runs, (a) still gets an honest answer, (c)/(d) collapse to
+        "н/д"; the step itself is never skipped. STOP.
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: <scope>=operator-confirmed interface scope retained by this flow. Use orientation.
+      </Action>
+    </Step>
+    <Step id="STEP_3_VERSIONING_POLICY">
+      <Goal>Lock the versioning policy.</Goal>
+      <Action>
+        Versioning scheme + breaking-change protocol + consumer-notification rule — each locked choice
+        recorded as a Decision Log entry (`AX_DECISION_LOG_REQUIRED`, `DECISION_LOG_ENTRY_FORMAT`). A
+        breaking change without a protocol → `H_BREAKING_CHANGE_NO_PROTOCOL`. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_4_COMPATIBILITY_MATRIX">
+      <Goal>Lock compatibility guarantees and consumers.</Goal>
+      <Action>
+        Backward-compat guarantees + consumer declaration (which scopes consume this contract, per
+        `AX_CROSS_SCOPE_DEPENDENCIES`). STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_5_EXTERNAL_DEPENDENCIES_AUDIT">
+      <Goal>Materialize Bootstrap Requirements.</Goal>
+      <Action>
+        Walk the drafted spec; extract external assumptions; classify `exists` | `missing` | `unknown`
+        (narrow read for inventory only, per `AX_BOOTSTRAP_NARROW_READ` and `AX_SPEC_IS_SOLE_SOURCE` —
+        design stays sourced from specs); resolve with the operator;
+        materialize the Bootstrap Requirements table. Empty only if explicit «nothing to bootstrap»,
+        else `H_BOOTSTRAP_REQUIREMENTS_MISSING`.
+      </Action>
+    </Step>
+    <Step id="STEP_6_FINAL_SPEC">
+      <Goal>Emit the interface spec.</Goal>
+      <Action>
+        In `greenfield`/`rewrite` mode, when `specs/<scope>/<scope>.spec.md` does not exist yet,
+        create its skeleton via interfaceManifest ToolCall below — it never overwrites and prints
+        the section manifest (which sections are REQUIRED and what to fill); in `refine`/`pivot` mode
+        the file already exists: read it in full and skip `sdd-new`. In every authoring mode compose
+        the COMPLETE target document in memory and replace the file with exactly ONE whole-file
+        `Write`. `Edit`, `Patch`, and per-section writes are forbidden. Retain every SECTION marker
+        and replace every skeleton guidance comment; none may survive. Content guidance per
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/interface-spec-structure.xml")`.
+        The `Overview` section carries at least one diagram per `AX_SPEC_MANDATORY_DIAGRAM`.
+        Before writing, run the self-check pass per
+        `AX_ARTIFACT_STYLE_SELF_CHECK`. Write the ordinary V2 artifact per `AX_SPEC_LIFECYCLE` and
+        close with the declared integrity check per `AX_CLOSE_WITH_INTEGRITY_CHECK`. In `refine` mode preserve unchanged semantics while regenerating the whole document per
+        `AX_LIVING_SPEC`. In `pivot` mode also
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")`
+        (`AX_PIVOT_REQUIRES_SUPERSESSION`); in `rewrite` mode write fresh — no supersession. For a
+        brand-new scope, append the `🚧 (awaiting root sync)` placeholder row to the portal Scopes table
+        per `AX_PORTAL_READ_ONLY_WITH_PLACEHOLDER_EXCEPTION`; every other portal edit belongs to root.
+        Write the actual spec, run the preflight checklist and exact integrity check, then
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/review-lifecycle.directive.xml")` for one fresh
+        independent semantic review and operator approval #1 recorded by the human-readable marker.
+
+        Render one continuity menu per `NEXT_STEP_MENU_FORMAT`. An interface has no direct flat-scope
+        scaffold route: route implementation through its owning product/library scope. Another scope
+        in dependency order returns to the router using current artifacts. Pause prints the exact next
+        scope/skill. When no work remains, report completion. No session close exists.
+        <ToolCall owner="this-step" result="interfaceManifest">npx gennady sdd-new interface --scope <scope></ToolCall> Use interfaceManifest.
+        <ToolCall owner="this-step" result="integrityCheck">npx gennady sdd-check --all specs/<scope></ToolCall> Use integrityCheck.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatProtocol>
+    {{> "contract/process/question-rule-slim"}}
+  </ChatProtocol>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (per `AX_NO_PROCESS_NARRATION`):
+    `📐 CON_R<N> · <scope> · <mode> · conf=<LOW|MEDIUM|HIGH>`. Breadcrumb milestones (per
+    `BREADCRUMB_FORMAT`): Interface · Versioning · Compatibility · Spec.
+
+    {{> "contract/process/message-layout"}}
+
+    {{> "contract/process/breadcrumb-format"}}
+
+    {{> "contract/process/next-step-menu-format"}}
+
+    {{> "axiom/process/ax-progressive-disclosure"}}
+  </ChatOutput>
+
+  <ArtifactOutput>
+    {{> "contract/process/artifact-approval-marker"}}
+
+    <!-- spec-structure + pivot formats load lazily at STEP_6 (used only when writing) — see ExecutionPlan. -->
+    {{> "contract/spec/decision-log-entry-format"}}
+  </ArtifactOutput>
+</SddInterface>

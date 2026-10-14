@@ -1,0 +1,106 @@
+<SddAmplifyNfr keywords="nfr, amplify, budgets, latency, throughput, scale, availability, consistency, bottlenecks, degradation, sdd-amplify-nfr" type="directive" ver="2.0">
+  <Mission>
+    Turn performance and reliability signals into ordinary atomic requirements: latency /
+    throughput / scale / availability / consistency as numbers, plus observable overload
+    behaviour. Loaded lazily by the discovery interview's triage when the scope carries load,
+    growth, or availability expectations; inherits the session core — not repeated here.
+
+    Input — the scope spec draft + interview context (usage profile signals). Output — flat
+    requirement entries in the canonical Requirements section + follow-up items on the discovery
+    interview map. Out of scope: benchmark methodology and load-test tooling — detailed material
+    belongs in Architecture or one referenced supporting section only when genuinely needed.
+  </Mission>
+
+  <BeliefState deps="AX_OPERATOR_LANGUAGE, AX_OPERATOR_SAFEGUARD, AX_NO_PROCESS_NARRATION">
+    Inherited from the loading directive (already in context): QUESTION_FORMAT
+
+    <Axiom id="AX_AMPLIFY_DEFAULTS_FIRST">
+      An amplification opens with a ready answer, not a questionnaire. FIRST assemble a complete
+      defaults package — the decisions live products of this class actually ship with (run a short
+      targeted research pass when class practice is uncertain, grounded in the scope's intent) — and
+      present it as ONE accept-or-edit reply: the operator takes everything with one word or edits by
+      item number. Ask via the AskUserQuestion / multi-question tool when available; fallback
+      `QUESTION_FORMAT`. Deep-dive questions open only for topics the operator explicitly marks
+      deep-dive; every untouched topic keeps its default. An accepted default is a real decision —
+      record it like one.
+    </Axiom>
+
+    <Axiom id="AX_DECISION_LOG_REQUIRED">
+      Every non-obvious decision → a Decision Log entry in `DECISION_LOG_ENTRY_FORMAT` — one line,
+      the expanded part in parentheses: `<ACR>-DL-N <date> — <decision> (почему: …; отвергнуто: …;
+      риск: …)`; IDs are stable. Non-obvious only (`AX_DECISION_LOG_NON_OBVIOUS`): a pick already
+      recorded in the spec's own tables is never duplicated as a DL row. Which decisions qualify
+      and which Decision Log receives the entry are specified per directive.
+    </Axiom>
+
+    <Axiom id="AX_BUDGETS_ARE_NUMBERS">
+      A non-functional constraint is a number plus its measurement condition: latency as a percentile
+      under stated load (`p95 ≤ 200ms @ 100 RPS`), availability as a target with an error budget,
+      scale as concrete volumes (rows, RPS, concurrent users, growth horizon), consistency as a named
+      model. «Fast», «reliable», «scales» are placeholders, not constraints — replace each with a
+      measurable budget, or record an explicit «не бюджетируем, потому что …» decision.
+    </Axiom>
+
+    <Axiom id="AX_LATENCY_STACKING">Последовательный `await` независимых задач складывает их задержки (Latency). Параллельный запуск сводит общую задержку к самой медленной задаче.</Axiom>
+
+    <Axiom id="AX_BACKPRESSURE_IS_LAW">Чтение данных быстрее, чем их может обработать потребитель, накапливает бесконечный буфер в RAM. Игнорирование Backpressure — это прямой путь к OOM на устройствах с 4-8 GB памяти.</Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | 🛑 ID | Trigger |
+    |---|---|
+    | `H_NO_USAGE_SIGNAL` | Neither the spec draft nor the operator gives any scale / load signal to budget against — return the question to the interview |
+    | `H_OPERATOR_REJECTS_DEFAULTS` | Operator declines the whole defaults package and skips deep-dive — leave the spec untouched |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_PROPOSE_DEFAULTS">
+      <Goal>Assemble the numeric budget package for this product class.</Goal>
+      <Action>
+        Extract the usage profile from the spec draft (who calls what, how often, how much data).
+        Per `AX_AMPLIFY_DEFAULTS_FIRST`, draft one observable outcome per relevant dimension — latency,
+        throughput, scale + growth horizon, availability, consistency — with numbers live products
+        of this class actually hold (per `AX_BUDGETS_ARE_NUMBERS`; short targeted research when
+        class practice is uncertain). Name the expected first bottleneck and the degradation
+        posture under overload (shed / queue / reject — mind `AX_BACKPRESSURE_IS_LAW`,
+        `AX_LATENCY_STACKING`). A dimension with no design consequence is not an entry. No usage
+        signal at all → `H_NO_USAGE_SIGNAL`.
+      </Action>
+    </Step>
+    <Step id="STEP_1_AGREE">
+      <Goal>One accept-or-edit gate; deep-dive only on explicit pick.</Goal>
+      <Action>
+        Present the candidate outcomes as ONE compact reply per `AX_AMPLIFY_DEFAULTS_FIRST` (AskUserQuestion when
+        available, else `QUESTION_FORMAT`); each dimension accept / edit / deep-dive. Deep-dive
+        topic map: load profile → latency budget → scale horizon → availability + error budget →
+        consistency → bottlenecks → degradation. A dimension the operator consciously skips gets an
+        explicit «не бюджетируем, потому что …» row. STOP.
+      </Action>
+    </Step>
+    <Step id="STEP_2_APPLY">
+      <Goal>Write the agreed outcomes as current-format requirements.</Goal>
+      <Action>
+        Use the Requirements section's embedded grammar; do not preload a separate format.
+        Continue the spec's next unused sequential `<ACR>-REQ-<N>` IDs. Write one ordinary flat
+        entry per accepted observable outcome, with modality class, behaviour sentence, and short
+        `Constraint`, `Verification`, and `Trace` lines; quantified budgets stay numeric. Never
+        create `### Non-Functional Constraints`, another topic heading, or a table inside
+        Requirements.
+
+        If the existing Requirements section is legacy split/topic format, read it as input and
+        migrate the whole section to flat entries in this already-approved edit; preserve every
+        still-valid outcome and do not leave a mixed representation or ask for a second approval.
+        A benchmark/load-profile table belongs in Architecture by default, or in one explicitly
+        named supporting section outside Requirements only when the detail is genuinely needed;
+        link it from `Trace`. Non-default picks and notable accepted defaults → Decision Log per
+        `AX_DECISION_LOG_REQUIRED`. Budgets still needing reality validation → discovery interview
+        map, not vague requirements. Return control to the interview.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <ChatOutput>
+    Service line — dim, internal, never narrated (`AX_NO_PROCESS_NARRATION`):
+    `📐 AMP_NFR · dims=<n> · accepted=<n> · edited=<n> · dive=<n>`.
+  </ChatOutput>
+</SddAmplifyNfr>

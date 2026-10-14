@@ -1,8 +1,18 @@
 // @file: StackPlugin for repositories with no stack plugin — every gate comes from config.
+// @spec: CLI-VERIFY
 // @consumers: plugins/index.ts
-// @tasks: TSK-96
 
-import type { ScopeRequest, StackDetection, StackPlugin, StackScope } from 'gennady/stack';
+import type {
+  CapabilityMatrix,
+  ScopeRequest,
+  StackDetection,
+  StackPlugin,
+  StackScope,
+  VerifyPreset,
+} from 'gennady/stack';
+import { BUILTIN_SDD_KIND_SELECTORS } from '../../shared/verify/model/verify-preset.type.ts';
+import { verifyPlanPolicyReadiness } from '../../shared/verify/test-stats.ts';
+import { createRemoteCiStep, REMOTE_CI_SELECTOR } from '../../shared/verify/model/remote-step.ts';
 
 /** No built-in gates: the whole gate list is authored as `extraGates` (spec §2). */
 export const ANYSTACK_GATE_IDS: readonly string[] = [];
@@ -47,6 +57,66 @@ export const anystackPlugin: StackPlugin = {
     planGates(): [] {
       // Every gate arrives from config; applyStackConfig appends them (stack.spec §4.6, FR-STACK-05).
       return [];
+    },
+  },
+  target: {
+    affectsScope() {
+      return true;
+    },
+    createPreset(): VerifyPreset {
+      return {
+        plugin: 'anystack',
+        steps: [createRemoteCiStep('anystack')],
+        phases: {
+          ...Object.fromEntries(
+            ['code', 'unit', 'integration', 'coverage', 'full'].map((phase) => [
+              phase,
+              { include: [] },
+            ])
+          ),
+          ci: REMOTE_CI_SELECTOR,
+        },
+        sddKinds: BUILTIN_SDD_KIND_SELECTORS,
+        requirements: [
+          {
+            id: 'anystack:declarative-steps',
+            kind: 'config',
+            description: 'anystack requires project-owned declarative target steps',
+            required: true,
+            fix: 'declare project-owned steps and selectors under verify.presets.anystack',
+          },
+        ],
+        rules: [],
+      };
+    },
+    evaluateReadiness(_detection, preset, plan): CapabilityMatrix {
+      if (plan.steps.some((step) => step.plugin === 'anystack')) {
+        const entries = verifyPlanPolicyReadiness(plan).filter(
+          (entry) => entry.plugin === 'anystack'
+        );
+        return {
+          status: entries.some((entry) => entry.status === 'BLOCKED')
+            ? 'BLOCKED'
+            : entries.some((entry) => entry.status !== 'READY')
+              ? 'DEGRADED'
+              : 'READY',
+          entries,
+        };
+      }
+      const requirement = preset.requirements[0]!;
+      return {
+        status: 'BLOCKED',
+        entries: [
+          {
+            plugin: 'anystack',
+            phase: plan.phase,
+            requirementId: requirement.id,
+            status: 'BLOCKED',
+            message: requirement.description,
+            fix: requirement.fix,
+          },
+        ],
+      };
     },
   },
 };

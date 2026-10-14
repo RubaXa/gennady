@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/svelte-testing.xml -->
+<Hook id="HOOK_SVELTE_TEST_HAS_CLEANUP">
+  <Purpose>Every `.svelte.test.ts` either enables auto-cleanup in config or registers `afterEach(() => cleanup())`.</Purpose>
+  <Command>find . -name '*.svelte.test.ts' -not -path '*/node_modules/*' -print0 | xargs -0 grep -LE "cleanup\(\)|globals:\s*true.*cleanup" || true</Command>
+  <Expected>Empty output (every file has cleanup). Matches indicate files without cleanup wiring; reconcile with `vitest.config.ts` if auto-cleanup is enabled project-wide.</Expected>
+</Hook>

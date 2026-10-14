@@ -1,0 +1,4 @@
+<!-- source: coding/uikit-component-storybook.xml -->
+<Definition id="DEF_PLAY_CONTRACT">
+      The mandatory `play` function in every story that asserts: (1) correct ARIA role via `getByRole`, (2) correct `data-state` attribute via `toHaveAttribute`, (3) a11y violations via axe-core parameters. Combined, these three assertions form the executable component contract.
+    </Definition>

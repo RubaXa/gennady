@@ -1,0 +1,1476 @@
+// @file: Integration tests for SddLogCommand#run — append-only, timestamps, round numbering, placeholder rejection.
+// @spec: CLI-SDD-LOG
+// @consumers: gennady.ts
+
+import { describe, it, before, after, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { isAbsolute, join, relative } from 'node:path';
+import { tmpdir } from 'node:os';
+import { runCli } from '../../../__tests__/tool-behavior/run-cli.ts';
+import { readScratchPayloadFile } from '../../../../shared/common/scratch-payload-file.ts';
+import { checkPhaseDependencies } from '../../../../shared/sdd/phase-dependencies.ts';
+import {
+  formatPhaseReceipt,
+  phaseReceiptPlanState,
+  type PhaseReceipt,
+  type PhaseReceiptPlan,
+} from '../../../../shared/sdd/phase-receipt.ts';
+
+type LogModule = typeof import('../sdd-log.cmd.ts');
+
+let mod: LogModule;
+let origExit: typeof process.exit;
+let origArgv: string[];
+let origCwd: string;
+let dir: string;
+let ticket: string;
+
+const CLOCK = new Date('2026-06-21T10:00:00.000Z');
+
+const OVERVIEW = [
+  '<!--SECTION:PHASES_OVERVIEW-->',
+  '## Phases Overview',
+  '| ID | Kind | Deps | Status |',
+  '|----|------|------|--------|',
+  '| P1 | impl | — | [x] |',
+  '<!--/SECTION:PHASES_OVERVIEW-->',
+].join('\n');
+
+const BASE = [
+  '# t',
+  '<!--SECTION:META-->',
+  '- **Task-ID:** cli-foo',
+  '<!--/SECTION:META-->',
+  '',
+  OVERVIEW,
+  '',
+  '<!--SECTION:EXECUTION_LOG-->',
+  '## 7. Execution Log',
+  '<!--/SECTION:EXECUTION_LOG-->',
+].join('\n');
+
+function receipt(phase: string): PhaseReceipt {
+  const plan: PhaseReceiptPlan = {
+    ticket: 'ticket.md',
+    phase,
+    profile: 'code',
+    profileBasis: 'phase-kind',
+    targets: [`src/${phase}.ts`],
+    deletedFiles: [],
+    verification: [],
+    producesCoverage: false,
+    environmentState: `sha256:${'1'.repeat(64)}`,
+  };
+  return {
+    schema: 1,
+    ...plan,
+    planState: phaseReceiptPlanState(plan),
+    targetState: `sha256:${'2'.repeat(64)}`,
+    commands: [],
+  };
+}
+
+function completableTicket(receiptPhase: string | null = 'P1'): string {
+  return [
+    '# t',
+    '<!--SECTION:META-->',
+    '- **Task-ID:** cli-foo',
+    '- **Status:** [~] IN_PROGRESS',
+    '<!--/SECTION:META-->',
+    '',
+    '<!--SECTION:PHASES_OVERVIEW-->',
+    '## Phases Overview',
+    '| ID | Kind | Deps | Status |',
+    '|----|------|------|--------|',
+    '| P1 | impl | — | [ ] |',
+    '| P2 | test | P1 | [ ] |',
+    '<!--/SECTION:PHASES_OVERVIEW-->',
+    '',
+    '<!--SECTION:EXECUTION_LOG-->',
+    '## Execution Log',
+    '### Round 1 — 2026-06-20, initial',
+    '#### P1',
+    '- [x] `2026-06-20T10:00:00.000Z` DONE',
+    '**Handoff →** artifacts: [src/old.ts]; decisions: [none]; open: [none]; deviations: []',
+    '#### Round close',
+    '- [ ] `<ts>` DONE',
+    '',
+    '### Round 2 — 2026-06-21, retry',
+    '#### P1',
+    '- [ ] `<ts>` DONE',
+    '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+    '#### Round close',
+    '- [ ] `<ts>` DONE',
+    '<!--PHASE_RECEIPTS:v1-->',
+    ...(receiptPhase ? [formatPhaseReceipt(receipt(receiptPhase))] : []),
+    '<!--/SECTION:EXECUTION_LOG-->',
+  ].join('\n');
+}
+
+function argv(...rest: string[]): string[] {
+  return [
+    'node',
+    'gennady',
+    'sdd-log',
+    ...rest.map((value) => (isAbsolute(value) ? relative(dir, value) : value)),
+  ];
+}
+
+describe('SddLogCommand', () => {
+  before(async () => {
+    origExit = process.exit;
+    origArgv = process.argv;
+    origCwd = process.cwd();
+    process.exit = ((_code?: number) => undefined) as typeof process.exit;
+    process.argv = ['node', 'gennady', 'sdd-log'];
+    dir = mkdtempSync(join(tmpdir(), 'sdd-log-'));
+    ticket = join(dir, 'ticket.md');
+    process.chdir(dir);
+    const loaded = await import('../sdd-log.cmd.ts');
+    mod = {
+      ...loaded,
+      run: (rawArgs, now, projectRoot, checkAuthoring) =>
+        loaded.run(
+          rawArgs,
+          now,
+          projectRoot ??
+            (/^[A-Z][A-Z0-9]*-[A-Za-z0-9]/.test(rawArgs[3] ?? '') ? process.cwd() : dir),
+          checkAuthoring
+        ),
+    };
+  });
+
+  beforeEach(() => {
+    process.chdir(dir);
+    writeFileSync(ticket, BASE, 'utf-8');
+  });
+
+  it('V14-2b edits one existing deviation verdict and creates no sidecar', async () => {
+    const withDeviation = [
+      BASE,
+      '<!--SECTION:DECISION_LOG-->',
+      'DEM-DL-1 2026-09-22 — retry cap 3 (почему: bounded) [verdict: pending-operator]',
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\n');
+    writeFileSync(ticket, withDeviation, 'utf8');
+    const outcome = await mod.run(argv(ticket, 'deviation-verdict', 'DEM-DL-1', 'accepted'), CLOCK);
+    assert.equal(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    const next = readFileSync(ticket, 'utf8');
+    assert.match(next, /DEM-DL-1.*\[verdict: accepted\]/);
+    assert.doesNotMatch(next, /pending-operator/);
+    assert.equal(existsSync(join(dir, 'deviations.json')), false);
+  });
+
+  it('V14-2b refuses unknown verdicts and duplicate deviation ids without changing bytes', async () => {
+    const line = 'DEM-DL-1 2026-09-22 — retry cap 3 (почему: bounded) [verdict: pending-operator]';
+    const original = [
+      BASE,
+      '<!--SECTION:DECISION_LOG-->',
+      line,
+      line,
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\n');
+    writeFileSync(ticket, original, 'utf8');
+    const invalid = await mod.run(argv(ticket, 'deviation-verdict', 'DEM-DL-1', 'waived'), CLOCK);
+    assert.equal(invalid.ok, false);
+    const duplicate = await mod.run(
+      argv(ticket, 'deviation-verdict', 'DEM-DL-1', 'accepted'),
+      CLOCK
+    );
+    assert.equal(duplicate.ok, false);
+    assert.equal(readFileSync(ticket, 'utf8'), original);
+  });
+
+  after(() => {
+    process.exit = origExit;
+    process.argv = origArgv;
+    process.chdir(origCwd);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('opens a round, numbered and dated, before the close marker', async () => {
+    const outcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /### Round 1 — 2026-06-21, initial/);
+    // inserted before the close marker
+    assert.ok(body.indexOf('### Round 1') < body.indexOf('<!--/SECTION:EXECUTION_LOG-->'));
+  });
+
+  it('auto-increments the round number', async () => {
+    await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+    await mod.run(argv(ticket, 'round', 'fix: F-001'), CLOCK);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /### Round 1 — /);
+    assert.match(body, /### Round 2 — 2026-06-21, fix: F-001/);
+  });
+
+  // B2-06 (D-20, issue #13): a reopen's reason is a closed vocabulary, not free text — otherwise
+  // Meta Reopens / `## Audit Rounds` causation has no reliable cause to point back to.
+  it('rejects a round reason outside the closed vocabulary — exit 4', async () => {
+    const outcome = await mod.run(argv(ticket, 'round', 'because it seemed broken'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) assert.strictEqual(outcome.exitCode, 4);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.doesNotMatch(body, /### Round 1/);
+  });
+
+  // B2-02: a legacy `## Critic Rounds` section (outside EXECUTION_LOG) can carry its own
+  // `### Round N` headings for a wholly different concept (audit/critic rounds) — those must not
+  // be double-counted into the execution-round sequence.
+  it('ignores a `### Round N` heading that lives outside EXECUTION_LOG, in a legacy `## Critic Rounds` section', async () => {
+    const withCriticRounds = [
+      '# t',
+      '<!--SECTION:META-->',
+      '- **Task-ID:** cli-foo',
+      '<!--/SECTION:META-->',
+      '',
+      '<!--SECTION:EXECUTION_LOG-->',
+      '## 7. Execution Log',
+      '### Round 1 — 2026-06-20, initial',
+      '<!--/SECTION:EXECUTION_LOG-->',
+      '',
+      '## Critic Rounds',
+      '### Round 3 — 2026-05-30',
+    ].join('\n');
+    writeFileSync(ticket, withCriticRounds, 'utf-8');
+    const outcome = await mod.run(argv(ticket, 'round', 'fix: F-002'), CLOCK);
+    assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /### Round 2 — 2026-06-21, fix: F-002/);
+    assert.doesNotMatch(body, /### Round 3 — 2026-06-21/);
+  });
+
+  it('appends a timestamped event line and preserves = in content', async () => {
+    const outcome = await mod.run(argv(ticket, 'line', 'ver `npm run check` → pass exit=0'), CLOCK);
+    assert.strictEqual(outcome.ok, true);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /- \[x\] `2026-06-21T10:00:00\.000Z` ver `npm run check` → pass exit=0/);
+  });
+
+  it('gives three typical failures the common object/reason/next/example schema', async () => {
+    const outcomes = [
+      await mod.run(argv(ticket, 'unknown-mode'), CLOCK),
+      await mod.run(argv(ticket, 'line', '<value>'), CLOCK),
+      await mod.run(argv('missing.md', 'line', 'verified'), CLOCK),
+    ];
+    for (const outcome of outcomes) {
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) continue;
+      assert.match(outcome.message, /^\[sdd-log\] ERR_CLI_SDD_LOG_/);
+      for (const field of ['object', 'reason', 'action', 'example']) {
+        assert.match(outcome.message, new RegExp(`^\\s*${field}:`, 'm'));
+      }
+    }
+  });
+
+  it('rejects absolute/outside and symlink ticket paths without mutating the external victim', async () => {
+    const victimDir = mkdtempSync(join(tmpdir(), 'sdd-log-victim-'));
+    const victim = join(victimDir, 'ticket.md');
+    writeFileSync(victim, BASE, 'utf-8');
+    symlinkSync(victim, join(dir, 'linked-ticket.md'));
+    try {
+      const absolute = await mod.run(
+        ['node', 'gennady', 'sdd-log', victim, 'line', 'PWNED'],
+        CLOCK
+      );
+      const linked = await mod.run(argv('linked-ticket.md', 'line', 'PWNED'), CLOCK);
+      assert.strictEqual(absolute.ok, false);
+      assert.strictEqual(linked.ok, false);
+      assert.strictEqual(readFileSync(victim, 'utf-8'), BASE);
+    } finally {
+      rmSync(join(dir, 'linked-ticket.md'));
+      rmSync(victimDir, { recursive: true, force: true });
+    }
+  });
+
+  it('appends the round-close block', async () => {
+    const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+    assert.strictEqual(outcome.ok, true);
+    assert.match(
+      readFileSync(ticket, 'utf-8'),
+      /#### Round close\n- \[x\] `2026-06-21T10:00:00\.000Z` DONE/
+    );
+  });
+
+  describe('authoring-complete mode — one durable spec receipt', () => {
+    const scopeSpec = [
+      '# Demo: Scope Specification',
+      '<!--SECTION:SCOPE_TYPE-->',
+      '## scope-type',
+      'library',
+      '<!--/SECTION:SCOPE_TYPE-->',
+      '<!--SECTION:DECISION_LOG-->',
+      '## Decision Log',
+      '<details>',
+      '<summary>Полные записи Decision Log</summary>',
+      '',
+      'DEM-DL-1 2026-06-20 — выбрана библиотека (почему: минимальный API)',
+      '',
+      '</details>',
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\n');
+
+    it('atomically records and echoes the next scope completion receipt', async () => {
+      const spec = join(dir, 'demo.spec.md');
+      writeFileSync(spec, scopeSpec, 'utf-8');
+
+      const outcome = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      if (outcome.ok) {
+        assert.match(
+          outcome.text,
+          /DEM-DL-2 2026-06-21 — scope draft complete \(почему: sdd-check --spec demo\.spec\.md --authoring прошёл без замечаний\)/
+        );
+      }
+      assert.match(readFileSync(spec, 'utf-8'), /DEM-DL-2 2026-06-21 — scope draft complete/);
+    });
+
+    it('uses the module Decision Log and records a module receipt', async () => {
+      const spec = join(dir, 'widget.spec.md');
+      writeFileSync(
+        spec,
+        [
+          '# Module: Widget',
+          '<!--SECTION:MODULE_VISION-->',
+          '## Module Vision',
+          'Widget owns one operation.',
+          '<!--/SECTION:MODULE_VISION-->',
+          '<!--SECTION:MODULE_DECISION_LOG-->',
+          '## Module Decision Log',
+          '<details>',
+          '<summary>Полные записи Decision Log</summary>',
+          '',
+          '</details>',
+          '<!--/SECTION:MODULE_DECISION_LOG-->',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      const outcome = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.match(readFileSync(spec, 'utf-8'), /WID-DL-1 2026-06-21 — module draft complete/);
+    });
+
+    it('rejects an incomplete draft and a repeated receipt without changing bytes', async () => {
+      const spec = join(dir, 'demo.spec.md');
+      writeFileSync(spec, scopeSpec, 'utf-8');
+      const incomplete = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir);
+      assert.strictEqual(incomplete.ok, false);
+      if (!incomplete.ok) assert.match(incomplete.message, /authoring hint\(s\) remain/);
+      assert.strictEqual(readFileSync(spec, 'utf-8'), scopeSpec);
+
+      const first = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+      assert.strictEqual(first.ok, true);
+      const completed = readFileSync(spec, 'utf-8');
+      const repeated = await mod.run(argv(spec, 'authoring-complete'), CLOCK, dir, () => []);
+      assert.strictEqual(repeated.ok, false);
+      assert.strictEqual(readFileSync(spec, 'utf-8'), completed);
+    });
+  });
+
+  it('replaces one scaffolded Round-close skeleton and rejects a repeated close without mutation', async () => {
+    const scaffolded = completableTicket();
+    writeFileSync(ticket, scaffolded, 'utf-8');
+    // B2-07: close now refuses while a phase this Round opened is not [x] complete — legitimately
+    // complete Round 2's only open phase (P1) first, exactly as a real orchestrator would.
+    const completed = await mod.run(
+      argv(
+        ticket,
+        'complete',
+        'artifacts: [src/P1.ts]; decisions: [none]; open: [none]; deviations: []',
+        '--phase',
+        'P1'
+      ),
+      CLOCK
+    );
+    assert.strictEqual(completed.ok, true, completed.ok ? '' : completed.message);
+
+    const first = await mod.run(argv(ticket, 'close'), CLOCK);
+    assert.strictEqual(first.ok, true, first.ok ? '' : first.message);
+    const closed = readFileSync(ticket, 'utf-8');
+    const currentRound = closed.slice(closed.indexOf('### Round 2'));
+    assert.strictEqual(currentRound.match(/^#### Round close$/gm)?.length, 1);
+    assert.doesNotMatch(currentRound, /#### Round close\n- \[ \] `<ts>` DONE/);
+    assert.match(currentRound, /- \[x\] `2026-06-21T10:00:00\.000Z` DONE/);
+    assert.match(currentRound, /<!--PHASE_RECEIPTS:v1-->/);
+
+    const second = await mod.run(argv(ticket, 'close'), CLOCK);
+    assert.strictEqual(second.ok, false);
+    if (!second.ok) assert.match(second.message, /ERR_CLI_SDD_LOG_CLOSE_STATE/);
+    assert.strictEqual(readFileSync(ticket, 'utf-8'), closed);
+  });
+
+  // B2-07: closing the `sdd-log complete` bypass at the close boundary too.
+  describe('close mode — refuses an incomplete or unreceipted phase (B2-07)', () => {
+    it('refuses when a phase this Round opened is not [x] complete in the Phases Overview', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const before = readFileSync(ticket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+        assert.match(outcome.message, /phase P1 is not completed/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), before);
+    });
+
+    it('refuses when the log shows a phase marked DONE via a bare `line` with no receipt', async () => {
+      const bypassed = [
+        '# t',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '- **Status:** [~] IN_PROGRESS',
+        '<!--/SECTION:META-->',
+        '',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '## Phases Overview',
+        '| ID | Kind | Deps | Status |',
+        '|----|------|------|--------|',
+        '| P1 | impl | — | [x] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '## Execution Log',
+        '### Round 1 — 2026-06-21, initial',
+        '#### P1',
+        '- [x] `2026-06-21T09:00:00.000Z` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        '#### Round close',
+        '- [ ] `<ts>` DONE',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(ticket, bypassed, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+        assert.match(
+          outcome.message,
+          /phase P1 is marked DONE but has neither a CLI-owned phase receipt nor a current PASS Verify attempt/
+        );
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), bypassed);
+    });
+
+    for (const [name, overview] of [
+      ['missing', ''],
+      ['empty', OVERVIEW.replace('| P1 | impl | — | [x] |', '')],
+      ['malformed', OVERVIEW.replace('| P1 | impl | — | [x] |', '| wrong | | — | invalid |')],
+    ]) {
+      it(`rejects ${name} PHASES_OVERVIEW before creating META or Round DONE`, async () => {
+        const oldSchema = BASE.replace(OVERVIEW, overview!).replace(
+          '- **Task-ID:** cli-foo',
+          '- **Task-ID:** cli-foo\n- **Status:** [~] IN_PROGRESS'
+        );
+        writeFileSync(ticket, oldSchema, 'utf-8');
+        const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+        assert.strictEqual(outcome.ok, false);
+        if (!outcome.ok) {
+          assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_CLOSE_STATE');
+          assert.match(outcome.message, /readable, non-empty parseable PHASES_OVERVIEW/);
+          assert.match(outcome.message, /sdd-check.*--authoring/);
+          assert.match(outcome.message, /sdd-migrate bootstrap/);
+        }
+        assert.strictEqual(readFileSync(ticket, 'utf-8'), oldSchema);
+        assert.doesNotMatch(readFileSync(ticket, 'utf-8'), /\[x\].*DONE/);
+      });
+    }
+  });
+
+  // B2-04: append-only means a fix goes into a NEW Round, never after a closed one.
+  describe('append-owning modes refuse a closed Round (B2-04)', () => {
+    it('line without --phase refuses after close, with no mutation', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const before = readFileSync(ticket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'line', 'sneaked in'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+        assert.match(outcome.message, /already closed/);
+        assert.match(outcome.message, /round "fix: F-NNN"/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), before);
+    });
+
+    it('phase (opening a new block) refuses after close', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'phase', 'P1', '— re-run: fix'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+    });
+
+    it('line --phase P<N> refuses after close even naming an already-open (but closed-round) phase', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK); // no-op if already opened; keep flow simple
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'sneaked in', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_ROUND_CLOSED');
+    });
+
+    it('opening a new Round after close lets appends through again', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'fix: F-001'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'now legal'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      const round2At = body.indexOf('### Round 2');
+      const lineAt = body.indexOf('now legal');
+      assert.ok(round2At !== -1 && round2At < lineAt, body);
+    });
+
+    it('round mode itself is exempt — it is the escape hatch out of a closed Round', async () => {
+      await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'round', 'fix: F-002'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    });
+  });
+
+  describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {
+    const withStatus = BASE.replace(
+      '- **Task-ID:** cli-foo',
+      '- **Task-ID:** cli-foo\n- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->'
+    );
+
+    it('round sets Meta Status to IN_PROGRESS, keeping the hint comment', async () => {
+      writeFileSync(ticket, withStatus, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.text, /status → IN_PROGRESS/);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(
+        body,
+        /- \*\*Status:\*\* \[~\] IN_PROGRESS   <!-- \[ \] TODO \| \[~\] IN_PROGRESS \| \[x\] DONE \| \[!\] BLOCKED -->/
+      );
+    });
+
+    it('close sets Meta Status to DONE, keeping the hint comment', async () => {
+      writeFileSync(ticket, withStatus, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      if (outcome.ok) assert.match(outcome.text, /status → DONE/);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(
+        body,
+        /- \*\*Status:\*\* \[x\] DONE   <!-- \[ \] TODO \| \[~\] IN_PROGRESS \| \[x\] DONE \| \[!\] BLOCKED -->/
+      );
+    });
+
+    it('round/close on a V2 phase plan with no Status line — tolerant, no crash, honest note', async () => {
+      // BASE (the shared fixture) has META but no Status line.
+      const roundOutcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
+      assert.strictEqual(roundOutcome.ok, true);
+      if (roundOutcome.ok) {
+        assert.match(roundOutcome.text, /META\/Status не найден — статус не обновлён/);
+      }
+      const closeOutcome = await mod.run(argv(ticket, 'close'), CLOCK);
+      assert.strictEqual(closeOutcome.ok, true);
+      if (closeOutcome.ok) {
+        assert.match(closeOutcome.text, /META\/Status не найден — статус не обновлён/);
+      }
+      const body = readFileSync(ticket, 'utf-8');
+      assert.doesNotMatch(body, /\*\*Status:\*\*/);
+    });
+
+    it('line/phase/handoff/blocker modes never touch Meta Status', async () => {
+      writeFileSync(ticket, withStatus, 'utf-8');
+      await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(body, /- \*\*Status:\*\* \[ \] TODO   <!--/);
+    });
+  });
+
+  describe('complete mode — one verified phase-state transition', () => {
+    const payload = 'artifacts: [src/P1.ts]; decisions: [api=stable]; open: [none]; deviations: []';
+
+    it('closes only P1 in the current Round and makes the P2 dependency gate pass', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const before = readFileSync(ticket, 'utf-8');
+      assert.match(
+        checkPhaseDependencies(before, 'P2', () => null) ?? '',
+        /dependency P1 is not checked complete/
+      );
+
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.strictEqual(
+        checkPhaseDependencies(body, 'P2', () => null),
+        null
+      );
+      assert.match(body, /\| P1 \| impl \| — \| \[x\] \|/);
+      assert.match(body, /\| P2 \| test \| P1 \| \[ \] \|/);
+      assert.match(body, /- \*\*Status:\*\* \[~\] IN_PROGRESS/);
+      assert.match(
+        body,
+        /### Round 1[\s\S]*- \[x\] `2026-06-20T10:00:00\.000Z` DONE[\s\S]*artifacts: \[src\/old\.ts\]/
+      );
+      assert.match(
+        body,
+        /### Round 2[\s\S]*#### P1\n- \[x\] `2026-06-21T10:00:00\.000Z` DONE\n\*\*Handoff →\*\* artifacts: \[src\/P1\.ts\]; decisions: \[api=stable\]; open: \[none\]; deviations: \[\]/
+      );
+      assert.strictEqual((body.match(/- \[ \] `<ts>` DONE/g) ?? []).length, 2);
+    });
+
+    // B2-09: a ticket anchor-injected from v1 (see tasks/cli/lint/cli-lint.task-14.md) can carry
+    // `<!--SECTION:PHASES_OVERVIEW-->` around its original `| Phase | Kind | Status | Target
+    // Files | Deps |` column order — Status is column 3, not the canonical column 4 (`| ID |
+    // Kind | Deps | Status |`). A hard-coded `overviewCells[4]` read/write reads the Deps cell
+    // and corrupts it instead of flipping Status.
+    it('closes the phase when PHASES_OVERVIEW keeps its legacy v1 column order (Status before Deps)', async () => {
+      const v1OrderTicket = [
+        '# t',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '- **Status:** [~] IN_PROGRESS',
+        '<!--/SECTION:META-->',
+        '',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '## Phases Overview',
+        '| Phase | Kind | Status | Target Files | Deps |',
+        '|-------|------|--------|--------------|------|',
+        '| P1 | impl | [ ] | src/foo.ts | — |',
+        '| P2 | test | [ ] | src/bar.ts | P1 |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '## Execution Log',
+        '### Round 1 — 2026-06-21, initial',
+        '#### P1',
+        '- [ ] `<ts>` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]',
+        '#### Round close',
+        '- [ ] `<ts>` DONE',
+        '<!--PHASE_RECEIPTS:v1-->',
+        formatPhaseReceipt(receipt('P1')),
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(ticket, v1OrderTicket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      // P1's status flips to [x] and its Deps cell (—) is untouched — not swapped into Status.
+      assert.match(body, /\| P1 \| impl \| \[x\] \| src\/foo\.ts \| — \|/);
+      // P2's row — including its real Deps value P1 — is byte-identical, not corrupted.
+      assert.match(body, /\| P2 \| test \| \[ \] \| src\/bar\.ts \| P1 \|/);
+    });
+
+    // B2-08: a Round written exactly per AX_REOPEN_FORMAT (v2 4-column `| ID | Kind | Deps |
+    // Status |` PHASES_OVERVIEW, one row per new fix/test PhaseID, `[~] IN_PROGRESS` Meta Status)
+    // closes with `complete` the same as any other phase — the reopen path is not a special case
+    // completePhase needs to know about.
+    it('a Round written exactly per AX_REOPEN_FORMAT closes cleanly with complete', async () => {
+      const reopenedTicket = [
+        '# t',
+        '<!--SECTION:META-->',
+        '- **Task-ID:** cli-foo',
+        '- **Status:** [~] IN_PROGRESS',
+        '- **Reopens:** 1',
+        '<!--/SECTION:META-->',
+        '',
+        '<!--SECTION:PHASES_OVERVIEW-->',
+        '| ID | Kind | Deps | Status |',
+        '|----|------|------|--------|',
+        '| P1 | fix  | —    | [ ] |',
+        '| P2 | test | P1   | [ ] |',
+        '<!--/SECTION:PHASES_OVERVIEW-->',
+        '',
+        '<!--SECTION:EXECUTION_LOG-->',
+        '## Execution Log',
+        '### Round 1 — 2026-06-21, fix: regression in foo',
+        '#### P1',
+        '- [ ] `<ts>` DONE',
+        '**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]',
+        '#### Round close',
+        '- [ ] `<ts>` DONE',
+        '<!--PHASE_RECEIPTS:v1-->',
+        formatPhaseReceipt(receipt('P1')),
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n');
+      writeFileSync(ticket, reopenedTicket, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.match(readFileSync(ticket, 'utf-8'), /\| P1 \| fix +\| — +\| \[x\] \|/);
+    });
+
+    it('fails without this phase receipt and leaves every byte untouched', async () => {
+      const original = completableTicket(null);
+      writeFileSync(ticket, original, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.code, 'ERR_CLI_SDD_LOG_COMPLETE_STATE');
+        assert.match(outcome.message, /P1 has neither a current PASS Verify attempt nor/);
+      }
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
+    });
+
+    it('rejects a receipt owned by another phase', async () => {
+      const original = completableTicket('P2');
+      writeFileSync(ticket, original, 'utf-8');
+      const outcome = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok)
+        assert.match(outcome.message, /P1 has neither a current PASS Verify attempt nor/);
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
+    });
+
+    it('rejects a second completion without changing the completed state', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const first = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(first.ok, true);
+      const completed = readFileSync(ticket, 'utf-8');
+      const repeated = await mod.run(argv(ticket, 'complete', payload, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(repeated.ok, false);
+      if (!repeated.ok) assert.match(repeated.message, /status is not the incomplete \[ \] state/);
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), completed);
+    });
+
+    it('requires --phase and the canonical four-field Handoff payload', async () => {
+      const original = completableTicket();
+      writeFileSync(ticket, original, 'utf-8');
+      const noPhase = await mod.run(argv(ticket, 'complete', payload), CLOCK);
+      assert.strictEqual(noPhase.ok, false);
+      if (!noPhase.ok) assert.strictEqual(noPhase.exitCode, 4);
+      const incompletePayload = await mod.run(
+        argv(
+          ticket,
+          'complete',
+          'artifacts: [src/P1.ts]; decisions: []; open: []',
+          '--phase',
+          'P1'
+        ),
+        CLOCK
+      );
+      assert.strictEqual(incompletePayload.ok, false);
+      if (!incompletePayload.ok) assert.strictEqual(incompletePayload.exitCode, 4);
+      assert.strictEqual(readFileSync(ticket, 'utf-8'), original);
+    });
+
+    it('accepts and consumes a newline-terminated agent-safe content file', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const payloadPath = join(dir, '.claude', 'tmp', 'complete.txt');
+      writeFileSync(payloadPath, `${payload}\n`, 'utf-8');
+      const outcome = await mod.run(
+        argv(ticket, 'complete', '--content-file', '.claude/tmp/complete.txt', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.strictEqual(existsSync(payloadPath), false);
+      assert.match(readFileSync(ticket, 'utf-8'), /\*\*Handoff →\*\* artifacts: \[src\/P1\.ts\]/);
+    });
+
+    it('keeps meaningful nested brackets inside typed fields instead of forcing lossy retries', async () => {
+      writeFileSync(ticket, completableTicket(), 'utf-8');
+      const nested =
+        'artifacts: [src/P1.ts]; decisions: [error=[slugify] Input must be text, regex=[^a-z]]; open: []; deviations: []';
+      const outcome = await mod.run(argv(ticket, 'complete', nested, '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      assert.match(readFileSync(ticket, 'utf-8'), /error=\[slugify\].*regex=\[\^a-z\]/);
+    });
+  });
+
+  it('is append-only — prior sections are untouched', async () => {
+    await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /<!--SECTION:META-->\n- \*\*Task-ID:\*\* cli-foo\n<!--\/SECTION:META-->/);
+    assert.match(body, /## 7\. Execution Log/);
+  });
+
+  it('rejects content with an unreplaced placeholder (exit 2)', async () => {
+    const outcome = await mod.run(argv(ticket, 'line', 'ver `<cmd>` → pass'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) {
+      assert.strictEqual(outcome.exitCode, 2);
+      assert.match(outcome.code, /PLACEHOLDER/);
+    }
+    // nothing written
+    assert.doesNotMatch(readFileSync(ticket, 'utf-8'), /cmd/);
+  });
+
+  it('exits 2 when there is no EXECUTION_LOG section', async () => {
+    const noLog = join(dir, 'nolog.md');
+    writeFileSync(noLog, '# t\n<!--SECTION:META-->\nx\n<!--/SECTION:META-->\n', 'utf-8');
+    const outcome = await mod.run(argv(noLog, 'line', 'DONE'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
+  });
+
+  it('exits 4 on unknown mode or missing content', async () => {
+    const bad = await mod.run(argv(ticket, 'frobnicate'), CLOCK);
+    assert.strictEqual(bad.ok, false);
+    if (!bad.ok) assert.strictEqual(bad.exitCode, 4);
+    const noContent = await mod.run(argv(ticket, 'line'), CLOCK);
+    assert.strictEqual(noContent.ok, false);
+    if (!noContent.ok) assert.strictEqual(noContent.exitCode, 4);
+  });
+
+  it('preserves %, **, ####, and emoji verbatim in a line — no url-encoding/escaping', async () => {
+    const content = 'ver `100%25-lines` **bold** #### heading 🛑🔗💬 done';
+    const outcome = await mod.run(argv(ticket, 'line', content), CLOCK);
+    assert.strictEqual(outcome.ok, true);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.ok(body.includes(content), 'content must appear byte-exact');
+    assert.ok(!body.includes('%2525'), 'must not double-encode %');
+  });
+
+  it('phase mode writes a bare #### <PhaseID> header', async () => {
+    const outcome = await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+    assert.strictEqual(outcome.ok, true);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /\n#### P1\n/);
+    assert.ok(body.indexOf('#### P1') < body.indexOf('<!--/SECTION:EXECUTION_LOG-->'));
+  });
+
+  it('phase mode with re-run suffix appends it verbatim after the phase id', async () => {
+    const outcome = await mod.run(argv(ticket, 'phase', 'P2', '— re-run: F-003'), CLOCK);
+    assert.strictEqual(outcome.ok, true);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /\n#### P2 — re-run: F-003\n/);
+  });
+
+  describe('--phase (explicit ownership across historical and re-run phase blocks)', () => {
+    it('without --phase, a line always lands under whichever phase header opened LAST', async () => {
+      // A malformed/historical ticket can contain phase blocks out of order. A bare `line` has no
+      // ownership pointer and therefore follows the last heading; lifecycle modes reject this shape.
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'p2 discovery'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      // Misattributed: the line meant for P2 lands after P1's header, i.e. under P1's block.
+      assert.ok(body.indexOf('#### P1') < body.indexOf('p2 discovery'));
+    });
+
+    it("with --phase, a line is inserted at the end of THAT phase's own block, regardless of open order", async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'p2 discovery', '--phase', 'P2'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      // Correctly attributed: the P2 line sits between the P2 and P1 headers, not after P1's.
+      const p2At = body.indexOf('#### P2');
+      const p1At = body.indexOf('#### P1');
+      const lineAt = body.indexOf('p2 discovery');
+      assert.ok(p2At < lineAt && lineAt < p1At, body);
+    });
+
+    it('handoff mode honors --phase the same way', async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const payload = 'artifacts: [a.ts]; decisions: []; open: []';
+      const outcome = await mod.run(argv(ticket, 'handoff', payload, '--phase', 'P2'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      const p2At = body.indexOf('#### P2');
+      const p1At = body.indexOf('#### P1');
+      const handoffAt = body.indexOf('**Handoff →**');
+      assert.ok(p2At < handoffAt && handoffAt < p1At, body);
+    });
+
+    it('blocker mode honors --phase the same way', async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(
+          ticket,
+          'blocker',
+          'p2 blocked',
+          '--axiom',
+          'AX_X',
+          '--unblock',
+          'do y',
+          '--phase',
+          'P2'
+        ),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      const p2At = body.indexOf('#### P2');
+      const p1At = body.indexOf('#### P1');
+      const blockedAt = body.indexOf('BLOCKED: p2 blocked');
+      assert.ok(p2At < blockedAt && blockedAt < p1At, body);
+    });
+
+    it('a later line, still --phase P2, appends after the earlier P2 line, not swallowed by the P1 header pad', async () => {
+      await mod.run(argv(ticket, 'phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'line', 'p2 first', '--phase', 'P2'), CLOCK);
+      await mod.run(argv(ticket, 'line', 'p2 second', '--phase', 'P2'), CLOCK);
+      const body = readFileSync(ticket, 'utf-8');
+      const firstAt = body.indexOf('p2 first');
+      const secondAt = body.indexOf('p2 second');
+      const p1At = body.indexOf('#### P1');
+      assert.ok(firstAt < secondAt && secondAt < p1At, body);
+    });
+
+    it('re-run reopens the SAME phase id in a later block — --phase targets the LAST (current) one', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'line', 'old attempt', '--phase', 'P1'), CLOCK);
+      await mod.run(argv(ticket, 'close'), CLOCK);
+      await mod.run(argv(ticket, 'round', 'fix: F-001'), CLOCK);
+      await mod.run(argv(ticket, 'phase', 'P1', '— re-run: F-001'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'new attempt', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      // "new attempt" belongs to the SECOND (re-run) P1 block, after the Round 2 header, not the
+      // first Round's closed P1 block.
+      const round2At = body.indexOf('Round 2');
+      const newAttemptAt = body.indexOf('new attempt');
+      assert.ok(round2At < newAttemptAt, body);
+    });
+
+    it('exits 2, listing open phase blocks, when --phase names a phase with no open block', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(argv(ticket, 'line', 'discovery', '--phase', 'P9'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) return;
+      assert.strictEqual(outcome.exitCode, 2);
+      assert.match(outcome.code, /PHASE_NOT_OPEN/);
+      assert.match(outcome.message, /P9/);
+      assert.match(outcome.message, /phases with an open block: P1/);
+      assert.match(outcome.message, /sdd-log .* phase P9/);
+    });
+
+    it('exits 2 naming no open blocks when EXECUTION_LOG has no phase headers at all', async () => {
+      const outcome = await mod.run(argv(ticket, 'line', 'discovery', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (outcome.ok) return;
+      assert.strictEqual(outcome.exitCode, 2);
+      assert.match(outcome.message, /no phase block is open yet/);
+    });
+
+    it('exits 4 when --phase is combined with round, close, or phase mode', async () => {
+      const r = await mod.run(argv(ticket, 'round', 'initial', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(r.ok, false);
+      if (!r.ok) assert.strictEqual(r.exitCode, 4);
+
+      const c = await mod.run(argv(ticket, 'close', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(c.ok, false);
+      if (!c.ok) assert.strictEqual(c.exitCode, 4);
+
+      const p = await mod.run(argv(ticket, 'phase', 'P1', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(p.ok, false);
+      if (!p.ok) assert.strictEqual(p.exitCode, 4);
+    });
+
+    it('rejects a placeholder in --phase itself (exit 2)', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(ticket, 'line', 'discovery', '--phase', '<PhaseID>'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
+    });
+
+    it('rejects a bare backticked placeholder but accepts angle brackets inside longer code', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const rejected = await mod.run(argv(ticket, 'line', '`<cmd>`', '--phase', 'P1'), CLOCK);
+      assert.strictEqual(rejected.ok, false);
+      if (!rejected.ok) assert.strictEqual(rejected.exitCode, 2);
+
+      const accepted = await mod.run(
+        argv(ticket, 'line', 'returns `Promise<TodoStore>`', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(accepted.ok, true);
+    });
+
+    it('accepts an inline-code path containing placeholder-shaped segments', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(ticket, 'line', 'loaded `steps/<step-id>.xml`', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true);
+    });
+  });
+
+  it('handoff mode writes the **Handoff →** line verbatim, no timestamp', async () => {
+    const payload = 'artifacts: [a.ts, b.ts]; decisions: [x=1]; open: []';
+    const outcome = await mod.run(argv(ticket, 'handoff', payload), CLOCK);
+    assert.strictEqual(outcome.ok, true);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.ok(body.includes(`**Handoff →** ${payload}`));
+    assert.doesNotMatch(
+      body.split(`**Handoff →** ${payload}`)[0].slice(-40),
+      /\d{4}-\d{2}-\d{2}T.*Handoff/
+    );
+  });
+
+  it('blocker mode writes the full BLOCKER_FORMAT block with axiom + unblock', async () => {
+    await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+    const outcome = await mod.run(
+      argv(
+        ticket,
+        'blocker',
+        'network blocked',
+        '--axiom',
+        'AX_BLOCKER_ESCALATION',
+        '--unblock',
+        'grant network access',
+        '--phase',
+        'P1'
+      ),
+      CLOCK
+    );
+    assert.strictEqual(outcome.ok, true);
+    const body = readFileSync(ticket, 'utf-8');
+    assert.match(body, /- 🛑 `2026-06-21T10:00:00\.000Z` BLOCKED: network blocked/);
+    assert.match(body, /  - 🔗 axiom: AX_BLOCKER_ESCALATION/);
+    assert.match(body, /  - 💬 unblock: grant network access/);
+  });
+
+  it('blocker mode exits 4 when --axiom or --unblock is missing', async () => {
+    const noAxiom = await mod.run(
+      argv(ticket, 'blocker', 'reason', '--unblock', 'do x', '--phase', 'P1'),
+      CLOCK
+    );
+    assert.strictEqual(noAxiom.ok, false);
+    if (!noAxiom.ok) assert.strictEqual(noAxiom.exitCode, 4);
+    const noUnblock = await mod.run(
+      argv(ticket, 'blocker', 'reason', '--axiom', 'AX_X', '--phase', 'P1'),
+      CLOCK
+    );
+    assert.strictEqual(noUnblock.ok, false);
+    if (!noUnblock.ok) assert.strictEqual(noUnblock.exitCode, 4);
+  });
+
+  describe('file-backed payloads (agent-safe shell boundary)', () => {
+    async function inFixture<T>(fn: () => Promise<T> | T): Promise<T> {
+      const before = process.cwd();
+      process.chdir(dir);
+      try {
+        mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+        return await fn();
+      } finally {
+        process.chdir(before);
+      }
+    }
+
+    it('logs quotes, command substitutions, backticks, and newline literally; executes nothing; consumes the file', async () => {
+      const payloadPath = join(dir, '.claude', 'tmp', 'event.txt');
+      const pwnedPath = join(dir, '.claude', 'tmp', 'PWNED');
+      const content =
+        'quoted "value" $(touch .claude/tmp/PWNED) `touch .claude/tmp/PWNED`\nnext line';
+      const outcome = await inFixture(async () => {
+        writeFileSync(payloadPath, content, 'utf-8');
+        return mod.run(argv(ticket, 'line', '--content-file', '.claude/tmp/event.txt'), CLOCK);
+      });
+      assert.strictEqual(outcome.ok, true);
+      assert.ok(readFileSync(ticket, 'utf-8').includes(content));
+      assert.strictEqual(existsSync(pwnedPath), false, 'payload bytes must never execute');
+      assert.strictEqual(
+        existsSync(payloadPath),
+        false,
+        'successful append consumes exact payload'
+      );
+    });
+
+    it('proves the same boundary through the real CLI entry point', () => {
+      mkdirSync(join(dir, '.claude', 'tmp'), { recursive: true });
+      const payloadPath = join(dir, '.claude', 'tmp', 'real-cli.txt');
+      const pwnedPath = join(dir, '.claude', 'tmp', 'PWNED');
+      const content = '"quoted" $(touch .claude/tmp/PWNED) `touch .claude/tmp/PWNED`\nreal CLI';
+      writeFileSync(payloadPath, content, 'utf-8');
+      const result = runCli(
+        ['sdd-log', 'ticket.md', 'line', '--content-file', '.claude/tmp/real-cli.txt'],
+        dir
+      );
+      assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
+      assert.ok(readFileSync(ticket, 'utf-8').includes(content));
+      assert.strictEqual(existsSync(pwnedPath), false);
+      assert.strictEqual(existsSync(payloadPath), false);
+    });
+
+    it('accepts a strict blocker JSON payload and consumes it only after append', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const payloadPath = join(dir, '.claude', 'tmp', 'blocker.json');
+      const outcome = await inFixture(async () => {
+        writeFileSync(
+          payloadPath,
+          JSON.stringify({
+            reason: 'tool says "no" and contains $() literally',
+            axiom: 'AX_BLOCKER_ESCALATION',
+            unblock: 'operator approves `npm install`',
+          }),
+          'utf-8'
+        );
+        return mod.run(
+          argv(ticket, 'blocker', '--payload-file', '.claude/tmp/blocker.json', '--phase', 'P1'),
+          CLOCK
+        );
+      });
+      assert.strictEqual(outcome.ok, true);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(body, /BLOCKED: tool says "no" and contains \$\(\) literally/);
+      assert.match(body, /axiom: AX_BLOCKER_ESCALATION/);
+      assert.match(body, /unblock: operator approves `npm install`/);
+      assert.strictEqual(existsSync(payloadPath), false);
+    });
+
+    it('rejects outside, symlink, oversize, and malformed blocker payloads without consuming them', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      await inFixture(async () => {
+        writeFileSync(join(dir, 'outside.txt'), 'outside', 'utf-8');
+        const outside = await mod.run(
+          argv(ticket, 'line', '--content-file', 'outside.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(outside.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'target.txt'), 'target', 'utf-8');
+        symlinkSync('target.txt', join(dir, '.claude', 'tmp', 'link.txt'));
+        const symlink = await mod.run(
+          argv(ticket, 'line', '--content-file', '.claude/tmp/link.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(symlink.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'large.txt'), 'x'.repeat(32 * 1024 + 1));
+        const oversize = await mod.run(
+          argv(ticket, 'line', '--content-file', '.claude/tmp/large.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(oversize.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'invalid.txt'), Buffer.from([0xff]));
+        const invalidUtf8 = await mod.run(
+          argv(ticket, 'line', '--content-file', '.claude/tmp/invalid.txt', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(invalidUtf8.ok, false);
+
+        writeFileSync(join(dir, '.claude', 'tmp', 'bad.json'), '{not-json', 'utf-8');
+        const malformed = await mod.run(
+          argv(ticket, 'blocker', '--payload-file', '.claude/tmp/bad.json', '--phase', 'P1'),
+          CLOCK
+        );
+        assert.strictEqual(malformed.ok, false);
+        if (!malformed.ok) assert.match(malformed.code, /PAYLOAD_FILE/);
+        assert.ok(existsSync(join(dir, '.claude', 'tmp', 'bad.json')));
+      });
+    });
+
+    it('rejects unknown/repeated payload flags and inline+file ambiguity', async () => {
+      await inFixture(async () => {
+        writeFileSync(join(dir, '.claude', 'tmp', 'event.txt'), 'safe', 'utf-8');
+        for (const outcome of [
+          await mod.run(argv(ticket, 'line', '--unknown', 'x'), CLOCK),
+          await mod.run(
+            argv(
+              ticket,
+              'line',
+              '--content-file',
+              '.claude/tmp/event.txt',
+              '--content-file',
+              '.claude/tmp/event.txt'
+            ),
+            CLOCK
+          ),
+          await mod.run(
+            argv(ticket, 'line', 'inline', '--content-file', '.claude/tmp/event.txt'),
+            CLOCK
+          ),
+        ]) {
+          assert.strictEqual(outcome.ok, false);
+          if (!outcome.ok) assert.strictEqual(outcome.exitCode, 4);
+        }
+      });
+    });
+
+    it('consumes only the inode that was read and never a same-path replacement', async () => {
+      await inFixture(() => {
+        const relativePayload = '.claude/tmp/identity.txt';
+        const payloadPath = join(dir, relativePayload);
+        const originalPath = join(dir, '.claude', 'tmp', 'original.txt');
+        writeFileSync(payloadPath, 'same bytes', 'utf-8');
+        const read = readScratchPayloadFile(dir, relativePayload);
+        assert.strictEqual(read.ok, true);
+        if (!read.ok) return;
+
+        renameSync(payloadPath, originalPath);
+        writeFileSync(payloadPath, 'same bytes', 'utf-8');
+        const failure = read.payload.consume();
+
+        assert.match(failure ?? '', /identity changed/);
+        assert.strictEqual(readFileSync(payloadPath, 'utf-8'), 'same bytes');
+        assert.strictEqual(readFileSync(originalPath, 'utf-8'), 'same bytes');
+      });
+    });
+
+    it('refuses a same-path symlink replacement and leaves both replacement and target intact', async () => {
+      await inFixture(() => {
+        const relativePayload = '.claude/tmp/identity-link.txt';
+        const payloadPath = join(dir, relativePayload);
+        const targetPath = join(dir, '.claude', 'tmp', 'replacement-target.txt');
+        writeFileSync(payloadPath, 'old bytes', 'utf-8');
+        const read = readScratchPayloadFile(dir, relativePayload);
+        assert.strictEqual(read.ok, true);
+        if (!read.ok) return;
+
+        unlinkSync(payloadPath);
+        writeFileSync(targetPath, 'old bytes', 'utf-8');
+        symlinkSync('replacement-target.txt', payloadPath);
+        const failure = read.payload.consume();
+
+        assert.ok(failure);
+        assert.strictEqual(readFileSync(payloadPath, 'utf-8'), 'old bytes');
+        assert.strictEqual(readFileSync(targetPath, 'utf-8'), 'old bytes');
+      });
+    });
+
+    it('removes an unchanged original payload and reports a missing original fail-closed', async () => {
+      await inFixture(() => {
+        const consumedPath = join(dir, '.claude', 'tmp', 'consume.txt');
+        writeFileSync(consumedPath, 'consume me', 'utf-8');
+        const consumed = readScratchPayloadFile(dir, '.claude/tmp/consume.txt');
+        assert.strictEqual(consumed.ok, true);
+        if (consumed.ok) {
+          assert.strictEqual(consumed.payload.consume(), null);
+          assert.strictEqual(existsSync(consumedPath), false);
+        }
+
+        const missingPath = join(dir, '.claude', 'tmp', 'missing.txt');
+        writeFileSync(missingPath, 'remove first', 'utf-8');
+        const missing = readScratchPayloadFile(dir, '.claude/tmp/missing.txt');
+        assert.strictEqual(missing.ok, true);
+        unlinkSync(missingPath);
+        if (missing.ok) {
+          assert.match(missing.payload.consume() ?? '', /path is missing|does not exist|ENOENT/);
+          assert.strictEqual(existsSync(missingPath), false);
+        }
+      });
+    });
+  });
+
+  describe('resolved mode — paired close for blocker (D-20, B2-19: writes ## Blocker Trail, not inline)', () => {
+    async function openBlocker(phaseId: string): Promise<void> {
+      await mod.run(argv(ticket, 'phase', phaseId), CLOCK);
+      await mod.run(
+        argv(
+          ticket,
+          'blocker',
+          'root cause',
+          '--axiom',
+          'AX_X',
+          '--unblock',
+          'fix it',
+          '--phase',
+          phaseId
+        ),
+        CLOCK
+      );
+    }
+
+    it('writes the canonical ✅ RESOLVED line into ## Blocker Trail, with a Round/phase back-reference', async () => {
+      await openBlocker('P1');
+      const outcome = await mod.run(
+        argv(
+          ticket,
+          'resolved',
+          'maxBuffer added to sdd-verify.cmd.ts (02f1b35f)',
+          '--phase',
+          'P1'
+        ),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(
+        body,
+        /- \[x\] `2026-06-21T10:00:00\.000Z` ✅ RESOLVED \(Round 0 \/ P1\): maxBuffer added to sdd-verify\.cmd\.ts \(02f1b35f\)/
+      );
+      assert.match(body, /## Blocker Trail/);
+      // never inline in the Execution Log any more
+      const logOnly = body.slice(
+        body.indexOf('<!--SECTION:EXECUTION_LOG-->'),
+        body.indexOf('<!--/SECTION:EXECUTION_LOG-->')
+      );
+      assert.doesNotMatch(logOnly, /RESOLVED/);
+    });
+
+    it('requires justification text — exits 4 with no content', async () => {
+      const outcome = await mod.run(argv(ticket, 'resolved'), CLOCK);
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.exitCode, 4);
+    });
+
+    it('rejects an unreplaced placeholder in the justification text (exit 2)', async () => {
+      await openBlocker('P1');
+      const outcome = await mod.run(
+        argv(ticket, 'resolved', 'fixed via <commit>', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) assert.strictEqual(outcome.exitCode, 2);
+    });
+
+    it('refuses when the named phase has no still-open blocker (exit 2)', async () => {
+      await mod.run(argv(ticket, 'phase', 'P1'), CLOCK);
+      const outcome = await mod.run(
+        argv(ticket, 'resolved', 'nothing to fix', '--phase', 'P1'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, false);
+      if (!outcome.ok) {
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /No still-open/);
+      }
+    });
+
+    it('honors --phase the same way blocker/handoff do — resolves only the named phase', async () => {
+      await openBlocker('P2');
+      await openBlocker('P1');
+      const outcome = await mod.run(
+        argv(ticket, 'resolved', 'p2 blocker fixed', '--phase', 'P2'),
+        CLOCK
+      );
+      assert.strictEqual(outcome.ok, true, outcome.ok ? '' : outcome.message);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(body, /✅ RESOLVED \(Round 0 \/ P2\): p2 blocker fixed/);
+      assert.doesNotMatch(body, /✅ RESOLVED \(Round 0 \/ P1\)/);
+    });
+
+    it('never touches Meta Status', async () => {
+      const withStatus = BASE.replace(
+        '<!--/SECTION:META-->',
+        '- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->\n<!--/SECTION:META-->'
+      );
+      writeFileSync(ticket, withStatus, 'utf-8');
+      await openBlocker('P1');
+      await mod.run(argv(ticket, 'resolved', 'fixed', '--phase', 'P1'), CLOCK);
+      const body = readFileSync(ticket, 'utf-8');
+      assert.match(body, /- \*\*Status:\*\* \[ \] TODO   <!--/);
+    });
+
+    it('requires --phase on both blocker lifecycle transitions', async () => {
+      const opened = await mod.run(
+        argv(ticket, 'blocker', 'reason', '--axiom', 'AX_X', '--unblock', 'do x'),
+        CLOCK
+      );
+      assert.strictEqual(opened.ok, false);
+      if (!opened.ok) assert.match(opened.message, /requires --phase <PhaseID>/);
+
+      const closed = await mod.run(argv(ticket, 'resolved', 'fixed'), CLOCK);
+      assert.strictEqual(closed.ok, false);
+      if (!closed.ok) assert.match(closed.message, /requires --phase <PhaseID>/);
+    });
+  });
+
+  it('rejects a placeholder in phase/handoff/blocker content (exit 2)', async () => {
+    const phase = await mod.run(argv(ticket, 'phase', '<PhaseID>'), CLOCK);
+    assert.strictEqual(phase.ok, false);
+    if (!phase.ok) assert.strictEqual(phase.exitCode, 2);
+    const handoff = await mod.run(argv(ticket, 'handoff', 'artifacts: [<path>]'), CLOCK);
+    assert.strictEqual(handoff.ok, false);
+    if (!handoff.ok) assert.strictEqual(handoff.exitCode, 2);
+  });
+
+  it('unreadable, non-Task-ID-shaped path → tool-teaches hint points at `sdd-task`', async () => {
+    const outcome = await mod.run(argv(join(dir, 'nope.md'), 'line', 'DONE'), CLOCK);
+    assert.strictEqual(outcome.ok, false);
+    if (outcome.ok) return;
+    assert.strictEqual(outcome.exitCode, 1);
+    assert.match(outcome.message, /run `sdd-task` with no arguments for the execution map/);
+  });
+
+  describe('bare Task-ID resolution (AX_TASK_RESOLUTION)', () => {
+    // "cli-foo" (the shared BASE fixture) is lowercase-ACR and does not match the v2 Task-ID
+    // grammar — these tests build their own grammar-conforming ticket, isolated per test dir.
+    const idTicket = (id: string): string => BASE.split('cli-foo').join(id);
+
+    it('resolves to its ticket — output is prefixed with the `[sdd-log] <id> → <path>` banner', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-log-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('TSK-foo', 'line', 'DONE'), CLOCK);
+        assert.strictEqual(outcome.ok, true);
+        if (!outcome.ok) return;
+        assert.match(outcome.text, /^\[sdd-log\] TSK-foo → ticket\.md\n/);
+        const body = readFileSync(join(idDir, 'ticket.md'), 'utf-8');
+        assert.match(body, /- \[x\] `.*` DONE/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an unknown but Task-ID-shaped argument → exit 2 listing known Task-IDs', async () => {
+      const idDir = mkdtempSync(join(tmpdir(), 'sdd-log-id-'));
+      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(idDir);
+      try {
+        const outcome = await mod.run(argv('NOPE-ghost', 'line', 'DONE'), CLOCK);
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_LOG_UNKNOWN_ID: NOPE-ghost/);
+        assert.match(outcome.message, /known Task-IDs:.*TSK-foo/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(idDir, { recursive: true, force: true });
+      }
+    });
+
+    it('a Task-ID matching two tickets → exit 2 listing both candidate paths', async () => {
+      const dupDir = mkdtempSync(join(tmpdir(), 'sdd-log-dup-'));
+      const dup = (name: string): string =>
+        [
+          `# ${name}`,
+          '<!--SECTION:META-->',
+          '- **Task-ID:** TSK-dup',
+          '<!--/SECTION:META-->',
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--/SECTION:EXECUTION_LOG-->',
+        ].join('\n');
+      writeFileSync(join(dupDir, 'a.md'), dup('a'), 'utf-8');
+      writeFileSync(join(dupDir, 'b.md'), dup('b'), 'utf-8');
+      const origCwd = process.cwd();
+      process.chdir(dupDir);
+      try {
+        const outcome = await mod.run(argv('TSK-dup', 'line', 'DONE'), CLOCK);
+        assert.strictEqual(outcome.ok, false);
+        if (outcome.ok) return;
+        assert.strictEqual(outcome.exitCode, 2);
+        assert.match(outcome.message, /ERR_CLI_SDD_LOG_AMBIGUOUS_ID: TSK-dup matches 2 tickets/);
+        assert.match(outcome.message, /a\.md/);
+        assert.match(outcome.message, /b\.md/);
+      } finally {
+        process.chdir(origCwd);
+        rmSync(dupDir, { recursive: true, force: true });
+      }
+    });
+
+    it('an existing ticket path still works exactly as before (no resolution banner)', async () => {
+      const outcome = await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
+      assert.strictEqual(outcome.ok, true);
+      if (!outcome.ok) return;
+      assert.doesNotMatch(outcome.text, /^\[sdd-log\] cli-foo → /);
+    });
+  });
+});

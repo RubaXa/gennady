@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Axiom id="AX_EVENT_HANDLERS_AS_ATTRIBUTES">
+  DOM event handlers are written as attributes (`onclick={handler}`, `oninput={handler}`), NOT as `on:event` directives. Custom component events are passed as callback props (`onConfirm={...}`), NOT through `createEventDispatcher`.
+
+  `on:event` directives, `dispatch(...)`, and `createEventDispatcher` are forbidden — they belonged to the Svelte 4 event model.
+</Axiom>

@@ -1,6 +1,6 @@
 // @file: Contract surface for the actionable inbox — MRs awaiting the user's reaction.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-75
 
 import type { VcsActionableMr } from '../entities/vcs-actionable-mr.type.ts';
 
@@ -14,10 +14,11 @@ import type { VcsActionableMr } from '../entities/vcs-actionable-mr.type.ts';
 export abstract class VcsClientInbox {
   /**
    * @purpose Fetch all merge requests awaiting the user's reaction in one round-trip.
+   * @param [filter] Optional scope — when `iid` is provided, queries are targeted to a single MR.
    * @returns Deduplicated actionable MRs with merged reasons; unfiltered (drafts included).
    * @sideEffect Network: POST /api/graphql (currentUser todos + MR connections)
    */
-  abstract getActionable(): Promise<VcsActionableMr[]>;
+  abstract getActionable(filter?: { iid?: string }): Promise<VcsActionableMr[]>;
 
   /**
    * @purpose Mark a single todo as done.

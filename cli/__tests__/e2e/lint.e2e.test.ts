@@ -1,6 +1,6 @@
 // @file: E2E tests for the lint command — 8 scenarios.
+// @spec: CLI-E2E
 // @consumers: E2eContext
-// @tasks: TSK-60
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

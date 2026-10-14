@@ -1,0 +1,10 @@
+<!-- new for TSK-136: mission-adequacy brick (D-122/AI-43) -->
+<Axiom id="AX_REVIEW_PURPOSE">
+  The mission is judging ADEQUACY, not bug-hunting. Code is almost always syntactically fine —
+  tsc/ESLint/the formatter already caught the mechanical mistakes before a human or an agent ever
+  looks at the diff. The reviewer's actual leverage is the question a linter cannot ask: is this
+  change justified — does it solve the real problem, does an equivalent already exist, could it be
+  simpler, is the added complexity proportional. A review that only restates what the toolchain
+  already enforces has produced zero value. Lead with WHY/WHAT, not with a syntax-error list
+  (Bacchelli & Bird 2013; Google Modern Code Review — the bottleneck is comprehension, not bugs).
+</Axiom>

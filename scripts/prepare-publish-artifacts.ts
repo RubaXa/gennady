@@ -1,3 +1,7 @@
+// @file: Prepare bundled publish artifacts that Vite does not copy automatically.
+// @spec: INFRA-NPM-PUBLISH
+// @consumers: package build and publish scripts
+
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +39,10 @@ const copyPairs: PublishArtifactCopyPair[] = [
   {
     source: path.join(projectRoot, 'ai/agents/agent-resolve-conflicts.xml'),
     target: path.join(projectRoot, 'dist/ai/agents/agent-resolve-conflicts.xml'),
+  },
+  {
+    source: path.join(projectRoot, 'services/agent-run/engines/opencode/readonly.config.json'),
+    target: path.join(projectRoot, 'dist/chunks/readonly.config.json'),
   },
   {
     source: path.join(projectRoot, 'ai'),

@@ -1,6 +1,6 @@
 // @file: Fixture service for orient command tests.
+// @spec: CLI-E2E
 // @consumers: FixtureConsumer
-// @tasks: TSK-60
 
 /**
  * @purpose Fixture service with exported contract for orient discovery.

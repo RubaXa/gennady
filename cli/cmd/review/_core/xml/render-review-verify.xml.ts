@@ -1,6 +1,6 @@
 // @file: Build the final XML for review-verify (template + artifact + project substitutions).
+// @spec: CLI-REVIEW
 // @consumers: run-review-command.logic
-// @tasks: N/A
 
 import { buildAiFirstKnowledgeBlock } from '../logic/build-ai-first-knowledge-block.logic.ts';
 import { buildVerifyCommandPlaceholders } from '../logic/build-ai-verify-placeholders.logic.ts';

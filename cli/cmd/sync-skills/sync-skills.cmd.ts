@@ -1,6 +1,6 @@
 // @file: SyncSkills command — CLI entry point for gennady sync-skills: parseArgs, resolve package, compare + copy skills.
+// @spec: CLI-SYNC-SKILLS
 // @consumers: gennady.ts, sync-skills.cmd.test.ts
-// @tasks: TSK-57
 
 import {
   readFileSync,
@@ -16,12 +16,17 @@ import { fileURLToPath } from 'node:url';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { resolvePackageDir } from '../../../shared/common/sync/sync-core.shared.ts';
-import { pluginSurfaceDirs } from '../../../services/plugins/plugin-assets.ts';
+import { formatSyncOutput } from '../../../shared/common/sync/sync-formatter.shared.ts';
 import type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
+import { collectAndCompare } from '../sync/sync-core.ts';
+import type { SyncCoreDeps } from '../sync/sync-core.ts';
+import { ERR_SYNC_SOURCE_NOT_FOUND } from '../sync/sync.types.ts';
+import type { SyncOptions } from '../sync/sync.types.ts';
 import { collectAndCompareSkills } from './sync-skills-core.ts';
 import { format } from './sync-skills-formatter.ts';
 import { ERR_SKILLS_SKILL_NOT_FOUND, ERR_SKILLS_SOURCE_NOT_FOUND } from './sync-skills.types.ts';
 import type { SyncSkillsFileEntry, SyncSkillsOptions } from './sync-skills.types.ts';
+import { v1ConsumerSyncRefusal } from '../../../shared/common/sync/v1-consumer-guard.ts';
 
 export type { SyncCmdDeps } from '../../../shared/common/sync/sync-deps.type.ts';
 
@@ -52,6 +57,69 @@ function formatAndWrite(
 // #endregion END_FORMAT_AND_WRITE
 
 /**
+ * @purpose Sync ai/directives/ before skills, in-process, so skills never reference stale/absent directives.
+ * @param deps Injectable filesystem dependencies (subset shared with sync-skills).
+ * @param cwd Current working directory.
+ * @param dryRun Preview without writing.
+ * @param stdout Standard output stream.
+ * @param stderr Standard error stream.
+ * @returns Exit code on failure (1), or null on success (proceed to skills sync).
+ */
+function syncDirectivesFirst(
+  deps: SyncCmdDeps,
+  cwd: string,
+  dryRun: boolean,
+  stdout: NodeJS.WriteStream,
+  stderr: NodeJS.WriteStream
+): number | null {
+  const _resolvePackageDir = deps.resolvePackageDir ?? resolvePackageDir;
+  const packageDir = _resolvePackageDir(cwd, 'ai/directives');
+  if (!packageDir) {
+    stderr.write('Error: gennady package not found. Install it locally: npm i -D gennady\n');
+    return 1;
+  }
+
+  const version = getPackageVersion(packageDir);
+  const targetDir = join(cwd, 'ai', 'directives');
+
+  const opts: SyncOptions = {
+    sourceDir: packageDir,
+    targetDir,
+    dryRun,
+  };
+
+  const coreDeps: SyncCoreDeps = {
+    readFile: deps.readFile!,
+    writeFile: deps.writeFile!,
+    mkdir: deps.mkdir! as (p: string, opts?: { recursive: boolean }) => void,
+    stat: (p: string) => deps.stat!(p),
+    readdir: deps.readdir!,
+    unlink: deps.unlink,
+    cwd,
+  };
+
+  try {
+    const result = collectAndCompare(coreDeps, opts);
+    stdout.write(`Sync (v${version})${dryRun ? ' (dry-run)' : ''}: ${cwd}\n`);
+    for (const line of formatSyncOutput(result.entries, { dryRun })) {
+      stdout.write(line + '\n');
+    }
+    for (const warning of result.warnings) {
+      stdout.write(`Warning: ${warning}\n`);
+    }
+    stdout.write('\n');
+    return null;
+  } catch (err) {
+    const error = err as Error & { code?: string };
+    if (error.code === ERR_SYNC_SOURCE_NOT_FOUND) {
+      stderr.write(`Error: ${error.message}\n`);
+      return 1;
+    }
+    throw error;
+  }
+}
+
+/**
  * @purpose CLI entry point for sync-skills. Parses args, resolves package source directory, compares source with target, outputs result.
  * *
  * @param rawArgs Raw CLI arguments (typically process.argv).
@@ -66,23 +134,54 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
   const _stat = deps?.stat ?? statSync;
   const _readdir = deps?.readdir ?? readdirSync;
   const _unlink = deps?.unlink ?? unlinkSync;
-  const _rm = deps?.rm ?? rmSync;
+  const _rmdir = deps?.rmdir ?? ((path: string) => rmSync(path, { recursive: true, force: true }));
   const _resolvePackageDir = deps?.resolvePackageDir ?? resolvePackageDir;
   const _stdout = deps?.stdout ?? process.stdout;
   const _stderr = deps?.stderr ?? process.stderr;
 
-  // #region START_PARSE — invariant: dryRun flag + positional skill names
+  // #region START_PARSE — invariant: dryRun/withDirectives flags + positional skill names
   const args = parseArgs(rawArgs, {
     dryRun: ['dry-run'],
+    withDirectives: ['with-directives'],
   });
 
   const dryRun = args.dryRun === true || args.dryRun === 'true';
+  const withDirectives = args.withDirectives === true || args.withDirectives === 'true';
   const positional = (args._ as string[]).filter(
     (f: string) => typeof f === 'string' && f !== 'sync-skills'
   );
   // #endregion END_PARSE
 
   const cwd = process.cwd();
+
+  const v1Refusal = v1ConsumerSyncRefusal(cwd);
+  if (v1Refusal) {
+    _stderr.write(`${v1Refusal}\n`);
+    return 1;
+  }
+
+  // SO-9: sync-skills is a narrow, filterable command; syncing ALL directives unconditionally —
+  // even for `gennady sync-skills sdd-execute` — is the widest action a narrow command can take,
+  // and it was doing it silently. Opt-in only, off by default (D-4 option 3); `gennady sync` on
+  // its own already covers directives, run it first when both are wanted.
+  if (withDirectives) {
+    const directivesExitCode = syncDirectivesFirst(
+      {
+        readFile: _readFile,
+        writeFile: _writeFile,
+        mkdir: _mkdir,
+        stat: _stat,
+        readdir: _readdir,
+        unlink: _unlink,
+        resolvePackageDir: _resolvePackageDir,
+      },
+      cwd,
+      dryRun,
+      _stdout,
+      _stderr
+    );
+    if (directivesExitCode !== null) return directivesExitCode;
+  }
 
   // #region START_RESOLVE_PACKAGE — invariant: local node_modules > import.meta.resolve
   const packageDir = _resolvePackageDir(cwd, 'ai/skills');
@@ -98,7 +197,6 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
 
   const opts: SyncSkillsOptions = {
     sourceDir: packageDir,
-    extraSourceDirs: pluginSurfaceDirs(_resolvePackageDir(cwd, 'plugins'), 'skills'),
     targetDir,
     skillNames: positional.length > 0 ? positional : undefined,
     dryRun,
@@ -113,7 +211,7 @@ export function run(rawArgs: string[], deps?: SyncCmdDeps): number {
       stat: (p: string) => _stat(p),
       readdir: _readdir,
       unlink: _unlink,
-      rm: _rm as (p: string, opts?: { recursive: boolean; force: boolean }) => void,
+      rmdir: _rmdir as (p: string, opts?: { recursive: boolean }) => void,
       resolvePackageDir: _resolvePackageDir,
     };
 

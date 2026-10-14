@@ -1,0 +1,4 @@
+<!-- source: testing/common.xml -->
+<Definition id="DEF_NON_TRIVIAL_CASE">
+      A case is non-trivial if any of: async behavior with setup; retries / fallbacks / errors; emitted events or external side effects; more than one meaningful observation; nested control flow that another agent could misread at a glance. Non-trivial cases are candidates for opening brief and phase anchors per the thresholds in `AX_PHASE_ANCHORS` and `AX_IT_OPENING_BRIEF`.
+    </Definition>

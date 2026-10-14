@@ -1,6 +1,6 @@
 // @file: Observation loop configuration
+// @spec: AGENT-MON-MODEL
 // @consumers: observe, cli
-// @tasks: TSK-35
 
 /** @purpose Configuration for the observe polling cycle. */
 export type ObserveOpts = {

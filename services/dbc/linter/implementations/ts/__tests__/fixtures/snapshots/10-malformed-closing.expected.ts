@@ -1,4 +1,5 @@
 // @file: malformed closing
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  * @purpose Malformed JSDoc closing.

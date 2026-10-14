@@ -1,0 +1,5 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<Hook id="HOOK_RUN_TESTS">
+      <Command>npm test</Command>
+      <Expected>Exit 0; all cases pass; no `.skip` / `.todo` without explicit deferred-ownership in the ticket.</Expected>
+    </Hook>

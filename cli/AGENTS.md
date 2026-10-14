@@ -23,22 +23,32 @@
 | vcs-job-log       | [cmd/vcs-job-log/](cmd/vcs-job-log/)             | Сырой/фильтрованный лог джобы пайплайна                                             |
 | vcs-worktree      | [cmd/vcs-worktree/](cmd/vcs-worktree/)           | Подготовка read-only git worktree для MR review                                     |
 | inbox             | [cmd/inbox/](cmd/inbox/)                         | Интерактивный разбор входящих GitLab MR                                             |
-| inbox-context     | [cmd/inbox-context/](cmd/inbox-context/)         | Атомарный сбор контекста MR (worktree+changeset+threads)                            |
 | review-verify     | [cmd/review-verify/](cmd/review-verify/)         | Верификация по MR (общий core: [cmd/review/](cmd/review/))                          |
 | review-issues     | [cmd/review-issues/](cmd/review-issues/)         | XML-артефакт issues по MR (общий core: [cmd/review/](cmd/review/))                  |
 | resolve-conflicts | [cmd/resolve-conflicts/](cmd/resolve-conflicts/) | Генерация prompt для confidence-aware разрешения merge-конфликтов                   |
 | remote-console    | [cmd/remote-console/](cmd/remote-console/)       | Проксирование browser console в локальный stdout через HTTP sink                    |
 | lint              | [cmd/lint/](cmd/lint/)                           | Линтинг .ts файлов — file header, anchors, DbC контракты                            |
-| alt-opinion       | [cmd/alt-opinion/](cmd/alt-opinion/)             | Получение альтернативных мнений от AI-моделей с опциональным синтезом               |
+| mr-stats          | [cmd/mr-stats/](cmd/mr-stats/)                   | Статистика по GitLab MR: категории, строки, сущности                                |
 | sync              | [cmd/sync/](cmd/sync/)                           | Синхронизация ai/directives/ из npm-пакета в текущий проект                         |
-| sync-skills       | [cmd/sync-skills/](cmd/sync-skills/)             | Sync SDD skills from ai/skills/ to .claude/skills/                                  |
+| sync-skills       | [cmd/sync-skills/](cmd/sync-skills/)             | Sync ai/directives/ (in full) then SDD skills from ai/skills/ to .claude/skills/    |
 | agent-mon         | [cmd/agent-mon/](cmd/agent-mon/)                 | Интерактивный терминальный дашборд для мониторинга AI-агентов                       |
-| orient            | [cmd/orient/](cmd/orient/)                       | Навигация по file-header и DBC-контрактам — карта, поиск, граф зависимостей         |
+| orient            | [cmd/orient/](cmd/orient/)                       | Canonical owner/task relations; legacy headers — read-only migration evidence       |
+| sdd-orient        | [cmd/sdd-orient/](cmd/sdd-orient/)               | SDD-граф; legacy numbered headings — labelled read-only migration context           |
+| sdd-state         | [cmd/sdd-state/](cmd/sdd-state/)                 | Детерминированный снимок SDD-состояния проекта                                      |
+| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | V2 ownership/checks; legacy diagnostics grandfathered, no header append-only gate   |
+| sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                      |
+| sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
+| sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Thin SDD task/phase facade over universal Verify                                    |
+| verify            | [cmd/verify/](cmd/verify/)                       | SDD-agnostic unified phase runner; `--plan` strictly read-only                      |
+| rules             | [cmd/rules/](cmd/rules/)                         | Read-only embedded rule inventory/detail and explicit-scope resolver                |
+| sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | V2 Execution Log/lifecycle writes; legacy/historical input stays read-only          |
+| sdd-sync          | [cmd/sdd-sync/](cmd/sdd-sync/)                   | V2 tracker synchronization; V1 scope requires migration before writes               |
+| sdd-task          | [cmd/sdd-task/](cmd/sdd-task/)                   | V2 execution map/phase context; legacy scopes are migration-blocked                 |
+| sdd-migrate       | [cmd/sdd-migrate/](cmd/sdd-migrate/)             | Детерминированная миграция SDD v1 → v2                                              |
 | agents-rules      | [cmd/agents-rules/](cmd/agents-rules/)           | Вывод инструкции по orient для AI-агентов                                           |
 | run               | [cmd/run/](cmd/run/)                             | Запуск задания через AI-движок (opencode) — тонкая обёртка над agent-run            |
 | testcov           | [cmd/testcov/](cmd/testcov/)                     | Визуальное дерево покрытия тестами с авто-детекцией раннера (vitest/jest/node:test) |
-| verify            | [cmd/verify/](cmd/verify/)                       | Стек-агностичные верификационные гейты (node + golang, конфиг в gennady.yaml)       |
-| fix               | [cmd/fix/](cmd/fix/)                             | Мутирующие fixer'ы (кодоген, форматтеры) в рабочем дереве                           |
+| yagni             | [cmd/yagni/](cmd/yagni/)                         | Находки YAGNI: символы диффа с < 2 использований в прод-коде, гейт по Usage Waiver  |
 
 **cli/utils/**: commit-gen, review-gen, cat-gen, prompts, ai-legacy, review-verifier (README.arch). Импорты из `shared/`, `services/`.
 

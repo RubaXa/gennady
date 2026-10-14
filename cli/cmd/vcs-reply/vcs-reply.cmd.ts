@@ -1,9 +1,9 @@
-#!/usr/bin/env node
 // @file: Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
+// @spec: CLI
 // @consumers: vcs-reply
-// @tasks: N/A, TSK-70, TSK-72, TSK-78, TSK-79, TSK-87
 
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
@@ -68,6 +68,87 @@ function resolveBody(it: ReplyItem): string {
   return it.body!;
 }
 
+/**
+ * @purpose Validate reply items atomically: prepend 🤖, verify discussionId exists,
+ *   validate suggestion syntax, check newPath in diff. Any error aborts batch.
+ * @sideEffect Mutates items[i].body — prepends 🤖 prefix when missing.
+ * @param items Reply items (already filtered by structural validity).
+ * @param discussions Real MR discussions from getAll (null → skip discussionId check).
+ * @param diffPaths MR diff file paths from getChanges (null → skip newPath check).
+ * @returns null if all valid; otherwise list of {index, error} per invalid item.
+ */
+function validateReplyItems(
+  items: ReplyItem[],
+  discussions: unknown[] | null,
+  diffPaths: string[] | null
+): Array<{ index: number; error: string }> | null {
+  const errors: Array<{ index: number; error: string }> = [];
+  const validIds = new Set(
+    discussions?.map((d) => (d as Record<string, unknown>).id as string).filter(Boolean) ?? []
+  );
+  const diffSet = diffPaths ? new Set(diffPaths) : null;
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+
+    // #region START_AUTO_PREPEND_BOT_PREFIX — check 1: body без 🤖 → авто-дописать
+    if (it.body && !it.body.startsWith('🤖')) {
+      it.body = `🤖 ${it.body}`;
+    }
+    // #endregion END_AUTO_PREPEND_BOT_PREFIX
+
+    // #region START_VALIDATE_DISCUSSION_ID — check 2: discussionId сверка с реальными дискуссиями
+    if (it.discussionId && validIds.size > 0 && !validIds.has(it.discussionId)) {
+      const sample = [...validIds].slice(0, 10).join(', ');
+      const extra = validIds.size > 10 ? `... (+${validIds.size - 10})` : '';
+      errors.push({
+        index: i,
+        error: `discussionId "${it.discussionId}" не найден. Валидные: ${sample}${extra}`,
+      });
+      continue;
+    }
+    // #endregion END_VALIDATE_DISCUSSION_ID
+
+    // #region START_VALIDATE_SUGGESTION_BLOCK — check 3: ```suggestion блок синтаксически цел
+    const bodyText = it.body ?? '';
+    const suggestionText =
+      it.suggestion !== undefined ? composeSuggestionBody(it.suggestion, it.suggestionRange) : '';
+    const combined = bodyText + suggestionText;
+
+    if (combined.includes('```suggestion')) {
+      // failure mode: opening header must match ```suggestion:-N+M format
+      if (!/```suggestion:-\d+\+\d+/.test(combined)) {
+        errors.push({
+          index: i,
+          error: 'suggestion-блок: неверный заголовок (ожидается ```suggestion:-N+M)',
+        });
+        continue;
+      }
+      const afterOpening = combined.slice(combined.indexOf('```suggestion') + 3);
+      if (!afterOpening.includes('```')) {
+        errors.push({ index: i, error: 'suggestion-блок не закрыт' });
+        continue;
+      }
+      if (!it.position) {
+        errors.push({ index: i, error: 'suggestion-блок требует position' });
+        continue;
+      }
+    }
+    // #endregion END_VALIDATE_SUGGESTION_BLOCK
+
+    // #region START_VALIDATE_NEW_PATH — check 4: position.newPath в диффе MR
+    if (it.position?.newPath && diffSet && !diffSet.has(it.position.newPath)) {
+      errors.push({
+        index: i,
+        error: `position.newPath "${it.position.newPath}" не найден в диффе MR`,
+      });
+    }
+    // #endregion END_VALIDATE_NEW_PATH
+  }
+
+  return errors.length > 0 ? errors : null;
+}
+
 type MainOpts = {
   project?: string;
   iid?: string;
@@ -86,7 +167,8 @@ type MainOpts = {
 /**
  * @purpose Post replies to GitLab MR discussions: reads JSON array from stdin or opts, posts notes.
  * @param [opts] project, iid, dryRun, stdinJsonArray, token, remote, baseUrl, vcs (for tests).
- * @returns Object { ok, sent, failed, code }; code 0 on ok, otherwise 1.
+ * @returns Object { ok, sent, failed, code, error?, detail? }; code 0 on ok, otherwise 1.
+ *   `error` and `detail` populated on INVALID_ARGS validation failure (TSK-100).
  * @sideEffect Network: POST to GitLab Discussions API; Console: status and error output.
  * @consumer CLI (cmd/vcs-reply)
  */
@@ -95,6 +177,8 @@ export async function main(opts: MainOpts = {}): Promise<{
   sent: number;
   failed: number;
   code: number;
+  error?: string;
+  detail?: string;
 }> {
   const project = opts.project;
   const iid = opts.iid;
@@ -221,22 +305,23 @@ export async function main(opts: MainOpts = {}): Promise<{
     })['vcs-host'] as string) ||
       undefined) ??
     '';
-  const token = opts.token ?? vcsContext?.token ?? process.env.GITLAB_PERSONAL_TOKEN;
+  const token = opts.token ?? vcsContext?.token;
   // #endregion END_RESOLVE_VCS_CONTEXT
 
   let vcs: VcsClient | null = null;
   let hostInfo = '';
   if (!dryRun) {
     if (!token) {
-      console.error(style.redBright.bold('✖ Ошибка:'), 'Не найден токен доступа GitLab.');
-      console.error('  Установите переменную окружения:');
-      console.error(style.cyan('  export GITLAB_PERSONAL_TOKEN="your_token_here"'));
+      console.error(style.redBright.bold('✖ Ошибка:'), 'Не найден токен доступа.');
+      console.error('  Установите переменную окружения для вашего провайдера:');
+      console.error(style.cyan('  GitHub: export GITHUB_PERSONAL_TOKEN="..."'));
+      console.error(style.cyan('  GitLab: export GITLAB_PERSONAL_TOKEN="..."'));
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
     if (!host) {
       console.error(
         style.redBright.bold('✖ Ошибка:'),
-        'Не определён GitLab-host. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
+        'Не определён VCS-хост. Укажите --vcs-host=<host> или запустите из репозитория с origin.'
       );
       return { ok: false, sent: 0, failed: 0, code: 1 };
     }
@@ -252,6 +337,42 @@ export async function main(opts: MainOpts = {}): Promise<{
   } else {
     hostInfo = host;
   }
+
+  // #region START_VALIDATE_REPLY_FORMAT — TSK-100: 5 mechanical checks before POST
+  if (!dryRun) {
+    let discussions: unknown[] | null = null;
+    let diffPaths: string[] | null = null;
+
+    try {
+      discussions = await vcs!.MergeDiscussions!.getAll({ project, iid });
+    } catch {
+      // failure mode: getAll unavailable (test mock) or network failure → skip check 2
+    }
+
+    try {
+      const changes = await vcs!.MergeRequests.getChanges({ repository: project, iid });
+      diffPaths = changes.map((c) => c.path);
+    } catch {
+      // failure mode: getChanges unavailable or network failure → skip check 4
+    }
+
+    const validationErrors = validateReplyItems(items, discussions, diffPaths);
+    if (validationErrors) {
+      console.error(style.redBright.bold('✖ Ошибка:'), 'INVALID_ARGS');
+      for (const err of validationErrors) {
+        console.error(style.gray(`  [${err.index}] ${err.error}`));
+      }
+      return {
+        ok: false,
+        sent: 0,
+        failed: 0,
+        code: 1,
+        error: 'INVALID_ARGS',
+        detail: JSON.stringify(validationErrors),
+      };
+    }
+  }
+  // #endregion END_VALIDATE_REPLY_FORMAT
 
   console.info(
     '🤖',
@@ -485,32 +606,51 @@ export async function main(opts: MainOpts = {}): Promise<{
   return { ok, sent, failed, code: ok ? 0 : 1 };
 }
 
-const args = parseArgs(process.argv, {
-  project: { aliases: ['project'], takesValue: true },
-  iid: { aliases: ['iid'], takesValue: true },
-  'dry-run': ['dry-run', 'dry'],
-  'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true },
-});
-
-const vcsCliArgs: VcsCliArgs = {
-  project: args.project as string | undefined,
-  iid: args.iid ? Number(args.iid) : undefined,
-  host: args['vcs-host'] as string | undefined,
-};
-
-try {
-  const vcsContext = await resolveVcsContext(vcsCliArgs);
-
-  const run = await main({
-    project: args.project as string,
-    iid: args.iid as string,
-    dryRun: !!args['dry-run'],
-    vcsContext,
+/**
+ * @purpose CLI entry: parse argv, resolve VCS context, run `main`, return exit code.
+ *   Consumed by `index.ts` (dispatcher path) and the self-executing guard (direct run).
+ * @param [argv] Process argv to parse CLI flags (`--project`/`--iid`/`--dry-run`/`--vcs-host`/`--url`) from; defaults to `process.argv`.
+ * @returns Process exit code — 0 when all replies posted, 1 on context-resolve or post failure.
+ */
+export async function run(argv: string[] = process.argv): Promise<number> {
+  const args = parseArgs(argv, {
+    project: { aliases: ['project'], takesValue: true },
+    iid: { aliases: ['iid'], takesValue: true },
+    'dry-run': ['dry-run', 'dry'],
+    'vcs-host': { aliases: ['vcs-host', 'vcs-source'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
   });
 
-  process.exit(run.code);
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`✖ Ошибка: ${message}`);
-  process.exit(1);
+  const vcsCliArgs: VcsCliArgs = {
+    project: args.project as string | undefined,
+    iid: args.iid ? Number(args.iid) : undefined,
+    host: args['vcs-host'] as string | undefined,
+    url: args.url as string | undefined,
+  };
+
+  try {
+    const vcsContext = await resolveVcsContext(vcsCliArgs);
+    const projectVal: string = (args.project as string | undefined) ?? vcsContext.project;
+    const iidVal: string = (args.iid as string | undefined) ?? String(vcsContext.iid ?? '');
+    const result = await main({
+      project: projectVal,
+      iid: iidVal,
+      dryRun: !!args['dry-run'],
+      vcsContext,
+    });
+    return result.code;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`✖ Ошибка: ${message}`);
+    return 1;
+  }
 }
+
+// #region START_SELF_EXECUTING — invariant: self-executes only when file matches process.argv[1] (direct invocation)
+if (process.argv[1]) {
+  const selfPath = fileURLToPath(import.meta.url);
+  if (selfPath === process.argv[1] || selfPath.endsWith(process.argv[1])) {
+    process.exit(await run(process.argv));
+  }
+}
+// #endregion END_SELF_EXECUTING

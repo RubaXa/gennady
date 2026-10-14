@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_NO_TRANSPILE_ONLY_CONSTRUCTS">
+Forbid transpile-only syntax. `enum`, `namespace`, and constructor parameter properties (`constructor(private foo: string)`) are forbidden. Native Node.js supports only type stripping; these constructs require AST-to-JS transforms and reliably fail with `SyntaxError` at runtime.
+
+Alternatives: string literal unions (`'a' | 'b'`) or `const + as const` instead of `enum`; assign constructor fields explicitly inside the body.
+</Axiom>

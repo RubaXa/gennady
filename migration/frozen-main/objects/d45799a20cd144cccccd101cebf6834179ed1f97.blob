@@ -1,0 +1,8 @@
+notes: gofmt -l contract — exit 0 with stdout is a FAIL naming the file (D-STACK-005, never `go fmt`).
+requires: [go]
+argv: ['--all', '--only=golang:fmt']
+exitCode: 1
+gates:
+  golang:fmt:
+    status: fail
+    outputIncludes: ['main.go']

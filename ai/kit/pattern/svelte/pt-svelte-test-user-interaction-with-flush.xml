@@ -1,0 +1,28 @@
+<!-- source: testing/svelte-testing.xml -->
+<Pattern id="PT_SVELTE_TEST_USER_INTERACTION_WITH_FLUSH">
+      <Intent>User interaction triggers state mutation → `flushSync` → role-based assertion of the resulting DOM.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { afterEach, describe, expect, it } from 'vitest';
+        import { cleanup, render, screen } from '@testing-library/svelte';
+        import userEvent from '@testing-library/user-event';
+        import { flushSync } from 'svelte';
+        import Counter from './Counter.svelte';
+
+        afterEach(() => cleanup());
+
+        describe('Counter#increment', () => {
+          it('should increment on click and reflect the new count', async () => {
+            render(Counter, { props: { initial: 0, label: 'Count' } });
+            const button = screen.getByRole('button');
+
+            await userEvent.click(button);
+            flushSync();
+
+            expect(button).toHaveTextContent('Count: 1');
+          });
+        });
+        ```
+      </Snippet>
+      <Why>`userEvent.click` is the mutation; explicit `flushSync()` forces effect graph to settle before the assertion runs.</Why>
+    </Pattern>

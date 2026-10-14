@@ -1,6 +1,6 @@
 // @file: remote-console
+// @spec: SHARED
 // @consumers: remote-console.cmd
-// @tasks: N/A
 
 export { remoteConsoleClient, connectRemoteConsoleClient } from './client/remote-console-client.ts';
 export { serializeRemoteConsoleArg } from './client/remote-console-client-serializer.ts';

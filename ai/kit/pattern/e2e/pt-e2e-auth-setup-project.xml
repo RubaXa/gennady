@@ -1,0 +1,20 @@
+<!-- source: testing/playwright-e2e.xml -->
+<Pattern id="PT_E2E_AUTH_SETUP_PROJECT">
+      <Intent>Auth handled once via a setup project; dependent projects reuse `storageState`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // playwright.config.ts (excerpt)
+        export default defineConfig({
+          projects: [
+            { name: 'setup', testMatch: /auth\.setup\.ts$/ },
+            {
+              name: 'chromium',
+              use: { storageState: 'e2e/auth/user.json' },
+              dependencies: ['setup'],
+            },
+          ],
+        });
+        ```
+      </Snippet>
+      <Why>Login runs once; every chromium test starts already authenticated. No inline login per test.</Why>
+    </Pattern>

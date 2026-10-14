@@ -1,0 +1,31 @@
+<!-- source: testing/playwright-e2e.xml -->
+<Pattern id="PT_E2E_FIXTURE_POM">
+      <Intent>Fixture-based Page Object — instantiated by the framework lifecycle, not by the test.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // e2e/fixtures/checkout.fixture.ts
+        import { test as base, expect } from '@playwright/test';
+        import { CheckoutPage } from './checkout.page';
+
+        export const test = base.extend&lt;{ checkout: CheckoutPage }&gt;({
+          checkout: async ({ page }, use) => {
+            await use(new CheckoutPage(page));
+          },
+        });
+        export { expect };
+
+        // e2e/tests/checkout.spec.ts
+        import { expect, test } from '../fixtures/checkout.fixture';
+
+        test('happy path', async ({ checkout }) => {
+          await checkout.navigate();
+          await checkout.fillEmail('user@test.com');
+          await checkout.submit();
+          await expect(checkout.confirmation).toMatchAriaSnapshot(`
+            - heading "Order placed" [level=1]
+          `);
+        });
+        ```
+      </Snippet>
+      <Why>Test declares only `checkout`; the fixture handles construction per test. No `new CheckoutPage(...)` in the test body.</Why>
+    </Pattern>

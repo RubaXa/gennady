@@ -1,5 +1,11 @@
 # shared: Infrastructure Specification
 
+<!--SECTION:SPEC_ID-->
+
+SHARED
+
+<!--/SECTION:SPEC_ID-->
+
 ## scope-type
 
 infrastructure
@@ -12,23 +18,27 @@ infrastructure
 
 ### 2.1 `shared/common/`
 
-| Name             | Type      | Purpose                                               |
-| ---------------- | --------- | ----------------------------------------------------- |
-| `SimpleLogger`   | Interface | Контракт логгера: debug/info/warn/error               |
-| `Logger`         | Class     | Имплементация с уровневой фильтрацией (`setLogLevel`) |
-| `logger`         | Instance  | Глобальный экземпляр Logger, алиас `#logger`          |
-| `parseArgs`      | Function  | Парсинг CLI-аргументов (ключ-значение + флаги)        |
-| `exec`           | Function  | Запуск процессов (spawn)                              |
-| `readFile`       | Function  | Чтение файла с авто-детектом кодировки                |
-| `writeFile`      | Function  | Атомарная запись файла (temp + rename)                |
-| `fileExists`     | Function  | Проверка существования файла/директории               |
-| `globFiles`      | Function  | Glob-поиск файлов                                     |
-| `style`          | Module    | Chalk-обёртка для терминального вывода                |
-| `xml`            | Module    | XML-генерация (эскейпинг, теги)                       |
-| `countTokens`    | Function  | Подсчёт токенов в строке                              |
-| `wrapThink`      | Function  | Оборачивание текста в think-теги для AI               |
-| `unguard`        | Module    | Type narrowing утилиты (assert, isDefined)            |
-| `detectLanguage` | Function  | Детекция языка по расширению файла                    |
+| Name                      | Type      | Purpose                                                               |
+| ------------------------- | --------- | --------------------------------------------------------------------- |
+| `SimpleLogger`            | Interface | Контракт логгера: debug/info/warn/error                               |
+| `Logger`                  | Class     | Имплементация с уровневой фильтрацией (`setLogLevel`)                 |
+| `logger`                  | Instance  | Глобальный экземпляр Logger, алиас `#logger`                          |
+| `parseArgs`               | Function  | Парсинг CLI-аргументов (ключ-значение + флаги)                        |
+| `exec`                    | Function  | Запуск процессов (spawn)                                              |
+| `readFile`                | Function  | Чтение файла с авто-детектом кодировки                                |
+| `writeFile`               | Function  | Атомарная запись файла (temp + rename)                                |
+| `fileExists`              | Function  | Проверка существования файла/директории                               |
+| `globFiles`               | Function  | Glob-поиск файлов                                                     |
+| `globToRegex`             | Function  | Компиляция bounded repository glob dialect                            |
+| `matchesAnyGlob`          | Function  | Проверка repo-relative path по shared glob dialect                    |
+| `gennadyLintSourcePolicy` | Function  | Общая selection/exclusion policy для lint observation и Verify repair |
+| `isGennadyLintTarget`     | Function  | Поддерживаемые расширения Gennady contract lint                       |
+| `style`                   | Module    | Chalk-обёртка для терминального вывода                                |
+| `xml`                     | Module    | XML-генерация (эскейпинг, теги)                                       |
+| `countTokens`             | Function  | Подсчёт токенов в строке                                              |
+| `wrapThink`               | Function  | Оборачивание текста в think-теги для AI                               |
+| `unguard`                 | Module    | Type narrowing утилиты (assert, isDefined)                            |
+| `detectLanguage`          | Function  | Детекция языка по расширению файла                                    |
 
 ### 2.2 `shared/backend/`
 
@@ -61,6 +71,8 @@ shared/
 │   ├── think.ts               # think-tag wrapping for AI
 │   ├── unguard.ts             # Type narrowing utilities
 │   ├── language.ts            # Language detection by file extension
+│   ├── glob-match.ts          # Shared repository path glob matcher
+│   ├── gennady-lint-source-policy.ts # Shared lint observation/repair scope
 │   └── sync/
 │       ├── sync-core.ts       # Core sync logic
 │       ├── sync-formatter.ts  # Sync output formatting
@@ -116,3 +128,14 @@ shared/
 - **Recorded:** session Discovery, shared
 - **Why:** Команды `sync` и `sync-skills` разделяют общую логику: сравнение файлов, форматирование вывода, нормализация путей. Вынос в `shared/` предотвращает дублирование.
 - **Rejected alternatives:** Дублирование логики в каждой команде (расходится при изменениях).
+
+### D-007 — `ExecSyncSafeOptions.expectedExitCodes` — тихий execSyncSafe для штатных кодов выхода
+
+- **Status:** active
+- **Recorded:** session ModuleDecomposition, shared
+- **Why:** `execSyncSafe` логировал `logger.error` со стеком на любой ненулевой код выхода, включая штатные (grep «не найдено» = 1, `git show HEAD:<новый файл>` = 128). Опциональный параметр `expectedExitCodes` подавляет лог именно для этих кодов, не меняя поведение по умолчанию для остальных вызывающих (`git-core`, `resolve-conflicts-context-git-build.logic`).
+- **Risk accepted:** Низкий — параметр опциональный, старое поведение по умолчанию сохранено.
+
+### `ExecSyncSafeOptions`
+
+- **Usage Waiver:** Тип параметра публичной сигнатуры `execSyncSafe`; каждый вызывающий передаёт объект структурно, имя типа при этом не упоминается — единственное явное упоминание неизбежно.

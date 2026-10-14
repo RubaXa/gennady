@@ -1,0 +1,5 @@
+<!-- source: testing/vitest-rules.xml -->
+<Hook id="HOOK_RUN_SINGLE_FILE">
+  <Command>npx vitest run path/to/subject.test.ts</Command>
+  <Expected>Exit 0; targeted file runs in isolation.</Expected>
+</Hook>

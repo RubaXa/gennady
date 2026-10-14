@@ -1,0 +1,8 @@
+<!-- source: new for sdd-v2 interview protocol; amplification catalog gating -->
+<Axiom id="AX_AMPLIFICATION_OPT_IN">
+  Amplifications are opt-in: after triage the agent PROPOSES a set from the catalog, the operator
+  confirms; the default for small tasks is «none active». State an empty proposal explicitly —
+  «усиления не нужны, потому что …» — it is a valid triage outcome, not a silent omission. A
+  confirmed amplification becomes a map topic and its directive loads lazily via
+  `READ_AND_USE_DIRECTIVE` at the moment its topic opens, never up front.
+</Axiom>

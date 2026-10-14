@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Axiom id="AX_E2E_FILE_LAYOUT">
+      Project-wide layout: tests under `e2e/tests/`, fixtures under `e2e/fixtures/`, auth setup under `e2e/auth/`, snapshot baselines under `e2e/__snapshots__/`. One subject per test file; one domain per fixture file. Mixing layouts forces every reader-agent to grep for the convention instead of trusting it.
+    </Axiom>

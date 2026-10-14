@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Hook id="HOOK_OVERRIDE_COMMENTS_PRESENT">
+<Purpose>Verify every override token has its audit comment.</Purpose>
+<Command>find src/ui -name '*.tokens.css' -not -path '*/node_modules/*' -print0 | xargs -0 grep -c 'override: was' || true</Command>
+<Expected>Count should match the number of OVERRIDE rows in the component's Token Mapping table. Zero when the spec has zero overrides; positive otherwise.</Expected>
+</Hook>

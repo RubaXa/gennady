@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/vitest-rules.xml -->
+<Hook id="HOOK_NO_AUTO_SNAPSHOT_UPDATE">
+  <Purpose>Verify the agent did NOT run snapshot updates autonomously (inherited `AX_SNAPSHOT_OPERATOR_CONFIRM`).</Purpose>
+  <Command>git diff --name-only -- '**/__snapshots__/*.snap' '**/*.test.ts'</Command>
+  <Expected>Snapshot diffs presented to operator BEFORE commit; no `vitest --update` / `vitest -u` in agent's command history.</Expected>
+</Hook>

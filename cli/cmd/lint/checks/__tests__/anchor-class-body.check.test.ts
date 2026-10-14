@@ -1,6 +1,6 @@
 // @file: Unit tests for AnchorClassBodyCheck — validates region placement at class body level.
+// @spec: CLI-LINT
 // @consumers: AnchorClassBodyCheck
-// @tasks: TSK-XX
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

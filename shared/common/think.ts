@@ -1,6 +1,6 @@
 // @file: Remove think-blocks and preamble text from raw LLM response.
+// @spec: SHARED
 // @consumers: ai-legacy-model
-// @tasks: N/A
 
 const THINK_CLOSE_TAG = '</think>';
 

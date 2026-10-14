@@ -1,6 +1,6 @@
 // @file: Unit tests for buildGraph and buildRecursiveTree — S7 architecture dependency graph.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

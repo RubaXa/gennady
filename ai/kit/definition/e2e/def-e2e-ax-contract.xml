@@ -1,0 +1,4 @@
+<!-- source: testing/playwright-e2e.xml -->
+<Definition id="DEF_E2E_AX_CONTRACT">
+      The YAML emitted by `ariaSnapshot()` IS the structural contract. Diffs against the committed baseline (`toMatchAriaSnapshot`) signal either a real regression or an intentional UI change requiring an operator-confirmed baseline update.
+    </Definition>

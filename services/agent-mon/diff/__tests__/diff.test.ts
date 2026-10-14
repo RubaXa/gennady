@@ -1,6 +1,6 @@
 // @file: Unit tests for diff — contract-driven comparison of AgentSession snapshots
+// @spec: AGENT-MON-DIFF
 // @consumers: diff, observe, cli
-// @tasks: TSK-37
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

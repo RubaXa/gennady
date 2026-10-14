@@ -1,0 +1,4 @@
+<!-- source: coding/uikit-component-svelte.xml -->
+<Definition id="DEF_COMPONENT_ARTEFACT">
+      The closed-world set of four files that constitute one uikit component: `<name>.svelte`, `<name>.module.css`, `<name>.tokens.css`, `<name>.stories.ts`. All in `src/ui/<name>/`, all in kebab-case.
+    </Definition>

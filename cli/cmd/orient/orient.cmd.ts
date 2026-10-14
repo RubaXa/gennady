@@ -1,6 +1,6 @@
 // @file: OrientCommand — CLI entry point for gennady orient: map, search, graph, specs.
+// @spec: CLI-ORIENT
 // @consumers: gennady.ts
-// @tasks: TSK-55
 
 import { readFileSync, existsSync, lstatSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
@@ -17,12 +17,17 @@ import { queryEntity } from './core/query-entity.ts';
 import { buildGraph, buildRecursiveTree } from './core/query-graph.ts';
 import { loadSpecOverview, searchSpec } from './core/query-spec.ts';
 import { generateHints } from './core/hints.ts';
+import {
+  prepareOrientFileRelationsContext,
+  resolveOrientFileRelations,
+} from './core/resolve-file-relations.ts';
 import { renderTree } from './render/render-tree.ts';
 import { renderDetail } from './render/render-detail.ts';
 import { renderFileList } from './render/render-file-list.ts';
 import { renderGraph, renderRecursiveGraph } from './render/render-graph.ts';
 import { renderSpecsOverview, renderSpecSearch } from './render/render-specs.ts';
 import { renderSearch } from './render/render-search.ts';
+import { fileRelationsDocument, renderFileRelations } from './render/render-file-relations.ts';
 import type { OrientArgs, ScannedFile, ExportedEntity } from './orient.types.ts';
 
 import { parseOrientArgs } from './orient.types.ts';
@@ -76,6 +81,10 @@ export async function run(rawArgs: string[]): Promise<void> {
   // #region START_VALIDATE_CONFLICTS — invariant: conflicting flags produce error
   if (args.file.length > 0 && args.dir) {
     console.error('[OrientCommand#run] --file and --dir are mutually exclusive');
+    process.exit(1);
+  }
+  if ((args.history || args.json) && args.file.length !== 1) {
+    console.error('[OrientCommand#run] --history/--json require exactly one --file');
     process.exit(1);
   }
   if (args.specs && args.file.length > 0) {
@@ -145,10 +154,22 @@ function handleS1(files: ScannedFile[], args: OrientArgs, projectRoot: string): 
 // #region START_HANDLE_S2 — invariant: task query with optional detail
 function handleS2(files: ScannedFile[], args: OrientArgs, projectRoot: string): void {
   logger.debug('[OrientCommand#run] [routing → S2] task');
-  const results = queryTask(files, args.task);
+  const context = prepareOrientFileRelationsContext(projectRoot);
+  const relations = new Map(
+    files.map((file) => [
+      file.absPath,
+      resolveOrientFileRelations(projectRoot, file.absPath, file.header, {}, context),
+    ])
+  );
+  const results = queryTask(files, args.task, relations);
   for (const r of results) {
+    if (r.migrationFiles?.length) {
+      console.log(`${r.taskId} — legacy @tasks migration evidence (not ownership):`);
+      for (const file of r.migrationFiles) console.log(`  ${relative(projectRoot, file.absPath)}`);
+      console.log('  next: npx gennady sdd-migrate bootstrap .; follow the V1→V2 migration guide');
+    }
     if (r.files.length === 0) {
-      console.log(`No files found for ${r.taskId}`);
+      console.log(`No canonical V2 files found for ${r.taskId}`);
       continue;
     }
     console.log(`${r.taskId} — ${r.files.length} file${r.files.length === 1 ? '' : 's'}:`);
@@ -222,6 +243,20 @@ function handleS5(files: ScannedFile[], args: OrientArgs, projectRoot: string): 
     process.exit(1);
   }
 
+  const relations = files.map((file) =>
+    resolveOrientFileRelations(projectRoot, file.absPath, file.header)
+  );
+  if (args.json) {
+    const first = relations[0];
+    if (!first) return;
+    console.log(JSON.stringify(fileRelationsDocument(first), null, 2));
+    return;
+  }
+  for (const result of relations) {
+    for (const line of renderFileRelations(result, args.history, args.maxResults))
+      console.log(line);
+    console.log('');
+  }
   for (const line of renderDetail(files, projectRoot)) console.log(line);
   emitHints(args);
 }
@@ -324,7 +359,11 @@ function loadFile(absPath: string): ScannedFile {
   try {
     content = readFileSync(absPath, 'utf-8');
   } catch {
-    return { absPath, header: { file: '', tasks: [], consumers: [] }, exports: [] };
+    return {
+      absPath,
+      header: { file: '', spec: '', specCount: 0, tasks: [], consumers: [] },
+      exports: [],
+    };
   }
 
   const header = extractHeader(content);

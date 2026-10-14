@@ -1,0 +1,4 @@
+<!-- source: coding/uikit-component-storybook.xml -->
+<Definition id="DEF_SPEC_MIRROR_HIERARCHY">
+      The Storybook sidebar tree that is a 1:1 reflection of the spec's Variants table. Hierarchy format: `ComponentName / Appearance / Mode`. Every leaf is a `Size × State` story.
+    </Definition>

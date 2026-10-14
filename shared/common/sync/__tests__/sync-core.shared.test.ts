@@ -1,13 +1,14 @@
 // @file: Unit tests for shared sync core — resolvePackageDir, compareBytes
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { resolvePackageDir, compareBytes } from '../sync-core.shared.ts';
 
 const require = createRequire(import.meta.url);
@@ -50,15 +51,10 @@ describe('resolvePackageDir', () => {
   // #region TEST_CASE_SC_3: subdir exists in package but not in local node_modules
   it('resolves via import.meta.resolve fallback when local node_modules missing', () => {
     // contract: import.meta.resolve fallback finds the installed gennady package
-    // failure mode: null is acceptable if gennady is not resolvable in this runtime
     mkdirSync(join(tmpDir, 'node_modules'), { recursive: true });
 
     const result = resolvePackageDir(tmpDir, 'ai/directives');
-    if (result === null) {
-      // gennady may not be resolvable via import.meta.resolve in dev — not a test failure
-      return;
-    }
-    assert.ok(result.endsWith('ai/directives'));
+    assert.strictEqual(result, new URL('../../../../ai/directives', import.meta.url).pathname);
   });
   // #endregion
 
@@ -119,6 +115,42 @@ describe('resolvePackageDir', () => {
     } finally {
       urlCjs.fileURLToPath = original;
     }
+  });
+  // #endregion
+
+  // #region TEST_CASE_SC_7: self-repo fallback resolves local subdir
+  it('resolves subdir from self-repo when package.json name is gennady', () => {
+    // contract: no node_modules/gennady needed when projectRoot IS the gennady repo
+    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'gennady' }));
+    const expectedPath = join(tmpDir, 'ai', 'skills');
+    mkdirSync(expectedPath, { recursive: true });
+
+    const result = resolvePackageDir(tmpDir, 'ai/skills');
+    assert.strictEqual(result, expectedPath);
+  });
+  // #endregion
+
+  // #region TEST_CASE_SC_8: self-repo fallback does not apply to other packages
+  it('uses invoking package, never foreign ai/skills without package ownership', () => {
+    // contract: self-repo fallback only fires when package.json name is exactly "gennady"
+    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'some-other-project' }));
+    mkdirSync(join(tmpDir, 'ai', 'skills'), { recursive: true });
+
+    const result = resolvePackageDir(tmpDir, 'ai/skills');
+    assert.strictEqual(result, new URL('../../../../ai/skills', import.meta.url).pathname);
+    assert.notStrictEqual(result, join(tmpDir, 'ai/skills'));
+  });
+  // #endregion
+
+  // #region TEST_CASE_SC_9: self-repo package.json present but subdir missing
+  it('returns null when self-repo package.json matches but subdir is absent', () => {
+    writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'gennady' }));
+    // no ai/skills created
+
+    const entry = join(tmpDir, 'entry.ts');
+    writeFileSync(entry, '');
+    const result = resolvePackageDir(tmpDir, 'ai/skills', () => pathToFileURL(entry).href);
+    assert.strictEqual(result, null);
   });
   // #endregion
 });
@@ -193,14 +225,14 @@ describe('compareBytes', () => {
 });
 
 describe('SyncCmdDeps contract', () => {
-  it('has unlink and rm as optional fields', () => {
-    // contract: SyncCmdDeps type includes unlink and rm for sync-skills usage
+  it('has unlink and rmdir as optional fields', () => {
+    // contract: SyncCmdDeps type includes unlink and rmdir for sync-skills usage
     // this test verifies runtime assignability of a minimal deps object
     const deps: import('../sync-deps.type.ts').SyncCmdDeps = {
       unlink: (path: string) => {},
-      rm: (path: string, options?: { recursive: boolean; force: boolean }) => {},
+      rmdir: (path: string, options?: { recursive: boolean }) => {},
     };
     assert.strictEqual(typeof deps.unlink, 'function');
-    assert.strictEqual(typeof deps.rm, 'function');
+    assert.strictEqual(typeof deps.rmdir, 'function');
   });
 });

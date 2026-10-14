@@ -1,6 +1,6 @@
 // @file: Unit tests for createProviders — verifies provider registration and filter behavior
+// @spec: AGENT-MON-CLI-CMD
 // @consumers: test
-// @tasks: TSK-47
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

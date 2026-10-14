@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<AntiPattern id="AP_NVMRC_ENGINES_MISMATCH">
+  <Bad>`.nvmrc=22.14.0` + `"engines": { "node": ">=18.0.0 <20.0.0" }`.</Bad>
+  <WhyBad>`.nvmrc` installs Node 22; `engines` rejects Node 22. npm warns; CI may enforce constraint and fail. Local dev and CI run on different Node versions.</WhyBad>
+  <Good>`.nvmrc=22.14.0` + `"engines": { "node": ">=22.0.0 <23.0.0" }`.</Good>
+</AntiPattern>

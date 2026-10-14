@@ -1,0 +1,4 @@
+<!-- source: infra/eslint-setup.xml -->
+<Definition id="DEF_AUTOFIXABLE_RULE">
+      A rule whose `meta.fixable` field is set (`'code'` or `'whitespace'`) AND whose `create` function reports findings exclusively via `context.report(...)` calls including a `fix` function. Rules that ONLY provide `suggest` are NOT autofixable.
+    </Definition>

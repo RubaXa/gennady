@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/storybook-usage.xml -->
+<AntiPattern id="AP_SB_MISSING_AI_TAG">
+  <Bad>Agent-authored story carries `tags: ['autodocs']` only — no `'ai-generated'`.</Bad>
+  <WhyBad>Reserved agent-authorship tag missing (`AX_SB_USE_AI_GENERATED_TAG`). Human curators can no longer batch-audit machine output or distinguish it from hand-curated stories; the tag's purpose is to make agent provenance discoverable.</WhyBad>
+  <Good>`tags: ['autodocs', 'ai-generated']`. Composition with other tags is fine; omission of `'ai-generated'` from agent-authored stories is not.</Good>
+</AntiPattern>

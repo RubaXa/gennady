@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<Axiom id="AX_E2E_BROWSER_COVERAGE_PRAGMATIC">
+      Default browser coverage is Chromium. Firefox / WebKit projects are added ONLY when multi-browser support is an explicit ticket requirement. Running every test on every browser inflates CI time without proportional contract evidence; per-route multi-browser opt-in is the trade-off.
+    </Axiom>

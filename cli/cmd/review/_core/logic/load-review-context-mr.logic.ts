@@ -1,6 +1,6 @@
 // @file: Load MR and discussions by ReviewIntent.
+// @spec: CLI-REVIEW
 // @consumers: run-review-command.logic
-// @tasks: N/A
 
 import type { ReviewContextMr } from '../types/review-context-mr.type.ts';
 import type { ReviewContextMrDiscussion } from '../types/review-context-mr.type.ts';

@@ -1,6 +1,6 @@
 // @file: Universal contract schema types, parser interface, and issue codes for DBC parsers.
+// @spec: DBC-DBC-PARSER
 // @consumers: DbcParserImplementations
-// @tasks: TSK-01
 
 /** @purpose Signal whether contract was authored in a single compressed line or multi-line block. */
 export type DbcSchemaFormat = 'single-line' | 'multi-line';

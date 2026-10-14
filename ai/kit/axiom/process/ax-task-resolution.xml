@@ -1,0 +1,12 @@
+<!-- source: ai/directives/sdd/fix.directive.xml -->
+<Axiom id="AX_TASK_RESOLUTION">
+  Every workflow consumer resolves each affected file with
+  `npx gennady orient --file <repo-relative-path> --json` before classification. The versioned result
+  separates one `semantic-owner` (`@spec`) from `planned`, `active`, `blocked`, and `history` ticket
+  relations. Continue or recover a ticket only from one unambiguous `active` relation and only when
+  its state policy permits it. `history` explains prior work but never authorizes automatic reopen.
+  When no active relation exists, route through the resolved semantic-owner spec to select, create,
+  or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
+  never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
+  migration evidence only and never routing authority for V2.
+</Axiom>

@@ -1,5 +1,11 @@
 # Module: review
 
+<!--SECTION:SPEC_ID-->
+
+CLI-REVIEW
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Review-команда — ядро AI-review пайплайна. Читает staged git diff, разбивает на AI-батчи по токенам, параллельно прогоняет через AI-модели, выводит результаты. Дополнительно — сбор дискуссий GitLab MR в XML для AI-агента (`review-issues`) и верификация MR (DbC-контракты, security, архитектура) (`review-verify`).
@@ -80,8 +86,8 @@ Review-команда — ядро AI-review пайплайна. Читает st
 | `--branch`, `-b` | —      | review, review-issues, review-verify | Git diff target branch (default: origin/main). Для review: diff относительно ветки. Для issues/verify: поиск MR по source_branch |
 | `--url`          | —      | review-issues, review-verify         | URL GitLab MR (`https://gitlab.com/group/project/-/merge_requests/42`)                                                           |
 | `--ref`          | —      | review-issues, review-verify         | GitLab MR ref в формате `<PROJECT>!<IID>` (напр. `group/repo!42`)                                                                |
-| `--project`      | —      | review-issues, review-verify         | GitLab project path (owner/repo). Требует `--iid`                                                                                |
-| `--iid`          | —      | review-issues, review-verify         | MR internal ID. Требует `--project`                                                                                              |
+| `--project`      | —      | review-issues, review-verify         | GitLab project path (owner/repo), требует `--iid`                                                                                |
+| `--iid`          | —      | review-issues, review-verify         | MR internal ID, требует `--project`                                                                                              |
 | `--all`          | —      | review-verify                        | Обзор всех MR (для review-verify)                                                                                                |
 | `--since`        | —      | review-issues                        | ISO-курсор: вернуть только discussion threads, обновлённые после этой даты (инкрементально)                                      |
 | `--draft`        | —      | review-issues                        | Режим черновиков: вместо discussions загрузить unpublished draft notes текущего пользователя                                     |

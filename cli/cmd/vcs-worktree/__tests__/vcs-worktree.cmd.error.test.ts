@@ -1,6 +1,6 @@
 // @file: Unit tests for vcs-worktree cmd — VcsResolveError handling contract.
+// @spec: CLI
 // @consumers: N/A
-// @tasks: TSK-70
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,7 +35,8 @@ mock.module('../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts', {
 mock.module('../../inbox/_core/logic/state-paths.logic.ts', {
   namedExports: {
     resolveStateDir: () => '/tmp/gennady-test',
-    worktreesRoot: () => '/tmp/gennady-test/worktrees',
+    mrsRoot: () => '/tmp/gennady-test/agent-inbox/mrs',
+    mrWorktreeDir: () => '/tmp/gennady-test/agent-inbox/mrs/group__repo-510/worktree',
     clonesRoot: () => '/tmp/gennady-test/clones',
     reposMapPath: () => '/tmp/gennady-test/repos.json',
   },
@@ -48,6 +49,7 @@ mock.module('../_core/logic/worktree-ops.logic.ts', {
     removeWorktreeAt: () => {},
     gcStaleWorktrees: () => [],
     removeAllWorktrees: () => [],
+    WORKTREE_TTL_MS: 7 * 24 * 60 * 60 * 1000,
   },
 });
 

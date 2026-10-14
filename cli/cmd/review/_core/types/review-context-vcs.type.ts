@@ -1,6 +1,6 @@
 // @file: VCS context for GitLab API requests.
+// @spec: CLI-REVIEW
 // @consumers: build-review-context-vcs.logic, load-review-context-mr.logic
-// @tasks: N/A
 
 import type { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 

@@ -1,6 +1,6 @@
 // @file: Unit tests for isWaitingForUser — heuristic detection of operator waiting state
+// @spec: AGENT-MON-CLI-STATE
 // @consumers: test
-// @tasks: TSK-45
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

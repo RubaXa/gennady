@@ -1,6 +1,6 @@
 // @file: Vite build configuration — lib mode, node22 target, external deps
+// @spec: INFRA-BASE
 // @consumers: npm run build, npm run build:publish
-// @tasks: TSK-33
 import { defineConfig, type Plugin } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,7 +47,7 @@ const nodeBuiltins = (() => {
 function executableBin(): Plugin {
   return {
     name: 'gennady:executable-bin',
-    closeBundle() {
+    writeBundle() {
       chmodSync(resolve(__dirname, 'dist/gennady.js'), 0o755);
     },
   };
@@ -61,31 +61,32 @@ export default defineConfig({
   define: {
     __GENNADY_VERSION__: JSON.stringify(pkg.version),
   },
-  resolve: {
-    alias: {
-      // Built-in plugins import the public `gennady/stack` specifier as a self-reference.
-      // package.json#exports now points that specifier at the built `dist/stack.js` (for external
-      // consumers), so resolve it back to source here for the bundle, otherwise Rollup cannot find
-      // the not-yet-built output during the build.
-      'gennady/stack': resolve(__dirname, 'services/stack/plugin-api.ts'),
-    },
-  },
   build: {
     lib: {
       entry: {
         cli: resolve(__dirname, 'cli/gennady.ts'),
-        index: resolve(__dirname, 'index.ts'),
-        // Public library subpath `gennady/stack` (see package.json#exports): third-party stack
-        // plugins import real values from it (execFileTrimSafe, parseDuration, …), so it needs a
-        // built runtime bundle in the tarball, not just the source module.
-        stack: resolve(__dirname, 'services/stack/plugin-api.ts'),
+        index: resolve(__dirname, 'services/agent-mon/index.ts'),
+        'providers/claude': resolve(__dirname, 'services/agent-mon/providers/claude/index.ts'),
+        'providers/opencode': resolve(__dirname, 'services/agent-mon/providers/opencode/index.ts'),
+        stack: resolve(__dirname, 'shared/verify/plugin-api.ts'),
       },
       formats: ['es'],
-      // Entry filenames are decided by rollupOptions.output.entryFileNames below (the single
-      // source of truth for cli → gennady.js, index → index.js, stack → stack.js).
+      fileName: (_, name) => (name === 'cli' ? 'gennady.js' : `${name}.js`),
     },
     rollupOptions: {
-      external: [...nodeBuiltins, 'node:sqlite', 'tree-sitter', 'tree-sitter-typescript'],
+      // mermaid + jsdom are browser-oriented libs with mixed CJS/ESM internals (jsdom uses
+      // require(__dirname) to resolve its default stylesheet asset). Bundling them produces a
+      // chunk with both require() and top-level await, which Node refuses to load ("Cannot
+      // determine intended module format"). Externalizing keeps them as real node_modules
+      // deps, loaded lazily (see shared/mermaid/mermaid.ts) only when a diagram is validated.
+      external: [
+        ...nodeBuiltins,
+        'node:sqlite',
+        'tree-sitter',
+        'tree-sitter-typescript',
+        'mermaid',
+        'jsdom',
+      ],
       output: {
         chunkFileNames: 'chunks/[name]-[hash].js',
         entryFileNames: (chunkInfo) =>
@@ -102,6 +103,11 @@ export default defineConfig({
       },
     },
     outDir: 'dist',
+    // emptyOutDir defaults true, which would recursively wipe `dist/inbox-serve` (the dashboard
+    // SPA's own build output, a sibling directory under this same `dist/`) on every CLI build —
+    // silently breaking `gennady inbox serve` until the SPA is manually rebuilt. Chunk filenames
+    // are content-hashed, so leaving stale CLI chunks around is harmless.
+    emptyOutDir: false,
     target: 'node22',
   },
 });

@@ -1,0 +1,21 @@
+<!-- source: SDD v2 — critic question channel: GOAL findings need operator sanction -->
+<Axiom id="AX_GOAL_OWNER_GATE" status="draft">
+  The operator owns the goal. A `GOAL` finding is resolved by an operator answer, and the edit follows
+  the answer — `AX_DEFAULT_ACCEPT` covers `MECHANICAL` findings only. The sensor's `GOAL` tag stands
+  until an operator answer says otherwise — downgrading it to `MECHANICAL` is the operator's call
+  alone; an orchestrator that reads a `GOAL`-tagged finding as mechanical carries that disagreement
+  into the SAME question block as one more question, never a private reclassification. Batch the
+  round's `GOAL` findings into ONE question block (`QUESTION_FORMAT`) BEFORE editing the sections they
+  touch. Goal / scope wording stays intact until an operator answer sanctions the change.
+
+  The sole no-Ask resolution is an answer the operator accepted previously and whose durable source
+  (a Decision Log id or an exact prior operator-decision record) is cited; it applies only while the
+  present question and consequences are unchanged. Every other `GOAL` is new and enters that one
+  batched Ask before any related edit. Calling it low-risk, a default, or intent-preserving never
+  turns a new `GOAL` into a mechanical decision.
+
+  When the resolved `GOAL` finding weakened or removed a quality gate (`AX_FINDING_ADDRESSEE`), the
+  operator's answer is written as its own Decision Log entry, not folded into the round's edit
+  summary — a gate change is a standing decision that future rounds, and future sessions, must be able
+  to see without replaying this round's dialogue.
+</Axiom>

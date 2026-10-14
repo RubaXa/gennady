@@ -1,6 +1,6 @@
 // @file: AgentMonApp root ink component — lifecycle, input handling, state subscription → view selection.
+// @spec: AGENT-MON-CLI-UI
 // @consumers: cmd/agent-mon (via gennady render)
-// @tasks: TSK-46
 
 import { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp, useStdout } from 'ink';

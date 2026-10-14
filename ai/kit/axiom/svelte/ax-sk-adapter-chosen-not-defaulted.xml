@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<Axiom id="AX_SK_ADAPTER_CHOSEN_NOT_DEFAULTED">
+Production deployment requires an explicit adapter choice (`@sveltejs/adapter-node`, `@sveltejs/adapter-static`, platform-specific, etc.) configured in `svelte.config.js`. `adapter-auto` is acceptable only for greenfield prototypes; a production project that has not committed to an adapter has not committed to a deployment shape.
+</Axiom>

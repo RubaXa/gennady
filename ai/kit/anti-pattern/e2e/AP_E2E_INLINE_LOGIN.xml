@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<AntiPattern id="AP_E2E_INLINE_LOGIN">
+      <Bad>Every test begins with `await page.goto('/login'); await page.getByLabel('Email').fill(...); await page.getByLabel('Password').fill(...); await page.getByRole('button', { name: 'Sign in' }).click();`.</Bad>
+      <WhyBad>Inline login per test (`AX_E2E_AUTH_VIA_STORAGE_STATE`). One regression in the login UI cascades into every test going red; the suite spends most of its time logging in instead of exercising the contract being tested.</WhyBad>
+      <Good>Extract the login flow into a setup project that writes `storageState.json`; configure the test project with `use: { storageState: 'e2e/auth/user.json' }, dependencies: ['setup']`.</Good>
+    </AntiPattern>

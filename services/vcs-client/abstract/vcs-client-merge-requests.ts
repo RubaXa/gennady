@@ -1,6 +1,6 @@
 // @file: Contract surface for merge request / pull request operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-28, TSK-67, TSK-82, TSK-84, TSK-88
 
 import type {
   VcsMergeRequestChanges,

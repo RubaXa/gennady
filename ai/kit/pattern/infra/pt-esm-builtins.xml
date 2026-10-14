@@ -1,0 +1,14 @@
+<!-- source: infra/nodejs-npm-setup.xml -->
+<Pattern id="PT_ESM_BUILTINS">
+      <Intent>ESM imports of Node built-ins with `node:` prefix and explicit local extensions.</Intent>
+      <Snippet language="javascript">
+        ```js
+        import { readFile } from 'node:fs/promises';
+        import { createServer } from 'node:http';
+        import { resolve } from 'node:path';
+
+        import { parseConfig } from './config.js';   // explicit .js extension
+        ```
+      </Snippet>
+      <Why>`node:` prefix prevents shadowing. Explicit `.js` extensions required in ESM for Node to resolve local files correctly.</Why>
+    </Pattern>

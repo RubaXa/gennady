@@ -1,0 +1,89 @@
+<BaselineTestingRules keywords="baseline, language_agnostic, testing, determinism, isolation, behavior_named, ai_to_ai" type="testing-rules" ver="1.0">
+  <!--
+    Language-agnostic testing baseline. What a good unit test is in ANY language. Language testing
+    rule files (pytest-rules, gotest-rules, vitest-rules, …) inherit this and add framework idioms;
+    do not restate these axioms there.
+  -->
+
+  <BeliefState>
+    <Axiom id="AX_TEST_ONE_BEHAVIOR">
+      One test proves one behavior, named after that behavior — not after the function. A test named
+      `retries_until_success_then_stops` documents intent; `test_retry_2` documents nothing. The name
+      is the specification a reader trusts without opening the body.
+    </Axiom>
+
+    <Axiom id="AX_TEST_DETERMINISM">
+      A test gives the same verdict on every run. No dependence on wall-clock time, random seeds,
+      ordering between tests, or ambient environment. Inject the clock, fix the seed, control the
+      input. A flaky test is a failing test.
+    </Axiom>
+
+    <Axiom id="AX_TEST_ISOLATION">
+      A unit test touches no network, no real filesystem outside a temp dir, no shared mutable global,
+      and no other test's state. External collaborators are faked at the boundary. What needs the real
+      world is an integration test, named and gated as one.
+    </Axiom>
+
+    <Axiom id="AX_TEST_ARRANGE_ACT_ASSERT">
+      A test reads as arrange → act → assert, with the assertion on the behavior's observable outcome,
+      not on internal calls. Assert the returned value / raised error / recorded effect — not "method X
+      was invoked", unless the interaction itself is the contract.
+    </Axiom>
+
+    <Axiom id="AX_TEST_COVERS_FAILURE">
+      The failure paths are tested, not only the happy path. For each documented error mode there is a
+      test that provokes it and asserts the specific error. Untested error handling is unverified
+      error handling.
+    </Axiom>
+  </BeliefState>
+
+  <AntiPatterns>
+    <AntiPattern id="AP_TEST_NAMED_AFTER_FUNCTION">
+      <Bad>`test_parse`, `test_parse_2`, `test_parse_edge` — names that index the function, not the
+      behavior under test.</Bad>
+      <Instead>`rejects_empty_input`, `parses_nested_path`, `keeps_last_value_on_repeat`.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="AP_TEST_NONDETERMINISM">
+      <Bad>Asserting on `now()`, real `sleep`, unseeded randomness, or the order tests happen to run in.</Bad>
+      <Instead>Inject the clock/seed; assert bounds or exact controlled values.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="AP_TEST_HITS_WORLD">
+      <Bad>A unit test that opens a socket, calls a live API, or writes outside a temp directory.</Bad>
+      <Instead>Fake the boundary; move a genuine end-to-end check into a separate, gated integration test.</Instead>
+    </AntiPattern>
+
+    <AntiPattern id="AP_TEST_ASSERTS_MECHANICS">
+      <Bad>Asserting a private helper was called, or snapshotting an internal structure, so a valid
+      refactor breaks the test.</Bad>
+      <Instead>Assert the observable outcome the caller depends on.</Instead>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_TESTS_PASS">
+      <Purpose>The scope's test suite passes via the project's declared test runner.</Purpose>
+      <Command>&lt;sdd-path&gt; verify --wip &lt;target-files&gt;</Command>
+      <Expected>Exit 0; the changed behavior's tests present and green.</Expected>
+    </Hook>
+    <Hook id="HOOK_NO_SKIPS">
+      <Purpose>No silently disabled tests shipped as coverage.</Purpose>
+      <Command>rg --no-heading -n "skip|xfail|t\.Skip|it\.only|fdescribe|\.only\(" &lt;target-files&gt;</Command>
+      <Expected>Empty on changed lines, or each skip carries a comment with a ticket reference.</Expected>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Each test proves one behavior and is named after that behavior.
+    ✅ Deterministic: clock/seed injected, no cross-test ordering dependence.
+    ✅ Isolated: no network, no real FS outside a temp dir, no shared global; boundaries faked.
+    ✅ Arrange → act → assert; assertion on the observable outcome.
+    ✅ Every documented failure mode has a test that provokes it and asserts the specific error.
+    ❌ Tests named after the function (`test_parse_2`) rather than the behavior.
+    ❌ Dependence on real time, unseeded randomness, or run order.
+    ❌ A unit test that touches the network, live services, or the real filesystem.
+    ❌ Assertions on internal mechanics that a valid refactor would break.
+    ❌ Disabled/skipped tests shipped without a referenced reason.
+  </RewardCriteria>
+</BaselineTestingRules>

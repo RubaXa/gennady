@@ -1,6 +1,6 @@
 // @file: Base artifact of the resolve-conflicts command: git context and XML.
+// @spec: CLI
 // @consumers: resolve-conflicts-command-result.type
-// @tasks: N/A
 
 import type { ResolveConflictsContextGit } from './resolve-conflicts-context-git.type.ts';
 

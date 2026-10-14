@@ -1,0 +1,186 @@
+<Contract id="DBC_DEPENDENCY_GRAPH_FORMAT">
+  **Port/Adapter/Service dependency graph — mandatory in `## Module Contracts`**, one level
+  above the per-entity DbC prose: the individual Port/Adapter blocks below answer "what does
+  each contract promise", this graph answers "who depends on whom, in which direction" — a
+  relationship among ≥2 elements, so it is a picture, not a bullet list
+  (`AX_INFOGRAPHIC_FIRST`, `formats/diagram-vocabulary.xml`). Nodes = every Port / Adapter /
+  Service this module defines or consumes from a sibling; edges = `implements` (Adapter →
+  Port) and `depends on` (Service → Port), arrows drawn in the dependency direction — toward
+  the more stable side (Stable Dependencies principle: an Adapter depends on its Port, never
+  the reverse). Placed directly under the one-line human summary, above the folded
+  `<details>` block:
+
+  ```markdown
+  OrderService ──depends on──▶ PaymentGatewayPort ◀──implements── StripeAdapter
+  ```
+
+  **Floor, never nothing:** a module with zero Ports/Adapters (Services only, no confirmed
+  variability) still states that explicitly — `Граф не рисуется: в модуле нет Port/Adapter,
+  только Service <name>` — the reader sees the DECISION (no abstraction layer here) instead of
+  wondering whether the graph was forgotten. A single Port with a single Adapter and no other
+  module depending on it draws the minimal two-node arrow above; it still earns the picture
+  because direction-of-dependency is exactly the fact a reader must not have to infer from
+  prose.
+
+  This ASCII form is shown in chat during STEP_4_CONTRACTS_DBC, at the point Port-vs-Service
+  is decided (`AX_CHAT_BEFORE_SPEC`); the mermaid `flowchart` version under `## Module
+  Contracts` is the same shape converted at write time — never a fresh diagram invented then.
+</Contract>
+
+<Contract id="CALL_CHAIN_FORMAT">
+  **Call Chain — mandatory in `## Module Contracts`, right after `DBC_DEPENDENCY_GRAPH_FORMAT`,
+  whenever the module's inventory lists ≥2 abstractions** (entities and/or Ports/Adapters/
+  Services combined). The dependency graph above answers "who depends on whom"; this rung
+  answers a distinct question — "who calls whom, IN WHAT ORDER, for the one main scenario" — a
+  relationship among ≥2 elements over time, so it earns its own picture
+  (`AX_INFOGRAPHIC_FIRST`, `formats/diagram-vocabulary.xml`).
+
+  Two equally valid forms — pick whichever reads clearer for THIS scenario, neither is a
+  fallback for the other:
+
+  1. **`sequenceDiagram`** — participants in call order, request/response arrows:
+
+     ```markdown
+     ```mermaid
+     sequenceDiagram
+       OrderService->>PaymentGatewayPort: charge(amount)
+       PaymentGatewayPort->>StripeAdapter: charge(amount)
+       StripeAdapter-->>PaymentGatewayPort: receipt
+       PaymentGatewayPort-->>OrderService: receipt
+     ```
+     ```
+
+  2. **Step table** — an equally valid form for a linear scenario, no diagram penalty for
+     choosing it over the sequence form:
+
+     ```markdown
+     | Step | Participant | Action | Data |
+     |---|---|---|---|
+     | 1 | OrderService | charge(amount) | amount |
+     | 2 | PaymentGatewayPort | charge(amount) | amount |
+     | 3 | StripeAdapter | receipt | receipt |
+     | 4 | PaymentGatewayPort | receipt | receipt |
+     ```
+
+  Caption per `DIAGRAM_CAPTION_FORMAT` (`formats/diagram-vocabulary.xml`), naming the
+  requirement IDs this call chain traces. Shown as ASCII (or the table, already text) in chat
+  during STEP_4_CONTRACTS_DBC, right after the dependency graph, BEFORE that step's Approval
+  Check (`AX_CHAT_BEFORE_SPEC`) — the mermaid version under `## Module Contracts` converts the
+  same shape at write time. A module below the ≥2-abstraction threshold (a single Service, no
+  Port/Adapter) states that explicitly instead of a silently missing rung — floor, never
+  nothing, same discipline as `DBC_DEPENDENCY_GRAPH_FORMAT`. Mandatory for NEW module specs
+  only — a module spec written before this rung existed is not retroactively broken by its
+  absence (2026-08-20 visualization-chain decision,
+  `specs/ai-skills/research/2026-08-20-visualization-chain.research.md`).
+</Contract>
+
+<Contract id="DBC_PORT_FORMAT">
+  Conditions are plain-language statements per `AX_CONTRACTS_TEXTUAL_AGNOSTIC` — one testable
+  statement per line, shared vocabulary, code syntax stays out (target-language code lives only
+  in the Approved Usage Example). Optional fields marked «omit when none» are omitted, not
+  filled with placeholders.
+
+  ```markdown
+  #### Port: `<PortName>`
+  - **Purpose:** <1 sentence>
+  - **Consumers:** <internal: path · external: description>
+  - **Supporting Artifacts:** <links — omit when none>
+  - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+  - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+  - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
+  - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [<ACR>-DL-N — only when a Decision Log entry actually backs the reason]
+
+  **Contract (DbC)** — one block per operation, not one shared block for the whole Port:
+  - `<operationName>`:
+    - Pre: <what must hold before this operation may be called>
+    - Post: <what this operation guarantees on completion>
+    - On pre-violation: <observable behavior when a precondition does not hold — e.g. a
+      non-existent id — error kind and mechanism, never silent>
+  - `<operationName2>`:
+    - Pre: <…>
+    - Post: <…>
+    - On pre-violation: <…>
+
+  **Invariants** (omit when none): what stays true across the entity's ENTIRE lifetime,
+  independent of any single operation — a genuine class-level invariant, not a restatement of
+  one operation's postcondition.
+  ```
+
+  Preconditions / postconditions / invariants are decided by the DECISION being contracted, not
+  by whether a Port happens to exist: when the module consciously forgoes a Port (single
+  implementation, no confirmed variability or test seam per
+  `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE`), this same per-operation shape lives directly on the
+  Service or Adapter instead — that choice is recorded in the Decision Log
+  (`AX_DECISION_LOG_REQUIRED`), not silently assumed.
+
+  **Usage Waiver** (`AX_USAGE_WAIVER_DISCIPLINE`, gennady yagni): a `<2` production-code usages
+  entity is a YAGNI finding unless its contract carries this field with a real reason — an empty
+  reason does not gate the finding. Cite an `<ACR>-DL-N` only when the reason IS a Decision Log entry (a
+  genuine, non-obvious call — not "split for readability"); when cited, it must actually have a
+  heading in some Decision Log, or the citation does not gate the finding. The agent sets the
+  label, never the operator; omit the field entirely when usage already clears the threshold (no
+  placeholder text). Two forms:
+
+  - Internal entity: `- **Usage Waiver:** <reason>` (or `<ACR>-DL-N — <reason>` when a decision backs it)
+  - Public API for an external consumer (does NOT disable the rule — it still needs the label):
+    `- **Usage Waiver (external: <named consumer>):** <reason>` (same `<ACR>-DL-N` rule)
+</Contract>
+
+<Contract id="DBC_ADAPTER_FORMAT">
+  Same language rules as `DBC_PORT_FORMAT`: plain-language statements per
+  `AX_CONTRACTS_TEXTUAL_AGNOSTIC`, one per line. Default: DbC conditions live on the Port — the
+  Adapter declares implementation facts (side effects, runtime backing). Exception: when this
+  Adapter has no Port behind it (a conscious `AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE` choice,
+  logged in the Decision Log), the Adapter carries the **Contract (DbC)** block itself, in the
+  same per-operation shape as `DBC_PORT_FORMAT` — DbC does not disappear just because there is no
+  Port.
+
+  ```markdown
+  #### Adapter: `<AdapterName>`
+  - **Implements:** `<PortName>` (`<path/to/port-file>`) — omit when this Adapter has no Port
+  - **Purpose:** <1 sentence>
+  - **Supporting Artifacts:** <links — omit when none>
+  - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+  - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+  - **Deferred Runtime Scope:** None | <which declared behavior lacks real runtime>
+  - **Usage Waiver:** <omit when usage is >= 2 in production code> <why this entity exists despite few usages> [<ACR>-DL-N — only when a Decision Log entry actually backs the reason]
+
+  **Contract (DbC)** — ONLY when this Adapter has no Port (else the contract lives there, see
+  `DBC_PORT_FORMAT`); same per-operation Pre / Post / On-pre-violation shape, plus Invariants when
+  genuinely class-level:
+  - `<operationName>`:
+    - Pre: <…>
+    - Post: <…>
+    - On pre-violation: <…>
+
+  **Side Effects:**
+  - <one observable effect per line: external HTTP, IO, observability, mutation of shared state, …>
+  ```
+
+  Same `Usage Waiver` rule as `DBC_PORT_FORMAT` — see there for the two forms and the citation requirement.
+</Contract>
+
+<Contract id="DBC_SERVICE_FORMAT">
+  Use this form when one Function or Service owns behavior directly and no confirmed variability
+  or test seam justifies a Port. Conditions are plain-language and testable, one per line.
+
+  ```markdown
+  #### Service: `<FunctionOrServiceName>`
+  - **Purpose:** <1 sentence>
+  - **Consumers:** <internal path or named external consumer>
+  - **Runtime Backing:** `not-implemented` | `simulation` | `real-runtime`
+  - **Verification Levels:** subset of `contract` | `unit` | `integration` | `e2e`
+  - **Deferred Runtime Scope:** None | <declared behavior without real runtime>
+
+  **Contract (DbC)** — one block per operation:
+  - `<operationName>`:
+    - Pre: <what must hold>
+    - Post: <what completion guarantees>
+    - On pre-violation: <observable error kind and mechanism>
+
+  **Invariants** (omit when none): <genuine lifetime-wide invariant>
+  ```
+
+  A pure function is represented directly by this form. Do not invent a Port, Adapter, class,
+  or directory layer merely to fit the contract notation.
+</Contract>

@@ -1,6 +1,6 @@
 // @file: Build the resolve-conflicts artifact XmlNode tree from merge git context.
+// @spec: CLI
 // @consumers: resolve-conflicts-command-run.logic
-// @tasks: N/A
 
 import { serializeXmlNode } from '../../../../../shared/common/xml.ts';
 import type { XmlNode } from '../../../../../shared/common/xml.ts';

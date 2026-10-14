@@ -1,0 +1,11 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_MOCK_AS_LAST_RESORT">
+Prefer real modules with dependency injection over module-level mocks. A SUT that accepts its collaborators as constructor or function arguments is tested by passing test doubles directly through those seams — no module-level mocking needed.
+
+Module-level mocking is allowed ONLY when ALL of:
+1. Dependency is genuinely external (network, FS, process, OS time, randomness, third-party SDKs touching the network).
+2. No available injection seam in the SUT (refactoring to add one is out of scope).
+3. Case carries an explicit justification comment naming the dependency and why injection is unavailable.
+
+Mocks of pure in-process neighboring modules are forbidden by default. Every mock freezes an assumption about another module's behavior; injection keeps the seam observable in the type system.
+</Axiom>

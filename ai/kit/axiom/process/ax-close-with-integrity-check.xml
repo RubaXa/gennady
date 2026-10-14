@@ -1,0 +1,4 @@
+<!-- source: SDD v2 — mutation-then-verify invariant -->
+<Axiom id="AX_CLOSE_WITH_INTEGRITY_CHECK">
+      A mutation is not done until its scope passes the mechanical check. Any flow that creates or evolves an artifact under a scope — spec, module, ticket, DAG, tracker — closes by running `sdd-check` on the affected scope (`sdd-check --all specs/<scope>`; portal, task-DAG, tracker, or cross-scope work → `sdd-check --all .`) and resolving or consciously deferring every finding before handing off.
+    </Axiom>

@@ -1,0 +1,43 @@
+<!-- source: testing/node-test.xml -->
+<Pattern id="PT_FIXTURE_AND_OBSERVE_AGGREGATION">
+      <Intent>Composite contract (generated text + observability milestone) where an OBSERVE phase normalizes result + side-effect log into one diagnostic slice. Justified case for aggregation per inherited `AX_DEFAULT_DIRECT_ASSERTION_PROTOCOL`.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, beforeEach } from 'node:test';
+        import assert from 'node:assert/strict';
+        import { readFileSync } from 'node:fs';
+
+        describe('CodegenPipeline#renderModule', () => {
+            let pipeline: CodegenPipeline;
+
+            beforeEach(() => {
+                pipeline = new CodegenPipeline({ logger: createMemoryLogger() });
+            });
+
+            it('should produce normalized output and emit a single info-level milestone log', async () => {
+                // contract: pipeline emits exactly one info log per successful render
+                // failure mode: do not snapshot scalar log count — it hides the actual milestone shape
+
+                const inputSpec = JSON.parse(readFileSync('test/fixtures/render-module.input.json', 'utf8'));
+                const output = await pipeline.renderModule(inputSpec);
+
+                // #region START_RENDER_MODULE_OBSERVE_AGGREGATE
+                // observation focus: text + milestone collapsed into one diff for a richer failure report
+                const actual = {
+                    text: output.text,
+                    milestones: pipeline.logger.records
+                        .filter((r) => r.level === 'info')
+                        .map((r) => r.message),
+                };
+                // #endregion END_RENDER_MODULE_OBSERVE_AGGREGATE
+
+                assert.deepStrictEqual(actual, {
+                    text: '/* generated module */\nexport const value = 42;\n',
+                    milestones: ['[CodegenPipeline#renderModule] [rendering → rendered] ok'],
+                });
+            });
+        });
+        ```
+      </Snippet>
+      <Why>Aggregation in OBSERVE justified: a single `deepStrictEqual` shows drift in both text and milestones. SETUP and TRIGGER are one-liners → no anchors; OBSERVE has aggregation policy → anchored. Fixture read allowed, write forbidden (inherited `AX_FIXTURE_IO_POLICY`).</Why>
+    </Pattern>

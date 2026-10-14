@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/result-conventions.xml -->
+<Axiom id="AX_NO_RESULT_OK_SHORT_CIRCUIT">
+      `if (!r.ok) return r` and `if (r.ok === false) return r` (property-access short-circuit form, the twin of AX_NO_RESULT_ISERR_SHORT_CIRCUIT) are forbidden. Use `must` + try/catch.
+      Detection: IfStatement whose test is `!r.ok` or `r.ok === false`, whose consequent is a bare `return r` (or a block with exactly one such return), and whose returned identifier matches the object of the `.ok` access.
+      No autofix: requires restructuring the surrounding function, not a one-line substitution.
+    </Axiom>

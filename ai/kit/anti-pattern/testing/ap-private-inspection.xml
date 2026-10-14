@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<AntiPattern id="AP_PRIVATE_INSPECTION">
+      <Bad>Test inspects `client._inflightCount` (protected/internal field) via `@ts-expect-error` to bypass encapsulation.</Bad>
+      <WhyBad>Violates inherited `AX_CONTRACT_OVER_IMPLEMENTATION`. A refactor renaming `_inflightCount` to `_pending` breaks the test without changing the contract.</WhyBad>
+      <Good>Subscribe to `client.on('reservation.requested', e => events.push(e))` and assert `events.length` + `events[0].idempotencyKey`. Public lifecycle event is the observable.</Good>
+    </AntiPattern>

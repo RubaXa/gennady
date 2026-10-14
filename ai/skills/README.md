@@ -1,172 +1,98 @@
-# ai/skills — AI-навыки для агентов
+# ai/skills — навыки агентов
 
-> 🧭 **Единый гайд по SDD-воркфлоу (сценарии по шагам, диаграммы): [docs/sdd-flow.md](../../docs/sdd-flow.md).**
-> Здесь — справочник навыков: типовые сценарии вызова и паттерны исполнения.
+12 навыков: 8 SDD-навыков, agent-inbox, opencode-get-session, prd-interview и
+workspace-permission-setup.
 
-Навыки для Specification-Driven Development, мульти-модельного анализа и настройки автономной среды: SDD-семейство (`sdd-*`) плюс agent-inbox, alt-opinion, prd-interview и workspace-permission-setup. Стековые специализации (например, `sdd-infra-golang`) живут в `plugins/<stack>/skills/` и синхронизируются тем же `sync-skills`.
+## SDD Flow v2
 
-> `workspace-permission-setup` мигрирован в хранилище из `~/.claude/skills` — теперь под git и деплоится через `sync-skills`.
+SDD v2 stateless: новый запуск восстанавливает состояние из спецификаций, тикетов, их Execution
+Log, Git и текущего вывода механических инструментов. `specs/.sdd-session.md`, план в JSON,
+долговечная сессия критика и worker checkpoint не являются частью потока.
 
----
+```text
+спецификации
+  → структурная проверка
+  → одно независимое смысловое ревью фактических спецификаций
+  → решение оператора №1: утвердить спецификации
+  → создание фактических тикетов
+  → механическая authoring-проверка
+  → одно независимое ревью фактических тикетов
+  → решение оператора №2: утвердить разбиение и тест-план вместе
+  → исполнение по тикету / Execution Log / Git
+  → реальные команды проверки
+  → аудит и code-review
+```
 
-## Типовые сценарии (Use Cases)
+Автор может мысленно проверить собственный план до записи. Независимая модель нужна только в двух
+точках выше и проверяет смысл; она не сохраняет план в JSON, не редактирует артефакты и не обязана
+продолжать прежнюю сессию.
 
-### 1. Спроектировать новый модуль с нуля
+## Основные навыки
+
+| Навык | Назначение |
+|---|---|
+| `sdd` | Один read-only `sdd-state`, классификация intent, ленивый переход к владельцу |
+| `sdd-scaffold` | Создание реальных тикетов, механическая проверка, ревью тикетов, решение №2 |
+| `sdd-execute` | Исполнение одного тикета или очереди по `sdd-task`; реальные gates, audit, code-review |
+| `sdd-critic` | Одно on-demand независимое смысловое ревью bounded target-set; без автоправок |
+| `sdd-reconcile` | Восстановление треугольника spec ↔ task ↔ code по текущим артефактам |
+| `sdd-check` | Механическая проверка; `--spec --authoring` авто-фиксит только тривиальный формат |
+| `sdd-audit` | Проверка соответствия spec/task/diff/Execution Log |
+| `sdd-code-review` | Независимый поиск поведенческих ошибок после аудита |
+
+Прямые входы `sdd-scaffold`, `sdd-execute`, `sdd-critic`, `sdd-reconcile` передают router один
+read-only snapshot и forced intent. Router не открывает и не закрывает сессию.
+
+## Механика и смысл
+
+Механические проверки отвечают за форму и трассировку:
+
+- обязательные секции, anchors, разрешимые spec references;
+- уникальные Task-ID, разрешимые и ацикличные зависимости, синхронизацию tracker;
+- Requirement-ID → BDD scenario → planned/implemented test;
+- наличие применимого негативного/failure scenario: happy-path-only — ошибка;
+- присутствие Requirement-ID в реализованном тесте после execute.
+
+Модель отвечает за семантику: действительно ли сценарий отражает требование, доказателен ли тест,
+не конфликтуют ли границы и зависимости. Реальная команда тестов остаётся окончательным runtime
+доказательством.
+
+## Выполнение
+
+`/sdd-execute` без аргумента показывает выбор и ждёт. `next` выбирает только единственную pickable
+задачу. `all`/`batch` исполняет DAG-порядок. Параллель разрешён лишь для задач без dependency relation
+и с непересекающимися Target Files; идентичность worker session не участвует в решении.
+
+Каждый phase worker получает bounded phase context и возвращает typed Handoff. Оркестратор сверяет
+его с Git и записывает факты в Execution Log. Потерянного worker можно заменить свежим: корректность
+не зависит от памяти агента.
+
+## Миграция
+
+Единственный migration flow — V1→V2. Невалидная или устаревшая V2-спека возвращается в обычный V2
+authoring flow; V2→V2/V3 migration route не существует.
+
+## Синхронизация
+
+Команды синхронизации устанавливают только SDD v2. Если проект всё ещё содержит `tasks/`, они
+fail-closed останавливаются до записи директив или навыков. Сначала выполните
+`npx gennady sdd-migrate bootstrap .` (dry-run), затем `--write`: bootstrap из текущего npm package
+удаляет только V1 tooling, идентифицированный manifest/exact hash, и ставит полный свежий V2 runtime
+для migration. После этого
+выполните штатную миграцию по
+[`guides/v1-to-v2-migration.md`](../../guides/v1-to-v2-migration.md); sync разрешается после
+`FLOW_VERSION=v2`. `.gennady-synced` — лишь манифест владения файлами sync, не признак миграции.
 
 ```bash
-npx gennady sync          # директивы (обязательно первым)
-npx gennady sync-skills   # навыки
-```
-
-Затем в агенте: «@sdd-setup создай проект» → «@sdd-discover спроектируй scope vcs-client» → «@sdd-module-decomposition разбей на модули» → «@sdd-scaffold сгенерируй таски» → «@sdd-critic проверь таски» → «@sdd-execute TSK-01»
-
-| Шаг | Навык | Что делает |
-| --- | ----- | ---------- |
-| 1 | `sdd-setup` | Инициализирует `specs/README.md` (Vision, Scope Graph, таблица скоупов) |
-| 2 | `sdd-discover` | Создаёт `specs/<scope>/<scope>.spec.md` — видение, требования, архитектура |
-| 3 | `sdd-module-decomposition` | Декомпозирует product/library scope на модульные спеки с инвентарём сущностей |
-| 4 | `sdd-scaffold` | Генерирует DAG тасков из спек: Cascade Table, BDD, Phases Overview |
-| 5 | `sdd-critic` | Критика пробелов: baseline, затем узкая проверка принятых правок (до 5 раундов) |
-| 6 | `sdd-execute` | Исполняет таск автономно: typed Handoff → terminal audit → точечный retry |
-
-### 2. Выполнить задачу
-
-```
-@sdd-execute TSK-03
-```
-
-Или: «выполни следующую», «execute pickable», «выбери что делать дальше».
-
-Навык диспатчит фазы последовательно и передаёт typed Handoff. Безопасно разрешимое
-расхождение фиксируется обычным `decision`/`insight` и не останавливает execution. После
-закрытия round fresh-eyes audit автономно доходит до terminal result и сохраняет его в таске.
-При FAIL каждый finding сам называет владельца: phase, ticket, spec или project. Смешанные findings не
-теряются; свежие аудиты продолжаются, пока исправления закрывают предыдущие блокирующие находки либо
-дают новые доказательства и другой проверяемый путь. Эквивалентный результат без новых доказательств
-или пути означает доказанный no-progress, а не запрос оператору разрешить ещё одну попытку. Runtime
-PASS опирается на выполненную команду или probe с наблюдаемым результатом.
-
-### 3. Выполнить пачку задач
-
-```
-@sdd-execute-batch выполни всю очередь
-```
-
-Планирует очередь по фактическим зависимостям и последовательно запускает для каждого готового
-TODO/IN_PROGRESS тикета канонический `sdd-execute` lifecycle. В одном worktree таски не параллелятся:
-так audit diff и tracker writes не смешиваются. BLOCKED/PAUSED lane не останавливает независимые
-тикеты. Опциональный `epic-audit` добавляется после обязательных per-task audits.
-
-### 4. Проверить качество спеки / таска
-
-```
-@sdd-critic проверь спеку cli/cli.spec.md
-@sdd-critic проверь таск TSK-03
-```
-
-Критика пробелов (до 5 раундов): первый изолированный критик делает baseline-проверку, следующие проверяют только принятые правки и вызванные ими регрессии. Первый `CLEAN` завершает цикл.
-
-### 5. Продолжить / доработать существующую спеку
-
-```
-@sdd-continue добавь sync-skills в cli
-@sdd-continue измени архитектуру на event-driven
-```
-
-Автоопределение режима: refine (добавить) или pivot (заменить).
-
-### 6. Проверить целостность SDD-воркфлоу
-
-```
-@sdd-check
-```
-
-Read-only: проверяет связность спек, синхронизацию трекеров, полноту execution-логов, консистентность DAG.
-
-### 7. Аудит завершённой задачи
-
-```
-@sdd-audit TSK-05
-```
-
-Fresh-eyes: читает таск + спеку + git diff, перепроверяет execution decisions, тесты и правила. Один запуск
-не паузится для оператора: terminal PASS/FAIL сохраняется в Audit Rounds, а findings называют route и phase-owner.
-
-### 8. Починить после ревью / sdd-check
-
-```
-@sdd-fix найди и исправь проблемы из sdd-check
-```
-
-Классифицирует фидинги, согласовывает с оператором, исполняет фиксы, переоткрывает таски, верифицирует.
-
-### 9. Спроектировать инфраструктурный скоуп
-
-```
-@sdd-infra спроектируй infra-golang
-```
-
-Для bootstrap'а tooling'а: package manager, type-checker, linter, formatter, test runner, git hooks, CI.
-
-### 10. Получить мульти-модельное мнение
-
-```
-@alt-opinion оцени спеку cli/cli.spec.md
-```
-
-Запускает 2+ модели параллельно, синтезирует через третью. Без аргументов — автоаудит текущего контекста сессии.
-
----
-
-## Execution-паттерны
-
-| Паттерн | Как работает | Навыки |
-| ------- | ----------- | ------ |
-| **Directive activation** | Извлечь intent → загрузить директиву → активироваться как она → выполнить план | sdd-setup, sdd-discover, sdd-module-decomposition, sdd-scaffold, sdd-audit, sdd-continue, sdd-critic, sdd-fix, sdd-infra |
-| **Orchestrator** | Dispatch фаз → typed Handoff → persisted audit → remediation по route/phase → свежий audit | sdd-execute, sdd-execute-batch |
-| **CLI delegation** | Подготовить артефакт → вызвать `npx gennady alt-opinion` → показать результат | alt-opinion |
-| **Read-only verifier** | Саморефлексия + механические проверки через `sdd scan`. Код не пишет | sdd-check |
-
----
-
-## Структура навыка
-
-```
-ai/skills/<name>/
-├── SKILL.md          # YAML frontmatter (name, description, compatibility) + markdown body
-├── scripts/          # опционально: bash/js утилиты
-└── *.prompt.md       # опционально: кастомные промпты
-```
-
----
-
-## Синхронизация в проекты
-
-> ⚠️ **Порядок важен:** сначала директивы, потом навыки. Скиллы — тонкие клиенты над директивами из
-> `ai/directives/`, поэтому `npx gennady sync-skills` без предварительного `npx gennady sync` развернёт
-> навыки, которым нечего загружать.
-
-```bash
-# 1. Директивы: ai/directives/ (из npm-пакета в проект)
-npx gennady sync
-
-# 2. Навыки: ai/skills/ → .claude/skills/ проекта
 npx gennady sync-skills
-
-# Предпросмотр
 npx gennady sync-skills --dry-run
-
-# Конкретный навык
 npx gennady sync-skills sdd-execute
 ```
 
-Навыки деплоятся из `ai/skills/` → `.claude/skills/` проекта. Пути нормализуются: dev-пути (`~/Developer/gennady/...`) заменяются на продуктовые.
+Навыки деплоятся из `ai/skills/` в `.claude/skills/` проекта.
 
----
+## Связанные спецификации
 
-## Связанные спеки
-
-- `specs/ai-skills/ai-skills.spec.md` — общая спека библиотеки
-- `specs/ai-skills/skill-contract/skill-contract.spec.md` — контракт навыка
-- `specs/ai-skills/sdd-skills/sdd-skills.spec.md` — SDD-навыки
-- `specs/ai-skills/alt-opinion/alt-opinion.spec.md` — alt-opinion
+- `specs/ai-skills/ai-skills.spec.md`
+- `specs/ai-skills/skill-contract/skill-contract.spec.md`
+- `specs/ai-skills/sdd-skills/sdd-skills.spec.md`

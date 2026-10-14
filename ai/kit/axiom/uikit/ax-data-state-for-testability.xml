@@ -1,0 +1,8 @@
+<!-- source: ai/directives/coding/uikit-component-svelte.xml -->
+<Axiom id="AX_DATA_STATE_FOR_TESTABILITY">
+Every interactive state that is normally expressed through a CSS pseudo-class (`:hover`, `:active`, `:disabled`) MUST also be expressed through a `data-state` attribute on the inner wrapper element. CSS pseudo-classes cannot be triggered programmatically in headless test environments — `data-state` provides the testable channel.
+
+States: `normal`, `hover`, `active`, `disabled`. The `data-state` attribute is always present, never conditionally omitted. The component derives `data-state` from the `state` prop, not from browser events.
+
+For test assertions: `expect(element).toHaveAttribute('data-state', 'hover')` — NOT `expect(element).toHaveStyle(...)` for pseudo-class-triggered styles (that won't work in headless).
+</Axiom>

@@ -1,0 +1,11 @@
+$ npm run type-check
+
+--- stdout ---
+
+> gennady@2.0.0-draft.1 type-check
+> tsc --noEmit
+
+
+
+--- stderr ---
+

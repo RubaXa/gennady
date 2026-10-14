@@ -1,5 +1,11 @@
 # Module: update-check
 
+<!--SECTION:SPEC_ID-->
+
+CLI-UPDATE-CHECK
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Shared-модуль в `cli/cmd/_shared/`: неблокирующий детект обновлений CLI на старте. Проверяет npm-реестр в фоне, при обнаружении новой версии выводит уведомление в stderr после завершения команды. Zero runtime dependencies (только Node.js built-in). Никогда не блокирует `process.exit`, никогда не бросает исключений.

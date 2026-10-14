@@ -1,11 +1,16 @@
 // @file: Turn a detected Go project plus a scope into an ordered, non-mutating gate plan.
+// @spec: CLI-VERIFY
 // @consumers: golang-plugin, stack-config (gate id list)
-// @tasks: TSK-95
 
 import fs from 'node:fs';
 import path from 'node:path';
 import type { EnvFailPredicate, Gate, GatePlanOptions } from 'gennady/stack';
-import { execFileTrimSafe, exitCodeMatches, outputMatches, parseDuration } from 'gennady/stack';
+import {
+  execFileTrimSafe,
+  exitCodeMatches,
+  outputMatches,
+  parseDuration,
+} from '../../shared/verify/plugin-api.ts';
 import type { GoProject } from './golang-detect.logic.ts';
 import type { GoScope } from './golang-scope.logic.ts';
 import { moduleFlags } from './golang-scope.logic.ts';
@@ -25,7 +30,7 @@ export const GO_GATE_ORDER: readonly GoGateId[] = [
 
 /** Human labels for each gate id. */
 const GATE_LABELS: Readonly<Record<GoGateId, string>> = {
-  generate: 'go generate (sandboxed drift check)',
+  generate: 'go generate (guarded drift check)',
   build: 'go build',
   vet: 'go vet',
   fmt: 'gofmt -l (check only)',
@@ -178,7 +183,7 @@ const GO_GENERATE_ENV_FAIL: readonly EnvFailPredicate[] = [
   outputMatches(MODULE_RESOLVE_RE),
   outputMatches(
     /executable file not found/,
-    'the generator binary is not in PATH — `go install` it or declare it as a go.mod `tool` directive; gitignored binaries are not replicated into the sandbox (D-STACK-012)'
+    'the generator binary is not in PATH — `go install` it or declare it as a go.mod `tool` directive'
   ),
 ];
 

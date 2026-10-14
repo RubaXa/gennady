@@ -1,0 +1,58 @@
+<!-- source: testing/vitest-rules.xml -->
+<Pattern id="PT_UNIFIED_FACTORY_CONTEXT">
+      <Intent>Default shape per inherited `AX_ONE_UNIFIED_CONTEXT_PER_FILE` + `AX_PREFER_FACTORY_OVER_HOOKS`: ONE context type + ONE factory for the whole file. Two cases differ only by factory overrides, not by structure.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        import { describe, it, expect, vi } from 'vitest';
+        import { OrderLifecycle } from './order-lifecycle.ts';
+        import type { OrderRepository, EventBus } from './ports.ts';
+
+        type OrderLifecycleContext = {
+            sut: OrderLifecycle;
+            saveOrder: ReturnType<typeof vi.fn<OrderRepository['saveOrder']>>;
+            publish: ReturnType<typeof vi.fn<EventBus['publish']>>;
+        };
+
+        function createOrderLifecycleContext(
+            overrides: Partial<{
+                saveOrder: OrderRepository['saveOrder'];
+                publish: EventBus['publish'];
+            }> = {},
+        ): OrderLifecycleContext {
+            const saveOrder = vi.fn(overrides.saveOrder ?? (async () => {}));
+            const publish = vi.fn(overrides.publish ?? (() => {}));
+            const sut = new OrderLifecycle({ saveOrder, publish });
+            return { sut, saveOrder, publish };
+        }
+
+        describe('OrderLifecycle#settleCharge', () => {
+            it('should persist order in PAID state and publish settled event', async () => {
+                // observation focus: persistence args + event payload, not pipeline internals
+                const { sut, saveOrder, publish } = createOrderLifecycleContext();
+
+                await sut.settleCharge('ord-1');
+
+                // #region START_SETTLE_CHARGE_ASSERT_INTERACTIONS
+                expect(saveOrder).toHaveBeenCalledWith({ id: 'ord-1', state: 'PAID' });
+                expect(publish).toHaveBeenCalledWith({
+                    type: 'order.settled',
+                    detail: { orderId: 'ord-1' },
+                });
+                // #endregion END_SETTLE_CHARGE_ASSERT_INTERACTIONS
+            });
+
+            it('should not publish when persistence rejects', async () => {
+                // contract: settled event is emitted ONLY after successful persistence
+                // failure mode: a leaked event after a failed write would corrupt downstream consumers
+                const { sut, publish } = createOrderLifecycleContext({
+                    saveOrder: async () => { throw new Error('db down'); },
+                });
+
+                await expect(sut.settleCharge('ord-1')).rejects.toThrow(/db down/);
+                expect(publish).not.toHaveBeenCalled();
+            });
+        });
+        ```
+      </Snippet>
+      <Why>One context type, one factory; failure case overrides exactly one field and reuses everything else. No describe-scope `let`s; stubs flow through injection seams; no module-level mocks. One-line SETUP and TRIGGER → no anchors; multi-line ASSERT → anchored.</Why>
+    </Pattern>

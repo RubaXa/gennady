@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_TYPE_VS_INTERFACE_CHOICE">
+Architecture-level choice. DTOs, configs, API responses → `type`. `interface` reserved for abstractions with inheritance / implementation (polymorphism). A consistent choice makes a type's intent readable at a glance: `interface` signals «polymorphism point»; `type` signals «data shape».
+</Axiom>

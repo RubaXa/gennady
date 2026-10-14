@@ -1,13 +1,13 @@
-<NodeTestRules keywords="node-test, runner, assertions, native_mock_fn, http_mock_agent, snapshot_files" type="testing-rules" ver="3.0">
+<NodeTestRules rule-id="node-test" rule-schema="1" type="required" ver="3.0">
+<Meta>
+  <When framework="node-test" role="test"/>
+  <DependsOn rule="testing-common"/>
+</Meta>
   <Mission>
     Node.js built-in `node:test` runner (`node --test`) specifics on top of [`testing/common`](./common.xml). Only the deltas are stated here: assertion API mapping, native `mock.fn()` usage, HTTP mock-agent harness, snapshot file location.
 
     Read `testing/common.xml` first. Everything about contract boundary, case flow, phase anchors, unified context, factory-over-hooks, BDD mapping, snapshot operator-confirm, file budget — lives there.
   </Mission>
-
-  <DependsOn>
-    - ai/directives/testing/common.xml
-  </DependsOn>
 
   <InheritedBaseline>
     All axioms in [`testing/common`](./common.xml) `Belief_State` apply here UNCHANGED — reader-agent treats them as binding under this directive. `BDD_Mapping_Hint`, `Definitions`, `Workflow_Outline` likewise inherited. This file only adds node:test-specific overrides and patterns.
@@ -82,7 +82,7 @@
         import { setupMockAgent } from '#utils/test/mock-http.ts';
 
         describe('VendorClient', () => {
-            let mockEnv: ReturnType<typeof setupMockAgent>;
+            let mockEnv: ReturnType&lt;typeof setupMockAgent&gt;;
             let client: VendorClient;
 
             beforeEach(() => {
@@ -291,11 +291,12 @@
   </VerificationHooks>
 
   <RewardCriteria>
-    ✅ Node tests use the narrowest diagnostic `node:assert/strict` API for the observed value shape.
-    ✅ Injected collaborators use native `mock.fn()` when interaction tracking is required.
-    ✅ `node --test` and TypeScript checks execute successfully; coverage runs when required by the ticket.
-    ✅ HTTP mock-agent and snapshot files follow their lifecycle and location contracts.
-    ❌ Manual try/catch flags, message `includes`, scalar snapshots, or unreviewed snapshot updates replace direct assertions.
-    ❌ A module mock replaces the SUT or the contract method being verified.
+    ✅ Each changed test protects a public contract with deterministic inputs and direct Node assertions.
+    ✅ The test file uses one context factory and keeps mutable state local to each case.
+    ✅ Non-trivial setup, trigger, observation, and assertion phases use intentful paired anchors.
+    ✅ Focused test, typecheck, and forbidden-pattern checks pass before handoff.
+
+    ❌ Tests inspect protected/private SUT state or share mutable describe-level state.
+    ❌ A regression is covered only by a mock call count rather than its observable contract result.
   </RewardCriteria>
 </NodeTestRules>

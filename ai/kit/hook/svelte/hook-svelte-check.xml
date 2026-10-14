@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/svelte5-runes.xml -->
+<Hook id="HOOK_SVELTE_CHECK">
+  <Purpose>Type-check Svelte components and `.svelte.ts` modules; flags legacy patterns the compiler refuses.</Purpose>
+  <Command>npx svelte-check --tsconfig ./tsconfig.json</Command>
+  <Expected>Exit 0; no errors or warnings.</Expected>
+</Hook>

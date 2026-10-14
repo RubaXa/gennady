@@ -1,0 +1,10 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<Axiom id="AX_STORYBOOK_TITLE_FROM_SPEC">
+      The story title is derived from the spec's component name and variant hierarchy, not invented:
+
+      For Button, variants are grouped by `(appearance, mode)`. The story file organizes stories into title groups matching this grouping. A single `.stories.ts` file can export multiple `meta` objects (using named exports) to group stories under different titles, OR a single file groups all stories under a common root and uses story names for differentiation.
+
+      Preferred pattern for uikit: one `.stories.ts` file per component. Stories are organized by exporting a single `meta` with a root title like `'Button'`, and story names encode the variant: `AccentPrimarySmallNormal`, `AccentPrimarySmallHover`, etc. The Storybook sidebar auto-groups by title segments.
+
+      Alternative (used in Button spec examples): multiple `export default` in separate files, or named exports with different titles. Either pattern is acceptable as long as the hierarchy matches the spec.
+    </Axiom>

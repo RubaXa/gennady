@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Hook id="HOOK_NO_FORBIDDEN_CONSTRUCTS">
+<Purpose>Smoke-grep for forbidden transpile-only constructs and raw `console.*`.</Purpose>
+<Command>rg --follow --no-heading -n "^\s*(enum |namespace |private )|#[a-zA-Z_]+\s*[:=]|\bconsole\.(log|warn|error|info|debug)\b" -t ts --glob '!**/node_modules/**' --glob '!**/dist/**'</Command>
+<Expected>Empty (no matches) on new/changed files; matches on pre-existing files tolerated only if outside current task scope.</Expected>
+</Hook>

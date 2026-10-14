@@ -1,6 +1,6 @@
 // @file: vcs-discussions command help output.
+// @spec: CLI
 // @consumers: help command
-// @tasks: TSK-93
 
 /**
  * @purpose Print CLI help for the vcs-discussions command.
@@ -10,19 +10,28 @@ export function printHelp(): void {
   console.info('gennady vcs-discussions — Show GitLab MR discussions (human-readable)');
   console.info('');
   console.info('Usage:');
-  console.info('  npx gennady vcs-discussions --ref <group/repo!iid> [options]');
+  console.info('  npx gennady vcs-discussions --url <mr-url> [options]');
   console.info('');
   console.info('Options:');
-  console.info('  --ref <group/repo!iid>   MR ref');
+  console.info(
+    '  --url <mr-url>           MR/PR URL — host inferred, no guessing (preferred; e.g. https://gitlab.example.com/group/proj/-/merge_requests/510)'
+  );
+  console.info('  --ref <group/repo!iid>   MR ref (override; needs --host)');
   console.info('  --project <group/repo>   Explicit project path');
   console.info('  --iid <id>               MR internal ID');
   console.info('  --all                    Include resolved discussions');
+  console.info('  --my                     Show only discussions where I commented');
+  console.info('  --with-drafts, --drafts  Include my draft notes (requires --my)');
   console.info('  --json                   Machine-readable JSON output');
   console.info('  --host <hostname>        GitLab host');
   console.info('  --dry-run, --dry         Print without calling API');
   console.info('');
   console.info('Examples:');
-  console.info('  npx gennady vcs-discussions --ref group/repo!42');
+  console.info(
+    '  npx gennady vcs-discussions --url https://gitlab.example.com/group/proj/-/merge_requests/510 --json'
+  );
   console.info('  npx gennady vcs-discussions --ref group/repo!42 --all');
-  console.info('  npx gennady vcs-discussions --ref group/repo!42 --json');
+  console.info(
+    '  npx gennady vcs-discussions --url https://gitlab.example.com/group/proj/-/merge_requests/510 --json --my --with-drafts'
+  );
 }

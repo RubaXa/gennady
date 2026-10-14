@@ -1,0 +1,7 @@
+<!-- source: sdd-v2 amplify-storage -->
+<Axiom id="AX_ACCESS_PATTERNS_DRIVE_SCHEMA">
+  Schema and indexes derive from named access patterns, in that order: list the queries the
+  product actually runs (read/write mix, cardinality, hot paths) FIRST, then shape tables /
+  collections and indexes to serve them. An index with no named query behind it is dead weight;
+  a hot query with no index plan is a latent incident.
+</Axiom>

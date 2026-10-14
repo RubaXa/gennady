@@ -1,11 +1,11 @@
 // @file: Shared sync command dependencies type — SyncCmdDeps
+// @spec: SHARED
 // @consumers: sync.cmd.ts, sync-skills.cmd.ts
-// @tasks: TSK-56
 
 /**
  * @purpose Injectable dependencies for sync CLI commands.
  * @invariant All fields are optional to allow partial mocking in tests.
- * @invariant unlink and rm are no-op by default in the sync command; sync-skills provides real implementations.
+ * @invariant unlink and rmdir are no-op by default in the sync command; sync-skills provides real implementations.
  */
 export type SyncCmdDeps = {
   /**
@@ -55,9 +55,9 @@ export type SyncCmdDeps = {
    */
   unlink?: (path: string) => void;
   /**
-   * @purpose Remove a directory tree (no-op in sync, used by sync-skills).
+   * @purpose Delete a directory recursively (no-op in sync, used by sync-skills).
    * @param path Directory path.
    * @param [options] Options.
    */
-  rm?: (path: string, options?: { recursive: boolean; force: boolean }) => void;
+  rmdir?: (path: string, options?: { recursive: boolean }) => void;
 };

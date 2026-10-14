@@ -1,6 +1,6 @@
 // @file: Unit tests for FileHeaderCheck — validates @file: and @consumers: detection.
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-17
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

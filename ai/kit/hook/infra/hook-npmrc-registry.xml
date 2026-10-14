@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<Hook id="HOOK_NPMRC_REGISTRY">
+  <Purpose>`.npmrc` exists and declares registry.</Purpose>
+  <Command>test -f .npmrc && grep -q 'registry=' .npmrc && echo "OK"</Command>
+  <Expected>Prints `OK`; exit 0.</Expected>
+</Hook>

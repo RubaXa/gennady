@@ -1,6 +1,6 @@
 // @file: Build VCS context and GitLab API client.
+// @spec: CLI-REVIEW
 // @consumers: run-review-command.logic
-// @tasks: N/A
 
 import { VcsGitlabClient } from '../../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
 import type { ReviewContextVcs } from '../types/review-context-vcs.type.ts';

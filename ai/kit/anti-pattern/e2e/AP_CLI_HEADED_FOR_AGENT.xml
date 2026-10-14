@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<AntiPattern id="AP_CLI_HEADED_FOR_AGENT">
+      <Bad>Agent's exploration script launches the browser via `chromium.launch({ headless: false })` or invokes `npx playwright test --headed --ui`.</Bad>
+      <WhyBad>Visual UI modes targeted at a human operator (`AX_CLI_HEADLESS_FOR_AGENT`). Agent has no consumer for the rendered window; the run hangs waiting for human input or burns CPU drawing pixels nobody reads.</WhyBad>
+      <Good>Default headless: `chromium.launch()` (no `headless: false`). Perception flows through `ariaSnapshot()`, screenshots written to disk for retrospective review, traces for failure diagnosis.</Good>
+    </AntiPattern>

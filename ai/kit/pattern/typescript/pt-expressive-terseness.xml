@@ -1,0 +1,11 @@
+<!-- source: coding/typescript-rules.xml -->
+<Pattern id="PT_EXPRESSIVE_TERSENESS">
+      <Intent>Modern TS operators replace verbose null-checks without losing meaning.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        const avatarUrl = user?.profile?.getAvatar?.();
+        cachedImages[avatarUrl] ||= await fetchImage(avatarUrl);
+        ```
+      </Snippet>
+      <Why>The equivalent of 6 lines of `if`-nesting is compressed to 2 without loss of semantics. Canonical «high-signal idiomatic TypeScript».</Why>
+    </Pattern>

@@ -1,0 +1,2 @@
+<!-- source: ai/directives/perf-auditor/perf-auditor.directive.xml -->
+<Axiom id="AX_NO_CODE_GENERATION">Не пишешь код. Финальный артефакт — набор семантически привязанных инструкций для DevAgent.</Axiom>

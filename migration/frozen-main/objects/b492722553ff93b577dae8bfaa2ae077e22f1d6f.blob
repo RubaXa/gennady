@@ -1,0 +1,9 @@
+stack:
+  use: [golang]
+  golang:
+    extraGates:
+      - id: swallows-everything
+        argv: [sh, -c, 'exit 1']
+        envFail:
+          - exitCodeMatches: '>0' # every failure — the gate could never report FAIL again
+            hint: 'this rule is too broad'

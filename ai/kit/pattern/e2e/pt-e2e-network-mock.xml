@@ -1,0 +1,21 @@
+<!-- source: testing/playwright-e2e.xml -->
+<Pattern id="PT_E2E_NETWORK_MOCK">
+      <Intent>Mock an external API at the network boundary; production code path is otherwise untouched.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        test('should show confirmation when order API succeeds', async ({ page }) => {
+          await page.route('**/api/orders', async (route) => {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ orderId: 'ord-1', status: 'confirmed' }),
+            });
+          });
+          await page.goto('/checkout');
+          await page.getByRole('button', { name: 'Place Order' }).click();
+          await expect(page.getByRole('status')).toContainText('Order ord-1');
+        });
+        ```
+      </Snippet>
+      <Why>`page.route` intercepts at the network layer; component code runs unchanged. Assertion via `getByRole('status')`.</Why>
+    </Pattern>

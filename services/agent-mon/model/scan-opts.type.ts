@@ -1,6 +1,6 @@
 // @file: Scan filtering parameters
+// @spec: AGENT-MON-MODEL
 // @consumers: monitor, providers
-// @tasks: TSK-35, TSK-39
 
 /** @purpose Filtering options for session scanning. */
 export type ScanOpts = {

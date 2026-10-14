@@ -1,0 +1,6 @@
+<!-- source: sdd/discovery + scaffold + module-decomposition (converged to principle) -->
+<Axiom id="AX_SPEC_IS_SOLE_SOURCE">
+  Phase reads specs only, never code; no project-wide search (grep / find / ripgrep)
+  outside the reads explicitly listed by the directive. `audit` is the only directive
+  permitted to read code; it alone resolves spec/code mismatch.
+</Axiom>

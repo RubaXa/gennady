@@ -1,0 +1,53 @@
+[
+  {
+    "id": "MIG-portal",
+    "phase": "migration",
+    "mode": "v1-to-v2",
+    "fixture": "migration-portal",
+    "intent": "Migrate this v1 SDD project to v2 following the installed migration directive; anchor the portal and any specs, convert tasks/ to the v2 layout.",
+    "acceptance": "FLOW_VERSION=v2 with zero new sdd-check findings; no Critic Rounds section in any v2 spec.",
+    "budgetMs": 300000,
+    "checkpoints": [
+      {
+        "id": "flow-v2",
+        "cmd": "npx --no-install gennady sdd-state . | grep -q '^FLOW_VERSION=v2'"
+      },
+      { "id": "plan-verified", "cmd": "npx --no-install gennady sdd-migrate plan --verify ." },
+      { "id": "specs-clean", "cmd": "npx --no-install gennady sdd-check --all ." }
+    ]
+  },
+  {
+    "id": "MIG-portal-scope",
+    "phase": "migration",
+    "mode": "v1-to-v2",
+    "fixture": "migration-portal-scope",
+    "intent": "Migrate this v1 SDD project to v2 following the installed migration directive; anchor the portal and the scope spec, drop non-v2 sections (Critic Rounds), convert tasks/ to the v2 layout.",
+    "acceptance": "FLOW_VERSION=v2 with zero new sdd-check findings; no Critic Rounds section in any v2 spec.",
+    "budgetMs": 300000,
+    "checkpoints": [
+      {
+        "id": "flow-v2",
+        "cmd": "npx --no-install gennady sdd-state . | grep -q '^FLOW_VERSION=v2'"
+      },
+      { "id": "plan-verified", "cmd": "npx --no-install gennady sdd-migrate plan --verify ." },
+      { "id": "specs-clean", "cmd": "npx --no-install gennady sdd-check --all ." }
+    ]
+  },
+  {
+    "id": "MIG-portal-scope-module",
+    "phase": "migration",
+    "mode": "v1-to-v2",
+    "fixture": "migration-portal-scope-module",
+    "intent": "Migrate this v1 SDD project to v2 following the installed migration directive; anchor the portal, scope and module specs, convert tasks/ to the v2 layout.",
+    "acceptance": "FLOW_VERSION=v2 with zero new sdd-check findings; no Critic Rounds section in any v2 spec.",
+    "budgetMs": 300000,
+    "checkpoints": [
+      {
+        "id": "flow-v2",
+        "cmd": "npx --no-install gennady sdd-state . | grep -q '^FLOW_VERSION=v2'"
+      },
+      { "id": "plan-verified", "cmd": "npx --no-install gennady sdd-migrate plan --verify ." },
+      { "id": "specs-clean", "cmd": "npx --no-install gennady sdd-check --all ." }
+    ]
+  }
+]

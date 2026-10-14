@@ -1,6 +1,6 @@
 // @file: OpenCode session scanner — adapter implementing AgentProvider via SQLite
+// @spec: AGENT-MON
 // @consumers: monitor, CLI
-// @tasks: TSK-40
 
 import type { DatabaseSync } from 'node:sqlite';
 import * as path from 'node:path';

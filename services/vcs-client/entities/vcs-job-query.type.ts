@@ -1,6 +1,6 @@
 // @file: Query parameters for pipeline job operations.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientPipeline
-// @tasks: TSK-84
 
 /** @purpose Scoping parameters for a single pipeline job API call. */
 export type VcsJobQuery = {

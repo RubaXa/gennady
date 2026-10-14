@@ -1,6 +1,6 @@
 // @file: ClaudeProvider — AgentProvider adapter for Claude Code sessions
+// @spec: AGENT-MON
 // @consumers: monitor
-// @tasks: TSK-39
 
 import { readdirSync, statSync } from 'node:fs';
 import * as path from 'node:path';

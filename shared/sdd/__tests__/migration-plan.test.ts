@@ -1,0 +1,337 @@
+// @file: Unit tests for the migration plan layer — scan / scaffold / verify on a tmp v1 fixture.
+// @spec: SHARED
+// @consumers: migration-plan
+
+import { describe, it, before, after, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import {
+  scanMigrationUnits,
+  scaffoldUnitFile,
+  scaffoldPlanReadme,
+  unitFilePath,
+  verifyUnitFile,
+  verifyMigrationPlan,
+  mapHeadingToSection,
+  UNMAPPED,
+} from '../migration-plan.ts';
+
+let root: string;
+
+const SCOPE_SPEC = [
+  '# demo: Library Specification',
+  '<!--SECTION:SCOPE_TYPE-->',
+  '## scope-type',
+  'library',
+  '<!--/SECTION:SCOPE_TYPE-->',
+  '## 1. Vision & Primary Goal',
+  'Текст.',
+  '## 2. Decision Log',
+  'Решения.',
+].join('\n');
+
+const MODULE_SPEC = [
+  '# core module',
+  '## 1. Module Vision',
+  'Текст.',
+  '```mermaid',
+  'flowchart LR',
+  '  A --> B',
+  '```',
+].join('\n');
+
+const TICKET = [
+  '# Task: TSK-7 — Демо',
+  '## 1. Meta',
+  '- **Task-ID:** TSK-7 | **Status:** [x] DONE | **Scope:** demo | **Module:** core',
+  '- **Purpose:** сделать демо-фичу.',
+].join('\n');
+
+function writeFixture(): void {
+  mkdirSync(join(root, 'specs', 'demo', 'core'), { recursive: true });
+  mkdirSync(join(root, 'tasks', 'demo', 'core'), { recursive: true });
+  writeFileSync(join(root, 'specs', 'demo', 'demo.spec.md'), SCOPE_SPEC, 'utf-8');
+  writeFileSync(join(root, 'specs', 'demo', 'core', 'core.spec.md'), MODULE_SPEC, 'utf-8');
+  writeFileSync(join(root, 'tasks', 'demo', 'core', 'core.task-7.md'), TICKET, 'utf-8');
+}
+
+describe('migration-plan', () => {
+  before(() => {
+    root = mkdtempSync(join(tmpdir(), 'sdd-migration-plan-'));
+  });
+  beforeEach(() => {
+    rmSync(join(root, 'specs'), { recursive: true, force: true });
+    rmSync(join(root, 'tasks'), { recursive: true, force: true });
+    rmSync(join(root, 'migration'), { recursive: true, force: true });
+    writeFixture();
+  });
+  after(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('scan: две спеки → два юнита; тикет прикреплён к модулю по Meta', () => {
+    const scan = scanMigrationUnits(root);
+    assert.strictEqual(scan.units.length, 2);
+    assert.strictEqual(scan.orphanTickets.length, 0);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    assert.strictEqual(core.tickets.length, 1);
+    assert.strictEqual(core.tickets[0]?.taskId, 'TSK-7');
+    assert.strictEqual(core.mermaidCount, 1);
+    const scope = scan.units.find((u) => u.module === null);
+    assert.ok(scope);
+    assert.strictEqual(scope.scopeType, 'library');
+    assert.ok(scope.targetSections.includes('OVERVIEW'));
+    assert.ok(scope.targetSections.includes('PUBLIC_API_SURFACE'));
+    assert.ok(core.targetSections.includes('MODULE_CONTRACTS'));
+  });
+
+  it('scan детерминирован: два прохода — идентичный результат', () => {
+    assert.deepStrictEqual(scanMigrationUnits(root), scanMigrationUnits(root));
+  });
+
+  it('scan находит тикет по контенту (Task-ID в Meta), а не по имени файла — `IB-NN` тоже подхватывается', () => {
+    const IB_TICKET = [
+      '# Task: TSK-IB-9 — Свой формат имени',
+      '## 1. Meta',
+      '- **Task-ID:** TSK-IB-9 | **Status:** [ ] TODO | **Scope:** demo | **Module:** core',
+    ].join('\n');
+    writeFileSync(join(root, 'tasks', 'demo', 'core', 'core.IB-9.md'), IB_TICKET, 'utf-8');
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const ids = core.tickets.map((t) => t.taskId);
+    assert.ok(ids.includes('TSK-IB-9'), `ожидал TSK-IB-9 среди [${ids.join(', ')}]`);
+  });
+
+  it('unitFilePath зеркалит дерево specs/ под migration/', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    assert.strictEqual(
+      unitFilePath(core),
+      join('migration', 'demo', 'core', 'core.spec.migration.md')
+    );
+  });
+
+  it('скаффолд PLANNED-юнита проходит verify без findings', () => {
+    const scan = scanMigrationUnits(root);
+    for (const unit of scan.units) {
+      const content = scaffoldUnitFile(unit);
+      assert.deepStrictEqual(verifyUnitFile(unitFilePath(unit), content, unit), []);
+    }
+  });
+
+  it('MAPPED без заполнения карт → findings (слаг ?, диаграмма ?) — Module Vision уже предзаполнен правилом', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core).replace('**Status:** PLANNED', '**Status:** MAPPED');
+    // предзаполненная строка «Module Vision» уже корректна — цель не остаётся `?`
+    assert.ok(content.includes('| `## 1. Module Vision` | keep | MODULE_VISION |'));
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(!codes.includes('MIG_TARGET_UNSET'), codes.join(','));
+    assert.ok(codes.includes('MIG_BAD_SLUG'), `нет MIG_BAD_SLUG: ${codes.join(',')}`);
+    assert.ok(
+      codes.includes('MIG_DIAGRAM_PLAN_EMPTY'),
+      `нет MIG_DIAGRAM_PLAN_EMPTY: ${codes.join(',')}`
+    );
+  });
+
+  it('корректно заполненный MAPPED-юнит проходит verify (Module Vision уже предзаполнен правилом)', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    let content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/demo/core/core.task.CORE-demo.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const findings = verifyUnitFile('u.md', content, core);
+    assert.deepStrictEqual(findings, [], JSON.stringify(findings, null, 2));
+  });
+
+  it('verify ловит слишком длинный slug (>8) на месте — MIG_BAD_SLUG, а не позже на sdd-check', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    // Грамматически валидный ID, но slug = "demo-feature" (12 символов > SLUG_MAX_LEN=8).
+    const content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo-feature | `specs/demo/core/core.task.CORE-demo-feature.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(
+      codes.includes('MIG_BAD_SLUG'),
+      `нет MIG_BAD_SLUG на длинном slug: ${codes.join(',')}`
+    );
+  });
+
+  it('mapHeadingToSection: заголовки формата *-spec-structure.xml распознаются, номерация и хвостовые пометки не мешают', () => {
+    assert.strictEqual(mapHeadingToSection('## 1. Module Vision'), 'MODULE_VISION');
+    assert.strictEqual(mapHeadingToSection('## Vision & Primary Goal'), 'VISION');
+    assert.strictEqual(mapHeadingToSection('## 2. Decision Log'), 'DECISION_LOG');
+    assert.strictEqual(
+      mapHeadingToSection('## Entity Inventory (Closed-World)'),
+      'ENTITY_INVENTORY'
+    );
+    assert.strictEqual(mapHeadingToSection('## Module Contracts (DbC)'), 'MODULE_CONTRACTS');
+    assert.strictEqual(mapHeadingToSection('## High-Level Architecture'), 'ARCHITECTURE');
+  });
+
+  it('mapHeadingToSection: нераспознанный заголовок → UNMAPPED, не угадывает ближайшее', () => {
+    assert.strictEqual(mapHeadingToSection('## Unknown Section'), UNMAPPED);
+    assert.strictEqual(mapHeadingToSection('## CLI Interface'), UNMAPPED);
+    assert.strictEqual(mapHeadingToSection('## Emoji Mapping'), UNMAPPED);
+  });
+
+  it('Section Map: нераспознанный заголовок помечен UNMAPPED и валит plan --verify', () => {
+    writeFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.spec.md'),
+      MODULE_SPEC + '\n## 2. Unknown Section\nтекст',
+      'utf-8'
+    );
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core);
+    assert.ok(content.includes(`| \`## 2. Unknown Section\` | ? | ${UNMAPPED} |`));
+    const codes = verifyUnitFile(unitFilePath(core), content, core).map((f) => f.code);
+    assert.ok(codes.includes('MIG_SECTION_UNMAPPED_TARGET'), codes.join(','));
+  });
+
+  it('дрейф инвентаря: спека изменилась после генерации → MIG_INVENTORY_DRIFT', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core);
+    writeFileSync(
+      join(root, 'specs', 'demo', 'core', 'core.spec.md'),
+      MODULE_SPEC + '\n## 2. New\nx',
+      'utf-8'
+    );
+    const fresh = scanMigrationUnits(root).units.find((u) => u.module === 'core');
+    assert.ok(fresh);
+    const codes = verifyUnitFile('u.md', content, fresh).map((f) => f.code);
+    assert.ok(codes.includes('MIG_INVENTORY_DRIFT'), codes.join(','));
+    assert.ok(codes.includes('MIG_SECTION_UNMAPPED'), codes.join(','));
+  });
+
+  it('verifyMigrationPlan: слой не сгенерирован → MIG_UNIT_FILE_MISSING на каждый юнит', () => {
+    const codes = verifyMigrationPlan(root).map((f) => f.code);
+    assert.strictEqual(codes.filter((c) => c === 'MIG_UNIT_FILE_MISSING').length, 2);
+  });
+
+  it('verifyMigrationPlan: полный слой чист; коллизия слагов между юнитами ловится', () => {
+    const scan = scanMigrationUnits(root);
+    for (const unit of scan.units) {
+      const p = join(root, unitFilePath(unit));
+      mkdirSync(join(p, '..'), { recursive: true });
+      writeFileSync(p, scaffoldUnitFile(unit), 'utf-8');
+    }
+    writeFileSync(join(root, 'migration', 'README.md'), scaffoldPlanReadme(scan), 'utf-8');
+    assert.deepStrictEqual(verifyMigrationPlan(root), []);
+
+    // второй тикет в scope-юните с тем же новым ID → коллизия
+    writeFileSync(
+      join(root, 'tasks', 'demo', 'demo.task-8.md'),
+      [
+        '# Task: TSK-8 — Ещё',
+        '## 1. Meta',
+        '- **Task-ID:** TSK-8 | **Status:** [ ] TODO | **Scope:** demo',
+        '- **Purpose:** ещё фича.',
+      ].join('\n'),
+      'utf-8'
+    );
+    const scan2 = scanMigrationUnits(root);
+    for (const unit of scan2.units) {
+      const filled = scaffoldUnitFile(unit).replace(
+        /\| (TSK-[0-9]+) \| \? \| \? \|/g,
+        '| $1 | DEMO-dup | ? |'
+      );
+      writeFileSync(join(root, unitFilePath(unit)), filled, 'utf-8');
+    }
+    const codes = verifyMigrationPlan(root).map((f) => f.code);
+    assert.ok(codes.includes('MIG_SLUG_COLLISION'), codes.join(','));
+  });
+
+  it('старый Task-ID не прочитан (—) в Ticket Map → MIG_TICKET_ID_UNREADABLE', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core).replace(
+      '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+      '| `tasks/demo/core/core.task-7.md` | — | ? | ? |'
+    );
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(codes.includes('MIG_TICKET_ID_UNREADABLE'), codes.join(','));
+  });
+
+  it('назначение — форма specs/<scope>/**/*.task.<id>.md, не точный пересчёт: любая глубина модуля легальна', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    let content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        // destination nested one level deeper than the spec's own dir — still a legal co-located form
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/demo/core/sub/core.task.CORE-demo.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const findings = verifyUnitFile('u.md', content, core);
+    assert.deepStrictEqual(findings, [], JSON.stringify(findings, null, 2));
+  });
+
+  it('назначение вне specs/<scope>/ → MIG_BAD_DESTINATION', () => {
+    const scan = scanMigrationUnits(root);
+    const core = scan.units.find((u) => u.module === 'core');
+    assert.ok(core);
+    const content = scaffoldUnitFile(core)
+      .replace('**Status:** PLANNED', '**Status:** MAPPED')
+      .replace(
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | ? | ? |',
+        '| `tasks/demo/core/core.task-7.md` | TSK-7 | CORE-demo | `specs/other/core.task.CORE-demo.md` |'
+      )
+      .replace(
+        '- Overview-диаграмма: ?',
+        '- Overview-диаграмма: существующий flowchart из Module Vision.'
+      );
+    const codes = verifyUnitFile('u.md', content, core).map((f) => f.code);
+    assert.ok(codes.includes('MIG_BAD_DESTINATION'), codes.join(','));
+  });
+
+  it('тикет scope без спеки → orphan + MIG_TICKET_ORPHAN', () => {
+    mkdirSync(join(root, 'tasks', 'ghost'), { recursive: true });
+    writeFileSync(
+      join(root, 'tasks', 'ghost', 'ghost.task-9.md'),
+      [
+        '# Task: TSK-9',
+        '## 1. Meta',
+        '- **Task-ID:** TSK-9 | **Status:** [ ] TODO | **Scope:** ghost',
+        '- **Purpose:** x.',
+      ].join('\n'),
+      'utf-8'
+    );
+    const scan = scanMigrationUnits(root);
+    assert.strictEqual(scan.orphanTickets.length, 1);
+    const codes = verifyMigrationPlan(root).map((f) => f.code);
+    assert.ok(codes.includes('MIG_TICKET_ORPHAN'), codes.join(','));
+  });
+});

@@ -1,6 +1,10 @@
 {
   "$schema": "https://unpkg.com/release-it@20/schema/release-it.json",
   "hooks": {
-    "before:init": ["npm run lint", "npm test"]
+    "before:init": [
+      "node --import tsx scripts/release-boundary.ts --deny-publication",
+      "npm run lint",
+      "npm test"
+    ]
   }
 }

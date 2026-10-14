@@ -1,6 +1,6 @@
 // @file: SyncSkills types — SyncSkillsOptions, SyncSkillsFileEntry, SyncSkillsResult
+// @spec: CLI-SYNC-SKILLS
 // @consumers: SyncSkillsCore, SyncSkillsFormatter, SyncSkillsCmd
-// @tasks: TSK-57
 
 /** @purpose Discriminated status of a synced skill file. */
 export type SyncSkillsFileStatus = 'added' | 'updated' | 'deleted' | 'unchanged' | 'deleteFailed';
@@ -13,8 +13,6 @@ export type SyncSkillsOptions = {
   targetDir: string;
   /** @purpose Optional filter: skill directory names. */
   skillNames?: string[];
-  /** @purpose Extra skill roots contributed by plugins; base names win on collision. */
-  extraSourceDirs?: readonly string[];
   /** @purpose Preview without writing. */
   dryRun?: boolean;
 };

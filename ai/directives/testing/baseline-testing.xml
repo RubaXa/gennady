@@ -1,13 +1,18 @@
-<BaselineTestingRules keywords="baseline, language_agnostic, testing, determinism, isolation, behavior_named, ai_to_ai" type="testing-rules" ver="1.0">
-  <!--
-    Language-agnostic testing baseline. What a good unit test is in ANY language. Language testing
-    rule files (pytest-rules, gotest-rules, vitest-rules, …) inherit this and add framework idioms;
-    do not restate these axioms there.
-  -->
+<BaselineTestingRules rule-id="testing-baseline" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When role="test"/>
+</Meta>
+  <Mission>
+    Language- and framework-neutral testing baseline selected by actual test-role facts, including explicit
+    project languages. Runner-specific instructions are separate layers; this baseline does not depend on
+    the TypeScript-specific testing-common layer or choose a runner.
+    Rules are agent instructions, not a second command pipeline. Only the configured selector/DAG
+    determines authority gates; examples below are not defaults and must not be run as extra gates.
+  </Mission>
 
   <BeliefState>
     <Axiom id="AX_TEST_ONE_BEHAVIOR">
-      One test proves one behavior, named after that behavior — not after the function. A test named
+      One test checks one behavior, named after that behavior — not after the function. A test named
       `retries_until_success_then_stops` documents intent; `test_retry_2` documents nothing. The name
       is the specification a reader trusts without opening the body.
     </Axiom>
@@ -63,19 +68,18 @@
 
   <VerificationHooks>
     <Hook id="HOOK_TESTS_PASS">
-      <Purpose>The scope's test suite passes via the project's declared test runner.</Purpose>
-      <Command>&lt;sdd-path&gt; verify --wip &lt;target-files&gt;</Command>
-      <Expected>Exit 0; the changed behavior's tests present and green.</Expected>
+      <Purpose>The behavior's tests pass via the project's declared runner and configured selector/DAG.</Purpose>
+      <Expected>Actual required-step success with changed behavior tests present; use the workflow owner's reviewed invocation.</Expected>
     </Hook>
     <Hook id="HOOK_NO_SKIPS">
-      <Purpose>No silently disabled tests shipped as coverage.</Purpose>
-      <Command>rg --no-heading -n "skip|xfail|t\.Skip|it\.only|fdescribe|\.only\(" &lt;target-files&gt;</Command>
-      <Expected>Empty on changed lines, or each skip carries a comment with a ticket reference.</Expected>
+      <Purpose>No silently disabled tests are shipped as coverage.</Purpose>
+      <Example>Review changed tests for skip, xfail, t.Skip, it.only, fdescribe and .only(.</Example>
+      <Expected>No focus-only tests; each real deferred skip has a ticket reference. This example creates no command gate.</Expected>
     </Hook>
   </VerificationHooks>
 
   <RewardCriteria>
-    ✅ Each test proves one behavior and is named after that behavior.
+    ✅ Each test checks one behavior and is named after that behavior.
     ✅ Deterministic: clock/seed injected, no cross-test ordering dependence.
     ✅ Isolated: no network, no real FS outside a temp dir, no shared global; boundaries faked.
     ✅ Arrange → act → assert; assertion on the observable outcome.

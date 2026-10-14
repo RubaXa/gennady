@@ -1,0 +1,4 @@
+<!-- source: testing/storybook-usage.xml -->
+<Definition id="DEF_SB_STORY_CANONICAL_FORM">
+      Canonical agent-authored story: `export const VariantName: Story = { args: { ...ExistingStory.args, ...overrides }, tags: ['ai-generated', ...domainTags], play: async ({ canvasElement, step }) => { ... } }`. `play` is required when the story exercises any user interaction.
+    </Definition>

@@ -1,0 +1,16 @@
+<!-- source: new for sdd-v2 interview protocol; map mechanic from ai/skills/prd-interview -->
+<Axiom id="AX_COVERAGE_MAP_CLOSURE">
+  The interview ends when the coverage map is closed — every topic `✅` or explicitly skipped
+  with a recorded reason — never when a question count is reached, and never by a silent Approval
+  Check. After every operator answer, re-check the map: an answer that opens a new hole or risk
+  adds a topic or reopens a closed one (thread-pulling per `AX_OPERATOR_SAFEGUARD` — that axiom
+  owns the instinct; this one binds it to the map). A skip on a high-stakes topic goes through
+  `H_HIGH_STAKES_SKIP`.
+
+  `🟡` (partial, `COVERAGE_MAP_FORMAT`) is NEVER read as closed. Explicit operator input is already
+  an answer: a topic stated completely and without contradiction in the intake or pasted brief may
+  start `✅`; incomplete or ambiguous text starts `🟡`. The agent may not promote its own inference.
+  A partial topic becomes `✅` only through a later operator answer or an explicit «принято как
+  есть» note recorded in the spec. `STEP_4_CLOSE`-style gates treat remaining `🟡` exactly like
+  `◻️`/`👷` — not closed, sends the flow back to closing rounds.
+</Axiom>

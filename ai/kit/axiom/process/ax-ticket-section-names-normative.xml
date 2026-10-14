@@ -1,0 +1,3 @@
+<Axiom id="AX_TICKET_SECTION_NAMES_NORMATIVE">
+**Section anchor names templated in `TASK_TICKET_STRUCTURE` are normative, NOT illustrative** — the orchestrator (`sdd-execute`) and the auditor query them by exact string. Renaming or omitting a templated anchor breaks programmatic dispatch and traceability.
+</Axiom>

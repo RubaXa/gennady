@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/playwright-e2e.xml -->
+<AntiPattern id="AP_E2E_CSS_LOCATOR">
+      <Bad>`await page.locator('.btn-primary.submit-action').click();` — CSS class chain as the primary locator.</Bad>
+      <WhyBad>CSS selectors couple the test to implementation (`AX_E2E_ROLE_LOCATORS_ONLY`). Any class rename — even one driven by a refactor that does not change behaviour — turns the test red. The user-facing contract has no concept of `.btn-primary`.</WhyBad>
+      <Good>`await page.getByRole('button', { name: 'Place Order' }).click();` — role + accessible name, mirroring how the user identifies the element.</Good>
+    </AntiPattern>

@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 // @file: vcs-job-log CLI command — print raw trace/log of a pipeline job.
+// @spec: CLI
 // @consumers: vcs-job-log
-// @tasks: TSK-85
 
 import { resolveVcsContext, VcsResolveError } from '../_shared/vcs-context-resolver.ts';
 import type { VcsCliArgs, VcsCliContext } from '../_shared/vcs-context-resolver.ts';
-import { VcsGitlabClient } from '../../../services/vcs-client/gitlab/vcs-gitlab-client.ts';
-import { VcsGithubClient } from '../../../services/vcs-client/github/vcs-github-client.ts';
+import { createVcsClient } from '../_shared/create-vcs-client.ts';
 import type { VcsClient } from '../../../services/vcs-client/abstract/vcs-client.ts';
 import type { VcsPipelineStatus } from '../../../services/vcs-client/entities/vcs-pipeline-status.type.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
@@ -122,6 +121,7 @@ export async function run(
   const args = parseArgs(rawArgs, {
     ref: { aliases: ['ref'], takesValue: true },
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
+    url: { aliases: ['url'], takesValue: true },
     job: { aliases: ['job'], takesValue: true },
     raw: { aliases: ['raw'] },
   }) as Record<string, unknown>;
@@ -129,6 +129,7 @@ export async function run(
   const vcsArgs: VcsCliArgs = {
     ref: args.ref as string | undefined,
     host: args.host as string | undefined,
+    url: args.url as string | undefined,
   };
 
   const jobSpec = args.job as string | undefined;
@@ -157,10 +158,7 @@ export async function run(
   }
   // #endregion END_DETERMINE_IID
 
-  const client: VcsClient =
-    context.provider === 'github'
-      ? new VcsGithubClient({ baseUrl: 'https://api.github.com', token: context.token })
-      : new VcsGitlabClient({ baseUrl: `https://${context.host}/api/v4`, token: context.token });
+  const client: VcsClient = createVcsClient(context);
 
   if (!client.Pipeline) {
     deps.stderr.write('✖ Ошибка: Pipeline API не поддерживается данным VCS-клиентом\n');

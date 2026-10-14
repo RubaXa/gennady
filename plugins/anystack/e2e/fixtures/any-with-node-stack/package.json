@@ -1,5 +1,7 @@
 {
   "name": "combo",
   "private": true,
-  "scripts": { "test": "echo ok" }
+  "scripts": {
+    "test": "echo ok"
+  }
 }

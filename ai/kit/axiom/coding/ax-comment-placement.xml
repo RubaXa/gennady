@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_COMMENT_PLACEMENT">
+Function body starts with executable code. Hidden constraints belong in JSDoc (`@invariant`, `@sideEffect`, `@throws`, `@pre`, `@post`); block-level invariants inside `// #region START_<NAME>` anchors. No narrative brief or rule-summary at method head — JSDoc + signature is the canonical contract surface.
+</Axiom>

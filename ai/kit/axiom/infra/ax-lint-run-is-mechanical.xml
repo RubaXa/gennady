@@ -1,0 +1,12 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_LINT_RUN_IS_MECHANICAL">
+      **Phase authoring repair is the private first rung of `sdd-verify --task … --phase …`.** It
+      runs formatter write mode before lint autofix over the structurally parsed exact Target Files;
+      lint receives the owning spec, rereads resulting bytes, and exit 0 means zero remaining
+      applicable findings. The project `fix` wrapper is for humans; full/CI stays read-only.
+
+      For autofix-capable rules `--fix` resolves findings silently. For motivated non-autofix rules a remaining finding is hard failure — the agent MUST resolve it by editing code (with the explanatory comment as guidance), never by adding a disable comment.
+
+      During a phase do not immediately repeat the public read-only lint after successful repair —
+      that would duplicate its postcondition. CI, audit, and approval run only the read-only form.
+    </Axiom>

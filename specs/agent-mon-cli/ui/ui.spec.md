@@ -1,5 +1,11 @@
 # Module: ui
 
+<!--SECTION:SPEC_ID-->
+
+AGENT-MON-CLI-UI
+
+<!--/SECTION:SPEC_ID-->
+
 ## 1. Module Vision
 
 Ink-компоненты для рендеринга дашборда. `AgentMonApp` — корень, подписывается на state manager. `ColumnView` — реализация SessionDashboard (колонки по провайдерам). Все компоненты чисто презентационные.

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/storybook-setup.xml -->
+<Hook id="HOOK_SB_PREVIEW_BOOTS">
+  <Purpose>Storybook dev server boots without errors and serves the preview.</Purpose>
+  <Command>npx storybook dev --ci --quiet &amp; PID=$!; sleep 8; curl -fsS http://localhost:6006/index.json > /dev/null; STATUS=$?; kill $PID 2>/dev/null; wait $PID 2>/dev/null; exit $STATUS</Command>
+  <Expected>Exit 0. Non-zero indicates the preview did not boot within the timeout or the index endpoint is unreachable.</Expected>
+</Hook>

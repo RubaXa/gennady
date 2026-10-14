@@ -1,6 +1,6 @@
 // @file: Integration tests for sync CLI — run() with mock deps
+// @spec: CLI-SYNC
 // @consumers: sync.cmd.ts, run
-// @tasks: TSK-54, TSK-56
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -57,7 +57,7 @@ function makeDeps(sourceDir: string, targetDir: string): SyncCmdDeps {
     readdir: readdirSync,
     resolvePackageDir: (_projectRoot: string, _subdir: string) => sourceDir,
     unlink: () => {},
-    rm: () => {},
+    rmdir: () => {},
   };
 }
 
@@ -75,6 +75,34 @@ describe('run (integration)', () => {
     mkdirSync(_targetDir, { recursive: true });
 
     (process as any).cwd = () => _tmpDir;
+  });
+
+  it('SO-12: refuses a first v2 sync over a v1 consumer before writing', () => {
+    mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    writeFileSync(join(_sourceDir, 'new.xml'), '<new/>', 'utf-8');
+    const stdout = captureStream();
+    const stderr = captureStream();
+    const deps = makeDeps(_sourceDir, _targetDir);
+    deps.stdout = stdout as unknown as NodeJS.WriteStream;
+    deps.stderr = stderr as unknown as NodeJS.WriteStream;
+
+    assert.equal(run(['node', 'sync'], deps), 1);
+    assert.equal(stdout._chunks.join(''), '');
+    assert.match(stderr._chunks.join(''), /tasks.*канонический маркер SDD v1/s);
+    assert.match(stderr._chunks.join(''), /sdd-migrate bootstrap/);
+    assert.equal(existsSync(join(_targetDir, 'new.xml')), false);
+  });
+
+  it('SO-12: an ownership manifest is only a diagnostic hint and never bypasses v1 refusal', () => {
+    mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    mkdirSync(join(_tmpDir, '.claude', 'skills'), { recursive: true });
+    writeFileSync(join(_tmpDir, '.claude', 'skills', '.gennady-synced'), 'sdd\n', 'utf-8');
+    const stderr = captureStream();
+    const deps = makeDeps(_sourceDir, _targetDir);
+    deps.stderr = stderr as unknown as NodeJS.WriteStream;
+
+    assert.equal(run(['node', 'sync'], deps), 1);
+    assert.match(stderr._chunks.join(''), /только манифест владения sync/);
   });
 
   afterEach(() => {
@@ -270,6 +298,33 @@ describe('run (integration)', () => {
     const errOutput = stderr._chunks.join('');
     assert.ok(errOutput.includes('package not found'));
     assert.ok(errOutput.includes('npm i -D gennady'));
+  });
+  // #endregion
+
+  // #region TEST_CASE_CMD_9B: custom target subdirectory is preserved, with a warning
+  it('preserves an unowned target subdirectory and warns instead of deleting it', () => {
+    // purpose: target has a project-added subdir the package never shipped (e.g. ai/directives/my-custom/)
+    // contract: exit 0, files inside it untouched, stdout carries a "Warning:" line naming it
+
+    writeFileSync(join(_sourceDir, 'catalog.txt'), 'catalog', 'utf-8');
+    mkdirSync(join(_targetDir, 'my-custom'), { recursive: true });
+    writeFileSync(join(_targetDir, 'my-custom', 'notes.xml'), '<notes/>', 'utf-8');
+
+    const stdout = captureStream();
+    const deps = makeDeps(_sourceDir, _targetDir);
+    deps.stdout = stdout as unknown as NodeJS.WriteStream;
+
+    const exitCode = run(['node', 'sync'], deps);
+
+    assert.equal(exitCode, 0);
+    const output = stdout._chunks.join('');
+    assert.ok(existsSync(join(_targetDir, 'my-custom', 'notes.xml')));
+    assert.ok(
+      output.includes(
+        'Warning: unknown subdirectory in target (not owned by package, left untouched): my-custom'
+      )
+    );
+    assert.ok(!output.includes('my-custom/notes.xml'));
   });
   // #endregion
 

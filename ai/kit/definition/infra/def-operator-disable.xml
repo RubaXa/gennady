@@ -1,0 +1,4 @@
+<!-- source: infra/eslint-setup.xml -->
+<Definition id="DEF_OPERATOR_DISABLE">
+      An `eslint-disable*` comment authored by the operator (not by an agent), attached to a single line or tightly scoped block, paired with inline `--` justification naming the rule and the reason. The only acceptable form of in-source disable.
+    </Definition>

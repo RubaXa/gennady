@@ -1,0 +1,77 @@
+#!/bin/sh
+# Pre-push gate (D-54/GAP-B-2). Do NOT bypass. See the failure message below if a gate is red.
+#
+# This repo has no CI. The build + the versioned sdd-check baseline gate (D-38/GAP-B-1) used to be
+# `check:ci` — an npm script nothing ever ran, because no `.github/workflows/` exists (see
+# ai/flow-eval/.baseline/README.md). D-54 moves that gate here, to `pre-push`, so it actually runs
+# before code leaves this machine, instead of living in a script nobody invokes.
+#
+# `pre-commit` is deliberately NOT touched: `sdd-check --all .` walks 212+ files and would add
+# noticeable wall-clock cost to every single commit. Push happens far less often than commit, so
+# this is where the expensive, whole-repo checks belong.
+
+# Same rationale as pre-commit: git exports GIT_DIR/GIT_INDEX_FILE into hooks, and `sdd-check`
+# itself may shell out to git while walking the tree. Unset them so any child git call resolves
+# its repo from its own cwd, not whichever GIT_DIR this hook inherited.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
+
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+cd "$REPO_ROOT" || exit 1
+
+echo "🔍 Pre-push: build (if stale) + sdd-check zero-new-error baseline gate"
+
+fail() {
+  # $1 = which gate failed, $2 = extra detail (optional)
+  cat >&2 <<EOF
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ PRE-PUSH FAILED — gate: $1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+СТОП. Ты — агент, который сейчас пушит. Прочитай вывод гейта выше: там
+названы новые находки — код ошибки и файл (или причина падения сборки).
+
+Раз ты пушишь — красное на этой ветке становится твоим, даже если сломал
+не ты. У тебя ровно два пути:
+  1. Почини причину (см. вывод выше) и запушь заново. Если это НОВАЯ
+     error-находка sdd-check, которой нет в
+     ai/flow-eval/.baseline/sdd-check-227c03a8.json — почини регрессию.
+     Если это осознанное, согласованное с оператором изменение baseline
+     (D-38) — САМ baseline не переписывай; спроси оператора.
+  2. Не можешь починить — ОСТАНОВИСЬ и доложи оператору, что именно
+     падает и почему, дословно, с выводом гейта.
+
+Обход ЗАПРЕЩЁН, всегда: --no-verify / -n на push, любая обёртка/env/alias,
+"запушу пока так, починю следующим коммитом". Это отправляет твоё красное
+дальше — следующему, кто честно потянет эту ветку.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+  exit 1
+}
+
+# --- 1. Build, but only if dist is actually stale -------------------------------------------------
+# dist/gennady.js is the exact binary the baseline gate below runs against (see
+# ai/flow-eval/scripts/run-sdd-check-json.ts): a stale dist would silently compare the baseline
+# against yesterday's build instead of what is about to be pushed.
+DIST_ENTRY="dist/gennady.js"
+NEEDS_BUILD=0
+if [ ! -f "$DIST_ENTRY" ]; then
+  NEEDS_BUILD=1
+else
+  STALE_SOURCES=$(find cli shared services index.ts vite.config.ts package.json -type f -newer "$DIST_ENTRY" 2>/dev/null)
+  if [ -n "$STALE_SOURCES" ]; then
+    NEEDS_BUILD=1
+  fi
+fi
+
+if [ "$NEEDS_BUILD" -eq 1 ]; then
+  echo "  dist is missing or stale — running: npm run build"
+  npm run build || fail "build (npm run build) — dist failed to produce a fresh gennady.js"
+else
+  echo "  dist is up to date — skipping npm run build"
+fi
+
+# --- 2. Versioned sdd-check baseline gate (D-38/GAP-B-1), now enforced at push time (D-54) --------
+npm run gate:sdd-check-baseline || fail "gate:sdd-check-baseline — new sdd-check error(s) outside ai/flow-eval/.baseline/sdd-check-227c03a8.json (see the NEW ERROR lines above: code + file)"
+
+echo "✅ Pre-push passed"

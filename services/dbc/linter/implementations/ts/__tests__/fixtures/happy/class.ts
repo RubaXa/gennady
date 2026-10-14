@@ -1,3 +1,6 @@
+// @file: services/dbc/linter/implementations/ts/__tests__/fixtures/happy/class.ts
+// @spec: DBC-DBC-LINTER
+// @consumers: N/A
 /**
  * @purpose A simple counter with increment.
  */

@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-spec-drafting.xml -->
+<AntiPattern id="AP_FABRICATED_MEASUREMENTS">
+      <Bad>BDD-сценарий с выдуманными значениями: `background = #0077FF`, когда в extraction нет такого цвета.</Bad>
+      <WhyBad>SpecValidator обнаружит расхождение. Фабрикация данных подрывает доверие к спекам.</WhyBad>
+      <Good>Все Then-значения берутся из `MeasurementSet` соответствующего варианта: `rectFill`, `height`, `borderRadius`, etc.</Good>
+</AntiPattern>

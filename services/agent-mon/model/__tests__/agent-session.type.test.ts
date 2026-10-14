@@ -1,6 +1,6 @@
 // @file: Contract-level structural integrity tests for AgentSession type
+// @spec: AGENT-MON-MODEL
 // @consumers: agent-mon providers, monitor, diff, observe
-// @tasks: TSK-35
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

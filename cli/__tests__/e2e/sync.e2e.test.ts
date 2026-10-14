@@ -1,6 +1,6 @@
 // @file: E2E tests for the sync command — 5 scenarios (first run + repeat in same sub-describe).
+// @spec: CLI-E2E
 // @consumers: E2eContext
-// @tasks: TSK-60
 
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,7 +53,7 @@ export function registerSyncTests(): void {
 
       it('should filter by subdirectory', async () => {
         const { spawn } = getContext();
-        const result = await spawn(['sync', 'sdd']);
+        const result = await spawn(['sync', 'sdd-v2']);
         assert.strictEqual(result.exitCode, 0);
       });
 
@@ -66,18 +66,11 @@ export function registerSyncTests(): void {
       it('should not contain dev-machine paths in synced directives', async () => {
         const { spawn, cwd } = getContext();
         await spawn(['sync']);
-        const auditPath = join(cwd, 'ai', 'directives', 'sdd', 'audit.directive.xml');
+        const auditPath = join(cwd, 'ai', 'directives', 'sdd-v2', 'audit.directive.xml');
         assert.ok(existsSync(auditPath), 'audit.directive.xml should exist after sync');
         const content = readFileSync(auditPath, 'utf-8');
         assert.ok(!content.includes('~/Developer/gennady'), 'should not contain dev-machine paths');
-        // The SDD directives invoke the tool through the `<sdd-path>` placeholder, which the
-        // orchestrator resolves to the real absolute path at runtime — not a hardcoded `npx gennady`
-        // baked in at sync time. Assert the placeholder survives sync intact (an earlier assertion
-        // here expected `npx gennady`, from before the directives moved to `<sdd-path>`).
-        assert.ok(
-          content.includes('<sdd-path>'),
-          'should keep the runtime-resolved <sdd-path> token'
-        );
+        assert.ok(content.includes('npx gennady'), 'should contain production npx gennady');
       });
     });
   });

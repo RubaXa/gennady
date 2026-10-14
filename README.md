@@ -8,12 +8,6 @@ CLI-инструмент для работы с git-изменениями, merg
 
 ---
 
-## 🧭 SDD-фреймворк
-
-Проект развивается по **Spec-Driven Development**: сперва спека, потом тикеты, потом код с независимым аудитом. Как пользоваться скиллами и в какой последовательности — в [**едином гайде `docs/sdd-flow.md`**](docs/sdd-flow.md). Справочники: [скиллы](ai/skills/README.md) · [директивы](ai/directives/sdd/README.md).
-
----
-
 ## ⚡ Быстрый старт
 
 ```bash
@@ -26,24 +20,6 @@ npx gennady
 # Commit запускается только явно
 npx gennady commit
 ```
-
-### 🔧 Установка из исходников
-
-Если `npx gennady` недоступен (например, корпоративный npm-registry возвращает `403`):
-
-```bash
-git clone https://github.com/rubaxa/gennady
-cd gennady
-npm ci
-npm run build
-npm link
-
-gennady help
-```
-
-- Для стабильной работы собирайте релизный тег (`git checkout v0.8.4`), а не `main`.
-- После правок кода пересоберите: `npm run build` (повторный `npm link` не нужен).
-- Для разработки без сборки: `npm run dev -- <команда>`.
 
 ---
 
@@ -64,6 +40,36 @@ export GITLAB_API_PATH="/api/v4"
 ---
 
 ## 🧭 Команды CLI
+
+### Swift: UNVERIFIED prototype
+
+Swift поддержка остаётся **UNVERIFIED**: deterministic unit tests проверяют диагностику, а не
+нативную работу Xcode/Tuist. Exact E-18/UV-26 deferred post-main-cutover и не блокирует release;
+это не отменяет FAIL/ENV_FAIL/BLOCKED у выбранных пользовательских Swift gates.
+
+```bash
+npx gennady verify --plan --phase unit --json
+npx gennady verify --phase unit
+```
+
+`--plan` не выполняет gates; выбранные prerequisites могут проверяться ограниченными version
+probes под WorkspaceGuard и не являются runtime evidence. SwiftPM не требует Xcode/Tuist.
+Для реально выбранного Xcode build/test нужны Xcode >=16.2 и project-owned identity:
+
+```yaml
+stack:
+  swift:
+    xcode:
+      workspace: App.xcworkspace # либо project: App.xcodeproj, но не оба
+      scheme: App
+      destination: platform=iOS Simulator,name=ProjectOwnedSimulator
+      testPlan: App # обязателен только для выбранных test-bearing Xcode actions
+```
+
+Tuist >=4.202.0 проверяется только при его фактическом использовании. Formatter/linter нужны
+только выбранным steps: установите project-pinned версию и выставьте PATH; Xcode выбирается через
+`xcode-select`/`DEVELOPER_DIR`. Missing/broken prerequisites дают actionable BLOCKED, обычная
+ошибка компиляции/теста — FAIL; ENV_FAIL требует конкретного признака проблемы окружения.
 
 ### 📝 `commit`
 
@@ -239,89 +245,15 @@ npx gennady lint ./src --autofix --verbose
 
 ---
 
-### ✅ `verify`
-
-Стек-агностичные верификационные гейты: **одна команда для любого стека**. Плагины: `node` (гейты из npm-скриптов `package.json`), `golang` (`go generate` — drift-контроль кодогенерации до сборки, `go build`, `go vet`, `gofmt -l`, `golangci-lint`, `go test`) и `anystack` (без встроенных гейтов: весь список задаётся в `stack.anystack.extraGates` — для экзотических стеков). Стек определяется автоматически; в одном репозитории может быть активно несколько стеков.
-
-```bash
-# План без запуска — начните с этого в незнакомом репозитории
-npx gennady verify --plan
-
-# Гейты по изменениям относительно базовой ветки (по умолчанию)
-npx gennady verify
-
-# Явная цель / весь репозиторий / подмножество гейтов
-npx gennady verify internal/userapi
-npx gennady verify --all
-npx gennady verify --only=build,vet
-npx gennady verify --skip=lint
-```
-
-**Опции:**
-
-- `--plan`, `--dry-run`: показать детекцию, диагностику и план, ничего не запуская
-- `--all` / `--changed`: весь репозиторий / изменённые пакеты (по умолчанию)
-- `--only=<a,b>` / `--skip=<a,b>`: подмножество гейтов — `stack:gate` или короткое `gate` (все активные стеки)
-- `--stack=<id>`: одноразовый `stack.use` (`anystack` | `golang` | `node`)
-- `--root=<path>`, `--json`
-
-**Конфиг репозитория** — секция `stack` в `gennady.yaml` (коммитится; личные `.gennadyrc` deep-merge'атся поверх, per-key провенанс виден в `--plan`): переопределения и расширения встроенных плагинов, чтобы разные репозитории не порождали разные команды:
-
-```yaml
-stack:
-  use: [golang]
-  golang:
-    skipGates: [lint]
-    overrideGates:
-      test: { argv: [make, test], timeout: 15m }
-      build: { env: { GOPROXY: 'https://goproxy.example.com/' } }
-    extraGates:
-      - { id: tidy-drift, argv: [go, mod, tidy, -diff], timeout: 5m }
-      # Полный канонический codegen-прогон: skip по умолчанию, адресно перед мерджем
-      # через `verify --only=golang:canonical-generate`; driftMeansFailure: true = drift-гейт.
-      - { id: canonical-generate, argv: [make, generate], driftMeansFailure: true, timeout: 5m }
-```
-
-**Цикл кодогенерации:** гейт `golang:generate` исполняет `go generate` в реплике рабочего дерева и падает со списком разъехавшихся файлов; `gennady fix golang:generate` материализует результат в реальном дереве для коммита. Работает и с закоммиченным, и с gitignored сгенерированным кодом.
-
-**Контракт:** RUN-ALL (все гейты выполняются, отказы накапливаются); SUPPRESS-ON-SUCCESS (успешные гейты молчат); гейты **не изменяют** рабочее дерево — и это принудительно: все гейты исполняются в эфемерной реплике дерева (одна на прогон), мутация без `driftMeansFailure: true` — статус `VIOLATION`, реальное дерево не затрагивается по построению; отказ инструмента (паника линтера, недоступный module proxy) помечается `ENV_FAIL` — это не findings по коду. Таймаут — обязательный per-gate (дефолты у плагина, override в конфиге); глобального нет. Невалидный конфиг останавливает команду до запуска гейтов. Коды выхода: `0` всё прошло · `1` гейт упал · `4` неверный вызов/конфиг · `5` стек не распознан.
-
-Подробнее: [`specs/stack/stack.spec.md`](specs/stack/stack.spec.md), [`plugins/golang/directives/infra/golang-setup.xml`](plugins/golang/directives/infra/golang-setup.xml), навык `sdd-infra-golang`.
-
----
-
-### 🗯️ `alt-opinion`
-
-Мульти-модельные мнения с опциональным синтезом.
-
-```bash
-# Мнение двух моделей с синтезом
-npx gennady alt-opinion \
-  --model="llmproxy/kimi-k2.6" \
-  --model="llmproxy/glm-5.1" \
-  --synthModel="llmproxy/deepseek-v4-pro" \
-  --file="./spec.md"
-
-# Через stdin
-cat spec.md | npx gennady alt-opinion \
-  --model="llmproxy/gpt-4o" \
-  --model="openrouter/claude-sonnet"
-```
-
-**Опции:**
-
-- `--model`: дескриптор модели `provider/model[::prompt.md]` (повторяемый)
-- `--synthModel`: модель-синтезатор
-- `--file`: путь к входному файлу
-- `--modelPrompt`: промпт для всех моделей
-- `--synthPrompt`: промпт для синтезатора
-- `--strict`: exit 1 при ошибке любой модели
-
----
-
 ### 🔄 `sync`
 
 Синхронизация `ai/directives/` из npm-пакета в текущий проект.
+
+Sync предназначен для SDD v2. Если в проекте ещё есть канонический маркер v1 `tasks/`, команда
+останавливается **до записи файлов**. Сначала `npx gennady sdd-migrate bootstrap .` безопасно заменяет
+только доказанно package-owned V1 tooling и ставит свежий runtime миграции; полный sync выполняется
+после последнего `move`, когда `tasks/` исчез. См.
+[`guides/v1-to-v2-migration.md`](guides/v1-to-v2-migration.md).
 
 ```bash
 npx gennady sync
@@ -339,6 +271,9 @@ npx gennady sync ts-patterns typescript --dry-run
 
 Синхронизация SDD-навыков из `ai/skills/` в `.claude/skills/` проекта.
 
+На SDD v1 consumer команда также отказывается до любых записей. Наличие
+`.claude/skills/.gennady-synced` помогает диагностике владения, но не заменяет миграцию проекта.
+
 ```bash
 npx gennady sync-skills
 npx gennady sync-skills --dry-run
@@ -348,6 +283,7 @@ npx gennady sync-skills sdd-execute
 **Опции:**
 
 - `--dry-run`: предпросмотр без записи
+- `--with-directives`: сначала также синхронизировать `ai/directives/` (по умолчанию выключено)
 
 ---
 
@@ -464,17 +400,7 @@ npx gennady sync
 npx gennady sync-skills
 ```
 
-### 9. Мульти-модельный анализ
-
-```bash
-npx gennady alt-opinion \
-  --model="llmproxy/kimi-k2.6" \
-  --model="llmproxy/glm-5.1" \
-  --synthModel="llmproxy/deepseek-v4-pro" \
-  --file="./spec.md"
-```
-
-### 10. Зеркалирование консоли браузера
+### 9. Зеркалирование консоли браузера
 
 ```bash
 npx gennady remote-console

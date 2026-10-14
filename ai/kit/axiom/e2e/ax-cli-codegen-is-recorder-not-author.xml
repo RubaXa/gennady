@@ -1,0 +1,4 @@
+<!-- source: ai/directives/testing/playwright-cli.xml -->
+<Axiom id="AX_CLI_CODEGEN_IS_RECORDER_NOT_AUTHOR">
+      `playwright codegen` records interactions but its output is NOT directly committable. The generated locators are typically CSS / nth-child / XPath chains — fragile and implementation-coupled. The agent reviews codegen output and replaces every selector with a role-based equivalent derived from the AX tree before any line of it lands in a committed file.
+    </Axiom>

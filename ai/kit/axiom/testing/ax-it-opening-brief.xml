@@ -1,0 +1,8 @@
+<!-- source: ai/directives/testing/common.xml -->
+<Axiom id="AX_IT_OPENING_BRIEF">
+Open the `it` body with a 1–3 line brief **when the title alone does not convey invariant / failure mode / non-goal**. Brief never duplicates the title — it adds what the title cannot.
+
+Closed vocabulary (machine-first payload): `purpose`, `consumer`, `invariant`, `side effect`, `failure mode`, `non-goal`, `contract`, `observation focus`.
+
+Skip the brief on cases where title + direct input + a single assertion already expose the scenario. A brief on a self-evident case is noise that weakens the signal of briefs on hard cases.
+</Axiom>

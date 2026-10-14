@@ -1,4 +1,9 @@
-<Svelte5RunesRules keywords="svelte5, runes, state, derived, effect, props, bindable, inspect, snippets" type="coding-rules" ver="2.0">
+<Svelte5RunesRules rule-id="svelte5-runes" rule-schema="1" type="required" ver="2.0">
+<Meta>
+  <When framework="svelte"/>
+  <When pattern="**/*.svelte,**/*.svelte.js,**/*.svelte.ts"/>
+  <DependsOn rule="typescript-rules"/>
+</Meta>
   <Mission>
     Canonical rules for writing Svelte 5 components using runes. Every execution-agent MUST use runes (`$state`, `$derived`, `$effect`, `$props`, `$bindable`, `$inspect`, `$effect.root`) as compiler keywords, not runtime function calls. Legacy Svelte 4 patterns (`export let`, `$:` reactive statements, `on:event` directives, `<slot>`, `createEventDispatcher`) are forbidden in new code.
 

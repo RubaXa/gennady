@@ -1,6 +1,6 @@
 // @file: Provider factory — creates AgentMonitor with Claude and OpenCode providers registered.
+// @spec: AGENT-MON-CLI-CMD
 // @consumers: cli/cmd/agent-mon/cmd/run
-// @tasks: TSK-47
 
 import { createMonitor, AgentMonitor } from '../../../../services/agent-mon/monitor/index.ts';
 import { ClaudeProvider } from '../../../../services/agent-mon/providers/claude/index.ts';

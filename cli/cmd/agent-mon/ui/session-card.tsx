@@ -1,6 +1,6 @@
 // @file: SessionCard ink component — renders one agent session as a bordered card.
+// @spec: AGENT-MON-CLI-UI
 // @consumers: ProviderColumn
-// @tasks: TSK-46
 
 import { Box, Text } from 'ink';
 import type { SessionCard as SessionCardData } from '../state/view-model.type.ts';

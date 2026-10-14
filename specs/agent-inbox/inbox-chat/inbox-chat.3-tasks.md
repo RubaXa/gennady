@@ -1,0 +1,32 @@
+# inbox-chat — Tasks
+
+## Tracker Index
+
+| Task-ID    | Title                                                 | Dependencies                                 | Status   | Reopens |
+| ---------- | ----------------------------------------------------- | -------------------------------------------- | -------- | ------- |
+| IC-anchors | inbox-chat: якоря + operator-сессия + мутации         | IA-rest-sse                                  | [ ] TODO | —       |
+| IC-handoff | MR chat, artifact mutation and full/delta DEV handoff | IC-state, IO-runtime, IP-control, IQ-actions | [ ] TODO | —       |
+
+## Slug Registry
+
+<!-- один ID на строку; уникальность держится этим списком — одинаковый ID в двух ветках сталкивается здесь при merge. Только добавление. -->
+
+- IC-anchors
+- IC-handoff
+
+## Intra-Module DAG
+
+```mermaid
+graph TD
+  %% зависимостей внутри модуля нет
+```
+
+<!-- ребро A → B = «A зависит от B». Кросс-модульные рёбра живут уровнем выше. -->
+
+## Decision Log (module-task level)
+
+<!-- решения декомпозиции/планирования; локальные решения исполнения — в Decision Log самих тикетов. -->
+
+## Conventions
+
+Проектные конвенции объявлены в `specs/3-tasks.md` и наследуются — здесь не повторяются.

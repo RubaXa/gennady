@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI entry point — dispatches commands, runs update check on startup.
-// @consumers: CLI users (gennady <command>)
-// @tasks: TSK-33, TSK-47, TSK-55, TSK-57, TSK-59, TSK-65, TSK-69, TSK-76, TSK-81, TSK-83, TSK-85, TSK-87
+// @spec: CLI
+// @consumers: GennadyCli
 
 import { checkForUpdates } from './cmd/_shared/update-check.ts';
 import { readFileSync } from 'node:fs';
@@ -64,11 +64,53 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       helpLoaded = true;
       break;
     case 'inbox':
-      await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
+      if (process.argv[3] === 'config') {
+        await import('./cmd/inbox/config-help.ts').then((m) => m.printHelp());
+      } else if (process.argv[3] === 'serve') {
+        await import('./cmd/inbox/serve/help.ts').then((m) => m.printHelp());
+      } else if (process.argv[3] === 'stats') {
+        await import('./cmd/inbox/stats-help.ts').then((m) => m.printHelp());
+      } else if (process.argv[3] === 'eval') {
+        console.info(
+          'gennady inbox eval — харнесс приёмки: 10 сценарных прогонов + метрики автономии'
+        );
+        console.info('  gennady inbox eval --mr <url> [--runs <list>] [--report <path>]');
+        console.info('  --mr <url>     GitLab MR URL (обязателен)');
+        console.info(
+          '  --runs <list>  список прогонов через запятую (boot,role_pickup,pipeline,...)'
+        );
+        console.info(
+          '  --report <path> путь к eval-report.json (default: ~/.gennady/agent-inbox/eval-reports/<ts>.json)'
+        );
+        console.info('  exit 0 = все прогоны PASS; exit 1 = хотя бы один FAIL');
+      } else {
+        await import('./cmd/inbox/help.ts').then((m) => m.printHelp());
+      }
       helpLoaded = true;
       break;
     case 'inbox-context':
       await import('./cmd/inbox-context/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'inbox-review-plan':
+      console.info('gennady inbox-review-plan — детерминированный план ревью MR');
+      console.info(
+        '  npx tsx ~/Developer/gennady/cli/gennady.ts inbox-review-plan --path <worktree> --base <sha>'
+      );
+      console.info(
+        '  Возвращает ReviewPlan { mode, tracks[] } с готовым планом диспетчеризации сабагентов.'
+      );
+      helpLoaded = true;
+      break;
+    case 'inbox-eval':
+      console.info('gennady inbox-eval — детерминированный эвал reviewer-пайплайна (S0..S11)');
+      console.info('  npx tsx ~/Developer/gennady/cli/gennady.ts inbox-eval --url <mr>');
+      console.info(
+        '  Флаги: --reports-dir <dir>, --waf <bytes>, --no-dry-run (default dry-run: true, ничего не пишет в GitLab)'
+      );
+      console.info(
+        '  Пишет eval-report.json + .md; exit=0 при status=PASS (все стадии/гейты зелёные), иначе exit=1.'
+      );
       helpLoaded = true;
       break;
     case 'vcs-worktree':
@@ -91,10 +133,6 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/lint/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
-    case 'alt-opinion':
-      await import('./cmd/alt-opinion/help.ts').then((m) => m.printHelp());
-      helpLoaded = true;
-      break;
     case 'agent-mon':
       await import('./cmd/agent-mon/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -107,6 +145,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/orient/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'sdd-orient':
+      await import('./cmd/sdd-orient/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'run':
       await import('./cmd/run/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -117,14 +159,6 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       break;
     case 'testcov':
       await import('./cmd/testcov/help.ts').then((m) => m.printHelp());
-      helpLoaded = true;
-      break;
-    case 'verify':
-      await import('./cmd/verify/help.ts').then((m) => m.printHelp());
-      helpLoaded = true;
-      break;
-    case 'fix':
-      await import('./cmd/fix/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
     case 'vcs-diff':
@@ -167,6 +201,59 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/vcs-react/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'sdd-state':
+      await import('./cmd/sdd-state/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-check':
+      await import('./cmd/sdd-check/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-extract':
+      await import('./cmd/sdd-extract/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+
+    case 'sdd-new':
+      await import('./cmd/sdd-new/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-verify':
+      await import('./cmd/sdd-verify/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'verify':
+      await import('./cmd/verify/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'rules':
+      await import('./cmd/rules/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-log':
+      await import('./cmd/sdd-log/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-sync':
+      await import('./cmd/sdd-sync/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-task':
+      await import('./cmd/sdd-task/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'sdd-migrate':
+      await import('./cmd/sdd-migrate/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'mr-stats':
+      await import('./cmd/mr-stats/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'yagni':
+      await import('./cmd/yagni/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
   }
 
   if (!helpLoaded) {
@@ -199,11 +286,29 @@ switch (command) {
     break;
 
   case 'inbox':
-    await import('./cmd/inbox/index.ts');
+    if (process.argv[3] === 'config') {
+      await import('./cmd/inbox/config-index.ts');
+    } else if (process.argv[3] === 'serve') {
+      await import('./cmd/inbox/serve.cmd.ts');
+    } else if (process.argv[3] === 'stats') {
+      await import('./cmd/inbox/stats-index.ts');
+    } else if (process.argv[3] === 'eval') {
+      await import('./cmd/inbox/eval.cmd.ts');
+    } else {
+      await import('./cmd/inbox/index.ts');
+    }
     break;
 
   case 'inbox-context':
     await import('./cmd/inbox-context/index.ts');
+    break;
+
+  case 'inbox-review-plan':
+    await import('./cmd/inbox-review-plan/index.ts');
+    break;
+
+  case 'inbox-eval':
+    await import('./cmd/inbox-eval/index.ts');
     break;
 
   case 'vcs-worktree':
@@ -226,10 +331,6 @@ switch (command) {
     await import('./cmd/lint/index.ts');
     break;
 
-  case 'alt-opinion':
-    await import('./cmd/alt-opinion/index.ts');
-    break;
-
   case 'agent-mon':
     await import('./cmd/agent-mon/cmd/index.ts');
     break;
@@ -246,8 +347,16 @@ switch (command) {
     await import('./cmd/orient/index.ts');
     break;
 
+  case 'sdd-orient':
+    await import('./cmd/sdd-orient/index.ts');
+    break;
+
   case 'agents-rules':
     await import('./cmd/agents-rules/index.ts');
+    break;
+
+  case 'rules':
+    await import('./cmd/rules/index.ts');
     break;
 
   case 'run':
@@ -260,14 +369,6 @@ switch (command) {
 
   case 'testcov':
     await import('./cmd/testcov/index.ts');
-    break;
-
-  case 'verify':
-    await import('./cmd/verify/index.ts');
-    break;
-
-  case 'fix':
-    await import('./cmd/fix/index.ts');
     break;
 
   case 'vcs-diff':
@@ -308,6 +409,54 @@ switch (command) {
 
   case 'vcs-react':
     await import('./cmd/vcs-react/index.ts');
+    break;
+
+  case 'sdd-state':
+    await import('./cmd/sdd-state/index.ts');
+    break;
+
+  case 'sdd-check':
+    await import('./cmd/sdd-check/index.ts');
+    break;
+
+  case 'sdd-extract':
+    await import('./cmd/sdd-extract/index.ts');
+    break;
+
+  case 'sdd-new':
+    await import('./cmd/sdd-new/index.ts');
+    break;
+
+  case 'sdd-verify':
+    await import('./cmd/sdd-verify/index.ts');
+    break;
+
+  case 'verify':
+    await import('./cmd/verify/index.ts');
+    break;
+
+  case 'sdd-log':
+    await import('./cmd/sdd-log/index.ts');
+    break;
+
+  case 'sdd-sync':
+    await import('./cmd/sdd-sync/index.ts');
+    break;
+
+  case 'sdd-task':
+    await import('./cmd/sdd-task/index.ts');
+    break;
+
+  case 'sdd-migrate':
+    await import('./cmd/sdd-migrate/index.ts');
+    break;
+
+  case 'mr-stats':
+    await import('./cmd/mr-stats/index.ts');
+    break;
+
+  case 'yagni':
+    await import('./cmd/yagni/index.ts');
     break;
 
   default:

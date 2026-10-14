@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<AntiPattern id="AP_TYPE_AWARE_DUPLICATION">
+      <Bad>`tsconfig.json` has `strict: true, noUnusedLocals: true`. `eslint.config.ts` also enables `'no-unused-vars': 'error'`, `'@typescript-eslint/no-unused-vars': 'error'`, `'no-undef': 'error'`, `'consistent-return': 'error'`.</Bad>
+      <WhyBad>Every enabled rule duplicates a check `tsc --strict` already performs (`AX_TYPE_AWARE_PREFER_TS`). Same problem reported twice with different messages and different exit codes; agents and humans waste effort reconciling.</WhyBad>
+      <Good>All four rules `'off'`. The npm `typecheck` script runs `tsc --noEmit` and is the authoritative gate.</Good>
+    </AntiPattern>

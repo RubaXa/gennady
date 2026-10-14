@@ -1,0 +1,4 @@
+<!-- source: ai/directives/coding/typescript-rules.xml -->
+<Axiom id="AX_FAIL_FAST_VALIDATION">
+Synchronous validation at the start of the method. Validate arguments synchronously and throw domain errors with context. Earlier validation = fewer state mutations before failure and clearer failure cause from the message.
+</Axiom>

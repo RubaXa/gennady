@@ -1,0 +1,93 @@
+<ContractInterrogation keywords="contract quality, jsdoc, region, comments, contract budget, spec-exists, no changelog, coding rules per phase" type="directive" ver="1.0">
+  <Mission>
+    The mandatory contract-quality vector for the review flow. Runs whenever a diff touched a JSDoc
+    contract, a `#region`/`#endregion` banner, or a plain comment (the plan's `contract` track). For
+    EVERY changed contract/comment it asks three questions — is there a spec, did the comment bloat,
+    is it a changelog instead of a re-thought contract — and answers them against the CODING RULES
+    THAT GOVERN THAT FILE, not a fixed language. This is a separate track that sets the vector across
+    ALL changed contracts, not a per-hunk lint. It is a PROMPT the lens EMBODIES, not data.
+  </Mission>
+
+  <BeliefState>
+    <Axiom id="AX_RULES_FROM_PHASE">
+      The bar is NOT hardcoded to one language. Each file was written under an SDD task, and the
+      coding rules it must obey are named in that task's phase Rules (e.g.
+      `ai/directives/coding/typescript-rules.xml` for `.ts`/`.tsx`, the Svelte component rules for
+      `.svelte`, the Go rules for `.go`, …). The orchestrator resolves «file → task → phase → coding
+      rules» while enriching the track and writes the applicable rule reference into each contract's
+      `## Контекст`. The lens checks the contract against THOSE rules. Fixing everything to
+      TypeScript is wrong; when no phase mapping exists, fall back to the repo's coding-rules
+      directive for that file's language. Cite the concrete rule you judged against.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_EXISTS">
+      Rules and behaviour belong in the spec, not narrated in code. When a changed comment states a
+      rule, an algorithm, a decision, or a behavioural guarantee, that reasoning must live in a spec
+      (`*.spec.md`, a `D-*`/ADR decision) — the code carries a short pointer to it, never the copy.
+      Two findings here: (a) the comment restates a rule that HAS a spec → the copy is redundant, cut
+      it to a pointer; (b) the comment states a rule with NO spec behind it → the rule is
+      undocumented, flag it so the spec (or a `D-*`) is written and the code points there.
+    </Axiom>
+
+    <Axiom id="AX_NO_BLOAT">
+      Apply the governing rules' contract budget (for TS: `typescript-rules.xml` `AX_CONTRACT_BUDGET`
+      + `AX_BASE_CONTRACT_SHAPE`). FIRST GATE: a comment/tag that restates what the code already says
+      — a name, a type, obvious control flow — is DELETED, not shortened; in-budget-and-redundant is
+      still a defect. Each tag value is one sentence within its word budget, stating the CONSTRAINT,
+      not a rationale clause (`because`/`so that`/`to avoid`/`historically`). Per-entity `@invariant`
+      cap (TS: ≤3) — a 4th, or prose to explain one, means the design belongs in the spec. Keep the
+      contract skeleton the rules mandate (TS: `@purpose`/`@param`/`@returns`); the prunable surface
+      is `@invariant`/`@pre`/`@post`/`@sideEffect` and plain comments. A giant multi-sentence
+      `@invariant`/`#region` description is almost always a mix — split it: rule → spec pointer, one
+      concentrated line of the non-obvious constraint → keep.
+    </Axiom>
+
+    <Axiom id="AX_NO_CHANGELOG">
+      A contract is a boundary spec of the current truth, not a history. On edit the whole block is
+      REWRITTEN to the new truth, never appended to — a comment that only grows is a changelog. Flag
+      as changelog-style: process metadata leaking into the artifact (phase/round/ticket markers
+      `P1..P5`/`round 2`/`APP-18`, audit provenance «добавлено аудитом …», dates), narration of the
+      edit («пересмотрено», «первая редакция», «было → стало», «keeps today's behavior»), debugging
+      narrative («confirmed live», «measured in isolation», «reproduces every time»), and the same
+      explanation duplicated across several sites (keep one canonical, the rest a code `@see` /
+      `{@link}` pointer to it — never a spec `@see`; spec is reached by a `D-*`/§ prose pointer).
+    </Axiom>
+
+    <Axiom id="AX_OPERATOR_LANGUAGE">
+      This directive's prose is English (prompt language). Findings the OPERATOR reads are in Russian.
+      But the code contracts themselves stay in the language the governing rules require — for this
+      repo's TS rules, that is English (`typescript-rules.xml`: «JSDoc … strictly in English»). Never
+      recommend a Russian rewrite of a contract the rules say must be English; propose the concentrated
+      replacement in the contract's own language.
+    </Axiom>
+  </BeliefState>
+
+  <Checks>
+    For each file in the `contract` track's Scope, read the WHOLE contract surface of the file (not
+    just the diff hunks — a changed contract is re-judged as a whole, `typescript-rules.xml` ON-EDIT
+    rule), then per changed JSDoc block / `#region` / comment emit a verdict:
+    1. **spec** — does a rule it states have a spec? restates one that exists → cut to pointer;
+       states one with none → flag as undocumented (`AX_SPEC_EXISTS`).
+    2. **bloat** — restates code/type/obvious flow → delete; over budget or `@invariant` over cap →
+       compress; keep the mandated skeleton (`AX_NO_BLOAT`).
+    3. **changelog** — grew by appending / carries process-history / duplicated across sites →
+       rewrite the block, move reasoning to spec via a short pointer (`AX_NO_CHANGELOG`).
+    Every finding names the governing rule it was judged against (`AX_RULES_FROM_PHASE`) and carries a
+    concentrated replacement in the contract's own language — «delete», «→ spec §/D-*», or the exact
+    compressed text — never a vague «сократите».
+  </Checks>
+
+  <Output>
+    Findings into the track file's `## Находки` / `## Кандидаты` (the review pipeline's task schema),
+    one row per changed contract with a verdict on the three axes and a concrete rewrite. Clean
+    surface → explicit no-findings, never a placeholder. The lens proposes; posting is gated by the
+    operator elsewhere in the flow.
+  </Output>
+
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_NO_GOVERNING_RULES` | `## Контекст` names no coding-rules for a file AND none resolvable by language → flag the gap, judge against the repo default, do not silently skip |
+    | `H_NO_CONTRACT_TASK` | `tasks/contract.task.md` absent → no contract changed this diff → explicit empty findings, a valid pass |
+  </HaltConditions>
+</ContractInterrogation>

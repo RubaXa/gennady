@@ -1,0 +1,120 @@
+2.0.0-draft.1
+
+<Step id="STEP_2_IMPLEMENT">
+      <Action>
+        Implement the smallest change satisfying the phase and its referenced requirements. Stay
+        inside target files. Do not alter task dependencies, phases, approved BDD/test plan, or spec
+        meaning. If such a change is necessary, return `APPROVAL_BOUNDARY_CHANGE` with evidence.
+        Create and preserve V2 file headers per `AX_FILE_HEADER_TASK_TRACEABILITY` and
+        `AX_FILE_HEADER_APPEND_ONLY`: semantic ownership is `@spec`; never copy ticket history into
+        the source header.
+        The phase protocol defines the permitted command list per `AX_PERMITTED_BASH_COMMANDS`; every
+        bash invocation while implementing stays within it.
+        Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per
+        intro/decision/tried/discovery/insight, never batched from memory afterward:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; line "&lt;event&gt;" --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;event&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the exact
+        event line per its token's grammar, this phase's id.
+        When stuck (`AX_BLOCKER_ESCALATION`'s triggers — a missing rule file, a broken Handoff
+        promise, a self-contradicting spec, a Target Files boundary, an unhonorable Runtime
+        Backing, a verification command that cannot run), write the reason/axiom/unblock JSON keys
+        with the file-write tool to `&lt;payload-path&gt;`, then open `BLOCKER_FORMAT` and stop:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; blocker --payload-file &lt;payload-path&gt; --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;payload-path&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the
+        just-written `.claude/tmp/<task-id>-<phase-id>-log.json` payload, this phase's id. Once the
+        cause is actually gone, close it per `AX_BLOCKER_RESOLUTION_TRAIL` (`sdd-log resolved`,
+        never a manual edit).
+      </Action>
+    </Step>
+
+<Axiom id="AX_BLOCKER_RESOLUTION_TRAIL">
+      A BLOCKER entry in Execution Log (line containing `🛑` and `BLOCKED`) remains ACTIVE until
+      `## Blocker Trail` carries a matching resolution line — `✅ RESOLVED (Round <N> / <PhaseID>)`
+      (D-20, B2-19). The back-reference is what pairs it to the right occurrence; a resolution is
+      NEVER appended inline in the Execution Log itself, so it works whether or not that Round has
+      already closed.
+
+      Orchestrator consumes the `[BLOCKERS]` section already returned by `sdd-task <ticket>`.
+      `blockers: none` is clear; each `blockers: ACTIVE <n>` entry is classified through the typed
+      checkpoint as recoverable technical, spec-goal conflict, or external authority. Active history
+      never implies an operator pause by itself. Do not spend a second check call or reconstruct it.
+
+      Resolution authorship: the `## Blocker Trail` entry MUST cite the specific environmental
+      change or decision that resolved the blocker (e.g. "tsconfig moduleResolution fixed",
+      "operator chose option B"). Empty resolution text → audit treats as fabricated and may re-flag.
+
+      Append-only discipline: never edit or remove the original `🛑 BLOCKED` line, and never hand-edit
+      `## Blocker Trail` — only `npx gennady sdd-log <ticket> resolved` writes it. The blocker
+      history is part of the artifact.
+    </Axiom>
+
+<Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
+      **V2 files carry one semantic owner; task relations come from the deterministic resolver.**
+
+      Required file-level fields in execution profile:
+      - `@file` — mandatory; what the file holds.
+      - `@spec` — mandatory; exactly one stable canonical Spec ID, never a path.
+      - `@consumers` — mandatory; one or more named consumers from the owning spec.
+
+      `@tasks` is legacy V1 migration evidence and is forbidden in a new or migrated V2 header.
+      `planned`, `active`, `blocked`, and `history` task relations are resolved from exact ticket
+      targets and lifecycle state; none is copied into the header. Only an `active` relation may
+      continue/recover under task state policy. `history` is context, never routing authority.
+
+      Canonical header shape:
+      ```
+      // @file: <what the file holds>
+      // @spec: <CANONICAL-SPEC-ID>
+      // @consumers: <consumer-1, consumer-2, ...>
+      ```
+    </Axiom>
+
+<Axiom id="AX_FILE_HEADER_APPEND_ONLY">
+      Touching a V2 file preserves its semantic-owner header; task history stays in tickets and Git.
+
+      - Required V2 fields, in order: `@file:`, one canonical `@spec:` ID, `@consumers:`.
+      - New V2 file: create all three from the resolved owner spec and its named consumers.
+      - Existing V2 file: preserve `@file:` and `@consumers:`; keep `@spec:` on the resolved semantic
+        owner. A real ownership transfer is a semantic spec change and routes through authoring.
+      - Existing V1 file remains byte-preserved until its migration owns the header rewrite.
+      - Never add a Task-ID to a V2 source header; re-dispatch and later rounds change resolver state,
+        not header history.
+    </Axiom>
+
+<Contract id="PHASE_BLOCK_FORMAT">
+  Event-driven: optional event lines (0+ each) appear ONLY when their event happened, opening
+  with a token from the CLOSED vocabulary `sdd-check` enforces mechanically
+  (`SDD_EXECUTION_LOG_UNKNOWN_TOKEN` on anything else) — never hand-copy that list here, it has
+  exactly one home. STEP_5 atomically inserts the paired structured `SDD_PHASE_RECEIPT` block;
+  the agent never authors it. Semantic closing lines remain `DONE` + Handoff.
+
+  ```markdown
+  #### <PhaseID>                                 <!-- or "#### <PhaseID> — re-run: <reason>" -->
+  <!-- Event lines (optional; appended as events happen, in chronological order): -->
+  - [x] `<ts>` <token> <per the token's own grammar — e.g. `intro <Entity> ← <reason>`, `decision <key>=<value> ← <reason>`>
+  <!-- CLI-owned receipt appears here after successful STEP_5. -->
+  <!-- Semantic closing lines (mandatory): -->
+  - [x] `<ts>` DONE
+  **Handoff →** artifacts: [<paths>]; decisions: [<key=value, …>]; open: [<id: text, …>]; deviations: [<id: text, …>]
+  ```
+
+  Trivial phase: one receipt + `DONE` + Handoff. That is valid and preferred over padding.
+</Contract>
+
+<Contract id="BLOCKER_FORMAT">
+  ```markdown
+  - 🛑 `<ts>` BLOCKED: <one-line cause>
+    - 🔗 axiom: AX_<NAME>
+    - 💬 unblock: <concrete operator action>
+  ```
+  After this entry: phase Status → `[!] BLOCKED`; return BLOCKED to orchestrator. Stop.
+
+  Paired close, once the cause is actually gone (`AX_BLOCKER_RESOLUTION_TRAIL`): run `npx
+  gennady sdd-log <ticket> resolved "<what removed it>" --phase <PhaseID>` — never a manual
+  `Edit`, never the original 🛑 line touched. The CLI writes the resolution into `## Blocker
+  Trail`, a section of its own outside the Execution Log (D-20) — NOT back into this phase's
+  block, and it works even after the Round that raised the blocker has already closed:
+  ```markdown
+  - [x] `<ts>` ✅ RESOLVED (Round <N> / <PhaseID>): <what removed it>
+  ```
+</Contract>

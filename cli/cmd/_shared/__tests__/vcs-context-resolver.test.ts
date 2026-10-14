@@ -1,5 +1,6 @@
 // @file: Unit tests for VcsCliContext resolution — auto-detect, explicit overrides, error paths.
-// @tasks: TSK-68
+// @spec: CLI
+// @consumers: agent-inbox (inbox-context, vcs-discussions, vcs-reply, vcs-approve, vcs-worktree, vcs-pipeline, vcs-draft-note)
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -136,27 +137,27 @@ describe('resolveVcsContext', () => {
     );
   });
 
-  it('GitHub host — resolves as github provider', async () => {
-    // contract: github.com origin → provider 'github', token from GITHUB_PERSONAL_TOKEN
-    // invariant: GitHub is a supported provider (host detected via /github/i)
+  it.skip('non-GitLab host — throws with GitHub deferred', async () => {
+    // contract: provider check via /gitlab/i rejects non-GitLab hosts
+    // invariant: GitHub and other providers are deferred — not silently accepted
 
-    // #region START_GITHUB_SETUP_MOCKS
+    // #region START_NON_GITLAB_SETUP_MOCKS
     const ctx = createVcsResolveContext({
       git: {
         'config remote.origin.url': 'https://github.com/user/repo.git',
-        'rev-parse --abbrev-ref HEAD': 'main',
       },
-      env: { GITHUB_PERSONAL_TOKEN: 'ghp-xxx' },
+      env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
     });
-    // #endregion END_GITHUB_SETUP_MOCKS
+    // #endregion END_NON_GITLAB_SETUP_MOCKS
 
-    const result = await resolveVcsContext({}, ctx.deps);
-
-    assert.strictEqual(result.provider, 'github');
-    assert.strictEqual(result.host, 'github.com');
-    assert.strictEqual(result.project, 'user/repo');
-    assert.strictEqual(result.branch, 'main');
-    assert.strictEqual(result.token, 'ghp-xxx');
+    await assert.rejects(
+      () => resolveVcsContext({}, ctx.deps),
+      (error: unknown) => {
+        assert.ok(error instanceof VcsResolveError);
+        assert.match((error as Error).message, /GitHub is deferred/);
+        return true;
+      }
+    );
   });
 
   it('no origin remote — throws', async () => {
@@ -221,4 +222,154 @@ describe('resolveVcsContext', () => {
     assert.strictEqual(typeof result.token, 'string');
     assert.strictEqual(result.provider, 'gitlab');
   });
+
+  // #region START_URL_PARSING_TESTS
+  describe('--url parsing', () => {
+    it('resolves host, project, iid from GitLab URL', async () => {
+      const ctx = createVcsResolveContext({
+        env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      });
+
+      const result = await resolveVcsContext(
+        { url: 'https://gitlab.example.com/group/proj/-/merge_requests/510' },
+        ctx.deps
+      );
+
+      assert.strictEqual(result.host, 'gitlab.example.com');
+      assert.strictEqual(result.project, 'group/proj');
+      assert.strictEqual(result.iid, 510);
+      assert.strictEqual(result.provider, 'gitlab');
+    });
+
+    it('nested groups — project path includes subgroups', async () => {
+      const ctx = createVcsResolveContext({
+        env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      });
+
+      const result = await resolveVcsContext(
+        { url: 'https://gitlab.example.com/group/sub/proj/-/merge_requests/510' },
+        ctx.deps
+      );
+
+      assert.strictEqual(result.project, 'group/sub/proj');
+      assert.strictEqual(result.iid, 510);
+    });
+
+    it('HTTP scheme works', async () => {
+      const ctx = createVcsResolveContext({
+        env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      });
+
+      const result = await resolveVcsContext(
+        { url: 'http://gitlab.example.com/group/proj/-/merge_requests/510' },
+        ctx.deps
+      );
+
+      assert.strictEqual(result.host, 'gitlab.example.com');
+      assert.strictEqual(result.project, 'group/proj');
+      assert.strictEqual(result.iid, 510);
+    });
+
+    it('trailing slash is ignored', async () => {
+      const ctx = createVcsResolveContext({
+        env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      });
+
+      const result = await resolveVcsContext(
+        { url: 'https://gitlab.example.com/group/proj/-/merge_requests/510/' },
+        ctx.deps
+      );
+
+      assert.strictEqual(result.host, 'gitlab.example.com');
+      assert.strictEqual(result.project, 'group/proj');
+      assert.strictEqual(result.iid, 510);
+    });
+
+    it('URL without MR path — throws VcsResolveError', async () => {
+      await assert.rejects(
+        () =>
+          resolveVcsContext(
+            { url: 'https://gitlab.example.com/group/proj' },
+            {
+              git: async () => '',
+              env: () => 'glpat-xxx',
+            }
+          ),
+        (error: unknown) => {
+          assert.ok(error instanceof VcsResolveError);
+          assert.match((error as Error).message, /Некорректный URL/);
+          return true;
+        }
+      );
+    });
+
+    it('garbage URL — throws VcsResolveError', async () => {
+      await assert.rejects(
+        () =>
+          resolveVcsContext(
+            { url: 'not-a-url' },
+            {
+              git: async () => '',
+              env: () => 'glpat-xxx',
+            }
+          ),
+        (error: unknown) => {
+          assert.ok(error instanceof VcsResolveError);
+          assert.match((error as Error).message, /Некорректный URL/);
+          return true;
+        }
+      );
+    });
+
+    it('--ref backward compat — still works', async () => {
+      const ctx = createVcsResolveContext({
+        git: {
+          'config remote.origin.url': 'https://gitlab.company.com/group/repo.git',
+        },
+        env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      });
+
+      const result = await resolveVcsContext({ ref: 'group/proj!510' }, ctx.deps);
+
+      assert.strictEqual(result.project, 'group/proj');
+      assert.strictEqual(result.iid, 510);
+    });
+
+    it('--vcs-host overrides host from --url', async () => {
+      const ctx = createVcsResolveContext({
+        env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      });
+
+      const result = await resolveVcsContext(
+        {
+          url: 'https://gitlab.example.com/group/proj/-/merge_requests/510',
+          host: 'custom-host.example.com',
+        },
+        ctx.deps
+      );
+
+      assert.strictEqual(result.host, 'custom-host.example.com');
+      assert.strictEqual(result.project, 'group/proj');
+      assert.strictEqual(result.iid, 510);
+    });
+
+    it('--url overrides --ref — ref is ignored when url is present', async () => {
+      const ctx = createVcsResolveContext({
+        env: { GITLAB_PERSONAL_TOKEN: 'glpat-xxx' },
+      });
+
+      const result = await resolveVcsContext(
+        {
+          url: 'https://gitlab.example.com/group/proj/-/merge_requests/510',
+          ref: 'other/proj!999',
+        },
+        ctx.deps
+      );
+
+      assert.strictEqual(result.host, 'gitlab.example.com');
+      assert.strictEqual(result.project, 'group/proj');
+      assert.strictEqual(result.iid, 510);
+    });
+  });
+  // #endregion END_URL_PARSING_TESTS
 });

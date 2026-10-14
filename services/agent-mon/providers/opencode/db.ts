@@ -1,6 +1,6 @@
 // @file: SQLite query functions for OpenCode sessions database
+// @spec: AGENT-MON
 // @consumers: OpenCodeProvider
-// @tasks: TSK-40
 
 import type { DatabaseSync } from 'node:sqlite';
 import type { SQLInputValue } from 'node:sqlite';

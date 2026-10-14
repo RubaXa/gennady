@@ -1,0 +1,6 @@
+<!-- source: ai/directives/testing/node-test.xml -->
+<AntiPattern id="AP_TRY_CATCH_FLAG_ANTIPATTERN">
+      <Bad>`let threw = false; try { await client.reserveStock(''); } catch (e) { threw = true; assert.ok((e as Error).message.includes('idempotency')); } assert.ok(threw);`</Bad>
+      <WhyBad>Manual try/catch + boolean flag instead of `assert.rejects()` (`AX_ASSERT_API_CHOICE`). `includes()` on error message (inherited `AX_PARTIAL_STRING_VIA_MATCH`). Test can silently pass if the code stops throwing — `threw` stays false, only fallback gate is `assert.ok(threw)`.</WhyBad>
+      <Good>`await assert.rejects(() => client.reserveStock(''), (error) => { assert.match((error as Error).message, /idempotency.*empty|empty.*idempotency/i); return true; });`</Good>
+    </AntiPattern>

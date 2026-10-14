@@ -1,0 +1,444 @@
+// @file: ai/kit/lint-axioms.ts
+// @spec: AI-SKILLS-DIRECTIVE-ASSEMBLY
+// @consumers: N/A
+/**
+ * Dangling-axiom lint for rendered directives.
+ *
+ * Rule (AUTHORING.md §7): every Axiom defined in a <BeliefState> must be referenced at least
+ * once OUTSIDE BeliefState — by an ExecutionPlan step, a HaltCondition, a LogicSwitch route or a
+ * contract. An axiom nobody points to dies silently when the file is trimmed.
+ *
+ * Exemptions:
+ * - `cross-cutting="true"` on the <Axiom> tag — conduct/style axioms that apply to every line of
+ *   output and legitimately have no single anchoring step.
+ * - deps inheritance: an axiom defined in file A counts as used when another file lists it in
+ *   `<BeliefState deps="…">` AND mentions it outside its own BeliefState.
+ *
+ * This module also lints the OPPOSITE direction (T-B6-08): every `AX_*` token MENTIONED anywhere
+ * in the rendered build must have a real DEFINITION somewhere in that same build — an
+ * `<Axiom id="AX_*">` tag in some rendered file, connected with `{{> "axiom/<dir>/<name>"}}`
+ * (see `lintUndefinedAxiomRefs`). Unlike the direction above, this one is NOT a warning: a
+ * reference with no definition anywhere is either a made-up name or a real library axiom
+ * (`ai/kit/axiom/**`) nobody ever connected — a lie told to the agent reading the directive
+ * (AUTHORING.md §7) — so `build-directives.ts` treats it as a build error, subject to
+ * `KNOWN_DANGLING_AXIOM_REFS`, a temporary, named-owner allowlist (L-10 / Q2 option b) that only
+ * shrinks as the axioms it lists get connected by their owning tasks.
+ *
+ * **Scope (T-B6-24): `ai/directives/**`, not only `sdd-v2/**`.** `build-directives.ts` only ever
+ * renders templates under `ai/kit/templates/sdd-v2/**`, so its own in-memory `rendered` array never
+ * sees the static, hand-authored directive files that live alongside it anywhere under
+ * `ai/directives/` — a dangling `AX_*` reference there was invisible to this lint by construction,
+ * not by policy (40-TRACK-DIRECTIVES-SKILLS.md §4.1/§4.2: "область по умолчанию —
+ * `ai/directives/**`"). `collectStaticDirectiveFiles` below reads the whole directive tree straight
+ * off disk while excluding only generated `sdd-v2/**` (already supplied through `rendered`). Static
+ * files are never written by this build, so reading them is safe in either write or `--check` mode.
+ * The caller merges both sources into the same `rendered`/`lintUndefinedAxiomRefs` corpus — no
+ * change to that function itself, only to what is fed into it.
+ */
+
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+
+export interface RenderedDirective {
+  /** Path (relative or absolute) used only for reporting. */
+  file: string;
+  /** Full rendered directive text. */
+  text: string;
+}
+
+export interface DanglingAxiom {
+  file: string;
+  id: string;
+}
+
+interface ParsedDirective {
+  file: string;
+  axioms: { id: string; crossCutting: boolean }[];
+  deps: Set<string>;
+  /** Directive text with every BeliefState block removed. */
+  outside: string;
+}
+
+const BELIEF_BLOCK = /<BeliefState\b([^>]*)>[\s\S]*?<\/BeliefState>/g;
+const AXIOM_OPEN = /<Axiom\b([^>]*?)\/?>/g;
+const ID_ATTR = /\bid="([^"]+)"/;
+const DEPS_ATTR = /\bdeps="([^"]*)"/;
+const CROSS_CUTTING_ATTR = /\bcross-cutting="true"/;
+
+export function parseDirective(d: RenderedDirective): ParsedDirective {
+  const axioms: ParsedDirective['axioms'] = [];
+  const deps = new Set<string>();
+  const outside = d.text.replace(BELIEF_BLOCK, (block, beliefAttrs: string) => {
+    const depsMatch = beliefAttrs.match(DEPS_ATTR);
+    if (depsMatch) {
+      for (const id of depsMatch[1].split(',')) {
+        const trimmed = id.trim();
+        if (trimmed) deps.add(trimmed);
+      }
+    }
+    for (const m of block.matchAll(AXIOM_OPEN)) {
+      const attrs = m[1] as string;
+      const id = attrs.match(ID_ATTR)?.[1];
+      if (id) axioms.push({ id, crossCutting: CROSS_CUTTING_ATTR.test(attrs) });
+    }
+    return '';
+  });
+  return { file: d.file, axioms, deps, outside };
+}
+
+/** True when `id` occurs as a whole token (not as a prefix of a longer id) in `text`. */
+function mentions(text: string, id: string): boolean {
+  return new RegExp(`\\b${id}\\b`).test(text);
+}
+
+/**
+ * Lint a set of rendered directives together (the whole build output — deps inheritance is
+ * cross-file). Returns every non-cross-cutting axiom that no step/halt/switch/contract references.
+ */
+export function lintDanglingAxioms(rendered: RenderedDirective[]): DanglingAxiom[] {
+  const parsed = rendered.map(parseDirective);
+  const dangling: DanglingAxiom[] = [];
+  for (const p of parsed) {
+    for (const ax of p.axioms) {
+      if (ax.crossCutting) continue;
+      const usedLocally = mentions(p.outside, ax.id);
+      const usedByHeir =
+        !usedLocally &&
+        parsed.some((q) => q !== p && q.deps.has(ax.id) && mentions(q.outside, ax.id));
+      if (!usedLocally && !usedByHeir) dangling.push({ file: p.file, id: ax.id });
+    }
+  }
+  return dangling;
+}
+
+/** Format lint results as build-output warning lines (empty array → empty string). */
+export function formatDanglingReport(dangling: DanglingAxiom[]): string {
+  if (dangling.length === 0) return '';
+  const byFile = new Map<string, string[]>();
+  for (const d of dangling) {
+    const list = byFile.get(d.file) ?? [];
+    list.push(d.id);
+    byFile.set(d.file, list);
+  }
+  const lines = [
+    `⚠ ${dangling.length} dangling axiom(s) — defined in BeliefState, referenced by no step/halt/switch/contract`,
+    `  (mark conduct-style axioms cross-cutting="true", or anchor the axiom from a step — AUTHORING.md §7)`,
+  ];
+  for (const [file, ids] of byFile) lines.push(`  ${file}: ${ids.join(', ')}`);
+  return lines.join('\n');
+}
+
+/* -------------------------------------------------------------------------------------------- */
+/* referenced-but-undefined (T-B6-08) — the opposite direction, error-severity                    */
+/* -------------------------------------------------------------------------------------------- */
+
+export interface UndefinedAxiomRef {
+  file: string;
+  id: string;
+}
+
+const AXIOM_ID_TAG = /<Axiom\s+id="(AX_[A-Z0-9_]+)"/g;
+const ID_ATTR_VALUE = /\bid="AX_[A-Z0-9_]+"/g;
+const AX_TOKEN = /\bAX_[A-Z0-9_]+\b/g;
+
+/** Every id this directive's own rendered text DEFINES (an `<Axiom id="…">` tag), anywhere in the file. */
+function ownDefinitions(text: string): Set<string> {
+  const ids = new Set<string>();
+  for (const m of text.matchAll(AXIOM_ID_TAG)) ids.add(m[1] as string);
+  return ids;
+}
+
+/** Every `AX_*` token this directive's rendered text MENTIONS, excluding the `id="…"` attribute values themselves (those are definitions, not references). */
+function mentionedIds(text: string): Set<string> {
+  const withoutIdAttrs = text.replace(ID_ATTR_VALUE, '');
+  const ids = new Set<string>();
+  for (const m of withoutIdAttrs.matchAll(AX_TOKEN)) ids.add(m[0]);
+  return ids;
+}
+
+/**
+ * Every `AX_*` MENTIONED anywhere in `rendered` must have a DEFINITION somewhere in that same
+ * rendered set — an `<Axiom id="…">` tag in its own file, in the file that loads it (an inherited
+ * axiom already `{{> "axiom/…"}}`-included there), or in any other file of the build. This is
+ * deliberately corpus-wide rather than traced through the READ_AND_USE_DIRECTIVE graph: the
+ * mechanical check this lint replaces (`files scanned / defined in tree / mentioned ids /
+ * dangling`, independently reproduced against the live tree — 40-TRACK-DIRECTIVES-SKILLS.md §4.1)
+ * is "does this AX_* correspond to a real, connected definition ANYWHERE", not "is this
+ * SPECIFIC directive's inheritance path correct" — the latter is a structural-placement concern
+ * (one home per axiom, the right loader declaring `deps=`) owned by other tasks (T-B6-02/11/18/26
+ * etc.), not this lint. A reference to an id with NO `<Axiom id>` tag anywhere in the build is
+ * either a made-up name or a library axiom that exists under `ai/kit/axiom/**` but was never
+ * connected with `{{> "axiom/<dir>/<name>"}}` — either way, a real defect this lint must catch;
+ * `allowlist` names the ones already known and not yet this task's to fix.
+ */
+export function lintUndefinedAxiomRefs(
+  rendered: RenderedDirective[],
+  options: { allowlist?: ReadonlySet<string> } = {}
+): UndefinedAxiomRef[] {
+  const allowlist = options.allowlist ?? new Set<string>();
+
+  const definedAnywhere = new Set<string>();
+  for (const d of rendered) for (const id of ownDefinitions(d.text)) definedAnywhere.add(id);
+
+  const dangling: UndefinedAxiomRef[] = [];
+  for (const d of rendered) {
+    for (const id of mentionedIds(d.text)) {
+      if (definedAnywhere.has(id)) continue;
+      if (allowlist.has(`${d.file}::${id}`)) continue;
+      dangling.push({ file: d.file, id });
+    }
+  }
+  return dangling;
+}
+
+/**
+ * Temporary allowlist (L-10 / Q2 option b) — every `${file}::${id}` pair that was already
+ * referenced-but-undefined on the live tree the moment this lint went live (T-B6-08), grouped by
+ * axiom id and diffed against the independently-reproduced inventory in
+ * `40-TRACK-DIRECTIVES-SKILLS.md` §4.1 (`files scanned: 55 | defined in tree: 164 | mentioned
+ * ids: 174 | dangling: 20` on this tree — the 20 ids below). Connecting an axiom (or authoring
+ * and connecting one that has no library file yet) is each row's own listed task, not this one —
+ * T-B6-08's job is only the lint + gate. THIS LIST ONLY SHRINKS: when an owning task connects its
+ * axiom (or a `status="draft"` decision retires it per T-B6-19), delete that id's block; never add
+ * an entry for a NEW dangling reference introduced after this commit — that is exactly what the
+ * gate below exists to refuse.
+ */
+// Entries below the sdd-v2/ templated tree, keyed with that literal prefix (matches the `file`
+// values build-directives.ts's own `rendered` array reports — see the flatMap below).
+const SDD_V2_DANGLING_REFS = (
+  [
+      // Class I (library file exists under ai/kit/axiom/**, never connected with {{> }}) — owner
+      // named where a later task in the plan explicitly claims the id; "unassigned" otherwise
+      // (still recorded in 40-TRACK-DIRECTIVES-SKILLS.md §4.1 for the next triage pass).
+      // AX_AUDIT_HOOK connected (T-B6-25, Пачка 18): now {{> "axiom/process/ax-audit-hook"}} in
+      // audit.directive.hbs (the most-cited dangling axiom in 40-TRACK-DIRECTIVES-SKILLS.md §4.1 —
+      // 5 references) — a real <Axiom id> definition exists in the rendered build, so its mentions
+      // in code-review.directive.xml, execute.directive.xml, scaffold.directive.xml (and its own
+      // second citation inside audit.directive.xml itself) are no longer dangling. Row removed.
+      // AX_STALE_AFTER_PIVOT_VERIFICATION connected (T-B6-17, Пачка 15): now {{> "axiom/audit/ax-
+      // stale-after-pivot-verification"}} in audit.directive.hbs — a real <Axiom id> definition
+      // exists in the rendered build, so its mentions in formats/pivot-formats.xml,
+      // infra.directive.xml, interface.directive.xml, migration-v1-v2.directive.xml are no longer
+      // dangling. Row removed.
+      ['AX_CLOSED_WORLD_INVENTORY', ['audit.directive.xml', 'code-review.directive.xml'], 'T-B6-02'],
+      ['AX_CONTRACTS_TEXTUAL_AGNOSTIC', ['formats/dbc-contracts.xml', 'scaffold.directive.xml'], 'T-B6-02'],
+      ['AX_PORTS_AND_ABSTRACTIONS_DISCIPLINE', ['formats/dbc-contracts.xml', 'formats/entity-surface-format.xml', 'formats/module-spec-structure.xml'], 'T-B6-02'],
+      ['AX_SCOPE_SPEC_MODULE_MAP_OWNERSHIP', ['formats/module-map-update.xml'], 'T-B6-02'],
+      ['AX_PERMITTED_BASH_COMMANDS', ['audit.directive.xml', 'execute.directive.xml', 'infra.directive.xml', 'phase-execution-protocol.directive.xml'], 'ISS-8 / T-B6-12'],
+      ['AX_SSOT_TRACEABILITY', ['formats/task-ticket-structure.xml', 'scaffold.directive.xml'], 'T-B6-13'],
+      // AX_REACTION_IS_A_TOOL_CALL resolved (T-B6-24, Пачка 18): widening this lint's scanned
+      // corpus to the static ai/directives/agent-inbox/** tree (collectStaticDirectiveFiles) means
+      // its real definition — ai/directives/agent-inbox/posting-rules.directive.xml:27 — is now
+      // part of the same corpus as sdd-v2/agent-inbox/track-review.directive.xml's mention of it.
+      // No longer dangling; row removed (was "out of this lint's default scope until then").
+      ['AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES', ['audit.directive.xml'], 'unassigned — 40-doc §4.1 row 12'],
+      ['AX_RUNTIME_BACKING_EXPLICIT', ['formats/product-spec-structure.xml'], 'unassigned — 40-doc §4.1 row 13'],
+      ['AX_YAGNI_OVERENGINEERING_GUARD', ['root.directive.xml'], 'unassigned — 40-doc §4.1 row 15'],
+      ['AX_CATCH_LOG_RECOVER', ['amplify-observability.directive.xml'], 'unassigned — 40-doc §4.1 row 16'],
+      ['AX_GITIGNORE_BASELINE', ['amplify-security.directive.xml'], 'unassigned — 40-doc §4.1 row 17'],
+      ['AX_E2E_PROOF_SCREENSHOT_ALWAYS', ['infra.directive.xml'], 'unassigned — 40-doc §4.1 row 18'],
+      // formats/project-tasks-index.xml cites AX_ENV_FIX_CHANNEL as a parenthetical pointer inside
+      // the `env-fix` token's grammar string (shared/sdd/execution-log.ts, single home) — prose
+      // documentation naming the governing axiom, not a {{> }} partial include; project-tasks-index
+      // is a rendered spec skeleton (no BeliefState) so there is no directive site to wire this
+      // into. Pre-existing since B2-03 (V-BATCH-04); only surfaced once T-B6-08's undefined-ref
+      // gate (Пачка 5) started scanning rendered format skeletons too, hit by the lead/specs-match-
+      // code × lead/kit-lint rebase. Unassigned — no task in this plan owns turning the citation
+      // into a real include.
+      ['AX_ENV_FIX_CHANNEL', ['formats/project-tasks-index.xml'], 'unassigned — surfaced by V-BATCH-04 rebase onto Пачка 5 (T-B6-08)'],
+      // Class II (no library file anywhere — id referenced but never authored) — needs an axiom
+      // AUTHORED first, not merely connected; unassigned in this plan as of Пачка 5.
+      ['AX_USAGE_WAIVER_DISCIPLINE', ['audit.directive.xml', 'formats/dbc-contracts.xml', 'formats/entity-surface-format.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 7'],
+      ['AX_SPEC_PROGRESSIVE_DISCLOSURE', ['formats/infrastructure-spec-structure.xml', 'formats/interface-spec-structure.xml', 'formats/library-spec-structure.xml', 'formats/module-spec-structure.xml', 'formats/product-spec-structure.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 8'],
+      ['AX_STRICT_NULL', ['audit.directive.xml', 'formats/audit-round.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 11'],
+      ['AX_SPEC_TABLE_IS_INDEX', ['formats/entity-inventory-format.xml'], 'unassigned (class II, no library source) — 40-doc §4.1 row 19'],
+    ] as const
+  ).flatMap(([id, files]) => files.map((file) => `sdd-v2/${file}::${id}`));
+
+// Entries below the STATIC (non-templated) trees T-B6-24 added to this lint's scope
+// (`collectStaticDirectiveFiles`) — keyed WITHOUT the `sdd-v2/` prefix, since these files live
+// directly under `ai/directives/<dir>/…`, never under `ai/directives/sdd-v2/`.
+const STATIC_TREE_DANGLING_REFS = (
+  [
+    // Corrected motivation (V-BATCH-18 verifier F-4 — the original comment here was itself wrong
+    // in the same way GAP-3, in this same batch, fixed elsewhere): `agent-inbox/contract-
+    // interrogation.directive.xml:33` cites two ids from `typescript-rules.xml` in one breath —
+    // `typescript-rules.xml` DOES exist (`ai/directives/coding/typescript-rules.xml`, and `coding`
+    // is one of STATIC_DIRECTIVE_DIRS below, so it is inside this lint's scope), and it DOES define
+    // the neighboring id cited on the same line, `AX_BASE_CONTRACT_SHAPE` (`typescript-rules.xml:187`)
+    // — that one is not dangling. Only `AX_CONTRACT_BUDGET` itself is genuinely undefined anywhere
+    // in this repo (`grep -rn AX_CONTRACT_BUDGET ai` → this citation + this allowlist line, nothing
+    // else). Its owner is the shared `coding/` rule file the citer expects it to live in, not the
+    // citing `agent-inbox/` tree (a different product's directives that merely happens to share the
+    // "agent-inbox" name with the templated `sdd-v2/agent-inbox/`). Unassigned in this plan: fixing
+    // it means authoring `AX_CONTRACT_BUDGET` in `coding/typescript-rules.xml`, which belongs to
+    // that rule file's own owner, not to the SDD v1→v2 transfer.
+    ['AX_CONTRACT_BUDGET', ['agent-inbox/contract-interrogation.directive.xml'], 'unassigned — AX_CONTRACT_BUDGET is genuinely undefined; owned by coding/typescript-rules.xml, not by agent-inbox/'],
+  ] as const
+).flatMap(([id, files]) => files.map((file) => `${file}::${id}`));
+
+export const KNOWN_DANGLING_AXIOM_REFS: ReadonlySet<string> = new Set([
+  ...SDD_V2_DANGLING_REFS,
+  ...STATIC_TREE_DANGLING_REFS,
+]);
+
+/** Format referenced-but-undefined findings as build-output error lines (empty array → empty string). */
+export function formatUndefinedRefsReport(dangling: UndefinedAxiomRef[]): string {
+  if (dangling.length === 0) return '';
+  const byFile = new Map<string, string[]>();
+  for (const d of dangling) {
+    const list = byFile.get(d.file) ?? [];
+    list.push(d.id);
+    byFile.set(d.file, list);
+  }
+  const lines = [
+    `✗ ${dangling.length} undefined axiom reference(s) — mentioned in rendered output, no <Axiom id> defined anywhere in the build`,
+    `  (connect the partial with {{> "axiom/<dir>/<name>"}}, or add a justified KNOWN_DANGLING_AXIOM_REFS entry naming the owning task — AUTHORING.md §7)`,
+  ];
+  for (const [file, ids] of byFile) lines.push(`  ${file}: ${ids.join(', ')}`);
+  return lines.join('\n');
+}
+
+/* -------------------------------------------------------------------------------------------- */
+/* scope widening (T-B6-24) — read the STATIC (non-templated) directive trees straight off disk   */
+/* -------------------------------------------------------------------------------------------- */
+
+function walkXml(dir: string, excludedDir: string): string[] {
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    const st = statSync(p);
+    if (st.isDirectory()) {
+      if (p !== excludedDir) out.push(...walkXml(p, excludedDir));
+    } else if (p.endsWith('.xml')) {
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+/**
+ * Reads every static `.xml` file under `ai/directives/**`, including root-level files and future
+ * subdirectories, while excluding only generated `ai/directives/sdd-v2/**` (already represented by
+ * the builder's in-memory render set). Returns the same `RenderedDirective` shape used by
+ * `lintUndefinedAxiomRefs` (T-B6-24); `file` stays relative to `ai/directives/`.
+ */
+export function collectStaticDirectiveFiles(directivesRoot: string): RenderedDirective[] {
+  if (!existsSync(directivesRoot)) return [];
+  const files = walkXml(directivesRoot, join(directivesRoot, 'sdd-v2'));
+  return files.map((p) => ({
+    file: relative(directivesRoot, p).split(sep).join('/'),
+    text: readFileSync(p, 'utf8'),
+  }));
+}
+
+/* -------------------------------------------------------------------------------------------- */
+/* every axiom is referenced or marked draft (T-B6-19, L-9 hybrid option c)                       */
+/* -------------------------------------------------------------------------------------------- */
+
+export interface UncollectedAxiomFile {
+  /** Path relative to `ai/kit/axiom/`, e.g. `audit/ax-severity.xml`. */
+  file: string;
+  id: string;
+  /**
+   * Which of the four states tripped the gate (V-BATCH-18 verifier F-2 — a fourth, previously
+   * silent state, "connected AND draft", is now a violation too):
+   * - `uncollected` — neither connected, marked draft, nor pending: the original T-B6-19 case.
+   * - `draft-but-connected` — some directive's `{{> }}` collects it, yet its tag still claims
+   *   `status="draft"` (a collected axiom is not a draft; the label is now a lie).
+   * - `pending-but-connected` — it is connected, yet still listed in `PENDING_IN_OPEN_PR` (the PR
+   *   that was going to connect it already merged; the entry is stale and must be deleted).
+   */
+  reason: 'uncollected' | 'draft-but-connected' | 'pending-but-connected';
+}
+
+const AXIOM_TAG_WITH_STATUS = /<Axiom\s+id="(AX_[A-Z0-9_]+)"([^>]*)>/;
+const STATUS_DRAFT_ATTR = /\bstatus="draft"/;
+
+/**
+ * PENDING_IN_OPEN_PR (V-BATCH-18 verifier F-2 / Lead decision on the batch-18 return): an
+ * alternative to `status="draft"` for an axiom file that ANOTHER, already-open branch is about to
+ * connect with its own `{{> "axiom/<dir>/<name>"}}` include. `status="draft"` asserts "nobody has
+ * wired this in, on purpose" — false for a file whose connecting include already exists, just on a
+ * branch not yet merged here; T-B6-19 marked these 7 files draft anyway because at the time that
+ * was the only alternative to a hard build failure, silently mis-describing them as abandoned
+ * snapshots. Key = partial key (identical shape to `connectedPartials`, e.g.
+ * `critic/ax-default-accept` — no leading `axiom/`, no `.xml`); value = which open PR(s) carry the
+ * connecting include, for a human to verify against.
+ *
+ * This is a NAMED, SHRINKING list (same discipline as `KNOWN_DANGLING_AXIOM_REFS`, L-10): once a
+ * listed PR merges, this repo's own `connectedPartials` starts containing that key, and
+ * `lintUncollectedAxiomFiles` turns "connected AND still listed here" into a build error
+ * (`pending-but-connected`) until the entry below is deleted — the gate forces the shrink, not
+ * memory or good faith.
+ */
+export const PENDING_IN_OPEN_PR: ReadonlyMap<string, string> = new Map();
+
+/**
+ * L-9 (hybrid option c): every axiom FILE in the library is in exactly one of three legitimate
+ * states — (a) CONNECTED — its `{{> "axiom/<dir>/<name>"}}` partial appears at least once across
+ * the template corpus, so some directive actually collects it, and it carries neither `draft` nor
+ * a `PENDING_IN_OPEN_PR` entry (both would misdescribe it as not-yet-wired-in); (b) explicitly
+ * labeled `status="draft"` on its own `<Axiom id>` tag while NOT connected — a recorded decision
+ * that this invariant is a library snapshot not yet wired into any v2 directive; or (c) NOT
+ * connected but listed in `PENDING_IN_OPEN_PR` — a recorded decision that it is about to be wired
+ * in by a specific, named, already-open PR. A file in none of these three shapes is indistinguishable
+ * from an invariant nobody remembered to collect — exactly the failure mode AUTHORING.md §7 already
+ * names for the referenced-but-undefined direction, one layer earlier (library file, not yet a
+ * reference at all) — and a file in MORE than one of them (connected yet still marked draft or still
+ * pending) is a stale, misleading label on a file the gate can already see is connected.
+ *
+ * `axiomFiles` is the caller-selected SDD-relevant subset (L-9's own criterion — the plan's
+ * §4.1 headcount is `process/spec/audit/scaffold/boundary/critic/truth/interview`, 181 axioms
+ * today; the other library categories — `coding/testing/e2e/storybook/infra/uikit/error/
+ * typescript/perf/logging/agent-inbox` — are per-rule-file rule libraries consumed through a
+ * completely different mechanism (`AX_RULES_COMPLIANCE_AGAINST_ACTIVATED_RULES`'s cascade, not
+ * `{{> "axiom/…"}}` template includes) and are out of this check's scope by construction, not by
+ * omission — this function never walks them itself, the caller decides what "the library" means
+ * here). `connectedPartials` is the caller-collected set of every `{{> "axiom/<dir>/<name>"}}`
+ * token seen anywhere in the template corpus (same partial-id shape as the include itself, e.g.
+ * `audit/ax-severity-tagging`, no leading `axiom/` and no `.xml`). `pendingInOpenPr` defaults to
+ * the module-level `PENDING_IN_OPEN_PR` allowlist; callers may override it in tests.
+ */
+export function lintUncollectedAxiomFiles(
+  axiomFiles: RenderedDirective[],
+  connectedPartials: ReadonlySet<string>,
+  pendingInOpenPr: ReadonlyMap<string, string> = PENDING_IN_OPEN_PR
+): UncollectedAxiomFile[] {
+  const violations: UncollectedAxiomFile[] = [];
+  for (const f of axiomFiles) {
+    const m = f.text.match(AXIOM_TAG_WITH_STATUS);
+    if (!m) continue; // not an axiom-shaped file — nothing for this check to say
+    const id = m[1] as string;
+    const attrs = m[2] as string;
+    const partialKey = f.file.replace(/\.xml$/, '');
+    const isConnected = connectedPartials.has(partialKey);
+    const isDraft = STATUS_DRAFT_ATTR.test(attrs);
+    const isPending = pendingInOpenPr.has(partialKey);
+    if (isConnected) {
+      if (isDraft) violations.push({ file: f.file, id, reason: 'draft-but-connected' });
+      else if (isPending) violations.push({ file: f.file, id, reason: 'pending-but-connected' });
+      continue;
+    }
+    if (isDraft || isPending) continue;
+    violations.push({ file: f.file, id, reason: 'uncollected' });
+  }
+  return violations;
+}
+
+const UNCOLLECTED_REASON_HINT: Record<UncollectedAxiomFile['reason'], string> = {
+  'uncollected': 'neither collected by any directive, marked status="draft", nor listed in PENDING_IN_OPEN_PR',
+  'draft-but-connected': 'connected by a {{> }} include AND marked status="draft" — a collected axiom is not a draft; remove the status attribute',
+  'pending-but-connected': 'connected by a {{> }} include AND still listed in PENDING_IN_OPEN_PR — its PR merged; delete the stale entry in lint-axioms.ts',
+};
+
+/** Format uncollected-axiom-file findings as build-output error lines (empty array → empty string). */
+export function formatUncollectedAxiomsReport(violations: UncollectedAxiomFile[]): string {
+  if (violations.length === 0) return '';
+  const lines = [
+    `✗ ${violations.length} axiom file(s) fail the collected-or-draft-or-pending invariant (L-9, T-B6-19; gate widened per V-BATCH-18 F-2)`,
+    `  (connect it with {{> "axiom/<dir>/<name>"}}; mark status="draft" only while genuinely uncollected; use PENDING_IN_OPEN_PR only while a named open PR is about to connect it)`,
+  ];
+  for (const v of violations) lines.push(`  ${v.file}: ${v.id} — ${UNCOLLECTED_REASON_HINT[v.reason]}`);
+  return lines.join('\n');
+}

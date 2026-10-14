@@ -1,0 +1,114 @@
+# S4 — портала нет, код есть: `root` вызывает `discover-from-code` по probe-фактам `sdd-state`
+
+Проверяет: router `LOGIC_SWITCH` ветку 1 (портал absent → `root.directive.xml`), и внутри `root`
+STEP_0_INTAKE — что именно probe-факты из снапшота `sdd-state` (не какой-то ручной осмотр) решают
+`CODE=present` vs `CODE=absent`, и что `discover-from-code` грузится ЧЕРЕЗ `root`, а не напрямую
+роутером.
+
+## Fixture
+
+Портала нет (`specs/README.md` отсутствует), `tasks/` нет.
+
+`package.json`:
+
+```json
+{
+  "name": "legacy-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node dist/index.js"
+  }
+}
+```
+
+`tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "strict": true,
+    "outDir": "dist"
+  },
+  "include": ["src"]
+}
+```
+
+`src/index.ts`:
+
+```typescript
+import { createUser } from './user.ts';
+import { connect } from './db.ts';
+
+const db = connect();
+createUser(db, 'demo@example.com');
+```
+
+`src/user.ts`:
+
+```typescript
+import type { Db } from './db.ts';
+
+export function createUser(db: Db, email: string): void {
+  db.insert('users', { email });
+}
+```
+
+`src/db.ts`:
+
+```typescript
+export type Db = { insert: (table: string, row: Record<string, unknown>) => void };
+
+export function connect(): Db {
+  return { insert: () => {} };
+}
+```
+
+## Entry
+
+Скилл: `/sdd`. Первая реплика оператора:
+
+> Наведи SDD-порядок в проекте.
+
+## Operator Script
+
+(Пусто — прогон останавливается на показе общей картины, до первого вопроса, требующего ответа
+оператора; `discover-from-code` STEP_1_PICTURE ждёт свободный текст, но стоп фиксируется на моменте
+показа, симулировать ответ не нужно.)
+
+## Stop
+
+Сразу после того, как `discover-from-code.directive` STEP*1_PICTURE показал общую картину
+(`UNDERSTANDING_BLOCK_FORMAT`: инферированный vision, scope graph, инфра/тулчейн, конвенции) с
+разметкой Facts / Assumptions / Hypotheses — ДО STEP_2_PERSIST_PICTURE (до `sdd-new portal` и любой
+записи на диск). Трейс заканчивается строкой `stop: per-map — <это условие дословно>` (не `halt:` —
+остановка по карте, не директивный `H*\*`-гейт).
+
+## Checkpoints
+
+1. `sdd-state` вызван первым — репортит портал absent И содержит секцию `[PROBE]` (`CODE=present`)
+   в том же выводе: probe — часть дефолтного снапшота, отдельного вызова под него нет.
+2. Сработавшая ветка router `LOGIC_SWITCH` — дословно: «WHEN specs/README.md is absent OR intent =
+   project-setup ... -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")». В трейсе
+   `directive: ai/directives/sdd-v2/root.directive.xml loaded` идёт СРАЗУ после router, раньше
+   `discover-from-code`.
+3. Внутри `root.directive` STEP_0_INTAKE НЕТ второго вызова `sdd-state` — `CODE` берётся из уже
+   полученного вывода, дословно по директиве: «read `CODE` from the `sdd-state` output already in
+   context — the probe (`CODE`/`INFRA`, code-dirs, configs) is part of the default snapshot; do NOT
+   call `sdd-state` a second time for it». Второй `tool: sdd-state` в трейсе = VIOLATED.
+4. Снапшот отчитал `CODE=present` (три `.ts`-файла в `src/`) — сработавшая ветка `root` STEP_0_INTAKE:
+   «`CODE=present` -> **from-code recovery** — do NOT invent a vision over existing code:
+   READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/discover-from-code.directive.xml")». `H_NO_CODE`
+   (проверяемый внутри `discover-from-code`) не сработал — код был.
+5. `discover-from-code` загружен ЧЕРЕЗ `root`, не напрямую роутером — в трейсе порядок строго:
+   `router` → `root.directive.xml loaded` → `directive: ai/directives/sdd-v2/discover-from-code.directive.xml loaded`.
+   Ни `infra.directive.xml`, ни `module.directive.xml`, ни `scaffold.directive.xml` не загружены
+   (это STEP_3_DEEPEN — опциональный шаг после стопа, недостижим).
+6. Ни одной строки `write:` в трейсе — STEP_0_CARTOGRAPHY read-only («Read-only.»), стоп до
+   STEP_2_PERSIST_PICTURE (которая первая пишет — через `sdd-new portal`).
+7. Показанная картина разделяет Facts / Assumptions / Hypotheses (`AX_EVIDENCE_HYGIENE`) и явно
+   помечает vision как «зачем и куда — твоё» (per STEP_1_PICTURE: «inferred **vision** ... but marked
+   operator-owned: «зачем и куда — твоё»»). Трейс содержит `show:`-строку, перечисляющую блоки
+   `UNDERSTANDING_BLOCK_FORMAT`, фактически показанные (vision / scope graph / инфра-тулчейн /
+   конвенции) — без неё этот чекпоинт непроверяем.

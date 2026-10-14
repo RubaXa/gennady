@@ -1,4 +1,5 @@
 // @file: rest param
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 /**
  * @purpose Rest param.

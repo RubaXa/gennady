@@ -1,0 +1,783 @@
+// @file: v1→v2 migration plan layer — scan the repo into per-spec units, scaffold one
+//   `migration/**/*.migration.md` file per spec (generated inventory + agent-filled maps + step
+//   checklist), and verify the layer deterministically (inventory drift, map coverage, slug
+//   collisions). The plan is the on-disk source of truth the execution steps consume.
+// @spec: SHARED
+// @consumers: sdd-migrate.cmd
+
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join, relative, sep, basename, dirname } from 'node:path';
+import { extractSection } from './section.ts';
+import { parseMeta } from './tracker.ts';
+import { REQUIRED_SECTIONS, MODULE_REQUIRED_V2, FOLD_REQUIRED_V2, type Finding } from './check.ts';
+import { validateTaskId } from './task-id.ts';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/** @purpose One v1 ticket attached to a unit — identity + the facts the plan needs. */
+export type UnitTicket = {
+  /** @purpose Ticket path relative to the repo root. */
+  file: string;
+  /** @purpose Task-ID from Meta (e.g. `CAT-mr-url`), or null when unparseable. */
+  taskId: string | null;
+  /** @purpose Status token from Meta (e.g. `[x] DONE`), or null. */
+  status: string | null;
+  /** @purpose First line of Meta `Purpose:` — the slug source, or null. */
+  purpose: string | null;
+};
+
+/** @purpose One migration unit = one spec file + its tickets + the derived target skeleton. */
+export type SpecUnit = {
+  /** @purpose Spec path relative to the repo root. */
+  specFile: string;
+  /** @purpose Scope name — first path segment under `specs/`. */
+  scope: string;
+  /** @purpose Module dir name for a module spec (depth ≥ specs/<scope>/<module>/…), null for a scope spec. */
+  module: string | null;
+  /** @purpose scope-type token from the SCOPE_TYPE section, or null when absent. */
+  scopeType: string | null;
+  /** @purpose Spec line count. */
+  lines: number;
+  /** @purpose Count of ```mermaid blocks in the spec. */
+  mermaidCount: number;
+  /** @purpose SECTION anchor names present, in document order. */
+  anchors: string[];
+  /** @purpose Level-2 headings in document order (fenced blocks excluded). */
+  headings: string[];
+  /** @purpose Tickets attached to this unit (Meta Module → dir path → scope fallback), path-sorted. */
+  tickets: UnitTicket[];
+  /** @purpose Required target SECTION names this spec must produce after migration. */
+  targetSections: string[];
+  /** @purpose Target sections whose detail must fold under `<details>` after migration. */
+  foldSections: string[];
+};
+
+/** @purpose Full scan result — units plus tickets no unit claimed (never silently dropped). */
+export type MigrationScan = {
+  /** @purpose One migration unit per scanned spec. */
+  units: SpecUnit[];
+  /** @purpose Tickets whose scope has no spec dir — must be resolved by the operator. */
+  orphanTickets: UnitTicket[];
+};
+
+/** @purpose Unit lifecycle status — written in the unit file, gates what verify demands. */
+export const UNIT_STATUSES = ['PLANNED', 'MAPPED', 'APPROVED', 'DONE'] as const;
+
+/** @purpose One token from UNIT_STATUSES — a unit's lifecycle state. */
+export type UnitStatus = (typeof UNIT_STATUSES)[number];
+
+/** @purpose Closed vocabulary for Section Map actions — anything else is a verify error. */
+export const SECTION_ACTIONS = ['keep', 'rename', 'merge', 'split', 'create', 'drop'] as const;
+
+/** @purpose Sentinel Section Map target for a source heading no curated rule recognizes — the one thing STEP_3 leaves for the agent. */
+export const UNMAPPED = 'UNMAPPED';
+
+/** @purpose One curated v1-heading → v2-canonical-SECTION correspondence. */
+type HeadingSectionRule = { match: RegExp; section: string };
+
+/**
+ * @purpose Curated v1-heading → v2-canonical-SECTION correspondences, sourced from
+ * `ai/directives/sdd-v2/formats/*-spec-structure.xml` (siblings `anchor-inject.ts#canonicalName`).
+ * @invariant Curated, not guessed: an unmatched heading is left `UNMAPPED`, never a nearest guess.
+ */
+const HEADING_SECTION_RULES: HeadingSectionRule[] = [
+  { match: /^scope-type$/i, section: 'SCOPE_TYPE' },
+  { match: /^vision(\s*&\s*primary goal)?$/i, section: 'VISION' },
+  { match: /^module vision$/i, section: 'MODULE_VISION' },
+  { match: /^overview$/i, section: 'OVERVIEW' },
+  { match: /^project type$/i, section: 'PROJECT_TYPE' },
+  { match: /^(approved\s+)?golden (dx|ux)(\s+example)?(\s*\(.*\))?$/i, section: 'GOLDEN_DX' },
+  { match: /^scope dependencies$/i, section: 'SCOPE_DEPENDENCIES' },
+  { match: /^requirements(\s*&\s*constraints)?$/i, section: 'REQUIREMENTS_AND_CONSTRAINTS' },
+  { match: /^(high-level\s+)?architecture$/i, section: 'ARCHITECTURE' },
+  { match: /^module map(\s*\(.*\))?$/i, section: 'MODULE_MAP' },
+  { match: /^module decision log$/i, section: 'MODULE_DECISION_LOG' },
+  { match: /^decision log$/i, section: 'DECISION_LOG' },
+  { match: /^(prerequisites|bootstrap requirements)$/i, section: 'BOOTSTRAP_REQUIREMENTS' },
+  { match: /^handoff(\s+to\s+.*)?$/i, section: 'HANDOFF' },
+  { match: /^tool stack(\s*\(.*\))?$/i, section: 'TOOL_STACK' },
+  { match: /^developer workflow example$/i, section: 'WORKFLOW_EXAMPLE' },
+  { match: /^file structure$/i, section: 'FILE_STRUCTURE' },
+  { match: /^effective rules(\s*\(.*\))?$/i, section: 'EFFECTIVE_RULES' },
+  { match: /^verification commands$/i, section: 'VERIFICATION_COMMANDS' },
+  { match: /^interface declaration$/i, section: 'INTERFACE_DECLARATION' },
+  { match: /^versioning policy$/i, section: 'VERSIONING_POLICY' },
+  { match: /^compatibility matrix$/i, section: 'COMPATIBILITY_MATRIX' },
+  { match: /^public api surface$/i, section: 'PUBLIC_API_SURFACE' },
+  { match: /^module usage example$/i, section: 'MODULE_USAGE_EXAMPLE' },
+  { match: /^inter-module dependencies$/i, section: 'INTER_MODULE_DEPENDENCIES' },
+  { match: /^entity inventory(\s*\(.*\))?$/i, section: 'ENTITY_INVENTORY' },
+  { match: /^entity surfaces$/i, section: 'ENTITY_SURFACES' },
+  { match: /^module contracts(\s*\(.*\))?$/i, section: 'MODULE_CONTRACTS' },
+  { match: /^public options(\s*&\s*policies)?$/i, section: 'PUBLIC_OPTIONS' },
+];
+
+/**
+ * @purpose Map one v1 `##`/`###` heading (as collected by `level2Headings`, numbering included) to
+ * its v2 canonical SECTION name, or `UNMAPPED` when no curated rule matches.
+ * @invariant Pure text match — never a nearest-guess; unrecognized input is always `UNMAPPED`.
+ * @param heading Raw heading text, e.g. `"## 3. Requirements & Constraints"`.
+ * @returns The canonical SECTION name, or `UNMAPPED`.
+ */
+export function mapHeadingToSection(heading: string): string {
+  const text = heading
+    .replace(/^#{2,3}\s*/, '')
+    .replace(/^\d+(\.\d+)*\.?\s+/, '')
+    .trim();
+  for (const rule of HEADING_SECTION_RULES) {
+    if (rule.match.test(text)) return rule.section;
+  }
+  return UNMAPPED;
+}
+
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage']);
+
+// ─── Scan ─────────────────────────────────────────────────────────────────────
+
+/** @purpose Recursively collect files matching a predicate, skipping system dirs and symlinks. */
+function walkFiles(dir: string, match: (name: string) => boolean, acc: string[]): void {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of entries) {
+    if (e.name.startsWith('.') || SKIP_DIRS.has(e.name) || e.isSymbolicLink()) continue;
+    const full = join(dir, e.name);
+    if (e.isDirectory()) walkFiles(full, match, acc);
+    else if (e.isFile() && match(e.name)) acc.push(full);
+  }
+}
+
+/** @purpose Level-2 headings in document order, ignoring lines inside ``` fences. */
+function level2Headings(content: string): string[] {
+  const out: string[] = [];
+  let inFence = false;
+  for (const line of content.split('\n')) {
+    if (line.trimStart().startsWith('```')) {
+      inFence = !inFence;
+      continue;
+    }
+    if (!inFence && /^##\s/.test(line)) out.push(line.trim());
+  }
+  return out;
+}
+
+/** @purpose SECTION anchor names present in a document, in order, deduplicated. */
+function anchorNames(content: string): string[] {
+  const seen = new Set<string>();
+  for (const m of content.matchAll(/<!--SECTION:([A-Z][A-Z0-9_]*)-->/g)) {
+    if (m[1]) seen.add(m[1]);
+  }
+  return [...seen];
+}
+
+/** @purpose scope-type token from the SCOPE_TYPE section, or null. */
+function scopeTypeOf(content: string): string | null {
+  const sec = extractSection(content, 'SCOPE_TYPE');
+  if (sec.status !== 'ok') return null;
+  const m = /\b(product|library|infrastructure|interface)\b/.exec(sec.content);
+  return m?.[1] ?? null;
+}
+
+/** @purpose Parse one v1 ticket into a UnitTicket + its Meta Scope/Module claims. */
+function readTicket(
+  repoRoot: string,
+  file: string
+): { ticket: UnitTicket; scope: string | null; module: string | null } {
+  let content = '';
+  try {
+    content = readFileSync(file, 'utf-8');
+  } catch {
+    // unreadable ticket still appears in the plan (with null facts) — never silently dropped
+  }
+  const metaSec = extractSection(content, 'META');
+  const metaBody =
+    metaSec.status === 'ok'
+      ? metaSec.content
+      : (/##[^\n]*\bMeta\b[^\n]*\n([\s\S]*?)(?=\n## |$)/.exec(content)?.[1] ?? '');
+  const meta = parseMeta(metaBody);
+  const purpose = /\*{0,2}Purpose:\*{0,2}\s*([^\n]+)/.exec(metaBody)?.[1]?.trim() ?? null;
+  const scope = /\*{0,2}Scope:\*{0,2}\s*`?([\w./-]+)`?/.exec(metaBody)?.[1] ?? null;
+  const module = /\*{0,2}Module:\*{0,2}\s*`?([\w./-]+)`?/.exec(metaBody)?.[1] ?? null;
+  return {
+    ticket: {
+      file: relative(repoRoot, file),
+      taskId: meta.taskId,
+      status: meta.status,
+      purpose,
+    },
+    scope,
+    module,
+  };
+}
+
+/**
+ * @purpose Scan a v1 repo into migration units — one per spec under `specs/`, each claiming its
+ * tickets from `tasks/`.
+ * @invariant Deterministic: units and tickets are path-sorted; a rescan of an unchanged repo
+ *   yields a byte-identical result.
+ * @invariant Every ticket lands somewhere — a ticket whose scope has no spec at all goes to
+ *   `orphanTickets`, never dropped.
+ * @param repoRoot Absolute repo root (holds `specs/` and `tasks/`).
+ * @returns Units + orphan tickets.
+ */
+export function scanMigrationUnits(repoRoot: string): MigrationScan {
+  const specsRoot = join(repoRoot, 'specs');
+  const specFiles: string[] = [];
+  walkFiles(specsRoot, (n) => n.endsWith('.spec.md') || n.endsWith('.1-spec.md'), specFiles);
+  specFiles.sort();
+
+  const units: SpecUnit[] = [];
+  for (const abs of specFiles) {
+    const rel = relative(repoRoot, abs);
+    const parts = rel.split(sep);
+    // rel = specs/<scope>/... — scope specs sit at depth 3, module specs at depth ≥ 4
+    const scope = parts[1];
+    if (!scope || parts.length < 3) continue;
+    const module = parts.length >= 4 ? (parts[parts.length - 2] ?? null) : null;
+    const content = readFileSync(abs, 'utf-8');
+    const isModule = module !== null;
+    const scopeType = scopeTypeOf(content);
+    const targetSections = isModule
+      ? ['MODULE_VISION', 'OVERVIEW', ...MODULE_REQUIRED_V2.filter((s) => s !== 'MODULE_VISION')]
+      : ['OVERVIEW', ...(scopeType ? (REQUIRED_SECTIONS[scopeType] ?? []) : [])];
+    units.push({
+      specFile: rel,
+      scope,
+      module,
+      scopeType,
+      lines: content.split('\n').length,
+      mermaidCount: (content.match(/^\s*```mermaid/gm) ?? []).length,
+      anchors: anchorNames(content),
+      headings: level2Headings(content),
+      tickets: [],
+      targetSections: [...new Set(targetSections)],
+      foldSections: isModule ? [...FOLD_REQUIRED_V2] : [],
+    });
+  }
+
+  // Discover tickets by CONTENT (a Task-ID in Meta), not filename: real repos name tickets their own
+  // way (e.g. `<scope>.IB-NN.md`), and a Task-ID is the one version-agnostic signal every ticket
+  // carries — anchored, plain v1, or even one that never had an Execution Log.
+  // #region START_TICKET_ATTACH — the tasks/<scope>/ path is the physical truth; Meta only refines
+  // the module pick (v1 Meta Scope/Module are loose — they may name a module or a spec-less sub-part).
+  const mdFiles: string[] = [];
+  walkFiles(join(repoRoot, 'tasks'), (n) => n.endsWith('.md'), mdFiles);
+  const ticketFiles = mdFiles
+    .filter((abs) => {
+      try {
+        return parseMeta(readFileSync(abs, 'utf-8')).taskId !== null;
+      } catch {
+        return false;
+      }
+    })
+    .sort();
+
+  const orphanTickets: UnitTicket[] = [];
+  for (const abs of ticketFiles) {
+    const rel = relative(repoRoot, abs);
+    const scope = rel.split(sep)[1] ?? '';
+    const { ticket, scope: metaScope, module: metaModule } = readTicket(repoRoot, abs);
+    const dirModule = rel.split(sep).length >= 4 ? rel.split(sep)[2] : null;
+
+    const inScope = units.filter((u) => u.scope === scope);
+    const byMetaModule = metaModule ? inScope.find((u) => u.module === metaModule) : undefined;
+    const byDirModule = dirModule ? inScope.find((u) => u.module === dirModule) : undefined;
+    // Meta Scope sometimes names a module of the physical scope — try it as a module before falling back.
+    const byMetaScope = metaScope ? inScope.find((u) => u.module === metaScope) : undefined;
+    const scopeUnit = inScope.find((u) => u.module === null);
+    const target = byMetaModule ?? byDirModule ?? byMetaScope ?? scopeUnit;
+    if (target) target.tickets.push(ticket);
+    else orphanTickets.push(ticket);
+  }
+  // #endregion END_TICKET_ATTACH
+
+  return { units, orphanTickets };
+}
+
+// ─── Scaffold ─────────────────────────────────────────────────────────────────
+
+/**
+ * @purpose Path of a unit's migration file, mirroring the spec's path under `migration/`.
+ * @param unit The scanned unit.
+ * @returns Repo-relative path of the unit's `*.migration.md`.
+ */
+export function unitFilePath(unit: SpecUnit): string {
+  const specRelDir = dirname(unit.specFile).split(sep).slice(1).join(sep); // drop leading "specs"
+  const base = basename(unit.specFile).replace(/\.md$/, '.migration.md');
+  return join('migration', specRelDir, base);
+}
+
+/** @purpose Render the generated INVENTORY block body — the byte-comparable fact sheet. */
+function renderInventory(unit: SpecUnit): string {
+  const lines: string[] = [
+    '## Inventory',
+    '',
+    '<!-- Сгенерировано `npx gennady sdd-migrate plan`. Не редактировать руками — `npx gennady sdd-migrate plan . --verify` сверяет этот блок с реальностью и падает при расхождении. -->',
+    '',
+    `- spec: \`${unit.specFile}\` · строк: ${unit.lines} · scope-type: ${unit.scopeType ? `\`${unit.scopeType}\`` : '—'} · mermaid-блоков: ${unit.mermaidCount} · якорей: ${unit.anchors.length}`,
+    `- обязательные целевые секции: ${unit.targetSections.map((s) => `\`${s}\``).join(', ')}`,
+  ];
+  if (unit.foldSections.length > 0)
+    lines.push(
+      `- секции, чья детализация сворачивается в \`<details>\`: ${unit.foldSections.map((s) => `\`${s}\``).join(', ')}`
+    );
+  lines.push('- заголовки (level 2):');
+  for (const h of unit.headings) lines.push(`  - \`${h}\``);
+  if (unit.headings.length === 0) lines.push('  - (нет)');
+  lines.push('- тикеты:');
+  for (const t of unit.tickets)
+    lines.push(
+      `  - \`${t.file}\` · ${t.taskId ? `\`${t.taskId}\`` : '—'} · ${t.status ?? '—'} · ${t.purpose ?? '—'}`
+    );
+  if (unit.tickets.length === 0) lines.push('  - (нет)');
+  return lines.join('\n');
+}
+
+/** @purpose Render the Section Map — pre-filled via `mapHeadingToSection`; `UNMAPPED` rows are the agent's only work. */
+function renderSectionMap(unit: SpecUnit): string {
+  const lines: string[] = [
+    '## Section Map',
+    '',
+    '<!-- Предзаполнено `npx gennady sdd-migrate plan` по курируемым правилам (mapHeadingToSection). Агент правит',
+    '     только строки с целью UNMAPPED — остальные пересматривает лишь если правило ошиблось.',
+    `     Действия: ${SECTION_ACTIONS.join(' | ')}. Каждая обязательная целевая секция должна появиться в колонке «Цель».`,
+    '     Полный целевой порядок секций — в format-файле структуры (ai/directives/sdd-v2/formats/*-spec-structure.xml). -->',
+    '',
+    '| Источник | Действие | Цель (SECTION) | Комментарий |',
+    '|---|---|---|---|',
+  ];
+  const matchedTargets = new Set<string>();
+  for (const h of unit.headings) {
+    const section = mapHeadingToSection(h);
+    if (section === UNMAPPED) {
+      lines.push(`| \`${h}\` | ? | ${UNMAPPED} | не распознано правилом — решает агент |`);
+    } else {
+      matchedTargets.add(section);
+      lines.push(`| \`${h}\` | keep | ${section} | предзаполнено правилом |`);
+    }
+  }
+  for (const s of unit.targetSections) {
+    if (matchedTargets.has(s)) continue;
+    lines.push(`| — | create | ${s} | если не покрыта строками выше — создать |`);
+  }
+  return lines.join('\n');
+}
+
+/** @purpose Render the agent-filled Ticket Map scaffold — new ID + destination per ticket. */
+function renderTicketMap(unit: SpecUnit): string {
+  const specBase = basename(unit.specFile).replace(/\.(1-spec|spec)\.md$/, '');
+  const destDir = dirname(unit.specFile);
+  const lines: string[] = [
+    '## Ticket Map',
+    '',
+    '<!-- Новый ID: `<ACR>-<slug>` — kebab-case, слаг из Meta.Purpose, слаг ≤8 символов (дефисы включительно), уникален в рамках всего репо.',
+    `     Назначение вычисляется из ID: \`${destDir}/${specBase}.task.<новый-ID>.md\`. -->`,
+    '',
+    '| Файл | Task-ID | Новый ID | Назначение |',
+    '|---|---|---|---|',
+  ];
+  for (const t of unit.tickets) lines.push(`| \`${t.file}\` | ${t.taskId ?? '—'} | ? | ? |`);
+  if (unit.tickets.length === 0) lines.push('| (нет тикетов) | — | — | — |');
+  return lines.join('\n');
+}
+
+/** @purpose Render the agent-filled Diagram Plan scaffold. */
+function renderDiagramPlan(unit: SpecUnit): string {
+  return [
+    '## Diagram Plan',
+    '',
+    '<!-- Заполняет агент: какая диаграмма встанет в Overview (обязательная) и откуда её содержание',
+    '     (существующий mermaid-блок / новая — из какого текста строится). Дополнительные диаграммы',
+    '     (последовательности, потоки данных) — по решению агента, если они улучшают чтение. -->',
+    '',
+    `- существующих mermaid-блоков: ${unit.mermaidCount}`,
+    '- Overview-диаграмма: ?',
+  ].join('\n');
+}
+
+/** @purpose Render the per-unit step checklist — the parallel worker's self-sufficient job card. */
+function renderSteps(unit: SpecUnit): string {
+  const scopeGate = `npx gennady sdd-check --all specs/${unit.scope}`;
+  return [
+    '## Steps',
+    '',
+    '<!-- Работа этого юнита. Механические шаги всего репо (anchors / ids / move) живут в migration/README.md',
+    '     и выполняются централизованно — здесь только то, что делается в рамках этой спеки. -->',
+    '',
+    '- [ ] S1 ✍️ Изучить исходник, заполнить Section Map / Ticket Map / Diagram Plan → **Status:** MAPPED',
+    '- [ ] S2 ✅ `npx gennady sdd-migrate plan . --verify` — карты полны, расхождений с реальностью нет',
+    '- [ ] S3 🛑 Подтверждение оператора → **Status:** APPROVED',
+    '- [ ] S4 ✍️ Реструктуризация спеки по Section Map: целевой порядок секций из format-файла, заголовки без номеров, тяжёлые секции — в `<details>`, Overview с диаграммой по Diagram Plan',
+    '- [ ] S5 ✍️ Текст — плоский технический русский (без калек и метафор; код/ID/токены — English)',
+    `- [ ] S6 ✅ \`${scopeGate}\` — строгий v2-гейт (структура, фолды, разбор mermaid, язык) → **Status:** DONE`,
+    '',
+  ].join('\n');
+}
+
+/**
+ * @purpose Render a full unit migration file — generated inventory + agent-filled map scaffolds +
+ * step checklist, regions wrapped in SECTION anchors.
+ * @param unit The scanned unit.
+ * @returns Markdown text of the unit's `*.migration.md`.
+ */
+export function scaffoldUnitFile(unit: SpecUnit): string {
+  return [
+    `# План миграции: ${unit.specFile}`,
+    '',
+    `- **Status:** PLANNED <!-- ${UNIT_STATUSES.join(' → ')} -->`,
+    `- **Scope:** ${unit.scope}${unit.module ? ` | **Module:** ${unit.module}` : ''}`,
+    '',
+    '<!--SECTION:INVENTORY-->',
+    renderInventory(unit),
+    '<!--/SECTION:INVENTORY-->',
+    '',
+    '<!--SECTION:SECTION_MAP-->',
+    renderSectionMap(unit),
+    '<!--/SECTION:SECTION_MAP-->',
+    '',
+    '<!--SECTION:TICKET_MAP-->',
+    renderTicketMap(unit),
+    '<!--/SECTION:TICKET_MAP-->',
+    '',
+    '<!--SECTION:DIAGRAM_PLAN-->',
+    renderDiagramPlan(unit),
+    '<!--/SECTION:DIAGRAM_PLAN-->',
+    '',
+    '<!--SECTION:STEPS-->',
+    renderSteps(unit),
+    '<!--/SECTION:STEPS-->',
+    '',
+  ].join('\n');
+}
+
+/**
+ * @purpose Render `migration/README.md` — the global tracker: repo-wide mechanical steps in order,
+ * then the generated unit table.
+ * @param scan Full scan result.
+ * @returns Markdown text.
+ */
+export function scaffoldPlanReadme(scan: MigrationScan): string {
+  const lines: string[] = [
+    '# Миграция v1 → v2 — план',
+    '',
+    'Слой сгенерирован `npx gennady sdd-migrate plan`. Один файл плана — на одну спеку (её секции + её задачи).',
+    'Статусы юнитов живут в самих unit-файлах; `npx gennady sdd-migrate plan . --verify` проверяет весь слой.',
+    '',
+    '## Порядок исполнения',
+    '',
+    '- [ ] G0 🤖 `npx gennady sdd-migrate bootstrap . --write` — доказанно удалить V1 tooling и установить полный свежий V2 runtime миграции (сначала dry-run без `--write`)',
+    '- [ ] G1 🤖 `npx gennady sdd-migrate plan . --write` — материализовать repo-owned слой `migration/**`',
+    '- [ ] G2 ✍️ Заполнить unit-файлы (Section Map / Ticket Map / Diagram Plan) по локальным `ai/directives/sdd-v2/formats/*-spec-structure.xml` — bootstrap гарантирует эти package-owned bytes',
+    '- [ ] G3 ✅ `npx gennady sdd-migrate plan . --verify` — весь слой полон, слаги без коллизий, расхождений нет',
+    '- [ ] G4 🛑 Подтверждение оператора по всему плану',
+    '- [ ] G5 🤖 `npx gennady sdd-migrate anchors --all . --write` — только после ACK поставить якоря во все v1-тикеты (идемпотентно)',
+    '- [ ] G6 🤖 `npx gennady sdd-migrate ids . --from-plan --write` — карта собирается из всех Ticket Map; замена по словогранице',
+    '- [ ] G7 🤖 `npx gennady sdd-migrate move . --scope <scope> --write` — по одному scope: переезд тикетов + индексы `*.3-tasks.md`; пустой `tasks/<scope>/` удаляется → строгие v2-проверки включаются на этом scope',
+    '- [ ] G8 ✍️ Шаги S4–S6 каждого юнита — раздаётся параллельно (юниты не пересекаются по файлам)',
+    '- [ ] G9 ✅ Финальный гейт: `npx gennady sdd-state .` → `FLOW_VERSION=v2` · `npx gennady sdd-check --all .` чист · ноль старых Task-ID; затем обычные `npx gennady sync` и `npx gennady sync-skills`',
+    '',
+    '## Юниты',
+    '',
+    '| План | Спека | Тикетов |',
+    '|---|---|---|',
+  ];
+  for (const u of scan.units)
+    lines.push(`| \`${unitFilePath(u)}\` | \`${u.specFile}\` | ${u.tickets.length} |`);
+  if (scan.orphanTickets.length > 0) {
+    lines.push('', '## ⚠ Тикеты без юнита', '');
+    lines.push('Их scope не имеет спеки — решить с оператором до старта:', '');
+    for (const t of scan.orphanTickets) lines.push(`- \`${t.file}\` (${t.taskId ?? '—'})`);
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
+// ─── Verify ───────────────────────────────────────────────────────────────────
+
+/**
+ * @purpose Parse `- **Status:** TOKEN` from a unit file, or null.
+ * @param content Full unit file markdown.
+ * @returns The parsed status token, or null when absent/unrecognized.
+ */
+export function unitStatus(content: string): UnitStatus | null {
+  const m = /\*\*Status:\*\*\s*([A-Z]+)/.exec(content);
+  const token = m?.[1];
+  return token && (UNIT_STATUSES as readonly string[]).includes(token)
+    ? (token as UnitStatus)
+    : null;
+}
+
+/** @purpose Split a markdown table row into trimmed content cells. */
+function rowCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((c) => c.trim());
+}
+
+/**
+ * @purpose Data rows of the first table inside a section body (header + separator skipped).
+ * @param sectionBody Section text carrying one markdown table.
+ * @returns Trimmed content cells per data row, in document order.
+ */
+export function tableRows(sectionBody: string): string[][] {
+  const rows: string[][] = [];
+  let headerSeen = false;
+  for (const line of sectionBody.split('\n')) {
+    if (!line.trimStart().startsWith('|')) continue;
+    if (!headerSeen) {
+      headerSeen = true;
+      continue;
+    }
+    if (/^\|?\s*-+\s*\|/.test(line)) continue;
+    rows.push(rowCells(line));
+  }
+  return rows;
+}
+
+/** @purpose Strip surrounding backticks from a cell value. */
+function unquote(cell: string): string {
+  return cell.replace(/^`|`$/g, '').trim();
+}
+
+/** @purpose Escape a literal for use inside a RegExp. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * @purpose Verify one unit file against a fresh scan — inventory drift, map coverage, ID grammar.
+ * `PLANNED` allows `?` placeholders; `MAPPED`+ requires complete maps.
+ * @param file Unit file path (for findings).
+ * @param content Unit file text.
+ * @param fresh Freshly scanned unit for the same spec.
+ * @returns Findings (error severity — the plan layer gates execution, drift must stop it).
+ */
+export function verifyUnitFile(file: string, content: string, fresh: SpecUnit): Finding[] {
+  const findings: Finding[] = [];
+  const err = (code: string, message: string): void => {
+    findings.push({ severity: 'error', code, file, message });
+  };
+
+  const status = unitStatus(content);
+  if (status === null) {
+    err(
+      'MIG_STATUS_INVALID',
+      `Строка **Status:** отсутствует или несёт неизвестный токен — допустимо: ${UNIT_STATUSES.join(' / ')}.`
+    );
+    return findings;
+  }
+  const mapped = status !== 'PLANNED';
+
+  // #region START_INVENTORY_DRIFT — the generated block must byte-match a rescan
+  const inv = extractSection(content, 'INVENTORY');
+  if (inv.status !== 'ok') {
+    err('MIG_INVENTORY_MISSING', 'Секция INVENTORY отсутствует или разбалансирована.');
+  } else if (inv.content.trim() !== renderInventory(fresh).trim()) {
+    err(
+      'MIG_INVENTORY_DRIFT',
+      'Inventory разошёлся с реальностью (спека или тикеты изменились после генерации плана) — перегенерируй слой: npx gennady sdd-migrate plan . --write.'
+    );
+  }
+  // #endregion END_INVENTORY_DRIFT
+
+  // #region START_SECTION_MAP — every source heading exactly once; targets covered; vocabulary closed
+  const secMap = extractSection(content, 'SECTION_MAP');
+  if (secMap.status !== 'ok') {
+    err('MIG_SECTION_MAP_MISSING', 'Секция SECTION_MAP отсутствует или разбалансирована.');
+  } else {
+    const rows = tableRows(secMap.content);
+    const sourceRows = rows.filter((r) => unquote(r[0] ?? '') !== '—');
+    const seenSources = sourceRows.map((r) => unquote(r[0] ?? ''));
+    for (const h of fresh.headings) {
+      const n = seenSources.filter((s) => s === h).length;
+      if (n === 0)
+        err('MIG_SECTION_UNMAPPED', `Заголовок из Inventory без строки в Section Map: \`${h}\`.`);
+      if (n > 1)
+        err(
+          'MIG_SECTION_DUPLICATED',
+          `Заголовок отображён ${n} раз(а): \`${h}\` — нужна ровно одна строка.`
+        );
+    }
+    for (const s of seenSources) {
+      if (!fresh.headings.includes(s))
+        err(
+          'MIG_SECTION_UNKNOWN',
+          `Строка Section Map ссылается на несуществующий заголовок: \`${s}\`.`
+        );
+    }
+    for (const r of rows) {
+      const target = unquote(r[2] ?? '');
+      if (target === UNMAPPED) {
+        err(
+          'MIG_SECTION_UNMAPPED_TARGET',
+          `Заголовок «${unquote(r[0] ?? '')}» остался нераспознанным (UNMAPPED) — реши действие и цель вручную.`
+        );
+      }
+    }
+    for (const r of rows) {
+      const action = (r[1] ?? '').trim();
+      const okAction =
+        (SECTION_ACTIONS as readonly string[]).includes(action) || (!mapped && action === '?');
+      if (!okAction)
+        err(
+          'MIG_BAD_ACTION',
+          `Недопустимое действие «${action}» — словарь: ${SECTION_ACTIONS.join(' | ')}${mapped ? '' : ' (или ? до заполнения)'}.`
+        );
+      if (mapped && (r[2] ?? '').trim() === '?')
+        err(
+          'MIG_TARGET_UNSET',
+          `Цель не заполнена для строки «${unquote(r[0] ?? '')}» при Status ≥ MAPPED.`
+        );
+    }
+    if (mapped) {
+      const targets = rows.map((r) => (r[2] ?? '').trim());
+      for (const t of fresh.targetSections) {
+        if (!targets.includes(t))
+          err(
+            'MIG_TARGET_MISSING',
+            `Обязательная целевая секция не производится ни одной строкой: \`${t}\`.`
+          );
+      }
+    }
+  }
+  // #endregion END_SECTION_MAP
+
+  // #region START_TICKET_MAP — every ticket covered; IDs and destinations well-formed when MAPPED
+  const tickMap = extractSection(content, 'TICKET_MAP');
+  if (tickMap.status !== 'ok') {
+    err('MIG_TICKET_MAP_MISSING', 'Секция TICKET_MAP отсутствует или разбалансирована.');
+  } else {
+    const rows = tableRows(tickMap.content).filter((r) => unquote(r[0] ?? '') !== '(нет тикетов)');
+    const seenFiles = rows.map((r) => unquote(r[0] ?? ''));
+    for (const t of fresh.tickets) {
+      if (!seenFiles.includes(t.file))
+        err('MIG_TICKET_UNMAPPED', `Тикет из Inventory без строки в Ticket Map: \`${t.file}\`.`);
+    }
+    for (const r of rows) {
+      const src = unquote(r[0] ?? '');
+      const matchedTicket = fresh.tickets.find((t) => t.file === src);
+      if (!matchedTicket) {
+        err(
+          'MIG_TICKET_UNKNOWN',
+          `Строка Ticket Map ссылается на несуществующий тикет: \`${src}\`.`
+        );
+        continue;
+      }
+      const oldId = unquote(r[1] ?? '');
+      if (oldId === '' || oldId === '—') {
+        err(
+          'MIG_TICKET_ID_UNREADABLE',
+          `Старый Task-ID не прочитан из тикета \`${src}\` (parseMeta вернул null — проверь формат строки Task-ID в Meta) — заменять нечего, npx gennady sdd-migrate ids промолчит.`
+        );
+      }
+      const newId = unquote(r[2] ?? '');
+      const dest = unquote(r[3] ?? '');
+      if (mapped) {
+        const idReason = validateTaskId(newId);
+        if (idReason !== null) {
+          err('MIG_BAD_SLUG', `${idReason} Тикет \`${src}\`.`);
+        } else {
+          // The Ticket Map destination is agent-authoritative (AX_HIERARCHICAL_SPECS: a ticket may
+          // land flat at the scope root, or nested under any module dir the agent chose) — verify
+          // is a FORM check, not an exact-path recompute: `specs/<scope>/**/*.task.<newId>.md`.
+          const destForm = new RegExp(
+            `^specs/${escapeRegExp(fresh.scope)}/.*\\.task\\.${escapeRegExp(newId)}\\.md$`
+          );
+          if (!destForm.test(dest.split(sep).join('/')))
+            err(
+              'MIG_BAD_DESTINATION',
+              `Назначение «${dest}» не подходит форме \`specs/${fresh.scope}/**/*.task.${newId}.md\` — тикет \`${src}\`.`
+            );
+        }
+      }
+    }
+  }
+  // #endregion END_TICKET_MAP
+
+  // #region START_DIAGRAM_PLAN — must be filled once MAPPED
+  const diag = extractSection(content, 'DIAGRAM_PLAN');
+  if (diag.status !== 'ok') {
+    err('MIG_DIAGRAM_PLAN_MISSING', 'Секция DIAGRAM_PLAN отсутствует или разбалансирована.');
+  } else if (mapped && /Overview-диаграмма:\s*\?/.test(diag.content)) {
+    err(
+      'MIG_DIAGRAM_PLAN_EMPTY',
+      'Diagram Plan не заполнен (Overview-диаграмма: ?) при Status ≥ MAPPED.'
+    );
+  }
+  // #endregion END_DIAGRAM_PLAN
+
+  return findings;
+}
+
+/** @purpose One unit file read from the migration layer. */
+export type PlanFile = {
+  /** @purpose Repo-relative unit file path. */
+  file: string;
+  /** @purpose Full unit file markdown. */
+  content: string;
+};
+
+/**
+ * @purpose Verify the whole migration layer: every unit has its plan file, verifies against a
+ * fresh scan, new IDs collide nowhere, orphans are surfaced.
+ * @param repoRoot Absolute repo root.
+ * @returns Findings across the layer (empty = the plan is sound and current).
+ */
+export function verifyMigrationPlan(repoRoot: string): Finding[] {
+  const findings: Finding[] = [];
+  const scan = scanMigrationUnits(repoRoot);
+
+  const idOwners = new Map<string, string>();
+  for (const unit of scan.units) {
+    const planPath = unitFilePath(unit);
+    const abs = join(repoRoot, planPath);
+    if (!existsSync(abs)) {
+      findings.push({
+        severity: 'error',
+        code: 'MIG_UNIT_FILE_MISSING',
+        file: planPath,
+        message: `Нет файла плана для спеки \`${unit.specFile}\` — сгенерируй: npx gennady sdd-migrate plan . --write.`,
+      });
+      continue;
+    }
+    const content = readFileSync(abs, 'utf-8');
+    findings.push(...verifyUnitFile(planPath, content, unit));
+
+    // cross-unit new-ID collisions (repo-wide uniqueness)
+    const tickMap = extractSection(content, 'TICKET_MAP');
+    if (tickMap.status === 'ok') {
+      for (const r of tableRows(tickMap.content)) {
+        const newId = unquote(r[2] ?? '');
+        if (validateTaskId(newId) !== null) continue;
+        const owner = idOwners.get(newId);
+        if (owner && owner !== planPath) {
+          findings.push({
+            severity: 'error',
+            code: 'MIG_SLUG_COLLISION',
+            file: planPath,
+            message: `Новый ID «${newId}» уже занят в \`${owner}\` — слаг уникален в рамках репо.`,
+          });
+        } else {
+          idOwners.set(newId, planPath);
+        }
+      }
+    }
+  }
+
+  for (const t of scan.orphanTickets) {
+    findings.push({
+      severity: 'error',
+      code: 'MIG_TICKET_ORPHAN',
+      file: t.file,
+      message: 'Тикет без юнита: его scope не имеет спеки — решить с оператором до миграции.',
+    });
+  }
+
+  return findings;
+}

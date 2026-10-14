@@ -1,0 +1,5 @@
+<!-- source: testing/vitest-rules.xml + testing/node-test.xml (merged) -->
+<Hook id="HOOK_TYPECHECK_BEFORE_TEST">
+  <Command>npx tsc --noEmit</Command>
+  <Expected>Exit 0; no TS errors before running the suite.</Expected>
+</Hook>

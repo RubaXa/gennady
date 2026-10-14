@@ -1,0 +1,46 @@
+{
+  "scenarioId": "slugify-toolchain",
+  "date": "2026-09-10",
+  "timestamp": "2026-09-10T16:23:23.969Z",
+  "sha": "5fcf286ae5aca05d2eaca35babec37ec30d51b9b",
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 20,
+    "observeEveryMs": 30000,
+    "stuckAfter": 4,
+    "tailLimit": 20
+  },
+  "verdict": "fail",
+  "status": "completed",
+  "outcome": "fail",
+  "actions": 21,
+  "durationMs": 300765,
+  "usage": {
+    "messages": 36,
+    "input": 74044,
+    "output": 7523,
+    "reasoning": 15964,
+    "cacheRead": 2219264,
+    "cacheWrite": 0,
+    "total": 97531,
+    "cost": 0
+  },
+  "quality": {
+    "rule": "R1",
+    "pass": true,
+    "detail": "sdd-check --all clean"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "/private/var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/sdd-flow-eval-root.JYLQwO/sdd-flow-eval-og3ukS/specs/slugify/core/core.spec.md",
+    "/private/var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/sdd-flow-eval-root.JYLQwO/sdd-flow-eval-og3ukS/specs/slugify/slugify.spec.md"
+  ]
+}

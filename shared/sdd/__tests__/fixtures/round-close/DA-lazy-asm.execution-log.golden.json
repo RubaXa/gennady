@@ -1,0 +1,27 @@
+[
+  {
+    "code": "SDD_EXECUTION_LOG_ENTRY_AFTER_CLOSE",
+    "severity": "warn",
+    "message": "### Round 2 — 2026-08-22, execute DA-lazy-asm — lazy assembly per spec: 34 checked event line(s) appended after this Round's own `#### Round close`. Open a new Round instead."
+  },
+  {
+    "code": "SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE",
+    "severity": "warn",
+    "message": "### Round 2 — 2026-08-22, execute DA-lazy-asm — lazy assembly per spec: entry \"- [x] `2026-08-23T03:02:47.774Z` ✅ RESOLVED: потребители lazy-директив приведены фазой P10, полный npm test зелёный\" has a timestamp later than this Round's own close."
+  },
+  {
+    "code": "SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE",
+    "severity": "warn",
+    "message": "### Round 2 — 2026-08-22, execute DA-lazy-asm — lazy assembly per spec: entry \"- [x] `2026-08-23T02:42:05.241Z` ✅ RESOLVED: блокер P5 снят — ENOBUFS в sdd-verify устранён maxBuffer (02f1b35f), линт освобождён\" has a timestamp later than this Round's own close."
+  },
+  {
+    "code": "SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE",
+    "severity": "warn",
+    "message": "### Round 2 — 2026-08-22, execute DA-lazy-asm — lazy assembly per spec: entry \"- [x] `2026-08-23T03:55:19.881Z` correction: phase-execution-protocol skeleton actually measures 6009 tokens (countTokens on the checked-in ai/directives/sdd-v2/phase-execution-protocol.directive.xml — git diff empty since e08460c3, file unchanged) — the 5915 recorded in this phase's discovery/Handoff lines above, and in commit e08460c3's message, is wrong; DA-REQ-6's <=6000-token target is NOT met for this pilot (the 8000-token hard ceiling IS met); target/ceiling now mechanically split as SKELETON_TOKEN_TARGET/SKELETON_TOKEN_LIMIT with the target reported as a build warning (DA-DL-18)\" has a timestamp later than this Round's own close."
+  },
+  {
+    "code": "SDD_EXECUTION_LOG_ENTRY_LATER_THAN_CLOSE",
+    "severity": "warn",
+    "message": "### Round 2 — 2026-08-22, execute DA-lazy-asm — lazy assembly per spec: entry \"- [x] `2026-08-23T02:42:05.527Z` ✅ RESOLVED: блокер P7 снят — потребители lazy-директив починены фазой P10, полный npm test зелёный\" has a timestamp later than this Round's own close."
+  }
+]

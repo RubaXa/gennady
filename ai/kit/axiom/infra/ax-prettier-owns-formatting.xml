@@ -1,0 +1,15 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_PRETTIER_OWNS_FORMATTING">
+      **Formatting (whitespace, quotes, semicolons, line width, trailing commas, JSX wrapping, import-statement layout when purely stylistic) is owned by ONE dedicated formatter — Prettier by default — and NEVER enforced by ESLint stylistic rules.**
+
+      ESLint stylistic rules (`indent`, `quotes`, `semi`, `comma-dangle`, `max-len`, `space-*`, `arrow-spacing`, `keyword-spacing`, etc.) explicitly disabled in `eslint.config.ts` via `eslint-config-prettier` (flat-config equivalent), appended LAST in the config array so it overrides any rule that drifted in from a preset.
+
+      Formatter pipeline runs BEFORE lint autofix over the same scope. Both must exit 0.
+
+      A phase gets that sequence privately from context-derived `sdd-verify`; humans may use the
+      whole-project `fix` wrapper. Exit 0 means formatter completed and lint re-read the exact
+      resulting bytes and found a clean post-state. `pre-commit` and CI never invoke repair: they run the
+      universal `verify --phase full`; pre-commit's internal staged-candidate policy omits repair nodes and lets the read-only observations reject unconverged bytes (`AX_HOOKS_INTEGRATION`).
+
+      Choice of formatter is an architecture decision: Prettier recommended; alternatives (Biome, dprint) acceptable IF the project picks ONE. Two formatters or formatting rules duplicated between ESLint and the formatter = forbidden.
+    </Axiom>

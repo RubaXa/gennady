@@ -1,6 +1,6 @@
 // @file: Unit tests for buildIndex — inverted word index from file headers and entity DBC contracts.
+// @spec: CLI-ORIENT
 // @consumers: OrientCommand
-// @tasks: TSK-55
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

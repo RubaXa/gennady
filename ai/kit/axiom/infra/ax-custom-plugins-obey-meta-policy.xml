@@ -1,0 +1,9 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<Axiom id="AX_CUSTOM_PLUGINS_OBEY_META_POLICY">
+      Project-local ESLint plugins (custom rules) follow the same meta-policy:
+      - Default: ship a working `fix` for every reported finding.
+      - Allowed alternative: ship without `fix` ONLY if the rule is enabled with an explanatory comment, the same way a third-party non-autofix rule would be.
+      - Severity always `'error'`.
+
+      A custom rule shipping only `suggest` is rejected at code review.
+    </Axiom>

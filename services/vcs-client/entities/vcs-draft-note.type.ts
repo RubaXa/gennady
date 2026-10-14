@@ -1,6 +1,6 @@
 // @file: Value object for an MR draft note returned by GitLab API.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClientMergeDiscussions
-// @tasks: TSK-86
 
 /** @purpose Draft note object returned by the GitLab draft notes API. */
 export type VcsDraftNote = {

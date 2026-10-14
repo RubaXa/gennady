@@ -1,0 +1,4 @@
+<!-- source: coding/uikit-component-svelte.xml -->
+<Definition id="DEF_DATA_ATTRIBUTE_SELECTOR">
+      A CSS selector that targets a `data-*` HTML attribute on the component's inner wrapper: `.btn[data-mode="primary"]`. Preferred over class-based selectors because `data-*` attributes are machine-verifiable in tests via `toHaveAttribute`.
+    </Definition>

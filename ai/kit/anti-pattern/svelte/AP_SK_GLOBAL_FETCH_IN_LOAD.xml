@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/sveltekit-rules.xml -->
+<AntiPattern id="AP_SK_GLOBAL_FETCH_IN_LOAD">
+<Bad>Inside `+page.server.ts`: `const res = await fetch('http://localhost:3000/api/products');` (the global `fetch`).</Bad>
+<WhyBad>Global `fetch` from a server load (`AX_SK_FETCH_FROM_LOAD_USES_SDK_FETCH`). Loses request context (cookies, headers), forces a real network hop for internal API routes that SvelteKit would have resolved in-process, and hard-codes the origin.</WhyBad>
+<Good>Destructure the SDK-provided `fetch`: `export const load: PageServerLoad = async ({ fetch }) => { const res = await fetch('/api/products'); ... };`. Relative URLs resolve to the current origin; cookies propagate.</Good>
+</AntiPattern>

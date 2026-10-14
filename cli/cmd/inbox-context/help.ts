@@ -1,4 +1,5 @@
 // @file: inbox-context command help output
+// @spec: AGENT-INBOX
 // @consumers: help command
 import { style } from '../../../shared/common/style.ts';
 

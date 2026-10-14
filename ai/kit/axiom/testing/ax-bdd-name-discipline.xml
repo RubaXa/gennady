@@ -1,0 +1,4 @@
+<!-- source: ai/directives/sdd/phase-execution-protocol.xml -->
+<Axiom id="AX_BDD_NAME_DISCIPLINE">
+      Triggers when phase kind = `test`. Canonical case names in ticket Test Scenario Coverage are normative. Tests use names verbatim. Impractical name (typo, framework constraint, conflict) → update ticket Test Scenario Coverage in this phase. Silent mismatch is forbidden.
+    </Axiom>

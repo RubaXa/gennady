@@ -1,0 +1,48 @@
+// @file: sdd-sync command help output.
+// @spec: CLI-SDD-SYNC
+// @consumers: help command
+
+/**
+ * @purpose Print CLI help for the sdd-sync command.
+ */
+export function printHelp(): void {
+  console.info('gennady sdd-sync — Propagate a ticket Status into the *.3-tasks.md trackers');
+  console.info(
+    'Tracker writes require a V2 owning scope; legacy/historical input stays read-only.'
+  );
+  console.info(
+    'For V1: npx gennady sdd-migrate bootstrap .; complete scope migration before writes.'
+  );
+  console.info('');
+  console.info(
+    'Not `sync`/`sync-skills` (those mirror ai/directives/ai/skills from the npm package) —'
+  );
+  console.info('sdd-sync never touches package files, only tracker rows for one ticket.');
+  console.info('');
+  console.info('Usage:');
+  console.info('  npx gennady sdd-sync <ticket> [index.3-tasks.md ...]');
+  console.info(
+    '  Paths are exact repository-relative regular files; absolute/../symlink paths fail.'
+  );
+  console.info(
+    '  Explicit indexes must be owning specs/3-tasks.md or specs/**/<owner>.3-tasks.md.'
+  );
+  console.info('');
+  console.info('Behaviour:');
+  console.info('  Reads Task-ID + Status from the ticket Meta, then for each tracker:');
+  console.info(
+    '    - finds the row by Task-ID, rewrites only its Status cell (column found by header)'
+  );
+  console.info('    - verifies the write persisted before reporting "updated"');
+  console.info(
+    '  With no explicit indexes, owning *.3-tasks.md files under specs/ are discovered upward'
+  );
+  console.info('  (module → scope → project).');
+  console.info('');
+  console.info('Report lines: updated / in-sync / no-row / no-table / unreadable per index.');
+  console.info('');
+  console.info('Exit codes:');
+  console.info(
+    '  0 synced (report)   1 ticket unreadable / verify failed   2 Meta unparseable   4 bad invocation'
+  );
+}

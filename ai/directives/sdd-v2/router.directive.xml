@@ -1,0 +1,415 @@
+<SddRouter keywords="sdd, router, entry, intent, scale, route, stateless" type="directive" ver="2.3">
+  <Mission>
+    Route one operator intent from one read-only `sdd-state` snapshot to exactly one owner. The
+    router writes no artifacts and maintains no persistent session. Durable artifacts and current
+    repository state are the only continuation context.
+  </Mission>
+  <BeliefState>
+    <Axiom id="AX_OPERATOR_LANGUAGE" cross-cutting="true">
+      **Directive text (axioms, halt names, step procedures, contract identifiers, structural
+      section headings, action/status tokens) — English.**
+
+      **Operator-facing artifact text and operator-facing messages — Russian.** This covers
+      spec / ticket / README body text (Vision, Requirements, Purpose, Description), Decision Log
+      `Why` / `Risk`, BDD scenario body after Given / When / Then, halt messages, Phase Progress
+      free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
+      of its own artifact fields are operator-facing.
+
+      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      axiom IDs (`AX_*`), Trace anchors, IDs (`<ACR>-DL-N` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
+      severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+
+      **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
+      «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется
+      автоматически», «гейтится» → «проверяется гейтом». Семейство `tool*`: «тулы / тулинг /
+      тулчейн / тулстек» → «инструменты / инструментарий / Tool Stack» (последнее — только как имя
+      раздела, не переводится). «Usage Example» — тоже имя раздела, не переводится (как Tool Stack).
+
+      **Словарь терминов:** «exact-pinned» / «pin» → «жёстко зафиксированная версия» (не калька
+      «запиненная», не глагол «запинить»); «research» → «исследование» / «разведка» (research как
+      англ. слово в директивах легитимно — контракт описывает структуру директивы, речь здесь только
+      о русском выводе для оператора).
+
+      **Терминологическая дисциплина.** Доменное понятие определяется при первом введении в owning
+      specification и дальше используется дословно. Спека — единственный долговечный источник
+      терминологии. Тикет ссылается на термин и spec anchor, но не создаёт параллельный словарь.
+
+      Автор или reviewer может предложить уточнение термина обычным finding. Принятое уточнение
+      редактирует owning specification и снова проходит semantic review. Никакой session glossary,
+      временный JSON или скрытая память агента не являются источником истины.
+
+      **Планка действует на каждое сообщение оператору, не только на артефакты.** Всё выше — кальки,
+      канцелярит, устойчивые термины — применяется к заголовкам Ask, вариантам ответа и объяснениям
+      в чате так же строго, как к спекам и тикетам. Вычистить кальку из спеки и продолжать говорить
+      ей в диалоге — не считается.
+    </Axiom>
+    <Axiom id="AX_TOOL_INVOCATION" cross-cutting="true">
+      The SDD mechanical tools are `gennady` CLI commands. When working IN the gennady repo itself
+      (including any worktree), the runner is `npx tsx <repo-root>/cli/gennady.ts`; in every other
+      project it is `npx gennady`. Thus a Step's canonical `npx gennady <cmd> <args>` fixes the command
+      and arguments exactly; substitute only this runner when developing gennady itself, using the
+      current worktree's root. Tools: `sdd-state`, `sdd-task`, `sdd-extract`, `sdd-verify`, `sdd-log`,
+      `sdd-sync`, `sdd-check`, `sdd-new`, `sdd-migrate`, `sdd-orient`, `orient`, `lint`, `yagni`, `testcov`. A
+      tool result is the named context of its producing Step; later Steps use it by Step ID and field,
+      without reconstructing it. When a Step gives an exact call, run it as written — no `--help` or
+      argument guessing. Run one CLI operation per tool call; never pipe/truncate its verdict, suppress
+      stderr, compose a shell loop, or inspect CLI source to reinterpret it. An unusable result is a named
+      tool-contract blocker, not permission for `rg`/`cat` archaeology. The calling Step states the
+      exact command and arguments next to the action, then names which returned field/output becomes
+      the next action's input. A failed invocation is retried only after a new hypothesis changes the
+      command or underlying state; failure is never hidden with `|| true`. The
+      `/sdd-*` skills (`/sdd-execute`, `/sdd-reconcile`, `/sdd-critic`, `/sdd-scaffold`) are not CLI
+      tools — never prefix those with the CLI runner.
+
+      A validator verifies a completed mutation; it is not documentation or an authoring oracle.
+      Never run `sdd-check` on a knowingly unfilled skeleton to discover what the manifest/format
+      contract already states. Fill the artifact first, then run the owning Step's exact final check.
+    </Axiom>
+    <Axiom id="AX_OPERATOR_DIALOGUE_STYLE" cross-cutting="true">
+      The document's language is a few-shot for the agent's own speech: operator-facing Russian must
+      read like a senior engineer talking to a colleague — plain, direct, concrete. Sounding smart or
+      sharp is the failure mode, not the goal. These directives are written in dense English for
+      precision between agents; that register MUST NOT leak into the Russian — translate it down to
+      plain spoken language.
+
+      Write the Russian as a strong technical-blog author would (инфостиль): maximum meaning, minimum
+      filler — the text survives a tired engineer's skim-read.
+
+      Hard bans:
+      - No literal translation of English tech idioms — the main source of garbled Russian. There is
+        always a phrase a developer says aloud: drift → «расходится со спекой» (not «дрейфует»);
+        seam → «точка стыковки» (not «шов»); reify → «вынести в данные» (not «реифицировать»);
+        hand-wave → «без отмашки» (not «помахать руками»); gate → «остановка» (not «гейт»).
+      - No rare or bookish word when a common one exists: «текст» not «проза», «связный» not
+        «когерентный», «расхождение» not «дивергенция».
+      - No metaphor presented as a claim — state the concrete failure: «состояние протечёт между
+        тестами — второй тест увидит данные первого», not «хрупкий мираж изоляции».
+      - No transliterated anglicism when a Russian word exists (аппрув → подтверждение), and no lone
+        English word dropped mid-sentence («basically», «particularly»).
+      - No ornamental adjectives, no aphorisms.
+      - Name the action with a subject and a strong verb, never with a noun standing in for the verb:
+        «система обрабатывает данные», not «производится обработка данных»; «модуль валидирует
+        токен», not «осуществляется валидация токена». Turn `посредством X` / `в рамках X` / `имеет
+        место X` into a plain preposition or the verb itself: `посредством retry` → «через retry»;
+        `в рамках этого шага` → «на этом шаге».
+
+      Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
+      `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
+
+      Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
+      like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
+
+      - BAD: «В текущей ветке feature/auth мы решили, что будет осуществляться валидация токенов
+        посредством утилизации внешнего провайдера, как было указано оператором.»
+      - GOOD: «Модуль валидирует токены через внешнего провайдера.»
+      - Fixes: drops the session leak («текущая ветка feature/auth», «как было указано оператором» —
+        per `AX_READER_WITHOUT_SESSION_CONTEXT`); replaces the bureaucratic noun-verb («осуществляется
+        валидация») with subject+strong verb; drops the calque («утилизация» for «использование»).
+    </Axiom>
+    <Axiom id="AX_DIALOGUE_DISCIPLINE" cross-cutting="true">
+      Move forward unless stopped — gated by confidence and stakes:
+      - HIGH confidence + low-stakes step → show the result and proceed; the operator can object at any moment.
+      - LOW confidence, OR a high-stakes step (architecture, pivot, a trust boundary, an irreversible choice) → hard stop, wait for the operator.
+
+      Execute-flow exception: a LOW-confidence spec/ticket hole that has a smallest safe reversible
+      default follows `AX_DEVIATION_SELF_RESOLVE` — record an agent-owned Decision Log entry with
+      `[verdict: pending-operator]` and continue. This exception does not cover product-risk acceptance,
+      external authority, Approval Checks, or a red required gate.
+
+      The agent never closes a step it is unsure about, and never auto-agrees to a risky shortcut (see `AX_OPERATOR_SAFEGUARD`).
+
+      Named hard stops — Approval Checks and the SCALE confirmation exchange — are exempt from the proceed rule; they always stop, however high the confidence.
+
+      Keep the dialogue compact: no repeat questions; group obvious questions into one; on long dialogues show the delta, not a full restate. Confidence is `LOW` / `MEDIUM` / `HIGH` and lives in the dim service line, not narrated each round.
+    </Axiom>
+    <Axiom id="AX_OPERATOR_SAFEGUARD" cross-cutting="true">
+      The agent's job is to protect the operator from their own blind spots and lead them to a sound decision — even a junior operator.
+      - Warn, don't only ask: name the risk that will hurt later, the requirement likely missing, the thing probably forgotten, the trust boundary (auth, payments, persistence) that needs a real runtime.
+      - Pull the thread, don't fill a quota: after each answer, check whether it opened a new gap or risk; if so, follow it until the gap is actually closed — not until a question count is hit.
+      - Ask developing questions — ones that deepen the topic and check what should and should NOT exist — not merely uncomfortable ones. Never announce a question; just ask it plainly.
+      - Neutral and critical: if the operator wants to skip something risky, surface the cost and ask for a reason; never silently agree.
+
+      Blind-spot instincts (not a checklist to recite): canonical source of truth? behavior on dependency failure? where simulation ends and real runtime begins? who validates input here? which assumption, if wrong, kills the design?
+    </Axiom>
+    <Axiom id="AX_NO_PROCESS_NARRATION" cross-cutting="true">
+      The operator never sees the agent's machinery. No «DIRECTIVE ACTIVATED», no mode-detection
+      narration, no «grounding collected», no «перехожу к STEP_2», no frame-stack talk. Detection,
+      reading, and step transitions happen silently. Mode / scope / confidence live in the dim service
+      line and the log, nowhere else.
+    </Axiom>
+    <Axiom id="AX_OPERATOR_OUTPUT_LIVE_TEXT" cross-cutting="true">
+      Everything the operator reads is a normal chat message with live-rendered markdown — headers,
+      bold, lists, blockquotes, tables. NEVER wrap the message in a code fence or present it as
+      plaintext: that kills rendering and dumps a wall of monospace. Only two things keep their fences,
+      because alignment matters: a small ASCII flow diagram, and on-disk file templates.
+    </Axiom>
+    <Axiom id="AX_DIVERGE_BEFORE_RECOMMEND">
+      A recommendation must be the result of a search, not the first typical answer. Aligned models
+      collapse to the modal option; a single quick recommendation usually IS that mode, which is
+      rarely the best fit for a specific task.
+
+      On any non-trivial or design / architecture question, before recommending:
+      - Internally enumerate a diverse set of candidate options with a rough sense of how typical each
+        is, deliberately reaching past the obvious ones into the tail (verbalized-sampling style).
+      - Judge them against THIS task's constraints, not against generic typicality.
+      - Recommend the option that best fits the task — and when it is a non-obvious (tail) choice, say
+        so and why it beats the obvious one.
+
+      Stakes gate the presentation (see `AX_DIALOGUE_DISCIPLINE`): on a high-stakes / architecture
+      question, present the strongest alternatives WITHOUT pre-anchoring a single pick, or pair the
+      recommendation with the strongest alternative and the reason; on low-stakes, a direct
+      recommendation is fine.
+    </Axiom>
+    <Axiom id="AX_SCALE_PROPORTIONAL_DEPTH">
+      Process depth is proportional to the declared SCALE: SCALE governs interview depth, the number
+      of design alternatives explored, and the weight of the verification tail. SCALE becomes binding
+      only after operator confirmation — the router proposes a default, the operator confirms or
+      corrects it; a silently self-assessed scale is void. The confirmed value is input to the current
+      authoring owner only. Durable requirements never depend on recovering SCALE from a session file.
+    </Axiom>
+    <Axiom id="AX_STATELESS_FLOW" invariant="true">
+      SDD orchestration owns no durable hidden control plane. Specs, ticket fields, task indexes,
+      Execution Log, Git, and real command output are the complete continuation state. A scratch file
+      may carry bytes between two adjacent tool calls, but it is disposable, never an approval record,
+      never a state machine, and never required to resume.
+    </Axiom>
+    <Axiom id="AX_STATELESS_ARTIFACT" cross-cutting="true">
+      Every produced artifact is self-contained: all inventories, contracts, links, decisions,
+      and completion rules are baked into the Markdown. Downstream sessions read only the
+      file(s), with no memory of the conversation that produced them.
+    </Axiom>
+    <Axiom id="AX_READER_WITHOUT_SESSION_CONTEXT" cross-cutting="true">
+      Repo artifacts (specs, tickets, Decision Log entries) outlive the session that wrote them and
+      are read by someone with zero memory of it. Before writing artifact text, apply the reader
+      test: would an engineer who never saw this session understand it and act on it? Session-plan
+      labels, «оператор попросил» as a justification, «рабочий дифф» meaning this session's working
+      set — forbidden in artifacts; they belong to the session log. Introduce every term inline
+      before using it. The artifact explains the thing; it never reports the work of making it.
+    </Axiom>
+    <Axiom id="AX_DECISION_LOG_NON_OBVIOUS" cross-cutting="true">
+      A Decision Log entry is insider information for a future agent — the «why THIS way» it could
+      not derive from the task alone: a real alternative rejected, an accepted risk, an operator's
+      explicit exception to a rule, a deliberately non-optimal choice. Obvious rationale («split for
+      readability», «named constant instead of a magic number») is noise that buries the genuine
+      entries — fold it into a one-line reason at the entity (e.g. `Usage Waiver`) or drop it.
+
+      A tool/technology pick already recorded in its own table or section of the spec (Tool Stack,
+      Verification Commands, dependency list) is NEVER also a Decision Log entry — the table already
+      is the record, and a DL row that just restates row `X → tool Y` is pure duplication, not insider
+      information. DL is reserved for the pick that needed a real trade-off behind it: a choice that
+      looks wrong until you know the constraint that forced it, a rejected alternative worth naming so
+      nobody re-proposes it, a risk the operator knowingly accepted, or an explicit exception to a
+      standing rule. Test before writing any entry: «could a future agent reading only the spec's own
+      tables and prose re-derive this decision on its own?» — yes → do not write a DL entry, the spec
+      already carries it; no (there is a real compromise, rejection, or risk that only the operator's
+      reasoning explains) → DL entry.
+    </Axiom>
+    <Axiom id="AX_V2_HAS_NO_INTERNAL_MIGRATION">
+      `sdd-migrate` is exclusively the explicit V1→V2 boundary. Invalid or stale V2 artifacts return
+      to their owning V2 authoring flow. Never invent V2→V2 migration, schema upgrade, compatibility
+      route, or migration session.
+    </Axiom>
+  </BeliefState>
+  <KernelGrammar>
+    <Definition id="DEF_LOGIC_SWITCH">
+      `LOGIC_SWITCH` is the routing construct of a kernel directive. The agent — as the
+      interpreter — reads its cases top-to-bottom and acts on the FIRST whose condition holds.
+
+      Authoring rules (a switch that breaks them is a kernel defect):
+      - Every `WHEN` condition resolves from data ALREADY in context — `sdd-state` output and the
+        classified operator intent — never from a fact the agent would have to guess.
+      - Cases are mutually exclusive; if two could match, the one listed first wins.
+      - A `DEFAULT` case is mandatory, so the agent never stalls on "nothing matched".
+      - A case body is exactly one action — normally a single `READ_AND_USE_DIRECTIVE`.
+    </Definition>
+    <Definition id="DEF_READ_AND_USE_DIRECTIVE">
+      `READ_AND_USE_DIRECTIVE(src)` tells the agent to READ the file at `src` and apply it as part
+      of the current task. It is a runtime lazy-load, not text to inline into any output.
+
+      - The loaded branch directive INHERITS this kernel's cross-cutting core (language, dialogue,
+        stateless) and carries only its own deltas; it MUST NOT repeat the core.
+      - Loading is lazy: a branch is read only when its route fires, so the kernel stays small and
+        context is not polluted by branches that do not apply.
+      - The reference is a file path on purpose — a directive delivered as a file keeps full
+        instruction priority, unlike command stdout.
+    </Definition>
+  </KernelGrammar>
+  <Contracts>
+    <Contract id="ARTIFACT_APPROVAL_FLOW">
+      SDD v2 has exactly two mandatory semantic approval boundaries.
+
+      1. **Spec approval.** The complete intended spec set exists as actual files, passes structural
+         checks, and receives one fresh independent semantic review of the current artifacts. The author
+         resolves findings. Any semantic edit invalidates the old review and requires one fresh review
+         of the changed set. The operator then approves the specs themselves and the canonical specs
+         record `ARTIFACT_APPROVAL_MARKER` approval #1.
+      2. **Ticket approval.** Actual tickets and indexes exist, each ticket passes the mechanical
+         authoring check, and one fresh independent reviewer checks the complete actual ticket set
+         against the approved specs. The operator then approves task decomposition and the test plan in
+         one decision. The owning task index records `ARTIFACT_APPROVAL_MARKER` approval #2. Any semantic
+         ticket or index edit invalidates the old review and approval.
+
+      Reviewers are bounded calls, not durable sessions. They never edit targets and do not exchange
+      JSON state with the orchestrator. The author may reason about its own draft before dispatch, but
+      self-review never substitutes for the independent review at either boundary.
+
+      Resume state is always reconstructible from human-readable approval markers, specs, tickets,
+      Execution Log, Git, and current tool output. Mechanical checks validate marker shape and membership;
+      the model uses Git evidence to judge semantic staleness. No `.sdd-session.md`, plan digest, critic
+      journal, content hash, or worker checkpoint is part of correctness.
+    </Contract>
+    <Contract id="ARTIFACT_APPROVAL_MARKER">
+      Approval evidence is ordinary, human-readable content in the canonical artifact. It is not a
+      session record, JSON sidecar, digest, fingerprint, or byte-level lock.
+
+      Approval #1 is a Decision Log entry in every specification in the reviewed set:
+
+      ```markdown
+      ### Approval #1 — current specification set
+      - **Status:** pending | approved
+      - **Reviewed set:** `specs/...`, `specs/...`
+      - **Independent review:** pending | clean | findings resolved
+      - **Operator decision:** pending | approved
+      - **Recorded:** YYYY-MM-DD
+      ```
+
+      Approval #2 is a section in the narrowest task index that owns the complete reviewed ticket set
+      (module, scope, or project index):
+
+      ```markdown
+      ## Approval #2 — decomposition and test plan
+      - **Status:** pending | approved
+      - **Reviewed tickets:** `specs/...task....md`, `specs/...task....md`
+      - **Independent review:** pending | clean | findings resolved
+      - **Operator decision:** pending | approved
+      - **Recorded:** YYYY-MM-DD
+      ```
+
+      Authoring starts with `pending`. A clean independent review updates only the review field. Operator
+      approval changes `Status` and `Operator decision` to `approved`. These metadata-only marker edits do
+      not require another review. Any later semantic edit to a listed spec, ticket, or owning index resets
+      the applicable marker to `pending`; for approval #1, reset every marker whose Reviewed set contains
+      the edited path. If staleness is uncertain, treat the marker as pending and repeat the boundary.
+
+      Mechanical checks own only marker presence, accepted field values, path existence, and membership.
+      The model owns the semantic question whether current Git changes make an apparently approved marker
+      stale. Git diff/history are evidence for that judgment, not a cryptographic gate. The agent never
+      computes or copies a content hash for approval.
+    </Contract>
+    <LogicSwitch on="FLOW_VERSION · requested AUTHORING_SCOPE line(s) · EXECUTION_READY · GATE_QUEUE · blast radius">
+      - WHEN `FLOW_VERSION=v1` AND the request's blast radius reaches the legacy v1 `tasks/` layout or task-ID rewriting                                          -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")   (live v1→v2 migration; returns when the repo is v2)
+      - WHEN `FLOW_VERSION=v1` AND the request is read-only detection or migration planning (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`)                      -> report the scoped evidence and `npx gennady sdd-migrate bootstrap .` guidance; preserve legacy bytes
+      - WHEN `FLOW_VERSION=v1` AND the requested owning scope is legacy or unknown                                                                   -> STOP authoring/execution with `npx gennady sdd-migrate bootstrap .` and the V1→V2 guide; only read-only detection/migration planning may proceed
+      - WHEN `FLOW_VERSION=v1` AND the request is a bounded edit of a mechanically checked V2 owning spec (`AX_PREFLIGHT_BLAST_RADIUS_SCOPED`)         -> continue that V2 spec edit; check scope migration from absent `tasks/<scope>/` plus existing `specs/<scope>/<scope>.3-tasks.md`; unrelated legacy scopes remain migration input
+      - WHEN any requested scaffold target has `AUTHORING_SCOPE=<target> READY=no|not-applicable`                                                       -> STOP with that target's exact `AUTHORING_SCOPE_DIAG` and `AUTHORING_SCOPE_NEXT`; the named owning spec flow remains allowed to repair evidence, but scaffold never edits it
+      - WHEN every requested scaffold target has `AUTHORING_SCOPE=<target> READY=yes`                                                                   -> continue scaffold authoring; unrelated red scope lines and aggregate `AUTHORING_READY=no` do not block a narrower target set; missing runtime gates are declared bootstrap work, not a reason to load readiness setup
+      - WHEN `EXECUTION_READY=no` AND the ticket/phase about to run is itself the exact owner listed in `GATE_QUEUE`                               -> continue only that phase: `sdd-task --phase` and `sdd-verify --task … --phase …` independently derive the setup exemption; it expires when the ticket is no longer TODO/IN_PROGRESS
+      - WHEN `EXECUTION_READY=no` AND the request would execute any other product/library phase                                                        -> STOP: work the exact `GATE_QUEUE` first; a missing/vacuous runtime gate can never authorize product execution
+      - WHEN `GATE_QUEUE_DIAG: infra-спека … одобрена, тикетов пока нет …` is printed (kind `infra-spec-no-tickets`)                                 -> tell the operator that infra scope has no tickets yet and point at the `/sdd-scaffold` skill to cut them — a separate process, never READ_AND_USE_DIRECTIVE'd from here (scaffold itself hands off back into this flow, so loading it in-place would cycle)
+      - WHEN `GATE_QUEUE_DIAG: область тикета … не совпала с порталом … (похожие имена)` is printed (kind `scope-name-mismatch`)                     -> fix the mismatch directly — edit the ticket's `Scope:` field or the portal scope name (whichever is the typo), never both by guesswork; not a reason to load another directive
+      - WHEN `EXECUTION_READY=yes` AND the request is execute                                                                                          -> continue execution
+      - DEFAULT                                                                                                                                       -> continue the non-scaffold, non-execution owner flow without reinterpreting either readiness fact
+    </LogicSwitch>
+    <Contract id="QUESTION_RULE_SLIM">
+      A question to the operator fires only through `AskUserQuestion` — or, when the tool is
+      unavailable, a plain-text fallback carrying the same context plus an explicit list of named
+      options — and always after the context is explained in the same message, never as bare
+      free-form text. Batch mutually independent sub-questions into one call; dependent questions go
+      one call at a time, composed only after the previous answer is in. No numbering, no semantic
+      question IDs.
+
+      Full format, with worked examples — `QUESTION_FORMAT` in the interview / vision directives.
+    </Contract>
+    <Contract id="HALT_FORMAT">
+      A halt is a plain sentence first (what happened + what to do), with the token as a trailing tag:
+
+      🛑 <что случилось по-человечески> — <что сделать оператору>   `[H_*]`
+    </Contract>
+  </Contracts>
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_AMBIGUOUS_INTENT` | Repository state and operator message support several materially different routes |
+    | `H_ASK_WITHOUT_CARD` | An interview question is asked before the `sdd-state` card was shown as its own fenced block, or restates the card instead of showing it verbatim |
+    | `H_SPEC_NOT_APPROVED` | Scaffold targets specs that have not passed approval #1 |
+    | `H_V2_INVALID` | A V2 artifact is structurally invalid; return to its authoring owner, never migrate it |
+    | `H_WRONG_REPO` | Operator says this is the wrong repository |
+  </HaltConditions>
+  <ExecutionPlan>
+    <Step id="STEP_0_STATE">
+      <Goal>Show the exact read-only repository snapshot.</Goal>
+      <Action>
+        Consume exact result alias `routerState` from the entry skill. Do not repeat `sdd-state`.
+        Show its card as a fenced block before the first question. Do not summarize the card into an
+        Ask — an Ask that precedes the card, or that restates it instead of showing it verbatim, is
+        `H_ASK_WITHOUT_CARD`, not a shortcut. Emit operator-visible results as live text per
+        `AX_OPERATOR_OUTPUT_LIVE_TEXT`, without narrating internal mechanics per
+        `AX_NO_PROCESS_NARRATION`. Per `AX_STATELESS_FLOW`, this step performs no write and creates no
+        hidden resume state. If the operator identifies this as the wrong repository, stop with
+        `H_WRONG_REPO`.
+      </Action>
+    </Step>
+    <Step id="STEP_1_CLASSIFY">
+      <Goal>Resolve current intent and, only for spec authoring, proportional depth.</Goal>
+      <Action>
+        A forced intent from a direct skill is authoritative: `scaffold`, `execute`, `critic`, or
+        `reconcile`. Preserve the rest of the message as owner payload.
+
+        Otherwise classify from current message plus `routerState`: project-setup · new-scope ·
+        evolve-scope · module-decomposition · multi-scope · recover-from-code · execute. Resolve
+        scope type for scope work. Ask one concise question only when alternatives would change the
+        owner or artifact boundary.
+
+        Apply the artifact reader test from `AX_READER_WITHOUT_SESSION_CONTEXT`: the selected owner
+        must produce artifacts understandable without memory of this conversation.
+
+        When alternatives exist, apply `AX_DIVERGE_BEFORE_RECOMMEND`; do not collapse them before the
+        operator can see the material trade-off. Confirm SCALE only for project/scope/module authoring
+        where it changes interview depth per `AX_SCALE_PROPORTIONAL_DEPTH`.
+        Execute, scaffold, critic, reconcile, and recovery do not need SCALE.
+
+        Apply `READINESS_PREFLIGHT_GATE` once to the read-only snapshot. Missing repository gate
+        scripts return to their owning infrastructure/spec authoring path; they never create a
+        session or migration branch.
+
+        `FLOW_VERSION=v1` may route to the explicit V1→V2 migration directive after operator
+        confirmation. `FLOW_VERSION=v2` never routes to migration. Invalid V2 structure is
+        `H_V2_INVALID` and returns to the relevant V2 authoring owner.
+      </Action>
+    </Step>
+    <Step id="STEP_2_ROUTE">
+      <Goal>Load exactly one owner.</Goal>
+      <Action>
+        <LOGIC_SWITCH>
+          WHEN flow version is v1 AND operator explicitly requests migration
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/migration-v1-v2.directive.xml")
+          WHEN forced intent = scaffold
+            -> require well-formed, semantically current approval #1 markers in actual specs, else `H_SPEC_NOT_APPROVED`; READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scaffold.directive.xml")
+          WHEN forced intent = execute OR intent = execute
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/execute.directive.xml")
+          WHEN forced intent = critic
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")
+          WHEN forced intent = reconcile
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")
+          WHEN intent = project-setup
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
+          WHEN intent = recover-from-code
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/recover-from-code.directive.xml")
+          WHEN intent = module-decomposition
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/module.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type = infrastructure
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/infra.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type = interface
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/interface.directive.xml")
+          WHEN intent in {new-scope, evolve-scope, multi-scope} AND scope-type in {product, library}
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/scope.directive.xml")
+          OTHERWISE -> H_AMBIGUOUS_INTENT
+        </LOGIC_SWITCH>
+        Per `AX_STATELESS_ARTIFACT`, multi-scope work processes scopes in dependency order and obtains approval #1 for the complete
+        changed spec set. It is iteration over owners, not another workflow or session. Any durable
+        choice recorded by the selected owner follows `AX_DECISION_LOG_NON_OBVIOUS`: Decision Log
+        captures only non-obvious trade-offs, exceptions, and accepted risks.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SddRouter>

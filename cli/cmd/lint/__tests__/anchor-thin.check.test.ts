@@ -1,6 +1,6 @@
 // @file: Unit tests for AnchorThinCheck — validates region thinness (minimum meaningful lines).
+// @spec: CLI-LINT
 // @consumers: LintCommand
-// @tasks: TSK-XX
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

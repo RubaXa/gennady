@@ -1,4 +1,5 @@
 // @file: Strip strings and comments from a code line — returns only braces outside string/comment contexts.
+// @spec: CLI-LINT
 // @consumers: AnchorCheck, InvariantCountCheck, AnchorClassBodyCheck
 
 /**

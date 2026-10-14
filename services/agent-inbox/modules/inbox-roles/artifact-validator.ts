@@ -1,0 +1,369 @@
+// @file: ArtifactValidator — mechanical validation of session-produced task artifacts: structure/
+//   schema (delegated to inbox-review-plan's own gate), mermaid syntax, coverage ledger (every
+//   Scope file → findings or explicit no-findings), tool-call cross-check (telemetry vs Scope) for
+//   legacy session kinds, injection-coverage-ledger (findings vs injected Context entities) for
+//   review_needed lens sessions (D-86 override, TSK-137).
+// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @consumers: RoleInstance (gate nodes)
+
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import {
+  validateReviewReports,
+  type ValidateError as ReviewPlanValidateError,
+} from '../../../../cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts';
+import type { ToolCall } from '../inbox-opencode/opencode.port.ts';
+import type { InjectedEntity } from '../inbox-core/context-builder.ts';
+import { extractMermaidBlocks, validateMermaid } from '../../../../shared/mermaid/mermaid.ts';
+
+/** @purpose One schema/coverage violation, file-scoped for point retry by the recovery ladder. */
+export type ValidateError = ReviewPlanValidateError;
+
+/** @purpose Outcome of ArtifactValidator.validate — mirrors inbox-review-plan's own gate shape. */
+export type ValidateResult = { ok: true } | { ok: false; errors: ValidateError[] };
+
+/**
+ * @purpose Closed set of `NodeContext`-carried session kinds `validate` can branch grounding on
+ *   (TSK-137) | @invariant `review_needed` lens kinds (`track`/`security`/`code`/`synthesize`) get
+ *   injection-coverage grounding; the rest keep the legacy tool-call cross-check (§5.3.1 scope).
+ */
+export type SessionKind =
+  | 'track'
+  | 'security'
+  | 'code'
+  | 'synthesize'
+  | 'thread_triage'
+  | 'delta_review'
+  | 'self_review'
+  | 'analyze_feedback';
+
+/** @purpose `sessionKind` values whose findings are grounded against injected Context entities instead of tool-call telemetry (D-86 override, TSK-137). */
+const INJECTION_GROUNDED_SESSION_KINDS: ReadonlySet<SessionKind> = new Set([
+  'track',
+  'security',
+  'code',
+  'synthesize',
+]);
+
+/**
+ * @purpose Options for `validate`'s `filled`-stage grounding check | @invariant `sessionKind`
+ *   present and injection-grounded → `injectedEntities` (from `buildTrackContext`, TSK-134)
+ *   replaces `toolCalls` for grounding; absent/legacy `sessionKind` → `toolCalls` unchanged.
+ */
+export type ValidateOpts = {
+  /** @purpose Session kind driving the grounding-method branch (TSK-137) */
+  sessionKind?: SessionKind;
+  /** @purpose Tool-call telemetry from the opencode session — legacy (non-injection) grounding only */
+  toolCalls?: ToolCall[];
+  /** @purpose Structured entity list from the same `buildTrackContext` pass that filled the Context section (TSK-134) — never re-parsed from markdown */
+  injectedEntities?: InjectedEntity[];
+};
+
+/** @purpose One ```mermaid fenced block extracted from a document body, with its source file for error scoping. */
+type MermaidBlock = { file: string; body: string };
+
+/** @purpose One row of the Candidates table, cells relevant to injection-coverage grounding. */
+type CandidateRow = { file: string; problem: string };
+
+const CANDIDATE_ROW_EMPTY_CELL = new Set(['', '—', '-', '–']);
+
+/**
+ * @purpose Mechanically verifies that a session did the work per plan — structure, not text
+ * quality (that stays the directives' job, per D57).
+ * @invariant Delegates structure/schema/dictionary checks to `validateReviewReports` (the same
+ *   gate `inbox-review-plan --validate` runs) instead of re-implementing them — see
+ *   `cli/cmd/inbox-review-plan/inbox-review-plan.cmd.ts#validateReviewReports`.
+ * @invariant Coverage ledger and tool-call cross-check only apply at `stage: 'filled'` — the same
+ *   stage inbox-review-plan gates synthesis at.
+ * @consumer RoleInstance (gate nodes)
+ */
+export class ArtifactValidator {
+  /**
+   * @purpose Validate a report dir: schema gate + coverage ledger + grounding check (injection or
+   * tool-call, per session kind, TSK-137) + mermaid syntax.
+   * @param dir Per-MR, per-head report directory (as produced by `inbox-review-plan --scaffold`).
+   * @param stage `enriched` gates dispatch (Context filled); `filled` gates synthesis (all sections).
+   * @param [optsOrToolCalls] Legacy bare `toolCalls` array (pre-TSK-137 shape, kept for out-of-scope
+   *   session kinds) or a `ValidateOpts` carrying `sessionKind` + `injectedEntities`.
+   * @returns `{ ok: true }` or `{ ok: false, errors }` — one entry per violation, file-scoped.
+   * @sideEffect Reads PLAN.md, `tasks/*.task.md`, and README.md under `dir`; lazily loads mermaid+jsdom when a diagram is present.
+   */
+  async validate(
+    dir: string,
+    stage: 'enriched' | 'filled',
+    optsOrToolCalls: ToolCall[] | ValidateOpts = []
+  ): Promise<ValidateResult> {
+    const errors: ValidateError[] = [];
+    const opts: ValidateOpts = Array.isArray(optsOrToolCalls)
+      ? { toolCalls: optsOrToolCalls }
+      : optsOrToolCalls;
+
+    const base = validateReviewReports(dir, stage);
+    if (!base.ok) errors.push(...base.errors);
+
+    errors.push(...(await this._verifyMermaidSyntax(dir)));
+
+    if (stage === 'filled') {
+      errors.push(...this._verifyCoverageLedger(dir));
+
+      // #region START_DISPATCH_GROUNDING_METHOD — invariant: review_needed lens sessions (D-86
+      // override, TSK-137) ground findings against injected Context entities, never tool-call
+      // telemetry (a low-round injection session with zero tool calls would otherwise always fail);
+      // every other sessionKind (including absent, pre-TSK-137 callers) keeps the legacy check.
+      if (opts.sessionKind && INJECTION_GROUNDED_SESSION_KINDS.has(opts.sessionKind)) {
+        errors.push(...this._verifyInjectionCoverage(dir, opts.injectedEntities ?? []));
+      } else {
+        errors.push(...this._verifyToolCallCoverage(dir, opts.toolCalls ?? []));
+      }
+      // #endregion END_DISPATCH_GROUNDING_METHOD
+    }
+
+    return errors.length > 0 ? { ok: false, errors } : { ok: true };
+  }
+
+  // ─── Coverage ledger ────────────────────────────────────────────────────────
+
+  /**
+   * @purpose Every Scope file must be mentioned in the findings sections, or covered by an
+   * explicit blanket no-findings statement — never silently unaccounted for.
+   * @param dir Report directory containing `tasks/*.task.md`.
+   * @returns One error per uncovered scope file.
+   */
+  protected _verifyCoverageLedger(dir: string): ValidateError[] {
+    const errors: ValidateError[] = [];
+    const tasksDir = join(dir, 'tasks');
+    if (!existsSync(tasksDir)) return errors;
+
+    for (const fileName of readdirSync(tasksDir)) {
+      if (!fileName.endsWith('.task.md')) continue;
+      const taskPath = join(tasksDir, fileName);
+      const content = readFileSync(taskPath, 'utf8');
+      const { frontmatter, body } = this._parseFrontmatter(content);
+      const scopeFiles = Array.isArray(frontmatter.files) ? frontmatter.files : [];
+      if (scopeFiles.length === 0) continue;
+
+      const findingsBody = this._extractSection(body, 'Находки') ?? '';
+      const candidatesBody = this._extractSection(body, 'Кандидаты') ?? '';
+      const evidenceText = `${findingsBody}\n${candidatesBody}`;
+      const hasBlanketNoFindings = /нет\s+находок|no\s+findings/i.test(findingsBody);
+
+      for (const scopeFile of scopeFiles) {
+        if (hasBlanketNoFindings) continue;
+        if (evidenceText.includes(scopeFile)) continue;
+        errors.push({
+          file: taskPath,
+          error: `coverage ledger: файл "${scopeFile}" без находок и без явного no-findings`,
+        });
+      }
+    }
+    return errors;
+  }
+
+  // ─── Tool-call cross-check ───────────────────────────────────────────────────
+
+  /**
+   * @purpose Cross-checks tool-call telemetry (fact) against Scope — an unopened Scope file is a
+   * self-report mismatch, not proof of review.
+   * @param dir Report directory containing `tasks/*.task.md`.
+   * @param toolCalls Telemetry from the opencode session.
+   * @returns One error per untouched Scope file; empty when telemetry is unavailable.
+   */
+  protected _verifyToolCallCoverage(dir: string, toolCalls: ToolCall[]): ValidateError[] {
+    if (toolCalls.length === 0) return [];
+
+    const errors: ValidateError[] = [];
+    const touchedPaths = new Set(toolCalls.map((c) => c.path));
+    const tasksDir = join(dir, 'tasks');
+    if (!existsSync(tasksDir)) return errors;
+
+    for (const fileName of readdirSync(tasksDir)) {
+      if (!fileName.endsWith('.task.md')) continue;
+      const taskPath = join(tasksDir, fileName);
+      const { frontmatter } = this._parseFrontmatter(readFileSync(taskPath, 'utf8'));
+      const scopeFiles = Array.isArray(frontmatter.files) ? frontmatter.files : [];
+
+      for (const scopeFile of scopeFiles) {
+        const opened = [...touchedPaths].some((p) => p === scopeFile || p.endsWith(scopeFile));
+        if (!opened) {
+          errors.push({
+            file: taskPath,
+            error: `tool-call сверка: файл "${scopeFile}" из Область не открывался агентом`,
+          });
+        }
+      }
+    }
+    return errors;
+  }
+
+  // ─── Injection-coverage ledger (TSK-137, D-86 override for review_needed lenses) ────────────
+
+  /**
+   * @purpose Parse Candidates-table rows (spec §4 columns: id/file/line/problem/axis/kind/severity)
+   * into `{file, problem}` pairs, skipping header/separator rows and the all-dash placeholder row.
+   * @param sectionBody Text of the Candidates section (post-heading, pre-next-heading).
+   * @returns One entry per real candidate row; empty when the table has no data rows.
+   */
+  protected _parseCandidateRows(sectionBody: string): CandidateRow[] {
+    const rows = sectionBody
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('|'))
+      .slice(2); // drop header row + separator row
+
+    const parsed: CandidateRow[] = [];
+    for (const row of rows) {
+      const cells = row
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim().replace(/`/g, ''));
+      if (cells.every((c) => CANDIDATE_ROW_EMPTY_CELL.has(c))) continue;
+
+      const file = cells[1] ?? '';
+      const problem = cells[3] ?? '';
+      if (!file || CANDIDATE_ROW_EMPTY_CELL.has(file)) continue;
+      parsed.push({ file, problem });
+    }
+    return parsed;
+  }
+
+  /**
+   * @purpose Every candidate row must reference an injected Context entity (by file or symbol name)
+   * — grounding, not self-report (TSK-137).
+   * @param dir Report directory containing `tasks/*.task.md`.
+   * @param injectedEntities Structured entity list from the SAME `buildTrackContext` pass that
+   *   filled this task's Context section (TSK-134) — never independently re-parsed from markdown.
+   * @returns One error per candidate row whose file matches no injected entity.
+   */
+  protected _verifyInjectionCoverage(
+    dir: string,
+    injectedEntities: InjectedEntity[]
+  ): ValidateError[] {
+    const errors: ValidateError[] = [];
+    const tasksDir = join(dir, 'tasks');
+    if (!existsSync(tasksDir)) return errors;
+
+    for (const fileName of readdirSync(tasksDir)) {
+      if (!fileName.endsWith('.task.md')) continue;
+      const taskPath = join(tasksDir, fileName);
+      const { body } = this._parseFrontmatter(readFileSync(taskPath, 'utf8'));
+      const candidatesBody = this._extractSection(body, 'Кандидаты') ?? '';
+
+      for (const candidate of this._parseCandidateRows(candidatesBody)) {
+        const grounded = injectedEntities.some(
+          (entity) =>
+            candidate.file === entity.file ||
+            candidate.file.endsWith(entity.file) ||
+            entity.file.endsWith(candidate.file) ||
+            (entity.symbol !== undefined && candidate.problem.includes(entity.symbol))
+        );
+        if (!grounded) {
+          errors.push({
+            file: taskPath,
+            error: `injection-coverage: находка на "${candidate.file}" без grounding в влитом ## Контекст (injectedEntities)`,
+          });
+        }
+      }
+    }
+    return errors;
+  }
+
+  // ─── Mermaid syntax ───────────────────────────────────────────────────────────
+
+  /**
+   * @purpose Validate every mermaid block through the mermaid parser (spec §4, not regexp) — catches
+   *   bad diagram types and in-block grammar errors.
+   * @invariant mermaid+jsdom load lazily and only when at least one ```mermaid block is present, so
+   *   diagram-free reports never pull in the browser lib.
+   * @param dir Report directory to scan (README.md + task files).
+   * @returns One error per mermaid block the parser rejects, file-scoped.
+   * @sideEffect Lazily loads mermaid+jsdom (see `loadMermaidParse`) when a diagram is present.
+   */
+  protected async _verifyMermaidSyntax(dir: string): Promise<ValidateError[]> {
+    const errors: ValidateError[] = [];
+    const candidates = [join(dir, 'README.md')];
+    const tasksDir = join(dir, 'tasks');
+    if (existsSync(tasksDir)) {
+      for (const fileName of readdirSync(tasksDir)) {
+        if (fileName.endsWith('.task.md')) candidates.push(join(tasksDir, fileName));
+      }
+    }
+
+    const blocks: MermaidBlock[] = [];
+    for (const filePath of candidates) {
+      if (!existsSync(filePath)) continue;
+      blocks.push(...this._extractMermaidBlocks(filePath, readFileSync(filePath, 'utf8')));
+    }
+    if (blocks.length === 0) return errors;
+
+    for (const block of blocks) {
+      const err = await validateMermaid(block.body);
+      if (err !== null) errors.push({ file: block.file, error: `mermaid: ${err}` });
+    }
+    return errors;
+  }
+
+  /**
+   * @purpose Extract every closed ```mermaid ... ``` block from a document body.
+   * @param file Source file path — carried into each block for error scoping.
+   * @param content Full document text.
+   * @returns Array of mermaid block bodies (fence markers stripped).
+   */
+  protected _extractMermaidBlocks(file: string, content: string): MermaidBlock[] {
+    return extractMermaidBlocks(content).map((body) => ({ file, body }));
+  }
+
+  // ─── Shared document parsing (frontmatter + section extraction) ─────────────
+  // purpose: mirrors inbox-review-plan's own minimal parser — the pipeline only ever reads back
+  // documents it generated itself, so a line-based parser is sufficient (no general YAML support).
+
+  /**
+   * @purpose Parse a `---`-delimited frontmatter block plus the remaining body.
+   * @param content Full document text.
+   * @returns Frontmatter (scalar or list values) and the body after the closing `---`.
+   */
+  protected _parseFrontmatter(content: string): {
+    frontmatter: Record<string, string | string[]>;
+    body: string;
+  } {
+    const lines = content.split('\n');
+    if (lines[0]?.trim() !== '---') return { frontmatter: {}, body: content };
+    const end = lines.indexOf('---', 1);
+    if (end === -1) return { frontmatter: {}, body: content };
+
+    const frontmatter: Record<string, string | string[]> = {};
+    let currentListKey: string | null = null;
+    for (let i = 1; i < end; i++) {
+      const line = lines[i];
+      const listItem = /^\s*-\s+(.*)$/.exec(line);
+      if (listItem && currentListKey) {
+        (frontmatter[currentListKey] as string[]).push(listItem[1].trim());
+        continue;
+      }
+      const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
+      if (!kv) continue;
+      const [, key, value] = kv;
+      if (value === '') {
+        frontmatter[key] = [];
+        currentListKey = key;
+      } else {
+        frontmatter[key] = value.trim();
+        currentListKey = null;
+      }
+    }
+    return { frontmatter, body: lines.slice(end + 1).join('\n') };
+  }
+
+  /**
+   * @purpose Extract the text under a `## <heading>` section, up to the next `## ` heading.
+   * @param body Document body (post-frontmatter).
+   * @param heading Section heading, without the `## ` prefix.
+   * @returns Section text (trimmed) or null when the heading is absent.
+   */
+  protected _extractSection(body: string, heading: string): string | null {
+    const match = new RegExp(`^## ${heading}\\s*$`, 'm').exec(body);
+    if (!match) return null;
+    const rest = body.slice(match.index + match[0].length);
+    const nextHeadingIdx = rest.search(/^## /m);
+    return (nextHeadingIdx === -1 ? rest : rest.slice(0, nextHeadingIdx)).trim();
+  }
+}

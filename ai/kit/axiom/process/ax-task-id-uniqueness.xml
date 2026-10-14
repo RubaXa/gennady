@@ -1,0 +1,17 @@
+<!-- source: ai/directives/sdd/scaffold.directive.xml -->
+<Axiom id="AX_TASK_ID_UNIQUENESS">
+  **Task-ID `<ACR>-<slug>` is unique, semantic, and immutable.** The slug names the feature in
+  1-2 words, ≤ 8 characters — not a sequence number, not a paragraph.
+
+  - `sdd-new` generates and validates the ID — grammar, slug length, project-wide uniqueness (duplicate
+    or prefix-conflict against every existing Task-ID). Never hand-roll the format: use the exhaustive
+    owner-specific `sdd-new task` ToolCall selected by STEP_3 and let it refuse with a concrete fix if
+    the id is bad.
+  - Uniqueness is enforced by the **Slug Registry** in each `<module>.3-tasks.md`: the same slug in two
+    branches collides on merge there, surfacing «same feature» instead of hiding it. Append-only.
+  - The ID never changes — even if the ticket file moves between scopes.
+  - V2 source headers reference one canonical Spec ID through `@spec`; Task-IDs remain in tickets,
+    indexes, receipts, and resolver output, not source headers.
+  - `sdd-check` cross-checks integrity (SDD_TASK_ID_GRAMMAR, SDD_TASK_ID_PREFIX_CLASH,
+    SDD_TASK_ID_COLLISION); a genuine collision → abort, operator resolves.
+</Axiom>

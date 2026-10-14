@@ -1,6 +1,6 @@
 // @file: Unit tests for InvariantCountCheck — validates invariant counting per exported entity.
+// @spec: CLI-LINT
 // @consumers: InvariantCountCheck
-// @tasks: TSK-XX
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

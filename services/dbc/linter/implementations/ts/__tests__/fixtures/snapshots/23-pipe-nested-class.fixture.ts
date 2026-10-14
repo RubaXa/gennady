@@ -1,4 +1,5 @@
 // @file: pipe in nested class
+// @spec: DBC-DBC-LINTER
 // @consumers: test
 export class Outer {
   /** @purpose Deep indented pipe. | @param x Input. | @returns Result. */

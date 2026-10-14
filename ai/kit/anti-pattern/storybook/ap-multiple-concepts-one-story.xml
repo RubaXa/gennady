@@ -1,0 +1,6 @@
+<!-- source: ai/directives/coding/uikit-component-storybook.xml -->
+<AntiPattern id="AP_MULTIPLE_CONCEPTS_ONE_STORY">
+      <Bad>One story named `AccentPrimaryAllSizes` with `play` that loops over sizes and asserts all of them.</Bad>
+      <WhyBad>Multiple concepts in one story. When a test fails, the failure message says which size broke but the story name doesn't identify which variant the story was testing. The spec demands one story per variant.</WhyBad>
+      <Good>Separate stories: `AccentPrimarySmallNormal`, `AccentPrimaryMediumNormal`, `AccentPrimaryLargeNormal`. Each fails independently.</Good>
+    </AntiPattern>

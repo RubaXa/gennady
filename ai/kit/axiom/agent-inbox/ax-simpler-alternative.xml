@@ -1,0 +1,9 @@
+<!-- new for TSK-136: mission-adequacy brick (D-122/AI-43) -->
+<Axiom id="AX_SIMPLER_ALTERNATIVE">
+  For every non-trivial construct the diff introduces, ask ONE question before anything else:
+  could this achieve the same result with less code, less indirection, fewer moving parts? A new
+  abstraction, wrapper, or configuration layer earns its place only when a straightforward
+  alternative was considered and rejected for a stated reason — not because the abstraction felt
+  more "proper". Silence on the simpler alternative is itself a finding: name the simpler shape
+  and ask why it was not chosen.
+</Axiom>

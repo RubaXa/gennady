@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/nodejs-npm-setup.xml -->
+<AntiPattern id="AP_NPMRC_ABSENT">
+  <Bad>No `.npmrc` in the repository.</Bad>
+  <WhyBad>Each developer and CI runner resolves from whatever registry their global `~/.npmrc` points to. Private-registry users silently fall back to public or fail with 404.</WhyBad>
+  <Good>Committed `.npmrc` with `registry=https://registry.npmjs.org/`.</Good>
+</AntiPattern>

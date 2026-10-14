@@ -1,0 +1,24 @@
+<!-- source: coding/sveltekit-rules.xml -->
+<Pattern id="PT_FORM_ACTION_WITH_FAIL">
+      <Intent>Form action with synchronous validation and `fail()` for recoverable rejection.</Intent>
+      <Snippet language="typescript">
+        ```typescript
+        // src/routes/checkout/+page.server.ts
+        import { fail, redirect } from '@sveltejs/kit';
+        import type { Actions } from './$types';
+
+        export const actions = {
+          default: async ({ request, locals }) => {
+            const data = await request.formData();
+            const email = data.get('email')?.toString().trim();
+            if (!email) {
+              return fail(400, { email: '', error: 'Email is required' });
+            }
+            await locals.checkout.placeOrder({ email });
+            throw redirect(303, '/checkout/done');
+          },
+        } satisfies Actions;
+        ```
+      </Snippet>
+      <Why>`fail()` re-renders the page with `form` populated; `redirect()` is the success channel; validation is synchronous and at the top.</Why>
+    </Pattern>

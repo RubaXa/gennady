@@ -1,4 +1,6 @@
-<TestingCommon keywords="testing, ai_first_tests, contract_testing, case_flow, phase_anchors, unified_context, factory, mocks, bdd_mapping, snapshots, isolation" type="testing-rules" ver="1.0">
+<TestingCommon rule-id="testing-common" rule-schema="1" type="required" ver="1.0">
+<Meta>
+</Meta>
   <Mission>
     Shared testing core for every runner-specific directive (`testing/node-test`, `testing/vitest-rules`, future Jest/Pytest/Go directives). Defines: what a test must protect, how the case body is structured for the next agent to read, how dependencies are isolated, how BDD scenarios in a ticket map to `it` cases.
 
@@ -76,7 +78,7 @@
     </Axiom>
 
     <Axiom id="AX_RESULT_UNWRAP_ON_SUCCESS_PATHS">
-      If the SUT returns `Result<T>`, use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape.
+      If the SUT returns `Result&lt;T&gt;`, use `unwrap()` / `unwrapSync()` on success paths to collapse «check success + extract value» into one call. The assert then focuses solely on the business shape.
     </Axiom>
 
     <Axiom id="AX_FOCUSED_ERROR_ASSERTIONS">
@@ -193,6 +195,41 @@
 
   </BeliefState>
 
+  <AntiPatterns>
+    <AntiPattern id="AP_TEST_CONTRACT_BYPASS">
+      <Bad>A test reads protected SUT state, mutates private fields, or mocks the SUT method it claims to verify.</Bad>
+      <WhyBad>It exercises an implementation detail or a test double rather than the public contract, so a behavior-preserving refactor becomes a false regression or fabricated green result.</WhyBad>
+      <Good>Drive the SUT through its public surface and observe returned values, emitted events, or collaborator calls at an injected boundary.</Good>
+    </AntiPattern>
+    <AntiPattern id="AP_UNDECLARED_TEST_GATE">
+      <Bad>A required type-check, test, coverage, or formatting command is skipped or reported as green without its actual exit status.</Bad>
+      <WhyBad>It turns the completion gate into fiction and hides environment or repository blockers from the ticket owner.</WhyBad>
+      <Good>Run the applicable verification hook and record the command result; when blocked, record the blocker explicitly with its owner.</Good>
+    </AntiPattern>
+  </AntiPatterns>
+
+  <VerificationHooks>
+    <Hook id="HOOK_TEST_TYPECHECK">
+      <Purpose>Verify that test fixtures, injected doubles, and contract assertions remain type-safe with the project source.</Purpose>
+      <Command>npm run type-check</Command>
+    </Hook>
+    <Hook id="HOOK_TEST_RUNNER">
+      <Purpose>Run the ticket-scoped test command so executable contract scenarios prove their public behavior.</Purpose>
+      <Command>npm test -- &quot;&lt;ticket-scoped-test-glob&gt;&quot;</Command>
+    </Hook>
+    <Hook id="HOOK_TEST_FORMAT">
+      <Purpose>Check deterministic formatting of changed test and ticket artifacts.</Purpose>
+      <Command>npx prettier --check &lt;changed-test-and-ticket-files&gt;</Command>
+    </Hook>
+  </VerificationHooks>
+
+  <RewardCriteria>
+    ✅ Tests protect public behavior through explicit injection seams and deterministic per-case context.
+    ✅ Non-trivial case flow remains recoverable through intentful paired phase anchors.
+    ✅ BDD coverage and any deferred ownership are recorded honestly in the ticket.
+    ✅ Applicable type-check, test, and formatting hooks have an actual result; blockers remain explicit.
+  </RewardCriteria>
+
   <Definitions>
     <Definition id="DEF_NON_TRIVIAL_CASE">
       A case is non-trivial if any of: async behavior with setup; retries / fallbacks / errors; emitted events or external side effects; more than one meaningful observation; nested control flow that another agent could misread at a glance. Non-trivial cases are candidates for opening brief and phase anchors per the thresholds in `AX_PHASE_ANCHORS` and `AX_IT_OPENING_BRIEF`.
@@ -231,39 +268,4 @@
     <Step id="WF_5_CHOOSE_DIAGNOSTIC_ASSERTIONS">Simplest direct assertion first. Aggregate into OBSERVE only when one rich diff beats several isolated assertions.</Step>
     <Step id="WF_6_VERIFY_AND_FINALIZE">Re-check unified context, anchor pairing, snapshot placement, no ungated mocks. Run type-check + tests with coverage. Blocker → declared EXPLICITLY.</Step>
   </WorkflowOutline>
-
-  <AntiPatterns>
-    <AntiPattern id="AP_ASSERT_IMPLEMENTATION_STATE">
-      <Bad>Cast the SUT to bypass visibility and assert a private field, listener array, or internal call order.</Bad>
-      <WhyBad>The test binds to implementation shape and can pass while the public contract is broken.</WhyBad>
-      <Good>Trigger the public API and assert its returned value, emitted event, durable side effect, or documented error.</Good>
-    </AntiPattern>
-    <AntiPattern id="AP_SHARED_CASE_STATE">
-      <Bad>Populate mutable describe-scope variables once and let several cases mutate or reuse them.</Bad>
-      <WhyBad>Case order becomes observable and a previous case can manufacture the next case's setup.</WhyBad>
-      <Good>Create the unified context per case, or use one lifecycle context that is rebuilt and disposed by hooks.</Good>
-    </AntiPattern>
-    <AntiPattern id="AP_ACCEPT_OUTPUT_BY_REWRITING_EXPECTATION">
-      <Bad>Make a failure green by weakening the assertion, deleting the failure path, or updating an existing snapshot without operator review.</Bad>
-      <WhyBad>The test stops protecting the contract and records current output as desired behavior without evidence.</WhyBad>
-      <Good>Fix the implementation or present the contract change and snapshot diff to the operator.</Good>
-    </AntiPattern>
-  </AntiPatterns>
-
-  <VerificationHooks>
-    <Hook id="HOOK_RUN_PROJECT_VERIFICATION">
-      <Command>gennady verify</Command>
-      <Expected>At least one applicable test gate executes; all executed gates pass. Zero executed gates or an environment failure is reported as a blocker, never as test success.</Expected>
-    </Hook>
-  </VerificationHooks>
-
-  <RewardCriteria>
-    ✅ Tests exercise public contracts and fail when required behavior is removed or changed.
-    ✅ Every case owns isolated state and maps to one declared scenario.
-    ✅ Assertions preserve diagnostic values instead of collapsing failures to booleans.
-    ✅ Non-trivial phases expose paired intent anchors; trivial phases remain uncluttered.
-    ✅ Required test, type, and coverage gates execute with observable successful results.
-    ❌ A test passes because the SUT, collaborator under test, expected output, or existing snapshot was falsified.
-    ❌ Focused or skipped tests reach merge without a tracked deferred owner.
-  </RewardCriteria>
 </TestingCommon>

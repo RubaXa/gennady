@@ -1,0 +1,42 @@
+<!-- source: ai/directives/sdd/fix.directive.xml -->
+<Axiom id="AX_REOPEN_FORMAT">
+      This format applies only after an independent state policy has authorized the named ticket.
+      A historical relation or legacy `@tasks` header never supplies that authorization.
+      Allocate concrete next-unused PhaseIDs; placeholders are not valid written output. Every
+      task-owned code finding, including a one-line bug, gets at least one concrete `fix` PhaseID
+      and one dependent concrete `test` PhaseID. Multiple findings sharing one owner may share one
+      Round, but none may bypass it.
+
+      **Two forms, chosen by whether the current Round is still open (D-20):**
+      - **Round still open** (no `#### Round close` written yet) — append `#### P<N> — re-run:
+        <reason>` blocks for the new fix/test phases inside that SAME `### Round N`.
+      - **Round already closed** — `— re-run:` is not valid there; append a brand new
+        `### Round N+1 — <YYYY-MM-DD>, fix: <one-line reason>` instead, with its own fix/test phase
+        blocks. A write into an already-closed Round is invalid input regardless of form.
+
+      Either way, `PHASES_OVERVIEW` MUST gain one row per new PhaseID — the Execution Log alone is
+      not read by the phase-graph/dependency checks:
+
+      ```
+      | ID     | Kind | Deps | Status |
+      |--------|------|------|--------|
+      | P<N>   | fix  | —    | [ ]    |
+      | P<N+1> | test | P<N> | [ ]    |
+      ```
+
+      Set ticket Meta Status → `[~] IN_PROGRESS` — this is what `sdd-log round` already sets when
+      opening a new Round; do not write `[ ] TODO` instead, which reads as "not started" and would
+      drift from the tracker row `sdd-check` compares it against. Update `Reopens: <new count>` —
+      count of persisted `@audit … triggered-reopen=Round-N` records, not "how many times I hand-
+      counted `### Round` headers"; `sdd-check` verifies the two agree (`SDD_REOPENS_MISMATCH`) and
+      that every declared `triggered-reopen=Round-N` actually got a matching Round created
+      (`SDD_REOPENS_PENDING` — an announced reopen the orchestrator never executed). Reason string
+      for the new Round comes from a closed vocabulary the CLI itself enforces (`initial |
+      fix: F-NNN | resume | new-audit-session`, `isValidRoundReason` in `execution-log.ts`) —
+      `sdd-log round "<free text>"` now refuses (exit 4) instead of accepting anything.
+      Sync tracker: the owning `*.3-tasks.md` row → `[~] IN_PROGRESS` (same value, not TODO); parent
+      rollups (scope and `specs/3-tasks.md`) → adjust counts.
+
+      `✅ RESOLVED` after a blocker is a related but separate concern owned by the journal's
+      Blocker Trail work, not this axiom.
+    </Axiom>

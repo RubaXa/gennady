@@ -1,0 +1,6 @@
+<!-- source: ai/directives/infra/eslint-setup.xml -->
+<AntiPattern id="AP_UNMOTIVATED_NON_AUTOFIX_RULE">
+      <Bad>Non-autofix rules turned on without explanatory comment: `'complexity': ['error', 10]`, `'max-lines': ['error', 500]`, `'no-magic-numbers': 'error'`, `'@typescript-eslint/no-explicit-any': 'error'`, `'@typescript-eslint/no-floating-promises': 'error'` (no comment).</Bad>
+      <WhyBad>None of these ship a `fix`. Each adds findings the agent cannot resolve mechanically. None carry the explanatory comment required by `AX_AUTOFIX_PREFERRED`. `complexity`/`max-lines`/`no-magic-numbers` belong to other channels per `AX_NON_AUTOFIX_PREFER_DELEGATION`. Without motivation, the rules cannot be distinguished from accidentally-enabled ones during audit.</WhyBad>
+      <Good>Off-load to right channels: `'complexity': 'off'` (testing/architecture); `'no-magic-numbers': 'off'` (review); `'no-explicit-any': 'off'` (review per call-site). Keep `'no-floating-promises': 'error'` WITH the motivation comment naming the bug class and channel-coverage gap.</Good>
+    </AntiPattern>

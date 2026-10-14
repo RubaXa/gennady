@@ -1,0 +1,7 @@
+<!-- source: sdd-v2 amplify-security -->
+<Axiom id="AX_EXTERNAL_INPUT_UNTRUSTED">
+  Every input crossing a trust boundary into the system — user input, webhook, file upload,
+  inter-service call, queue message — is untrusted until validated at that boundary. Validation
+  lives at the boundary itself; inner layers receive already-typed, already-checked data. A spec
+  that names a trust boundary MUST name the validation applied at it.
+</Axiom>

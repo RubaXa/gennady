@@ -1,6 +1,6 @@
 // @file: Unit tests for OpenCodeProvider — session scanning with DI
+// @spec: AGENT-MON
 // @consumers: monitor, CLI
-// @tasks: TSK-40
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

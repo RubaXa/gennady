@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: review-issues
+// @spec: CLI-REVIEW
 // @consumers: N/A
-// @tasks: N/A, TSK-70
 
 import { parseReviewCommandArgs } from './_core/logic/parse-review-command-args.logic.ts';
 import { runReviewCommand } from './_core/logic/run-review-command.logic.ts';

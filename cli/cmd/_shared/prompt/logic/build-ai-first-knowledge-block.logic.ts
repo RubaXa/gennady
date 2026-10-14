@@ -1,6 +1,6 @@
 // @file: Build `<!--ai:first-->` substitution with mandatory project knowledge files.
+// @spec: CLI
 // @consumers: render-review-verify.xml, resolve-conflicts-render.xml
-// @tasks: N/A
 
 import fs from 'node:fs';
 import path from 'node:path';

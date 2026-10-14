@@ -1,6 +1,6 @@
 // @file: agent-mon root barrel — re-exports public API surface
+// @spec: AGENT-MON
 // @consumers: CLI, external consumers
-// @tasks: TSK-41
 
 export { createMonitor } from './monitor/index.ts';
 export { diff } from './diff/index.ts';

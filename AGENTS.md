@@ -2,12 +2,15 @@
 
 ## Directive markup — mandatory
 
-Файлы `ai/directives/**/*.xml` и `plugins/*/directives/**/*.xml` — **HTML-like prompt markup, а не XML-документы**. Расширение `.xml` историческое.
+`ai/directives/**/*.xml` is prompt markup for an LLM to read, not an XML document. The `<Tag>…</Tag>`
+pairs are attention anchors — findable start/end boundaries for a model reading long context — not
+parser syntax; `id` values (`AX_*`, `STEP_*`, contract ids) are reference handles, not schema
+identifiers. Body text is ordinary markdown/prose: `&`, `<`, `>` are written as-is, never escaped.
 
-- Сохраняй парность и понятную вложенность тегов: они структурируют инструкции для агента.
-- Не требуй XML well-formedness, schema, namespaces или XML escaping.
-- Не запускай XML parser/validator (`xmllint` и аналоги) для проверки директив.
-- Читай и редактируй директивы как prompt text; тестируй поведение и смысловые anchors, а не XML-валидность.
+**Do not run an XML parser or validator (`xmllint` and analogues) against `ai/directives/**`.** A
+directive that "fails to parse" as XML is not broken — treating it as one and "fixing" its
+escaping corrupts the actual prompt text an agent reads. See `ai/kit/AUTHORING.md` §1 for the full
+authoring convention these files follow.
 
 ## Project description
 
@@ -21,9 +24,39 @@ _(Обновляется по мере развития проекта; аген
 ## Структура и навигация
 
 - **shared/** — общее: `common/` (logger, exec, files, style, xml, parse-args, language, tokens, think, unguard), `backend/` (git, rc).
-- **services/** — сервисы: `config/`, `stack/` (раннер гейтов), `plugins/` (реестр/резолвер стек-плагинов), `vcs-client` и др.
-- **plugins/** — стек-плагины: `golang/`, `node/`, `anystack/`; каждый — один каталог (реализация, спека, директивы, скиллы, E2E-фикстуры), см. [specs/plugins/plugins.spec.md](specs/plugins/plugins.spec.md).
+- **services/** — сервисы (vcs-client).
 - **cli/** — команды: `gennady.ts`, `cmd/*`, `utils/*` (commit-gen, review-gen, cat-gen, prompts, ai-legacy) в [cli/AGENTS.md](cli/AGENTS.md).
+
+---
+
+## MANDATORY VISUAL PROOF (обязательно для любой законченной работы)
+
+Оператор явно и неоднократно требовал это правило (2026-07-22) — молчаливое завершение работы без
+доказательства недопустимо, даже если тесты прошли и код смёржен.
+
+**По завершении любой задачи/тикета/теста, где есть что показать наблюдаемо** (UI-изменение, e2e-тест,
+живой прогон, работа с браузером/симулятором) — обязателен визуальный отчёт в конце ответа оператору:
+
+- Скриншот(ы) КАЖДОЙ ключевой точки, не одна общая картинка «всё работает». Если тест проходит N
+  шагов (t1, t2, t3...) — по скриншоту на шаг, не один финальный.
+- Под каждым скриншотом — что именно на нём видно и что это доказывает (не подпись-название файла).
+- Если скриншот физически невозможен (чистая backend-логика, unit-тест без UI) — явно сказать это
+  прямым текстом («визуального артефакта нет — это backend-модуль без UI»), не молчать и не
+  подменять текстовым пересказом лога.
+- Ссылки на изменённые файлы — markdown-ссылками (см. системное правило форматирования), не голым
+  текстом пути.
+- Это НЕ заменяет текстовое summary — оно идёт ДОПОЛНИТЕЛЬНО к нему, в конце ответа, а не вместо.
+
+Нарушение этого правила = невыполненная задача, даже если код корректен.
+
+**Реальные данные, не mock/demo-сидинг (усилено 2026-07-22 после реального инцидента).** В agent-inbox
+(и любом проекте, где действует D-116 «нет фикстур») визуальное доказательство обязано идти на
+реальном GitLab/реальном `~/.gennady`/`gennady inbox serve` (не mock-режим, не искусственный demo-MR
+в dev-seed) — если только оператор явно не попросил показать именно мок. Причина: mock и dev-seed
+маскируют реальные дефекты — в этой сессии demo на моке скрыл два реальных бага (потерянная роль в
+disk-fallback, устаревший прод-бандл), которые вскрылись только на реальном MR. Перед демонстрацией
+проверить: (а) сервер поднят в реальном режиме, (б) прод-бандл дашборда пересобран (`npm run
+inbox-serve:build`), если тестируется через `gennady inbox serve`, а не через dev vite-сервер.
 
 ---
 
@@ -56,6 +89,15 @@ _(Обновляется по мере развития проекта; аген
 
 ---
 
+## Commit rules
+
+- `git commit --no-verify` / `-n` запрещён. Полная инструкция (что делать при красном
+  pre-commit, почему обход недопустим) печатается самим хуком при падении —
+  `scripts/git-hooks/pre-commit`. Хук подключается автоматически (`npm install` → `prepare` →
+  `core.hooksPath scripts/git-hooks`).
+
+---
+
 ## Naming rules (review core)
 
 - Для review-домена использовать именование сущностей и файлов в стиле `Review[(Context)?Name]`.
@@ -69,39 +111,20 @@ _(Обновляется по мере развития проекта; аген
 
 Открывай нужный файл и следуй инструкциям в зависимости от твоей задачи.
 
-| Задача агента                                                     | Читать                                                                                                                                     |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| SDD-воркфлоу: как использовать скиллы, в какой последовательности | [docs/sdd-flow.md](docs/sdd-flow.md)                                                                                                       |
-| Справочник SDD-скиллов (`@sdd-*`)                                 | [ai/skills/README.md](ai/skills/README.md)                                                                                                 |
-| Справочник SDD-директив                                           | [ai/directives/sdd/README.md](ai/directives/sdd/README.md)                                                                                 |
-| Логирование в коде (console, logger)                              | [ai/flow/code/logging.md](ai/flow/code/logging.md)                                                                                         |
-| Ошибки: throw, rethrow, формат Error                              | [ai/flow/code/errors.md](ai/flow/code/errors.md)                                                                                           |
-| TypeScript: enum, private, конструктор                            | [ai/flow/code/typescript.md](ai/flow/code/typescript.md)                                                                                   |
-| JSDoc-контракты (экспорт, `@implements`, `@see`, порядок тегов)   | [ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS](ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS)           |
-| Добавление/изменение CLI-команды (help, switch, таблица команд)   | §4 ниже + [cli/AGENTS.md](cli/AGENTS.md)                                                                                                   |
-| TypeScript native patterns (enum, namespace, constructor params)  | [ai/agents/agent-typescript-devgen.xml#AXIOM_TS_NATIVE_PATTERNS](ai/agents/agent-typescript-devgen.xml#AXIOM_TS_NATIVE_PATTERNS)           |
-| Teleological naming (intent over pattern)                         | [ai/agents/agent-typescript-devgen.xml#AXIOM_TELEOLOGICAL_NAMING](ai/agents/agent-typescript-devgen.xml#AXIOM_TELEOLOGICAL_NAMING)         |
-| Error handling with anchors & cause chaining                      | [ai/agents/agent-typescript-devgen.xml#AXIOM_ERROR_WITH_ANCHORS](ai/agents/agent-typescript-devgen.xml#AXIOM_ERROR_WITH_ANCHORS)           |
-| Structured logging (logger, state transitions)                    | [ai/agents/agent-typescript-devgen.xml#AXIOM_LOG_DRIVEN_DEVELOPMENT](ai/agents/agent-typescript-devgen.xml#AXIOM_LOG_DRIVEN_DEVELOPMENT)   |
-| Structural anchors (START*/END* blocks)                           | [ai/agents/agent-typescript-devgen.xml#AXIOM_STRUCTURAL_ANCHORS](ai/agents/agent-typescript-devgen.xml#AXIOM_STRUCTURAL_ANCHORS)           |
-| AI-to-AI comments (why over what)                                 | [ai/agents/agent-typescript-devgen.xml#AXIOM_AI_TO_AI_COMMENTS](ai/agents/agent-typescript-devgen.xml#AXIOM_AI_TO_AI_COMMENTS)             |
-| JSDoc contracts (tag order, purpose, consumer)                    | [ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS](ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS)           |
-| Macro anchors & comments example                                  | [ai/agents/agent-typescript-devgen.xml#EX_MACRO_ANCHORS_AND_COMMENTS](ai/agents/agent-typescript-devgen.xml#EX_MACRO_ANCHORS_AND_COMMENTS) |
-| JSDoc data type example                                           | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_DATA_TYPE](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_DATA_TYPE)                       |
-| JSDoc service contract example                                    | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_SERVICE_CONTRACT](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_SERVICE_CONTRACT)         |
-| JSDoc implementation example                                      | [ai/agents/agent-typescript-devgen.xml#EX_JSDOC_IMPLEMENTATION](ai/agents/agent-typescript-devgen.xml#EX_JSDOC_IMPLEMENTATION)             |
-| Minimal logging example                                           | [ai/agents/agent-typescript-devgen.xml#EX_LOGGING_MINIMAL](ai/agents/agent-typescript-devgen.xml#EX_LOGGING_MINIMAL)                       |
-| Logging branch decision example                                   | [ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION](ai/agents/agent-typescript-devgen.xml#EX_LOGGING_BRANCH_DECISION)       |
-| Expressive terseness example                                      | [ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS](ai/agents/agent-typescript-devgen.xml#EX_EXPRESSIVE_TERSENESS)             |
-| Trace prefix definition                                           | [ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX](ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX)                           |
+| Задача агента                                                   | Читать                                                                                                                                                 |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SDD workflow / skills                                           | [ai/skills/README.md](ai/skills/README.md)                                                                                                             |
+| Логирование в коде (console, logger)                            | [ai/directives/coding/typescript-rules.xml#AX_STRUCTURED_LOGGING](ai/directives/coding/typescript-rules.xml#AX_STRUCTURED_LOGGING)                     |
+| Ошибки: throw, rethrow, формат Error                            | [ai/directives/coding/typescript-rules.xml#AX_ERROR_CHAINING_CAUSE](ai/directives/coding/typescript-rules.xml#AX_ERROR_CHAINING_CAUSE)                 |
+| TypeScript: enum, private, конструктор                          | [ai/directives/coding/typescript-rules.xml#AX_NO_TRANSPILE_ONLY_CONSTRUCTS](ai/directives/coding/typescript-rules.xml#AX_NO_TRANSPILE_ONLY_CONSTRUCTS) |
+| Добавление/изменение CLI-команды (help, switch, таблица команд) | [cli/AGENTS.md](cli/AGENTS.md)                                                                                                                         |
+| Разбор MR / конвейер ревью / финализация                        | [ai/directives/agent-inbox/inbox-flow.directive.xml](ai/directives/agent-inbox/inbox-flow.directive.xml)                                               |
+| Постинг замечаний после согласования                            | [ai/directives/agent-inbox/posting-rules.directive.xml](ai/directives/agent-inbox/posting-rules.directive.xml)                                         |
 
 ---
 
 ## What exists (implementation pointers)
 
-- **Логирование и ошибки**: правила в flow. Логгер — `#logger` (мапится на `service/logger/logger.ts`).
-- **Контракты**: экспортируемые сущности и implementation-linking rules по `ai/agents/agent-typescript-devgen.xml#AXIOM_JSDOC_AS_CONTRACTS`.
-- **Сборка**: `npm run build` (Vite) → `dist/` с чанками; публикуемый артефакт — `npm run build:publish` (добавляет `build:types` и копирование `ai/**` → `dist/ai/**`), потому что `prepublishOnly` не срабатывает на `npm pack`.
+- **Логирование и ошибки**: правила в flow. Логгер — `#logger` (мапится на `services/logger/logger.ts`).
+- **Сборка**: `npm run build` (Vite) → `dist/` с чанками.
 - **Форматирование**: Prettier (2 пробела, singleQuote, trailingComma es5). `npm run format`, `npm run format:check`. Конфиг `.prettierrc.json`.
-- **Аксиомы и примеры TypeScript**: правила и примеры в `ai/agents/agent-typescript-devgen.xml` (AXIOM_TS_NATIVE_PATTERNS, AXIOM_TELEOLOGICAL_NAMING, AXIOM_ERROR_WITH_ANCHORS, AXIOM_LOG_DRIVEN_DEVELOPMENT, AXIOM_STRUCTURAL_ANCHORS, AXIOM_AI_TO_AI_COMMENTS, AXIOM_JSDOC_AS_CONTRACTS и др.).
-- **Определения**: Trace-Prefix и другие определения — `ai/agents/agent-typescript-devgen.xml#DEF_TRACE_PREFIX`.

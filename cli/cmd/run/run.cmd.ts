@@ -1,6 +1,6 @@
 // @file: RunCommand — CLI entry point for gennady run: thin wrapper over @services/agent-run.
+// @spec: CLI-RUN
 // @consumers: gennady.ts
-// @tasks: TSK-65
 
 import { parseArgs } from 'node:util';
 import { logger } from '#logger';

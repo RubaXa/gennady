@@ -1,6 +1,6 @@
 // @file: Contract surface for emoji reactions on merge request notes.
+// @spec: VCS-VCS-CLIENT
 // @consumers: VcsClient
-// @tasks: TSK-98
 
 import type { VcsReactionQuery } from '../entities/vcs-reaction-query.type.ts';
 
