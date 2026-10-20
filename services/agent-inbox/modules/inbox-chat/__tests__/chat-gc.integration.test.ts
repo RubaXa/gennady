@@ -1,8 +1,8 @@
 // @file: Integration test for ChatGc — exercises gcStaleChats/gcStaleSnapshots against a real
+// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
 //   filesystem tree (real fs, real mtimes via utimesSync, real OS-level immutable-flag permission
 //   errors via `chflags uchg`) with no mocked collaborators.
 // @consumers: node:test runner
-// @tasks: TSK-128
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

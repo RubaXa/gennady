@@ -1,11 +1,11 @@
 // @file: e2e (D-116, no fixture fallback) — real MR through the real `gennady inbox serve`
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   pipeline (real GitLab + real opencode, network-touching). Covers Round 2's two e2e BDD
 //   scenarios in ONE run per MR (D-125 forbids separate runs for the triple-grounding check):
 //   AI-45 (≤10 tool round-trips/lens node) and D-125 (interface action ↔ telemetry entry ↔
 //   artifact change, same mr/sessionId, same run). Honestly `t.skip()`s when live prerequisites
 //   (token, opencode server, network) are not met — never falls back to a canned fixture.
 // @consumers: node:test runner (opt-in live run; skips by default in CI/sandboxed environments)
-// @tasks: TSK-113
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

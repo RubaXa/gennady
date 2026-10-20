@@ -1,6 +1,6 @@
 // @file: Shippable bootstrap-to-one-shot black-box proof.
+// @spec: AGENT-INBOX
 // @consumers: TSK-184 verification
-// @tasks: TSK-184, TSK-190
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';

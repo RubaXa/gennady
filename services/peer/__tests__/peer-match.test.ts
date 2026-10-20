@@ -1,6 +1,6 @@
 // @file: Tests for fuzzy peer title matching and Codex title extraction.
+// @spec: PEER
 // @consumers: N/A
-// @tasks: N/A
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

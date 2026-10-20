@@ -1,7 +1,7 @@
 // @file: Unit tests for state-seed — parseSeedState validation, and applySeedState's 'fresh'
+// @spec: AGENT-INBOX
 //   (delete registry entry) / 'reviewed' (set lastReviewedHeadSha) effects on the registry.
 // @consumers: node:test runner
-// @tasks: TSK-121
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Shippable one-shot acceptance tests through PipelineRuntime.
+// @spec: AGENT-INBOX
 // @consumers: TSK-184 verification, TSK-190 live read-only capture verification
-// @tasks: TSK-184, TSK-190
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';

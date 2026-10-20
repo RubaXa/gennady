@@ -1,4 +1,5 @@
 // @file: Deterministic tests for RoleScheduler's continuous-observation gate
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   `_shouldAdvanceInstance` (SV-19/20/21 + the D-138 fix). Network- and git-free: VcsInboxMock
 //   drives discussions/identity, a real StateStore-in-tmp backs the DebounceTracker, and
 //   fetchDiffRefs is stubbed so `headChanged` stays undefined for most cases (a live git
@@ -6,7 +7,6 @@
 //   real `createGitFixture` worktree through `buildNodeContext` so `headChanged` genuinely
 //   resolves to `fast_forward` — see that case for the exact plumbing.
 // @consumers: node:test runner
-// @tasks: TSK-141, D-138, TSK-148
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: End-to-end tests for peer messaging against a mock Claude Code session.
+// @spec: PEER
 // @consumers: N/A
-// @tasks: N/A
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,7 @@
 // @file: Integration tests for ChatRouter — async POST /chat (D-89), TURN_IN_FLIGHT rejection
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 //   (D-104), and POST /chat/stop delegation to ChatSession#stop (CH-11).
 // @consumers: node:test runner
-// @tasks: TSK-129, TSK-152, TSK-162, TSK-163, TSK-175
 
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';

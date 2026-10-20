@@ -1,6 +1,6 @@
 // @file: Codex executable selection and standalone peer ask process lifecycle regression tests.
+// @spec: PEER
 // @consumers: node:test
-// @tasks: N/A
 
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,7 @@
 // @file: Unit tests for inbox-eval EvalReport — status derivation (PASS only when every gate
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
 //   passed and every stage completed) plus JSON/Markdown serialization round-trip.
 // @consumers: node:test runner
-// @tasks: TSK-118
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

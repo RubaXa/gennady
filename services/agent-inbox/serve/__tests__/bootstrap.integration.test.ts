@@ -1,6 +1,6 @@
 // @file: Bootstrap integration test — boot phase sequence observable before mutation readiness.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-181
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Shippable bootstrap composition proof for the deterministic review control plane.
+// @spec: AGENT-INBOX
 // @consumers: TSK-184 verification, TSK-190 trusted boundary verification
-// @tasks: TSK-184, TSK-190
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

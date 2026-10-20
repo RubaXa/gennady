@@ -1,6 +1,6 @@
 // @file: Dashboard history integration tests — horizon visibility matrix and event-driven card restore.
+// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
-// @tasks: TSK-182
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

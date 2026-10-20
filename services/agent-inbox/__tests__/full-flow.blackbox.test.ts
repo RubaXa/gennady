@@ -1,6 +1,6 @@
 // @file: Full-flow blackbox tests — two-MR parallelism, crash recovery, ambiguous effect reconciliation, intra-MR ordering.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-181
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

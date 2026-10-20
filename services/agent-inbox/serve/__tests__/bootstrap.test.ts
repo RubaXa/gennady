@@ -1,6 +1,6 @@
 // @file: Integration tests for bootstrap — DI composition with mocks, server responds to /api/board.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-115, TSK-160, TSK-167, TSK-170, TSK-172, TSK-175, TSK-181
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

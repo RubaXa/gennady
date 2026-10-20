@@ -1,6 +1,6 @@
 // @file: Integration tests — ReviewBoardProjection via JournalProjectionAdapter; deduplication and lifecycle visibility.
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-179
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

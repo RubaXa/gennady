@@ -1,8 +1,8 @@
 // @file: Unit + integration tests for BoardProviderReal — unassigned flow (F7), card enrichment,
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 //   and the real reports/<mr>/ artifact backing (TSK-122 gap-3: listArtifacts/readArtifact read
 //   real files from disk under a temp state dir, with the same traversal guard as ArtifactRouter).
 // @consumers: node:test runner
-// @tasks: TSK-117, TSK-122
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

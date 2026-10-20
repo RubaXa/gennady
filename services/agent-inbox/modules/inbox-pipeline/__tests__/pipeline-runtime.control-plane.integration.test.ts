@@ -1,6 +1,6 @@
 // @file: Integration proof that the existing PipelineRuntime owns durable control-plane boundaries.
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: TSK-184 verification, TSK-190 audit traceability
-// @tasks: TSK-184, TSK-190
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

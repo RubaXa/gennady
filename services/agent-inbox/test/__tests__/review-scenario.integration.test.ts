@@ -1,6 +1,6 @@
 // @file: Integration tests for ReviewScenario — determinism, run-id isolation and crash recovery.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-180
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

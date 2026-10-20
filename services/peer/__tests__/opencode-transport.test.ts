@@ -1,6 +1,6 @@
 // @file: Tests for the OpenCode transport HTTP send path against a mock server.
+// @spec: PEER
 // @consumers: N/A
-// @tasks: N/A
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';

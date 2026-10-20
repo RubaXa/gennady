@@ -1,9 +1,9 @@
 // @file: BoardProviderDiskTests — proves the READ-ONLY disk viewer path against a temp fixture dir:
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 //   getReport/listArtifacts/readArtifact read straight from `report/`, and BoardProjection merges a
 //   disk-scanned card in with syncState 'ok' even while snapshots are empty and a cold load is in
 //   flight (TSK-190).
 // @consumers: node:test runner
-// @tasks: TSK-190
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,11 +1,11 @@
 // @file: Unit tests for inbox-eval driver (`runEval`) — mocks `runMrsOnce` entirely (VcsInboxMock/
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
 //   OpenCodeMock wiring only, no network — GITLAB_PERSONAL_TOKEN must never be exercised here) and
 //   asserts: (a) clean run → every computable gate (G1 base-sha presence, G9 body-size, G10
 //   idempotency) green, report written, exit reflects status; (b) red per computable gate
 //   (oversized body → G9 fail; missing base data → no fabricated G1 pass) → status=FAIL; (c) G2-G8
 //   are never emitted as fabricated-pass — absent, never green without data (honesty invariant).
 // @consumers: node:test runner
-// @tasks: TSK-119, TSK-167
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

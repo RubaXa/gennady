@@ -1,6 +1,6 @@
 // @file: port-contract tests — cassette replay and fake/real drift diagnostics.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-166
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,7 @@
 // @file: Contract tests for ReviewEval — exhaustive type set, profile combinations and port
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
 //   contract kit determinism. Covers [contract-only] and [simulation-backed] surface.
 // @consumers: node:test runner
-// @tasks: TSK-183
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

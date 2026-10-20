@@ -1,10 +1,10 @@
 // @file: Regression for the live bug "assign a role → restart the server → MR is back in «БЕЗ РОЛИ»".
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   Instances live in memory only; without a persisted marker every restart dropped the operator's
 //   assignment, and role activation does not help (roles boot inactive, auto-assign is gated on it).
 //   Step-by-step, deterministic, no opencode and no browser: assign → assert it hit the registry →
 //   build a FRESH scheduler on the same stateDir (that IS the restart) → tick → assignment restored.
 // @consumers: node:test runner
-// @tasks: TSK-156
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

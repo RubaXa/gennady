@@ -1,6 +1,6 @@
 // @file: Unit tests for ReviewScenario — VCS capability matrix and controlled-clock scheduling.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-180
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 // @file: Closed-world contract proof for unified VCS read, effect, action, and outcome variants.
+// @spec: AGENT-INBOX-INBOX-INBOX-VCS
 // @consumers: node:test runner
-// @tasks: TSK-174
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

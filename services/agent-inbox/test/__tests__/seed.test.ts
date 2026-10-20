@@ -1,6 +1,6 @@
 // @file: seed tests — integration coverage for deterministic persisted inbox fixtures.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-162, TSK-166
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,7 @@
 // @file: Simulation-backed unit tests for ReviewEvalReport — verdict derivation invariants,
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
 //   outcome precedence, all-skipped non-pass guarantee and evidence aggregation.
 // @consumers: node:test runner
-// @tasks: TSK-183
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

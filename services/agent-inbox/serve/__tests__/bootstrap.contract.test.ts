@@ -1,6 +1,6 @@
 // @file: Bootstrap contract test — journal-first composition exposes PipelineRuntime chain; no legacy role scheduler.
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
-// @tasks: TSK-181
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

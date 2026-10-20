@@ -1,6 +1,6 @@
 // @file: Foundation runtime integration — shared boot state and MR-scoped decision persistence.
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-157
 
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';

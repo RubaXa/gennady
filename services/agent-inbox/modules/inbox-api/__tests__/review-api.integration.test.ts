@@ -1,6 +1,6 @@
 // @file: Integration tests — journal rebuild restores all projections; pre-ready API is read-only observable.
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-179
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

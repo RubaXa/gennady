@@ -1,6 +1,6 @@
 // @file: Integration tests for HttpServer — SPA fallback, graceful shutdown, CORS preflight.
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: node:test runner
-// @tasks: TSK-106, TSK-167
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
