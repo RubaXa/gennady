@@ -250,6 +250,14 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/mr-stats/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'vcs-mr-view':
+      await import('./cmd/vcs-mr-view/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'peer':
+      await import('./cmd/peer/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'yagni':
       await import('./cmd/yagni/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -453,6 +461,14 @@ switch (command) {
 
   case 'mr-stats':
     await import('./cmd/mr-stats/index.ts');
+    break;
+
+  case 'vcs-mr-view':
+    await import('./cmd/vcs-mr-view/index.ts');
+    break;
+
+  case 'peer':
+    await import('./cmd/peer/index.ts');
     break;
 
   case 'yagni':

@@ -29,6 +29,8 @@
 | remote-console    | [cmd/remote-console/](cmd/remote-console/)       | Проксирование browser console в локальный stdout через HTTP sink                    |
 | lint              | [cmd/lint/](cmd/lint/)                           | Линтинг .ts файлов — file header, anchors, DbC контракты                            |
 | mr-stats          | [cmd/mr-stats/](cmd/mr-stats/)                   | Статистика по GitLab MR: категории, строки, сущности                                |
+| vcs-mr-view       | [cmd/vcs-mr-view/](cmd/vcs-mr-view/)             | Метаданные MR/PR по URL (JSON), read-only                                          |
+| peer              | [cmd/peer/](cmd/peer/)                           | Peer-messaging между Claude Code / Codex / opencode                                 |
 | sync              | [cmd/sync/](cmd/sync/)                           | Синхронизация ai/directives/ из npm-пакета в текущий проект                         |
 | sync-skills       | [cmd/sync-skills/](cmd/sync-skills/)             | Sync ai/directives/ (in full) then SDD skills from ai/skills/ to .claude/skills/    |
 | agent-mon         | [cmd/agent-mon/](cmd/agent-mon/)                 | Интерактивный терминальный дашборд для мониторинга AI-агентов                       |

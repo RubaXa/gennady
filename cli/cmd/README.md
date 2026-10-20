@@ -214,6 +214,8 @@ npx gennady yagni /path/to/repo
 | `remote-console`    | Зеркалирование браузерной консоли в stdout                                |
 | `lint`              | Валидация .ts; references из canonical owner/active task relations        |
 | `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности                      |
+| `vcs-mr-view`       | Метаданные MR/PR по URL (JSON) — read-only, без мутаций                   |
+| `peer`              | Peer-messaging между Claude Code / Codex / opencode                       |
 | `sync`              | V2-синхронизация `ai/directives/`; V1 отказывает до записи                |
 | `sync-skills`       | V2-навыки в `.claude/skills/`; V1 отказывает до записи                    |
 | `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов                              |
