@@ -1,5 +1,5 @@
 // @file: RoleScheduler — orchestrates tick (poll → delta → assign → step → escalate) and manual assignment.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 // @consumers: serve timer, inbox-api
 
 import { logger } from '#logger';

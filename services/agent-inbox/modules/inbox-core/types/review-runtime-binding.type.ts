@@ -1,5 +1,5 @@
 // @file: Validated physical binding returned by the runtime profile port.
-// @spec: AGENT-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-INBOX-CORE
 // @consumers: StateStore, bootstrap
 
 import type { ReviewRuntimeProfile } from '../runtime-profile.ts';

@@ -1,7 +1,7 @@
 // @file: Pure file:line resolution for ContextChip.origin — maps a selected quote to its real
+// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
 //   1-based line range inside an artifact's raw source text, replacing the absent-DOM-marker
 //   degradation with a deterministic, unit-testable computation (D-115, TSK-132 P1 fix).
-// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: SelectionPill (browser selection → origin)
 
 import type { ContextChipOrigin } from './types.ts';

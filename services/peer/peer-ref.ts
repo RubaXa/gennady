@@ -1,6 +1,6 @@
 // @file: Peer reference helpers — qualified runtime:name addressing.
+// @spec: PEER
 // @consumers: peer-transport-registry, peer.cmd
-// @tasks: N/A
 
 import type { PeerRuntime, PeerTarget } from './peer-port.ts';
 

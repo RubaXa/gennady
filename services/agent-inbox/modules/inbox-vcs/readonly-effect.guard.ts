@@ -1,5 +1,5 @@
 // @file: ReadonlyEffectGuard — explicit deny-before-I/O adapter for real-readonly runtime profiles.
-// @spec: AGENT-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-INBOX-VCS
 // @consumers: inbox-vcs runtime selection, contract tests
 
 import type { VcsEffectPort } from './vcs-port.ts';

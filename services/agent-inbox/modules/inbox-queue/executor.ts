@@ -1,5 +1,5 @@
 // @file: Executor — per-MR queue loop: priority+FIFO+aging, exclusive mode (effects sequential), waiting_dep/cancelled states, crash recovery (running→queued, effects by marker), journal-backed visibility events
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
 // @consumers: inbox-roles (role scheduler), inbox-api (inbox serve)
 
 import { logger } from '#logger';
@@ -316,15 +316,15 @@ export class Executor {
           const taskId = p.taskId as string;
           const status = p.status as string | undefined;
           if (status && typeof status === 'string') {
-            try {
+            if (this._queue.instance(this._mr, taskId)) {
               this._queue.transition(
                 this._mr,
                 taskId,
                 status as import('./task-registry.ts').TaskStatus
               );
-            } catch {
+            } else {
               logger.debug(
-                `[Executor#recover] [created → skip_status] taskId=${taskId} (already processed)`
+                `[Executor#recover] [created → skip_status] mr=${this._mr} taskId=${taskId} reason=not-restored`
               );
             }
           }
@@ -345,14 +345,16 @@ export class Executor {
             // #endregion END_RECOVER_EFFECT_MARKER
           }
           if (taskId && status) {
-            try {
+            if (this._queue.instance(this._mr, taskId)) {
               this._queue.transition(
                 this._mr,
                 taskId,
                 status as import('./task-registry.ts').TaskStatus
               );
-            } catch {
-              logger.debug(`[Executor#recover] [status → skip] taskId=${taskId} (not found)`);
+            } else {
+              logger.debug(
+                `[Executor#recover] [status → skip] mr=${this._mr} taskId=${taskId} reason=not-restored`
+              );
             }
           }
           break;

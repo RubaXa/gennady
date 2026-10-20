@@ -1,5 +1,5 @@
 // @file: Explainable terminal coverage projection for one review contract.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewCompletenessVerdict, ReviewPlan, dashboard projections
 
 /** @purpose Total disjoint accounting of contract slots and trusted source use. */

@@ -1,6 +1,6 @@
 // @file: CLI entry point — boots the peer command via dynamic import from gennady.ts.
+// @spec: PEER
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { run } from './peer.cmd.ts';
 

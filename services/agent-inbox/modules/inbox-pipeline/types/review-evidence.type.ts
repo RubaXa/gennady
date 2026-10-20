@@ -1,5 +1,5 @@
 // @file: Immutable slot evidence with source and producer provenance.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewStructuralValidator, ReviewFinding, ReviewSynthesis
 
 /** @purpose Agent observation tied to an immutable source and addressable artifact fragment. */

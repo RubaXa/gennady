@@ -1,6 +1,6 @@
 // @file: Integration tests for HttpServer — SPA fallback, graceful shutdown, CORS preflight.
-// @spec: AGENT-INBOX
 // @consumers: node:test runner
+// @tasks: TSK-106, TSK-167
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -167,7 +167,7 @@ describe('HttpServer — graceful shutdown', () => {
   });
 });
 
-describe('HttpServer — live VCS board truth (IV-gitlab)', () => {
+describe('HttpServer — live VCS board truth (TSK-158)', () => {
   it('serves canonical running work from the durable journal without external VCS calls', async () => {
     const stateDir = mkdtempSync(join(tmpdir(), 'gennady-board-work-'));
     const journal = new EventJournal(join(stateDir, 'events.jsonl'));
@@ -249,6 +249,12 @@ describe('HttpServer — live VCS board truth (IV-gitlab)', () => {
         author: 'alice',
         myRole: 'reviewer',
         attention: '⏳',
+        review: {
+          approvedByMe: false,
+          commentedByMe: false,
+          approvalReset: false,
+          selfReviewCompleted: false,
+        },
         counters: {
           approvals: '0/1',
           reviewers: [{ user: 'bob', voted: false }],
@@ -256,6 +262,7 @@ describe('HttpServer — live VCS board truth (IV-gitlab)', () => {
           threads: '0/0',
           awaitingMe: 0,
           newCommits: 0,
+          findings: 0,
           unread: 0,
         },
         work: {

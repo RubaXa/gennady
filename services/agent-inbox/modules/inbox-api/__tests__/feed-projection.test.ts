@@ -1,6 +1,6 @@
 // @file: FeedProjectionTests — canonical seven-kind FeedWidget contract and read cursor coverage.
-// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
+// @tasks: TSK-162
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -110,7 +110,18 @@ describe('FeedProjection', () => {
       unread: true,
       anchors: [],
       payload: {
-        items: [{ id: 'f1', severity: 'unknown', file: '', line: 0, summary: '', state: 'open' }],
+        items: [
+          {
+            id: 'f1',
+            severity: 'unknown',
+            file: '',
+            line: 0,
+            summary: '',
+            state: 'open',
+            diff: [],
+            factcheck: 'pending',
+          },
+        ],
       },
     });
     assert.deepStrictEqual(widgets[1], {

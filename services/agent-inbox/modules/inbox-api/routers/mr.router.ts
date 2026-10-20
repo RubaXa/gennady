@@ -1,6 +1,6 @@
 // @file: MrRouter — POST /api/mr/:id/assign, POST /api/mr/:id/action, GET /api/mr/:id/report,
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 //   POST /api/mr/:id/copy-fix-task handlers.
-// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

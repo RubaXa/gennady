@@ -1,5 +1,5 @@
 // @file: Immutable semantic synthesis available only after fresh structural PASS.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewPublicationHandoff, dashboard, operator
 
 import { createHash } from 'node:crypto';

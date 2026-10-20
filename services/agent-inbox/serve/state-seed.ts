@@ -1,7 +1,7 @@
 // @file: state-seed — parse/apply a seed.json document into the StateStore registry (fresh /
+// @spec: AGENT-INBOX
 //   reviewed@headSha) so a run-mode pass starts from a known prior-review state instead of an
 //   empty registry.
-// @spec: AGENT-INBOX
 // @consumers: run-mode.ts, cli/cmd/inbox/serve.cmd.ts
 
 import { readFile } from 'node:fs/promises';

@@ -1,5 +1,5 @@
 // @file: Integration test for complete delta fallback, supersession inputs and evidence revalidation.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX
 // @consumers: TSK-176 audit
 
 import assert from 'node:assert/strict';

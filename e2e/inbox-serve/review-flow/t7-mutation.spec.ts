@@ -1,7 +1,7 @@
 // @file: t7 — mutation: over a state dir seeded with the real review, POST /api/mr/:id/mutate with a
+// @spec: AGENT-INBOX
 //   set-severity proposal and assert review.json's revision bumps by 1 on disk and the target
 //   finding's severity actually changed (real MutationApplier CAS, no live instance required).
-// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 
 import { test, expect } from '@playwright/test';

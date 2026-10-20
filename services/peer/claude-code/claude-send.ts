@@ -1,6 +1,6 @@
 // @file: Send a peer message to a Claude Code session's UDS inbox.
+// @spec: PEER
 // @consumers: claude-code.transport
-// @tasks: N/A
 
 import { createConnection } from 'node:net';
 import { buildClaudeEnvelope, buildClaudeFrame, serializeClaudeFrame } from './claude-protocol.ts';

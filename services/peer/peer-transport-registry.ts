@@ -1,6 +1,6 @@
 // @file: Peer transport registry — resolve a runtime adapter by id or auto-detect.
+// @spec: PEER
 // @consumers: peer.cmd
-// @tasks: N/A
 
 import { ClaudeCodeTransport } from './claude-code/claude-code.transport.ts';
 import { OpenCodeTransport } from './opencode/opencode.transport.ts';

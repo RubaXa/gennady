@@ -1,5 +1,5 @@
 // @file: ReviewAutomationPolicy — resolves only proven prior-operator-intent restoration; no speculative automation.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
 // @consumers: ReviewActionCatalog, ReviewEffectCoordinator
 
 import { logger } from '#logger';

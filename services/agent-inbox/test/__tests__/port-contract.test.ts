@@ -1,6 +1,6 @@
 // @file: port-contract tests — cassette replay and fake/real drift diagnostics.
-// @spec: AGENT-INBOX
 // @consumers: node:test runner
+// @tasks: TSK-166
 
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,9 +46,10 @@ function realisticGitlabResponse(): { data: unknown } {
   };
 }
 
-// invariant: VcsGitlabInbox.getActionable sends QUERY_COUNT parallel GraphQL POSTs via Promise.all;
-//            one interceptor per call is required for the mock agent to satisfy all requests.
-const QUERY_COUNT = 4;
+// invariant: VcsGitlabInbox.getActionable sends QUERY_COUNT parallel GraphQL POSTs via Promise.all
+//            — one per discovery source (reviewer/assignee/author); pending todos are not a
+//            discovery source. One interceptor per call satisfies all requests in the mock agent.
+const QUERY_COUNT = 3;
 
 function makeRecordingReplies(
   cassetteDir: string,
@@ -72,7 +73,7 @@ function makeRecordingReplies(
   );
 }
 
-describe('AI-seed port infrastructure', () => {
+describe('TSK-166 port infrastructure', () => {
   it('cassette replays real response shape through real adapter', async () => {
     const cassetteDir = makeTestTmpDir('tsk-166-cassette-');
     directories.push(cassetteDir);

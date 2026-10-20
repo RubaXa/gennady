@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: inbox stats — reads phase-timings.jsonl telemetry and prints a 7-day analytics
-//   rollup (per-node p50/p95/avg + error-rate, per-run total, slowest phase).
 // @spec: AGENT-INBOX
+//   rollup (per-node p50/p95/avg + error-rate, per-run total, slowest phase).
 // @consumers: gennady.ts
 
 import { style } from '../../../shared/common/style.ts';

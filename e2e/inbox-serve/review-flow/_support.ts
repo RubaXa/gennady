@@ -1,4 +1,5 @@
 // @file: shared support for the decomposed review-flow proof suite (TSK-131). Each tN spec boots a
+// @spec: AGENT-INBOX
 //   REAL in-process HttpServer (bootstrap, mocks:false, dryRun:true) and drives one stage; no mocks
 //   or fixtures on the flow. Two seed strategies: an EMPTY temp state (t1/t2/t3/t4 — the real review
 //   runs live), or a temp state PRE-SEEDED with a byte-copy of the operator's already-materialized
@@ -8,7 +9,6 @@
 //   MR_REF was vk-workspace/superapp!602 until 2026-07-18 — that MR was for-real merged on GitLab
 //   (independent of this suite's dry-run actions), dropping it from the actionable board and
 //   breaking any UI-driven "assign" flow; switched to mail/messenger!159 (real, open, non-draft).
-// @spec: AGENT-INBOX
 // @consumers: e2e/inbox-serve/review-flow/*.spec.ts
 
 import { cpSync, existsSync, mkdirSync, symlinkSync } from 'node:fs';
@@ -43,15 +43,19 @@ function _encodedMrRef(): string {
   return `${project.replace(/\//g, '__')}-${iid}`;
 }
 
-/** @purpose Path to the operator's real, already-materialized review of MR_REF — the copy source. */
+/**
+ * @purpose Path to the operator's real, already-materialized review of MR_REF — the copy source.
+ * @returns Absolute filesystem path of the operator's real review directory for MR_REF.
+ */
 export function realReviewSourceDir(): string {
   return mrReportsDir(join(homedir(), '.gennady'), MR_REF);
 }
 
 /**
- * @purpose Create an isolated temp state dir with a valid config; optionally seed it with a byte
- *   copy of the operator's real materialized review of MR_REF.
- * @param opts.seedReview When true, copies the real review dir into the temp state's reports tree.
+ * @purpose Create isolated temp state dir with valid config; optionally seed with a byte-copy of
+ *   the operator's materialized review of MR_REF.
+ * @param opts Options with `seedReview` flag — when true, copies the real review dir into the temp
+ *   state's reports tree.
  * @returns The temp state dir path and the review.json path inside it.
  */
 export async function makeStateDir(opts: { seedReview: boolean }): Promise<{
@@ -134,6 +138,7 @@ export async function bootReal(stateDir: string): Promise<BootstrapResult> {
  *   app.
  * @param app Bootstrap result (or undefined).
  * @param stateDir Temp state dir (or undefined).
+ * @returns Void promise that resolves after graceful shutdown and optional state dir cleanup.
  */
 export async function teardown(
   app: BootstrapResult | undefined,

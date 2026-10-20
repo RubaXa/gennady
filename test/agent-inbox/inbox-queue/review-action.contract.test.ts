@@ -1,5 +1,5 @@
 // @file: Contract tests — action package and outcome type variants are exhaustive.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX
 // @consumers: TSK-177 audit
 
 import assert from 'node:assert/strict';

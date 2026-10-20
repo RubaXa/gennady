@@ -1,6 +1,6 @@
 // @file: Peer message vocabulary — handshake, task, report, directive, ack as runtime-agnostic XML.
+// @spec: PEER
 // @consumers: peer-invoker, adapters, peer.cmd
-// @tasks: N/A
 
 import { escapeXml, serializeXmlNode } from '../../shared/common/xml.ts';
 import type { PeerLimits, PeerSelf, ReplyContract } from './peer-port.ts';

@@ -1,6 +1,5 @@
 // @file: optimistic dashboard test — pending overlay renders before task confirmation.
-// @spec: AGENT-INBOX-INBOX-DASHBOARD
-// @consumers: node:test
+// @tasks: TSK-164
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';

@@ -65,8 +65,8 @@ async function _resolveBox(
 /**
  * @purpose Retrieve the element's position and size as viewport-relative percentages.
  * @param locator Playwright Locator for the target element.
- * @returns RelativePosition with leftPct, topPct, widthPct, heightPct.
  * @throws {Error} When the locator has no bounding box.
+ * @returns RelativePosition with leftPct, topPct, widthPct, heightPct.
  * @sideEffect Browser: boundingBox() call.
  */
 export async function getRelativePosition(locator: Locator): Promise<RelativePosition> {
@@ -78,8 +78,8 @@ export async function getRelativePosition(locator: Locator): Promise<RelativePos
  * @purpose Check whether element A is strictly to the left of element B (no overlap).
  * @param a Locator for the left element.
  * @param b Locator for the right element.
- * @returns true when A's right edge < B's left edge.
  * @throws {Error} When either locator has no bounding box.
+ * @returns true when A's right edge < B's left edge.
  * @sideEffect Browser: two boundingBox() calls.
  */
 export async function isLeftOf(a: Locator, b: Locator): Promise<boolean> {
@@ -91,8 +91,8 @@ export async function isLeftOf(a: Locator, b: Locator): Promise<boolean> {
  * @purpose Check whether element A is strictly below element B (no overlap).
  * @param a Locator for the upper element.
  * @param b Locator for the lower element.
- * @returns true when A's bottom edge < B's top edge.
  * @throws {Error} When either locator has no bounding box.
+ * @returns true when A's bottom edge < B's top edge.
  * @sideEffect Browser: two boundingBox() calls.
  */
 export async function isBelow(a: Locator, b: Locator): Promise<boolean> {
@@ -104,8 +104,8 @@ export async function isBelow(a: Locator, b: Locator): Promise<boolean> {
  * @purpose Check whether element is fully inside the container's bounding box.
  * @param element Locator for the inner element.
  * @param container Locator for the outer container.
- * @returns true when the element's bounding box is entirely contained by the container.
  * @throws {Error} When either locator has no bounding box.
+ * @returns true when the element's bounding box is entirely contained by the container.
  * @sideEffect Browser: two boundingBox() calls.
  */
 export async function isWithin(element: Locator, container: Locator): Promise<boolean> {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command peer — qualified cross-app agent messaging (Claude/OpenCode/Codex).
+// @spec: PEER
 // @consumers: gennady.ts
-// @tasks: N/A
 
 import { randomUUID } from 'node:crypto';
 import { style } from '../../../shared/common/style.ts';

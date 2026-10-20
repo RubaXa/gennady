@@ -1,6 +1,6 @@
 // @file: Peer invoker — runtime-agnostic send/ask that threads a handshake with the reply contract.
+// @spec: PEER
 // @consumers: peer.cmd
-// @tasks: N/A
 
 import { getTransport, defaultTransport } from './peer-transport-registry.ts';
 import { buildHandshake, buildRequest, buildTask, type HandshakeSpec } from './peer-message.ts';

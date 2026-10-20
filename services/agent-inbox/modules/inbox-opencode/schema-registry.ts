@@ -1,5 +1,5 @@
 // @file: AgentSchemaRegistry — versioned task schema lookup and strict structured-output boundary.
-// @spec: AGENT-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
 // @consumers: inbox-roles (RoleInstance.step for session nodes)
 
 import type { OpenCodeErrorResult } from './errors.ts';

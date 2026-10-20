@@ -1,6 +1,6 @@
 // @file: OpenCode session store — read sessions and message parts from the local opencode.db.
+// @spec: PEER
 // @consumers: opencode.transport
-// @tasks: N/A
 
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';

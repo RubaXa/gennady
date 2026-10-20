@@ -1,9 +1,9 @@
 // @file: wait-render.ts — waits for a REAL rendered mermaid diagram, not the pending or failure
+// @spec: AGENT-INBOX
 //   placeholder, not raw fenced-code source, inside the dashboard's ArtifactView. A real render is
 //   mermaid.js's own output mounted as `svg[id^="mmd-"]`; the placeholder branch (ArtifactView.tsx's
 //   MermaidDiagram, `svg === null`) never mounts an `<svg>` element at all, it stays a `<pre>` block —
 //   so presence of the selector is already load-bearing, not merely a style check.
-// @spec: AGENT-INBOX
 // @consumers: e2e/inbox-serve/reviewer-eval.spec.ts
 
 import type { Locator, Page } from '@playwright/test';

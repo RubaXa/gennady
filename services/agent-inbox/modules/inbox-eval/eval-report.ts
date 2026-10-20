@@ -1,8 +1,8 @@
 // @file: Types + serialization for the inbox-eval machine/human report. `status` is derived, never
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
 //   accepted as input, so PASS is provable only via `composeEvalReport` — status = PASS iff every
 //   gate passed and every stage completed (spec §4: "все гейты пройдены = G1..G10 зелёные И
 //   S0..S11 завершены без обрыва").
-// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-119)
 
 import type { GateResult } from './gates.ts';

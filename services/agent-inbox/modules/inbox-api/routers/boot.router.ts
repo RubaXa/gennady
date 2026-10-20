@@ -1,5 +1,5 @@
 // @file: BootRouter — GET /api/boot handler returning bootstrap phase and progress.
-// @spec: AGENT-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: HttpServer
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

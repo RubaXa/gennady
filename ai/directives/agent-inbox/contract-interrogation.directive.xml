@@ -82,6 +82,18 @@
     one row per changed contract with a verdict on the three axes and a concrete rewrite. Clean
     surface → explicit no-findings, never a placeholder. The lens proposes; posting is gated by the
     operator elsewhere in the flow.
+
+    Candidate-table token mapping. The `Ось`/`Вид` columns are the STANDARD pipeline vocabulary —
+    the axis names `spec`/`bloat`/`changelog` are ANALYSIS lenses, NOT valid `Ось` tokens (the
+    validator rejects them). Map each finding:
+    - `spec` finding → `Ось` `B` (restates an existing rule — duplicate/reuse) or `D` (a rule with
+      no spec behind it must move to a spec — conventions);
+    - `bloat` finding → `Ось` `D` (contract budget is a coding-rule convention);
+    - `changelog` finding → `Ось` `D` (block must be rewritten to current truth — conventions).
+    `Вид` is a POSTING kind only: `new-line-comment` / `reply-to-thread` / `correction-reply` /
+    `awaiting-my-reply` / `suggestion` — never a problem-type label. Fill all three sections
+    (`## Находки`, `## Кандидаты`, `## Вердикт`) and remove the `<!-- FILL -->` markers; never put an
+    unescaped `|` inside a table cell.
   </Output>
 
   <HaltConditions>

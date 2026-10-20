@@ -1,5 +1,5 @@
 // @file: FeedWidget DTO — canonical discriminated feed-widget surface from inbox-api spec §4.
-// @spec: AGENT-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: FeedProjection, feed.router.ts, inbox-dashboard
 
 /** @purpose Meta-anchor transported with a widget into inbox-chat (inbox-chat §2). */
@@ -38,6 +38,8 @@ export type FindingsWidget = FeedWidgetBase<
       line: number;
       summary: string;
       state: string;
+      diff: Array<{ type: string; num?: number; text: string }>;
+      factcheck: string;
     }[];
   }
 >;

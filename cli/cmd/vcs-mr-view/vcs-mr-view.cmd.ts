@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: vcs-mr-view CLI command — show MR base info: title, description, reviewers, approvers, labels, state.
+// @spec: CLI-VCS-MR-VIEW
 // @consumers: gennady.ts
-// @tasks: TSK-99
 
 import {
   resolveVcsContext,

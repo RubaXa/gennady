@@ -1,5 +1,5 @@
 // @file: Integration tests — independent effects continue after partial failure.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX
 // @consumers: TSK-177 audit
 
 import assert from 'node:assert/strict';

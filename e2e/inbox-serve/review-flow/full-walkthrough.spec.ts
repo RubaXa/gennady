@@ -1,6 +1,6 @@
-// @file: full-walkthrough.spec.ts — сквозной прогон с seedReview + tick для загрузки ревью
+// @file: full-walkthrough.spec.ts — full seed-review walkthrough with tick-driven review load.
 // @spec: AGENT-INBOX
-// @consumers: N/A
+// @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 
 import { test, expect, type Page } from '@playwright/test';
 import { resolve, dirname } from 'node:path';
@@ -8,6 +8,7 @@ import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { bootReal, makeStateDir, teardown, MR_URL, MR_REF } from './_support.ts';
+import { logger } from '#logger';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SHOTS_DIR = resolve(__dirname, '..', 'test-results', 'screenshots');
@@ -42,7 +43,7 @@ test.describe('Полный путь с засеянным ревью', () => {
 
   test('Сквозной прогон: дашборд → MR → артефакты → кандидаты', async ({ page }) => {
     const inst = app!.scheduler.findInstance(MR_URL);
-    console.log(`Instance state: ${inst?.state} node: ${inst?.currentNode}`);
+    logger.info(`Instance state: ${inst?.state} node: ${inst?.currentNode}`);
 
     // ── Шаг 1: Дашборд ──
     await page.goto('http://localhost:4174');
@@ -94,7 +95,7 @@ test.describe('Полный путь с засеянным ревью', () => {
     if (await nav.isVisible({ timeout: 5000 }).catch(() => false)) {
       const tabs = nav.locator('button');
       const count = await tabs.count();
-      console.log(`Найдено табов артефактов: ${count}`);
+      logger.info(`Найдено табов артефактов: ${count}`);
       for (let i = 0; i < count; i++) {
         const btn = tabs.nth(i);
         const text = (await btn.textContent().catch(() => '')) || `tab-${i}`;
@@ -103,14 +104,14 @@ test.describe('Полный путь с засеянным ревью', () => {
       }
       await shot(page, '05-artifacts');
     } else {
-      console.log('Артефакты не найдены — проверяю URL и контент');
+      logger.info('Артефакты не найдены — проверяю URL и контент');
       const url = page.url();
       const body = await page
         .locator('main')
         .textContent()
         .catch(() => '');
-      console.log(`URL: ${url}`);
-      console.log(`Body (первые 300): ${body?.slice(0, 300)}`);
+      logger.info(`URL: ${url}`);
+      logger.info(`Body (первые 300): ${body?.slice(0, 300)}`);
     }
 
     // ── Шаг 6: ActionPanel — кандидаты, approve, skip ──
@@ -125,7 +126,7 @@ test.describe('Полный путь с засеянным ревью', () => {
     const hasSkip = await skipBtn.isVisible().catch(() => false);
     const hasPost = await postBtn.isVisible().catch(() => false);
 
-    console.log(
+    logger.info(
       `ActionPanel: кандидаты=${hasCandidates} approve=${hasApprove} skip=${hasSkip} post=${hasPost}`
     );
     await shot(page, '06-action-panel');
@@ -155,11 +156,11 @@ test.describe('Полный путь с засеянным ревью', () => {
         // Считаем карточки
         const cards = el.locator('div[role="listitem"]');
         const cardCount = await cards.count().catch(() => 0);
-        console.log(`✅ ${aria}: ${h2?.trim()} | карточек: ${cardCount}`);
+        logger.info(`✅ ${aria}: ${h2?.trim()} | карточек: ${cardCount}`);
       }
     }
 
-    console.log('\n=== СКРИНШОТЫ: ' + SHOTS_DIR + ' ===');
-    console.log('Ветка: recover-sdd-v2, коммитов: 10');
+    logger.info('\n=== СКРИНШОТЫ: ' + SHOTS_DIR + ' ===');
+    logger.info('Ветка: recover-sdd-v2, коммитов: 10');
   });
 });

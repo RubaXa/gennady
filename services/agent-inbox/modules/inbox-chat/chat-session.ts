@@ -1,11 +1,12 @@
 // @file: ChatSession — per-MR opencode session from the shared SessionPool: one turn at a time, stream+Stop, read/local-only tool-scope (D-88, D-103).
-// @spec: AGENT-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
 // @consumers: inbox-api ChatRouter (TSK-129)
 
 import { randomUUID } from 'node:crypto';
 import { logger } from '#logger';
 import { mrRoot } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
 import type { SessionPool } from '../inbox-opencode/session-pool.ts';
+import { DEFAULT_AGENT_INBOX_FAST_MODEL } from '../inbox-opencode/model-selection.ts';
 import type { StateStore } from '../inbox-core/state-store.ts';
 import { ContextAssembler } from './context-assembler.ts';
 import { ChatTranscript, type TranscriptState } from './chat-transcript.ts';
@@ -194,7 +195,7 @@ export class ChatSession {
       const promptResult = await this._pool.run({
         sessionId: this.sid,
         taskId: this._taskId,
-        model: 'default',
+        model: DEFAULT_AGENT_INBOX_FAST_MODEL,
         prompt: { system: context.system, text: opts.text },
       });
 

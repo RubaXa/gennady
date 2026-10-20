@@ -1,5 +1,5 @@
 // @file: Canonical agent outcome classification and retry ladder for every runtime adapter.
-// @spec: AGENT-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
 // @consumers: AgentRuntimePort, inbox-roles
 
 import type { OpenCodeCallResult, OutcomeClass } from './errors.ts';

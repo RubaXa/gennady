@@ -1,5 +1,5 @@
 // @file: Mock factories for ActionableMr and MrContext — typed mock objects for dev/e2e.
-// @spec: AGENT-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
 // @consumers: inbox-api tests, inbox-dashboard e2e, inbox-roles tests
 
 /**

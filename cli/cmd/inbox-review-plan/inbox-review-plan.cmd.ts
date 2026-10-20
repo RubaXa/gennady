@@ -1,6 +1,6 @@
 // @file: review-plan command — deterministic file-to-track classification for fan-out review,
-//   plus the document-pipeline scaffold/validate modes (PLAN.md, per-track task files, gates).
 // @spec: AGENT-INBOX
+//   plus the document-pipeline scaffold/validate modes (PLAN.md, per-track task files, gates).
 // @consumers: agent-inbox skill (inbox-flow.directive.xml)
 
 import { execFileSync } from 'node:child_process';

@@ -1,6 +1,6 @@
 // @file: vcs-mr-view command help output.
+// @spec: CLI-VCS-MR-VIEW
 // @consumers: help command
-// @tasks: TSK-99
 
 /**
  * @purpose Print CLI help for the vcs-mr-view command.

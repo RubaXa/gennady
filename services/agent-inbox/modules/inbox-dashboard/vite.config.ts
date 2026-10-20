@@ -1,5 +1,5 @@
 // @file: Vite config for inbox-dashboard SPA — React + Tailwind v4.
-// @spec: AGENT-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
 // @consumers: vite dev, vite build
 
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite';

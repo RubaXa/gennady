@@ -1,5 +1,5 @@
 // @file: BootReadiness — boot-phase state machine: connect→poll→reconcile→restore→ready/failed with progress tracking
-// @spec: AGENT-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-INBOX-CORE
 // @consumers: inbox-api, bootstrap
 
 import { logger } from '#logger';

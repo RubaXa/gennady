@@ -1,5 +1,5 @@
 // @file: Observable execution plan projected from review contract slots.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, dashboard projections
 
 /** @purpose Visible execution state for one contract slot. */

@@ -157,6 +157,14 @@ async function run(): Promise<number> {
           return 1;
         }
       }
+      if (key === 'autoReviewQuietMinutes') {
+        const minutes = Number(value);
+        if (!Number.isFinite(minutes) || minutes <= 0) {
+          console.error(formatError('autoReviewQuietMinutes должен быть положительным числом'));
+          return 1;
+        }
+        setFlags.set(key, String(minutes));
+      }
     }
 
     let config: InboxConfig;
@@ -168,7 +176,8 @@ async function run(): Promise<number> {
     }
 
     for (const [key, value] of setFlags) {
-      (config as Record<string, unknown>)[key] = value;
+      (config as Record<string, unknown>)[key] =
+        key === 'autoReviewQuietMinutes' ? Number(value) : value;
     }
     for (const key of unsetKeys) {
       delete (config as Record<string, unknown>)[key];

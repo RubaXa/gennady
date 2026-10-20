@@ -1,8 +1,9 @@
 // @file: GateVerdict — validates review.json completeness per §2.1 criteria: verdict present, findings have file:line, no empty review, max 2 attempts
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
 
 import { logger } from '#logger';
+import type { ReviewDiagram } from './synthesize.ts';
 
 /** @purpose Review verdict status */
 export type ReviewVerdictStatus = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT';
@@ -23,6 +24,10 @@ export type ReviewFinding = {
   source?: Array<{ model: string; runId: string }>;
   /** @purpose Synthesis mark */
   mark?: string;
+  /** @purpose Bounded changed-line context shown in the review UI. */
+  diff?: Array<{ type: 'context' | 'add' | 'remove'; num?: number; text: string }>;
+  /** @purpose Evidence verification state. */
+  factcheck?: 'verified' | 'pending' | 'debunked';
 };
 
 /** @purpose review.json schema expected by gate_verdict */
@@ -33,6 +38,8 @@ export type ReviewJson = {
   revision?: number;
   /** @purpose Synthesized findings */
   findings?: ReviewFinding[];
+  /** @purpose Fixed operator-facing comprehension ladder: change map, C4, behaviour, use-cases. */
+  diagrams?: ReviewDiagram[];
 };
 
 /** @purpose Result of gate_verdict validation */

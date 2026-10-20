@@ -1,5 +1,5 @@
 // @file: Verified actionable review finding with provenance and resolution history.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewCrossReviewer, ReviewSynthesis, inbox-queue
 
 /** @purpose Actionable semantic problem separate from structural completeness. */

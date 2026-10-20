@@ -1,5 +1,5 @@
 // @file: Immutable deterministic aggregate of review obligations and total input mappings.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewPlan, ReviewOrchestrator, ReviewStructuralValidator, ReviewRepairCoordinator
 
 import type { ReviewContractInputMapping } from '../types/review-contract-input-mapping.type.ts';

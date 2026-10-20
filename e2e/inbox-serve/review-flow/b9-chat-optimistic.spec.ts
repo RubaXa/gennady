@@ -1,7 +1,7 @@
 // @file: B9 — sending a chat question must echo it immediately (data-testid=chat-pending-question),
+// @spec: AGENT-INBOX
 //   before any assistant answer arrives — not just once the full round-trip completes
 //   (ChatPanel.tsx#pendingQuestion / ChatThread.tsx).
-// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 
 import { test, expect } from '@playwright/test';

@@ -1,8 +1,8 @@
 // @file: Parses `git diff --unified=0` output into a per-file map of newLine numbers that are
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
 //   actually part of a diff hunk — the ground truth G8 (line-in-diff-hunk) checks proposed line
 //   comments against. Git access happens through an injected runner (no direct spawn), so the
 //   parser and its callers stay unit-testable without a real git repository.
-// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-119), gates.ts (G8)
 
 /** @purpose One `@@ -oldStart,oldCount +newStart,newCount @@` hunk boundary, in new-file coordinates. */

@@ -1,6 +1,6 @@
 // @file: Codex peer transport — read threads; send via `codex queue`, reply by polling thread items.
+// @spec: PEER
 // @consumers: peer-transport-registry
-// @tasks: N/A
 
 import {
   listAgentTexts,

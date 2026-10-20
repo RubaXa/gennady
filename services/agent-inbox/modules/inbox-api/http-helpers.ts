@@ -1,5 +1,5 @@
 // @file: HTTP helpers — sendJson, sendDomainError, sendError, parseBody shared between HttpServer and routers.
-// @spec: AGENT-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: HttpServer, BoardRouter, MrRouter, AuditRouter
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

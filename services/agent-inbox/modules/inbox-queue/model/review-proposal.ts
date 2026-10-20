@@ -1,5 +1,5 @@
 // @file: ReviewProposal entity — one candidate operator or automatic action derived from an accepted guarded handoff.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
 // @consumers: ReviewActionPackage, ReviewDecision
 
 import { logger } from '#logger';

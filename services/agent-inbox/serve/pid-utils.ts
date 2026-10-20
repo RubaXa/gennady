@@ -1,8 +1,8 @@
 // @file: pid-utils — macOS PID ownership verification to prevent recycled PID kills, plus
+// @spec: AGENT-INBOX
 //   transparent graceful termination of an orphaned opencode child left by a previous
 //   `gennady inbox serve` instance (never any process outside our own recorded PID files —
 //   the operator's own manually-run opencode/OpenCode.app is never touched).
-// @spec: AGENT-INBOX
 // @consumers: gracefulShutdown, serve.cmd.ts, bootstrap.ts
 
 import { execFile } from 'node:child_process';

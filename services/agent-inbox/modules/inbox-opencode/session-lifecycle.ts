@@ -1,5 +1,5 @@
 // @file: AgentSessionLifecycle — semantic routing plus park/resume/close and controlled TTL.
-// @spec: AGENT-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
 // @consumers: inbox-opencode (UnifiedPool)
 
 import { logger } from '#logger';

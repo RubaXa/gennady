@@ -1,6 +1,6 @@
 // @file: Gennady peer alias registry — stable name → sessionId bindings under ~/.gennady/peer.
+// @spec: PEER
 // @consumers: peer.cmd
-// @tasks: N/A
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';

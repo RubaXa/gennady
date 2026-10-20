@@ -1,6 +1,6 @@
 // @file: Claude Code peer transport adapter — discover/resolve sessions, UDS inbox, SendMessage reply contract.
+// @spec: PEER
 // @consumers: peer-transport-registry, peer.cmd
-// @tasks: N/A
 
 import {
   listLiveSessions,

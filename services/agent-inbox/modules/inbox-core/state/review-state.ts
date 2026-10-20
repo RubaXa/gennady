@@ -1,5 +1,5 @@
 // @file: Deterministic canonical MR state reconstructed exclusively from ordered journal events.
-// @spec: AGENT-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-INBOX-CORE
 // @consumers: StateStore, inbox-pipeline, inbox-api
 
 import { ReviewConfig } from '../review-config.ts';

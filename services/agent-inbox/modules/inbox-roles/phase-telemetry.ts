@@ -1,7 +1,7 @@
 // @file: PhaseTelemetry — append-only per-phase JSONL timing log + 7-day analytics rollup, so the
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   operator can read `<stateDir>/agent-inbox/telemetry/phase-timings.jsonl` (or `gennady inbox
 //   stats`) to see where review time goes across MRs/nodes/models.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleInstance (_executeSession, _runLensSession), CLI `gennady inbox stats`
 
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';

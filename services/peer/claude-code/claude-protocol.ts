@@ -1,6 +1,6 @@
 // @file: Claude Code wire protocol — UDS frames, peer envelope and `uds:` addresses.
+// @spec: PEER
 // @consumers: claude-send, claude-inbox, claude-code.transport
-// @tasks: N/A
 
 import { randomUUID } from 'node:crypto';
 

@@ -1,6 +1,6 @@
 // @file: StreamRouter — SSE /api/mr/:ref/stream: per-MR SSE endpoint.
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 //   board_hint is broadcast to ALL active MR channels via SseHub (no global stream per spec §3).
-// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

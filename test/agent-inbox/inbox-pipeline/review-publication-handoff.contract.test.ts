@@ -1,5 +1,5 @@
 // @file: Contract tests for exact immutable fresh publication handoff construction and replay.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX
 // @consumers: TSK-176 audit
 
 import assert from 'node:assert/strict';

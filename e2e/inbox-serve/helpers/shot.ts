@@ -1,6 +1,6 @@
 // @file: shot.ts — Playwright screenshot helper. Saves a named, full-page screenshot into the
-//   gitignored test-results/screenshots/ dir so each e2e run leaves visual proof of the state it asserts.
 // @spec: AGENT-INBOX
+//   gitignored test-results/screenshots/ dir so each e2e run leaves visual proof of the state it asserts.
 // @consumers: e2e/inbox-serve specs
 
 import { dirname, resolve } from 'node:path';

@@ -1,6 +1,6 @@
 // @file: AuthorRole — self-review + reviewer-feedback analysis → REPORT.md (summary) +
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   FIX_TASK.md (copyable task) + reply drafts. Never approves own MR, never writes threads (D68).
-// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleEngine, role-engine.test.ts, author.role.test.ts
 
 import type {

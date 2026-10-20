@@ -1,5 +1,5 @@
 // @file: Contract tests for closed review control-plane value object unions.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX
 // @consumers: TSK-176 audit
 
 import assert from 'node:assert/strict';

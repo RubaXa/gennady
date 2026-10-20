@@ -1,6 +1,6 @@
 // @file: Gennady peer inbox — a synthetic Claude Code session that can receive cross-session messages.
+// @spec: PEER
 // @consumers: claude-code.transport
-// @tasks: N/A
 
 import { createServer, type Server, type Socket } from 'node:net';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';

@@ -1,7 +1,7 @@
 // @file: B1 — cold start: while /api/board is still in flight the board shows a loading
+// @spec: AGENT-INBOX
 //   skeleton, never a zeroed-out board (BoardSkeleton.tsx, TSK-107). Delays the FIRST response so
 //   the loading frame is actually observable instead of racing localhost's real latency.
-// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 
 import { test, expect } from '@playwright/test';

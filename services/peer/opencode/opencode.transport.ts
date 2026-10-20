@@ -1,6 +1,6 @@
 // @file: OpenCode peer transport — sessions from opencode.db; send via the live desktop HTTP API.
+// @spec: PEER
 // @consumers: peer-transport-registry
-// @tasks: N/A
 
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';

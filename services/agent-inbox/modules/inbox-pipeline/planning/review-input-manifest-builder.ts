@@ -1,5 +1,5 @@
 // @file: Deterministic capture, classification and sealing of review inputs.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, inbox-eval
 
 import { createHash } from 'node:crypto';

@@ -1,5 +1,5 @@
 // @file: Closed review intent variants for deterministic contract compilation.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContractCompiler, ReviewDeltaVerifier, ReviewOrchestrator
 
 /** @purpose Immutable identity of one observed merge request revision. */

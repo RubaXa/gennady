@@ -1,5 +1,5 @@
 // @file: Unit tests for independent foreign review and discussion cross-review semantics.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX
 // @consumers: TSK-176 audit
 
 import assert from 'node:assert/strict';

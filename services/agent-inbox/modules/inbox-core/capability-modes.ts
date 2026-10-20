@@ -1,5 +1,5 @@
 // @file: CapabilityModes — graduation logic: determine proposal|auto mode per capability from accept-rate metrics
-// @spec: AGENT-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-INBOX-CORE
 // @consumers: inbox-queue, inbox-api
 
 import { type AcceptRate, type Capability } from './decision-journal.ts';

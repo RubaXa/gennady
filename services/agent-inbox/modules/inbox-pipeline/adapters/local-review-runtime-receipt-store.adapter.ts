@@ -1,5 +1,5 @@
 // @file: Profile-scoped durable append-only trusted receipt storage.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptRecorder, ReviewStructuralValidator, production composition root
 
 import { createHash } from 'node:crypto';

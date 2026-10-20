@@ -1,14 +1,15 @@
 // @file: B4 — the stage badge on the board (progress.stageLabel, review-progress.ts NODE_STAGE
+// @spec: AGENT-INBOX
 //   map) actually advances through plan → enrich → lenses → synthesis as the real reviewer graph
 //   runs, not frozen on one label. Drives the SAME live graph as t3-t4 (one real MR, real LLM
 //   sessions) and reads the badge via the real board API on each tick — a UI-facing check, not
 //   just backend node state.
-// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 
 import { test, expect } from '@playwright/test';
 import type { BootstrapResult } from '../../../services/agent-inbox/serve/bootstrap.ts';
 import { bootReal, makeStateDir, teardown, MR_URL, BASE_URL } from './_support.ts';
+import { logger } from '#logger';
 
 let app: BootstrapResult | undefined;
 let stateDir: string | undefined;
@@ -57,8 +58,7 @@ test.describe('B4 stage badges', () => {
       if (mr?.progress?.stageLabel) seenLabels.add(mr.progress.stageLabel);
 
       const inst = app!.scheduler.findInstance(MR_URL);
-      // eslint-disable-next-line no-console -- localizes a stall to a node, not a bare timeout
-      console.info(
+      logger.info(
         `[b4] tick ${ticks} state=${inst?.state ?? 'none'} node=${inst?.currentNode ?? 'n/a'} badge=${mr?.progress?.stageLabel ?? 'n/a'}`
       );
 

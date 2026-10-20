@@ -1,6 +1,6 @@
 // @file: Claude Code session registry — enumerate live sessions, resolve by name/id, read peer tokens.
+// @spec: PEER
 // @consumers: claude-code.transport, claude-send
-// @tasks: N/A
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';

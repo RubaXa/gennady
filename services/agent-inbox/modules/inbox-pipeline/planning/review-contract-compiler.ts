@@ -1,5 +1,5 @@
 // @file: Atomic deterministic compiler from sealed manifest to total Review Contract.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, inbox-eval
 
 import { createHash } from 'node:crypto';

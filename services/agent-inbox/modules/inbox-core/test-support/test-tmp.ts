@@ -1,5 +1,5 @@
 // @file: Test-only helper for isolated temp directories that stay outside the production state boundary.
-// @spec: AGENT-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-INBOX-CORE
 // @consumers: agent-inbox test suites (cli/cmd/inbox*, services/agent-inbox/**)
 
 import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';

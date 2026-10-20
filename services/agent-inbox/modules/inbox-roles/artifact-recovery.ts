@@ -1,7 +1,7 @@
 // @file: State-restore reconciliation for serve start/tick — scans reports/<mr>/ on disk,
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   reconciles against the current actionable set, and recovers pre-D-86 legacy artifacts
 //   (PLAN.md/HISTORY.md/tasks/*.task.md without review.json) into the canonical review.json shape.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleScheduler
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';

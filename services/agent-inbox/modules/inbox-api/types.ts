@@ -1,5 +1,5 @@
 // @file: Shared types for inbox-api module — BoardData, RoleView, MrCard, MrDetail, AssignBody, ActionBody.
-// @spec: AGENT-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: inbox-api routers, http-server, board-provider port, inbox-dashboard
 
 import type { ActionableMr } from '../inbox-mocks/mr.mock.ts';

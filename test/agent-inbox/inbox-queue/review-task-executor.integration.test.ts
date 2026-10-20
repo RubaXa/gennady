@@ -1,5 +1,5 @@
 // @file: Integration tests — per-MR ordering, cross-MR parallelism, priority, recovery, ambiguous retry.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX
 // @consumers: TSK-177 audit
 
 import assert from 'node:assert/strict';

@@ -1,10 +1,10 @@
 // @file: Deterministic signal classification + decision table for SV-22 autonomous thread
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   resolution — classifies claim/commit/verified against the live diff, then picks the
 //   resolve/react/reply/skip/dispute action WITHOUT LLM involvement at this layer. Dispute
 //   detection itself (author disagrees vs. explains) stays the job of the existing
 //   `node_thread_triage` session (reviewer.role.ts:700-725) — this module only consumes that
 //   classification, never reinvents it.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleInstance
 
 import { readFileSync } from 'node:fs';

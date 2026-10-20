@@ -1,8 +1,8 @@
 // @file: eval-fixture.ts — recorded-shape fallback data for reviewer-eval.spec.ts's fast/CI path.
+// @spec: AGENT-INBOX
 //   Mirrors mock-data.ts's pattern (board/detail/artifact fixtures) for a distinct MR, plus an
 //   `eval-report.md` artifact entry rendered through the exact production `serializeEvalReportMarkdown`
 //   (eval-report.ts, TSK-118) so the fixture's gate table never drifts from the real report format.
-// @spec: AGENT-INBOX
 // @consumers: e2e/inbox-serve/reviewer-eval.spec.ts
 
 import type {

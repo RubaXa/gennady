@@ -1,7 +1,7 @@
 // @file: t6 — Review Chat (headless chromium): over a state dir seeded with the real review, ask a
+// @spec: AGENT-INBOX
 //   real question in the chat composer and assert a real streamed answer arrives over SSE (real
 //   opencode on :4096), with no browser console errors.
-// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.review-flow.config.ts
 
 import { test, expect, type ConsoleMessage } from '@playwright/test';

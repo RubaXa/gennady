@@ -1,5 +1,5 @@
 // @file: Shared port contract tests for trusted receipt and consumption append-only storage.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX
 // @consumers: TSK-176 audit
 
 import assert from 'node:assert/strict';

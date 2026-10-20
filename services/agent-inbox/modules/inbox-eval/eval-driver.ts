@@ -1,9 +1,9 @@
 // @file: eval-driver — `runEval` drives the REAL role graph (`runMrsOnce`, TSK-121) over a fixed MR
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
 //   list, then evaluates gates G1..G10 (TSK-118 gates.ts) against whatever that real graph actually
 //   produced per MR — never a re-orchestrated CLI pipeline (the prior `eval-harness.ts` form is
 //   superseded, see TSK-119 Round 0). Composes an EvalReport (TSK-118 eval-report.ts) and writes
 //   eval-report.json + .md under the reports dir.
-// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: cli/cmd/inbox-eval (TSK-119)
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -11,19 +11,20 @@ import { join } from 'node:path';
 import { logger } from '#logger';
 import {
   runMrsOnce,
+  composeRunModePipeline,
   resolveRunModeVcsHost,
   type RunModeDeps,
   type MrRunResult,
 } from '../../serve/run-mode.ts';
 import type { SeedState } from '../../serve/state-seed.ts';
 import { StateStore } from '../inbox-core/state-store.ts';
-import { RoleEngine } from '../inbox-roles/role-engine.ts';
 import { VcsInboxMock } from '../inbox-core/vcs-inbox.mock.ts';
 import { VcsInboxReal } from '../inbox-core/vcs-inbox.real.ts';
 import type { VcsInboxPort } from '../inbox-core/vcs-inbox.port.ts';
 import { OpenCodeMock } from '../inbox-opencode/opencode.mock.ts';
 import { OpenCodeReal } from '../inbox-opencode/opencode.real.ts';
 import type { OpenCodePort } from '../inbox-opencode/opencode.port.ts';
+import { fetchDiffRefsLive } from '../inbox-roles/context-builder.ts';
 import type { EffectResult, ReplyAction } from '../inbox-roles/effect-executor.ts';
 import {
   evaluateBaseShaSource,
@@ -102,20 +103,20 @@ export type RunEvalResult = {
  * @param mrs MR batch this eval run targets — feeds `resolveRunModeVcsHost` (gap-1, TSK-122) when
  *   `deps.mocks` is false.
  * @returns Store + fully wired `RunModeDeps`.
- * @sideEffect Loads the role engine's graph modules from disk (`RoleEngine#loadAll`).
+ * @sideEffect Opens durable pipeline journals and composes the selected VCS/OpenCode adapters.
  */
 async function _resolveRunModeDeps(
   deps: RunEvalDeps,
   mrs: string[]
 ): Promise<{ store: StateStore; runModeDeps: RunModeDeps }> {
   if (deps.runModeDeps) {
-    return { store: deps.runModeDeps.store, runModeDeps: deps.runModeDeps };
+    return {
+      store: deps.runModeDeps.store ?? new StateStore(deps.stateDir),
+      runModeDeps: deps.runModeDeps,
+    };
   }
 
   const store = new StateStore(deps.stateDir);
-  const engine = new RoleEngine();
-  await engine.loadAll();
-
   // gap-1 (TSK-122): derive host from the MR batch (or fall back to config) — a bare
   // VcsInboxReal({ token }) with no host always threw CONFIG: No VCS host configured.
   const vcsHost = deps.mocks ? undefined : await resolveRunModeVcsHost(mrs, store);
@@ -126,11 +127,16 @@ async function _resolveRunModeDeps(
     ? new OpenCodeMock()
     : new OpenCodeReal({ directory: store.getStateDir(), baseUrl: 'http://localhost:4096' });
 
-  // invariant: mocks must stay network-free; the live default (fetchDiffRefsLive) would still hit
-  // the real GitLab API otherwise
-  const fetchDiffRefs = deps.mocks ? async () => undefined : undefined;
-
-  return { store, runModeDeps: { engine, store, vcs, opencode, fetchDiffRefs } };
+  const pipeline = composeRunModePipeline(store, opencode, deps.mocks ? 'mock' : 'production');
+  return {
+    store,
+    runModeDeps: {
+      pipeline,
+      store,
+      vcs,
+      fetchDiffRefs: deps.mocks ? async () => ({ headSha: 'mock-eval-head' }) : fetchDiffRefsLive,
+    },
+  };
 }
 
 /**
@@ -181,7 +187,7 @@ function _extractEffectResult(artifacts: Record<string, unknown> | null): Effect
  * @returns `StageResult` for this MR.
  */
 function _deriveMrStage(result: MrRunResult, index: number): StageResult {
-  const done = result.state === 'done' || result.state === 'awaiting_operator';
+  const done = result.state === 'completed';
   const slot = STAGE_SLOTS[Math.min(index, STAGE_SLOTS.length - 1)] as StageId;
   return {
     stage: slot,

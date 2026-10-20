@@ -1,5 +1,5 @@
 // @file: RightsEscalator — monitors operator inactivity (24h) and triggers notifications.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 // @consumers: RoleScheduler
 
 import { logger } from '#logger';

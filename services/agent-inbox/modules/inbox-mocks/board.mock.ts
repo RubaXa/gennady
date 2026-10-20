@@ -1,5 +1,5 @@
 // @file: Mock factory for board state — Kanban lanes grouped by role.
-// @spec: AGENT-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
 // @consumers: inbox-dashboard e2e, inbox-api tests
 
 import type { ActionableMr } from './mr.mock.ts';

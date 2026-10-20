@@ -1,5 +1,5 @@
 // @file: ReviewEffect value object — idempotent mutation intent with closed origin discriminant and exhaustive ref-set classification.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectQueue, ReviewEffectCoordinator
 
 import type { VcsEffectKind } from '../../inbox-vcs/vcs-port.ts';

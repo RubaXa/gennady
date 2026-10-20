@@ -4,8 +4,8 @@
 //   idempotency) green, report written, exit reflects status; (b) red per computable gate
 //   (oversized body → G9 fail; missing base data → no fabricated G1 pass) → status=FAIL; (c) G2-G8
 //   are never emitted as fabricated-pass — absent, never green without data (honesty invariant).
-// @spec: AGENT-INBOX
 // @consumers: node:test runner
+// @tasks: TSK-119, TSK-167
 
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -40,7 +40,14 @@ function doneResult(mr: string, opts: { baseSha?: string; replyBody?: string } =
   if (opts.replyBody !== undefined) {
     artifacts['synthesize'] = { proposedActions: [{ type: 'reply', body: opts.replyBody }] };
   }
-  return { mr, state: 'done', role: 'reviewer', board: {}, artifacts };
+  return {
+    mr,
+    state: 'completed',
+    role: 'reviewer',
+    board: {},
+    artifacts,
+    runtimeIdentity: 'pipeline-runtime:mock:test',
+  };
 }
 
 /**
@@ -127,11 +134,12 @@ describe('runEval — red per computable gate', () => {
     // passing G1 nor silently report PASS over an incomplete stage.
     const erroredResult: MrRunResult = {
       mr: MR_A,
-      state: 'error',
+      state: 'failed',
       role: null,
       board: null,
       artifacts: null,
       error: 'diff_refs unresolved',
+      runtimeIdentity: 'pipeline-runtime:mock:test',
     };
     const input: RunEvalInput = { mrs: [MR_A], dryRun: true };
     const { report } = await runEval(input, baseDeps(mockRunMrsOnce([erroredResult])));

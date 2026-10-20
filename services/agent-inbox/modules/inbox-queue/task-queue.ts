@@ -1,5 +1,5 @@
 // @file: TaskQueuePort + InMemoryTaskQueue — per-MR isolated queues with dedup by dedupKey, supersede (queued only), FIFO ordering, state management
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
 // @consumers: Executor
 
 import { logger } from '#logger';

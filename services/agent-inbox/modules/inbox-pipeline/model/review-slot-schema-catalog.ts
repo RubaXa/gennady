@@ -1,5 +1,5 @@
 // @file: Closed versioned schemas and deterministic slot policies for review contracts.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContractCompiler, ReviewStructuralValidator
 
 import { createHash } from 'node:crypto';

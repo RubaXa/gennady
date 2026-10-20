@@ -1,5 +1,5 @@
 // @file: dev-seed — shared mock data factory for dev/e2e.
-// @spec: AGENT-INBOX
+// @spec: AGENT-INBOX-INBOX-INBOX-SERVE
 // @consumers: inbox-serve.ts, vite.config.ts (inboxServePlugin)
 
 import type { BoardProviderMock } from '../inbox-api/board-provider.mock.ts';

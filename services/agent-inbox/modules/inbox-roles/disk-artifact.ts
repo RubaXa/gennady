@@ -1,7 +1,7 @@
 // @file: DiskArtifact — resolves a session/lens node's on-disk artifact file into a
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   ClassifiedOutcome, the shared hook `_executeSession`/`_runLensSession` call into so a missing
 //   or malformed file feeds the EXISTING continue/restart ladder unchanged.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: role-instance.ts
 
 import { existsSync, readFileSync } from 'node:fs';

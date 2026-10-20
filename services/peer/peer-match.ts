@@ -1,6 +1,6 @@
 // @file: Fuzzy title matching for peer resolution across runtimes.
+// @spec: PEER
 // @consumers: opencode.transport, codex.transport
-// @tasks: N/A
 
 /**
  * @purpose Split a query into lowercase stems long enough to match on.

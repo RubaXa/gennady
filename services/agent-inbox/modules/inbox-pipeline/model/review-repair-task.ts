@@ -1,5 +1,5 @@
 // @file: Durable bounded repair task targeting exact current structural gaps.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRepairCoordinator, ReviewOrchestrator, agent runtime
 
 /** @purpose Narrow immutable work request for one persisted repair attempt. */

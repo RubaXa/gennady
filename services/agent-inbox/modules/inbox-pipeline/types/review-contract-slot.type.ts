@@ -1,5 +1,5 @@
 // @file: Closed machine-readable review contract slot definitions.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContract, ReviewContractCompiler, ReviewStructuralValidator
 
 /** @purpose Closed slot kind catalog for the v0 review contract. */

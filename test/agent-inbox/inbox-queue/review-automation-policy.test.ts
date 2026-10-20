@@ -1,5 +1,5 @@
 // @file: Unit tests — automation restores only verified prior operator intent; ownership truth table.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX
 // @consumers: TSK-177 audit
 
 import assert from 'node:assert/strict';

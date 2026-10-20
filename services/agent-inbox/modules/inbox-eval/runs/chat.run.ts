@@ -1,6 +1,6 @@
 // @file: chat eval run — verifies answer has anchor, mutation revision+1, undo restores snapshot
-// @spec: AGENT-INBOX-INBOX-EVAL
-// @consumers: EvalHarness (IE-harness)
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @consumers: EvalHarness (TSK-165)
 
 import type { EvalRunContext, EvalRun } from './context.ts';
 import { pass } from './context.ts';

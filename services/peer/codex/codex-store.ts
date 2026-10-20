@@ -1,6 +1,6 @@
 // @file: Codex thread store — read threads from state_5.sqlite and activity from rollout JSONL.
+// @spec: PEER
 // @consumers: codex.transport
-// @tasks: N/A
 
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

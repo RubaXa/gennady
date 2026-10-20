@@ -1,5 +1,5 @@
 // @file: Profile-rooted atomic filesystem implementation of ArtifactStorePort.
-// @spec: AGENT-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-INBOX-CORE
 // @consumers: production composition root
 
 import { mkdir, open, readFile, readdir, rename } from 'node:fs/promises';

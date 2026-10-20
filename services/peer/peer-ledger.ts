@@ -1,6 +1,6 @@
 // @file: Peer ledger — append-only audit log of cross-session messages.
+// @spec: PEER
 // @consumers: peer-invoker, peer.cmd
-// @tasks: N/A
 
 import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';

@@ -1,5 +1,5 @@
 // @file: Total manifest-input to contract-slot mapping forms.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewContractCompiler, ReviewStructuralValidator
 
 /** @purpose Closed compiler-owned reasons for a manifest input to be not applicable. */

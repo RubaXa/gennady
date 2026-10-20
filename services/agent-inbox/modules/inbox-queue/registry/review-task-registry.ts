@@ -1,5 +1,5 @@
 // @file: ReviewTaskRegistry — closed catalog of task kinds, dependencies, exclusions, dedup and session policies.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
 // @consumers: TaskExecutorPort, ReviewEffectCoordinator
 
 import { logger } from '#logger';

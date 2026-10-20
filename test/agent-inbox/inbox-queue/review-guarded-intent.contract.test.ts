@@ -1,5 +1,5 @@
 // @file: Contract tests — queue accepts and replays exact publication handoff without translation.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX
 // @consumers: TSK-177 audit
 
 import assert from 'node:assert/strict';

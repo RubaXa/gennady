@@ -1,5 +1,5 @@
 // @file: ChatRouter — thin HTTP↔SSE bridge over inbox-chat's ChatSession (D-111, no business logic here).
-// @spec: AGENT-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: HttpServer
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

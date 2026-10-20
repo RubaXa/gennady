@@ -1,5 +1,5 @@
 // @file: ReviewOutcome entity — reconciled classification of one effect with applied|not-applied|ambiguous status.
-// @spec: AGENT-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectQueue, ReviewActionPackage
 
 import { logger } from '#logger';

@@ -1,5 +1,5 @@
 // @file: TriggerRegistry — glob-based trigger rules mapping changed files to review tracks, with starter rules for deps/secrets/specs/migrations
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: PlanTemplate, inbox-pipeline
 
 import { logger } from '#logger';

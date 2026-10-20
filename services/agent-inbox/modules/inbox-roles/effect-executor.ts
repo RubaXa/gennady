@@ -1,7 +1,7 @@
 // @file: EffectExecutor — sole executor of public VCS mutations (NFC-SV-07): react/reply/approve/
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 //   resolve/draft-note-delete. Reconciles against live discussion threads before posting (dedup)
 //   and guards re-application via the `effect_applied` audit marker (idempotent across restarts).
-// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: RoleInstance (effect nodes), reviewer.role.ts / author.role.ts effect nodes
 
 import { logger } from '#logger';

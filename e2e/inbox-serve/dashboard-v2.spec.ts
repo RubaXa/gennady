@@ -1,6 +1,6 @@
-// @file: Dashboard v2 self-contained e2e — boots a real mock serve with AI-seed seeded
+// @file: Dashboard v2 self-contained e2e — boots a real mock serve with TSK-166 seeded
+// @spec: AGENT-INBOX
 //   fixtures, runs observable stages for all P1-P4 UI changes, and captures visual proof.
-// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: Playwright real inbox-serve verification
 
 import { expect, test, type Page } from '@playwright/test';
@@ -97,7 +97,7 @@ async function elementShot(
 let serve: BootstrapResult | undefined;
 let stateDir: string | undefined;
 
-test.describe('dashboard v2 self-contained e2e (ID-design design-system proof)', () => {
+test.describe('dashboard v2 self-contained e2e (TSK-169 design-system proof)', () => {
   test.beforeAll(async () => {
     test.setTimeout(120_000);
     mkdirSync(SHOTS_DIR, { recursive: true });

@@ -1,9 +1,9 @@
 // @file: BoardProviderReal — real-mode BoardProviderPort impl backed by RoleScheduler instance states.
-// @spec: AGENT-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-INBOX-API
 // @consumers: inbox-api routers, inbox-dashboard, DI container
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { logger } from '#logger';
 import { BoardProviderPort } from './board-provider.port.ts';
 import type {
@@ -22,7 +22,12 @@ import type { VcsActionableMr } from '../../../vcs-client/entities/vcs-actionabl
 import { parseVcsUrl } from '../../../vcs-client/parse-vcs-url.ts';
 import { isValidMrUrl } from '../inbox-core/vcs-validators.ts';
 import { isSafeArtifactPath } from './routers/artifact.router.ts';
-import { mrReportsDir } from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import {
+  mrsRoot,
+  mrReportsDir,
+  canonicalMrRef,
+} from '../../../../cli/cmd/inbox/_core/logic/state-paths.logic.ts';
+import { decodeMrKey } from './board-provider.disk.ts';
 import { AuditLog, type AuditEntry } from '../inbox-core/audit-log.ts';
 import {
   computeFindingSignatures,
@@ -33,9 +38,6 @@ import { phaseTimingsPath, type PhaseTimingEntry } from '../inbox-roles/phase-te
 
 /** @purpose Audit event name recorded on each "Copy fix task" click (SV-10, TSK-145). */
 const COPIED_FIX_TASK_EVENT = 'copied_fix_task';
-
-/** @purpose Known review-document filenames materialized directly under `reports/<mr>/` (TSK-122 gap-2). */
-const KNOWN_REPORT_FILES = ['REPORT.md', 'README.md', 'PLAN.md', 'HISTORY.md'];
 
 /**
  * @purpose Build a MrCard from a polled VcsActionableMr — real metadata for the dashboard (F7).
@@ -155,6 +157,28 @@ export class BoardProviderReal extends BoardProviderPort {
     this._engine = engine;
     this._stateDir = stateDir;
     this._auditLog = new AuditLog(stateDir);
+  }
+
+  /**
+   * @purpose Resolve a canonical ref to the report directory that actually carries the review.
+   * @invariant Prefers canonical `review.json`, falling back to a legacy host-prefixed review directory.
+   * @param mrId Canonical MR id (`group/project!iid` or URL) to resolve.
+   * @returns Stored ref — the canonical ref or a legacy host-prefixed directory name.
+   */
+  protected _artifactStoredRef(mrId: string): string {
+    const canonical = canonicalMrRef(mrId);
+    if (existsSync(join(mrReportsDir(this._stateDir, canonical), 'review.json'))) return canonical;
+
+    const root = mrsRoot(this._stateDir);
+    if (existsSync(root)) {
+      for (const key of readdirSync(root)) {
+        const candidate = decodeMrKey(key);
+        if (candidate && canonicalMrRef(candidate) === canonical) {
+          if (existsSync(join(root, key, 'report', 'review.json'))) return candidate;
+        }
+      }
+    }
+    return canonical;
   }
 
   /**
@@ -569,32 +593,33 @@ export class BoardProviderReal extends BoardProviderPort {
    *   on disk; empty array when the MR has no materialized reports dir yet.
    */
   listArtifacts(mrId: string): ArtifactRef[] {
-    const dir = mrReportsDir(this._stateDir, mrId);
+    const dir = mrReportsDir(this._stateDir, this._artifactStoredRef(mrId));
     if (!existsSync(dir)) return [];
 
     const refs: ArtifactRef[] = [];
-    for (const name of KNOWN_REPORT_FILES) {
-      if (existsSync(join(dir, name)))
-        refs.push({ name, path: name, kind: deriveArtifactKind(name) });
-    }
-
-    const tasksDir = join(dir, 'tasks');
-    if (existsSync(tasksDir)) {
-      try {
-        for (const name of readdirSync(tasksDir)
-          .filter((f) => f.endsWith('.task.md'))
-          .sort()) {
-          refs.push({ name, path: join('tasks', name), kind: deriveArtifactKind(name) });
+    const walk = (current: string): void => {
+      for (const entry of readdirSync(current, { withFileTypes: true })) {
+        const absolute = join(current, entry.name);
+        if (entry.isDirectory()) {
+          walk(absolute);
+          continue;
         }
-      } catch (cause) {
-        logger.warn('[BoardProviderReal#listArtifacts] [reading-tasks-dir → degraded]', {
-          mrId,
-          error: String(cause),
-        });
+        const path = relative(dir, absolute);
+        if (!isSafeArtifactPath(path)) continue;
+        if (path.startsWith('control-plane/sources/')) continue;
+        if (path.includes('.opencode-') || path === 'tool-trace.json') continue;
+        refs.push({ name: path, path, kind: deriveArtifactKind(path) });
       }
+    };
+    try {
+      walk(dir);
+    } catch (cause) {
+      logger.warn('[BoardProviderReal#listArtifacts] [reading-report-tree → degraded]', {
+        mrId,
+        error: String(cause),
+      });
     }
-
-    return refs;
+    return refs.sort((left, right) => left.path.localeCompare(right.path));
   }
 
   /**
@@ -610,7 +635,7 @@ export class BoardProviderReal extends BoardProviderPort {
     // Same guard as ArtifactRouter (NFC-05): path must stay a relative descendant of reports/<mr>/.
     if (!isSafeArtifactPath(path)) return null;
 
-    const filePath = join(mrReportsDir(this._stateDir, mrId), path);
+    const filePath = join(mrReportsDir(this._stateDir, this._artifactStoredRef(mrId)), path);
     if (!existsSync(filePath)) return null;
 
     try {

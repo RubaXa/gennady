@@ -1,6 +1,6 @@
 // @file: effects eval run — verifies idempotency (repeat effect → 1 audit marker) and resolve rights (resolve foreign → rejection)
-// @spec: AGENT-INBOX-INBOX-EVAL
-// @consumers: EvalHarness (IE-harness)
+// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @consumers: EvalHarness (TSK-165)
 
 import type { EvalRunContext, EvalRun } from './context.ts';
 import { pass, fail } from './context.ts';

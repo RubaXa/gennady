@@ -1,4 +1,5 @@
 // @file: reviewer-eval.spec.ts — TSK-120: real-flow e2e proof for inbox-eval. Screenshots the
+// @spec: AGENT-INBOX
 //   dashboard at 5 significant stages (plan / rendered-diagram report / track / actionpanel /
 //   eval-report) from a routed fixture (eval-fixture.ts) — the fast, reproducible CI path (spec §7:
 //   fixtures never substitute for a live proof, they only keep CI green). When EVAL_LIVE=1
@@ -7,7 +8,6 @@
 //   StateStore) for 01-plan/02-report-diagram, reporting honestly on whether a real drawn diagram
 //   reaches the dashboard today — per spec §7 Инвариант R-01, a placeholder/raw-source frame must
 //   never be screenshotted as if it were drawn.
-// @spec: AGENT-INBOX
 // @consumers: npx playwright test --config=e2e/inbox-serve/playwright.config.ts reviewer-eval.spec.ts
 
 import { test, expect, type Page } from '@playwright/test';
@@ -20,6 +20,7 @@ import {
 } from './fixtures/eval-fixture.ts';
 import { shot } from './helpers/shot.ts';
 import { waitForRealMermaidRender } from './helpers/wait-render.ts';
+import { logger } from '#logger';
 
 /** @purpose Live-run opt-in switch | @invariant Unset by default — the fixture path is the fast/reproducible default (spec §7, BDD scenario 4). */
 const EVAL_LIVE = process.env.EVAL_LIVE === '1';
@@ -180,10 +181,10 @@ test.describe('reviewer-eval: live run (EVAL_LIVE=1) — drives the real dashboa
 
     const { report, reportDir } = await runEval({ mrs: [EVAL_MR_URL], dryRun: true }, { stateDir });
 
-    console.info(
+    logger.info(
       `[reviewer-eval:live] materialization finished mr=${EVAL_MR_URL} status=${report.status} reportDir=${reportDir}`
     );
-    console.info(`[reviewer-eval:live] per-MR stage detail: ${JSON.stringify(report.stages)}`);
+    logger.info(`[reviewer-eval:live] per-MR stage detail: ${JSON.stringify(report.stages)}`);
     expect(report.mr).toBe(EVAL_MR_URL);
 
     // Resolve the same `project!iid` ref BoardProviderReal/the dashboard route on (MrCard#mrKey) —
@@ -214,6 +215,6 @@ test.describe('reviewer-eval: live run (EVAL_LIVE=1) — drives the real dashboa
     await waitForRealMermaidRender(page, 45_000);
     await shot(page, 'eval-real-02-report-diagram');
 
-    console.info('[reviewer-eval:live] REAL rendered mermaid diagram confirmed for', EVAL_MR_URL);
+    logger.info('[reviewer-eval:live] REAL rendered mermaid diagram confirmed for', EVAL_MR_URL);
   });
 });

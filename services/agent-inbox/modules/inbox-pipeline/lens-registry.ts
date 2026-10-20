@@ -1,5 +1,5 @@
 // @file: LensRegistry — LensSpec with inputs-waves, DAG ordering (B dependsOn A if B.inputs includes A id), within-wave parallelism, 7 starter lenses
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: PlanTemplate, inbox-pipeline
 
 import { logger } from '#logger';

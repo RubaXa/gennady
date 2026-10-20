@@ -1,6 +1,6 @@
 // @file: peer command help output
+// @spec: PEER
 // @consumers: help command, gennady.ts
-// @tasks: N/A
 /**
  * @purpose Print CLI help for the peer command.
  */

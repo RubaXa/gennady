@@ -1,5 +1,5 @@
 // @file: Fail-closed structural completeness verdict union.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRepairCoordinator, ReviewFreshnessGate, ReviewSynthesis
 
 import type { ReviewCoverage } from './review-coverage.type.ts';

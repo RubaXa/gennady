@@ -1,5 +1,5 @@
 // @file: MutationRuntime — executor-owned consumer for queued artifact mutations.
-// @spec: AGENT-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
 // @consumers: HttpServer, MutateRouter
 
 import type { JournalPort } from '../inbox-core/event-journal.ts';

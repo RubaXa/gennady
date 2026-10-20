@@ -1,5 +1,5 @@
 // @file: Physical namespace roots consumed by the runtime profile port.
-// @spec: AGENT-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-INBOX-CORE
 // @consumers: RuntimeProfilePort, bootstrap
 
 /** @purpose Disjoint physical roots for production, real test and deterministic mock state. */

@@ -1,5 +1,5 @@
 // @file: RoleEngine — loads .role.ts modules, registers roles, activates/deactivates.
-// @spec: AGENT-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
 // @consumers: RoleScheduler, inbox-api (BoardProvider)
 
 import { logger } from '#logger';

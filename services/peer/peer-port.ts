@@ -1,6 +1,6 @@
 // @file: Peer domain ports — a runtime-agnostic transport contract for agent-to-agent messaging.
+// @spec: PEER
 // @consumers: claude-code.transport, peer-invoker, peer.cmd
-// @tasks: N/A
 
 import type { PeerMessage } from './peer-message.ts';
 

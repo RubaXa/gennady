@@ -1,6 +1,6 @@
 // @file: Read Claude Code session transcripts — line markers and new assistant text.
+// @spec: PEER
 // @consumers: claude-code.transport
-// @tasks: N/A
 
 import { readFileSync } from 'node:fs';
 

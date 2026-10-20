@@ -1,5 +1,5 @@
 // @file: SessionPool / UnifiedPool — bounded pool of OpenCode sessions with priority queuing (👤>🦊>🏗), no preemption, aging.
-// @spec: AGENT-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
 // @consumers: inbox-roles (for role-agent session management)
 
 import { logger } from '#logger';

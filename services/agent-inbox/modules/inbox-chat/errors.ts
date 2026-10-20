@@ -1,5 +1,5 @@
 // @file: ChatError codes and structured error-response helper for inbox-chat (mirrors inbox-core/errors.ts composeInboxError + inbox-opencode/errors.ts composeError shape).
-// @spec: AGENT-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
 // @consumers: ChatSession, MutationApplier (TSK-127)
 
 import { logger } from '#logger';
