@@ -1,5 +1,5 @@
 // @file: MockRuntimeProfile — in-memory run-id-scoped state namespace without filesystem access.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: ReviewScenario, inbox-mocks test suite
 
 import { join } from 'node:path';

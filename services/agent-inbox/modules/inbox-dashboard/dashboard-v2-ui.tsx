@@ -1,5 +1,5 @@
 // @file: DashboardV2Ui — loading screen, SSE hook, backoff, and backward-compat re-exports.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: App, dashboard-v2.contract.test.tsx, feed-lifecycle.test.tsx, optimistic.test.tsx
 
 import { useEffect, useState } from 'react';

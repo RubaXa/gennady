@@ -1,5 +1,5 @@
 // @file: Unit tests for board.mock factory — type validation for mockBoard.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

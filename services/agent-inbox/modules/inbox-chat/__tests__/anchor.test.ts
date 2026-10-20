@@ -1,5 +1,5 @@
 // @file: BDD coverage for TSK-163 artifact anchors.
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

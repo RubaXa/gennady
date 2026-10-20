@@ -1,5 +1,5 @@
 // @file: ReviewerTail — creates review summary for reviewer with decision recommendations, dedup hints, posting candidates
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
 
 import { logger } from '#logger';

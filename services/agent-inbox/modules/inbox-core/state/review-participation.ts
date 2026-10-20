@@ -1,5 +1,5 @@
 // @file: Inclusive operator participation signals and singular responsibility placement.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, inbox-vcs, inbox-api
 
 const PARTICIPATION_SIGNALS = [

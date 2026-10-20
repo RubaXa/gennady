@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-eval driver (`runEval`) — mocks `runMrsOnce` entirely (VcsInboxMock/
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 //   OpenCodeMock wiring only, no network — GITLAB_PERSONAL_TOKEN must never be exercised here) and
 //   asserts: (a) clean run → every computable gate (G1 base-sha presence, G9 body-size, G10
 //   idempotency) green, report written, exit reflects status; (b) red per computable gate

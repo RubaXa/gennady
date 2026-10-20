@@ -1,5 +1,5 @@
 // @file: BoardProviderPort — abstract boundary for board state access: getBoard, assignMr, executeAction, getReport.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: inbox-api routers, inbox-dashboard, DI container
 
 import type {

@@ -1,5 +1,5 @@
 // @file: ReviewGuardedIntent value object — exact immutable pipeline handoff byte-equivalent and downstream dispatch guard.
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewProposal, ReviewActionPackage, ReviewDecision, ReviewEffect, ReviewEffectCoordinator
 
 import type {

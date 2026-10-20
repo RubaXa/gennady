@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles RoleInstance — step() per node kind (prep/session/gate),
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   recovery ladder (continue/restart/AWAITING_OPERATOR), checkpoint-based restart recovery,
 //   buildTaskText contract, Round 2 (D-118..D-123) persistResult + per-node ToolPolicy,
 //   SV-24 escalation gate (shouldEscalateToOperator) + SV-23 autonomous approve dry-run (TSK-143).

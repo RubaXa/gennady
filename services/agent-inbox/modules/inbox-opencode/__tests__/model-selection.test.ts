@@ -1,4 +1,5 @@
 // @file: Agent Inbox OpenCode model policy tests.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import assert from 'node:assert/strict';

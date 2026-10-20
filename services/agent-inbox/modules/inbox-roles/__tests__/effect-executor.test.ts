@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles EffectExecutor — reconcile-dedup against live VCS state and
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   effect_applied idempotency (restart must not double-post). Exercises EffectExecutor.execute()
 //   directly (the unit that is real, per TSK-113 P3 Handoff) — does not exercise the effect-node→
 //   EffectExecutor wiring itself, which is a documented open gap (NodeContext lacks vcs/store; see

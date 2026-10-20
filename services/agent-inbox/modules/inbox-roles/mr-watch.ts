@@ -1,5 +1,5 @@
 // @file: Per-MR event detection (new commits / new replies in my threads) + a persisted
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   per-MR quiet-period tracker — the auto-observation + debounce layer `RoleScheduler#tick`
 //   gates a resumed instance's `step()` on (SV-19/20/21, agent-inbox spec §4.1.5).
 // @consumers: RoleScheduler

@@ -1,5 +1,5 @@
 // @file: LocalTaskExecutor — single-process production implementation of TaskExecutorPort with per-MR lanes, journal-backed recovery and aging.
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: composition root
 
 import { logger } from '#logger';

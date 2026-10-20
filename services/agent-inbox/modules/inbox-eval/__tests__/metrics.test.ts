@@ -1,5 +1,5 @@
 // @file: Unit tests for MetricsCollector — accept-rate, edit-rate, time-to-decision, graduation gates
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,5 @@
 // @file: buildNodeContext — assembles a live NodeContext for one MR (worktree, changeset,
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   base, stage/headChanged) from real VCS + registry state, for RoleScheduler assignment.
 // @consumers: RoleScheduler
 

@@ -1,5 +1,5 @@
 // @file: Canonical OpenCode model selection for every Agent Inbox production entrypoint.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: bootstrap, run-mode, OpenCodeReal, CLI validation
 
 /** @purpose Stable production default independent of the operator's global OpenCode preference. */

@@ -1,5 +1,5 @@
 // @file: FindingsJournal — append-only findings.jsonl, each finding: F-n with file:line, summary, severity, source:model
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: Synthesize, inbox-pipeline
 
 import {

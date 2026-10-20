@@ -1,5 +1,5 @@
 // @file: VcsInboxMock — deterministic mock implementation of VcsInboxPort for dev/e2e.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-api (DI), inbox-dashboard (dev), e2e tests
 
 import {

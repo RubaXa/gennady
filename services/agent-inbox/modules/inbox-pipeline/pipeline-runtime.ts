@@ -1,5 +1,5 @@
 // @file: PipelineRuntime — boot-owned materializer and executor lifecycle for review/delta DAGs.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: agent-inbox serve bootstrap, RoleScheduler
 
 import { logger } from '#logger';

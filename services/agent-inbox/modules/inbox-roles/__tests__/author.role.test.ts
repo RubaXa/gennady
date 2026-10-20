@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles AuthorRole — prep → self-review → analyze-feedback →
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   synthesize (REPORT.md/FIX_TASK.md/drafts) → ask → effect. Never approves own MR, never
 //   proposes a fresh thread write (D68).
 // @consumers: node:test runner

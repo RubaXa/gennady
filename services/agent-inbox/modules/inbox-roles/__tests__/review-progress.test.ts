@@ -1,5 +1,5 @@
 // @file: Unit tests for deriveReviewProgress — graph node → stage, lens-track counter, elapsed clock.
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

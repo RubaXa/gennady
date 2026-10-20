@@ -1,5 +1,5 @@
 // @file: MrWorkspace tests — seven-widget feed lifecycle and viewport-invariant composition.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
 
 import assert from 'node:assert/strict';

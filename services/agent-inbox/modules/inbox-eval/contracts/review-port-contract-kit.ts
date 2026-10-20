@@ -1,5 +1,5 @@
 // @file: ReviewPortContractKit — shared adapter conformance suite for all variable ports.
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: ReviewEvalHarness, review-eval.contract.test.ts (P2)
 
 import type { VcsInboxPort } from '../../inbox-core/vcs-inbox.port.ts';

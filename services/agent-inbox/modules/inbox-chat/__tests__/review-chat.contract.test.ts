@@ -1,5 +1,5 @@
 // @file: BDD type-level contract test — TSK-178 chat/handoff entity inventory exhaustiveness.
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

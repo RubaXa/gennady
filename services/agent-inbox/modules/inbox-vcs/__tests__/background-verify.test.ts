@@ -1,5 +1,5 @@
 // @file: Unit/integration tests for BackgroundVerifier — sha change detection, journal events, pagination, MR tracking.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
 
 import { describe, it, mock, afterEach, before } from 'node:test';

@@ -1,5 +1,5 @@
 // @file: Tests for AuthorTail and ReviewerTail — findings summary, thread dedup, posting candidates, role-specific notifications
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,5 @@
 // @file: BoardProjectionTests — contract tests: board consistency, attention groups, syncState, MrCard fields, empty board.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

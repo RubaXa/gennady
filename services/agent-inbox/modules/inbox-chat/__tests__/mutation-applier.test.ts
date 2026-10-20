@@ -1,5 +1,5 @@
 // @file: Unit + contract tests for inbox-chat MutationApplier — snapshot-before-CAS-write (D-94/D-99),
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 //   undo restoring the pre-mutation snapshot (CH-10), provenance surfaced before Apply (CH-09/D-98),
 //   and the closed op set rejected pre-preview both via preview() and via apply() (fail-fast throw).
 // @consumers: node:test runner

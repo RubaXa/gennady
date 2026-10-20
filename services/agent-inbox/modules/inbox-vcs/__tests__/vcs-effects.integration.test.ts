@@ -1,5 +1,5 @@
 // @file: Ambiguous effect reconciliation and native request-changes integration tests.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,5 @@
 // @file: ReviewHandoffControl — full/delta clipboard handoff control with delivery acknowledgement.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrWorkspace
 
 import { useState } from 'react';

@@ -1,5 +1,5 @@
 // @file: BackgroundVerifier — periodic (~1/min) poll of active MRs: sha/new-discussion detection → gitlab_event journal entries.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox-queue (reads gitlab_event entries; BackgroundVerifier does NOT call queue directly)
 
 import { logger } from '#logger';

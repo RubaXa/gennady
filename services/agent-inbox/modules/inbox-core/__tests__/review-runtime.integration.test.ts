@@ -1,5 +1,5 @@
 // @file: Public production-style sync proof for canonical review ingestion and SystemClock scheduling.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

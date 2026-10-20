@@ -1,5 +1,5 @@
 // @file: MrWorkspace — MR workspace composition: feed, package, artifact viewer, chat and handoff.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: App
 
 import { useState } from 'react';

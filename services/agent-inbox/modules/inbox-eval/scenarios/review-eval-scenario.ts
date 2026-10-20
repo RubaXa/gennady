@@ -1,5 +1,5 @@
 // @file: Core eval domain types — profile kinds, outcome statuses, scenario contract, run entity.
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: ReviewEvalHarness, ReviewEvalReport, ReviewPreconditionProbe, ReviewPortContractKit
 
 /**

@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles ReviewerRole — three branches from node_prepare:
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   review_needed (fan-out + security lens + code-review → synthesize), reply_needed
 //   (thread-triage, no full battery), update-review (delta-only).
 // @consumers: node:test runner

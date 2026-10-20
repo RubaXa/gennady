@@ -1,5 +1,5 @@
 // @file: MrRouter — POST /api/mr/:id/assign, POST /api/mr/:id/action, GET /api/mr/:id/report,
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   POST /api/mr/:id/copy-fix-task handlers.
 // @consumers: HttpServer
 

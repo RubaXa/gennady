@@ -1,5 +1,5 @@
 // @file: Unit tests for PhaseTelemetry — JSONL append, 7-day GC, and analytics rollup
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   (p50/p95/avg/error-rate per node, per-run totals, slowest phase).
 // @consumers: node:test runner
 

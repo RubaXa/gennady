@@ -1,5 +1,5 @@
 // @file: Simulation-backed unit tests for ReviewEvalReport — verdict derivation invariants,
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 //   outcome precedence, all-skipped non-pass guarantee and evidence aggregation.
 // @consumers: node:test runner
 

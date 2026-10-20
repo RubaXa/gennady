@@ -1,5 +1,5 @@
 // @file: ReviewActionPackage entity — coherent UI/state unit of independent proposals, alternatives, and ordered dependencies.
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewDecision, ReviewEffectQueue
 
 import { logger } from '#logger';

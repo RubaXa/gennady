@@ -1,5 +1,5 @@
 // @file: PlanTemplate — deterministic DAG plan generation from changeset with 3-layer tracks (mandatory/triggered/proposed)
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
 
 import { logger } from '#logger';

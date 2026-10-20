@@ -1,5 +1,5 @@
 // @file: e2e (D-116, no fixture fallback) — real MR through the real `gennady inbox serve`
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   pipeline (real GitLab + real opencode, network-touching). Covers Round 2's two e2e BDD
 //   scenarios in ONE run per MR (D-125 forbids separate runs for the triple-grounding check):
 //   AI-45 (≤10 tool round-trips/lens node) and D-125 (interface action ↔ telemetry entry ↔

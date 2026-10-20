@@ -1,5 +1,5 @@
 // @file: vcs-validators — shared URL validation for SSRF prevention in agent-inbox serve-mode.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: BoardProviderReal, RoleScheduler, VcsInboxReal
 
 /**

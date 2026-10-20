@@ -1,5 +1,5 @@
 // @file: eval-driver — `runEval` drives the REAL role graph (`runMrsOnce`, TSK-121) over a fixed MR
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 //   list, then evaluates gates G1..G10 (TSK-118 gates.ts) against whatever that real graph actually
 //   produced per MR — never a re-orchestrated CLI pipeline (the prior `eval-harness.ts` form is
 //   superseded, see TSK-119 Round 0). Composes an EvalReport (TSK-118 eval-report.ts) and writes

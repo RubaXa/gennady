@@ -1,5 +1,5 @@
 // @file: Role-specific error types and factory for the inbox-roles module.
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 // @consumers: role-engine, role-instance, role-scheduler
 
 /**

@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-chat ContextAssembler — untrusted-data wrapping of MR-derived
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 //   content (D-98), empty-report degrade (CH-14), stale-chip re-resolution (D-101), and
 //   origin-in-untrusted-block coverage (D-115, TSK-132).
 // @consumers: node:test runner

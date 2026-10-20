@@ -1,5 +1,5 @@
 // @file: BoardProviderMock — in-memory mock implementation of BoardProviderPort for dev/e2e.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: inbox-api (DI), inbox-dashboard (dev), e2e tests
 
 import { BoardProviderPort } from './board-provider.port.ts';

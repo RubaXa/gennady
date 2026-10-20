@@ -1,5 +1,5 @@
 // @file: ReviewEventStream — per-MR SSE subscription with cursor-based replay and polling reconciliation.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer, review-event-stream.integration.test.ts
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

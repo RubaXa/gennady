@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-core StateStore — unified state access, atomic operations, auto-creation.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it, before, after } from 'node:test';

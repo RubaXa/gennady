@@ -1,5 +1,5 @@
 // @file: DebugLog — in-memory ring buffer of diagnostic log lines + a global error flag, so any user
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 //   can copy the current session's logs (🐞 button) without a dev console. Never persisted (privacy).
 // @consumers: DebugLogButton, App (global handlers), api-client (call sites)
 

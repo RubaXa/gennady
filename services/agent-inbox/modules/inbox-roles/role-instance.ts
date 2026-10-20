@@ -1,5 +1,5 @@
 // @file: RoleInstance — executes a role graph on a single MR, tracking state, counters, and recovery.
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 // @consumers: RoleScheduler, RightsEscalator, inbox-api
 
 import { join, dirname } from 'node:path';

@@ -1,5 +1,5 @@
 // @file: events eval run — verifies push→task ≤ 3 min and thread→triage ≤ 3 min
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-165)
 
 import type { EvalRunContext, EvalRun } from './context.ts';

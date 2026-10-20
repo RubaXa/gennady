@@ -1,5 +1,5 @@
 // @file: AuthorTail — prepares author notification with findings summary, MR context, review verdict
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
 
 import { logger } from '#logger';

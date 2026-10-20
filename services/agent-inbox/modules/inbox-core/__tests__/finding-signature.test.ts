@@ -1,5 +1,5 @@
 // @file: Unit tests for FindingSignature — determinism of the hash and added/resolved/unchanged classification.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

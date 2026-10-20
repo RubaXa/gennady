@@ -1,5 +1,5 @@
 // @file: Integration tests — stale package remains visible with invalidation metadata; apply is rejected by CAS.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

@@ -1,5 +1,5 @@
 // @file: Tests for GateVerdict — review.json completeness validation per §2.1 criteria with escalation on 2 failed attempts
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
 
 import { describe, it, beforeEach } from 'node:test';

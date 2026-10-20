@@ -1,5 +1,5 @@
 // @file: Contract tests — ReviewCommandKind closed-world, ProjectionPort interface, typed command mutation gates.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

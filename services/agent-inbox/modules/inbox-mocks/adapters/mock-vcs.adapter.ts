@@ -1,5 +1,5 @@
 // @file: MockVcsAdapter — scripted deterministic VCS adapter implementing the full VcsPort read/effect surface.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: ReviewScenario, inbox-mocks test suite
 
 import type { VcsActionableMr } from '../../../../vcs-client/entities/vcs-actionable-mr.type.ts';

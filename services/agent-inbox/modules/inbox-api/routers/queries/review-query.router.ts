@@ -1,5 +1,5 @@
 // @file: ReviewQueryRouter — read-only projection queries; serves board/feed/MR/packages/tests views.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer, review-api.contract.test.ts
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

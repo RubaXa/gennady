@@ -1,5 +1,5 @@
 // @file: autonomy eval run — verifies proposal/decision pairs in journal; accept ≥ 90% (n≥20) → capability=auto
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-165)
 
 import type { EvalRunContext, EvalRun } from './context.ts';

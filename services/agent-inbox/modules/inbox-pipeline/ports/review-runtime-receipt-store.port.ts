@@ -1,5 +1,5 @@
 // @file: Append-only trusted runtime receipt and consumption storage boundary.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptRecorder, ReviewStructuralValidator
 
 import type { ReviewReceiptConsumption } from '../model/review-receipt-consumption.ts';

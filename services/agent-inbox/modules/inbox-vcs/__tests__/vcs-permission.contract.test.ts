@@ -1,5 +1,5 @@
 // @file: Complete ownership, revision, identity, body, permission, and capability truth-table tests.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

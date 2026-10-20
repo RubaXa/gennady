@@ -1,5 +1,5 @@
 // @file: Contract matrix tests for ReviewRuntimeProfile composition.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

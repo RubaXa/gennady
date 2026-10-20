@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles RoleScheduler — tick, assignManual, activeCount.
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
 
 import { describe, it, before, beforeEach } from 'node:test';

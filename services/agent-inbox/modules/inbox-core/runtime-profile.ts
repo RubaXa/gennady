@@ -1,5 +1,5 @@
 // @file: ReviewRuntimeProfile value object enforcing the closed runtime capability matrix.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: RuntimeProfilePort, bootstrap, eval and mocks
 
 import { join } from 'node:path';

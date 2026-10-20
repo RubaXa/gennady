@@ -1,5 +1,5 @@
 // @file: ReviewTestRunProjection — adaptive test status and observed preconditions projection result type.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: ProjectionPort, JournalProjectionAdapter, ReviewQueryRouter
 
 /** @purpose Observed precondition from the review pipeline — drives test adaptability. */

@@ -1,5 +1,5 @@
 // @file: ReviewEvalHarness — compose eval profiles, probe preconditions, execute scenarios, persist reports.
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: cli/cmd/inbox-eval, acceptance test orchestration
 
 import { logger } from '#logger';

@@ -1,5 +1,5 @@
 // @file: OpenCode outcome classes, structured error result, and error factory for the inbox-opencode module.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-opencode (port, mock, pool), inbox-roles
 
 /**

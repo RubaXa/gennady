@@ -1,5 +1,5 @@
 // @file: Clock boundary for production timers and deterministic review-batch tests.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core, inbox-queue, inbox-mocks
 
 /**

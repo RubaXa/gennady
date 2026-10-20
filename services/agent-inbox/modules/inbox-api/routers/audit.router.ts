@@ -1,5 +1,5 @@
 // @file: AuditRouter — GET /api/mr/:id/audit handler that reads audit trail from board provider.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

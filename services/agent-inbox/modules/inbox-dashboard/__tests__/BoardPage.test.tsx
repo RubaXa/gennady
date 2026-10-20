@@ -1,5 +1,5 @@
 // @file: BoardPage tests — two responsibility queues and reading-first board contract.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
 
 import assert from 'node:assert/strict';

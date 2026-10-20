@@ -1,5 +1,5 @@
 // @file: Addressed durable evidence and review artifact storage boundary.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-pipeline, inbox-chat, inbox-api
 
 /**

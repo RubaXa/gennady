@@ -1,4 +1,5 @@
 // @file: Contract tests for the real-input/dynamic-output OpenCode acceptance adapter.
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import assert from 'node:assert/strict';

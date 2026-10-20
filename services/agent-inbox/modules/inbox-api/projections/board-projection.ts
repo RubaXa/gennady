@@ -1,5 +1,5 @@
 // @file: BoardProjection — projects SyncSnapshot[] + EventJournal → attention-grouped MrCard[].
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   Never reads executor in-memory state — only journal + sync snapshot (D-306).
 // @consumers: board.router.ts, inbox-dashboard
 

@@ -1,5 +1,5 @@
 // @file: SseHub — per-MR SSE subscriber registry; one broadcast channel per MR serves both token stream and mutation/refresh events to every connected client (D-100, D-110).
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: ChatRouter, MutateRouter (TSK-129), StreamRouter, BoardProjection
 
 import type { ServerResponse } from 'node:http';

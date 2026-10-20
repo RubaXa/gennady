@@ -1,5 +1,5 @@
 // @file: InMemoryJournalAdapter — isolated in-memory journal implementing JournalPort without filesystem I/O.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: ReviewScenario, inbox-mocks test suite
 
 import type { JournalPort, JournalEntry, SinceResult } from '../../inbox-core/event-journal.ts';

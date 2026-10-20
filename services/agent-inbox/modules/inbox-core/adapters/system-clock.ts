@@ -1,5 +1,5 @@
 // @file: System-time implementation of the canonical ClockPort.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: production composition root
 
 import type { ClockPort } from '../ports/clock.port.ts';

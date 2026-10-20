@@ -1,5 +1,5 @@
 // @file: AuditLog — append-only JSON Lines event log with rotation at 10MB for serve-mode.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: StateStore, inbox-api
 
 import { appendFile, rename, stat, readFile } from 'node:fs/promises';

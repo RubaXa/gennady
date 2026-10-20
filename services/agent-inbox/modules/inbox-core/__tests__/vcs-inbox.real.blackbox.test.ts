@@ -1,5 +1,5 @@
 // @file: Black-box proof for production VcsInboxReal through bounded GitLab GraphQL discovery.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 // The PRODUCTION VcsInboxReal adapter (through VcsGitlabClient + the real
 // GraphQL query and normalization) runs unchanged; only the network is faked at the undici

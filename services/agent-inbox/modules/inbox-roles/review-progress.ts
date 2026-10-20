@@ -1,5 +1,5 @@
 // @file: ReviewProgress — pure deriver mapping a live RoleInstance's graph position + accumulated
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   artifacts + phase-telemetry timings into a human-facing progress informer (TSK-155): stage,
 //   lens-track counter, and elapsed time. No I/O — callers (BoardProviderReal) supply already-read
 //   state so this stays unit-testable with an injected clock (D-215 nowMs convention).

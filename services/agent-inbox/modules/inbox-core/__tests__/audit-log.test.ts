@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-core AuditLog — append, query, rotation at 10MB.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it, before, after, beforeEach } from 'node:test';

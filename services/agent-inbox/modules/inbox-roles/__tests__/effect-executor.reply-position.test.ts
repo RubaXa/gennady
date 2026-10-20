@@ -1,3 +1,4 @@
+// @spec: AGENT-INBOX
 // Regression for the live posting failure (2026-07-24): session-proposed reply positions carry only
 // `{ file, newLine }` (no diff SHAs), and GitLab rejects such a line comment with a 500 — every
 // positioned reply failed in production. EffectExecutor#_enrichReplyPositions must complete the

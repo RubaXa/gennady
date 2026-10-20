@@ -1,5 +1,5 @@
 // @file: ProjectionPort — transport-neutral abstraction for building all review state views.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: JournalProjectionAdapter, ReviewQueryRouter, test adapters
 
 import type { ReviewBoardProjection } from './review-board.projection.ts';

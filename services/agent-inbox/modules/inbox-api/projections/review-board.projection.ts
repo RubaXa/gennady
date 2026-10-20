@@ -1,5 +1,5 @@
 // @file: ReviewBoardProjection — two-queue board projection result type (Mine / Assigned).
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: ProjectionPort, JournalProjectionAdapter, ReviewQueryRouter, review-board-projection.integration.test.ts
 
 import type { AttentionState } from '../../inbox-vcs/attention.ts';

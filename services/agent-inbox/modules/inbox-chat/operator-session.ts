@@ -1,5 +1,5 @@
 // @file: Durable read-only operator conversation projected from MR journal turns.
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: ChatRouter
 
 import { randomUUID } from 'node:crypto';

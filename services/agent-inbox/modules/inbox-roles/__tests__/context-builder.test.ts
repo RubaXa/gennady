@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles context-builder — base sourced from diff_refs.base_sha (never
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   a recomputed merge-base), degrade-open when diff_refs/worktree are unavailable, and
 //   stage/lastReviewedHeadSha passthrough from the registry into NodeContext.artifacts.
 // @consumers: node:test runner

@@ -1,5 +1,5 @@
 // @file: Deterministic tests for RoleScheduler's continuous-observation gate
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   `_shouldAdvanceInstance` (SV-19/20/21 + the D-138 fix). Network- and git-free: VcsInboxMock
 //   drives discussions/identity, a real StateStore-in-tmp backs the DebounceTracker, and
 //   fetchDiffRefs is stubbed so `headChanged` stays undefined for most cases (a live git

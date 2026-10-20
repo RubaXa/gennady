@@ -1,5 +1,5 @@
 // @file: BDD coverage for artifact anchor feed-reorder resilience — TSK-178.
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

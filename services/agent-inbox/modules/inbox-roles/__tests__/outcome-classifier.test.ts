@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles OutcomeClassifier — classify + remediate across all 7 outcome classes.
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
 
 import { describe, it, before } from 'node:test';

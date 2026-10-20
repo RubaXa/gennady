@@ -1,5 +1,5 @@
 // @file: Safe dashboard Markdown renderer for MR descriptions and review artifacts.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrWorkspace, ReviewArtifactViewer
 
 import { useEffect, useMemo, useRef } from 'react';

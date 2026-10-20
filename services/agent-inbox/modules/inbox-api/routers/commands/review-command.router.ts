@@ -1,5 +1,5 @@
 // @file: ReviewCommandRouter — typed operator command dispatch with pre-mutation validation.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer, review-api.contract.test.ts
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

@@ -1,5 +1,5 @@
 // @file: Unit tests for Executor — per-MR isolation, priority+FIFO+aging, exclusive effects, waiting_dep, crash recovery, journal visibility, next() selection
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

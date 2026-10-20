@@ -1,5 +1,5 @@
 // @file: ReviewerRole — three branches from `prepare` (prep): review_needed (fan-out battery +
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   security lens + code-review diff → synthesize), reply_needed (thread-triage, no full battery),
 //   update-review (delta-only). Parity with the CLI D57/D70 pipeline (NFC-SV-07/08/09).
 // @consumers: RoleEngine, role-engine.test.ts, reviewer.role.test.ts

@@ -1,5 +1,5 @@
 // @file: Pure gate implementations G1..G10 — each encodes one real failure mode from
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 //   SESSION-REFLECTION.md as a boolean invariant with evidence. Every gate is a pure function:
 //   (input) → { gate, pass, evidence }. No disk/network access — callers (EvalHarness, TSK-119)
 //   supply already-read artifacts, diff-hunk maps, and validate results.

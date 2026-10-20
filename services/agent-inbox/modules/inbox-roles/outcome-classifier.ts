@@ -1,5 +1,5 @@
 // @file: Legacy role-facing alias for the canonical runtime-owned outcome classifier.
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 // @consumers: RoleInstance.step()
 
 import type {

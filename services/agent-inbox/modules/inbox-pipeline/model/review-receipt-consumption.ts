@@ -1,5 +1,5 @@
 // @file: Append-only trusted receipt to evidence-slot consumption mapping.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptStorePort, ReviewStructuralValidator
 
 /** @purpose Durable proof that one trusted receipt was consumed for one slot mapping. */

@@ -1,5 +1,5 @@
 // @file: Unit tests for SessionRouter — routing table §4.2 (deepen/fact_check/mutate/chat_question), engine passthrough, reuse_producer caching
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

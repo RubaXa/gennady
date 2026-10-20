@@ -1,5 +1,5 @@
 // @file: Integration tests for ArtifactRouter — list artifacts, read content, path-traversal guard.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { describe, it, before, after } from 'node:test';

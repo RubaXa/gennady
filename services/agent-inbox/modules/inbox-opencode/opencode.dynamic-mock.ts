@@ -1,5 +1,5 @@
 // @file: Schema-driven OpenCode test adapter for real-VCS acceptance runs.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: gennady inbox serve --mock-opencode
 
 import type { PromptOpts } from './opencode.port.ts';

@@ -1,5 +1,5 @@
 // @file: SyncService — two-tier sync orchestrator: poll all MRs, detail for active/visible, derive myRole/attention/stage, produce SyncSnapshot.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox-queue, inbox-api
 
 import { logger } from '#logger';

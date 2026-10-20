@@ -1,5 +1,5 @@
 // @file: ReviewEffectQueue entity — durable ordered effect state from enqueue through confirmed outcome.
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectCoordinator
 
 import { logger } from '#logger';

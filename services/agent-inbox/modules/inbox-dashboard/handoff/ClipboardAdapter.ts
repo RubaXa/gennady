@@ -1,5 +1,5 @@
 // @file: ClipboardAdapter — browser clipboard write with delivery acknowledgement.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ReviewHandoffControl
 
 /**

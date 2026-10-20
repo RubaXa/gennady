@@ -1,5 +1,5 @@
 // @file: DebugLogButton — shared 🐞 header control: copies the client ring buffer plus the server
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 //   log tail (GET /api/diagnostics) to the clipboard with a toast, and highlights on unhandled error.
 // @consumers: MrWorkspace
 

@@ -1,5 +1,5 @@
 // @file: Integration tests for MrRouter — POST assign, POST action, GET report, 404 cases.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { describe, it, before, after } from 'node:test';

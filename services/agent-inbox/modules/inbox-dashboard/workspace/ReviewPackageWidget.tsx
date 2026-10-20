@@ -1,5 +1,5 @@
 // @file: ReviewPackageWidget — editable checkbox action package with per-action outcomes.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrWorkspace
 
 import { useEffect, useState } from 'react';

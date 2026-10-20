@@ -1,5 +1,5 @@
 // @file: SessionRegistry — sessionId ↔ {taskId, mr, artifacts[], model} in-memory store.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-opencode (SessionLifecycle, UnifiedPool)
 
 import { logger } from '#logger';

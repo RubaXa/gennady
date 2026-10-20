@@ -1,5 +1,5 @@
 // @file: Inclusive discovery and complete sync/cursor recovery integration tests.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,5 @@
 // @file: Tests for context-builder — mrShape statanalysis (D-123) + track-scoped Context-section
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 //   injection (AI-40/D-119). Pure computeMrShape scenarios use hand-built changeset/diffText
 //   fixtures; buildTrackContext scenarios need a real git worktree (no injection seam exists for
 //   git itself — worktreePath IS the seam, so tests build real temp repos, per AX_MOCK_AS_LAST_RESORT).

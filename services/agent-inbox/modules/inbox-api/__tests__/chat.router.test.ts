@@ -1,5 +1,5 @@
 // @file: Integration tests for ChatRouter — async POST /chat (D-89), TURN_IN_FLIGHT rejection
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   (D-104), and POST /chat/stop delegation to ChatSession#stop (CH-11).
 // @consumers: node:test runner
 

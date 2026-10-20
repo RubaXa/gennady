@@ -1,5 +1,5 @@
 // @file: VCS runtime profile selection — bind read and effect ports independently.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: agent-inbox serve composition root
 
 import type { VcsEffectPort, VcsReadPort } from './vcs-port.ts';

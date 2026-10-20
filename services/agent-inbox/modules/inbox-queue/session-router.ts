@@ -1,5 +1,5 @@
 // @file: SessionRouterPort + SessionRouter — table §4.2 mapping task types to session actions (reuse_producer if alive / new_fresh / operator_chat), engine tasks pass through
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: Executor
 
 import { logger } from '#logger';

@@ -1,5 +1,5 @@
 // @file: parallel eval run — verifies MR-B queued→running ≤ 30s when MR-A is running (incident 2026-07-28)
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-165)
 
 import type { EvalRunContext, EvalRun } from './context.ts';

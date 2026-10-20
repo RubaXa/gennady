@@ -1,5 +1,5 @@
 // @file: Complete accumulated delta derivation with explicit full-review fallback.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, queue triggers, chat manual verification
 
 import type { ReviewEvidence } from '../types/review-evidence.type.ts';

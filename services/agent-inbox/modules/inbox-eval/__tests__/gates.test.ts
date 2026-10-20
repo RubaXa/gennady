@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-eval gates G1..G10 — one green case and one red case (with evidence
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 //   assertion) per gate, per ticket TSK-118 §4 BDD.
 // @consumers: node:test runner
 

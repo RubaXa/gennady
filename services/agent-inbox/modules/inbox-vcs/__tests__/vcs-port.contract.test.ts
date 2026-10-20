@@ -1,5 +1,5 @@
 // @file: Closed-world contract proof for unified VCS read, effect, action, and outcome variants.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

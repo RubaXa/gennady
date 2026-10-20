@@ -1,5 +1,5 @@
 // @file: VcsEventNormalizer — deterministic complete-snapshot delta to canonical ReviewEvent facts.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: VcsSyncCoordinator
 
 import { createHash } from 'node:crypto';

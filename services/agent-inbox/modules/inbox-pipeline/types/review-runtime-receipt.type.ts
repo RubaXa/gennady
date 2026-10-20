@@ -1,5 +1,5 @@
 // @file: Trusted control-plane tool receipt contract.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptRecorder, ReviewRuntimeReceiptStorePort, ReviewStructuralValidator
 
 /** @purpose Closed tool operation vocabulary observed by the review control plane. */

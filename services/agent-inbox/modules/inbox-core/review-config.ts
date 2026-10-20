@@ -1,5 +1,5 @@
 // @file: Canonical local policies used by lifecycle and accumulated verification batches.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, composition root
 
 import { isAbsolute, resolve } from 'node:path';

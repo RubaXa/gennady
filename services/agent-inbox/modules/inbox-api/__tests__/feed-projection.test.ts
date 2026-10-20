@@ -1,5 +1,5 @@
 // @file: FeedProjectionTests — canonical seven-kind FeedWidget contract and read cursor coverage.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

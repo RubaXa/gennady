@@ -1,4 +1,5 @@
 // @file: MarkdownContent artifact-link contract tests.
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: ReviewArtifactViewer
 
 import assert from 'node:assert/strict';

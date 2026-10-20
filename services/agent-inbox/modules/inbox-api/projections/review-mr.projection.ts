@@ -1,5 +1,5 @@
 // @file: ReviewMrProjection — complete MR workspace state projection result type.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: ProjectionPort, JournalProjectionAdapter, ReviewQueryRouter
 
 import type { ArtifactRef } from '../types.ts';

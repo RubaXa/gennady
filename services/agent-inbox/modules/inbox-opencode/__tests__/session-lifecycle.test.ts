@@ -1,5 +1,5 @@
 // @file: Unit tests for SessionLifecycle — park/resume/close/TTL state machine + outcome classification ladder.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import { describe, it, mock, beforeEach } from 'node:test';

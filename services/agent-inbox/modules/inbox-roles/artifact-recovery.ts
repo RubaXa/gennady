@@ -1,5 +1,5 @@
 // @file: State-restore reconciliation for serve start/tick — scans reports/<mr>/ on disk,
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   reconciles against the current actionable set, and recovers pre-D-86 legacy artifacts
 //   (PLAN.md/HISTORY.md/tasks/*.task.md without review.json) into the canonical review.json shape.
 // @consumers: RoleScheduler

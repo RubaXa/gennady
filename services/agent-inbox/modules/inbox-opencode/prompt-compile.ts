@@ -1,5 +1,5 @@
 // @file: AgentPromptCompiler — versioned pointer-only prompts for the shared runtime boundary.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: inbox-opencode (SessionLifecycle, UnifiedPool)
 
 import { readFileSync, existsSync } from 'node:fs';

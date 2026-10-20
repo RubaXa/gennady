@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles ArtifactValidator — coverage ledger (every Scope file needs
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   findings or an explicit no-findings statement), tool-call cross-check (telemetry vs Scope),
 //   injection-coverage-ledger grounding for review_needed lens sessions (D-86 override, TSK-137),
 //   and real mermaid parsing (valid diagram passes, malformed diagram is rejected).

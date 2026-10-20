@@ -1,5 +1,5 @@
 // @file: Integration tests for MutateRouter — revision-CAS apply (D-99), broadcast fan-out of
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   mutation+refresh on success, and byte-unchanged review.json + refresh-to-all on conflict.
 // @consumers: node:test runner
 

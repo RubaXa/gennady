@@ -1,5 +1,5 @@
 // @file: Unit tests for ChatGc — TTL sweep for chats/*.jsonl transcripts and
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 //   reports/<mr>/snapshots/* undo-snapshots (mirrors gcStaleWorktrees/gcStaleReports).
 // @consumers: node:test runner
 

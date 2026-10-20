@@ -1,5 +1,5 @@
 // @file: Deterministic signal classification + decision table for SV-22 autonomous thread
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   resolution — classifies claim/commit/verified against the live diff, then picks the
 //   resolve/react/reply/skip/dispute action WITHOUT LLM involvement at this layer. Dispute
 //   detection itself (author disagrees vs. explains) stays the job of the existing

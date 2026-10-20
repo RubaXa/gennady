@@ -1,5 +1,5 @@
 // @file: Unit + integration tests for inbox-roles mr-watch — detectMrEvents classification,
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   DebounceTracker quiet-period arm/reset/elapse, and the promoteReviewedHeadSha → update-review
 //   reachability path (SV-19/20/21, agent-inbox spec §4.1.5).
 // @consumers: node:test runner

@@ -1,5 +1,5 @@
 // @file: Deterministic in-memory implementation of ArtifactStorePort.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core contract tests, inbox-mocks
 
 import type { ArtifactStorePort } from '../ports/artifact-store.port.ts';

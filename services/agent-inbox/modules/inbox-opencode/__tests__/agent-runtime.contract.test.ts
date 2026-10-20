@@ -1,5 +1,5 @@
 // @file: Shared AgentRuntimePort contract for deterministic and intercepted-network adapters.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import { afterEach, beforeEach, describe, it } from 'node:test';

@@ -1,3 +1,4 @@
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // Black-box e2e: the PRODUCTION OpenCodeReal adapter (through @opencode-ai/sdk over its
 // default global fetch) runs unchanged; only the network is faked at the undici layer. The
 // SDK believes it is talking to a real `opencode serve` on baseUrl. Proves the OpenCode RPC

@@ -1,5 +1,5 @@
 // @file: Port contract tests — exercises shared suites against every mock adapter, each twice.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

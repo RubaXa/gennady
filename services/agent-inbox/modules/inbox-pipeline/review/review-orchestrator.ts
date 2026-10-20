@@ -1,5 +1,5 @@
 // @file: Role-invariant contract-slot execution and fresh publication orchestration.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-queue, inbox-chat, inbox-api
 
 import { ReviewPlan } from '../model/review-plan.ts';

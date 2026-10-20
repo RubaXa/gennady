@@ -1,5 +1,5 @@
 // @file: Lifecycle visibility truth-table tests for terminal inactivity, completion and reactivation.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

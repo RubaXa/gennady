@@ -1,5 +1,5 @@
 // @file: DeterministicTaskExecutor — predictable in-memory TaskExecutorPort for scenario isolation.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: ReviewScenario, inbox-mocks test suite
 
 import type {

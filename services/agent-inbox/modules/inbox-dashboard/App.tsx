@@ -1,5 +1,5 @@
 // @file: App — v2 inbox dashboard: boot → two-queue responsibility board → MR workspace.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: dashboard-entry
 
 import { useCallback, useEffect, useState } from 'react';

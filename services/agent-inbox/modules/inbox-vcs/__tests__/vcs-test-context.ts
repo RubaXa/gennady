@@ -1,5 +1,5 @@
 // @file: Deterministic VcsPort test adapter and immutable snapshot builders for TSK-174 contracts.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox-vcs TSK-174 tests
 
 import type { VcsActionableMr } from '../../../../vcs-client/entities/vcs-actionable-mr.type.ts';

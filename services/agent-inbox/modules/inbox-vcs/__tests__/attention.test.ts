@@ -1,5 +1,5 @@
 // @file: Unit tests for deriveAttention — 6 attention rows + fallback without detail tier.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

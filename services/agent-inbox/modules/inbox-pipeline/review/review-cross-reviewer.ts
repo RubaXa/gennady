@@ -1,5 +1,5 @@
 // @file: Independent semantic cross-review preserving foreign and local provenance.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewOrchestrator, ReviewSynthesis
 
 /** @purpose Versioned foreign claim and independent current-code assessment input. */

@@ -1,5 +1,5 @@
 // @file: Tracking, terminal completion, activity horizon and visibility policy for one MR.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, inbox-api
 
 type ReviewLifecycleState = 'open' | 'merged' | 'closed';

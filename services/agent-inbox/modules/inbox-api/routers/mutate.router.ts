@@ -1,5 +1,5 @@
 // @file: MutateRouter — thin HTTP bridge over inbox-chat's MutationApplier: revision-CAS apply, broadcasts mutation+refresh to every SSE subscriber of the MR (D-99, D-100, D-111).
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

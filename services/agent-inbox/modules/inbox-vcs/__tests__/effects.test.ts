@@ -1,5 +1,5 @@
 // @file: Unit/integration tests for Effects — resolve rights check, idempotency, network failure, SSRF validation.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: node:test runner
 
 import { describe, it, mock, afterEach, before } from 'node:test';

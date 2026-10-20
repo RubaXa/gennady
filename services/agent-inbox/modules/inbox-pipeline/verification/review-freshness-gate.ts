@@ -1,5 +1,5 @@
 // @file: Per-MR serialized local freshness guard for verdict, synthesis and queue handoff.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewStructuralValidator, ReviewSynthesis, ReviewPublicationHandoff
 
 import type {

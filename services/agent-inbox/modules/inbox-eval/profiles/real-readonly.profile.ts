@@ -1,5 +1,5 @@
 // @file: RealReadonlyProfile — composes RunModeDeps with real VCS/OpenCode adapters and enforces dryRun:true.
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: ReviewEvalHarness
 
 import { logger } from '#logger';

@@ -1,5 +1,5 @@
 // @file: Filesystem integration proof for lifecycle truth table, torn-tail recovery and disposable cache rebuild.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { afterEach, describe, it } from 'node:test';

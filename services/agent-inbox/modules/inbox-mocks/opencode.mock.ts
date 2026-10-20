@@ -1,5 +1,5 @@
 // @file: Mock factory for OpenCode AI-node structured output responses.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: inbox-opencode tests, inbox-roles tests
 
 /**

@@ -1,5 +1,5 @@
 // @file: ChatSession — per-MR opencode session from the shared SessionPool: one turn at a time, stream+Stop, read/local-only tool-scope (D-88, D-103).
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: inbox-api ChatRouter (TSK-129)
 
 import { randomUUID } from 'node:crypto';

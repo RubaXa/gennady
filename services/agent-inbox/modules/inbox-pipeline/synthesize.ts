@@ -1,5 +1,5 @@
 // @file: Synthesize — reads N model results (<track>.<model>.result.json), marks findings as consensus ✅ / dispute ⚡ / unique ○, writes to findings.jsonl
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: inbox-pipeline
 
 import { readFileSync } from 'node:fs';

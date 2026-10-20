@@ -1,5 +1,5 @@
 // @file: AgentRuntimePort with the legacy OpenCode session surface retained in one hierarchy.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: SessionPool, inbox-roles, DI container
 
 import type { OpenCodeCallResult } from './errors.ts';

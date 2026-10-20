@@ -1,5 +1,5 @@
 // @file: MutationApplier — preview/apply/undo for structural review.json mutations: snapshot-before-CAS-write (D-94/D-99), undo from snapshot, both audited (CH-08/CH-10); provenance surfaced before Apply (CH-09/D-98).
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: ChatSession (chat-router wiring, TSK-129)
 
 import { randomUUID } from 'node:crypto';

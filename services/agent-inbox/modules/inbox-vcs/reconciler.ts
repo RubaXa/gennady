@@ -1,5 +1,5 @@
 // @file: VcsReconciler — fresh-read effect classification and bounded read-before-retry recovery.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: Effects
 
 import { logger } from '#logger';

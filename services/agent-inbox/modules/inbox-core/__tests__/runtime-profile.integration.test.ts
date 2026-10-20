@@ -1,5 +1,5 @@
 // @file: Real-filesystem integration proof for runtime namespace isolation, reset and diagnostic reopen.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

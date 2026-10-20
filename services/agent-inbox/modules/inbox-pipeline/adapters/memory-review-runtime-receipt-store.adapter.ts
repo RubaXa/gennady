@@ -1,5 +1,5 @@
 // @file: Isolated deterministic memory backing for trusted receipt contract tests.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewRuntimeReceiptStorePort contract kit, inbox-eval
 
 import { createHash } from 'node:crypto';

@@ -1,5 +1,5 @@
 // @file: Immutable addressable analysis artifact revisions.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewStructuralValidator, ReviewSynthesis, dashboard
 
 /** @purpose One addressable fragment produced for a contract slot. */

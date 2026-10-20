@@ -1,5 +1,5 @@
 // @file: Effects — unified permission-gated, idempotency-addressed, reconciled GitLab mutations.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox-queue (effect_* tasks)
 
 import { logger } from '#logger';

@@ -1,5 +1,5 @@
 // @file: HttpServer — node:http server on port 4174 with routing, CORS, static files, graceful shutdown.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: gennady inbox serve (CLI), e2e tests
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';

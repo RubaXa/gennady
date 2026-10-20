@@ -1,5 +1,5 @@
 // @file: dashboard contract tests — every card chip widget package outcome variant.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: node:test runner
 
 import assert from 'node:assert/strict';

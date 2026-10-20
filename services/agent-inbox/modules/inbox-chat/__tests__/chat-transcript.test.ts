@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-chat ChatTranscript — empty-file degrade, append/load round trip,
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 //   lazy chats/ directory creation, mrRef path encoding, malformed-line resilience.
 // @consumers: node:test runner
 

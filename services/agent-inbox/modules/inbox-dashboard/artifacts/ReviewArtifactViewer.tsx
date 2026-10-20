@@ -1,5 +1,5 @@
 // @file: ReviewArtifactViewer — product-level review center over materialized pipeline artifacts.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrWorkspace
 
 import { useEffect, useMemo, useState } from 'react';

@@ -1,5 +1,5 @@
 // @file: ArtifactValidator — mechanical validation of session-produced task artifacts: structure/
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   schema (delegated to inbox-review-plan's own gate), mermaid syntax, coverage ledger (every
 //   Scope file → findings or explicit no-findings), tool-call cross-check (telemetry vs Scope) for
 //   legacy session kinds, injection-coverage-ledger (findings vs injected Context entities) for

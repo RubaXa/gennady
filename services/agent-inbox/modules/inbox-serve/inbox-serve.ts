@@ -1,5 +1,5 @@
 // @file: inbox-serve — start the inbox-api server with mock data for dev/e2e.
-// @spec: AGENT-INBOX-INBOX-INBOX-SERVE
+// @spec: AGENT-INBOX
 // @consumers: playwright webServer, manual dev
 
 import { HttpServer } from '../inbox-api/http-server.ts';

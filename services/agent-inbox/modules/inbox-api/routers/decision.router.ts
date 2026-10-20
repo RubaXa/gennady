@@ -1,5 +1,5 @@
 // @file: DecisionRouter — POST /api/decision: accept→{taskId}, edit→{taskId}, reject→204.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   Records verdict in DecisionJournal; accept/edit enqueues effect task.
 // @consumers: HttpServer
 

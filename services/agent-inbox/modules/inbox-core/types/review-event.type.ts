@@ -1,5 +1,5 @@
 // @file: Versioned canonical review event accepted by the inbox-core journal boundary.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: ReviewState, JournalPort, inbox-vcs
 
 /** @purpose Closed canonical review-event discriminator vocabulary. */

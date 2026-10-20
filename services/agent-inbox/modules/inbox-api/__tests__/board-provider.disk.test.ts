@@ -1,5 +1,5 @@
 // @file: BoardProviderDiskTests — proves the READ-ONLY disk viewer path against a temp fixture dir:
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   getReport/listArtifacts/readArtifact read straight from `report/`, and BoardProjection merges a
 //   disk-scanned card in with syncState 'ok' even while snapshots are empty and a cold load is in
 //   flight (TSK-190).

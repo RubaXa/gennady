@@ -1,5 +1,5 @@
 // @file: Tests for PlanTemplate — deterministic DAG plan generation with 3-layer tracks (mandatory/triggered/proposed)
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

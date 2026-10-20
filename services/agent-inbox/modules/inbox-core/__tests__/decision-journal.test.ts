@@ -1,5 +1,5 @@
 // @file: Unit tests for DecisionJournal and CapabilityModes — proposal/decision journaling, accept-rate per capability, dry-run suppression trail, graduation thresholds
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

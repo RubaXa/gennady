@@ -1,5 +1,5 @@
 // @file: Unit tests for OpenCodeReal — UNAVAILABLE, structured output, schema validation.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import { describe, it, mock } from 'node:test';

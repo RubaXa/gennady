@@ -1,5 +1,5 @@
 // @file: ReviewScenario — immutable deterministic scenario definition with fresh runtime per test invocation.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: inbox-mocks unit, integration and UI e2e tests
 
 import type { VcsActionableMr } from '../../../../vcs-client/entities/vcs-actionable-mr.type.ts';

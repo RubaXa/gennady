@@ -1,5 +1,5 @@
 // @file: ReviewChatPanel — persistent anchored MR conversation with streaming and undo.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrWorkspace
 
 import { useState } from 'react';

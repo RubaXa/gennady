@@ -1,5 +1,5 @@
 // @file: Unit tests for opencode.mock factory — type validation for mockOpenCodeResponse.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,5 @@
 // @file: Unit + integration tests for BoardProviderMock#recordFixTaskCopy and
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   POST /api/mr/:id/copy-fix-task — first click, repeat-click delta, delta baseline
 //   against the LAST snapshot (not the first), one-event-per-call, 404 (SV-14, TSK-145).
 // @consumers: node:test runner

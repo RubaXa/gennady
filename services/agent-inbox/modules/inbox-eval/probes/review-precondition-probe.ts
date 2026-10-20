@@ -1,5 +1,5 @@
 // @file: ReviewPreconditionProbe — observe whether a real MR pool can exercise each scenario branch.
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: ReviewEvalHarness
 
 import { logger } from '#logger';

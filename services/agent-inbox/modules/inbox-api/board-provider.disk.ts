@@ -1,5 +1,5 @@
 // @file: BoardProviderDisk — READ-ONLY BoardProviderPort impl backed purely by the on-disk
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   `mrs/<key>/report/` review artifacts. No RoleScheduler/RoleEngine, no live GitLab dependency —
 //   this is the minimal viewer path so a reviewed MR stays openable after a restart with no sync.
 // @consumers: bootstrap.ts (real-mode wiring), inbox-api routers, projections/board-projection.ts (disk-scan seed)

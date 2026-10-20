@@ -1,5 +1,5 @@
 // @file: ReviewActionCatalog — closed catalog of action kinds, capability/policy table, and effect classification.
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: package builder, ReviewAutomationPolicy, ReviewEffectCoordinator
 
 import { logger } from '#logger';

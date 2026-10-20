@@ -1,5 +1,5 @@
 // @file: BoardProviderReal — real-mode BoardProviderPort impl backed by RoleScheduler instance states.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: inbox-api routers, inbox-dashboard, DI container
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';

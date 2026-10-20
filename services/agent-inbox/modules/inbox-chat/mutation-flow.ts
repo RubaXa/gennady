@@ -1,5 +1,5 @@
 // @file: Queue-backed artifact mutation proposal and CAS/LIFO application flow.
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: MutateRouter, operator chat
 
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';

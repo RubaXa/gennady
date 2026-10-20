@@ -1,5 +1,5 @@
 // @file: VcsPermissionPolicy — complete pre-I/O effect permission and capability truth table.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: Effects
 
 import type { VcsCapabilities, VcsEffectRequest, VcsEffectOutcome } from './vcs-port.ts';

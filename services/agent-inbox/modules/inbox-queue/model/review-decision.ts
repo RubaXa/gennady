@@ -1,5 +1,5 @@
 // @file: ReviewDecision entity — operator selection/edit/rejection or proven automatic restoration intent.
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: ReviewEffectQueue, ReviewEffectCoordinator
 
 import { logger } from '#logger';

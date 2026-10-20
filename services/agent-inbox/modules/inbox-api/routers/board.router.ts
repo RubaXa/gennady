@@ -1,5 +1,5 @@
 // @file: BoardRouter — GET /api/board handler, attention-grouped from BoardProjection (D-306)
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   with fallback to BoardProviderPort for backward compatibility.
 // @consumers: HttpServer
 

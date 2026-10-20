@@ -1,5 +1,5 @@
 // @file: VcsSyncCoordinator — inclusive discovery, complete polling, ordered journal append, and cursor ownership.
-// @spec: AGENT-INBOX-INBOX-INBOX-VCS
+// @spec: AGENT-INBOX-INBOX-VCS
 // @consumers: inbox boot, queue verification triggers
 
 import { logger } from '#logger';

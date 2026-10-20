@@ -1,5 +1,5 @@
 // @file: Executor — per-MR queue loop: priority+FIFO+aging, exclusive mode (effects sequential), waiting_dep/cancelled states, crash recovery (running→queued, effects by marker), journal-backed visibility events
-// @spec: AGENT-INBOX-INBOX-INBOX-QUEUE
+// @spec: AGENT-INBOX-INBOX-QUEUE
 // @consumers: inbox-roles (role scheduler), inbox-api (inbox serve)
 
 import { logger } from '#logger';

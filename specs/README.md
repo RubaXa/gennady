@@ -31,6 +31,10 @@ graph TD
     mr-stats --> vcs
     mr-stats --> cli
     mr-stats --> dbc
+    peer --> infra-base
+    peer --> cli
+    vcs-mr-view --> vcs
+    vcs-mr-view --> cli
 ```
 
 ## Scopes
@@ -49,3 +53,5 @@ graph TD
 | [`agent-run`](./agent-run/agent-run.spec.md)                         | library        | ✅   | Запуск внешнего AI-движка (opencode первым) с заданием и директориями, readonly                                                                                                                                 |
 | [`agent-inbox`](./agent-inbox/agent-inbox.spec.md)                   | product        | 🚧   | Локальный reviewer-assistant: полный review/cross-review, детерминированный coverage control loop, решения и реальные GitLab effects                                                                            |
 | [`mr-stats`](./mr-stats/mr-stats.spec.md)                            | product        | 🚧   | Статистика по одному GitLab MR: классификация изменений, строки кода, сущности, дубликаты (awaiting setup sync)                                                                                                 |
+| [`peer`](./peer/peer.spec.md)                                        | product        | ✅   | Агент-to-агент messaging между Claude Code / Codex / OpenCode через runtime-agnostic transport                                                                                                                    |
+| [`vcs-mr-view`](./cli/vcs-mr-view/vcs-mr-view.spec.md)               | product        | ✅   | Read-only метаданные MR/PR по URL (title, description, reviewers, approvers, labels)                                                                                                                              |

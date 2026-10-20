@@ -1,5 +1,5 @@
 // @file: Tests for SseHub — SseFrame union exhaustiveness (contract), multi-subscriber broadcast
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   fan-out (D-100), and disconnect/unsubscribe safety (dead socket never blocks delivery).
 // @consumers: node:test runner
 

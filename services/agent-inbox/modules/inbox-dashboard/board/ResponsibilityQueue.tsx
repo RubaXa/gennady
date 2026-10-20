@@ -1,5 +1,5 @@
 // @file: ResponsibilityQueue — two responsibility queues: Review and Mine / Assigned.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: App
 
 import {

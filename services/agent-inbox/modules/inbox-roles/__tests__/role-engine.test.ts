@@ -1,5 +1,5 @@
 // @file: Unit tests for inbox-roles RoleEngine — loadAll, activate, deactivate, list.
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 // @consumers: node:test runner
 
 import { describe, it, before } from 'node:test';

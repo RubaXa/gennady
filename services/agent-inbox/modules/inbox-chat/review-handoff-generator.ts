@@ -1,5 +1,5 @@
 // @file: ReviewHandoffGenerator — pure full/delta handoff composition with in-memory delivery acknowledgement baseline.
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: inbox-dashboard ActionPanel
 
 import { randomUUID } from 'node:crypto';

@@ -1,5 +1,5 @@
 // @file: Immutable captured review input inventory and persisted sealing outcome.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: ReviewInputManifestBuilder, ReviewContractCompiler, ReviewStructuralValidator
 
 import type {

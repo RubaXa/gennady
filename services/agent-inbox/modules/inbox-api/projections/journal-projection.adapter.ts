@@ -1,5 +1,5 @@
 // @file: JournalProjectionAdapter — production journal-backed implementation of ProjectionPort.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer, inbox-api composition root, review-api.integration.test.ts
 
 import { existsSync, readFileSync } from 'node:fs';

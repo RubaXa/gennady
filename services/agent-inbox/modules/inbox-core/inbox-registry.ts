@@ -1,5 +1,5 @@
 // @file: InboxRegistry wrapper — delta computation, promote, atomic save over CLI registry logic.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: StateStore, CLI inbox commands
 
 import { join } from 'node:path';

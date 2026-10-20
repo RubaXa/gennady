@@ -1,5 +1,5 @@
 // @file: OpenCodeAgentAdapter — production AgentRuntimePort implementation via @opencode-ai/sdk.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: SessionPool (production), DI container, inbox-roles
 
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';

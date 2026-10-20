@@ -1,5 +1,5 @@
 // @file: Test setup helper for inbox-dashboard component tests — jsdom + ReactDOM.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: inbox-dashboard __tests__
 
 import { JSDOM } from 'jsdom';

@@ -1,5 +1,5 @@
 // @file: StateRouter — GET /api/state?mr=<ref> handler returning batched MR state.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: HttpServer
 
 import type { IncomingMessage, ServerResponse } from 'node:http';

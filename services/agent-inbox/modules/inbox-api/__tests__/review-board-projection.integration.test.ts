@@ -1,5 +1,5 @@
 // @file: Integration tests — ReviewBoardProjection via JournalProjectionAdapter; deduplication and lifecycle visibility.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

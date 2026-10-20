@@ -1,5 +1,5 @@
 // @file: dry-run journal — process-wide sink for INBOX_DRY_RUN external-write suppressions. When
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 //   dry-run is on, the two external-write seams (VCS mutation via EffectExecutor, operator DM via
 //   RightsEscalator.notifyReady) route their intended payload here INSTEAD of hitting the outside
 //   world. Each suppressed write is logged server-side and, when a broadcaster is registered (the

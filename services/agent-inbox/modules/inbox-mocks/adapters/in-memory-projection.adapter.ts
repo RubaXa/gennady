@@ -1,5 +1,5 @@
 // @file: InMemoryProjectionAdapter — deterministic seeded implementation of ProjectionPort for scenario tests.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: ReviewScenario, inbox-mocks test suite
 
 import type { ProjectionPort } from '../../inbox-api/projections/projection.port.ts';

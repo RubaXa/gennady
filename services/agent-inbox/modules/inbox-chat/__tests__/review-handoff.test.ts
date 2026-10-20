@@ -1,5 +1,5 @@
 // @file: Unit tests for ReviewHandoffGenerator#compose — full and delta payload verification.
-// @spec: AGENT-INBOX-INBOX-INBOX-CHAT
+// @spec: AGENT-INBOX-INBOX-CHAT
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

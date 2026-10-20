@@ -1,5 +1,5 @@
 // @file: MetricsCollector — computes accept-rate, edit-rate, time-to-decision from the decision journal dataset (D-302)
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-165)
 
 import { logger } from '#logger';

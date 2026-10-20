@@ -1,5 +1,5 @@
 // @file: EventJournal — append-only JSONL journal: per-MR monotonic seq, O_APPEND+fsync, broken-tail recovery, global system journal
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-core services, queue, pipeline, chat, api
 
 import {

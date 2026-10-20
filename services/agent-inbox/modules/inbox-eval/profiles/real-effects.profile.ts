@@ -1,5 +1,5 @@
 // @file: RealEffectsProfile — real adapters with allowlisted-MR-only effects and non-allowlisted dryRun.
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: ReviewEvalHarness
 
 import { logger } from '#logger';

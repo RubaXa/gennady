@@ -1,5 +1,5 @@
 // @file: Integration proof for same-session producer continuation and accumulated tool trace.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

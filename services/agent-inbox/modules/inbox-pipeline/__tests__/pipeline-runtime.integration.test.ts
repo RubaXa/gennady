@@ -1,5 +1,5 @@
 // @file: Integration coverage for PipelineRuntime sharing the production queue seam.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

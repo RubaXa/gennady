@@ -1,5 +1,5 @@
 // @file: ReviewEvalReport — immutable report entity, verdict derivation and serialization.
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: ReviewEvalHarness, test acceptance, SDD audit
 
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';

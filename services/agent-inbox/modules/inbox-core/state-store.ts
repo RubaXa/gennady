@@ -1,5 +1,5 @@
 // @file: StateStore — unified access point to all file-backed state (config, registry, audit) under ~/.gennady.
-// @spec: AGENT-INBOX-INBOX-INBOX-CORE
+// @spec: AGENT-INBOX-INBOX-CORE
 // @consumers: inbox-api, inbox-roles, inbox-dashboard, inbox-opencode, CLI
 
 import { join } from 'node:path';

@@ -1,5 +1,5 @@
 // @file: Unit tests for SessionRegistry — sessionId ↔ {taskId, mr, artifacts[], model} in-memory store.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

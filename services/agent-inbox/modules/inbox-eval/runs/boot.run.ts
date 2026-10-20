@@ -1,5 +1,5 @@
 // @file: boot eval run — verifies all boot phases complete ≤ 5 min and card stability after ready
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: EvalHarness (TSK-165)
 
 import type { EvalRunContext, EvalRun } from './context.ts';

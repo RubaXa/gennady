@@ -1,5 +1,5 @@
 // @file: Unit + integration tests for inbox-roles thread-signal-classifier — SV-22 decision table
-// @spec: AGENT-INBOX-INBOX-INBOX-ROLES
+// @spec: AGENT-INBOX
 //   (a)-(e), the peer-thread structural invariant, a live read-only classification against a real
 //   actionable MR (D-116), and the dry-run guard proving EffectExecutor never posts a real write
 //   when dispatching the "commit+verified, author silent" case.

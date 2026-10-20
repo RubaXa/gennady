@@ -1,5 +1,5 @@
 // @file: Unit/integration tests for EvalHarness — schema contract, parallel, crash, exit, effects, coverage
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 // @consumers: node:test runner
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

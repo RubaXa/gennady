@@ -1,5 +1,5 @@
 // @file: DiagnosticsRouter — GET /api/diagnostics: recent server-log tail so the dashboard's 🐞
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   button can carry the SERVER's own flow diagnostics (lens/synthesis/effect failures live
 //   server-side), not only the browser's ring buffer.
 // @consumers: HttpServer, DebugLogButton (via api-client)

@@ -1,5 +1,5 @@
 // @file: ReviewFeed — chronological smart-widget stream with unread boundary and 7 widget kinds.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: MrWorkspace
 
 import { useMemo, useState } from 'react';

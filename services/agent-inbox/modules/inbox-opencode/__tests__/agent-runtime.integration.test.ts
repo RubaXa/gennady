@@ -1,5 +1,5 @@
 // @file: Agent runtime degradation and strict prompt/schema/TTL integration boundaries.
-// @spec: AGENT-INBOX-INBOX-INBOX-OPENCODE
+// @spec: AGENT-INBOX-INBOX-OPENCODE
 // @consumers: node:test runner
 
 import { describe, it } from 'node:test';

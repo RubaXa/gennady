@@ -1,5 +1,5 @@
 // @file: InMemoryArtifactAdapter — isolated in-memory artifact store implementing ArtifactStorePort.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: ReviewScenario, inbox-mocks test suite
 
 import type { ArtifactStorePort } from '../../inbox-core/ports/artifact-store.port.ts';

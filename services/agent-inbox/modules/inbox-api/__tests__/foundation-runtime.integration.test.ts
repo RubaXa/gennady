@@ -1,5 +1,5 @@
 // @file: Foundation runtime integration — shared boot state and MR-scoped decision persistence.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 // @consumers: node:test runner
 
 import { after, before, describe, it } from 'node:test';

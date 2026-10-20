@@ -1,5 +1,5 @@
 // @file: Contract tests for ReviewEval — exhaustive type set, profile combinations and port
-// @spec: AGENT-INBOX-INBOX-INBOX-EVAL
+// @spec: AGENT-INBOX-INBOX-EVAL
 //   contract kit determinism. Covers [contract-only] and [simulation-backed] surface.
 // @consumers: node:test runner
 

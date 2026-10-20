@@ -1,5 +1,5 @@
 // @file: Control-plane-owned operation recorder with durable acknowledgment before eligibility.
-// @spec: AGENT-INBOX-INBOX-INBOX-PIPELINE
+// @spec: AGENT-INBOX-INBOX-PIPELINE
 // @consumers: agent runtime integration, ReviewStructuralValidator
 
 import { createHash } from 'node:crypto';

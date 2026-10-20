@@ -1,5 +1,5 @@
 // @file: FeedProjection — projects EventJournal entries → FeedWidget[] with cursor-based pagination.
-// @spec: AGENT-INBOX-INBOX-INBOX-API
+// @spec: AGENT-INBOX-INBOX-API
 //   Updates lastReadAt on the registry when feed is consumed (read-cursor, D-317).
 // @consumers: feed.router.ts, inbox-dashboard
 

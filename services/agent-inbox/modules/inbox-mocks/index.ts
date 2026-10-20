@@ -1,5 +1,5 @@
 // @file: Re-export barrel for inbox-mocks module — all mock factories, adapters, scenarios and their types.
-// @spec: AGENT-INBOX-INBOX-INBOX-MOCKS
+// @spec: AGENT-INBOX-INBOX-MOCKS
 // @consumers: inbox-api, inbox-dashboard, inbox-roles, inbox-opencode (dev/e2e only)
 
 export { mockActionableMr, mockMrContext } from './mr.mock.ts';

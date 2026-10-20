@@ -1,5 +1,5 @@
 // @file: Dashboard v2 types — browser-side mirror of canonical inbox-api DTOs.
-// @spec: AGENT-INBOX-INBOX-INBOX-DASHBOARD
+// @spec: AGENT-INBOX-INBOX-DASHBOARD
 // @consumers: dashboard-v2-api, dashboard-v2-ui, board/ResponsibilityQueue, workspace/MrWorkspace, workspace/ReviewPackageWidget
 
 /** @purpose Attention lane assigned by the server; the browser never derives it locally. */
