@@ -1,6 +1,6 @@
 // @file: vcs-discussions command help output.
-// @spec: CLI
 // @consumers: help command
+// @spec: CLI
 
 /**
  * @purpose Print CLI help for the vcs-discussions command.

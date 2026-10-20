@@ -1,6 +1,6 @@
 // @file: GitLab-specific implementation of merge request discussion operations.
-// @spec: VCS-VCS-CLIENT
 // @consumers: VcsGitlabClient
+// @spec: VCS-VCS-CLIENT
 
 import {
   VcsClientMergeDiscussions,
@@ -80,10 +80,13 @@ export class VcsGitlabMergeDiscussions extends VcsClientMergeDiscussions {
     }
     const projectId = encodeURIComponent(query.project);
     const iid = encodeURIComponent(String(query.iid));
-    return this._request(
-      `/projects/${projectId}/merge_requests/${iid}/discussions?${params.toString()}`,
-      { method: 'POST' }
-    );
+    // Body travels in the request body, never in the query string: a Russian comment
+    // percent-encodes to ~6x its size and blows past the proxy header limit (400 Bad Request).
+    return this._request(`/projects/${projectId}/merge_requests/${iid}/discussions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
   }
 
   /**

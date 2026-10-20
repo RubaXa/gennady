@@ -1,6 +1,6 @@
 // @file: Deterministic best-effort symlinking of known dependency directories into a prepared worktree.
-// @spec: CLI
 // @consumers: worktree-ops.logic (prepareMrWorktree)
+// @spec: CLI
 
 import { join } from 'node:path';
 

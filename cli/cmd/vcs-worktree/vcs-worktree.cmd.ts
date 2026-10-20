@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @file: CLI command: vcs-worktree — prepare/cleanup a read-only worktree for MR review.
-// @spec: CLI
 // @consumers: N/A
+// @spec: CLI
 
 import { mkdirSync, existsSync, readdirSync, readFileSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';

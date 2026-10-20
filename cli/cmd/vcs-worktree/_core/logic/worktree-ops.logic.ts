@@ -1,6 +1,6 @@
 // @file: Git worktree operations for read-only MR review (hooks disabled).
-// @spec: CLI
 // @consumers: vcs-worktree.cmd
+// @spec: CLI
 
 import { execFile } from 'node:child_process';
 import { readdir, stat, utimes, access } from 'node:fs/promises';
@@ -16,6 +16,48 @@ function git(args: string[], cwd?: string): Promise<string> {
       resolve((stdout as string).trim());
     });
   });
+}
+
+/**
+ * @purpose Local ref a fetched MR head is written to, keyed by MR iid.
+ * @invariant Distinct iids never share a ref, so concurrent prepares on one clone cannot clobber each other.
+ */
+const mrHeadRef = (iid: string): string => `refs/gennady/mr-head/${iid}`;
+
+/**
+ * @purpose Local ref a fetched target branch is written to, keyed by branch name.
+ * @invariant Distinct branches never share a ref, so concurrent base resolutions cannot clobber each other.
+ */
+const targetHeadRef = (branch: string): string => `refs/gennady/target-head/${branch}`;
+
+/**
+ * @purpose Fetch a remote ref into a dedicated, per-key local ref and return its resolved SHA.
+ * @invariant Never reads the clone-shared `FETCH_HEAD`; concurrent prepares on one clone cannot
+ *   clobber each other's head.
+ * @param clonePath Local clone.
+ * @param remoteRef Remote source (`merge-requests/<iid>/head` or a branch name).
+ * @param localRef Dedicated destination ref (see `mrHeadRef`/`targetHeadRef`).
+ * @param [fetchFlags] Extra flags passed to `git fetch` (e.g. `--unshallow`, `--deepen=500`).
+ * @returns Resolved SHA of `localRef` after the fetch.
+ * @sideEffect Network: git fetch (force-updates `localRef`).
+ */
+async function fetchRef(
+  clonePath: string,
+  remoteRef: string,
+  localRef: string,
+  fetchFlags: string[] = []
+): Promise<string> {
+  await git([
+    '-C',
+    clonePath,
+    '-c',
+    'core.hooksPath=/dev/null',
+    'fetch',
+    ...fetchFlags,
+    'origin',
+    `+${remoteRef}:${localRef}`,
+  ]);
+  return git(['-C', clonePath, 'rev-parse', localRef]);
 }
 
 /**
@@ -93,16 +135,7 @@ export async function prepareMrWorktree(
   }
   if (wtExists) {
     try {
-      await git([
-        '-C',
-        clonePath,
-        '-c',
-        'core.hooksPath=/dev/null',
-        'fetch',
-        'origin',
-        `merge-requests/${iid}/head`,
-      ]);
-      const headSha = await git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
+      const headSha = await fetchRef(clonePath, `merge-requests/${iid}/head`, mrHeadRef(iid));
       await git(['-C', worktreePath, '-c', 'core.hooksPath=/dev/null', 'reset', '--hard', headSha]);
       const actualHead = await git(['-C', worktreePath, 'rev-parse', 'HEAD']);
       if (actualHead !== headSha) {
@@ -128,16 +161,7 @@ export async function prepareMrWorktree(
   // failure mode: all paths (fetch, rev-parse, worktree add) throw → propagates to caller
   if (wtExists) await removeWorktreeSafe(worktreePath);
   await git(['-C', clonePath, 'worktree', 'prune']);
-  await git([
-    '-C',
-    clonePath,
-    '-c',
-    'core.hooksPath=/dev/null',
-    'fetch',
-    'origin',
-    `merge-requests/${iid}/head`,
-  ]);
-  const headSha = await git(['-C', clonePath, 'rev-parse', 'FETCH_HEAD']);
+  const headSha = await fetchRef(clonePath, `merge-requests/${iid}/head`, mrHeadRef(iid));
   await git([
     '-C',
     clonePath,
@@ -164,6 +188,8 @@ export async function prepareMrWorktree(
  * @purpose Fetch the MR target branch and return the merge-base for the review diff.
  * @invariant Author's changes only — no master noise. Fetch target branch, compute
  *   merge-base. If shallow, deepen. If rebase detected, deepen and recalculate.
+ * @invariant Reads the target from a per-branch ref (`targetHeadRef`), never the clone-shared
+ *   `FETCH_HEAD` — concurrent resolutions on one clone cannot clobber each other's base.
  * @param clonePath Local clone.
  * @param targetBranch MR target branch.
  * @param headSha Resolved MR head SHA.
@@ -178,24 +204,16 @@ export async function resolveBaseSha(
   headSha: string,
   diffRefBase?: string
 ): Promise<string> {
-  await git(['-C', clonePath, '-c', 'core.hooksPath=/dev/null', 'fetch', 'origin', targetBranch]);
+  const targetRef = targetHeadRef(targetBranch);
 
   let mergeBase: string;
   try {
-    mergeBase = await git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
+    await fetchRef(clonePath, targetBranch, targetRef);
+    mergeBase = await git(['-C', clonePath, 'merge-base', targetRef, headSha]);
   } catch {
     // #region START_SHALLOW_DEEPEN — shallow clone: no common ancestor; unshallow and retry
-    await git([
-      '-C',
-      clonePath,
-      '-c',
-      'core.hooksPath=/dev/null',
-      'fetch',
-      '--unshallow',
-      'origin',
-      targetBranch,
-    ]);
-    mergeBase = await git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
+    await fetchRef(clonePath, targetBranch, targetRef, ['--unshallow']);
+    mergeBase = await git(['-C', clonePath, 'merge-base', targetRef, headSha]);
     // #endregion END_SHALLOW_DEEPEN
   }
 
@@ -212,17 +230,8 @@ export async function resolveBaseSha(
         diffRefBase,
       ]);
       if (result === '') {
-        await git([
-          '-C',
-          clonePath,
-          '-c',
-          'core.hooksPath=/dev/null',
-          'fetch',
-          '--deepen=500',
-          'origin',
-          targetBranch,
-        ]);
-        mergeBase = await git(['-C', clonePath, 'merge-base', 'FETCH_HEAD', headSha]);
+        await fetchRef(clonePath, targetBranch, targetRef, ['--deepen=500']);
+        mergeBase = await git(['-C', clonePath, 'merge-base', targetRef, headSha]);
       }
     } catch {
       // non-ancestor — keep the original mergeBase

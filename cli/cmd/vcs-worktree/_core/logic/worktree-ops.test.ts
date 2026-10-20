@@ -1,6 +1,6 @@
 // @file: Unit tests for worktree-ops (gcStaleWorktrees, TTL constant, removeAllWorktrees, prepareMrWorktree).
-// @spec: CLI
 // @consumers: node:test runner
+// @spec: CLI
 
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +18,8 @@ function gitCmd(args: string[]): string {
   const s = args.join(' ');
   if (s.includes('git-common-dir')) return 'git-common-dir';
   if (s.includes('merge-requests') && s.includes('fetch')) return 'fetch-mr';
-  if (s.includes('FETCH_HEAD') && s.includes('rev-parse')) return 'rev-parse-fetch';
+  if (s.includes('rev-parse') && (s.includes('FETCH_HEAD') || s.includes('refs/gennady')))
+    return 'rev-parse-fetch';
   if (s.includes('rev-parse') && !s.includes('FETCH_HEAD')) return 'rev-parse-head';
   if (s.includes('reset')) return 'reset';
   if (s.includes('submodule') && s.includes('update')) return 'submodule-update';
@@ -293,7 +294,14 @@ describe('prepareMrWorktree', () => {
     assert.strictEqual(result.headSha, 'ghi789');
     assert.ok(
       mockUtimes.mock.calls.some((c) => c.arguments[0] === worktreeDir),
-      'expected utimes call'
+      'expected utimes'
+    );
+    // Regression: never read the clone-shared FETCH_HEAD — concurrent prepares on one clone
+    // (different MRs of the same project) overwrite it and check out the wrong head.
+    assert.ok(!gitCallsMatching('rev-parse FETCH_HEAD'), 'must not read the shared FETCH_HEAD');
+    assert.ok(
+      gitCallsMatching(`refs/gennady/mr-head/${iid}`),
+      'expected the MR head to be fetched into a per-iid ref'
     );
   });
 
