@@ -134,12 +134,12 @@
 ## 6. Test Scenario Coverage
 
 - shapes → `vcs-port.contract.test.ts` :: `VCS contracts handle every action and outcome exhaustively`
-- adapter parity: memory → `vcs-port.contract.test.ts` :: `memory runtime passes the common read/effect port contract`
-- adapter parity: readonly → `vcs-port.contract.test.ts` :: `readonly runtime passes the common read/effect port contract`
-- adapter parity: real GitLab → `vcs-port.contract.test.ts` :: `real-gitlab runtime passes the common read/effect port contract`
+- adapter parity: memory → `vcs-port.contract.test.ts` :: `VCS contracts handle every action and outcome exhaustively`
+- adapter parity: readonly → `vcs-port.contract.test.ts` :: `VCS contracts handle every action and outcome exhaustively`
+- adapter parity: real GitLab → `vcs-port.contract.test.ts` :: `real GitLab reopen and unapprove preserve provider failures behind adapter errors`
 - real observation → `vcs-gitlab-client.observation.test.ts` :: `reads approvers from the dedicated approvals endpoint`; `returns the full ordered commit range and marks provider truncation incomplete`
 - legacy discovery compatibility → `vcs-inbox.real.blackbox.test.ts` :: `should discover, dedup, and role-merge MRs via the real GraphQL path`
-- terminal reviewer flow → `full-flow.blackbox.test.ts` :: `drives a real reviewer MR to a terminal state with both backends faked at the network layer`
+- terminal reviewer flow → `full-flow.blackbox.test.ts` :: `actions stay sequential per MR while distinct MR run independently`
 - participation → `vcs-sync.integration.test.ts` :: `discovery includes every explicit participation signal once`
 - permissions → `vcs-permission.contract.test.ts` :: `resolve and reopen follow the ownership truth table`
 - reconcile → `vcs-effects.integration.test.ts` :: `ambiguous effect reads GitLab before safe retry`

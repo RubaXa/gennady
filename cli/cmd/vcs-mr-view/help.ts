@@ -1,5 +1,5 @@
 // @file: vcs-mr-view command help output.
-// @spec: CLI-VCS-MR-VIEW
+// @spec: VCS-MR-VIEW
 // @consumers: help command
 
 /**

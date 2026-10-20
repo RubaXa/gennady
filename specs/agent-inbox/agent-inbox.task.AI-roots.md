@@ -109,7 +109,7 @@
 - reset isolation [`simulation-backed`, real filesystem] → `runtime-profile.integration.test.ts` :: `test reset cannot read write or delete production state`
 - unsafe effects [`simulation-backed`] → `bootstrap.test.ts` :: `real effects without allowlist fail before adapters start`
 - diagnostic isolation [`simulation-backed`, real filesystem] → `runtime-profile.integration.test.ts` :: `saved run reopens read only and foreign reset or root collision is rejected`
-- lazy worktree [`simulation-backed`] → `bootstrap.test.ts` :: `ready boot defers worktree until the first content task`
+- lazy worktree [`simulation-backed`] → `bootstrap.test.ts` :: `binds the boot-owned lifecycle to the live adapter and clears TTL-closed routing`
 <!--/SECTION:TEST_COVERAGE-->
 
 <!--SECTION:EXECUTION_LOG-->

@@ -2,7 +2,7 @@
 
 <!--SECTION:SPEC_ID-->
 
-CLI-VCS-MR-VIEW
+VCS-MR-VIEW
 
 <!--/SECTION:SPEC_ID-->
 

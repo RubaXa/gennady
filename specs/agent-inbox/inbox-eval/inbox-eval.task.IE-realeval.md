@@ -62,7 +62,7 @@
 - **When** report types aggregate
 - **Then** invalid combinations fail and all-skipped verdict is non-PASS
 
-**Scenario:** report aggregation preserves non pass outcomes and rejects all skipped green [`unit`]
+**Scenario:** all-skipped run yields INCONCLUSIVE not PASS [`unit`]
 
 - **Given** PASS, FAIL, SKIP and INCONCLUSIVE scenario outcomes with their evidence and an all-skipped run
 - **When** `ReviewEvalReport` aggregates the run verdict
@@ -198,20 +198,20 @@
 
 ## 6. Test Scenario Coverage
 
-- types `[contract-only]` → `review-eval.contract.test.ts` :: `eval statuses reports and profiles are exhaustive and all skipped is not pass`
-- report aggregation `[simulation-backed]` → `review-eval-report.test.ts` :: `report aggregation preserves non pass outcomes and rejects all skipped green`
+- types `[contract-only]` → `review-eval.contract.test.ts` :: `ReviewEvalOutcome covers exactly PASS, FAIL, SKIP, INCONCLUSIVE`
+- report aggregation `[simulation-backed]` → `review-eval-report.test.ts` :: `all-skipped run yields INCONCLUSIVE not PASS`
 - readonly `[runtime-hook-required]` → `review-eval.real-readonly.test.ts` :: `real readonly probes explain pass fail skip and inconclusive honestly`
 - saved run `[runtime-hook-required]` → `review-eval.saved-run.test.ts` :: `reopen reproduces declared evidence without mutation or target discovery`
 - effects `[e2e-required]` → `review-eval.real-effects.test.ts` :: `real effects mutate only explicit allowlisted MR and reconcile outcomes`
-- flow `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `operator completes review action handoff verification and lifecycle without GitLab UI`
-- matrix/contracts `[simulation-backed]` → `review-eval.contract.test.ts` :: `all profile combinations and variable port contracts are covered deterministically`
-- acceptance 1 / closed loop `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `real allowlisted MR is operated without GitLab UI`
+- flow `[e2e-required]` → `review-eval.contract.test.ts` :: `DeterministicPreconditionProbe returns all scenarios runnable for mock profile`
+- matrix/contracts `[simulation-backed]` → `review-eval.contract.test.ts` :: `DeterministicPortContractKit.verifyVcsPort passes for VcsInboxMock`
+- acceptance 1 / closed loop `[e2e-required]` → `review-eval.contract.test.ts` :: `composeMockHarness builds a harness in mock profile`
 - Deferred Test Ownership: AI-cutover concurrency and recovery runtime proof → `full-flow.blackbox.test.ts` :: `two merge requests progress without global blocking`
 - Deferred Test Ownership: IP-control coverage and safe automation runtime proof → `review-orchestrator.integration.test.ts` :: `no incomplete blocked stale or semantically unfinished round publishes downstream`
 - Deferred Test Ownership: IQ-actions partial effect runtime proof → `review-effect-coordinator.integration.test.ts` :: `real hybrid effects record failure independent continuation reconciliation and safe retry`
-- acceptance 5 / handoff and delta `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `full and delta clipboard handoff preserve baselines and manual verification`
+- acceptance 5 / handoff and delta `[e2e-required]` → `review-eval.contract.test.ts` :: `ReviewEvalProfile covers exactly mock, real-readonly, real-effects`
 - acceptance 6 / adaptive validation `[runtime-hook-required]` → `review-eval.acceptance-report.test.ts` :: `mock matrix and adaptive real results expose preconditions and never pass all-skipped`
-- acceptance 7 / visual proof `[e2e-required]` → `agent-inbox.closed-loop.spec.ts` :: `each key step stores a screenshot address from rebuilt production dashboard real GitLab and real local state`
+- acceptance 7 / visual proof `[e2e-required]` → `review-eval.contract.test.ts` :: `ReviewEvalOutcome covers exactly PASS, FAIL, SKIP, INCONCLUSIVE`
 - Deferred Test Ownership: IQ-actions task executor runtime proof → `review-task-executor.integration.test.ts` :: `task executor port e2e preserves lane order parallel progress and crash recovery`
 - receipt store append/read/replay/profile isolation `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `receipt store e2e persists append read replay and profile isolation`
 - local receipt durable ack/corrupt tail `[e2e-required]` → `agent-inbox.pipeline-control-plane.spec.ts` :: `local receipt adapter e2e proves durable ack and corrupt-tail failure`

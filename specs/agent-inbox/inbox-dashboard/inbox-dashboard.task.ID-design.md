@@ -130,7 +130,7 @@
 
 ## 5. Test Coverage
 
-- role lanes остаются в UI → `BoardPage.test.tsx` :: `renders a role Kanban block per role, active and inactive`
+- role lanes остаются в UI → `BoardPage.test.tsx` :: `places every MR once by responsibility and keeps attention inside the card`
 - dashboard visual flow → `dashboard-v2.spec.ts` :: `(1) first frame → (2) board lanes + accent bars → (3) rail close-up`
 <!--/SECTION:TEST_COVERAGE-->
 
