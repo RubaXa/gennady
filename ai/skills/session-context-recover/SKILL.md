@@ -10,20 +10,22 @@ Recover a session as evidence, not as a trusted narrative. Never load or paste t
 ## Required workflow
 
 1. Parse the requested provider (`claude`, `opencode`, `codex`, or `auto`) and title/ID.
-2. Resolve `SKILL_DIR` from this loaded `SKILL.md` path. Never resolve `scripts/` against the current project directory. Run `node <SKILL_DIR>/scripts/session-recover.mjs locate --provider <provider> --query <query>`.
-3. If several candidates remain, show their IDs, titles, dates, workspaces, and paths and let the operator choose. Do not silently select one.
-4. Generate separate bounded packs with `node <SKILL_DIR>/scripts/session-recover.mjs evidence --provider <provider> --id <id> --view <intent|execution|audit> --output <temporary-json>`. Do not give the full pack to a model when a role view is sufficient.
-5. Determine `RECOVERED_WORKDIR` from the recovered session, preferring an explicit session worktree over its origin repository and both over the caller's current directory. Inspect it read-only with `node <SKILL_DIR>/scripts/session-recover.mjs workspace --path <RECOVERED_WORKDIR>`.
-6. Delegate the bounded evidence pack in parallel when subagents are available:
+2. Read the relevant provider reference before locating the session. For `auto`, read a provider reference only after a candidate identifies that provider.
+3. For a Codex session, use the native Codex task tools described in [references/providers/codex.md](references/providers/codex.md) whenever they are callable. This is the required primary path for Codex-to-Codex recovery: do not inspect `state_5.sqlite` or rollout JSONL first.
+4. For Claude/OpenCode, or when native Codex task tools are unavailable, resolve `SKILL_DIR` from this loaded `SKILL.md` path and run `node <SKILL_DIR>/scripts/session-recover.mjs locate --provider <provider> --query <query>`. Never resolve `scripts/` against the current project directory. With `provider=auto` and native Codex tools available, search Codex natively and run the helper separately for `claude` and `opencode`; do not duplicate Codex through the helper's `auto` path.
+5. If several candidates remain, show their provider, ID, exact user-visible title, dates, workspace, host when known, and transcript path when applicable. Let the operator choose; do not silently select one.
+6. Build separate bounded evidence views for intent, execution, and audit. On the native Codex path, derive them from structured turns and items returned by `read_thread`; on the fallback path run `node <SKILL_DIR>/scripts/session-recover.mjs evidence --provider <provider> --id <id> --view <intent|execution|audit> --output <temporary-json>`. Do not give a model a full history when a role view or targeted page is sufficient.
+7. Determine `RECOVERED_WORKDIR` from the recovered session, preferring an explicit session worktree over its origin repository and both over the caller's current directory. Inspect it read-only with `node <SKILL_DIR>/scripts/session-recover.mjs workspace --path <RECOVERED_WORKDIR>`.
+8. Delegate the bounded evidence pack in parallel when subagents are available:
    - **Intent & Timeline:** recover the original/current goal, requirement changes, operator decisions, and open questions.
    - **Execution & State:** recover actual edits, commands, tests, failures, Git state, and the last confirmed action.
    - **Adversarial Audit:** find contradictions, unsupported completion claims, missed requirements, stale facts, transcript damage, and items requiring verification.
-7. Synthesize the reports. Verify disputed claims against targeted transcript line ranges or the current workspace; never resolve a conflict by guessing.
-8. Present the recovery report described in [references/report-schema.md](references/report-schema.md). Mark every important conclusion as Confirmed, Likely, Disputed, Unknown, or Stale.
-9. Show a **Workspace binding** checkpoint containing the absolute `RECOVERED_WORKDIR`, Git top-level, branch, HEAD, dirty state, and why this directory belongs to the recovered session. Stop for operator confirmation before changing files, switching branches, recreating a worktree, installing dependencies, or continuing implementation.
-10. After confirmation, run `node <SKILL_DIR>/scripts/session-recover.mjs guard --path <RECOVERED_WORKDIR> --root <approved-root> --branch <approved-branch> --head <approved-head>`. Continue only when `bindingOk=true`. Then pass `RECOVERED_WORKDIR` explicitly as `workdir`/`cwd` to every shell or tool call, use absolute patch paths beneath it, and include it in every subagent task. The caller session's initial cwd is irrelevant.
+9. Synthesize the reports. Verify disputed claims against targeted native turns/items, targeted transcript line ranges, or the current workspace; never resolve a conflict by guessing.
+10. Present the recovery report described in [references/report-schema.md](references/report-schema.md). Mark every important conclusion as Confirmed, Likely, Disputed, Unknown, or Stale.
+11. Show a **Workspace binding** checkpoint containing the absolute `RECOVERED_WORKDIR`, Git top-level, branch, HEAD, dirty state, and why this directory belongs to the recovered session. Stop for operator confirmation before changing files, switching branches, recreating a worktree, installing dependencies, sending a message to another Codex task, or continuing implementation.
+12. After confirmation, run `node <SKILL_DIR>/scripts/session-recover.mjs guard --path <RECOVERED_WORKDIR> --root <approved-root> --branch <approved-branch> --head <approved-head>`. Continue only when `bindingOk=true`. Then pass `RECOVERED_WORKDIR` explicitly as `workdir`/`cwd` to every shell or tool call, use absolute patch paths beneath it, and include it in every subagent task. The caller session's initial cwd is irrelevant.
 
-Read [references/recovery-protocol.md](references/recovery-protocol.md) for evidence and safety rules. Read only the relevant provider reference under `references/providers/`.
+Read [references/recovery-protocol.md](references/recovery-protocol.md) for evidence and safety rules. Read only the relevant provider reference under `references/providers/`; the Codex reference defines the native/fallback boundary.
 
 ## Operational invariants
 

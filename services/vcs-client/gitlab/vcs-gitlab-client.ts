@@ -185,6 +185,11 @@ export class VcsGitlabClient extends VcsClient {
       if (responseType === 'text') {
         return response.text();
       }
+      // Some GitLab mutations answer 204 No Content (publish/delete draft note, delete note):
+      // there is no body to parse, and response.json() would throw "Unexpected end of JSON input".
+      if (response.status === 204) {
+        return undefined;
+      }
       return response.json();
     };
 
@@ -231,7 +236,7 @@ export class VcsGitlabClient extends VcsClient {
     this.MergeDiscussions = new VcsGitlabMergeDiscussions(request);
     this.RepositoryFiles = new VcsGitlabRepositoryFiles(options.baseUrl, options.token);
     this.Inbox = new VcsGitlabInbox(graphql);
-    this.Pipeline = new VcsGitlabPipeline(request);
+    this.Pipeline = new VcsGitlabPipeline(request, graphql);
     this.Reactions = new VcsGitlabReactions(request);
   }
 

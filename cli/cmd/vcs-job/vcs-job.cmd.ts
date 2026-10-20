@@ -13,7 +13,7 @@ import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { logger } from '#logger';
 
 /** @purpose Allowed job actions. */
-export type JobAction = 'status' | 'play' | 'cancel';
+export type JobAction = 'status' | 'play' | 'cancel' | 'retry';
 
 /** @purpose Injectable dependencies for the vcs-job command. */
 export type VcsJobDeps = {
@@ -113,21 +113,19 @@ function outputJobStatus(job: VcsJob, deps: VcsJobDeps): void {
 
 // #region START_NORMALIZE_ACTION
 /**
- * @purpose Normalize user-provided action, mapping retry → play alias.
+ * @purpose Normalize a user-provided action, preserving retry as its own lifecycle action.
  * @param raw Raw action string from CLI.
  * @returns Normalized JobAction.
  */
 function normalizeAction(raw: string): JobAction {
-  const action = raw.trim().toLowerCase();
-  if (action === 'retry') return 'play';
-  return action as JobAction;
+  return raw.trim().toLowerCase() as JobAction;
 }
 // #endregion END_NORMALIZE_ACTION
 
 /**
  * @purpose Execute vcs-job command: resolve context, look up job by name/id, perform action.
  * @invariant --dry-run prints intent without API calls.
- * @invariant retry is an alias for play (same GitLab endpoint).
+ * @invariant retry starts a new attempt; play starts a manual job.
  * @param rawArgs CLI arguments (process.argv).
  * @param [deps] Injectable dependencies.
  * @returns Promise resolving after process termination.
@@ -223,6 +221,10 @@ export async function run(
       logger.debug(`[run] [idle → playing] ${jobId}`);
       job = await client.Pipeline.playJob({ project: context.project, jobId });
       logger.info(`[run] [playing → played] ${jobId} status=${job.status}`);
+    } else if (action === 'retry') {
+      logger.debug(`[run] [idle → retrying] ${jobId}`);
+      job = await client.Pipeline.retryJob({ project: context.project, jobId });
+      logger.info(`[run] [retrying → retried] ${jobId} status=${job.status}`);
     } else if (action === 'cancel') {
       logger.debug(`[run] [idle → cancelling] ${jobId}`);
       job = await client.Pipeline.cancelJob({ project: context.project, jobId });

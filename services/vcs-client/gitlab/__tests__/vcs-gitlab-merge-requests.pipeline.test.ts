@@ -61,6 +61,53 @@ describe('VcsGitlabMergeRequests — getPipeline', () => {
     // #endregion END_PIPELINE_HAPPY_ASSERT_INTERACTIONS
   });
 
+  it('normalizes pipeline metadata (iid, sha, ref, times, commit title)', async () => {
+    const { graphqlFn, mr } = createPipelineContext({
+      graphqlImpl: async () => ({
+        project: {
+          mergeRequest: {
+            headPipeline: {
+              id: 'gid://gitlab/Ci::Pipeline/49309598',
+              iid: '3407',
+              sha: 'd4788ee197d1091636fba25db8de330f1aca538b',
+              ref: 'refs/merge-requests/299/merge',
+              status: 'FAILED',
+              createdAt: '2026-09-16T05:37:51Z',
+              updatedAt: '2026-09-16T06:15:27Z',
+              commit: { title: "Merge branch 'x' into 'y'" },
+              jobs: { nodes: [] },
+            },
+          },
+        },
+      }),
+    });
+
+    const result = await mr.getPipeline({ project: 'mail/messenger', iid: 299 });
+
+    // #region START_PIPELINE_METADATA_ASSERT
+    assert.match(graphqlFn.mock.calls[0].arguments[0] as string, /commit\s*\{\s*title/);
+    assert.strictEqual(result.iid, '3407');
+    assert.strictEqual(result.sha, 'd4788ee197d1091636fba25db8de330f1aca538b');
+    assert.strictEqual(result.ref, 'refs/merge-requests/299/merge');
+    assert.strictEqual(result.commitTitle, "Merge branch 'x' into 'y'");
+    assert.strictEqual(result.createdAt, '2026-09-16T05:37:51Z');
+    assert.strictEqual(result.updatedAt, '2026-09-16T06:15:27Z');
+    // #endregion END_PIPELINE_METADATA_ASSERT
+  });
+
+  it('omits metadata keys entirely when the API does not return them', async () => {
+    const { mr } = createPipelineContext({
+      graphqlImpl: async () => ({
+        project: { mergeRequest: { headPipeline: { status: 'running', jobs: { nodes: [] } } } },
+      }),
+    });
+
+    const result = await mr.getPipeline({ project: 'group/repo', iid: 1 });
+
+    // contract: absence of metadata means "unknown" — never an empty-string placeholder
+    assert.deepStrictEqual(result, { status: 'running', jobs: [] });
+  });
+
   it('returns empty status and empty jobs when headPipeline is absent', async () => {
     const { mr } = createPipelineContext({
       graphqlImpl: async () => ({

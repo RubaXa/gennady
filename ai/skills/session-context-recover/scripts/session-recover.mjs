@@ -94,20 +94,31 @@ function locateOpenCode(query) {
 
 function locateCodex(query) {
   const databasePath = join(HOME, '.codex', 'state_5.sqlite');
+  let catalogError;
   if (existsSync(databasePath)) {
     const escaped = query.replaceAll("'", "''");
     try {
-      const rows = JSON.parse(sqlite(databasePath, `SELECT id,title,name,cwd,rollout_path AS transcriptPath,git_branch AS branch,git_sha AS gitSha,created_at AS createdAt,updated_at AS updatedAt,archived FROM threads WHERE id='${escaped}' OR lower(name)=lower('${escaped}') OR lower(title)=lower('${escaped}') OR lower(name) LIKE lower('%${escaped}%') OR lower(title) LIKE lower('%${escaped}%') ORDER BY CASE WHEN lower(name)=lower('${escaped}') THEN 0 WHEN lower(title)=lower('${escaped}') THEN 1 ELSE 2 END, updated_at DESC LIMIT 20;`) || '[]');
-      if (rows.length) return rows.map((row) => ({
+      const select = 'SELECT id,title,name,cwd,rollout_path AS transcriptPath,git_branch AS branch,git_sha AS gitSha,created_at AS createdAt,updated_at AS updatedAt,archived FROM threads';
+      const exactRows = JSON.parse(sqlite(databasePath, `${select} WHERE id='${escaped}' OR lower(name)=lower('${escaped}') OR lower(title)=lower('${escaped}') OR lower(name) LIKE lower('%${escaped}%') OR lower(title) LIKE lower('%${escaped}%') ORDER BY CASE WHEN lower(name)=lower('${escaped}') THEN 0 WHEN lower(title)=lower('${escaped}') THEN 1 ELSE 2 END, updated_at DESC LIMIT 20;`) || '[]');
+      const rows = exactRows.length ? exactRows : JSON.parse(sqlite(databasePath, `${select} ORDER BY updated_at DESC LIMIT 500;`) || '[]');
+      const ranked = rows.map((row) => ({
         ...row, provider: 'codex', databasePath, catalogTitle: row.title, title: row.name || row.title,
         titleMatchScore: Math.max(matchScore(query, row.name), matchScore(query, row.title), matchScore(query, row.id)),
-      }));
-    } catch {}
+      })).filter((row) => row.titleMatchScore > 0)
+        .sort((a, b) => b.titleMatchScore - a.titleMatchScore || (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+      if (ranked.length) return ranked.slice(0, 20);
+    } catch (error) {
+      catalogError = clip(error.stderr || error.message, 800);
+      process.stderr.write(`Codex catalog unavailable; using JSONL filename fallback: ${catalogError}\n`);
+    }
   }
   const results = [];
   for (const root of [join(HOME, '.codex', 'sessions'), join(HOME, '.codex', 'archived_sessions')]) {
     for (const path of walk(root, (file) => file.endsWith('.jsonl'), 6)) {
-      if (basename(path).includes(query)) results.push({ provider: 'codex', titleMatchScore: 90, id: basename(path, '.jsonl'), transcriptPath: path });
+      if (!basename(path).includes(query)) continue;
+      const stem = basename(path, '.jsonl');
+      const id = stem.match(/([0-9a-f]{8}-[0-9a-f-]{27})$/i)?.[1] ?? stem;
+      results.push({ provider: 'codex', titleMatchScore: 90, id, transcriptPath: path, catalogFallback: true, catalogError });
     }
   }
   return results;
@@ -150,6 +161,43 @@ function toolCalls(message) {
     name: part.name, id: part.id,
     input: Object.fromEntries(Object.entries(part.input ?? {}).map(([key, value]) => [key, clip(typeof value === 'string' ? value : JSON.stringify(value), 600)])),
   }));
+}
+
+function codexContentText(content) {
+  if (!Array.isArray(content)) return '';
+  return content.filter((part) => ['text', 'input_text', 'output_text'].includes(String(part?.type ?? '').toLowerCase()))
+    .map((part) => part.text ?? '').join('\n');
+}
+
+function isSyntheticCodexUserText(text) {
+  const start = text.trimStart();
+  return ['<recommended_plugins>', '<environment_context>', '<app-context>', '<permissions instructions>', '<collaboration_mode>', '<apps_instructions>', '<plugins_instructions>']
+    .some((prefix) => start.startsWith(prefix));
+}
+
+function codexLegacyToolName(name, rawInput) {
+  if (name !== 'exec' || typeof rawInput !== 'string') return name;
+  return rawInput.match(/\btools\.([A-Za-z0-9_]+)\s*\(/)?.[1] ?? name;
+}
+
+function codexOutputIsError(output) {
+  return /(^|\n)(error|failed|fatal|exit code [1-9]|script failed)/i.test(output)
+    || /["'](?:exit_code|exitCode)["']\s*:\s*[1-9][0-9]*/.test(output)
+    || /["']status["']\s*:\s*["']failed["']/.test(output);
+}
+
+function codexItemOutput(item) {
+  const output = [item.stdout, item.stderr, item.formatted_output]
+    .filter((value) => typeof value === 'string' && value.trim()).join('\n');
+  if (output) return output;
+  if (item.result !== undefined) return typeof item.result === 'string' ? item.result : JSON.stringify(item.result);
+  if (item.results !== undefined) return typeof item.results === 'string' ? item.results : JSON.stringify(item.results);
+  return `${item.status ?? 'completed'}${item.exit_code === undefined ? '' : ` (exit ${item.exit_code})`}`;
+}
+
+function codexFileChanges(changes) {
+  if (Array.isArray(changes)) return changes.map((change) => ({ path: change.path, kind: change.kind ?? change.type }));
+  return Object.entries(changes ?? {}).map(([path, change]) => ({ path, kind: change?.type, movePath: change?.move_path }));
 }
 
 function labels(text) {
@@ -276,50 +324,113 @@ function evidenceOpenCode(candidate) {
 async function evidenceCodex(candidate) {
   const path = candidate.transcriptPath;
   if (!path || !existsSync(path)) fail(`Codex transcript not found for ${candidate.id}`);
-  const operatorMessages = [];
-  const assistantCandidates = [];
-  const actions = [];
-  const toolResults = [];
+  const legacyOperatorMessages = [];
+  const legacyAssistantCandidates = [];
+  const legacyActions = [];
+  const legacyToolResults = [];
+  const structuredOperatorMessages = [];
+  const structuredAssistantCandidates = [];
+  const structuredActions = [];
+  const structuredToolResults = [];
   const turnWorkdirs = new Set();
   const counts = {};
   let lineNumber = 0;
   let malformedLines = 0;
+  let structuredItemCount = 0;
+  let taskStarted = 0;
+  let taskCompleted = 0;
+  let lastTaskEvent;
+  let currentTurnId;
   let lastTimestamp;
+  let lastType;
   const lines = createInterface({ input: createReadStream(path), crlfDelay: Infinity });
   for await (const line of lines) {
     lineNumber += 1;
     let row;
     try { row = JSON.parse(line); } catch { malformedLines += 1; continue; }
     lastTimestamp = row.timestamp ?? lastTimestamp;
+    lastType = row.type ?? lastType;
     counts[row.type] = (counts[row.type] ?? 0) + 1;
     const payload = row.payload ?? {};
     if (row.type === 'turn_context' && payload.cwd) turnWorkdirs.add(payload.cwd);
     const base = { line: lineNumber, timestamp: row.timestamp, id: payload.id };
+    if (row.type === 'event_msg' && payload.type === 'task_started') {
+      taskStarted += 1;
+      lastTaskEvent = 'started';
+      currentTurnId = payload.turn_id;
+    }
+    if (row.type === 'event_msg' && payload.type === 'task_complete') {
+      taskCompleted += 1;
+      lastTaskEvent = 'completed';
+      currentTurnId = payload.turn_id ?? currentTurnId;
+    }
+    if (row.type === 'event_msg' && payload.type === 'item_completed' && payload.item) {
+      structuredItemCount += 1;
+      const item = payload.item;
+      const itemBase = { line: lineNumber, timestamp: row.timestamp, id: item.id, turnId: currentTurnId };
+      if (item.type === 'UserMessage') {
+        const text = codexContentText(item.content);
+        if (text) structuredOperatorMessages.push({ ...itemBase, labels: labels(text), text: clip(text, 1000) });
+      } else if (item.type === 'AgentMessage') {
+        const text = codexContentText(item.content);
+        if (text) structuredAssistantCandidates.push({ ...itemBase, phase: item.phase, labels: labels(text), text: clip(text, 800) });
+      } else if (item.type === 'Reasoning' && item.summary_text) {
+        const text = String(item.summary_text);
+        structuredAssistantCandidates.push({ ...itemBase, reasoningSummary: true, labels: labels(text), text: clip(text, 800) });
+      } else if (item.type === 'CommandExecution') {
+        const isError = item.status === 'failed' || (Number.isInteger(item.exit_code) && item.exit_code !== 0);
+        structuredActions.push({ ...itemBase, tool: 'CommandExecution', toolUseId: item.id, status: item.status, exitCode: item.exit_code, input: clip(JSON.stringify({ command: item.command, cwd: item.cwd }), 600) });
+        structuredToolResults.push({ ...itemBase, toolUseId: item.id, status: item.status, exitCode: item.exit_code, isError, text: clip(codexItemOutput(item), isError ? 1000 : 300) });
+      } else if (item.type === 'FileChange') {
+        const isError = item.status === 'failed';
+        structuredActions.push({ ...itemBase, tool: 'FileChange', toolUseId: item.id, status: item.status, input: clip(JSON.stringify(codexFileChanges(item.changes)), 600) });
+        structuredToolResults.push({ ...itemBase, toolUseId: item.id, status: item.status, isError, text: clip(codexItemOutput(item), isError ? 1000 : 300) });
+      } else if (item.type === 'Extension') {
+        const isError = item.status === 'failed';
+        structuredActions.push({ ...itemBase, tool: `Extension:${item.kind ?? 'unknown'}`, toolUseId: item.id, status: item.status, input: clip(JSON.stringify({ query: item.query, action: item.action }), 600) });
+        structuredToolResults.push({ ...itemBase, toolUseId: item.id, status: item.status ?? 'completed', isError, text: clip(codexItemOutput(item), isError ? 1000 : 300) });
+      } else if (item.type === 'McpToolCall') {
+        const isError = item.status === 'failed';
+        structuredActions.push({ ...itemBase, tool: `McpToolCall:${item.server}.${item.tool}`, toolUseId: item.id, status: item.status, input: clip(JSON.stringify(item.arguments ?? {}), 600) });
+        structuredToolResults.push({ ...itemBase, toolUseId: item.id, status: item.status, isError, text: clip(codexItemOutput(item), isError ? 1000 : 300) });
+      } else if (/(ToolCall|Execution|FileChange|Extension)$/i.test(item.type ?? '')) {
+        const isError = item.status === 'failed';
+        structuredActions.push({ ...itemBase, tool: item.type, toolUseId: item.id, status: item.status, input: clip(JSON.stringify(item), 600) });
+        structuredToolResults.push({ ...itemBase, toolUseId: item.id, status: item.status, isError, text: clip(codexItemOutput(item), isError ? 1000 : 300) });
+      }
+    }
     if (payload.type === 'message') {
       const text = (payload.content ?? []).filter((part) => part.type === 'input_text' || part.type === 'output_text').map((part) => part.text ?? '').join('\n');
       const eventLabels = labels(text);
-      if (payload.role === 'user' && text) operatorMessages.push({ ...base, labels: eventLabels, text: clip(text, 1000) });
-      if (payload.role === 'assistant' && text && eventLabels.length) assistantCandidates.push({ ...base, labels: eventLabels, text: clip(text, 800) });
+      if (payload.role === 'user' && text && !isSyntheticCodexUserText(text)) legacyOperatorMessages.push({ ...base, labels: eventLabels, text: clip(text, 1000) });
+      if (payload.role === 'assistant' && text) legacyAssistantCandidates.push({ ...base, labels: eventLabels, text: clip(text, 800) });
     }
     if (payload.type === 'custom_tool_call' || payload.type === 'function_call') {
       const rawInput = payload.input ?? payload.arguments ?? '';
-      actions.push({ ...base, tool: payload.name, toolUseId: payload.call_id, input: clip(typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput), 600) });
+      legacyActions.push({ ...base, tool: codexLegacyToolName(payload.name, rawInput), toolUseId: payload.call_id, input: clip(typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput), 600) });
     }
     if (payload.type === 'custom_tool_call_output' || payload.type === 'function_call_output') {
       const output = typeof payload.output === 'string' ? payload.output : JSON.stringify(payload.output ?? '');
-      const isError = /(^|\n)(error|failed|fatal|exit code [1-9]|script failed)/i.test(output);
-      toolResults.push({ ...base, toolUseId: payload.call_id, isError, text: clip(output, isError ? 1000 : 300) });
+      const isError = codexOutputIsError(output);
+      legacyToolResults.push({ ...base, toolUseId: payload.call_id, isError, text: clip(output, isError ? 1000 : 300) });
     }
   }
-  const assistantNarrative = bounded(assistantCandidates, 260, (event) => event.labels.includes('problem') || event.labels.includes('decision'));
+  const usesStructuredItems = structuredItemCount > 0;
+  const operatorMessages = usesStructuredItems ? structuredOperatorMessages : legacyOperatorMessages;
+  const assistantCandidates = usesStructuredItems ? structuredAssistantCandidates : legacyAssistantCandidates;
+  const actions = usesStructuredItems ? structuredActions : legacyActions;
+  const toolResults = usesStructuredItems ? structuredToolResults : legacyToolResults;
+  const assistantNarrative = bounded(assistantCandidates, 260, (event) => event.phase === 'final_answer' || event.labels.includes('problem') || event.labels.includes('decision'));
   const selectedActions = bounded(actions, 500);
   const selectedResults = bounded(toolResults, 220, (event) => event.isError);
+  const resultIds = new Set(toolResults.map((item) => item.toolUseId).filter(Boolean));
+  const unresolvedToolUseIds = actions.map((item) => item.toolUseId).filter((id) => id && !resultIds.has(id));
   return {
     schemaVersion: 1, generatedAt: new Date().toISOString(), provider: 'codex', session: candidate,
     transcript: { path, bytes: statSync(path).size, lines: lineNumber, malformedLines, counts },
-    terminalState: { lastLine: lineNumber, lastTimestamp, turnWorkdirs: [...turnWorkdirs] },
+    terminalState: { lastLine: lineNumber, lastTimestamp, lastRecordType: lastType, lastTurnId: currentTurnId, taskStarted, taskCompleted, lastTaskEvent, inProgress: taskStarted > taskCompleted, turnWorkdirs: [...turnWorkdirs], unresolvedToolUseIds: unresolvedToolUseIds.slice(-50), unresolvedToolUseCount: unresolvedToolUseIds.length },
     workspaceBinding: { recoveredWorkdir: candidate.cwd, recoveredBranch: candidate.branch, recoveredGitSha: candidate.gitSha, observedTurnWorkdirs: [...turnWorkdirs], mismatch: [...turnWorkdirs].some((cwd) => candidate.cwd && cwd !== candidate.cwd) },
-    evidencePolicy: { maxTextChars: MAX_TEXT, fullTranscriptLoadedIntoPrompt: false, selection: 'all operator messages; bounded assistant narrative, actions, and tool results; errors prioritized' },
+    evidencePolicy: { maxTextChars: MAX_TEXT, fullTranscriptLoadedIntoPrompt: false, source: usesStructuredItems ? 'event_msg/item_completed' : 'response_item fallback', selection: 'all genuine operator messages; bounded assistant narrative, actions, and tool results; structured statuses and errors prioritized' },
     operatorMessages, assistantNarrative, actions: selectedActions, toolResults: selectedResults,
     omitted: { assistantNarrative: assistantCandidates.length - assistantNarrative.length, actions: actions.length - selectedActions.length, toolResults: toolResults.length - selectedResults.length },
     tail: [...operatorMessages, ...assistantNarrative, ...selectedActions, ...selectedResults].sort((a, b) => a.line - b.line).slice(-30),
@@ -369,7 +480,7 @@ function evidenceView(pack, view) {
   };
   if (view === 'audit') return {
     ...common, view,
-    operatorMessages: [...pack.operatorMessages.slice(0, 20), ...pack.operatorMessages.slice(-50)],
+    operatorMessages: pack.operatorMessages.length <= 70 ? pack.operatorMessages : [...pack.operatorMessages.slice(0, 20), ...pack.operatorMessages.slice(-50)],
     assistantNarrative: pack.assistantNarrative.filter((item) => item.labels.includes('completion') || item.labels.includes('problem')).slice(-100),
     failedToolResults: pack.toolResults.filter((item) => item.isError), tail: pack.tail.slice(-15),
   };

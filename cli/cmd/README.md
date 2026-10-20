@@ -158,42 +158,80 @@ npx gennady testcov --flat --json
 npx gennady testcov src/core --files
 ```
 
+### 12. Управление агентскими сессиями (peer)
+
+```bash
+# Кто доступен: Claude.app (живые сессии), OpenCode (opencode.db), Codex (read-only)
+npx gennady peer list
+
+# Прочитать, что сделано в сессии/треде (Claude/OpenCode/Codex)
+npx gennady peer read "Loading 381"
+npx gennady peer read "Проверить растения для гостиной"
+
+# Адресация: <runtime>:<name> — claude: / oc: / codex: (иначе имя должно быть уникально)
+npx gennady peer ask claude:FableResearch "…"
+npx gennady peer read opencode:"Loading 381"
+
+# Группа (лидер → N): зарегистрировать участников и разослать задачу, собрав все ответы
+npx gennady peer init opencode:ses_xxx --name demoA --group demo
+npx gennady peer fanout demo "Собери статус"
+
+# Аудит диалога и живой стрим
+npx gennady peer ledger --group demo --limit 20
+npx gennady peer watch --group demo --seconds 30
+
+# Зарегистрировать стабильный alias (sessionId переживает переименование/рестарт)
+npx gennady peer init TestClaudeSess --role subordinate --group demo
+
+# Поставить задачу и дождаться отчёта:
+#   Claude.app — handshake (каким инструментом ответить) + <peer-task>, ответ из SendMessage/транскрипта;
+#   OpenCode — POST /session/:id/message в живой сервер десктопа (creds из env);
+#   Codex — codex queue + чтение нового agent-message из thread-store
+npx gennady peer ask TestClaudeSess "Посчитай 17*23 и ответь только числом"
+npx gennady peer ask "Loading 381" "Сделай краткое резюме статуса MR"
+
+# Односторонняя задача без ожидания ответа
+npx gennady peer send TestClaudeSess "Начни рефакторинг модуля X"
+```
+
 ---
 
 ## Все команды
 
-| Команда             | Назначение                                               |
-| ------------------- | -------------------------------------------------------- |
-| `commit`            | Генерация commit message из staged-изменений через AI    |
-| `cat`               | Вывод файлов в XML/Markdown для AI-контекста             |
-| `review`            | AI-ревью staged изменений                                |
-| `review-verify`     | Сборка промпта для верификации MR/PR discussions         |
-| `review-issues`     | XML-артефакт issues из MR/PR                             |
-| `vcs-reply`         | Постинг ответов в GitLab MR discussions                  |
-| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR         |
-| `vcs-approve`       | Approve / отзыв approve GitLab MR через API              |
-| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR       |
-| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)            |
-| `vcs-pipeline`      | Статус пайплайна MR: сводка джоб, логи упавших           |
-| `vcs-job`           | Управление джобой (status/play/cancel/retry)             |
-| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна              |
-| `vcs-worktree`      | Подготовка read-only git worktree для MR review          |
-| `inbox`             | Интерактивный разбор входящих GitLab MR                  |
-| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads) |
-| `run`               | Запуск задания через AI-движок (opencode)                |
-| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                |
-| `remote-console`    | Зеркалирование браузерной консоли в stdout               |
-| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants  |
-| `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности     |
-| `alt-opinion`       | Мульти-модельные мнения с синтезом                       |
-| `sync`              | Синхронизация `ai/directives/` из npm-пакета             |
-| `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`            |
-| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов             |
-| `orient`            | Навигация по file-header и DBC-контрактам                |
-| `agents-rules`      | Инструкция по orient для AI-агентов                      |
-| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)       |
-| `verify`            | Стек-агностичные гейты из `gennady.yaml`                 |
-| `fix`               | Мутирующие fixer-команды для рабочего дерева             |
+| Команда             | Назначение                                                                             |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `commit`            | Генерация commit message из staged-изменений через AI                                  |
+| `cat`               | Вывод файлов в XML/Markdown для AI-контекста                                           |
+| `review`            | AI-ревью staged изменений                                                              |
+| `review-verify`     | Сборка промпта для верификации MR/PR discussions                                       |
+| `review-issues`     | XML-артефакт issues из MR/PR                                                           |
+| `vcs-reply`         | Постинг ответов в GitLab MR discussions                                                |
+| `vcs-draft-note`    | Управление черновиками (draft notes) в GitLab MR                                       |
+| `vcs-approve`       | Approve / отзыв approve GitLab MR через API                                            |
+| `vcs-diff`          | Список изменённых файлов или содержимое файла в MR                                     |
+| `vcs-mr-view`       | Базовая информация о MR: title, description, reviewers, approvers, labels, state       |
+| `vcs-todo`          | Закрытие pending-todo GitLab (финализация MR)                                          |
+| `vcs-pipeline`      | Пайплайн MR/ветки: метаданные (sha, iid, время, url), джобы, логи, `--list`, `--watch` |
+| `vcs-job`           | Управление джобой (status/play/cancel/retry)                                           |
+| `vcs-job-log`       | Сырой или фильтрованный лог джобы пайплайна (`--test` для одного упавшего теста)       |
+| `vcs-worktree`      | Подготовка read-only git worktree для MR review                                        |
+| `inbox`             | Интерактивный разбор входящих GitLab MR                                                |
+| `inbox-context`     | Атомарный сбор контекста MR (worktree+changeset+threads)                               |
+| `run`               | Запуск задания через AI-движок (opencode)                                              |
+| `resolve-conflicts` | Промпт для AI-разрешения merge-конфликтов                                              |
+| `remote-console`    | Зеркалирование браузерной консоли в stdout                                             |
+| `lint`              | Валидация .ts файлов: headers, anchors, DbC, invariants                                |
+| `mr-stats`          | Статистика по GitLab MR: категории, строки, сущности                                   |
+| `alt-opinion`       | Мульти-модельные мнения с синтезом                                                     |
+| `sync`              | Синхронизация `ai/directives/` из npm-пакета                                           |
+| `sync-skills`       | Синхронизация SDD-навыков в `.claude/skills/`                                          |
+| `agent-mon`         | Интерактивный дашборд мониторинга AI-агентов                                           |
+| `orient`            | Навигация по file-header и DBC-контрактам                                              |
+| `agents-rules`      | Инструкция по orient для AI-агентов                                                    |
+| `testcov`           | Визуальное дерево покрытия (vitest/jest/node:test)                                     |
+| `verify`            | Стек-агностичные гейты из `gennady.yaml`                                               |
+| `fix`               | Мутирующие fixer-команды для рабочего дерева                                           |
+| `peer`              | Агентские сессии: list/read/init/send/ask (Claude.app/OpenCode/Codex)                  |
 
 ---
 

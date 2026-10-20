@@ -123,6 +123,7 @@ export async function run(
     host: { aliases: ['host', 'vcs-host'], takesValue: true },
     url: { aliases: ['url'], takesValue: true },
     job: { aliases: ['job'], takesValue: true },
+    test: { aliases: ['test'], takesValue: true },
     raw: { aliases: ['raw'] },
   }) as Record<string, unknown>;
 
@@ -133,6 +134,7 @@ export async function run(
   };
 
   const jobSpec = args.job as string | undefined;
+  const testFilter = args.test as string | undefined;
   const rawMode = Boolean(args.raw);
 
   if (!jobSpec) {
@@ -196,7 +198,7 @@ export async function run(
     writeFileSync(tmpFile, trace, 'utf-8');
     logger.debug(`[run] [raw-log → saved] ${tmpFile}`);
 
-    const filtered = filterLog(trace);
+    const filtered = filterLog(trace, testFilter ? { test: testFilter } : {});
 
     if (!filtered.trim()) {
       deps.stdout.write('(empty — no error lines detected)\n');

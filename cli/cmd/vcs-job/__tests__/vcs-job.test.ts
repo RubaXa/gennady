@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 let mockGetPipelineImpl: (...args: any[]) => Promise<any>;
 let mockGetJobImpl: (...args: any[]) => Promise<any>;
 let mockPlayJobImpl: (...args: any[]) => Promise<any>;
+let mockRetryJobImpl: (...args: any[]) => Promise<any>;
 let mockCancelJobImpl: (...args: any[]) => Promise<any>;
 
 // ── Register module mock BEFORE importing SUT ─────────────────────────────────
@@ -23,6 +24,7 @@ mock.module('../../../../services/vcs-client/gitlab/vcs-gitlab-client.ts', {
       Pipeline = {
         getJob: async (...args: any[]) => mockGetJobImpl(...args),
         playJob: async (...args: any[]) => mockPlayJobImpl(...args),
+        retryJob: async (...args: any[]) => mockRetryJobImpl(...args),
         cancelJob: async (...args: any[]) => mockCancelJobImpl(...args),
       };
     },
@@ -248,27 +250,27 @@ describe('vcs-job run', () => {
   });
 
   // ────────────────────────────────────────────────────────────────────────────
-  // BDD: vcs-job --job <name> retry → playJob (alias)
+  // BDD: vcs-job --job <name> retry → retryJob
   // ────────────────────────────────────────────────────────────────────────────
 
-  it('should treat retry action as play alias', async () => {
-    // contract: --action retry → normalized to play → playJob API call → output status
+  it('should retry a failed job through the retry endpoint', async () => {
+    // contract: --action retry → retryJob API call → output status
 
-    // #region START_RETRY_ALIAS_SETUP_MOCKS
+    // #region START_RETRY_SETUP_MOCKS
     mockGetPipelineImpl = async () => PIPELINE_WITH_JOBS;
-    mockPlayJobImpl = async (query: any) => {
+    mockRetryJobImpl = async (query: any) => {
       assert.strictEqual(query.jobId, '12345');
-      return { ...JOB_LINT, status: 'running' };
+      return { ...JOB_LINT, status: 'pending' };
     };
 
     const result = await captureRun(
       [...BASE_ARGS, '--ref=group/repo!42', '--job=lint', '--action=retry'],
       () => ({ ...DEFAULT_CONTEXT, iid: 42 })
     );
-    // #endregion END_RETRY_ALIAS_SETUP_MOCKS
+    // #endregion END_RETRY_SETUP_MOCKS
 
     assert.match(result.stdout, /Job: lint/);
-    assert.match(result.stdout, /Status: running/);
+    assert.match(result.stdout, /Status: pending/);
     assert.strictEqual(result.exitCode, 0);
   });
 

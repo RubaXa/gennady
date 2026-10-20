@@ -77,4 +77,54 @@ describe('VcsGitlabClient observation endpoints', () => {
       }
     );
   });
+
+  it('sends a discussion body in the request body, not the query string', async () => {
+    const longBody = 'Русский комментарий '.repeat(200);
+    globalThis.fetch = mock.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const parsed = new URL(String(url));
+      assert.strictEqual(
+        parsed.pathname,
+        '/api/v4/projects/group%2Fproject/merge_requests/7/discussions'
+      );
+      assert.strictEqual(parsed.search, '');
+      assert.strictEqual(init?.method, 'POST');
+      const sent = new URLSearchParams(String(init?.body));
+      assert.strictEqual(sent.get('body'), longBody);
+      return new Response('{}', { status: 201, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    const client = new VcsGitlabClient({
+      baseUrl: 'https://gitlab.example.com/api/v4',
+      token: 'test-token',
+    });
+
+    await client.MergeDiscussions.createDiscussion({
+      project: 'group/project',
+      iid: 7,
+      body: longBody,
+    });
+    assert.strictEqual(
+      (globalThis.fetch as unknown as ReturnType<typeof mock.fn>).mock.calls.length,
+      1
+    );
+  });
+
+  it('treats an empty 204 response as success without parsing JSON', async () => {
+    globalThis.fetch = mock.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      assert.strictEqual(init?.method, 'PUT');
+      return new Response(null, { status: 204 });
+    }) as typeof fetch;
+    const client = new VcsGitlabClient({
+      baseUrl: 'https://gitlab.example.com/api/v4',
+      token: 'test-token',
+    });
+
+    assert.strictEqual(
+      await client.MergeDiscussions.publishDraftNote({
+        project: 'group/project',
+        iid: 7,
+        draftNoteId: 99,
+      }),
+      undefined
+    );
+  });
 });

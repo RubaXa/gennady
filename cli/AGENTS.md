@@ -14,13 +14,14 @@
 | vcs-approve       | [cmd/vcs-approve/](cmd/vcs-approve/)             | Approve GitLab MR через API                                                         |
 | vcs-mr-create     | [cmd/vcs-mr-create/](cmd/vcs-mr-create/)         | Создание MR/PR из текущей ветки (GitLab + GitHub)                                   |
 | vcs-mr-edit       | [cmd/vcs-mr-edit/](cmd/vcs-mr-edit/)             | Редактирование MR/PR (title, draft/ready, labels)                                   |
+| vcs-mr-view       | [cmd/vcs-mr-view/](cmd/vcs-mr-view/)             | Базовая информация о MR: title, description, reviewers, approvers, labels, state    |
 | vcs-discussions   | [cmd/vcs-discussions/](cmd/vcs-discussions/)     | Человекочитаемый вывод дискуссий MR/PR                                              |
 | vcs-react         | [cmd/vcs-react/](cmd/vcs-react/)                 | Emoji реакции на комментарии (👍 🚀 ❤️)                                             |
 | vcs-diff          | [cmd/vcs-diff/](cmd/vcs-diff/)                   | Список изменённых файлов MR или содержимое файла на head                            |
 | vcs-todo          | [cmd/vcs-todo/](cmd/vcs-todo/)                   | Закрытие pending-todo GitLab (финализация MR)                                       |
-| vcs-pipeline      | [cmd/vcs-pipeline/](cmd/vcs-pipeline/)           | Статус пайплайна MR: сводка джоб, логи упавших                                      |
+| vcs-pipeline      | [cmd/vcs-pipeline/](cmd/vcs-pipeline/)           | Пайплайн MR/ветки: метаданные, джобы, логи, --list, --watch                         |
 | vcs-job           | [cmd/vcs-job/](cmd/vcs-job/)                     | Управление джобой пайплайна (status/play/cancel/retry)                              |
-| vcs-job-log       | [cmd/vcs-job-log/](cmd/vcs-job-log/)             | Сырой/фильтрованный лог джобы пайплайна                                             |
+| vcs-job-log       | [cmd/vcs-job-log/](cmd/vcs-job-log/)             | Сырой/фильтрованный лог джобы пайплайна (`--test` — один упавший тест)              |
 | vcs-worktree      | [cmd/vcs-worktree/](cmd/vcs-worktree/)           | Подготовка read-only git worktree для MR review                                     |
 | inbox             | [cmd/inbox/](cmd/inbox/)                         | Интерактивный разбор входящих GitLab MR                                             |
 | inbox-context     | [cmd/inbox-context/](cmd/inbox-context/)         | Атомарный сбор контекста MR (worktree+changeset+threads)                            |
@@ -40,6 +41,7 @@
 | testcov           | [cmd/testcov/](cmd/testcov/)                     | Визуальное дерево покрытия тестами с авто-детекцией раннера (vitest/jest/node:test) |
 | verify            | [cmd/verify/](cmd/verify/)                       | Стек-агностичные верификационные гейты (node + golang, конфиг в gennady.yaml)       |
 | fix               | [cmd/fix/](cmd/fix/)                             | Мутирующие fixer'ы (кодоген, форматтеры) в рабочем дереве                           |
+| peer              | [cmd/peer/](cmd/peer/)                           | Агентские сессии: list/read/init/send/ask (Claude.app/OpenCode/Codex)               |
 
 **cli/utils/**: commit-gen, review-gen, cat-gen, prompts, ai-legacy, review-verifier (README.arch). Импорты из `shared/`, `services/`.
 

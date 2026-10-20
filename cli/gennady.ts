@@ -201,6 +201,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       await import('./cmd/vcs-mr-edit/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
+    case 'vcs-mr-view':
+      await import('./cmd/vcs-mr-view/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
     case 'vcs-discussions':
       await import('./cmd/vcs-discussions/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
@@ -239,6 +243,10 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       break;
     case 'sdd-migrate':
       await import('./cmd/sdd-migrate/help.ts').then((m) => m.printHelp());
+      helpLoaded = true;
+      break;
+    case 'peer':
+      await import('./cmd/peer/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;
     case 'mr-stats':
@@ -398,6 +406,10 @@ switch (command) {
     await import('./cmd/vcs-mr-edit/index.ts');
     break;
 
+  case 'vcs-mr-view':
+    await import('./cmd/vcs-mr-view/index.ts');
+    break;
+
   case 'vcs-discussions':
     await import('./cmd/vcs-discussions/index.ts');
     break;
@@ -440,6 +452,10 @@ switch (command) {
 
   case 'mr-stats':
     await import('./cmd/mr-stats/index.ts');
+    break;
+
+  case 'peer':
+    await import('./cmd/peer/index.ts');
     break;
 
   default:

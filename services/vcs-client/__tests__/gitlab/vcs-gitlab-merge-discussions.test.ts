@@ -17,14 +17,18 @@ describe('VcsGitlabMergeDiscussions — createDiscussion', () => {
 
   it('posts a general discussion with only a body', async () => {
     await disc.createDiscussion({ project: 'g/p', iid: 1, body: 'hello' });
-    const [path, init] = requestFn.mock.calls[0].arguments as [string, { method?: string }];
-    assert.ok(path.startsWith('/projects/g%2Fp/merge_requests/1/discussions?'));
+    const [path, init] = requestFn.mock.calls[0].arguments as [string, RequestInit];
+    assert.strictEqual(path, '/projects/g%2Fp/merge_requests/1/discussions');
     assert.strictEqual(init.method, 'POST');
-    assert.ok(decodeURIComponent(path).includes('body=hello'));
-    assert.ok(!path.includes('position'));
+    assert.strictEqual(
+      init.headers?.['Content-Type' as never],
+      'application/x-www-form-urlencoded'
+    );
+    assert.ok(String(init.body).includes('body=hello'));
+    assert.ok(!String(path).includes('position'));
   });
 
-  it('posts a line comment with diff position', async () => {
+  it('posts a line comment with diff position in the body, not the query string', async () => {
     await disc.createDiscussion({
       project: 'g/p',
       iid: 2,
@@ -37,13 +41,15 @@ describe('VcsGitlabMergeDiscussions — createDiscussion', () => {
         newLine: 42,
       },
     });
-    const path = decodeURIComponent(requestFn.mock.calls[0].arguments[0] as string);
-    assert.ok(path.includes('position[position_type]=text'));
-    assert.ok(path.includes('position[head_sha]=h'));
-    assert.ok(path.includes('position[new_path]=src/x.ts'));
-    assert.ok(path.includes('position[new_line]=42'));
+    const [path, init] = requestFn.mock.calls[0].arguments as [string, RequestInit];
+    assert.strictEqual(path, '/projects/g%2Fp/merge_requests/2/discussions');
+    const body = decodeURIComponent(String(init.body));
+    assert.ok(body.includes('position[position_type]=text'));
+    assert.ok(body.includes('position[head_sha]=h'));
+    assert.ok(body.includes('position[new_path]=src/x.ts'));
+    assert.ok(body.includes('position[new_line]=42'));
     // old_path defaults to new_path when omitted
-    assert.ok(path.includes('position[old_path]=src/x.ts'));
+    assert.ok(body.includes('position[old_path]=src/x.ts'));
   });
 
   it('propagates request errors', async () => {

@@ -265,7 +265,16 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
         project(fullPath: $project) {
           mergeRequest(iid: $iid) {
             headPipeline {
+              id
+              iid
+              sha
+              ref
               status
+              createdAt
+              updatedAt
+              commit {
+                title
+              }
               jobs {
                 nodes {
                   id
@@ -287,7 +296,14 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
       project?: {
         mergeRequest?: {
           headPipeline?: {
+            id?: string;
+            iid?: string;
+            sha?: string;
+            ref?: string;
             status?: string;
+            createdAt?: string;
+            updatedAt?: string;
+            commit?: { title?: string } | null;
             jobs?: { nodes?: { name?: string; status?: string }[] };
           } | null;
         } | null;
@@ -304,10 +320,21 @@ export class VcsGitlabMergeRequests extends VcsClientMergeRequests {
         status: n.status ?? '',
       }));
 
+    // #region START_PIPELINE_METADATA — copy only fields the API actually returned; absence stays absence
+    const metadata: Partial<VcsPipelineStatus> = {};
+    if (headPipeline?.id) metadata.id = String(headPipeline.id);
+    if (headPipeline?.iid) metadata.iid = String(headPipeline.iid);
+    if (headPipeline?.sha) metadata.sha = String(headPipeline.sha);
+    if (headPipeline?.ref) metadata.ref = String(headPipeline.ref);
+    if (headPipeline?.createdAt) metadata.createdAt = String(headPipeline.createdAt);
+    if (headPipeline?.updatedAt) metadata.updatedAt = String(headPipeline.updatedAt);
+    if (headPipeline?.commit?.title) metadata.commitTitle = String(headPipeline.commit.title);
+    // #endregion END_PIPELINE_METADATA
+
     logger.info(
-      `[VcsGitlabMergeRequests#getPipeline] [querying → retrieved] status=${status || 'none'} jobs=${jobs.length}`
+      `[VcsGitlabMergeRequests#getPipeline] [querying → retrieved] status=${status || 'none'} jobs=${jobs.length} iid=${metadata.iid ?? 'none'}`
     );
-    return { status, jobs };
+    return { status, jobs, ...metadata };
     // #endregion END_PIPELINE_GRAPHQL_AND_NORMALIZE
   }
 

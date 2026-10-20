@@ -16,6 +16,9 @@ console.info('  inbox             List actionable GitLab merge requests with del
 console.info('  inbox-context     Gather full MR context (worktree, changeset, threads) as JSON');
 console.info('  vcs-worktree      Prepare a read-only git worktree for MR review');
 console.info('  vcs-approve       Approve GitLab merge request via API');
+console.info(
+  '  vcs-mr-view       Show MR base info: title, description, reviewers, approvers, labels'
+);
 console.info('  review-verify     Build verification prompt from open GitLab MR or GitHub PR');
 console.info(
   '  review-issues     Build XML issues artifact from GitLab MR or GitHub PR discussions'
