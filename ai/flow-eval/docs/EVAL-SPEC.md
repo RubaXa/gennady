@@ -242,6 +242,10 @@ fixture`, а не просто «файл непуст» — V-BATCH-22 verdict 
   переисчисленным состоянием тикета — той же защитой от подделки/протухания
   (`shared/sdd/group-receipt.ts`'s `groupReceiptIssue`), которой `sdd-check`'s `checkGroupReceipts`
   уже пользуется. Решающий над `R1` (чистая структура ≠ доведённая до конца работа).
+- **`CHECKPOINTS`** (малые task-сценарии без другого quality rule): все явно объявленные
+  source-owned terminal checkpoints должны пройти. Пустой набор не создаёт quality PASS.
+  Checkpoint доказывает конечные артефакты, не последовательность действий: trajectory и judge
+  сохраняются отдельно. Провал trajectory или interruption не перекрывается этим PASS.
 - **`MIGRATION`** (оценка миграции, фаза `migration`): pass iff `FLOW_VERSION=v2` И (а) прогон не внёс
   новых находок среди СТРУКТУРНЫХ кодов `SDD_BROKEN_SPEC_REF` / `SDD_BROKEN_SPEC_ANCHOR` /
   `ERR_CLI_SDD_CHECK_READ_FAILED` относительно baseline, снятого ДО воркера (предсуществующие

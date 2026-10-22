@@ -83,6 +83,24 @@ export type QualityRuleResult = {
   detail: string;
 };
 
+/** @purpose Persist an explicit mechanical bar for task scenarios with source-owned checkpoints.
+ * No declared checkpoint means no quality claim; a trace alone is not artifact correctness. */
+export function checkCheckpointResults(
+  checkpoints: readonly { id: string; green: boolean }[]
+): QualityRuleResult | undefined {
+  if (!checkpoints.length) return undefined;
+  const failed = checkpoints
+    .filter((checkpoint) => !checkpoint.green)
+    .map((checkpoint) => checkpoint.id);
+  return {
+    rule: 'CHECKPOINTS',
+    pass: failed.length === 0,
+    detail: failed.length
+      ? `failed: ${failed.join(', ')}`
+      : `${checkpoints.length} source-owned terminal checkpoints passed`,
+  };
+}
+
 /**
  * @purpose Read the pass/fail of R1 (structural integrity) from `sdd-check --all` output.
  * @invariant Pure so it can be tested both ways without running the CLI: a "✅ clean" summary

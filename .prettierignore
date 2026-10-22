@@ -25,3 +25,5 @@ ai/flow-eval/docs/journal/RESULTS.md
 # failed spec or judge response would change the evidence being investigated.
 ai/flow-eval/results/*/judge.md
 ai/flow-eval/results/*/specs/**
+# Exact scenario bytes are SHA-256-bound in summary.json; reformatting breaks provenance.
+ai/flow-eval/results/*/scenario-input.json

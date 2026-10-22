@@ -19,7 +19,12 @@ import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
 import { resolveBasePrompt } from './prompts.ts';
-import { checkR1Structure, checkAuthoringReadiness, checkCompletion } from './quality-gate.ts';
+import {
+  checkR1Structure,
+  checkAuthoringReadiness,
+  checkCompletion,
+  checkCheckpointResults,
+} from './quality-gate.ts';
 import {
   captureBaseline,
   runMigrationChecks,
@@ -549,6 +554,13 @@ export async function runAndReportBody(
           }
         };
         const checkpoints = runCheckpoints(specs, runCheckpointCmd, Date.now());
+        if (!quality) {
+          quality = checkCheckpointResults(checkpoints);
+          if (quality)
+            console.log(
+              `  quality ${quality.rule}: ${quality.pass ? 'pass' : 'FAIL'} — ${quality.detail}`
+            );
+        }
         const traj: Trajectory = buildTrajectory(result.worker.scenarioId, tools, checkpoints);
         traj.coverage = capture.coverage;
         trajectoryGrade = gradeTrajectory(traj, scenario?.trajectoryRules);

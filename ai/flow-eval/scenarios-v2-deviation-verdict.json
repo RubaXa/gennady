@@ -5,7 +5,7 @@
     "phase": "task",
     "mode": "brief-to-artifact",
     "intent": "Record the three already-confirmed operator deviation verdicts from inputs/brief.md using the actual installed sdd-log command. Do not implement code or rewrite artifacts by hand.",
-    "acceptance": "All three existing Decision Log entries carry exactly the requested terminal verdict. Every other artifact byte is unchanged; no sidecar or new decision is created. The real sdd-log command was used and golden/verify.sh passes.",
+    "acceptance": "The already-confirmed operator decisions are exactly: COR-DL-1=accepted in specs/demo/core/core.spec.md; COR-DL-2=rework in specs/demo/core/core.3-tasks.md; COR-DL-3=rolled-back in specs/demo/core/core.task.COR-review.md. Every other artifact byte is unchanged; no sidecar or new decision is created. The real sdd-log command was used and the source-bound golden checkpoint passes.",
     "budgetMs": 120000,
     "checkpoints": [
       {

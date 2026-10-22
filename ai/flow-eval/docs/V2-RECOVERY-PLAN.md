@@ -3,6 +3,25 @@
 Date: 2026-10-22. Baseline: `396c8abdd70592b70c6ad8d8c2a0aaf15510d70b`.
 Status: implementation in progress; no repair or live-eval PASS is implied by this plan.
 
+## Latest verified state (source `89315339`, supersedes historical stop points below)
+
+- Normal full pre-commit: 4732 tests / 4724 passed / zero failed / eight skipped; coverage,
+  type-check, lint, formatting and mandatory audits passed. No bypass or baseline change.
+- Three bounded live Flash scenarios completed on clean source: authoring R1-A + trajectory
+  PASS (44 tools), bounded deviation-verdict checkpoint + trajectory PASS (17 tools), brownfield
+  routing checkpoint + trajectory PASS (11 tools). Exact input/config/model identities, raw
+  summaries, traces, spec snapshots and analyses are retained in the dated results directories.
+- Authoring uses a genuinely recovered infrastructure spec for runner ownership, not `@spec none`.
+  R1-A is pre-approval readiness, not whole-project integrity or independent semantic review.
+  This autonomous run did not dispatch a reviewer; do not claim a fresh reviewer CLEAN.
+- Deviation-verdict judge FAIL is preserved: SDK diff omitted actual CLI writes. Follow-up repair
+  reads safe bounded Git evidence from the proven fixture baseline, including worker commits;
+  custom-directory SDK behavior remains intact. Re-run this small scenario after a clean commit.
+- Worker + judge used 174593 non-cache tokens across these three runs (130856 + 43737), with
+  2814976 cache-read tokens separately. Monetary cost is unknown; provider zero is not a bill.
+- PR [#124](https://github.com/RubaXa/gennady/pull/124) targets main, remains draft pending final
+  corrective live proof and external review. No self-merge; no npm publication.
+
 ## Active continuation (after clean source `0576eb9c`)
 
 - Full normal pre-commit PASSED: 4715 tests / 4707 pass / 0 fail / 8 skipped, coverage and all

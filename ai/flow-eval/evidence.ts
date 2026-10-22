@@ -4,13 +4,14 @@
 
 import type { OpencodeClient } from '@opencode-ai/sdk';
 import { execFile } from 'node:child_process';
-import { lstat, readFile, realpath } from 'node:fs/promises';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { lstat, readFile, readlink, realpath } from 'node:fs/promises';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { createSddEvalOpenCodeClient } from './opencode-client.ts';
 import { fingerprintTail } from './observer.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
+import { proveRepoFile, readProvenRepoFile } from '../../shared/common/repo-file-identity.ts';
 import type {
   SddEvalEvent,
   SddEvalEvidenceSource,
@@ -123,21 +124,148 @@ const CHILD_TAIL_LIMIT = 2;
 const UNTRACKED_FILE_LIMIT = 24;
 const execFileAsync = promisify(execFile);
 
+/** @purpose Read Git metadata without inherited repository redirection or executable Git extensions. */
+function evidenceGit(directory: string, args: string[], overrides: string[] = []) {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (key.startsWith('GIT_')) delete env[key];
+  Object.assign(env, {
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_OPTIONAL_LOCKS: '0',
+  });
+  return execFileAsync(
+    'git',
+    [
+      '--no-pager',
+      '--no-replace-objects',
+      '-c',
+      'core.fsmonitor=false',
+      '-c',
+      'core.hooksPath=/dev/null',
+      ...overrides,
+      ...args,
+    ],
+    {
+      cwd: directory,
+      env,
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer: 256 * 1024,
+    }
+  );
+}
+
+/** @purpose Supplement SDK snapshots only for a proven provisioned fixture; custom directories keep their SDK contract. */
+async function fixtureGitEvidence(directory: string, knownBaseline?: string) {
+  let root: string;
+  let baseline = knownBaseline;
+  try {
+    root = await realpath(directory);
+    const metadata = await lstat(join(root, '.git'));
+    if (!metadata.isDirectory() || metadata.isSymbolicLink())
+      throw new Error('not a plain fixture repository');
+    if ((await evidenceGit(root, ['rev-parse', '--show-toplevel'])).stdout.trim() !== root)
+      throw new Error('repository escaped the sandbox');
+    if (!baseline) {
+      const roots = (await evidenceGit(root, ['rev-list', '--max-parents=0', 'HEAD'])).stdout
+        .trim()
+        .split('\n');
+      if (roots.length !== 1 || !/^[0-9a-f]{40}$/.test(roots[0] ?? '')) return undefined;
+      const candidate = roots[0]!;
+      if (
+        (await evidenceGit(root, ['show', '-s', '--format=%s', candidate])).stdout.trim() !==
+        'chore: initialize eval fixture'
+      )
+        return undefined;
+      baseline = candidate;
+    }
+  } catch (cause) {
+    if (knownBaseline)
+      throw new Error('Git diff evidence lost its bound fixture repository', { cause });
+    return undefined;
+  }
+  try {
+    for (const path of ['shallow', 'info/grafts']) {
+      const exists = await lstat(join(root, '.git', path)).then(
+        () => true,
+        (cause: NodeJS.ErrnoException) => {
+          if (cause.code === 'ENOENT') return false;
+          throw cause;
+        }
+      );
+      if (exists) throw new Error('fixture ancestry is shallow or grafted');
+    }
+    await evidenceGit(root, ['merge-base', '--is-ancestor', baseline, 'HEAD']);
+    // --no-textconv/--no-ext-diff do not disable clean/process filters used when Git hashes worktree files.
+    const filterKeys = await evidenceGit(root, [
+      'config',
+      '--local',
+      '--includes',
+      '--name-only',
+      '-z',
+      '--get-regexp',
+      '^filter\\..*\\.(clean|smudge|process|required)$',
+    ]).then(
+      ({ stdout }) => stdout.split('\0').filter(Boolean),
+      (cause: { code?: number }) => {
+        if (cause.code === 1) return [];
+        throw cause;
+      }
+    );
+    const filters = new Set(filterKeys.map((key) => key.slice(7, key.lastIndexOf('.'))));
+    const overrides = [...filters].flatMap((name) => [
+      '-c',
+      `filter.${name}.clean=`,
+      '-c',
+      `filter.${name}.smudge=`,
+      '-c',
+      `filter.${name}.process=`,
+      '-c',
+      `filter.${name}.required=false`,
+    ]);
+    const { stdout } = await evidenceGit(
+      root,
+      [
+        'diff',
+        '--no-ext-diff',
+        '--no-textconv',
+        '--no-renames',
+        '--no-color',
+        '--patch',
+        baseline,
+        '--',
+      ],
+      overrides
+    );
+    return {
+      baseline,
+      evidence: stdout
+        ? `GIT_FIXTURE_BASELINE ${baseline} → working tree (including worker commits)\n${stdout}`
+        : '',
+    };
+  } catch (cause) {
+    throw new Error('Git diff evidence failed or exceeded its bounded read', { cause });
+  }
+}
+
 function boundedFileContent(value: string): string {
   if (value.length <= DIFF_FILE_CONTENT_LIMIT) return value;
   return `${value.slice(0, DIFF_FILE_CONTENT_LIMIT)}\n… <truncated>`;
 }
 
-async function boundedUntrackedEvidence(directory?: string): Promise<string> {
+async function boundedUntrackedEvidence(directory?: string, strict = false): Promise<string> {
   if (!directory) return '';
   try {
     const root = await realpath(directory);
-    const { stdout } = await execFileAsync(
-      'git',
-      ['ls-files', '--others', '--exclude-standard', '-z'],
-      { cwd: root, encoding: 'utf8', maxBuffer: 512 * 1024 }
-    );
-    const paths = stdout.split('\0').filter(Boolean).slice(0, UNTRACKED_FILE_LIMIT);
+    const { stdout } = await evidenceGit(root, [
+      'ls-files',
+      '--others',
+      '--exclude-standard',
+      '-z',
+    ]);
+    const allPaths = stdout.split('\0').filter(Boolean);
+    const paths = allPaths.slice(0, UNTRACKED_FILE_LIMIT);
     const blocks: string[] = [];
     for (const path of paths) {
       if (isAbsolute(path) || path.split(/[\\/]/).includes('..')) continue;
@@ -145,8 +273,22 @@ async function boundedUntrackedEvidence(directory?: string): Promise<string> {
       const inside = relative(root, absolute);
       if (!inside || inside.startsWith(`..${sep}`) || isAbsolute(inside)) continue;
       const info = await lstat(absolute);
+      if (strict && info.isSymbolicLink()) {
+        if ((await realpath(dirname(absolute))) !== dirname(absolute))
+          throw new Error('untracked parent alias is unsafe');
+        blocks.push(`FILE ${path} (untracked symlink)\nAFTER\nlink → ${await readlink(absolute)}`);
+        continue;
+      }
       if (!info.isFile() || info.isSymbolicLink()) continue;
-      const content = await readFile(absolute, 'utf8');
+      let content: string;
+      if (strict) {
+        if (info.size > 1024 * 1024) throw new Error('untracked file exceeds bounded read');
+        const proof = proveRepoFile(root, path);
+        if (!proof.ok) throw new Error('untracked file path is unsafe');
+        const read = readProvenRepoFile(proof.identity);
+        if (!read.ok) throw new Error('untracked file changed identity while reading');
+        content = read.content;
+      } else content = await readFile(absolute, 'utf8');
       blocks.push(
         [
           `FILE ${path} (untracked)`,
@@ -155,8 +297,11 @@ async function boundedUntrackedEvidence(directory?: string): Promise<string> {
         ].join('\n')
       );
     }
+    if (allPaths.length > paths.length) blocks.push('… <untracked evidence truncated>');
     return blocks.join('\n\n');
-  } catch {
+  } catch (cause) {
+    if (strict)
+      throw new Error('Git diff evidence could not read bounded untracked files', { cause });
     return '';
   }
 }
@@ -266,6 +411,8 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
   readonly #directory?: string;
   readonly #readEvents: SddEvalEventReader;
   readonly #registry: SddEvalSessionDirectoryRegistry;
+  /** @purpose Preserve a proven fixture baseline across worker commits and later metadata loss. */
+  readonly #fixtureBaselines = new Map<string, string>();
 
   constructor(options: SddEvalEvidenceOptions = {}) {
     this.#directory = options.directory;
@@ -379,25 +526,34 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     return this.#readEvents(sessionId, this.#sessionDirectory(sessionId));
   }
 
+  /** @purpose Read bounded fixture Git evidence or the existing custom-directory SDK projection.
+   * @param sessionId Session bound to the evaluated directory.
+   * @returns Baseline-to-worktree evidence; identified fixture read failures throw, never return false-empty. */
   async readDiff(sessionId: string): Promise<string> {
     const directory = this.#sessionDirectory(sessionId);
-    const result = await this.#client.session.diff({
-      path: { id: sessionId },
-      query: { directory },
-    });
-    if (result.error || !result.data) throw new Error(errorMessage(result));
-    const trackedEvidence = result.data
-      .map((diff) => {
-        const before = boundedFileContent(diff.before);
-        const after = boundedFileContent(diff.after);
-        return [
-          `FILE ${diff.file} (+${diff.additions}/-${diff.deletions})`,
-          before ? `BEFORE\n${before}` : 'BEFORE\n<empty>',
-          after ? `AFTER\n${after}` : 'AFTER\n<empty>',
-        ].join('\n');
-      })
-      .join('\n\n');
-    const untrackedEvidence = await boundedUntrackedEvidence(directory);
+    const fixture = await fixtureGitEvidence(directory, this.#fixtureBaselines.get(directory));
+    if (fixture) this.#fixtureBaselines.set(directory, fixture.baseline);
+    let trackedEvidence: string;
+    if (fixture) trackedEvidence = fixture.evidence;
+    else {
+      const result = await this.#client.session.diff({
+        path: { id: sessionId },
+        query: { directory },
+      });
+      if (result.error || !result.data) throw new Error(errorMessage(result));
+      trackedEvidence = result.data
+        .map((diff) => {
+          const before = boundedFileContent(diff.before);
+          const after = boundedFileContent(diff.after);
+          return [
+            `FILE ${diff.file} (+${diff.additions}/-${diff.deletions})`,
+            before ? `BEFORE\n${before}` : 'BEFORE\n<empty>',
+            after ? `AFTER\n${after}` : 'AFTER\n<empty>',
+          ].join('\n');
+        })
+        .join('\n\n');
+    }
+    const untrackedEvidence = await boundedUntrackedEvidence(directory, fixture !== undefined);
     const evidence = [trackedEvidence, untrackedEvidence].filter(Boolean).join('\n\n');
     return evidence.length <= DIFF_TOTAL_LIMIT
       ? evidence

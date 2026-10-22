@@ -4,7 +4,12 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSddCheckResult, checkCompletion, checkR1Structure } from '../quality-gate.ts';
+import {
+  parseSddCheckResult,
+  checkCompletion,
+  checkR1Structure,
+  checkCheckpointResults,
+} from '../quality-gate.ts';
 import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -16,6 +21,15 @@ import {
 } from '../../../shared/sdd/group-receipt.ts';
 
 describe('parseSddCheckResult (R1, both outcomes)', () => {
+  it('declared task checkpoints are a mechanical quality bar, not the judge or trace presence', () => {
+    assert.equal(checkCheckpointResults([]), undefined);
+    assert.equal(checkCheckpointResults([{ id: 'exact-bytes', green: true }])?.pass, true);
+    assert.equal(checkCheckpointResults([{ id: 'exact-bytes', green: false }])?.pass, false);
+    assert.match(
+      checkCheckpointResults([{ id: 'exact-bytes', green: false }])!.detail,
+      /exact-bytes/
+    );
+  });
   it('a real nonzero checker exit wins over a zero-error stdout summary', async () => {
     const root = mkdtempSync(join(tmpdir(), 'sdd-r1-exit-'));
     const bin = join(root, 'node_modules/.bin/gennady');
