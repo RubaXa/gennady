@@ -12,6 +12,7 @@ import { basename, join, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { availableParallelism, tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { safeVerifyText } from '../shared/verify/reporting/report-safety.ts';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '..');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
@@ -46,7 +47,7 @@ const TEST_ROOTS = [
   'test',
   'utils',
 ] as const;
-const TEST_FILE = /\.test\.ts$/;
+const TEST_FILE = /\.test\.(?:ts|mjs)$/;
 // D-60: agent-inbox, agent-mon are experimental products not shipping in v2 yet. Their whole test
 // surface is carved into its own topology layer — still discovered and classified (so the
 // exhaustiveness contract holds), but excluded from `deterministic`/`coverage` and run only via
@@ -85,6 +86,35 @@ const OUTER_TEST_CONCURRENCY = Math.min(10, Math.max(6, availableParallelism()))
 // concurrency. 4 matches the archived precedent (`51195c48`, `--test-concurrency=4`) and keeps
 // wall time close to the pre-PR#36 baseline instead of paying the ×4.4–8.0 cost of `=1` everywhere.
 const LOCAL_PARTITION_CONCURRENCY = 4;
+const DEFAULT_FILE_TIMEOUT_MS = 30_000;
+// Owned whole-file budgets, not describe/test timeouts. These mandatory local suites cross real
+// build/install or historical Git/Swift process boundaries and exceed 30s under sibling load.
+const OWNED_FILE_BUDGETS: Readonly<
+  Record<
+    string,
+    {
+      timeoutMs: number;
+      owner: string;
+      reason: string;
+    }
+  >
+> = {
+  'scripts/__tests__/declared-exports.test.ts': {
+    timeoutMs: 360_000,
+    owner: 'INFRA-NPM-PUBLISH',
+    reason: 'real offline build/pack/install/import and installed worker acceptance (~180s)',
+  },
+  'ai/flow-eval/scripts/__tests__/release-migration-scopes.test.ts': {
+    timeoutMs: 120_000,
+    owner: 'AI-SKILLS',
+    reason: 'complete cutover/history proofs and isolated Git corruption fixtures',
+  },
+  'plugins/swift/__tests__/swift-hardening.test.ts': {
+    timeoutMs: 120_000,
+    owner: 'CLI-VERIFY',
+    reason: 'real Swift package fixture subprocesses under bounded sibling load',
+  },
+};
 const V2_GATE_EXCLUDED_NAMES = new Set([
   'http-server.test.ts',
   'eval-driver.test.ts',
@@ -348,6 +378,12 @@ function assertTopology(): TestTopology {
   if (issues.length > 0)
     throw new Error(`[test-topology] invalid classification:\n${issues.join('\n')}`);
   for (const layer of TEST_LAYERS) topology[layer].sort();
+  for (const file of Object.keys(OWNED_FILE_BUDGETS)) {
+    if (!topology.local.includes(file))
+      throw new Error(
+        `[test-topology] owned file budget must remain mandatory local/noncoverage: ${file}`
+      );
+  }
   return topology;
 }
 
@@ -484,6 +520,31 @@ export function runNodeTests(
   files: string[],
   options: { coverage: boolean; networkGuard: boolean; concurrency: number }
 ): TestRunResult {
+  if (options.coverage && files.some((file) => OWNED_FILE_BUDGETS[file]))
+    throw new Error('[test-topology] owned local file budgets cannot split c8 observed coverage');
+  const groups = new Map<number, string[]>();
+  for (const file of files) {
+    const timeoutMs = OWNED_FILE_BUDGETS[file]?.timeoutMs ?? DEFAULT_FILE_TIMEOUT_MS;
+    const group = groups.get(timeoutMs) ?? [];
+    group.push(file);
+    groups.set(timeoutMs, group);
+  }
+  const stats: TestRunStats[] = [];
+  // Only noncoverage has multiple budgets. The observed corpus stays one c8 invocation so later
+  // spawns cannot overwrite its report; no file is omitted or repeated by this grouping.
+  for (const [timeoutMs, targets] of [...groups].sort(([left], [right]) => left - right)) {
+    const result = runNodeTestBatch(targets, { ...options, timeoutMs });
+    if (result.stats !== undefined) stats.push(result.stats);
+    if (result.status !== 0)
+      return { status: result.status, ...(stats.length ? { stats: aggregateStats(stats) } : {}) };
+  }
+  return { status: 0, stats: aggregateStats(stats) };
+}
+
+function runNodeTestBatch(
+  files: string[],
+  options: { coverage: boolean; networkGuard: boolean; concurrency: number; timeoutMs: number }
+): TestRunResult {
   const reporterDirectory = mkdtempSync(join(tmpdir(), 'gennady-test-topology-'));
   const reporterPath = join(reporterDirectory, 'runner.tap');
   const nodeArgs = [
@@ -498,7 +559,7 @@ export function runNodeTests(
     ...(options.coverage ? ['--import', COVERAGE_CHILD_ENV_GUARD_IMPORT] : []),
     ...(options.networkGuard ? ['--import', UNIT_NETWORK_GUARD_IMPORT] : []),
     '--experimental-test-module-mocks',
-    '--test-timeout=30000',
+    `--test-timeout=${options.timeoutMs}`,
     ...files,
   ];
   const args = options.coverage
@@ -530,6 +591,7 @@ export function runNodeTests(
       );
       return { status: status === 0 ? 1 : status };
     }
+    if (status !== 0) process.stderr.write(failureDiagnostic(output));
     const metric = (name: string): number | null => {
       const match = output.match(new RegExp(`^# ${name} (\\d+)\\s*$`, 'm'));
       return match?.[1] === undefined ? null : Number(match[1]);
@@ -551,6 +613,30 @@ export function runNodeTests(
   } finally {
     rmSync(reporterDirectory, { recursive: true, force: true });
   }
+}
+
+/** @purpose Retain bounded, redacted failing-case/error context before deleting the raw TAP file. */
+function failureDiagnostic(output: string): string {
+  const blocks =
+    output.match(/^[ \t]*not ok[^\n]*(?:\n[ \t]+---\n[\s\S]*?\n[ \t]+\.\.\.)?/gm) ?? [];
+  const decode = (bytes: Buffer) => bytes.toString('utf8').replace(/^\uFFFD|\uFFFD$/gu, '');
+  const compact = blocks
+    .slice(0, 16)
+    .map((block) => {
+      // Redact before byte truncation so a split credential cannot survive as an unrecognized prefix.
+      const safe = safeVerifyText(block, PROJECT_ROOT);
+      const bytes = Buffer.from(safe);
+      return bytes.length <= 1024
+        ? safe
+        : `${decode(bytes.subarray(0, 768))}\n[context truncated]\n${decode(bytes.subarray(-192))}`;
+    })
+    .join('\n');
+  const text = `[test-topology] node:test failure diagnostic (bounded):\n${compact || 'No not-ok context was present in the TAP report.'}\n`;
+  const bytes = Buffer.from(text);
+  const marker = '\n[diagnostic truncated]\n';
+  return bytes.length <= 8192
+    ? text
+    : decode(bytes.subarray(0, 8192 - Buffer.byteLength(marker))) + marker;
 }
 
 function aggregateStats(stats: readonly TestRunStats[]): TestRunStats {
@@ -589,6 +675,7 @@ function help(): string {
     `  coverage black-box local+external uses concurrency=${LOCAL_PARTITION_CONCURRENCY} (REL-7).`,
     `  deterministic runs local as its own partition at concurrency=${LOCAL_PARTITION_CONCURRENCY} (REL-7),`,
     `  then contract+external+unit at bounded outer concurrency=${OUTER_TEST_CONCURRENCY}. Subprocess-heavy suites own inner bounds.`,
+    '  File deadlines: default 30s; owned local Git/Swift suites 120s; offline package acceptance 360s.',
     '  --help    Show this help.',
   ].join('\n');
 }

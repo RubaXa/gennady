@@ -1,0 +1,2 @@
+VERDICT: pass
+Both required specs exist and preserve the `nth(n)` API, 0–77 bounds, `F(0)=0`, `F(1)=1`, and all requested negative cases. Authoring checks were clean; the `--all` no-tickets result is expected before scaffold, not a required red gate. Independent review was corrected and returned CLEAN. Approval #1 is explicitly pending with the reviewed artifacts present, and state is completed with no stuck worker, disabled gate, root tasks, migration directory, or forged approval.

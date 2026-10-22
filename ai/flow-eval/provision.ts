@@ -19,6 +19,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { TEMPLATES } from '../../shared/sdd/templates.ts';
+import { fixtureToolchainSpec } from './fixture-toolchain-spec.ts';
+import { BROWNFIELD_ROUTING_FILES } from './fixtures/brownfield-routing.ts';
 import {
   bindEvalDependencies,
   prepareEvalDependencyStore,
@@ -27,6 +29,7 @@ import {
   type EvalDependencyStore,
 } from './dependency-store.ts';
 import type { SddEvalFixtureId, SddEvalScenario } from './types.ts';
+import { DEVIATION_VERDICT_FILES } from './fixtures/deviation-verdict.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -383,6 +386,22 @@ const exitCode = await new Promise((resolveExit) => {
   child.once('exit', (code) => resolveExit(code ?? 1));
 });
 process.exitCode = exitCode;
+`;
+
+// The wrapper is deliberately opaque to autodetection. Declare its actual stdout protocol,
+// rather than weakening required statistics or teaching the plugin one fixture-specific filename.
+const REAL_VERIFY_CONFIG = `verify:
+  presets:
+    node:
+      phases:
+        unit:
+          include: [code, unit, coverage]
+      steps:
+        unit:
+          testStats:
+            policy: required
+            protocol: node-test-summary-v1
+            runner: node:test
 `;
 
 const REAL_TEST_RUNNER = `import { spawn } from 'node:child_process';
@@ -980,13 +999,21 @@ echo "PASS"
 
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
+  'v2-brownfield-routing': BROWNFIELD_ROUTING_FILES,
+  'deviation-verdict': DEVIATION_VERDICT_FILES,
   'fibonacci-library': {
     '.gitignore': REAL_GITIGNORE,
     'inputs/brief.md':
       '# Fibonacci brief\nProvide a reusable TypeScript `nth(n: number): number` API. Accept only integer indexes from 0 through 77, with F(0)=0 and F(1)=1. Reject negative, non-integer, and greater-than-77 inputs with explicit errors. Keep the API pure and document every edge case. Author specifications only; no product code.\n',
     'README.md': '# Fibonacci library\n\nImplement the requested API and tests.\n',
-    'scripts/test.mjs': REAL_TEST_RUNNER,
-    'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
+    'gennady.yaml': REAL_VERIFY_CONFIG,
+    'scripts/test.mjs':
+      '// @file: Node fixture test runner.\n// @spec: ET\n// @consumers: npm test\n\n' +
+      REAL_TEST_RUNNER,
+    'scripts/test-coverage.mjs':
+      '// @file: c8 fixture coverage runner.\n// @spec: ET\n// @consumers: npm run test:coverage\n\n' +
+      REAL_COVERAGE_RUNNER,
+    'specs/eval-tools/eval-tools.spec.md': fixtureToolchainSpec(),
     'tsconfig.json': REAL_TS_CONFIG,
     'package.json':
       JSON.stringify(
@@ -1016,7 +1043,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
         2
       ) + '\n',
     'specs/README.md':
-      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n',
+      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`eval-tools`](./eval-tools/eval-tools.spec.md) | infrastructure | 🚧 | Recovered existing fixture runners; no product approval implied |\n',
   },
   'tic-tac-toe': {
     '.gitignore': REAL_GITIGNORE,
@@ -1028,6 +1055,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'specs/tic-tac-toe/engine/engine.spec.md': canonicalModule('tic-tac-toe', 'ENG', 'engine'),
     'src/game.ts':
       '// @file: Deterministic tic-tac-toe game types.\n// @spec: ENG\n// @consumers: tic-tac-toe runtime\n\nexport type Mark = "X" | "O";\nexport type Board = Array<Mark | null>;\n',
+    'gennady.yaml': REAL_VERIFY_CONFIG,
     'scripts/test.mjs':
       '// @file: Test runner for the tic-tac-toe fixture.\n// @spec: ENG\n// @consumers: npm test\n\n' +
       REAL_TEST_RUNNER,
@@ -1096,6 +1124,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       'src/slugify.ts'
     ),
     'src/slugify.ts': 'export function slugify(value: string): string { return value; }\n',
+    'gennady.yaml': REAL_VERIFY_CONFIG,
     'scripts/test.mjs': REAL_TEST_RUNNER,
     'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
     'tsconfig.json': REAL_TS_CONFIG,
@@ -1148,6 +1177,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       'flowchart LR\n  caller --> calc[compute F(n)]\n  calc --> caller'
     ),
     'src/nth.ts': 'export function nth(n: number): number {\n  return n;\n}\n',
+    'gennady.yaml': REAL_VERIFY_CONFIG,
     'scripts/test.mjs': REAL_TEST_RUNNER,
     'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
     'tsconfig.json': REAL_TS_CONFIG,

@@ -2,8 +2,13 @@
 // @spec: SHARED
 // @consumers: sdd-check.cmd, sdd-state.cmd, ticket-resolve
 
-import { statSync } from 'node:fs';
+import { lstatSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
+import { proveRepoFile, readProvenRepoFile } from '../common/repo-file-identity.ts';
+import { isTicket, isLegacyTicket } from './check.ts';
+import { legacyHeaderBody } from './anchor-inject.ts';
+import { extractSection } from './section.ts';
+import { parseMeta } from './tracker.ts';
 
 /**
  * @purpose SDD flow generation — v1 (`tasks/` layout) or v2 (co-located specs + `*.3-tasks.md`).
@@ -12,16 +17,46 @@ import { join, resolve, sep } from 'node:path';
 export type FlowVersion = 'v1' | 'v2';
 
 /**
- * @purpose Detect the SDD flow version from the project layout — a `tasks/` directory marks v1.
- * @invariant The `tasks/` directory is the single v1 marker; its absence means the repo is on v2.
+ * @purpose Detect actual SDD tickets under tasks without treating ordinary build tasks or documentation as V1.
+ * @invariant Canonical malformed legacy names and unreadable/unsafe inventory remain migration-blocked.
  * @param root Absolute project root.
- * @returns `'v1'` when `<root>/tasks/` is a directory, else `'v2'`.
+ * @returns V1 for proven legacy ticket signals or unsafe inventory, otherwise V2.
  */
 export function detectFlowVersion(root: string): FlowVersion {
   try {
-    return statSync(join(root, 'tasks')).isDirectory() ? 'v1' : 'v2';
+    const tasks = lstatSync(join(root, 'tasks'));
+    if (tasks.isSymbolicLink()) return 'v1';
+    if (!tasks.isDirectory()) return 'v2';
+  } catch (cause) {
+    return ['ENOENT', 'ENOTDIR'].includes((cause as NodeJS.ErrnoException).code ?? '')
+      ? 'v2'
+      : 'v1';
+  }
+  function containsTicket(directory: string): boolean {
+    for (const entry of readdirSync(join(root, directory), { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isSymbolicLink()) return true;
+      if (entry.isDirectory()) {
+        if (containsTicket(path)) return true;
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+      if (/\.task-[0-9]+\.md$/u.test(entry.name)) return true;
+      const proven = proveRepoFile(root, path);
+      if (!proven.ok) return true;
+      const read = readProvenRepoFile(proven.identity);
+      if (!read.ok) return true;
+      if (isTicket(read.content) || isLegacyTicket(read.content)) return true;
+      const meta = extractSection(read.content, 'META');
+      const body = meta.status === 'ok' ? meta.content : legacyHeaderBody(read.content, 'META');
+      if (body !== null && parseMeta(body).taskId !== null) return true;
+    }
+    return false;
+  }
+  try {
+    return containsTicket('tasks') ? 'v1' : 'v2';
   } catch {
-    return 'v2';
+    return 'v1';
   }
 }
 

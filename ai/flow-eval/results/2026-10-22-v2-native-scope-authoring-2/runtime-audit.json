@@ -1,0 +1,14 @@
+{
+  "method": "read-only SDK session/message metadata after the run; no model call",
+  "providerID": "llm-proxy",
+  "modelID": "deepseek-v4-flash",
+  "enabledProviders": ["llm-proxy"],
+  "sessions": [
+    { "role": "worker", "id": "ses_e9ba7a8d0ffeZVBAjiPMx9PASc", "assistantMessages": 43 },
+    { "role": "reviewer-1", "id": "ses_e9ba4749dffefK6F7btUxdLumx", "assistantMessages": 2 },
+    { "role": "reviewer-2", "id": "ses_e9ba37f33ffe8i9UZVF7TdUfuJ", "assistantMessages": 2 },
+    { "role": "judge", "id": "ses_e9ba1eb1fffe76M40LbTqodrzx", "assistantMessages": 1 }
+  ],
+  "allObservedAssistantModelsMatch": true,
+  "monetaryCost": "unknown; recorded usage.cost=0 is not an invoice"
+}

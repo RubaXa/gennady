@@ -788,3 +788,65 @@ not `R-COMPLETE`— a pre-existing`cli.ts` quirk (`quality`is only overwritten b
 fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; the terminal log line
 (`quality R-COMPLETE: pass`) is the authoritative record of what actually ran.
 - **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain-4`
+
+## 2026-10-22 — `v2-native-scope-authoring` (fail/fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=40
+- **Числа:** действий=32, время=~1 мин, токены=104238
+- **Гипотеза/зачем:** проверить реальный native-scope маршрут после восстановления ориентации,
+  сохранив действия агента и конечные артефакты. Первый exploratory запуск сделан на dirty source:
+  fingerprint сохранён, но это не воспроизводимый clean-commit baseline для строгого A/B.
+- **Итог:** FAIL: exact-path orientation прошла, модульный шаг повторил несовместимый `--scope`
+  (exit 4), затем агент вызвал запрещённый help. 17 read + 15 bash, ноль Write/Edit/reviewer;
+  спеки остались skeleton, шесть структурных ошибок. Сохранены исходные trace/summary/judge и
+  точные копии спек; разбор и корректирующие гипотезы — в ANALYSIS.md этой записи. Не выдавать
+  help за verification; следующий qualified run — после отдельного clean-source commit.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-native-scope-authoring`
+
+## 2026-10-22 — `v2-native-scope-authoring` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=40
+- **Числа:** действий=74, время=~6 мин, токены=164831
+- **Гипотеза/зачем:** проверить исправленный module orientation на чистом `0576eb9c` и сохранить полную траекторию с двумя независимыми review.
+- **Итог:** механический FAIL, exit 1: 74 tool actions, обе спеки написаны; MAJOR о приоритете TypeError/RangeError исправлен, повторный reviewer CLEAN (проверен публичный SDK-ответ), Approval #1 pending. R1/сплошной checkpoint упали на двух неразрешённых владельцах служебных runner-ов исходной фикстуры. Также `--all` требует tickets до наступления decomposition. Это артефакт fixture/oracle, не доказанный полный PASS и не повод переписывать старую оценку. См. ANALYSIS.md; денежная стоимость неизвестна, cache-read учитывается отдельно.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-native-scope-authoring-2`
+
+## 2026-10-22 — `v2-native-scope-authoring` (gate=PASS; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=40
+- **Числа:** действий=44, время=~4 мин, токены=99601
+- **Гипотеза/зачем:** чистый `89315339`: восстановленная инфраструктурная спека и фазовый R1-A вместо требования тикетов до decomposition.
+- **Итог:** R1-A и trajectory PASS, 4/4 terminal checkpoints; judge pass. Реальные 37 bash/2 read/4 write/1 edit, без независимого reviewer. Это готовность авторинга, не semantic CLEAN и не строгий A/B. Worker 99601 + judge 26265 токенов; cache-read отдельно, деньги неизвестны. Подробности и exact input в ANALYSIS.md.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-native-scope-authoring-3`
+
+## 2026-10-22 — `v2-bounded-deviation-verdict` (gate=PASS; judge=fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=40
+- **Числа:** действий=17, время=<1 мин, токены=16334
+- **Гипотеза/зачем:** чистый `89315339`: реальные CLI verdict-изменения трёх владельцев Decision Log с побайтовым source-bound checkpoint.
+- **Итог:** checkpoint 1/1 и trajectory PASS; judge FAIL сохранён: SDK diff оказался пустым для CLI-правок, acceptance не перечислял точные ID/verdict. Обнаружен дефект видимости доказательств в harness, не переоцениваем старый запуск. Worker 16334 + judge 8761 токен; деньги неизвестны. Исправление требует нового clean-source прогона.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-bounded-deviation-verdict`
+
+## 2026-10-22 — `v2-brownfield-routing` (gate=PASS; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=40
+- **Числа:** действий=11, время=<1 мин, токены=14921
+- **Гипотеза/зачем:** чистый `89315339`: Grunt tasks/ и внутренние doc aliases не должны отправлять обычный проект на миграцию.
+- **Итог:** source-bound checkpoint 1/1, trajectory и judge PASS. Реальные sdd-state/sdd-task/sync dry-run, обе ссылки созданы, build-файл неизменен, synced manifest отсутствует. Worker 14921 + judge 8711 токенов; деньги неизвестны. Это узкий routing-smoke, не полный продуктовый цикл.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-brownfield-routing`
+
+## 2026-10-22 — `v2-bounded-deviation-verdict` (gate=PASS; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=16
+- **Числа:** действий=9, время=<1 мин, токены=12340
+- **Гипотеза/зачем:** чистый `b29ecd3b`: реальный Git diff для CLI-правок вместо пустого SDK diff; точные operator ID/verdict в acceptance.
+- **Итог:** CHECKPOINTS 1/1, trajectory и judge PASS. Девять реальных тулов; ровно три требуемых verdict-перехода, остальные байты неизменны. Точный diff судьи сохранён; старый judge FAIL не переоценён. Worker 12340 + judge 4435 = 16775 non-cache, cache-read 71808 отдельно, деньги UNKNOWN. Не строгий single-variable cost A/B.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-bounded-deviation-verdict-2`
+
+## 2026-10-22 — `v2-brownfield-routing` (gate=PASS; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=16
+- **Числа:** действий=9, время=<1 мин, токены=13532
+- **Гипотеза/зачем:** чистый `b29ecd3b`: повторить реальный brownfield route и сохранить явный CHECKPOINTS quality вместо unproven в таблице.
+- **Итог:** CHECKPOINTS 1/1, trajectory и judge PASS. Девять тулов, actual state/task/dry-sync, exact aliases и неизменные build-файлы. Worker 13532 + judge 6220 = 19752 non-cache, cache-read 96512 отдельно, деньги UNKNOWN. Узкий routing-smoke, не whole-project completion.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-brownfield-routing-2`

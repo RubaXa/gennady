@@ -1,7 +1,7 @@
 # ai/skills — навыки агентов
 
-12 навыков: 8 SDD-навыков, agent-inbox, opencode-get-session, prd-interview и
-workspace-permission-setup.
+13 навыков: 8 SDD-навыков, agent-inbox, opencode-get-session, prd-interview,
+session-context-recover и workspace-permission-setup.
 
 ## SDD Flow v2
 
@@ -74,8 +74,10 @@ authoring flow; V2→V2/V3 migration route не существует.
 
 ## Синхронизация
 
-Команды синхронизации устанавливают только SDD v2. Если проект всё ещё содержит `tasks/`, они
-fail-closed останавливаются до записи директив или навыков. Сначала выполните
+Команды синхронизации устанавливают только SDD v2. Если в `tasks/` найдены SDD v1 tickets или
+inventory невозможно безопасно прочитать, они fail-closed останавливаются до записи директив или
+навыков. Обычный build-каталог `tasks/` (включая README и Grunt-задачи) не требует миграции или
+удаления. Сначала устраните небезопасные/нечитаемые пути; при наличии SDD v1 tickets выполните
 `npx gennady sdd-migrate bootstrap .` (dry-run), затем `--write`: bootstrap из текущего npm package
 удаляет только V1 tooling, идентифицированный manifest/exact hash, и ставит полный свежий V2 runtime
 для migration. После этого

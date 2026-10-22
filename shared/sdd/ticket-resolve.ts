@@ -2,8 +2,8 @@
 // @spec: SHARED
 // @consumers: sdd-task.cmd, sdd-log.cmd, sdd-check.cmd, sdd-sync.cmd
 
-import { readdirSync, realpathSync } from 'node:fs';
-import { resolve, join, relative } from 'node:path';
+import { lstatSync, readdirSync, realpathSync } from 'node:fs';
+import { isAbsolute, resolve, join, relative, sep } from 'node:path';
 import {
   proveRepoFile,
   readProvenRepoFile,
@@ -66,7 +66,25 @@ type StrictTicketCorpus =
   | { ok: true; refs: Array<TicketCorpusRef & { identity: RepoFileIdentity }> }
   | { ok: false; detail: string };
 
-/** @purpose Scan the Task-ID corpus fail-closed: unreadable entries and non-skipped symlinks invalidate the lookup. */
+/** @purpose Prove an alias adds no corpus content beyond its independently scanned canonical target. */
+function aliasTargetIsCovered(root: string, alias: string): boolean {
+  try {
+    const target = realpathSync(join(root, alias));
+    const rel = relative(root, target);
+    if (isAbsolute(rel) || rel === '..' || rel.startsWith(`..${sep}`)) return false;
+    if (
+      rel.split(sep).some((part) => part.startsWith('.') || SKIP_DIRS.has(part)) ||
+      isSddEvidencePath(rel)
+    )
+      return false;
+    const stat = lstatSync(target);
+    return stat.isDirectory() || (stat.isFile() && rel.endsWith('.md'));
+  } catch {
+    return false;
+  }
+}
+
+/** @purpose Scan canonical Task-ID files once; unreadable entries and aliases without covered targets fail closed. */
 function collectTicketRefsStrict(root: string): StrictTicketCorpus {
   let canonicalRoot: string;
   try {
@@ -88,7 +106,11 @@ function collectTicketRefsStrict(root: string): StrictTicketCorpus {
       if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
       const rel = relativeDir ? join(relativeDir, entry.name) : entry.name;
       if (isSddEvidencePath(rel)) continue;
-      if (entry.isSymbolicLink()) return `ticket corpus contains a symlink: ${rel}`;
+      if (entry.isSymbolicLink()) {
+        if (!aliasTargetIsCovered(canonicalRoot, rel))
+          return `ticket corpus contains an unsafe symlink: ${rel}`;
+        continue;
+      }
       if (entry.isDirectory()) {
         const issue = walk(rel);
         if (issue) return issue;
@@ -120,7 +142,7 @@ function collectTicketRefsStrict(root: string): StrictTicketCorpus {
 
 /**
  * @purpose Scan the complete ticket search space without ever returning partial graph evidence.
- * @invariant A failed directory/file observation or non-skipped symlink yields `ok:false`; callers
+ * @invariant Failed observations or aliases outside the canonical scanned tree yield `ok:false`; callers
  * must not print an execution map or derive GATE_QUEUE from an incomplete corpus.
  * @param root Repository root whose non-skipped Markdown tree is the ticket search space.
  * @returns Every ticket plus its exact observed content, or one teaching corpus failure.

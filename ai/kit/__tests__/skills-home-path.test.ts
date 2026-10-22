@@ -9,10 +9,9 @@
 // call sites in 90b123e9 (#14) by passing an explicit `<sdd-path>`, but never added a normalization
 // rule (`SYNC_PATH_RULES` has no `RULE_SKILLS_TILDE`, unlike `SYNC_SKILLS_PATH_RULES`) and left two
 // tails (`module-decomposition.directive.xml:661`, `discovery.directive.xml:614`).
-// v2 has no home-relative skills path anywhere: every tool call is `npx gennady sdd-*`, and the
-// literal skills-in-home-directory phrase does not exist in source. This is the regression lock:
-// any future directive/skill text that reintroduces `~/.claude/...` or hardcodes the (v1-specific)
-// `.claude/skills/sdd-execute/scripts` invocation path fails here.
+// Every active SDD tool call remains project-owned `npx gennady sdd-*`. A provider reference can
+// describe Claude's read-only JSONL transcript location; this is data storage, not an installed
+// skill entry point. Only that exact labelled location is recognized below, never a file exemption.
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,20 +26,38 @@ function walkFiles(dir: string): string[] {
     .map((entry) => resolve(entry.parentPath, entry.name));
 }
 
+function hasForbiddenSkillPath(content: string): boolean {
+  const active = content.replace(
+    /^Claude Code read-only transcript storage is `~\/\.claude\/projects\/<encoded-workspace>\/<session-id>\.jsonl`\./gm,
+    'Claude Code read-only transcript storage is <provider-session-log>.'
+  );
+  return /~\/\.claude\//.test(active) || /\.claude\/skills\/sdd-execute\/scripts/.test(active);
+}
+
 describe('skills home-directory path never returns (LOCK-2)', () => {
-  it('keeps ai/directives/** and ai/skills/** free of ~/.claude/ and the v1 hardcoded skills-scripts path', () => {
+  it('keeps active instructions free of home-hardcoded skill paths while recognizing labelled provider transcript storage', () => {
     const roots = ['ai/directives', 'ai/skills'];
-    const homeTilde = /~\/\.claude\//;
-    const v1SkillsScriptsPath = /\.claude\/skills\/sdd-execute\/scripts/;
     const offenders: string[] = [];
     for (const root of roots) {
       for (const file of walkFiles(resolve(ROOT, root))) {
         const content = readFileSync(file, 'utf8');
-        if (homeTilde.test(content) || v1SkillsScriptsPath.test(content)) {
+        if (hasForbiddenSkillPath(content)) {
           offenders.push(file.replace(`${ROOT}/`, ''));
         }
       }
     }
     assert.deepEqual(offenders, []);
+  });
+
+  it('does not exempt active invocations in a provider document or unrelated home paths', () => {
+    const storage = 'Claude Code read-only transcript storage is `~/.claude/projects/<encoded-workspace>/<session-id>.jsonl`.';
+    assert.equal(hasForbiddenSkillPath(storage), false);
+    for (const instruction of [
+      'Run `~/.claude/skills/sdd-execute/scripts/sdd`.',
+      'Run `.claude/skills/sdd-execute/scripts/sdd`.',
+      'Read `~/.claude/projects/other/session.jsonl`.',
+      'Run `~/.claude/commands/old-sdd`.',
+    ]) assert.equal(hasForbiddenSkillPath(`${storage}\n${instruction}`), true, instruction);
+    assert.equal(hasForbiddenSkillPath(storage.replace('/projects/', '/skills/')), true);
   });
 });

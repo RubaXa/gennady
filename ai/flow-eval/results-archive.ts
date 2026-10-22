@@ -6,10 +6,21 @@
 //   every summary.json to regenerate docs/journal/RESULTS.md)
 
 import { existsSync } from 'node:fs';
-import { appendFile, cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import {
+  appendFile,
+  cp,
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  readlink,
+  writeFile,
+} from 'node:fs/promises';
 import { execFile } from 'node:child_process';
-import { join, relative } from 'node:path';
+import { join, relative, sep } from 'node:path';
 import { promisify } from 'node:util';
+import { createHash } from 'node:crypto';
+import { proveRepoFile, readProvenRepoFile } from '../../shared/common/repo-file-identity.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -33,6 +44,7 @@ export type SddEvalDurableOutcome =
   | 'pass'
   | 'fail'
   | 'worker-error'
+  | 'interrupted'
   | 'budget-exhausted'
   | 'unknown';
 
@@ -45,6 +57,8 @@ export type SddEvalDurableSummary = {
   timestamp: string;
   /** @purpose gennadyRoot's `git rev-parse HEAD` at run time; undefined outside a git checkout. */
   sha?: string;
+  /** @purpose Actual authoring inputs; HEAD alone does not identify an uncommitted experiment. */
+  source?: { dirty: boolean; worktreeSha256: string; scenarioSha256: string; configSha256: string };
   model: SddEvalModelRef;
   judgeModel: SddEvalModelRef;
   budget: SddEvalRunBudget;
@@ -64,6 +78,7 @@ export type SddEvalDurableSummary = {
   durationMs?: number;
   usage?: unknown;
   quality?: { rule: string; pass: boolean; detail: string };
+  trajectory?: { rule: string; pass: boolean; detail: string };
   hasJudge: boolean;
   specFiles: string[];
 };
@@ -81,18 +96,57 @@ export async function resolveGitSha(root: string): Promise<string | undefined> {
   }
 }
 
-/** @purpose First unused `<date>-<scenarioId>[-N]` name under resultsRoot; N starts at 2 (no suffix
- *  on the first run of the day for that scenario — matches the brief's `[-N]` notation). */
-async function nextResultDirName(
+/** @purpose Fingerprint tracked changes and non-ignored new files without exporting their bytes. */
+export async function resolveExperimentSource(root: string, scenarioFile: string, config: unknown) {
+  const invoke = (args: string[]) =>
+    execFileAsync('git', ['-C', root, ...args], {
+      encoding: 'utf8',
+      maxBuffer: 32 * 1024 * 1024,
+    });
+  const [status, diff, extra] = await Promise.all([
+    invoke(['status', '--porcelain=v1']),
+    invoke(['diff', '--binary', 'HEAD']),
+    invoke(['ls-files', '--others', '--exclude-standard', '-z']),
+  ]);
+  const hash = createHash('sha256').update(diff.stdout);
+  for (const path of extra.stdout.split('\0').filter(Boolean).sort()) {
+    const absolute = join(root, path);
+    const info = await lstat(absolute);
+    if (!info.isFile() && !info.isSymbolicLink()) throw new Error('unsupported source entry');
+    const bytes = info.isSymbolicLink()
+      ? Buffer.from(await readlink(absolute))
+      : await readFile(absolute);
+    hash
+      .update(JSON.stringify([path, info.isSymbolicLink() ? 'symlink' : info.mode, bytes.length]))
+      .update(bytes);
+  }
+  return {
+    dirty: Boolean(status.stdout.trim()),
+    worktreeSha256: hash.digest('hex'),
+    scenarioSha256: createHash('sha256')
+      .update(await readFile(scenarioFile))
+      .digest('hex'),
+    configSha256: createHash('sha256').update(JSON.stringify(config)).digest('hex'),
+  };
+}
+
+/** @purpose Atomically reserve `<date>-<scenarioId>[-N]` across concurrent writers/processes.
+ * @invariant Existing and incomplete result directories are never reused or overwritten. */
+async function reserveResultDirectory(
   resultsRoot: string,
   date: string,
   scenarioId: string
 ): Promise<string> {
   const base = `${date}-${scenarioId}`;
-  if (!existsSync(join(resultsRoot, base))) return base;
-  for (let n = 2; ; n++) {
-    const candidate = `${base}-${n}`;
-    if (!existsSync(join(resultsRoot, candidate))) return candidate;
+  await mkdir(resultsRoot, { recursive: true });
+  for (let n = 1; ; n++) {
+    const directory = join(resultsRoot, n === 1 ? base : `${base}-${n}`);
+    try {
+      await mkdir(directory);
+      return directory;
+    } catch (cause) {
+      if ((cause as NodeJS.ErrnoException).code !== 'EEXIST') throw cause;
+    }
   }
 }
 
@@ -113,15 +167,35 @@ export function relativeResultDir(gennadyRoot: string, resultDir: string): strin
 export async function persistDurableResult(
   resultsRoot: string,
   summary: SddEvalDurableSummary,
-  options: { judgeFile?: string } = {}
+  options: {
+    judgeFile?: string;
+    trajectoryFile?: string;
+    specs?: { root: string; files: readonly string[] };
+  } = {}
 ): Promise<string> {
-  const dirName = await nextResultDirName(resultsRoot, summary.date, summary.scenarioId);
-  const dir = join(resultsRoot, dirName);
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
+  const dir = await reserveResultDirectory(resultsRoot, summary.date, summary.scenarioId);
   if (options.judgeFile) {
-    await cp(options.judgeFile, join(dir, 'judge.md')).catch(() => undefined);
+    await cp(options.judgeFile, join(dir, 'judge.md'));
   }
+  if (options.trajectoryFile) await cp(options.trajectoryFile, join(dir, 'trajectory.json'));
+  const savedSpecs: string[] = [];
+  for (const file of options.specs?.files ?? []) {
+    const root = options.specs!.root;
+    const path = relative(root, file).split(sep).join('/');
+    if (!path.startsWith('specs/') || !path.endsWith('.spec.md'))
+      throw new Error('spec snapshot escaped its bound artifact root');
+    const proof = proveRepoFile(root, path);
+    if (!proof.ok) throw new Error('spec snapshot path is unsafe');
+    const observed = readProvenRepoFile(proof.identity);
+    if (!observed.ok) throw new Error('spec snapshot identity changed');
+    await mkdir(join(dir, path, '..'), { recursive: true });
+    await writeFile(join(dir, path), observed.content, 'utf8');
+    savedSpecs.push(path);
+  }
+  // Publish the record only after its required evidence exists: table readers must not see
+  // a successful summary after an evidence-copy failure.
+  const record = options.specs ? { ...summary, specFiles: savedSpecs } : summary;
+  await writeFile(join(dir, 'summary.json'), `${JSON.stringify(record, null, 2)}\n`, 'utf8');
   return dir;
 }
 
@@ -179,9 +253,20 @@ export async function appendExperimentLogStub(
 ): Promise<string | undefined> {
   if (!existsSync(logPath)) return undefined;
   const tokens = (summary.usage as { total?: unknown } | undefined)?.total;
+  const mechanical =
+    summary.outcome === 'budget-exhausted'
+      ? 'budget-exhausted'
+      : summary.status === 'interrupted' ||
+          summary.verdict === 'worker-error' ||
+          summary.quality?.pass === false ||
+          summary.trajectory?.pass === false
+        ? 'FAIL'
+        : summary.quality?.pass === true || summary.trajectory?.pass === true
+          ? 'PASS'
+          : 'unproven';
   const block = [
     '',
-    `## ${summary.date} — \`${summary.scenarioId}\` (${summary.verdict}/${summary.outcome})`,
+    `## ${summary.date} — \`${summary.scenarioId}\` (gate=${mechanical}; judge=${summary.verdict})`,
     '',
     `- **Модель:** ${summary.model.providerID}/${summary.model.modelID} / судья ` +
       `${summary.judgeModel.providerID}/${summary.judgeModel.modelID} — бюджет: ` +

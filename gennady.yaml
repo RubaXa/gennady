@@ -1,0 +1,9 @@
+# D-60: this project's draft release gate covers its mandatory deterministic corpus. Experimental
+# inbox/agent-mon and real-network integration remain explicit opt-ins, not pre-commit work.
+# Public Node presets and the explicit integration phase retain their normal integration duty.
+verify:
+  presets:
+    node:
+      phases:
+        full:
+          include: [code, unit, coverage]

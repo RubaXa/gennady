@@ -31,4 +31,10 @@ describe('parseVerdict', () => {
       'fail'
     );
   });
+
+  it('does not promote quoted later verdicts or a prose prefix to a verdict', () => {
+    assert.equal(parseVerdict('Review follows\nVERDICT: pass'), 'inconclusive');
+    assert.equal(parseVerdict('pass through the error branch'), 'inconclusive');
+    assert.equal(parseVerdict('VERDICT: fail\nVERDICT: pass'), 'fail');
+  });
 });

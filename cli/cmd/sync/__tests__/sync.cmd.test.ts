@@ -79,6 +79,7 @@ describe('run (integration)', () => {
 
   it('SO-12: refuses a first v2 sync over a v1 consumer before writing', () => {
     mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    writeFileSync(join(_tmpDir, 'tasks', 'legacy.task-1.md'), '# Task: legacy\n');
     writeFileSync(join(_sourceDir, 'new.xml'), '<new/>', 'utf-8');
     const stdout = captureStream();
     const stderr = captureStream();
@@ -88,13 +89,15 @@ describe('run (integration)', () => {
 
     assert.equal(run(['node', 'sync'], deps), 1);
     assert.equal(stdout._chunks.join(''), '');
-    assert.match(stderr._chunks.join(''), /tasks.*канонический маркер SDD v1/s);
+    assert.match(stderr._chunks.join(''), /tasks.*SDD v1 tickets/s);
     assert.match(stderr._chunks.join(''), /sdd-migrate bootstrap/);
+    assert.doesNotMatch(stderr._chunks.join(''), /каталог `tasks\/` отсутствует/);
     assert.equal(existsSync(join(_targetDir, 'new.xml')), false);
   });
 
   it('SO-12: an ownership manifest is only a diagnostic hint and never bypasses v1 refusal', () => {
     mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    writeFileSync(join(_tmpDir, 'tasks', 'legacy.task-1.md'), '# Task: legacy\n');
     mkdirSync(join(_tmpDir, '.claude', 'skills'), { recursive: true });
     writeFileSync(join(_tmpDir, '.claude', 'skills', '.gennady-synced'), 'sdd\n', 'utf-8');
     const stderr = captureStream();
@@ -103,6 +106,15 @@ describe('run (integration)', () => {
 
     assert.equal(run(['node', 'sync'], deps), 1);
     assert.match(stderr._chunks.join(''), /только манифест владения sync/);
+  });
+
+  it('allows ordinary build tasks and documentation without a V1 migration', () => {
+    mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    writeFileSync(join(_tmpDir, 'tasks', 'README.md'), '# Grunt build tasks\n');
+    writeFileSync(join(_tmpDir, 'tasks', 'build.js'), 'export default function build() {}\n');
+    writeFileSync(join(_sourceDir, 'new.xml'), '<new/>', 'utf-8');
+    assert.equal(run(['node', 'sync'], makeDeps(_sourceDir, _targetDir)), 0);
+    assert.equal(existsSync(join(_targetDir, 'new.xml')), true);
   });
 
   afterEach(() => {

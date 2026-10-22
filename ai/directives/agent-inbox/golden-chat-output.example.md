@@ -175,4 +175,4 @@ src/
 
 Схемы в чате: карта ✓ · C4 ✓ · поведение ✓ · сценарии ✓
 
-**Артефакты:** [папка отчёта](/Users/k.lebedev/.gennady/agent-inbox/reports/group__proj-510) · [README](/Users/k.lebedev/.gennady/agent-inbox/reports/group__proj-510/README.md) · [HISTORY](/Users/k.lebedev/.gennady/agent-inbox/reports/group__proj-510/HISTORY.md)
+**Артефакты:** [папка отчёта](reports/group__proj-510) · [README](reports/group__proj-510/README.md) · [HISTORY](reports/group__proj-510/HISTORY.md)

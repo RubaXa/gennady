@@ -39,6 +39,7 @@ function responseText(value: unknown): string {
   return parts
     .map((part) => {
       if (!part || typeof part !== 'object') return '';
+      if ((part as { type?: unknown }).type !== 'text') return '';
       const text = (part as { text?: unknown }).text;
       return typeof text === 'string' ? text : '';
     })
@@ -122,24 +123,55 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
     const result = await this.#client.session.abort({
       path: { id: sessionId },
       query: { directory },
+      signal: AbortSignal.timeout(10_000),
     });
     if (result.error)
       throw new Error(`OpenCode worker abort failed: ${JSON.stringify(result.error)}`);
   }
 
-  async judge(input: { directory: string; prompt: string; model: OpenCodeModel }): Promise<string> {
+  async judge(input: {
+    directory: string;
+    prompt: string;
+    model: OpenCodeModel;
+    signal?: AbortSignal;
+  }): Promise<string> {
+    input.signal?.throwIfAborted();
     const session = await this.createSession({
       title: 'sdd-eval-judge',
       directory: input.directory,
     });
     const model = splitModel(input.model);
-    const result = await this.#client.session.prompt({
-      path: { id: session.id },
-      query: { directory: this.#sessionDirectory(session.id, input.directory) },
-      body: { parts: [{ type: 'text', text: input.prompt }], model },
+    let cancellation: Promise<void> | undefined;
+    let onAbort!: () => void;
+    const stopped = new Promise<never>((_resolve, reject) => {
+      onAbort = () => {
+        cancellation ??= this.abort(session.id);
+        void cancellation.then(() => reject(input.signal?.reason), reject);
+      };
+      input.signal?.addEventListener('abort', onAbort, { once: true });
     });
-    if (result.error)
-      throw new Error(`OpenCode judge prompt failed: ${JSON.stringify(result.error)}`);
-    return responseText(result.data);
+    try {
+      if (input.signal?.aborted) {
+        onAbort();
+        await stopped;
+      }
+      const result = await Promise.race([
+        this.#client.session.prompt({
+          path: { id: session.id },
+          query: { directory: this.#sessionDirectory(session.id, input.directory) },
+          body: { parts: [{ type: 'text', text: input.prompt }], model },
+          signal: input.signal,
+        }),
+        stopped,
+      ]);
+      input.signal?.throwIfAborted();
+      if (result.error)
+        throw new Error(`OpenCode judge prompt failed: ${JSON.stringify(result.error)}`);
+      return responseText(result.data);
+    } finally {
+      input.signal?.removeEventListener('abort', onAbort);
+      // invariant: local prompt cancellation is not proof the owned server session stopped.
+      await cancellation;
+    }
   }
 }

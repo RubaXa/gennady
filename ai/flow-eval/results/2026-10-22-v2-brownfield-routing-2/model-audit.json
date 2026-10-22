@@ -1,0 +1,44 @@
+{
+  "method": "read-only post-run SDK metadata; no additional model request",
+  "sourceCommit": "b29ecd3bc5da8997d9da583346116de32db06085",
+  "monetaryCost": "unknown; providerReportedCost=0 is not a verified bill",
+  "usageScope": "summary.usage covers worker/children; judge usage is recorded separately here",
+  "sessions": [
+    {
+      "directory": "sdd-flow-eval-EJUOnH",
+      "id": "ses_e9b4789daffe7P4ao74mICrEn6",
+      "parent": null,
+      "title": "sdd-eval-judge",
+      "role": "judge",
+      "assistantMessages": 1,
+      "models": ["llm-proxy/deepseek-v4-flash"],
+      "usage": {
+        "input": 2870,
+        "output": 96,
+        "reasoning": 3254,
+        "cacheRead": 9472,
+        "cacheWrite": 0,
+        "providerReportedCost": 0,
+        "totalExcludingCache": 6220
+      }
+    },
+    {
+      "directory": "sdd-flow-eval-EJUOnH",
+      "id": "ses_e9b4800ccffeONlC7HbUfGgYs3",
+      "parent": null,
+      "title": "sdd-eval:v2-brownfield-routing",
+      "role": "worker",
+      "assistantMessages": 8,
+      "models": ["llm-proxy/deepseek-v4-flash"],
+      "usage": {
+        "input": 12349,
+        "output": 677,
+        "reasoning": 506,
+        "cacheRead": 87040,
+        "cacheWrite": 0,
+        "providerReportedCost": 0,
+        "totalExcludingCache": 13532
+      }
+    }
+  ]
+}

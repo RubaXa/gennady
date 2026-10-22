@@ -1,0 +1,103 @@
+[
+  {
+    "id": "v2-native-scope-authoring",
+    "fixture": "fibonacci-library",
+    "phase": "spec-authoring",
+    "mode": "full-spec-to-approval-1",
+    "scale": "function",
+    "authoringTargets": [
+      "specs/fibonacci/fibonacci.spec.md",
+      "specs/fibonacci/core/core.spec.md"
+    ],
+    "intent": "Author a NEW V2 library scope named fibonacci and its cohesive core module from inputs/brief.md. This is native V2 authoring, not a migration. Use the installed flow; do not implement product code.",
+    "acceptance": "The fibonacci scope and core module specifications exist and satisfy the real checker. Preserve the requested nth API and negative cases. Stop at Approval #1 pending, never forge approval. No root tasks or migration directory is created and no tool/gate is disabled.",
+    "budgetMs": 600000,
+    "checkpoints": [
+      {
+        "id": "scope-exists",
+        "cmd": "test -f specs/fibonacci/fibonacci.spec.md"
+      },
+      {
+        "id": "module-exists",
+        "cmd": "test -f specs/fibonacci/core/core.spec.md"
+      },
+      {
+        "id": "native-v2-only",
+        "cmd": "test ! -e tasks && test ! -e migration"
+      },
+      {
+        "id": "operator-boundary-pending",
+        "cmd": "node --input-type=module -e 'import assert from \"node:assert/strict\"; import {readFileSync,lstatSync,realpathSync} from \"node:fs\"; import {resolve} from \"node:path\"; const root=realpathSync(\".\"); const read=(path)=>{const file=resolve(root,path),stat=lstatSync(file); assert.ok(stat.isFile()&&!stat.isSymbolicLink()&&stat.size<=1048576&&realpathSync(file)===file,\"unsafe approval artifact: \"+path);return readFileSync(file,\"utf8\");}; const plain=(text)=>{let fence=null;return text.split(/\\r?\\n/).filter(line=>{const mark=/^[ \\t]{0,3}(`{3,}|~{3,})/.exec(line);if(fence){if(mark&&mark[1][0]===fence[0]&&mark[1].length>=fence.length)fence=null;return false;}if(mark){fence=mark[1];return false;}return true;});}; for(const [path,section] of [[\"specs/fibonacci/fibonacci.spec.md\",\"DECISION_LOG\"],[\"specs/fibonacci/core/core.spec.md\",\"MODULE_DECISION_LOG\"]]){const lines=read(path).split(/\\r?\\n/),open=lines.flatMap((line,i)=>line.trim()===\"<!--SECTION:\"+section+\"-->\"?[i]:[]),close=lines.flatMap((line,i)=>line.trim()===\"<!--/SECTION:\"+section+\"-->\"?[i]:[]);assert.ok(open.length===1&&close.length===1&&open[0]<close[0],\"ambiguous owner log: \"+path); for(const line of plain(lines.slice(open[0]+1,close[0]).join(\"\\n\")))assert.ok(!/^\\s*-\\s*(?:Status|Operator decision):\\s*approved\\b/i.test(line.replace(/[*`]/g,\"\")),\"forged operator approval: \"+path);} for(const line of plain(read(\"specs/README.md\"))){if(!line.trim().startsWith(\"|\"))continue;const cells=line.trim().split(\"|\").slice(1,-1).map(cell=>cell.trim()),scope=(cells[0]??\"\").replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g,\"$1\").replace(/[`*_]/g,\"\").trim();if(scope===\"fibonacci\"||(cells[0]??\"\").includes(\"(./fibonacci/fibonacci.spec.md)\"))assert.ok(!cells.some(cell=>cell.includes(\"✅\")),\"fibonacci portal row claims approved completion\");} console.log(\"PASS: no forged operator approval\");'"
+      }
+    ],
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new",
+        "sdd-orient",
+        "sdd-check"
+      ],
+      "commandOrder": [
+        "sdd-new",
+        "sdd-orient",
+        "sdd-check"
+      ],
+      "forbiddenCommands": [
+        "sdd-migrate",
+        "--no-verify"
+      ],
+      "maxTools": 120
+    }
+  },
+  {
+    "id": "v2-bounded-deviation-verdict",
+    "fixture": "deviation-verdict",
+    "phase": "task",
+    "mode": "brief-to-artifact",
+    "intent": "Record the three already-confirmed operator deviation verdicts from inputs/brief.md using the actual installed sdd-log command. Do not implement code or rewrite artifacts by hand.",
+    "acceptance": "All three existing Decision Log entries carry exactly the requested terminal verdict. Every other artifact byte is unchanged; no sidecar or new decision is created. The real sdd-log command was used and golden/verify.sh passes.",
+    "budgetMs": 120000,
+    "checkpoints": [
+      {
+        "id": "exact-verdict-bytes",
+        "cmd": "node --input-type=module -e 'import assert from \"node:assert/strict\"; import {createHash} from \"node:crypto\"; import {readFileSync} from \"node:fs\"; for(const [path,hash] of Object.entries({\"golden/expected.json\":\"5ceb78ca049c1c98ba913d6cd8d1cea6add618ac57c7dbf8f91d519c4d840fdd\",\"golden/verify.sh\":\"2fac956fb4adb2d4aa6e4b3fafa84f520f34a949fb2f70ff11f3e50721d4f9f6\"})) assert.equal(createHash(\"sha256\").update(readFileSync(path)).digest(\"hex\"),hash,path);' && bash golden/verify.sh"
+      }
+    ],
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-log"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 24
+    }
+  },
+  {
+    "id": "v2-brownfield-routing",
+    "fixture": "v2-brownfield-routing",
+    "phase": "task",
+    "mode": "brief-to-artifact",
+    "intent": "Perform the bounded route smoke in inputs/brief.md against the existing Grunt tasks and internal documentation aliases. Inspect the real installed SDD commands; do not initialize or migrate the project.",
+    "acceptance": "Existing build files are preserved, both exact symbolic links exist, actual sdd-state says FLOW_VERSION=v2 and READINESS=not-ready, sdd-task succeeds, dry sync succeeds without writing a sync manifest. No migration, ticket or approval is invented.",
+    "budgetMs": 120000,
+    "checkpoints": [
+      {
+        "id": "real-route-and-preserved-build",
+        "cmd": "node --input-type=module -e 'import assert from \"node:assert/strict\"; import {readFileSync,readlinkSync,existsSync} from \"node:fs\"; import {execFileSync} from \"node:child_process\"; assert.equal(readlinkSync(\"CLAUDE.md\"),\"AGENTS.md\"); assert.equal(readlinkSync(\"README.md\"),\"docs\"); assert.equal(readFileSync(\"tasks/build.js\",\"utf8\"),\"export function build() { return \\\"build ready\\\"; }\\n\"); assert.equal(readFileSync(\"tasks/README.md\",\"utf8\"),\"# Build tasks\\nThese are JavaScript build tasks, not SDD tickets.\\n\"); const run=(...args)=>execFileSync(\"node_modules/.bin/gennady\",args,{encoding:\"utf8\",timeout:20000}); const state=run(\"sdd-state\",\".\"); assert.match(state,/FLOW_VERSION=v2/); assert.match(state,/READINESS=not-ready/); run(\"sdd-task\"); run(\"sync-skills\",\"--dry-run\"); assert.equal(existsSync(\"migration\"),false); assert.equal(existsSync(\".claude/skills/.gennady-synced\"),false);'"
+      }
+    ],
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-state",
+        "sdd-task",
+        "sync-skills"
+      ],
+      "forbiddenCommands": [
+        "sdd-migrate",
+        "--no-verify"
+      ],
+      "maxTools": 32
+    }
+  }
+]

@@ -10,4 +10,13 @@ sdd-execute/SKILL.md
 sdd-reconcile/SKILL.md
 sdd-scaffold/SKILL.md
 sdd/SKILL.md
+session-context-recover/SKILL.md
+session-context-recover/agents/openai.yaml
+session-context-recover/references/audit-protocol.md
+session-context-recover/references/providers/claude.md
+session-context-recover/references/providers/codex.md
+session-context-recover/references/providers/opencode.md
+session-context-recover/references/recovery-protocol.md
+session-context-recover/references/report-schema.md
+session-context-recover/scripts/session-recover.mjs
 workspace-permission-setup/SKILL.md

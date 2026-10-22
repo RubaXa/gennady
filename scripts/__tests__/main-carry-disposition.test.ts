@@ -25,6 +25,7 @@ import {
   ARCHIVE_ROOT,
   DECISIONS_PATH,
   FROZEN_REFS,
+  FROZEN_PROOF_SOURCE,
   MANIFEST_PATH,
   checkFrozenMain,
   createFrozenManifest,
@@ -84,7 +85,7 @@ before(() => {
   const pack = git(
     ROOT,
     ['pack-objects', '--stdout', '--revs'],
-    `${FROZEN_REFS.main}\n${FROZEN_REFS.releaseAudit}\n${FROZEN_REFS.releaseBase}\n`
+    `${FROZEN_PROOF_SOURCE}\n${FROZEN_REFS.main}\n${FROZEN_REFS.releaseAudit}\n${FROZEN_REFS.releaseBase}\n`
   );
   git(context.seed, ['index-pack', '--stdin'], pack);
   git(context.seed, ['update-ref', 'HEAD', FROZEN_REFS.releaseBase]);
@@ -96,7 +97,7 @@ before(() => {
   ]);
   const frozen = manifest(ROOT);
   for (const proof of frozen.currentProof)
-    write(context.seed, proof.path, readFileSync(join(ROOT, proof.path)));
+    write(context.seed, proof.path, git(ROOT, ['show', `${FROZEN_PROOF_SOURCE}:${proof.path}`]));
   cpSync(join(ROOT, ARCHIVE_ROOT), join(context.seed, ARCHIVE_ROOT), { recursive: true });
 });
 afterEach(() => {
@@ -272,10 +273,27 @@ it('rejects false retain and mismatched declared adapt owner after rehash', () =
   assert.throws(() => checkFrozenMain(root), /FALSE_RETAIN/);
 });
 
-it('binds current actual bytes, not only an old release snapshot or eventual self SHA', () => {
+it('allows ordinary CLI and portal development while retaining explicit live reconciliation checks', () => {
   const root = fixture();
-  write(root, 'package.json', `${readFileSync(join(root, 'package.json'))}\n`);
+  const frozenBytes = readFileSync(join(root, MANIFEST_PATH));
+  for (const path of ['cli/gennady.ts', 'specs/README.md'])
+    write(root, path, `${readFileSync(join(root, path))}\n`);
+  assert.equal(checkFrozenMain(root).rows, 520);
+  assert.deepEqual(readFileSync(join(root, MANIFEST_PATH)), frozenBytes);
+  assert.throws(() => checkFrozenMain(root, { preReconciliation: true }), /CURRENT_DRIFT/);
+});
+
+it('rejects a rehashed live proof instead of accepting a replacement historical source', () => {
+  const root = fixture();
+  write(root, 'cli/gennady.ts', `${readFileSync(join(root, 'cli/gennady.ts'))}\n`);
+  save(root, createFrozenManifest(root));
   assert.throws(() => checkFrozenMain(root), /CURRENT_DRIFT/);
+});
+
+it('does not require current owner and target files to remain present after cutover', () => {
+  const root = fixture();
+  rmSync(join(root, 'cli/gennady.ts'));
+  assert.equal(checkFrozenMain(root).rows, 520);
 });
 
 it('preserves post-main historical integrity but rejects changed live main before reconciliation', () => {
@@ -382,6 +400,11 @@ it('actual local npm pack applies unchanged package/ignore policy and excludes a
 it('the actual checker CLI derives a whitespace repository root from its file URL', () => {
   const root = join(fixture(), 'repository with spaces');
   cpSync(context.seed, root, { recursive: true });
+  write(
+    root,
+    'scripts/main-carry-disposition.ts',
+    readFileSync(join(ROOT, 'scripts/main-carry-disposition.ts'))
+  );
   for (const path of [
     'shared/sdd/source-ownership-header.ts',
     'shared/sdd/spec-id.ts',
@@ -398,7 +421,6 @@ it('the actual checker CLI derives a whitespace repository root from its file UR
       '--import',
       join(ROOT, 'node_modules/tsx/dist/loader.mjs'),
       join(root, 'scripts/main-carry-disposition.ts'),
-      '--pre-reconciliation',
     ],
     { cwd: context.holder, encoding: 'utf8', env: cleanTestChildEnv(process.env), timeout: 20_000 }
   );

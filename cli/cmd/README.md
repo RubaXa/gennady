@@ -228,7 +228,7 @@ npx gennady yagni /path/to/repo
 | `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine               |
 | `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
 | `rules`             | Embedded rules: inventory/detail/explicit-scope resolve                   |
-| `sdd-log`           | V2 lifecycle writes; legacy/historical input stays read-only              |
+| `sdd-log`           | V2 lifecycle/verdicts: ticket/module/index; history read-only             |
 | `sdd-sync`          | V2 tracker writes; legacy scope requires migration                        |
 | `sdd-task`          | V2 execution map/phase; legacy scopes are migration-blocked               |
 | `sdd-migrate`       | SDD v1 → v2: bootstrap, anchors, IDs, move и headers                      |

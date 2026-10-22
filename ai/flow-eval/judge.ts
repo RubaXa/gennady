@@ -37,9 +37,9 @@ function composeJudgePrompt(input: SddEvalJudgeInput): string {
  *   that and false-failed every error-handling scenario whose judge skipped the verdict line.
  */
 export function parseVerdict(text: string): SddEvalJudgeResult['verdict'] {
-  const normalized = text.toLowerCase();
+  const normalized = text.trim().split(/\r?\n/, 1)[0].toLowerCase();
   const explicit = normalized.match(
-    /^\s*(?:[*_`]{0,2})?(?:(?:verdict|вердикт)\s*[:：]\s*)?(pass|fail|inconclusive)\b/m
+    /^(?:[*_`]{0,2})?(?:(?:verdict|вердикт)\s*[:：]\s*)?(pass|fail|inconclusive)(?:[*_`]{0,2})?\s*$/
   )?.[1];
   if (explicit === 'pass' || explicit === 'fail' || explicit === 'inconclusive') return explicit;
   return 'inconclusive';
@@ -58,12 +58,14 @@ export class SddEvalJudge {
   async evaluate(
     scenarioId: string,
     directory: string,
-    input: SddEvalJudgeInput
+    input: SddEvalJudgeInput,
+    signal?: AbortSignal
   ): Promise<SddEvalJudgeResult> {
     const rationale = await this.#runtime.judge({
       directory,
       model: this.#model,
       prompt: composeJudgePrompt(input),
+      signal,
     });
     return {
       scenarioId,

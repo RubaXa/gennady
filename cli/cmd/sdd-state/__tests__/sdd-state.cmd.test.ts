@@ -96,6 +96,7 @@ describe('SddStateCommand', () => {
 
     v1Repo = mkdtempSync(join(tmpdir(), 'sdd-state-v1-'));
     mkdirSync(join(v1Repo, 'tasks'), { recursive: true });
+    writeFileSync(join(v1Repo, 'tasks', 'legacy.task-1.md'), '# Task: legacy\n');
     writeFileSync(join(v1Repo, 'package.json'), READY_PKG, 'utf-8');
     installDirectives(v1Repo);
 
@@ -461,7 +462,7 @@ describe('SddStateCommand', () => {
     }
   });
 
-  it('detects the v1 layout (tasks/) → FLOW_VERSION=v1', async () => {
+  it('detects historical SDD ticket evidence under tasks/ → FLOW_VERSION=v1', async () => {
     const o = await mod.run(argv(v1Repo));
     assert.strictEqual(o.ok, true);
     if (o.ok) assert.match(o.text, /FLOW_VERSION=v1/);

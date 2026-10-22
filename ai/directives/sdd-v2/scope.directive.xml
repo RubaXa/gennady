@@ -92,7 +92,7 @@
     <Step id="STEP_1_ORIENT">
       <Goal>Load only the bounded neighbouring context.</Goal>
       <Action>
-        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient <scope-spec-path></ToolCall> Inputs <scope-spec-path>: exact created path from the STEP_0_CREATE product/library manifest, or the existing spec path read in that step. Use orientation before portal registration.
         This is the only unconditional foreign-context read. Depth here is proportional to the
         confirmed SCALE, never self-assessed (`AX_SCALE_PROPORTIONAL_DEPTH`):
         <LogicSwitch on="SCALE and brief completeness">

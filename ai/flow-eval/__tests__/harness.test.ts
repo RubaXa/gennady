@@ -19,6 +19,7 @@ import { SddEvalSessionDirectoryMap } from '../session-directory.ts';
 import { composeSddPhasePrompt } from '../prompts.ts';
 import { selectCoverageAdapter } from '../../../cli/cmd/testcov/coverage-adapter-registry.ts';
 import { createCoverageArtifactBoundary } from '../../../cli/cmd/testcov/coverage-artifact.ts';
+import { inspectSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 
 const execFileAsync = promisify(execFile);
 import type {
@@ -78,7 +79,7 @@ class FakeRuntime implements SddEvalRuntime {
   active = 0;
   peak = 0;
   aborts: string[] = [];
-  judgeResult = 'pass: diff satisfies intent';
+  judgeResult = 'VERDICT: pass\ndiff satisfies intent';
   async createSession() {
     return { id: `ses_${this.prompts.length + 1}` };
   }
@@ -479,13 +480,16 @@ test(
         ],
         { cwd: executeDirectory, env: { ...process.env, NO_COLOR: '1' } }
       );
-      assert.match(p1Verify.stdout, /ALL PASS/);
-      assert.match(
-        await readFile(
-          join(executeDirectory ?? '', 'specs/slugify/core/core.task.SLG-slug.md'),
-          'utf8'
+      assert.match(p1Verify.stdout, /^VERDICT PASS$/m);
+      assert.deepEqual(
+        inspectSddPhaseAttempt(
+          await readFile(
+            join(executeDirectory ?? '', 'specs/slugify/core/core.task.SLG-slug.md'),
+            'utf8'
+          ),
+          'P1'
         ),
-        /<!--SDD_PHASE_RECEIPT:P1-->/
+        { ok: true, state: 'PASS' }
       );
       const p1PreClose = await execFileAsync(
         'npx',
@@ -526,7 +530,11 @@ test(
         { cwd: executeDirectory, env: { ...process.env, NO_COLOR: '1' } }
       );
       assert.match(p2Context.stdout, /READ ticket: PHASE_P2, BDD, VERIFICATION, TEST_COVERAGE/);
-      assert.match(p2Context.stdout, /npx gennady testcov --min=80 src\/slugify\.ts/);
+      assert.match(p2Context.stdout, /selector:\s+unit ← builtin:node/);
+      assert.match(
+        p2Context.stdout,
+        /npx gennady sdd-verify --task=specs\/slugify\/core\/core.task.SLG-slug.md --phase=P2/
+      );
 
       const slugifyTest = join(executeDirectory ?? '', 'src/slugify.test.ts');
       await writeFile(
@@ -599,7 +607,7 @@ test(
         ],
         { cwd: executeDirectory, env: executionEnv }
       );
-      assert.match(p2Verify.stdout, /ALL PASS/);
+      assert.match(p2Verify.stdout, /^VERDICT PASS$/m);
       const p2PreClose = await execFileAsync(
         'npx',
         [
@@ -653,12 +661,15 @@ test(
         { cwd: executeDirectory, env: { ...process.env, NO_COLOR: '1' } }
       );
       assert.match(finalTaskCheck.stdout, /✅ clean/);
-      assert.match(
-        await readFile(
-          join(executeDirectory ?? '', 'specs/slugify/core/core.task.SLG-slug.md'),
-          'utf8'
+      assert.deepEqual(
+        inspectSddPhaseAttempt(
+          await readFile(
+            join(executeDirectory ?? '', 'specs/slugify/core/core.task.SLG-slug.md'),
+            'utf8'
+          ),
+          'P2'
         ),
-        /<!--SDD_PHASE_RECEIPT:P2-->/
+        { ok: true, state: 'PASS' }
       );
       const coverageSelection = selectCoverageAdapter(executeDirectory ?? '');
       assert.equal(coverageSelection.kind, 'selected');

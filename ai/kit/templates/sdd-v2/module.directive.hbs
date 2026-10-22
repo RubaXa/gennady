@@ -33,7 +33,7 @@
     <Step id="STEP_1_ORIENT">
       <Goal>Reuse existing ownership and dependencies.</Goal>
       <Action>
-        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient --scope <scope></ToolCall> Inputs <scope>: scope resolved in STEP_0_CREATE. Use orientation.
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient <module-spec-path></ToolCall> Inputs <module-spec-path>: exact created path from the STEP_0_CREATE moduleManifest, or the existing module spec path read in that step. Use orientation before portal registration.
         `sdd-orient` is the only unconditional foreign-context read. Depth here is proportional to
         the confirmed SCALE, never self-assessed (`AX_SCALE_PROPORTIONAL_DEPTH`):
         <LogicSwitch on="SCALE and orientation ambiguity">

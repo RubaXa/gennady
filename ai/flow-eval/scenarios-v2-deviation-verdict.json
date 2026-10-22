@@ -1,0 +1,22 @@
+[
+  {
+    "id": "v2-bounded-deviation-verdict",
+    "fixture": "deviation-verdict",
+    "phase": "task",
+    "mode": "brief-to-artifact",
+    "intent": "Record the three already-confirmed operator deviation verdicts from inputs/brief.md using the actual installed sdd-log command. Do not implement code or rewrite artifacts by hand.",
+    "acceptance": "The already-confirmed operator decisions are exactly: COR-DL-1=accepted in specs/demo/core/core.spec.md; COR-DL-2=rework in specs/demo/core/core.3-tasks.md; COR-DL-3=rolled-back in specs/demo/core/core.task.COR-review.md. Every other artifact byte is unchanged; no sidecar or new decision is created. The real sdd-log command was used and the source-bound golden checkpoint passes.",
+    "budgetMs": 120000,
+    "checkpoints": [
+      {
+        "id": "exact-verdict-bytes",
+        "cmd": "node --input-type=module -e 'import assert from \"node:assert/strict\"; import {createHash} from \"node:crypto\"; import {readFileSync} from \"node:fs\"; for(const [path,hash] of Object.entries({\"golden/expected.json\":\"5ceb78ca049c1c98ba913d6cd8d1cea6add618ac57c7dbf8f91d519c4d840fdd\",\"golden/verify.sh\":\"2fac956fb4adb2d4aa6e4b3fafa84f520f34a949fb2f70ff11f3e50721d4f9f6\"})) assert.equal(createHash(\"sha256\").update(readFileSync(path)).digest(\"hex\"),hash,path);' && bash golden/verify.sh"
+      }
+    ],
+    "trajectoryRules": {
+      "requiredCommands": ["sdd-log"],
+      "forbiddenCommands": ["--no-verify", "sdd-migrate"],
+      "maxTools": 24
+    }
+  }
+]

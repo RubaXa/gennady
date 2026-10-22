@@ -10,6 +10,7 @@ import {
   toolEventsFrom,
   runCheckpoints,
   buildTrajectory,
+  gradeTrajectory,
   type CheckpointSpec,
   type Exec,
   type Trajectory,
@@ -18,7 +19,12 @@ import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
 import { resolveBasePrompt } from './prompts.ts';
-import { checkR1Structure, checkCompletion } from './quality-gate.ts';
+import {
+  checkR1Structure,
+  checkAuthoringReadiness,
+  checkCompletion,
+  checkCheckpointResults,
+} from './quality-gate.ts';
 import {
   captureBaseline,
   runMigrationChecks,
@@ -40,11 +46,13 @@ import {
   persistDurableResult,
   relativeResultDir,
   resolveGitSha,
+  resolveExperimentSource,
   type SddEvalDurableSummary,
 } from './results-archive.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { SDD_EVAL_PHASES, SDD_EVAL_MODES } from './types.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
+import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
 
 /** @purpose Parsed command-line options; all model values retain provider/model configurability. */
 type SddEvalCliOptions = {
@@ -187,6 +195,51 @@ export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   const scales = new Set(['product', 'module', 'function', 'fix']);
   for (const item of value as Array<Record<string, unknown>>) {
     const id = String(item.id ?? '<unknown>');
+    if (
+      item.authoringTargets !== undefined &&
+      (item.phase !== 'spec-authoring' ||
+        !Array.isArray(item.authoringTargets) ||
+        item.authoringTargets.length === 0 ||
+        item.authoringTargets.some(
+          (target) => typeof target !== 'string' || !target.endsWith('.spec.md')
+        ) ||
+        new Set(item.authoringTargets).size !== item.authoringTargets.length)
+    )
+      throw new Error(`scenario ${id} has invalid AUTHORING targets`);
+    if (item.checkpoints !== undefined) {
+      if (
+        !Array.isArray(item.checkpoints) ||
+        item.checkpoints.length === 0 ||
+        item.checkpoints.some(
+          (entry) =>
+            !entry ||
+            typeof entry.id !== 'string' ||
+            !entry.id.trim() ||
+            typeof entry.cmd !== 'string' ||
+            !entry.cmd.trim()
+        ) ||
+        new Set(item.checkpoints.map((entry) => entry.id)).size !== item.checkpoints.length
+      )
+        throw new Error(`scenario ${id} has invalid CHECKPOINTS`);
+    }
+    if (item.trajectoryRules !== undefined) {
+      const rules = item.trajectoryRules;
+      if (!rules || typeof rules !== 'object' || Array.isArray(rules))
+        throw new Error(`scenario ${id} has invalid TRAJECTORY rules`);
+      const entries = Object.entries(rules);
+      if (
+        entries.length === 0 ||
+        entries.some(([key, setting]) =>
+          key === 'maxTools'
+            ? !Number.isSafeInteger(setting) || Number(setting) < 1
+            : !['requiredCommands', 'forbiddenCommands', 'commandOrder'].includes(key) ||
+              !Array.isArray(setting) ||
+              setting.length === 0 ||
+              setting.some((token) => typeof token !== 'string' || !token.trim())
+        )
+      )
+        throw new Error(`scenario ${id} has invalid TRAJECTORY rules`);
+    }
     if (typeof item.phase !== 'string' || !SDD_EVAL_PHASE_SET.has(item.phase)) {
       throw new Error(
         `scenario ${id} has invalid PHASE: ${JSON.stringify(item.phase)} ` +
@@ -234,7 +287,9 @@ export function computeAggregateExitCode(artifacts: readonly SddEvalRunArtifact[
   const failed = artifacts.some(
     (artifact) =>
       artifact.outcome !== 'budget-exhausted' &&
-      (artifact.verdict === 'worker-error' || artifact.quality?.pass === false)
+      (artifact.verdict === 'worker-error' ||
+        artifact.quality?.pass === false ||
+        artifact.trajectory?.pass === false)
   );
   return failed ? 1 : 0;
 }
@@ -353,7 +408,7 @@ async function runAndReport(
 }
 
 /** @purpose The body of runAndReport, split out so the event-subscription abort above always runs. */
-async function runAndReportBody(
+export async function runAndReportBody(
   options: SddEvalCliOptions,
   isolated: Array<SddEvalScenario & { directory: string }>,
   artifacts: SddEvalRunArtifact[],
@@ -367,12 +422,19 @@ async function runAndReportBody(
   const gennadyRootForResults = options.gennadyRoot ?? process.cwd();
   const resultsRoot = options.resultsDir ?? join(gennadyRootForResults, 'ai/flow-eval/results');
   const sha = await resolveGitSha(gennadyRootForResults);
-  const results = await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated);
+  const experimentSource = await resolveExperimentSource(
+    gennadyRootForResults,
+    options.scenarioFile,
+    options.config
+  );
   const byId = new Map(isolated.map((scenario) => [scenario.id, scenario]));
-  for (const result of results) {
-    const verdict = result.worker.budgetExhausted
-      ? 'budget-exhausted'
-      : (result.judge?.verdict ?? 'worker-error');
+  await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated, async (result) => {
+    let interrupted = options.config.signal?.aborted === true;
+    let verdict = interrupted
+      ? 'interrupted'
+      : result.worker.budgetExhausted
+        ? 'budget-exhausted'
+        : (result.judge?.verdict ?? 'worker-error');
     console.log(`${result.worker.scenarioId}: ${verdict} (${result.worker.status})`);
     if (result.worker.error) console.log(`  [diag] worker.error: ${result.worker.error}`);
     {
@@ -397,7 +459,7 @@ async function runAndReportBody(
       scenario.phase !== 'task' &&
       (scenario.phase !== 'brownfield' || brownfieldSpecMode);
     let quality: SddEvalRunArtifact['quality'];
-    if (scenario?.phase === 'migration' && scenario.directory) {
+    if (!interrupted && scenario?.phase === 'migration' && scenario.directory) {
       // Frozen deterministic bar: FLOW_VERSION=v2 + zero migration-introduced findings (baseline-diff).
       const { stateOutput, checkOutput } = await runMigrationChecks(scenario.directory);
       const g = computeMigrationGrade(
@@ -407,8 +469,10 @@ async function runAndReportBody(
       );
       quality = { rule: 'MIGRATION', pass: g.pass, detail: g.detail };
       console.log(`  migration: ${g.pass ? 'PASS' : 'FAIL'} — ${g.detail}`);
-    } else if (scenario && scenario.directory && producesSpecs) {
-      const r1 = await checkR1Structure(scenario.directory);
+    } else if (!interrupted && scenario && scenario.directory && producesSpecs) {
+      const r1 = scenario.authoringTargets
+        ? checkAuthoringReadiness(scenario.directory, scenario.authoringTargets)
+        : await checkR1Structure(scenario.directory);
       quality = { rule: r1.rule, pass: r1.pass, detail: r1.detail };
       console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
     }
@@ -416,7 +480,7 @@ async function runAndReportBody(
     // and fail the run if the artifact was built but the ticket never reached a real DONE (closed round +
     // group receipts). Mechanical answer to the abandoned-artifact blind spot; a failing R-COMPLETE is
     // decisive over R1 (structure clean ≠ work finished). Scenarios without `completion` are unaffected.
-    if (scenario?.completion && scenario.directory) {
+    if (!options.config.signal?.aborted && scenario?.completion && scenario.directory) {
       const rc = checkCompletion(scenario.directory, scenario.completion);
       console.log(`  quality ${rc.rule}: ${rc.pass ? 'pass' : 'FAIL'} — ${rc.detail}`);
       if (!rc.pass || !quality) quality = { rule: rc.rule, pass: rc.pass, detail: rc.detail };
@@ -443,41 +507,100 @@ async function runAndReportBody(
       judgeFile = target;
       console.log(`  judge rationale → ${target}`);
     }
-    // Trajectory (opt-in via scenario.checkpoints): the worker session is ephemeral, so normalize it
-    // into a durable, testable `trajectory.json` — tool events (from the same tail the observer reads)
-    // interleaved with deterministic checkpoint exit codes — that a `*.trajectory.test.ts` asserts over
-    // offline, as many times as needed, without re-running the (stochastic, slow) agent.
-    if (scenario?.checkpoints && directory && result.worker.sessionId) {
+    let trajectoryFile: string | undefined;
+    let trajectoryGrade: SddEvalRunArtifact['trajectory'];
+    let trajectoryToolCount: number | undefined;
+    // Final checkpoints prove terminal state, not intermediate transitions in the agent's path.
+    // Capture descendants separately from the deliberately short observer tail and persist before cleanup.
+    interrupted ||= options.config.signal?.aborted === true;
+    if (directory) {
       try {
-        const tail = await evidence.readTail(result.worker.sessionId, 100_000);
-        const tools = toolEventsFrom(tail);
-        const ticket = scenario.completion?.ticket ?? '';
-        const specs: CheckpointSpec[] = scenario.checkpoints.map((c) => ({
-          id: c.id,
-          cmd: c.cmd.replaceAll('<ticket>', ticket),
-        }));
+        if (!result.worker.sessionId) throw new Error('missing worker session identity');
+        const capture = await evidence.readTrajectory(result.worker.sessionId);
+        const tools = toolEventsFrom(capture.entries);
+        trajectoryToolCount = tools.length;
+        interrupted ||= options.config.signal?.aborted === true;
+        const ticket = scenario?.completion?.ticket ?? '';
+        const specs: CheckpointSpec[] = (interrupted ? [] : (scenario?.checkpoints ?? [])).map(
+          (c) => ({
+            id: c.id,
+            cmd: c.cmd.replaceAll('<ticket>', ticket),
+          })
+        );
         const runCheckpointCmd: Exec = (cmd) => {
+          if (options.config.signal?.aborted) return { exit: 130 };
           try {
-            execSync(cmd, { cwd: directory, stdio: 'ignore' });
+            execSync(cmd, {
+              cwd: directory,
+              stdio: 'pipe',
+              encoding: 'utf8',
+              maxBuffer: 256 * 1024,
+              timeout: 30_000,
+            });
             return { exit: 0 };
           } catch (cause) {
-            const status = (cause as { status?: number }).status;
-            return { exit: typeof status === 'number' ? status : 1 };
+            const failure = cause as {
+              status?: number;
+              stdout?: string | Buffer;
+              stderr?: string | Buffer;
+            };
+            return {
+              exit: typeof failure.status === 'number' ? failure.status : 1,
+              diagnostic: safeVerifyText(
+                `${failure.stdout ?? ''}\n${failure.stderr ?? ''}`,
+                directory
+              ).slice(0, 8192),
+            };
           }
         };
         const checkpoints = runCheckpoints(specs, runCheckpointCmd, Date.now());
+        if (!quality) {
+          quality = checkCheckpointResults(checkpoints);
+          if (quality)
+            console.log(
+              `  quality ${quality.rule}: ${quality.pass ? 'pass' : 'FAIL'} — ${quality.detail}`
+            );
+        }
         const traj: Trajectory = buildTrajectory(result.worker.scenarioId, tools, checkpoints);
+        traj.coverage = capture.coverage;
+        trajectoryGrade = gradeTrajectory(traj, scenario?.trajectoryRules);
+        if (interrupted || options.config.signal?.aborted)
+          trajectoryGrade = {
+            rule: 'TRAJECTORY',
+            pass: false,
+            detail: 'interrupted path; retained for diagnosis only',
+          };
         const target = join(directory, `.sdd-eval-trajectory.${result.worker.scenarioId}.json`);
         await writeFile(target, `${JSON.stringify(traj, null, 2)}\n`, 'utf8');
+        trajectoryFile = target;
         const greens = checkpoints.filter((c) => c.green).length;
         console.log(
           `  trajectory → ${target} (${tools.length} tools · ${greens}/${checkpoints.length} checkpoints green)`
         );
-      } catch (cause) {
-        console.log(
-          `  trajectory: skipped (${cause instanceof Error ? cause.message : String(cause)})`
-        );
+      } catch {
+        trajectoryGrade = {
+          rule: 'TRAJECTORY',
+          pass: false,
+          detail: 'required trajectory capture or persistence failed',
+        };
       }
+      console.log(
+        `  trajectory gate: ${trajectoryGrade.pass ? 'pass' : 'FAIL'} — ${trajectoryGrade.detail}`
+      );
+    }
+    interrupted ||= options.config.signal?.aborted === true;
+    if (interrupted) {
+      verdict = 'interrupted';
+      quality = {
+        rule: 'INTERRUPTED',
+        pass: false,
+        detail: 'run interrupted before reporting completed',
+      };
+      trajectoryGrade = {
+        rule: 'TRAJECTORY',
+        pass: false,
+        detail: 'interrupted path; retained for diagnosis only',
+      };
     }
     // Collect this scenario's durable outcome so it survives the sandbox teardown below.
     if (directory) {
@@ -493,11 +616,13 @@ async function runAndReportBody(
       const artifact: SddEvalRunArtifact = {
         scenarioId: result.worker.scenarioId,
         verdict,
-        status: result.worker.status,
+        status: interrupted ? 'interrupted' : result.worker.status,
         ...(result.worker.budgetExhausted ? { outcome: 'budget-exhausted' as const } : {}),
         ...(budgetExhausted ? { budgetExhausted } : {}),
         usage: u,
         quality,
+        trajectory: trajectoryGrade,
+        trajectoryFile,
         specFiles: producesSpecs ? await collectSpecFiles(directory) : [],
         judgeFile,
         directory,
@@ -513,16 +638,19 @@ async function runAndReportBody(
       const finishedAt = new Date();
       const lastObservation = result.worker.observations.at(-1);
       const firstObservation = result.worker.observations[0];
-      const outcome: SddEvalDurableSummary['outcome'] = result.worker.budgetExhausted
-        ? 'budget-exhausted'
-        : verdict === 'pass' || verdict === 'fail' || verdict === 'worker-error'
-          ? verdict
-          : 'unknown';
+      const outcome: SddEvalDurableSummary['outcome'] = interrupted
+        ? 'interrupted'
+        : result.worker.budgetExhausted
+          ? 'budget-exhausted'
+          : verdict === 'pass' || verdict === 'fail' || verdict === 'worker-error'
+            ? verdict
+            : 'unknown';
       const durableSummary: SddEvalDurableSummary = {
         scenarioId: result.worker.scenarioId,
         date: finishedAt.toISOString().slice(0, 10),
         timestamp: finishedAt.toISOString(),
         sha,
+        source: experimentSource,
         model: options.config.runnerModel,
         judgeModel: options.config.judgeModel,
         budget: {
@@ -533,26 +661,24 @@ async function runAndReportBody(
           tailLimit: options.config.tailLimit,
         },
         verdict,
-        status: result.worker.status,
+        status: interrupted ? 'interrupted' : result.worker.status,
         outcome,
         ...(budgetExhausted ? { budgetExhausted } : {}),
-        actions: lastObservation?.toolCallCount ?? 0,
+        actions: trajectoryToolCount ?? lastObservation?.toolCallCount ?? 0,
         durationMs:
           firstObservation && lastObservation && lastObservation !== firstObservation
             ? lastObservation.at - firstObservation.at
             : undefined,
         usage: u,
         quality,
+        trajectory: trajectoryGrade,
         hasJudge: Boolean(judgeFile),
         specFiles: artifact.specFiles,
       };
       const resultDir = await persistDurableResult(resultsRoot, durableSummary, {
         judgeFile,
-      }).catch((cause: unknown) => {
-        console.error(
-          `  results: could not persist durable result — ${cause instanceof Error ? cause.message : String(cause)}`
-        );
-        return undefined;
+        trajectoryFile,
+        specs: { root: directory, files: artifact.specFiles },
       });
       if (resultDir) console.log(`  results → ${resultDir}`);
       // GAP-E-6/D-62 (в): a stub entry per run, append-only — see the template documented at the
@@ -571,7 +697,7 @@ async function runAndReportBody(
         );
       }
     }
-  }
+  });
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -1,0 +1,44 @@
+{
+  "method": "read-only post-run SDK metadata; no additional model request",
+  "sourceCommit": "893153399adec842f652e8877e066649bf0a06a0",
+  "monetaryCost": "unknown; providerReportedCost=0 is not a verified bill",
+  "usageScope": "summary.usage covers worker/children; judge usage is recorded separately here",
+  "sessions": [
+    {
+      "directory": "sdd-flow-eval-CldNHv",
+      "id": "ses_e9b5f1db7ffexNHuwvEmIR9w5w",
+      "parent": null,
+      "title": "sdd-eval-judge",
+      "role": "judge",
+      "assistantMessages": 1,
+      "models": ["llm-proxy/deepseek-v4-flash"],
+      "usage": {
+        "input": 3939,
+        "output": 142,
+        "reasoning": 4680,
+        "cacheRead": 9344,
+        "cacheWrite": 0,
+        "providerReportedCost": 0,
+        "totalExcludingCache": 8761
+      }
+    },
+    {
+      "directory": "sdd-flow-eval-CldNHv",
+      "id": "ses_e9b5f938affe5wOF2xTlrJezU6",
+      "parent": null,
+      "title": "sdd-eval:v2-bounded-deviation-verdict",
+      "role": "worker",
+      "assistantMessages": 12,
+      "models": ["llm-proxy/deepseek-v4-flash"],
+      "usage": {
+        "input": 14791,
+        "output": 1193,
+        "reasoning": 350,
+        "cacheRead": 155648,
+        "cacheWrite": 0,
+        "providerReportedCost": 0,
+        "totalExcludingCache": 16334
+      }
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "scenarioId": "v2-bounded-deviation-verdict",
+  "date": "2026-10-22",
+  "timestamp": "2026-10-22T17:20:57.437Z",
+  "sha": "893153399adec842f652e8877e066649bf0a06a0",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "282f77847ed52c6d1b9f78f696dac209a6dd76f05911ca92eb199c668c6a73af",
+    "configSha256": "a0e7e3b4cd032b291ace81c5d93f91b017e38e2230d8300fc3eaa6ec2ad0bc4a"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 4,
+    "tailLimit": 20
+  },
+  "verdict": "fail",
+  "status": "completed",
+  "outcome": "fail",
+  "actions": 17,
+  "durationMs": 30077,
+  "usage": {
+    "messages": 12,
+    "input": 14791,
+    "output": 1193,
+    "reasoning": 350,
+    "cacheRead": 155648,
+    "cacheWrite": 0,
+    "total": 16334,
+    "cost": 0
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": true,
+    "detail": "17 tools; complete capture"
+  },
+  "hasJudge": true,
+  "specFiles": []
+}

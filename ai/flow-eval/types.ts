@@ -20,6 +20,9 @@ export type SddEvalScenario = {
   scale?: 'product' | 'module' | 'function' | 'fix';
   /** @purpose Optional acceptance signal the judge can use when interpreting the diff. */
   acceptance?: string;
+  /** @purpose Exact scenario-owned spec targets for read-only pre-Approval-1 readiness.
+   * Never supplied by the evaluated worker; ordinary project integrity remains R1. */
+  authoringTargets?: string[];
   /** @purpose Optional declared execute target for the mechanical completion rule (R-COMPLETE). When
    *  present on an execute scenario, the quality gate reads these files from disk and fails the run if
    *  the artifact was built but the ticket did not reach a real DONE (closed round + group receipts).
@@ -32,6 +35,8 @@ export type SddEvalScenario = {
    * `completion.ticket`. Structural type (not imported) to avoid a cycle with `trajectory.ts`.
    */
   checkpoints?: Array<{ id: string; cmd: string }>;
+  /** @purpose Required observed-path assertions, graded mechanically before sandbox cleanup. */
+  trajectoryRules?: import('./trajectory.ts').TrajectoryRules;
   /**
    * @purpose Per-scenario hard wall-clock budget in ms — overrides `SddEvalConfig.maxWallClockMs`.
    * For EXISTING evals set it to the established time this task is known to need; for NEW evals set it
@@ -96,6 +101,8 @@ export type SddEvalMode = (typeof SDD_EVAL_MODES)[number];
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =
+  | 'v2-brownfield-routing'
+  | 'deviation-verdict'
   | 'fibonacci-library'
   | 'tic-tac-toe'
   | 'slugify-toolchain'
@@ -181,6 +188,8 @@ export type SddEvalConfig = {
 /** @purpose A bounded, external view of an OpenCode message part. */
 export type SddEvalTailEntry = {
   messageId: string;
+  sessionId?: string;
+  parentSessionId?: string;
   role: 'user' | 'assistant' | string;
   createdAt?: number;
   text: string;
@@ -192,6 +201,14 @@ export type SddEvalTailEntry = {
     tool: string;
     status: 'pending' | 'running' | 'completed' | 'error' | string;
     inputSummary?: string;
+    command?: string;
+    startedAt?: number;
+    finishedAt?: number;
+    error?: string;
+    exitCode?: number;
+    diagnostic?: string;
+    /** @purpose A bounded projection lost command/path evidence; cannot prove path coverage. */
+    inputSummaryTruncated?: boolean;
   }>;
 };
 
@@ -306,7 +323,12 @@ export interface SddEvalRuntime {
   }): Promise<void>;
   /** @purpose Abort a worker session after an externally detected stuck observation. */
   abort?(sessionId: string): Promise<void>;
-  judge(input: { directory: string; prompt: string; model: OpenCodeModel }): Promise<string>;
+  judge(input: {
+    directory: string;
+    prompt: string;
+    model: OpenCodeModel;
+    signal?: AbortSignal;
+  }): Promise<string>;
 }
 
 /** @purpose Shared session-to-working-directory binding used by every SDK operation. */

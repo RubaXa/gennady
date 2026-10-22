@@ -141,8 +141,8 @@ flowchart LR
 
 <details><summary>Подробности</summary>
 
-| Requirement | Kind | Owner | Resolution |
-| --- | --- | --- | --- |
+| Requirement                     | Kind       | Owner           | Resolution  |
+| ------------------------------- | ---------- | --------------- | ----------- |
 | VCS credentials (GitLab/GitHub) | credential | operator-action | token в env |
 
 </details>
@@ -153,10 +153,10 @@ flowchart LR
 
 ## 11. Module Map
 
-| Модуль | Путь | Назначение |
-| --- | --- | --- |
-| vcs-mr-view cmd | `cli/cmd/vcs-mr-view/vcs-mr-view.cmd.ts` | логика команды |
-| vcs-mr-view index | `cli/cmd/vcs-mr-view/index.ts` | entry point |
+| Модуль            | Путь                                     | Назначение     |
+| ----------------- | ---------------------------------------- | -------------- |
+| vcs-mr-view cmd   | `cli/cmd/vcs-mr-view/vcs-mr-view.cmd.ts` | логика команды |
+| vcs-mr-view index | `cli/cmd/vcs-mr-view/index.ts`           | entry point    |
 
 <!--/SECTION:MODULE_MAP-->
 

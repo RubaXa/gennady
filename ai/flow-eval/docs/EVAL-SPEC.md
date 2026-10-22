@@ -101,10 +101,38 @@ PASS|FAIL — …`), затем `usage: total=… cost=…`, затем (GAP-E-6
 диагностику и число `pending-operator`; exit остаётся 0, но незакрытая запись механически красит
 `sdd-check --all` и не даёт финально закрыть группу до `sdd-log deviation-verdict`; реальные
 audit/review receipts при этом записываются до единственного batched deviation review. См. «Часть B» ниже
-и `RUNBOOK.md` про бюджеты по фазам. Известный
-дефект: `R1` даёт FAIL на
-репозитории с 0 ошибок и ≥1 ворнингом — сверяйся с числом ошибок в выводе `sdd-check`, а не только со
-строкой `quality R1`.
+и `RUNBOOK.md` про бюджеты по фазам. Исторический false-FAIL на warnings-only исправлен:
+итог требует успешный exit и настоящий нулевой error-count. Для явного pre-Approval-1
+authoring-set действует R1-A, описанный ниже.
+
+### Проверяемая траектория (recovery 2026-10-22)
+
+Каждый новый запуск сохраняет траекторию, включая ошибки worker/judge и прерывания. Сценарий
+может дополнительно объявить `checkpoints` и `trajectoryRules`: `requiredCommands` (глаголы прямого
+вызова Gennady), `forbiddenCommands` (буквальные подстроки команд), `commandOrder` и `maxTools`.
+Отдельный `trajectory.json` сохраняется рядом с постоянным `summary.json` и в transient compact
+evidence **до** удаления песочницы. Написанные спеки также сохраняются постоянно под `specs/`
+этой записи; новые summary используют относительные пути. Обязательные evidence копируются до
+публикации summary, поэтому ошибка копирования не оставляет ложный успешный результат.
+`summary.trajectory.pass=false` влияет на механический гейт
+независимо от мнения судьи; `budget-exhausted` остаётся отдельным исходом, не PASS.
+
+Трасса собирается отдельно от короткого observer tail: корневая сессия и её потомки, идентичности
+session/message/call, terminal status и безопасная проекция параметров (без тел файлов и промптов).
+Ограничения сбора — 32 сессии и 2000 сообщений на сессию, 16 KiB на проекцию действия; насыщение
+лимита помечает `coverage.complete=false` и запрещает зелёный trajectory-гейт. Ошибка обязательного
+сбора/сохранения не означает «проверка пропущена успешно».
+
+Наблюдаемый вызов команды доказывает **попытку**, не нулевой exit-код. `commandOrder` требует
+реальных tool start/end timestamps; порядок сообщений или запуск checkpoints после окончания
+агента это не доказывает. Checkpoints доказывают только конечное состояние. Echo/heredoc с названием
+команды не считается её вызовом. Сложные shell-обёртки не распознаются как прямые вызовы — такой
+прогон честно требует разбора, а не ослабления гейта постфактум.
+
+Для эксперимента сохраняются HEAD и `source`: dirty-флаг, hash изменений рабочего дерева,
+сценария и config. Сравнение до/после требует одинаковых сценария, модели и бюджета и отдельно
+зафиксированной гипотезы. Исторический trace и тест харнесса не заменяют новый live-прогон.
+План восстановления: [V2-RECOVERY-PLAN.md](./V2-RECOVERY-PLAN.md).
 
 ### Что НЕ является eval
 
@@ -190,11 +218,19 @@ flowchart TD
 
 ### Единый словарь правил качества
 
-- **`R1`** (структурная целостность): pass iff `gennady sdd-check --all .` сообщает ноль ошибок.
-  Парсер засчитывает pass только на строке `✅ clean`; итог вида `0 error(s), N warning(s)` разбирается
-  как «нет вердикта» → механическая FAIL — известный дефект парсера, сверяйся с числом ошибок сам, не
-  только со строкой `quality R1`. Применяется к сценариям, производящим спеки (все фазы кроме `task`,
-  для `brownfield` — только режимы `recover-spec`/`delta-to-spec`/`modify-via-spec`).
+- **`R1`** (структурная целостность): pass iff настоящий `gennady sdd-check --all .` завершился
+  успешно и сообщил ноль ошибок; warnings допускаются. Ненулевой exit не превращается в PASS
+  из-за строки с нулём ошибок. Применяется к проектным/исполнительским сценариям, производящим спеки.
+- **`R1-A`** (готовность точного authoring-set перед Approval #1): включается ТОЛЬКО явным
+  `authoringTargets` у `spec-authoring`. Непустой набор принадлежит сценарию, а не ответу агента.
+  Каждый путь безопасно читается без симлинков/escape, нужен уникальный SPEC_ID; настоящий
+  `checkSpecAuthoringDraft` не должен дать ни одного finding, включая advisory skeleton hints.
+  Проверяется иерархия parent/module. Oracle read-only: auto-fix не вызывается. Отсутствующие,
+  пустые, дублированные и недописанные артефакты — FAIL. Это НЕ полная project-integrity проверка:
+  тикеты появляются после Approval #1, поэтому их отсутствие до decomposition не подделывается
+  фиктивными задачами. `R1`, `R-COMPLETE`, migration и обычный CLI `--all` не ослабляются.
+  Существующие служебные runner-ы имеют отдельную восстановленную infrastructure spec и `@spec`;
+  ownership не отключается и продуктовая спека не присваивается чужой инфраструктуре.
 - **`R-COMPLETE`** (реальное завершение; opt-in, требует поле `completion` в сценарии): pass iff
   артефакт РЕАЛЬНО ПРОИЗВЕДЁН (отличается от корневого коммита песочницы `chore: initialize eval
 fixture`, а не просто «файл непуст» — V-BATCH-22 verdict B-3: фикстура `slugify-toolchain` коммитит
@@ -206,6 +242,10 @@ fixture`, а не просто «файл непуст» — V-BATCH-22 verdict 
   переисчисленным состоянием тикета — той же защитой от подделки/протухания
   (`shared/sdd/group-receipt.ts`'s `groupReceiptIssue`), которой `sdd-check`'s `checkGroupReceipts`
   уже пользуется. Решающий над `R1` (чистая структура ≠ доведённая до конца работа).
+- **`CHECKPOINTS`** (малые task-сценарии без другого quality rule): все явно объявленные
+  source-owned terminal checkpoints должны пройти. Пустой набор не создаёт quality PASS.
+  Checkpoint доказывает конечные артефакты, не последовательность действий: trajectory и judge
+  сохраняются отдельно. Провал trajectory или interruption не перекрывается этим PASS.
 - **`MIGRATION`** (оценка миграции, фаза `migration`): pass iff `FLOW_VERSION=v2` И (а) прогон не внёс
   новых находок среди СТРУКТУРНЫХ кодов `SDD_BROKEN_SPEC_REF` / `SDD_BROKEN_SPEC_ANCHOR` /
   `ERR_CLI_SDD_CHECK_READ_FAILED` относительно baseline, снятого ДО воркера (предсуществующие
@@ -311,8 +351,8 @@ Authoring batches run sequentially (`--concurrency 1`) — parallel authoring wo
 4. `<sandbox>/golden/verify.sh` when the fixture ships one — run it; exit 0 is the pass.
 
 **Quality rules.** See "Единый словарь правил качества" above (`R1`, `R-COMPLETE`, `MIGRATION`,
-golden) — same three rules, same english summary: `R1` = `sdd-check --all` clean (false-FAIL on
-`0 error(s), N warning(s)` — read the error count yourself); `R-COMPLETE` = artifact CHANGED vs the
+golden) — R1-A is exact pre-Approval-1 authoring readiness; `R1` = successful `sdd-check --all`
+with zero errors (warnings allowed); `R-COMPLETE` = artifact CHANGED vs the
 sandbox's root commit (not merely present) + DONE + closed round + both receipts VALID (parsed JSON,
 `kind` matching its marker, explicit `"verdict":"PASS"`, signature current against the live
 re-derived ticket state — V-BATCH-22 B-3), decisive over `R1`; `MIGRATION` = `FLOW_VERSION=v2` + zero

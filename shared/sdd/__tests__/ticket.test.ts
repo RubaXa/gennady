@@ -4,7 +4,15 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -15,7 +23,7 @@ import {
   parseVerificationTable,
   parseTicketCoveragePolicy,
 } from '../ticket.ts';
-import { resolveTicketArg } from '../ticket-resolve.ts';
+import { collectTicketCorpus, resolveTicketArg } from '../ticket-resolve.ts';
 
 const COVERAGE_POLICY_SCHEMA_MARKER = '<!--COVERAGE_POLICY:v1-->';
 
@@ -162,6 +170,71 @@ describe('resolveTicketArg repository identity', () => {
       rmSync(outside, { recursive: true, force: true });
     }
   });
+
+  it('ignores CLAUDE.md to AGENTS.md while retaining exact ticket-path protections', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ticket-doc-alias-'));
+    try {
+      writeFileSync(join(root, 'ticket.md'), resolvableTicket('TSK-safe'));
+      writeFileSync(join(root, 'AGENTS.md'), '# Repository instructions\n');
+      symlinkSync('AGENTS.md', join(root, 'CLAUDE.md'));
+      const corpus = collectTicketCorpus(root);
+      assert.equal(corpus.ok, true);
+      if (corpus.ok)
+        assert.deepEqual(
+          corpus.refs.map((ref) => ref.taskId),
+          ['TSK-safe']
+        );
+      assert.equal(resolveTicketArg('TSK-safe', root).ok, true);
+      assert.equal(resolveTicketArg('CLAUDE.md', root).ok, false);
+      assert.equal(readFileSync(join(root, 'AGENTS.md'), 'utf8'), '# Repository instructions\n');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('ignores README directory aliases and discovers canonical documentation tickets once', () => {
+    const root = mkdtempSync(join(tmpdir(), 'ticket-dir-alias-'));
+    try {
+      mkdirSync(join(root, 'docs'));
+      writeFileSync(join(root, 'docs/ticket.md'), resolvableTicket('TSK-doc'));
+      symlinkSync('docs', join(root, 'README.md'));
+      const corpus = collectTicketCorpus(root);
+      assert.equal(corpus.ok, true);
+      if (corpus.ok) {
+        assert.equal(corpus.refs.length, 1);
+        assert.equal(corpus.refs[0].file, realpathSync(join(root, 'docs/ticket.md')));
+      }
+      assert.equal(resolveTicketArg('TSK-doc', root).ok, true);
+      assert.equal(resolveTicketArg('README.md/ticket.md', root).ok, false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  for (const target of [
+    'missing.md',
+    'node_modules/hidden.md',
+    'migration/hidden.md',
+    '.private/hidden.md',
+    'plain.txt',
+  ]) {
+    it(`rejects an alias to an uncovered corpus target ${target}`, () => {
+      const root = mkdtempSync(join(tmpdir(), 'ticket-uncovered-alias-'));
+      try {
+        writeFileSync(join(root, 'ticket.md'), resolvableTicket('TSK-safe'));
+        if (target !== 'missing.md') {
+          mkdirSync(join(root, target, '..'), { recursive: true });
+          writeFileSync(join(root, target), resolvableTicket('TSK-hidden'));
+        }
+        symlinkSync(target, join(root, 'alias.md'));
+        const corpus = collectTicketCorpus(root);
+        assert.equal(corpus.ok, false);
+        if (!corpus.ok) assert.match(corpus.detail, /unsafe symlink/u);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    });
+  }
 });
 
 describe('parsePhasesOverview', () => {

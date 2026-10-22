@@ -15,7 +15,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { builtinModules, createRequire } from 'node:module';
+import { isBuiltin, createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { after, before, describe, it } from 'node:test';
@@ -72,7 +72,12 @@ const context = {
   files: new Set<string>(),
 };
 
-function run(command: string, args: string[], cwd: string): string {
+function run(
+  command: string,
+  args: string[],
+  cwd: string,
+  overrides: NodeJS.ProcessEnv = {}
+): string {
   const { fixture } = context;
   const result = spawnSync(command, args, {
     cwd,
@@ -90,6 +95,7 @@ function run(command: string, args: string[], cwd: string): string {
       npm_config_cache: join(fixture, 'cache'),
       npm_config_userconfig: join(fixture, 'empty.npmrc'),
       npm_config_offline: 'true',
+      ...overrides,
     },
   });
   assert.equal(
@@ -160,11 +166,7 @@ function assertClosure(path: string, declarations = true, visited = new Set<stri
         declarations,
         visited
       );
-    } else if (
-      !declarations &&
-      !builtinModules.includes(specifier) &&
-      !builtinModules.includes(specifier.replace(/^node:/, ''))
-    ) {
+    } else if (!declarations && !isBuiltin(specifier)) {
       const name = specifier.startsWith('@')
         ? specifier.split('/').slice(0, 2).join('/')
         : specifier.split('/')[0];
@@ -232,10 +234,16 @@ describe('declared local package exports (R3)', () => {
         !existsSync(join(ROOT, path))
       )
         continue;
-      const localSource = join(fixture, 'runtime', path);
+      const archiveRoot = join(fixture, 'runtime', String(Object.keys(runtimePackages).length));
+      const localSource = join(archiveRoot, 'package');
       mkdirSync(dirname(localSource), { recursive: true });
       cpSync(join(ROOT, path), localSource, { recursive: true, dereference: true });
-      runtimePackages[path] = { ...info, resolved: `file:${localSource}`, integrity: undefined };
+      // A directory file: dependency triggers npm's prepare lifecycle even with ignore-scripts
+      // on some npm versions. Installed registry packages lack those development-only sources.
+      // Rewrap the already-installed bytes as a registry-like tarball, not a source dependency.
+      const archive = join(archiveRoot, 'installed.tgz');
+      run('tar', ['-czf', archive, '-C', archiveRoot, 'package'], fixture);
+      runtimePackages[path] = { ...info, resolved: `file:${archive}`, integrity: undefined };
     }
     const dependency = `file:${join(fixture, pack.filename)}`;
     const original = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
@@ -313,6 +321,37 @@ describe('declared local package exports (R3)', () => {
   });
   after(() => {
     if (context.fixture) rmSync(context.fixture, { recursive: true, force: true });
+  });
+
+  it('installed CLI launches the shipped update worker and writes its cache without network access', async () => {
+    const { installed, fixture, consumer, files } = context;
+    assert.ok(files.has('dist/chunks/update-check-worker.js'));
+    const preload = join(fixture, 'update-registry-preload.mjs');
+    writeFileSync(
+      preload,
+      `globalThis.fetch = async (url) => {
+        if (String(url) !== 'https://registry.npmjs.org/gennady/latest') throw new Error('unexpected URL');
+        return new Response(JSON.stringify({ version: '99.0.0' }), { status: 200 });
+      };\n`
+    );
+    run(process.execPath, [join(installed, 'dist/gennady.js'), 'verify', '--help'], consumer, {
+      NODE_OPTIONS: `--import=${pathToFileURL(preload).href}`,
+      GENNADY_NO_UPDATE_CHECK: '0',
+      CI: 'false',
+      CONTINUOUS_INTEGRATION: 'false',
+      LOCALAPPDATA: join(fixture, 'local-app-data'),
+    });
+    const cache =
+      process.platform === 'darwin'
+        ? join(fixture, 'home/Library/Caches/gennady/update-check-cache.json')
+        : process.platform === 'win32'
+          ? join(fixture, 'local-app-data/gennady/update-check-cache.json')
+          : join(fixture, 'home/.cache/gennady/update-check-cache.json');
+    const deadline = Date.now() + 5000;
+    while (!existsSync(cache) && Date.now() < deadline)
+      await new Promise((done) => setTimeout(done, 25));
+    assert.ok(existsSync(cache), 'installed background worker did not create its cache');
+    assert.equal(JSON.parse(readFileSync(cache, 'utf8')).latestVersion, '99.0.0');
   });
 
   it('R4 copied readonly config closes the actual installed bundle path without agent launch', () => {

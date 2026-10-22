@@ -6,7 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -21,6 +21,50 @@ function git(args: string[], cwd: string): string {
 }
 
 describe('prepareMrWorktree — concurrent prepares on one clone (FETCH_HEAD race)', () => {
+  it('rechecks real Git connectivity after a locked in-progress linked HEAD becomes valid', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'wt-head-window-'));
+    const seed = join(root, 'seed');
+    const origin = join(root, 'origin.git');
+    const clone = join(root, 'clone');
+    let repair: ReturnType<typeof setTimeout> | undefined;
+    let prepared: ReturnType<typeof prepareMrWorktree> | undefined;
+    try {
+      mkdirSync(seed);
+      git(['init', '--quiet'], seed);
+      git(['config', 'user.email', 'race@example.test'], seed);
+      git(['config', 'user.name', 'Race Fixture'], seed);
+      writeFileSync(join(seed, 'a.txt'), 'base\n');
+      git(['add', '-A'], seed);
+      git(['commit', '--quiet', '-m', 'base'], seed);
+      const head = git(['rev-parse', 'HEAD'], seed);
+      git(['clone', '--quiet', '--bare', seed, origin], root);
+      git(['update-ref', 'refs/merge-requests/1/head', head], origin);
+      git(['clone', '--quiet', origin, clone], root);
+      const registering = join(clone, '.git/worktrees/registering');
+      mkdirSync(registering, { recursive: true });
+      writeFileSync(join(registering, 'gitdir'), join(root, 'registering/.git') + '\n');
+      writeFileSync(join(registering, 'locked'), 'initializing\n');
+      writeFileSync(join(registering, 'HEAD'), '1'.repeat(40) + '\n');
+      const red = spawnSync(
+        'git',
+        ['fetch', 'origin', '+merge-requests/1/head:refs/gennady/mr-head/1'],
+        { cwd: clone, encoding: 'utf8', timeout: 5000 }
+      );
+      assert.notEqual(red.status, 0);
+      assert.match(red.stderr, /^fatal: bad object worktrees\/registering\/HEAD$/m);
+      // Model the other process finishing registration, without changing origin or the MR ref.
+      repair = setTimeout(() => writeFileSync(join(registering, 'HEAD'), head + '\n'), 500);
+      prepared = prepareMrWorktree(clone, '1', join(root, 'review'));
+      const result = await prepared;
+      assert.equal(result.headSha, head);
+      assert.equal(git(['rev-parse', 'HEAD'], result.worktreePath), head);
+    } finally {
+      if (repair) clearTimeout(repair);
+      if (prepared) await Promise.allSettled([prepared]);
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('each MR checks out its own head when N MRs of one project are prepared in parallel', async () => {
     const root = mkdtempSync(join(tmpdir(), 'wt-race-'));
     const seedPath = join(root, 'seed');

@@ -149,8 +149,8 @@ flowchart LR
 
 <details><summary>Подробности</summary>
 
-| Requirement | Kind | Owner | Resolution |
-| --- | --- | --- | --- |
+| Requirement | Kind    | Owner      | Resolution            |
+| ----------- | ------- | ---------- | --------------------- |
 | Node.js 22+ | runtime | infra-base | уже в `shared/common` |
 
 </details>
@@ -161,15 +161,15 @@ flowchart LR
 
 ## 11. Module Map
 
-| Модуль | Путь | Назначение |
-| --- | --- | --- |
-| PeerPort | `services/peer/peer-port.ts` | runtime-agnostic transport contract |
-| ClaudeCodeTransport | `services/peer/claude-code/**` | Claude Code transport + protocol |
-| CodexTransport | `services/peer/codex/**` | Codex transport + store |
-| OpenCodeTransport | `services/peer/opencode/**` | OpenCode transport + store |
-| PeerInvoker | `services/peer/peer-invoker.ts` | запуск доставки |
-| PeerLedger | `services/peer/peer-ledger.ts` | учёт сообщений |
-| peer CLI | `cli/cmd/peer/**` | `list` / `read` / `send` |
+| Модуль              | Путь                            | Назначение                          |
+| ------------------- | ------------------------------- | ----------------------------------- |
+| PeerPort            | `services/peer/peer-port.ts`    | runtime-agnostic transport contract |
+| ClaudeCodeTransport | `services/peer/claude-code/**`  | Claude Code transport + protocol    |
+| CodexTransport      | `services/peer/codex/**`        | Codex transport + store             |
+| OpenCodeTransport   | `services/peer/opencode/**`     | OpenCode transport + store          |
+| PeerInvoker         | `services/peer/peer-invoker.ts` | запуск доставки                     |
+| PeerLedger          | `services/peer/peer-ledger.ts`  | учёт сообщений                      |
+| peer CLI            | `cli/cmd/peer/**`               | `list` / `read` / `send`            |
 
 <!--/SECTION:MODULE_MAP-->
 

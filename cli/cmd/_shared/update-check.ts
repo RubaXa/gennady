@@ -10,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_INTERVAL_MS = 86_400_000;
 const WORKER_TIMEOUT_MS = 3000;
-const WORKER_FILENAME = 'update-check-worker.ts';
 const CACHE_FILENAME = 'update-check-cache.json';
 
 /** @purpose Serialized cache structure persisted by the update-check worker. */
@@ -181,7 +180,12 @@ export function checkForUpdates(
   // #endregion END_FRESH_CACHE_PATH
 
   // #region START_SPAWN_WORKER
-  const workerPath = resolve(dirname(fileURLToPath(import.meta.url)), WORKER_FILENAME);
+  // Source execution uses the TS sibling; Vite keeps _shared in dist/chunks and ships
+  // the dedicated JS worker in that same directory (covered by real pack/install tests).
+  const workerPath = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    import.meta.url.endsWith('.ts') ? 'update-check-worker.ts' : 'update-check-worker.js'
+  );
 
   const spawnFn = opts?._spawnFn ?? spawn;
 

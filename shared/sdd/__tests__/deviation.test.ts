@@ -23,6 +23,50 @@ function ticket(status: '[ ] TODO' | '[x] DONE', verdict: string): string {
 }
 
 describe('V14-2 deviation record', () => {
+  it('edits only the exact module Decision Log entry and preserves CRLF, fenced examples and other sections', () => {
+    const input = [
+      '<!--SECTION:MODULE_DECISION_LOG-->',
+      'DEM-DL-1 choice [verdict: pending-operator]',
+      '```md',
+      'DEM-DL-1 example [verdict: pending-operator]',
+      '```',
+      'DEM-DL-10 other [verdict: pending-operator]',
+      '<!--/SECTION:MODULE_DECISION_LOG-->',
+      '<!--SECTION:DECISION_LOG-->',
+      'DEM-DL-1 foreign [verdict: pending-operator]',
+      '<!--/SECTION:DECISION_LOG-->',
+    ].join('\r\n');
+    const edited = setDeviationVerdict(input, 'DEM-DL-1', 'accepted', 'module');
+    assert.equal(edited.ok, true);
+    if (edited.ok)
+      assert.equal(
+        edited.content,
+        input.replace('choice [verdict: pending-operator]', 'choice [verdict: accepted]')
+      );
+  });
+
+  it('bounds canonical tasks-index decisions by headings and refuses ambiguous sections, ids and tokens', () => {
+    const entry = 'DEM-DL-1 choice [verdict: pending-operator]';
+    const input = `## Tracker Index\n${entry}\n## Decision Log (module-task level)\n${entry}\n## Conventions\n${entry}\n`;
+    const edited = setDeviationVerdict(input, 'DEM-DL-1', 'rework', 'tasks-index');
+    assert.equal(edited.ok, true);
+    if (edited.ok)
+      assert.equal(
+        edited.content,
+        input.replace(`level)\n${entry}`, `level)\nDEM-DL-1 choice [verdict: rework]`)
+      );
+    for (const bad of [
+      input.replace(
+        '## Conventions',
+        `## Decision Log (scope task level)\n${entry}\n## Conventions`
+      ),
+      input.replace('## Conventions', 'DEM-DL-1 ordinary duplicate\n## Conventions'),
+      input.replace('level)\n' + entry, 'level)\n' + entry + ' [verdict: accepted]'),
+      input.replace('Decision Log (module-task level)', 'Decision Log (arbitrary)'),
+    ])
+      assert.equal(setDeviationVerdict(bad, 'DEM-DL-1', 'accepted', 'tasks-index').ok, false);
+  });
+
   it('is WARN while work is open, ERROR at DONE, and disappears after an accepted verdict', () => {
     const open = checkTicket('ticket.md', ticket('[ ] TODO', 'pending-operator'));
     const openFinding = open.filter((finding) => finding.code === 'SDD_DEVIATION_VERDICT_MISSING');

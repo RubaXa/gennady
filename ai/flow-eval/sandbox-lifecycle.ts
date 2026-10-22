@@ -34,10 +34,13 @@ export type SddEvalRunArtifact = {
   };
   usage?: unknown;
   quality?: { rule: string; pass: boolean; detail: string };
+  trajectory?: { rule: string; pass: boolean; detail: string };
   /** Absolute paths (inside the sandbox) of spec files the worker produced. */
   specFiles: string[];
   /** Absolute path (inside the sandbox) of the judge rationale file, when written. */
   judgeFile?: string;
+  /** @purpose Observed path, copied before deleting its owned sandbox. */
+  trajectoryFile?: string;
   /** Absolute sandbox directory this outcome came from. */
   directory: string;
 };
@@ -132,6 +135,10 @@ export async function persistRunArtifacts(
       await mkdir(scenarioDir, { recursive: true });
       await cp(entry.judgeFile, target).catch(() => undefined);
     }
+    if (entry.trajectoryFile) {
+      await mkdir(scenarioDir, { recursive: true });
+      await cp(entry.trajectoryFile, join(scenarioDir, 'trajectory.json'));
+    }
     summary.push({
       scenarioId: entry.scenarioId,
       verdict: entry.verdict,
@@ -140,8 +147,10 @@ export async function persistRunArtifacts(
       budgetExhausted: entry.budgetExhausted,
       usage: entry.usage,
       quality: entry.quality,
+      trajectory: entry.trajectory,
       specFiles: savedSpecs,
       hasJudge: Boolean(entry.judgeFile),
+      hasTrajectory: Boolean(entry.trajectoryFile),
     });
   }
   await writeFile(join(runDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');

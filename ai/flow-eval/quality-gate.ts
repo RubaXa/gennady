@@ -6,6 +6,10 @@ import { execFile, execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { checkSpecAuthoringDraft, checkSpecHierarchy } from '../../shared/sdd/check.ts';
+import { extractSection } from '../../shared/sdd/section.ts';
+import { SCOPE_KINDS } from '../../shared/sdd/templates.ts';
+import { proveRepoFile, readProvenRepoFile } from '../../shared/common/repo-file-identity.ts';
 import {
   deriveGroupState,
   groupReceiptIssue,
@@ -15,6 +19,61 @@ import {
 
 const execFileAsync = promisify(execFile);
 
+/** @purpose Read-only pre-Approval-1 readiness, not whole-project/ticket completion.
+ * Every declared artifact must be safe, complete and free of authoring findings (including hints).
+ * No auto-fix is called: the oracle never repairs the artifact it grades. */
+export function checkAuthoringReadiness(
+  sandboxDir: string,
+  targets: readonly string[]
+): QualityRuleResult {
+  const fail = (detail: string): QualityRuleResult => ({ rule: 'R1-A', pass: false, detail });
+  if (!targets.length || new Set(targets).size !== targets.length)
+    return fail('missing or duplicate scenario-owned authoring targets');
+  const identities = new Set<string>();
+  const ids = new Set<string>();
+  const specs: Array<{ file: string; content: string; flowVersion: 'v2' }> = [];
+  let count = 0;
+  for (const target of targets) {
+    if (!target.endsWith('.spec.md')) return fail('authoring target is not a spec');
+    const proof = proveRepoFile(sandboxDir, target);
+    if (!proof.ok) return fail(`${target}: ${proof.detail}`);
+    if (identities.has(proof.identity.relative)) return fail('duplicate canonical spec target');
+    identities.add(proof.identity.relative);
+    const observed = readProvenRepoFile(proof.identity);
+    if (!observed.ok) return fail(`${target}: ${observed.detail}`);
+    const identity = extractSection(observed.content, 'SPEC_ID');
+    const id = identity.status === 'ok' ? identity.content.trim() : '';
+    if (!id || !/^[^\s<>]+$/.test(id) || ids.has(id))
+      return fail(`${target}: missing, malformed or duplicate SPEC_ID`);
+    ids.add(id);
+    const scope = extractSection(observed.content, 'SCOPE_TYPE');
+    const module = extractSection(observed.content, 'MODULE_VISION');
+    const scopeKinds =
+      scope.status === 'ok'
+        ? SCOPE_KINDS.filter((kind) => new RegExp(`\\b${kind}\\b`).test(scope.content))
+        : [];
+    if (
+      !(
+        (module.status === 'ok' && scope.status === 'not_found') ||
+        (module.status === 'not_found' && scope.status === 'ok' && scopeKinds.length === 1)
+      )
+    )
+      return fail(`${target}: no unambiguous canonical scope/module kind`);
+    const findings = checkSpecAuthoringDraft(target, observed.content);
+    if (findings.length)
+      return fail(`${target}: ${findings.map((finding) => finding.code).join(', ')}`);
+    specs.push({ file: proof.identity.relative, content: observed.content, flowVersion: 'v2' });
+    count++;
+  }
+  const hierarchy = checkSpecHierarchy(specs);
+  if (hierarchy.length) return fail(hierarchy.map((finding) => finding.code).join(', '));
+  return {
+    rule: 'R1-A',
+    pass: true,
+    detail: `${count} exact specs ready; read-only authoring checks`,
+  };
+}
+
 /** @purpose One quality rule's objective outcome for a run. */
 export type QualityRuleResult = {
   /** @purpose Rule id from docs/EVAL-SPEC.md (e.g. 'R1'). */
@@ -23,6 +82,24 @@ export type QualityRuleResult = {
   /** @purpose Short objective evidence (e.g. error count, the checker's summary line). */
   detail: string;
 };
+
+/** @purpose Persist an explicit mechanical bar for task scenarios with source-owned checkpoints.
+ * No declared checkpoint means no quality claim; a trace alone is not artifact correctness. */
+export function checkCheckpointResults(
+  checkpoints: readonly { id: string; green: boolean }[]
+): QualityRuleResult | undefined {
+  if (!checkpoints.length) return undefined;
+  const failed = checkpoints
+    .filter((checkpoint) => !checkpoint.green)
+    .map((checkpoint) => checkpoint.id);
+  return {
+    rule: 'CHECKPOINTS',
+    pass: failed.length === 0,
+    detail: failed.length
+      ? `failed: ${failed.join(', ')}`
+      : `${checkpoints.length} source-owned terminal checkpoints passed`,
+  };
+}
 
 /**
  * @purpose Read the pass/fail of R1 (structural integrity) from `sdd-check --all` output.
@@ -66,6 +143,7 @@ export async function checkR1Structure(sandboxDir: string): Promise<QualityRuleR
       cwd: sandboxDir,
       encoding: 'utf8',
       maxBuffer: 4 * 1024 * 1024,
+      timeout: 30_000,
     });
     return parseSddCheckResult(`${stdout}\n${stderr}`);
   } catch (cause) {
@@ -73,7 +151,11 @@ export async function checkR1Structure(sandboxDir: string): Promise<QualityRuleR
     const shell = cause as { stdout?: string; stderr?: string; message?: string };
     const text = `${shell.stdout ?? ''}\n${shell.stderr ?? ''}`.trim();
     return text
-      ? parseSddCheckResult(text)
+      ? {
+          rule: 'R1',
+          pass: false,
+          detail: `checker exited nonzero: ${parseSddCheckResult(text).detail}`,
+        }
       : { rule: 'R1', pass: false, detail: 'sdd-check failed to run' };
   }
 }
