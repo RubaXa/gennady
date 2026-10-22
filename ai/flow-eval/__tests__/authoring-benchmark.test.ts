@@ -279,6 +279,123 @@ it('rejects wrong positive and negative facts even when the expected words remai
   }
 });
 
+it('accepts unique Input/Outcome header columns with labels, reordered columns and optional outer pipes', () => {
+  for (const id of AUTHORING_CASE_IDS.filter((id) =>
+    getAuthoringCase(id).target.endsWith('.spec.md')
+  )) {
+    for (const table of [
+      '| Example | Input | Outcome |\n| --- | --- | --- |\n| Normal | `"  Foo__BAR  "` | `"foo-bar"` |\n| Empty | `""` | `TypeError` |',
+      '| Outcome | Example | Input |\n| --- | --- | --- |\n| `"foo-bar"` | Normal | `"  Foo__BAR  "` |\n| `TypeError` | Empty | `""` |',
+      'Outcome | Input\n--- | ---\n`"foo-bar"` | `"  Foo__BAR  "`\n`TypeError` | `""`',
+    ]) {
+      const env = fixture(id);
+      try {
+        const before = positive(id);
+        const authored = before.replace(/\| Input \| Outcome \|\n(?:\|[^\n]*\n?){3}/, table + '\n');
+        assert.notEqual(authored, before, 'control changes the source-owned example table');
+        put(env.root, env.item.target, authored);
+        const result = checkAuthoringBenchmark(env.root, id);
+        assert.equal(result.pass, true, `${id}: ${result.detail}`);
+        assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), authored, 'read-only');
+      } finally {
+        env.cleanup();
+      }
+    }
+  }
+});
+
+it('rejects ambiguous example tables/headers, malformed rows and facts outside the owning section', () => {
+  for (const id of AUTHORING_CASE_IDS.filter((id) =>
+    getAuthoringCase(id).target.endsWith('.spec.md')
+  )) {
+    const table = positive(id).match(/\| Input \| Outcome \|\n(?:\|[^\n]*\n?){3}/)![0];
+    for (const mutate of [
+      (text: string) => text.replace(table, table + '\n' + table),
+      (text: string) =>
+        text.replace(
+          table,
+          '| Input | Outcome | Input |\n| --- | --- | --- |\n| `"  Foo__BAR  "` | `"foo-bar"` | extra |\n| `""` | `TypeError` | extra |\n'
+        ),
+      (text: string) =>
+        text.replace(
+          table,
+          '| Input | Outcome | Outcome |\n| --- | --- | --- |\n| `"  Foo__BAR  "` | `"foo-bar"` | extra |\n| `""` | `TypeError` | extra |\n'
+        ),
+      (text: string) =>
+        text.replace('| `""` | `TypeError` |', '| Input | Outcome |\n| `""` | `TypeError` |'),
+      (text: string) => text.replace('| `""` | `TypeError` |', '| `""` |'),
+      (text: string) => text.replace(table, '') + '\n' + table,
+      (text: string) => text.replace('| `""` | `TypeError` |', '') + '\n| `""` | `TypeError` |\n',
+      (text: string) => text.replace('|---|---|', '| notes | not a delimiter |'),
+      (text: string) =>
+        text.replace(
+          table,
+          '| Outcome | Label | Input |\n| --- | --- | --- |\n| `"foo-bar"` | Normal | `"  Foo__BAR  "` |\n| `""` | Empty | `""` |\n'
+        ),
+      (text: string) =>
+        text.replace(
+          table,
+          '| Outcome | Label | Input |\n| --- | --- | --- |\n| `"foo-bar"` | Normal | `"  Foo__BAR  "` |\n| `TypeError` | Empty | `""` |\n| `TypeError` | Duplicate | `""` |\n'
+        ),
+    ])
+      expectRejected(id, mutate, 'required-facts');
+  }
+});
+
+it('accepts canonical module delegation to the complete source-owned parent requirement set', () => {
+  for (const id of ['module-flat', 'module-nested'] as const) {
+    const env = fixture(id);
+    try {
+      const authored = positive(id).replace(
+        /(<!--SECTION:MODULE_REQUIREMENTS-->\n## Requirements\n)[\s\S]*?(\| Input \| Outcome \|)/,
+        '$1\nNo module-specific requirements. Implements parent requirements: TOK-REQ-1, TOK-REQ-2.\n\n$2'
+      );
+      assert.notEqual(authored, positive(id));
+      put(env.root, env.item.target, authored);
+      assert.deepEqual(checkSpecAuthoringDraft(env.item.target, authored), []);
+      const result = checkAuthoringBenchmark(env.root, id);
+      assert.equal(result.pass, true, result.detail);
+      assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), authored);
+      for (const replacement of [
+        'TOK-REQ-1',
+        'TOK-REQ-1, UNKNOWN-REQ-2',
+        'TOK-REQ-1, TOK-REQ-1, TOK-REQ-2',
+        'TOK-REQ-1, TOK-REQ-2, TOK-REQ-3',
+        'TOK-REQ-1, TOK-REQ-2.\nNo module-specific requirements. Implements parent requirements: TOK-REQ-1, TOK-REQ-2',
+        'TOK-REQ-1, TOK-REQ-2.\nNo module-specific requirements. Implements parent requirements: made-up',
+      ]) {
+        put(
+          env.root,
+          env.item.target,
+          authored.replace('TOK-REQ-1, TOK-REQ-2.', replacement + '.')
+        );
+        const rejected = checkAuthoringBenchmark(env.root, id);
+        assert.equal(
+          rejected.checks.find((check) => check.id === 'required-facts')?.pass,
+          false,
+          replacement
+        );
+      }
+      put(
+        env.root,
+        env.item.target,
+        positive(id).replace(
+          '| Input | Outcome |',
+          'No module-specific requirements. Implements parent requirements: TOK-REQ-1, TOK-REQ-2.\n\n| Input | Outcome |'
+        )
+      );
+      const mixed = checkAuthoringBenchmark(env.root, id);
+      assert.equal(
+        mixed.checks.find((check) => check.id === 'required-facts')?.pass,
+        false,
+        mixed.detail
+      );
+    } finally {
+      env.cleanup();
+    }
+  }
+});
+
 it('rejects duplicate anchors, missing required sections, duplicate IDs and conflicting kind', () => {
   expectRejected(
     'scope-library',

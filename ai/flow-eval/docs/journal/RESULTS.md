@@ -22,6 +22,21 @@ eval — это проверка: даём модели задачу и смот
 | `authoring-template-authoring-oct22-portal-baseline-r1` | 1 | 12 | <1 мин | ~29 000 | Не проходит (1/1) | pass (1/1) |
 | `authoring-template-authoring-oct22-scope-library-baseline-r1` | 1 | 22 | <1 мин | — | Не проходит (1/1) | fail (0/1) |
 | `authoring-template-authoring-oct22-scope-product-baseline-r1` | 1 | 27 | ~2 мин | ~54 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-authoring-repaired-oct22-portal-baseline-r1` | 1 | 11 | <1 мин | ~31 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-repaired-oct22-scope-infrastructure-baseline-r1` | 1 | 12 | <1 мин | ~34 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-authoring-repaired-oct22-scope-interface-baseline-r1` | 1 | 9 | <1 мин | — | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-authoring-repaired-oct22-scope-library-baseline-r1` | 1 | 18 | ~1 мин | ~40 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-repaired-oct22-scope-product-baseline-r1` | 1 | 17 | <1 мин | ~39 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-authoring-wall180-oct22-index-module-baseline-r1` | 1 | 21 | <1 мин | ~24 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-index-project-baseline-r1` | 1 | 13 | <1 мин | ~22 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-index-scope-baseline-r1` | 1 | 12 | <1 мин | ~18 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-module-flat-baseline-r1` | 1 | 25 | ~2 мин | ~56 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-authoring-wall180-oct22-module-nested-baseline-r1` | 1 | 24 | ~2 мин | ~58 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-portal-baseline-r1` | 1 | 14 | <1 мин | ~31 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-scope-infrastructure-baseline-r1` | 1 | 22 | ~2 мин | ~69 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-scope-interface-baseline-r1` | 1 | 26 | ~2 мин | ~56 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-scope-library-baseline-r1` | 1 | 20 | ~1 мин | ~44 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-authoring-wall180-oct22-scope-product-baseline-r1` | 1 | 24 | ~3 мин | ~78 000 | Не проходит (1/1) | pass (1/1) |
 | `infra-log-summary` | 3 | 11 | ~2 мин | ~15 000 | нет мех. гейта (3) — см. golden/verify.sh вручную | pass (3/3) |
 | `slugify-toolchain` | 4 | 21 | ~5 мин | ~102 000 | Смешанно: pass 3, fail 1/4 | Смешанно: pass 1/4 |
 | `v2-bounded-deviation-verdict` | 2 | 13 | <1 мин | ~14 000 | Смешанно: pass 1, н/д 1/2 | Смешанно: pass 1/2 |

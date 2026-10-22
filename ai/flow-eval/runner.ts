@@ -3,6 +3,7 @@
 // @consumers: sdd-flow-eval command, fake-backed tests
 
 import { SddEvalJudge } from './judge.ts';
+import { captureAuthoringJudgeEvidence } from './authoring-judge-evidence.ts';
 import { SddEvalObserver } from './observer.ts';
 import { assertUniqueScenarioDirectories } from './provision.ts';
 import { composeSddPhasePrompt } from './prompts.ts';
@@ -241,6 +242,14 @@ export class SddEvalRunner {
         scenario.id,
         scenario.directory,
         {
+          ...(scenario.authoringBenchmark
+            ? {
+                authoring: captureAuthoringJudgeEvidence(
+                  scenario.directory,
+                  scenario.authoringBenchmark.caseId
+                ),
+              }
+            : {}),
           intent: worker.intent,
           acceptance: scenario.acceptance,
           state: {

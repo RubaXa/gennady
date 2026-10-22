@@ -855,22 +855,142 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
 
 - **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
 - **Числа:** действий=12, время=<1 мин, токены=29419
-- **Гипотеза/зачем:** _(заполнить)_
-- **Итог:** _(заполнить)_
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Первый pilot: fixture/rubric defects; не baseline. См. template-authoring-oct22 REPORT; исходный вердикт сохранён.
 - **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-oct22-portal-baseline-r1`
 
 ## 2026-10-22 — `authoring-template-authoring-oct22-scope-product-baseline-r1` (gate=FAIL; judge=fail)
 
 - **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
 - **Числа:** действий=27, время=~2 мин, токены=53926
-- **Гипотеза/зачем:** _(заполнить)_
-- **Итог:** _(заполнить)_
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Первый pilot: fixture/rubric defects; не baseline. См. template-authoring-oct22 REPORT; исходный вердикт сохранён.
 - **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-oct22-scope-product-baseline-r1`
 
 ## 2026-10-22 — `authoring-template-authoring-oct22-scope-library-baseline-r1` (gate=FAIL; judge=interrupted)
 
 - **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
 - **Числа:** действий=22, время=<1 мин, токены=—
-- **Гипотеза/зачем:** _(заполнить)_
-- **Итог:** _(заполнить)_
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Первый pilot: fixture/rubric defects; не baseline. См. template-authoring-oct22 REPORT; исходный вердикт сохранён.
 - **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-oct22-scope-library-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-portal-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=14, время=<1 мин, токены=31490
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-portal-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-scope-product-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=24, время=~3 мин, токены=77782
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-scope-product-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-scope-library-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=20, время=~1 мин, токены=43592
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-scope-library-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-scope-infrastructure-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=22, время=~2 мин, токены=69109
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=RED, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-scope-infrastructure-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-scope-interface-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=26, время=~2 мин, токены=56346
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-scope-interface-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-module-flat-baseline-r1` (gate=FAIL; judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=25, время=~2 мин, токены=56468
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=inconclusive; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-module-flat-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-module-nested-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=24, время=~2 мин, токены=58170
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=RED, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-module-nested-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-index-module-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=21, время=<1 мин, токены=23868
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-index-module-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-index-scope-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=12, время=<1 мин, токены=17714
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-index-scope-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-wall180-oct22-index-project-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=100
+- **Числа:** действий=13, время=<1 мин, токены=22023
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Диагностический N=1: artifact=PASS, judge=pass; whole-write path unproven. См. wall180 REPORT; исходный вердикт сохранён.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-wall180-oct22-index-project-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-repaired-oct22-portal-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=11, время=<1 мин, токены=31009
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Observer-censored cohort: ранний 30s idle cutoff; не baseline и не доказательство зависания. См. repaired REPORT.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-repaired-oct22-portal-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-repaired-oct22-scope-product-baseline-r1` (gate=FAIL; judge=worker-error)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=17, время=<1 мин, токены=38677
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Observer-censored cohort: ранний 30s idle cutoff; не baseline и не доказательство зависания. См. repaired REPORT.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-repaired-oct22-scope-product-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-repaired-oct22-scope-library-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=18, время=~1 мин, токены=40258
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Observer-censored cohort: ранний 30s idle cutoff; не baseline и не доказательство зависания. См. repaired REPORT.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-repaired-oct22-scope-library-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-repaired-oct22-scope-infrastructure-baseline-r1` (gate=FAIL; judge=worker-error)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=12, время=<1 мин, токены=34021
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Observer-censored cohort: ранний 30s idle cutoff; не baseline и не доказательство зависания. См. repaired REPORT.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-repaired-oct22-scope-infrastructure-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-repaired-oct22-scope-interface-baseline-r1` (gate=FAIL; judge=interrupted)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=9, время=<1 мин, токены=—
+- **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
+- **Итог:** Observer-censored cohort: ранний 30s idle cutoff; не baseline и не доказательство зависания. См. repaired REPORT.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-repaired-oct22-scope-interface-baseline-r1`

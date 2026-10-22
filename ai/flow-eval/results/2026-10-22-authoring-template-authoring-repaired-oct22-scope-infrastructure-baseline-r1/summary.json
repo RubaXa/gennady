@@ -1,0 +1,132 @@
+{
+  "scenarioId": "authoring-template-authoring-repaired-oct22-scope-infrastructure-baseline-r1",
+  "date": "2026-10-22",
+  "timestamp": "2026-10-22T19:50:47.345Z",
+  "sha": "a681444f17e1199857a13b60bb3763b125dd8436",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "72a21bbe3a9b02a9146884ce27ec56e38951559c85025b511d08c1f21738ce41",
+    "configSha256": "54522d6771941e4035a926a87625b42e3c6495330538cc08a185b7d8b4ee51a5"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 80,
+    "observeEveryMs": 2500,
+    "stuckAfter": 12,
+    "tailLimit": 20
+  },
+  "verdict": "worker-error",
+  "status": "error",
+  "outcome": "worker-error",
+  "actions": 12,
+  "durationMs": 43535,
+  "usage": {
+    "messages": 7,
+    "input": 33066,
+    "output": 776,
+    "reasoning": 179,
+    "cacheRead": 123648,
+    "cacheWrite": 0,
+    "total": 34021,
+    "cost": 0,
+    "models": ["llm-proxy/deepseek-v4-flash"],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 43681
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": false,
+    "detail": "canonical-shape: SDD_SPEC_SECTION_MISSING: Section TOOL_STACK is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section EFFECTIVE_RULES is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section DECISION_LOG is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_REQ_ID_GRAMMAR: Draft hint: Requirement-ID \"<ACR>-REQ-1\" не соответствует грамматике `<ACR>-REQ-<N>`: ^[A-Z][A-Z0-9]*-REQ-[0-9]+$ (например: `IT-REQ-1`).; SDD_DL_ID_PLACEHOLDER: Decision Log ID `[<ACR>-DL-N` — незаполненный плейсхолдер/шаблон. Замени на настоящий ID формата `<ACR>-DL-<N>` (например `IT-DL-1`) с уникальным номером; шаблонные XXX/NNN/<N>/<ACR> в коммит не уходят.; no-skeleton: Unreplaced skeleton guidance or placeholder; pending-approval: Handoff must remain pending; relative-links: specs/infra-token/research/<yyyy-mm-dd>-<slug>.research.md: path is missing; required-facts: Expected one Input/Outcome table in REQUIREMENTS_AND_CONSTRAINTS",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": false,
+        "detail": "SDD_SPEC_SECTION_MISSING: Section TOOL_STACK is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section EFFECTIVE_RULES is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section DECISION_LOG is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_REQ_ID_GRAMMAR: Draft hint: Requirement-ID \"<ACR>-REQ-1\" не соответствует грамматике `<ACR>-REQ-<N>`: ^[A-Z][A-Z0-9]*-REQ-[0-9]+$ (например: `IT-REQ-1`).; SDD_DL_ID_PLACEHOLDER: Decision Log ID `[<ACR>-DL-N` — незаполненный плейсхолдер/шаблон. Замени на настоящий ID формата `<ACR>-DL-<N>` (например `IT-DL-1`) с уникальным номером; шаблонные XXX/NNN/<N>/<ACR> в коммит не уходят."
+      },
+      {
+        "id": "no-skeleton",
+        "pass": false,
+        "detail": "Unreplaced skeleton guidance or placeholder"
+      },
+      {
+        "id": "pending-approval",
+        "pass": false,
+        "detail": "Handoff must remain pending"
+      },
+      {
+        "id": "relative-links",
+        "pass": false,
+        "detail": "specs/infra-token/research/<yyyy-mm-dd>-<slug>.research.md: path is missing"
+      },
+      {
+        "id": "required-facts",
+        "pass": false,
+        "detail": "Expected one Input/Outcome table in REQUIREMENTS_AND_CONSTRAINTS"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven; actual create→target read→whole Write order not proven; successful target check after final Write not proven"
+  },
+  "hasJudge": false,
+  "specFiles": ["specs/infra-base/infra-base.spec.md", "specs/infra-token/infra-token.spec.md"],
+  "authoringBenchmark": {
+    "taskDigest": "9d079b0c059653f7abd105c7c98e98b7bdb87f7c2eaf4838401422d8ef8727d5",
+    "oracleDigest": "b4981ee53b71c5e377ab7160f65ec0a4b7cdbc7e5bfa0b8199c108bcaa591057",
+    "harnessDigest": "9903191f3724d510aba79c9b93bca37c9ee284444dedb78124f6538eeb6cf400",
+    "environmentDigest": "1602a2483b72b2ea5962d78210c9893356f623c25c5fa9ed0439c2c2da418a38",
+    "environmentVerified": true,
+    "campaign": "template-authoring-repaired-oct22",
+    "caseId": "scope-infrastructure",
+    "variant": "baseline",
+    "repetition": 1,
+    "sourceCommit": "a681444f17e1199857a13b60bb3763b125dd8436",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": false,
+    "semanticVerdict": "worker-error",
+    "trajectoryPass": false,
+    "durationMs": 43681,
+    "nonCacheTokens": 34021,
+    "metrics": {
+      "tools": 12,
+      "targetReads": 1,
+      "repeatedTargetReads": 0,
+      "wholeWrites": 0,
+      "partialWrites": 0,
+      "failedTools": 0,
+      "checks": 0,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 9961
+    }
+  },
+  "artifactFiles": ["specs/infra-token/infra-token.spec.md"]
+}

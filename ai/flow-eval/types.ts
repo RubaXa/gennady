@@ -305,6 +305,8 @@ export type SddEvalWorkerResult = {
 
 /** @purpose Narrow judge input; worker prompt/response and unbounded session data are excluded. */
 export type SddEvalJudgeInput = {
+  /** @purpose Artifact-only semantic review; execution proof remains a separate deterministic gate. */
+  authoring?: import('./authoring-judge-evidence.ts').AuthoringJudgeEvidence;
   intent: string;
   /** @purpose Exact bounded acceptance facts; unlike the intent, this carries numeric/negative edges. */
   acceptance?: string;

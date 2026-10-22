@@ -5,6 +5,7 @@
     "authoring-benchmark-fixtures.ts",
     "authoring-metrics.ts",
     "authoring-protocol.ts",
+    "authoring-judge-evidence.ts",
     "scripts/authoring-experiment.ts"
   ],
   "exclude": ["**/*.test.ts", "**/__tests__/**"]

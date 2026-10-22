@@ -1,8 +1,10 @@
 # Template-owned authoring: baseline and controlled evolution
 
-Status: infrastructure and deterministic controls implemented. The first live exploratory campaign
-was stopped after fixture/rubric faults were found; it is not a qualified baseline. See
-[retained report](../results/authoring-campaigns/template-authoring-oct22/REPORT.md).
+Status: infrastructure and deterministic controls implemented; ten-case live diagnostic completed.
+No production improvement is claimed. A calibrated, repeated baseline and A/B comparison are still
+pending. See the [complete diagnostic report](../results/authoring-campaigns/template-authoring-wall180-oct22/REPORT.md),
+[first fixture-fault cohort](../results/authoring-campaigns/template-authoring-oct22/REPORT.md) and
+[observer-censored cohort](../results/authoring-campaigns/template-authoring-repaired-oct22/REPORT.md).
 Frozen product baseline: main `f8c93d9d5c5a9549da7ae2fbf8af96d8a6b34b71`. Production templates,
 owner directives, operator approval boundaries and mechanical product validators are unchanged.
 
@@ -60,6 +62,12 @@ An untouched skeleton, contradictory/duplicated/misplaced fact, forged approval,
 artifact, changed reference or unexpected artifact is red. Source tests cover both outcomes.
 The oracle's bounded facts do not prove arbitrary semantic equivalence of prose or every Mermaid
 grammar. Independent review remains required; a judge cannot waive a red artifact or path gate.
+
+After diagnostic calibration, the artifact-only judge receives the complete safe target (64 KiB
+bound, hash, host-oracle result), not a truncated diff or worker narration. Missing/unsafe/oversized
+evidence is inconclusive without a model call. Its remit is semantic artifact review only;
+deterministic execution/path gates remain separate and mandatory. Full-flow judge behavior is
+unchanged. Old judge outputs are preserved, not retroactively certified by the new rubric.
 
 The path oracle requires complete real tool identities and terminal calls, then observes
 `sdd-new` completion → exact target read → whole-file Write. Six spec cases also need the exact
@@ -127,7 +135,7 @@ node --import tsx ai/flow-eval/cli.ts --scenario-file "$authoring_eval_root/plan
   --directory "$authoring_eval_root" --gennady-root "$PWD" \
   --base-url http://127.0.0.1:4109 --model llm-proxy/deepseek-v4-flash \
   --judge-model llm-proxy/deepseek-v4-flash --concurrency 1 \
-  --observe-every-ms 2500 --stuck-after 12 --max-observations 80 --max-wall-clock-ms 180000
+  --observe-every-ms 2500 --stuck-after 80 --max-observations 100 --max-wall-clock-ms 180000
 node --import tsx ai/flow-eval/scripts/authoring-experiment.ts compare \
   --campaign template-authoring --baseline baseline --candidate local-guidance \
   --repetitions 3 --results-dir ai/flow-eval/results
@@ -137,6 +145,9 @@ Create the sandbox parent with `mktemp -d`, not a fixed pre-existing path. Plans
 creation and refuse to overwrite a previous plan. Before comparison retain exact plan bytes beside
 each result and verify their SHA-256 against its original source record. Use a new campaign for a
 new corpus/oracle; never relabel old results or update criteria after observing an agent failure.
+The observer idle bound must exceed the hard worker deadline for long-form generation; otherwise
+normal thinking is censored as stuck. Judge wall time is separate (the current generic judge does
+not have its own deadline); monitor it and retain cancellation rather than silently claiming a pass.
 
 ## Delivery
 

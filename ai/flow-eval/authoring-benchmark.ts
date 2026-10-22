@@ -460,33 +460,57 @@ export function checkAuthoringBenchmark(
       if (item.target.endsWith('.spec.md')) {
         const section = item.requiredFacts[0]!.section;
         const body = sectionBody(observed, item.kind, section) ?? '';
-        const rows = body
-          .split('\n')
-          .filter((line) => line.trim().startsWith('|'))
-          .map((line) =>
-            line
-              .trim()
-              .slice(1, -1)
-              .split('|')
-              .map((cell) => cell.trim().replace(/^`|`$/g, ''))
-          );
+        const cells = (line: string): string[] =>
+          line
+            .trim()
+            .replace(/^\|/, '')
+            .replace(/\|$/, '')
+            .split('|')
+            .map((cell) => cell.trim().replace(/^`|`$/g, ''));
+        const lines = body.split('\n');
+        const tables: string[][][] = [];
+        for (let i = 0; i + 1 < lines.length; i++) {
+          if (!lines[i]!.includes('|')) continue;
+          const header = cells(lines[i]!);
+          const separator = cells(lines[i + 1]!);
+          if (
+            header.length !== separator.length ||
+            !separator.every((cell) => /^:?-+:?$/.test(cell))
+          )
+            continue;
+          const table = [header];
+          i += 2;
+          while (i < lines.length && lines[i]!.trim() && lines[i]!.includes('|'))
+            table.push(cells(lines[i++]!));
+          i--;
+          if (header.includes('Input') || header.includes('Outcome')) tables.push(table);
+        }
+        need(tables.length === 1, `Expected one Input/Outcome table in ${section}`);
+        const [header, ...rows] = tables[0]!;
         need(
-          rows.filter(
-            (cells) => cells.length === 2 && cells[0] === 'Input' && cells[1] === 'Outcome'
-          ).length === 1,
-          `Expected one Input/Outcome table in ${section}`
+          header!.filter((cell) => cell === 'Input').length === 1 &&
+            header!.filter((cell) => cell === 'Outcome').length === 1,
+          `Expected unique Input/Outcome headers in ${section}`
+        );
+        const input = header!.indexOf('Input');
+        const outcome = header!.indexOf('Outcome');
+        need(
+          rows.every(
+            (row) =>
+              row.length === header!.length && row[input] !== 'Input' && row[outcome] !== 'Outcome'
+          ),
+          `Malformed row or repeated Input/Outcome headers in ${section}`
         );
         for (const example of TOKEN_EXAMPLES) {
           need(
-            rows.filter((cells) => cells[0] === JSON.stringify(example.input)).length === 1,
+            rows.filter((row) => row[input] === JSON.stringify(example.input)).length === 1,
             `Duplicate or missing input fact: ${example.id}`
           );
           need(
             rows.some(
-              (cells) =>
-                cells.length === 2 &&
-                cells[0] === JSON.stringify(example.input) &&
-                cells[1] ===
+              (row) =>
+                row[input] === JSON.stringify(example.input) &&
+                row[outcome] ===
                   (example.outcome === 'TypeError' ? 'TypeError' : JSON.stringify(example.outcome))
             ),
             `${example.id} missing or wrong in ${section}`
@@ -495,11 +519,42 @@ export function checkAuthoringBenchmark(
         const requirements = collectHeadings(body).filter(
           (heading) => heading.level === 3 && /^[A-Z][A-Z0-9]*-REQ-\d+\s+\[/.test(heading.text)
         );
-        need(
-          requirements.length >= 2 &&
-            requirements.some((entry) => /\[.*нештатная.*\]/.test(entry.text)),
-          'Missing genuine requirement IDs or negative-path requirement'
-        );
+        if (item.kind === 'module' && body.includes('No module-specific requirements.')) {
+          // Canonical modules may implement the existing scope obligations without inventing new IDs.
+          // The parent is immutable fixture truth, not arbitrary IDs supplied by the authored module.
+          const inherited = [
+            ...body.matchAll(
+              /^No module-specific requirements\. Implements parent requirements: ([A-Z][A-Z0-9]*-REQ-\d+(?:,\s*[A-Z][A-Z0-9]*-REQ-\d+)*)\.[ \t]*$/gm
+            ),
+          ];
+          need(
+            inherited.length === 1 &&
+              (body.match(/^No module-specific requirements\./gm) ?? []).length === 1 &&
+              requirements.length === 0,
+            'Expected one canonical inherited-requirements statement without local requirements'
+          );
+          const parent = collectHeadings(
+            sectionBody(item.files[SCOPE]!, 'library', 'REQUIREMENTS_AND_CONSTRAINTS') ?? ''
+          ).filter(
+            (heading) => heading.level === 3 && /^[A-Z][A-Z0-9]*-REQ-\d+\s+\[/.test(heading.text)
+          );
+          const expected = parent.map((heading) => heading.text.split(/\s/)[0]!);
+          const actual = inherited[0]![1]!.split(',').map((id) => id.trim());
+          need(
+            expected.length >= 2 &&
+              parent.some((heading) => /\[.*нештатная.*\]/.test(heading.text)) &&
+              actual.length === expected.length &&
+              new Set(actual).size === actual.length &&
+              expected.every((id) => actual.includes(id)),
+            'Inherited requirements must name exactly the genuine positive and negative parent IDs'
+          );
+        } else {
+          need(
+            requirements.length >= 2 &&
+              requirements.some((entry) => /\[.*нештатная.*\]/.test(entry.text)),
+            'Missing genuine requirement IDs or negative-path requirement'
+          );
+        }
       } else if (item.kind === 'portal') {
         const scopes = parseScopes(observed);
         const edges = parseGraphEdges(sectionBody(observed, 'portal', 'SCOPE_GRAPH') ?? '');
