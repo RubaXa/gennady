@@ -1,0 +1,3 @@
+{
+  "diff": "FILE CLAUDE.md (untracked symlink)\nAFTER\nlink → AGENTS.md\n\nFILE README.md (untracked symlink)\nAFTER\nlink → docs"
+}

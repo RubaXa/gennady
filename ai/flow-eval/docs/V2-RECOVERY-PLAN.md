@@ -1,7 +1,28 @@
 # V2 recovery and agent-trajectory regression plan
 
 Date: 2026-10-22. Baseline: `396c8abdd70592b70c6ad8d8c2a0aaf15510d70b`.
-Status: implementation in progress; no repair or live-eval PASS is implied by this plan.
+Status: implemented and locally verified; PR #124 awaits independent external review, not merged.
+
+## Final handoff (clean corrective source `b29ecd3b`)
+
+- Full normal pre-commit: 4740 tests / 4732 passed / zero failed / eight skipped; coverage and all
+  mandatory audits PASS. Fresh build PASS. Historical migration archives and SDD baseline unchanged.
+- Both corrective live Flash runs PASS mechanically, by complete trajectory and by the judge:
+  [bounded verdicts](../results/2026-10-22-v2-bounded-deviation-verdict-2/ANALYSIS.md) (9 tools),
+  [brownfield route](../results/2026-10-22-v2-brownfield-routing-2/ANALYSIS.md) (9 tools).
+  They persist explicit CHECKPOINTS quality and exact public judge-input diffs; CLI mutations are
+  no longer invisible to the judge. Exact input bytes and actual SDK model/token metadata retained.
+- [Authoring](../results/2026-10-22-v2-native-scope-authoring-3/ANALYSIS.md) R1-A/trajectory/judge
+  PASS on clean `89315339`; real infrastructure ownership restored, no exclusion or fake ticket.
+  This run did not include an independent semantic reviewer. No perfect-process or full execution
+  completion claim follows from these bounded scenarios.
+- These three final passing records used 162393 non-cache tokens including their judges; the two
+  corrective runs account for 36527. Cache-read is separate; money UNKNOWN. All five latest runs,
+  including the preserved diagnostic judge FAIL, used 211120 non-cache tokens. Earlier RED runs
+  are additional, not hidden or included in a false cost-optimization comparison.
+- Open [PR #124](https://github.com/RubaXa/gennady/pull/124) targets main. Independent worker
+  self-review found no new blockers; it is not a substitute for external review. No self-merge,
+  npm publication, baseline refreeze or migration artifact rewriting is authorized.
 
 ## Latest verified state (source `89315339`, supersedes historical stop points below)
 

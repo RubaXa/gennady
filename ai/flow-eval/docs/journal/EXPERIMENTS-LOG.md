@@ -834,3 +834,19 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
 - **Гипотеза/зачем:** чистый `89315339`: Grunt tasks/ и внутренние doc aliases не должны отправлять обычный проект на миграцию.
 - **Итог:** source-bound checkpoint 1/1, trajectory и judge PASS. Реальные sdd-state/sdd-task/sync dry-run, обе ссылки созданы, build-файл неизменен, synced manifest отсутствует. Worker 14921 + judge 8711 токенов; деньги неизвестны. Это узкий routing-smoke, не полный продуктовый цикл.
 - **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-brownfield-routing`
+
+## 2026-10-22 — `v2-bounded-deviation-verdict` (gate=PASS; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=16
+- **Числа:** действий=9, время=<1 мин, токены=12340
+- **Гипотеза/зачем:** чистый `b29ecd3b`: реальный Git diff для CLI-правок вместо пустого SDK diff; точные operator ID/verdict в acceptance.
+- **Итог:** CHECKPOINTS 1/1, trajectory и judge PASS. Девять реальных тулов; ровно три требуемых verdict-перехода, остальные байты неизменны. Точный diff судьи сохранён; старый judge FAIL не переоценён. Worker 12340 + judge 4435 = 16775 non-cache, cache-read 71808 отдельно, деньги UNKNOWN. Не строгий single-variable cost A/B.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-bounded-deviation-verdict-2`
+
+## 2026-10-22 — `v2-brownfield-routing` (gate=PASS; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=16
+- **Числа:** действий=9, время=<1 мин, токены=13532
+- **Гипотеза/зачем:** чистый `b29ecd3b`: повторить реальный brownfield route и сохранить явный CHECKPOINTS quality вместо unproven в таблице.
+- **Итог:** CHECKPOINTS 1/1, trajectory и judge PASS. Девять тулов, actual state/task/dry-sync, exact aliases и неизменные build-файлы. Worker 13532 + judge 6220 = 19752 non-cache, cache-read 96512 отдельно, деньги UNKNOWN. Узкий routing-smoke, не whole-project completion.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-brownfield-routing-2`

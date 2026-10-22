@@ -1,0 +1,54 @@
+{
+  "scenarioId": "v2-brownfield-routing",
+  "date": "2026-10-22",
+  "timestamp": "2026-10-22T17:46:33.072Z",
+  "sha": "b29ecd3bc5da8997d9da583346116de32db06085",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "3deb83f6c093fb61bf417eb430777e4848d4f31c0bf94fef90d56f7881214492",
+    "configSha256": "d25690ae375a956a847921aacab2ace48ffa8f018913a796aa7cef6c8efe4677"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 16,
+    "observeEveryMs": 15000,
+    "stuckAfter": 4,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 9,
+  "durationMs": 30184,
+  "usage": {
+    "messages": 8,
+    "input": 12349,
+    "output": 677,
+    "reasoning": 506,
+    "cacheRead": 87040,
+    "cacheWrite": 0,
+    "total": 13532,
+    "cost": 0
+  },
+  "quality": {
+    "rule": "CHECKPOINTS",
+    "pass": true,
+    "detail": "1 source-owned terminal checkpoints passed"
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": true,
+    "detail": "9 tools; complete capture"
+  },
+  "hasJudge": true,
+  "specFiles": []
+}
