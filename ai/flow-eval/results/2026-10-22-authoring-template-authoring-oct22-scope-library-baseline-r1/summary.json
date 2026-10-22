@@ -1,0 +1,74 @@
+{
+  "scenarioId": "authoring-template-authoring-oct22-scope-library-baseline-r1",
+  "date": "2026-10-22",
+  "timestamp": "2026-10-22T19:29:31.017Z",
+  "sha": "c60738a240d356923e0d05665adef45c6eb2907b",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "85c3f92b09d392818d62a065e38a7aed7b741c366cc381984256679bcc0fcbf0",
+    "configSha256": "54522d6771941e4035a926a87625b42e3c6495330538cc08a185b7d8b4ee51a5"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 80,
+    "observeEveryMs": 2500,
+    "stuckAfter": 12,
+    "tailLimit": 20
+  },
+  "verdict": "interrupted",
+  "status": "interrupted",
+  "outcome": "interrupted",
+  "actions": 22,
+  "durationMs": 48586,
+  "quality": {
+    "rule": "INTERRUPTED",
+    "pass": false,
+    "detail": "run interrupted before reporting completed"
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": false,
+    "detail": "interrupted path; retained for diagnosis only"
+  },
+  "hasJudge": false,
+  "specFiles": ["specs/infra-base/infra-base.spec.md", "specs/token/token.spec.md"],
+  "authoringBenchmark": {
+    "taskDigest": "11055b58e09c6d4dc4d891ddc0beeb68f7b8d158b4e58f648da728d2b009e8b6",
+    "oracleDigest": "3b2ebbb55519e1d0aefb209bfd4ccfeaf1d8df008941971eb578ab099e146722",
+    "harnessDigest": "4ceff15f67282ed35779ddc27bf256710eeb7af898e370aa7a7e9dc5bed38006",
+    "environmentDigest": "1602a2483b72b2ea5962d78210c9893356f623c25c5fa9ed0439c2c2da418a38",
+    "environmentVerified": true,
+    "campaign": "template-authoring-oct22",
+    "caseId": "scope-library",
+    "variant": "baseline",
+    "repetition": 1,
+    "sourceCommit": "c60738a240d356923e0d05665adef45c6eb2907b",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": false,
+    "artifactPass": false,
+    "semanticVerdict": "interrupted",
+    "trajectoryPass": false,
+    "metrics": {
+      "tools": 22,
+      "targetReads": 1,
+      "repeatedTargetReads": 0,
+      "wholeWrites": 0,
+      "partialWrites": 0,
+      "failedTools": 1,
+      "checks": 0,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 39164
+    }
+  },
+  "artifactFiles": ["specs/token/token.spec.md"]
+}

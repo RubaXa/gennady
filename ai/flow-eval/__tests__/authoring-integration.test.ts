@@ -16,9 +16,50 @@ import { persistDurableResult, type SddEvalDurableSummary } from '../results-arc
 import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
 import { bindAuthoringScenario } from '../authoring-metrics.ts';
 
+it('preserves actual Bash workdir for exact-target gate attribution', async () => {
+  const source = new SddEvalOpenCodeEvidenceSource({
+    directory: '/owned',
+    client: {
+      session: {
+        children: async () => ({ data: [] }),
+        messages: async () => ({
+          data: [
+            {
+              info: { id: 'message', role: 'assistant', sessionID: 'worker' },
+              parts: [
+                {
+                  type: 'tool',
+                  callID: 'call',
+                  tool: 'bash',
+                  state: {
+                    status: 'completed',
+                    input: {
+                      command: 'gennady sdd-check --spec specs/demo.spec.md --authoring',
+                      workdir: '/another/project',
+                    },
+                    time: { start: 1, end: 2 },
+                    metadata: { exit: 0 },
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    } as never,
+  });
+  const captured = await source.readTrajectory('worker');
+  assert.equal(captured.coverage.complete, true);
+  assert.equal(
+    JSON.parse(captured.entries[0]!.toolCalls![0]!.inputSummary!).workdir,
+    '/another/project'
+  );
+});
+
 it('matrix is ten cases × three repetitions; labels do not rewrite task facts', async () => {
   const rows = createAuthoringMatrix('trial', 'baseline');
   assert.equal(rows.length, 30);
+  assert.match(rows[0]!.acceptance!, /valid pending-decomposition state/);
   assert.equal(new Set(rows.map((row) => row.id)).size, 30);
   const next = createAuthoringMatrix('trial', 'embedded');
   assert.deepEqual(
@@ -125,6 +166,36 @@ it('does not qualify truncated SDK usage as a faster completed run', async () =>
   const usage = await source.readUsage('truncated');
   assert.equal(usage.complete, false);
   assert.equal(usage.wallClockMs, undefined);
+});
+
+it('refuses incomplete or negative token counters as a comparable cheap run', async () => {
+  for (const tokens of [
+    { input: 10, output: 3 },
+    { input: 10, output: -1, reasoning: 0, cache: { read: 0, write: 0 } },
+  ]) {
+    const source = new SddEvalOpenCodeEvidenceSource({
+      directory: '/owned',
+      client: {
+        session: {
+          children: async () => ({ data: [] }),
+          messages: async () => ({
+            data: [
+              {
+                info: {
+                  role: 'assistant',
+                  providerID: 'llm-proxy',
+                  modelID: 'deepseek-v4-flash',
+                  time: { created: 110, completed: 340 },
+                  tokens,
+                },
+              },
+            ],
+          }),
+        },
+      } as never,
+    });
+    assert.equal((await source.readUsage('incomplete-tokens')).complete, false);
+  }
 });
 
 it('persists exact portal/index markdown separately; unsafe snapshot cannot publish a summary', async () => {

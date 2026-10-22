@@ -850,3 +850,27 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
 - **Гипотеза/зачем:** чистый `b29ecd3b`: повторить реальный brownfield route и сохранить явный CHECKPOINTS quality вместо unproven в таблице.
 - **Итог:** CHECKPOINTS 1/1, trajectory и judge PASS. Девять тулов, actual state/task/dry-sync, exact aliases и неизменные build-файлы. Worker 13532 + judge 6220 = 19752 non-cache, cache-read 96512 отдельно, деньги UNKNOWN. Узкий routing-smoke, не whole-project completion.
 - **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-brownfield-routing-2`
+
+## 2026-10-22 — `authoring-template-authoring-oct22-portal-baseline-r1` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=12, время=<1 мин, токены=29419
+- **Гипотеза/зачем:** _(заполнить)_
+- **Итог:** _(заполнить)_
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-oct22-portal-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-oct22-scope-product-baseline-r1` (gate=FAIL; judge=fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=27, время=~2 мин, токены=53926
+- **Гипотеза/зачем:** _(заполнить)_
+- **Итог:** _(заполнить)_
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-oct22-scope-product-baseline-r1`
+
+## 2026-10-22 — `authoring-template-authoring-oct22-scope-library-baseline-r1` (gate=FAIL; judge=interrupted)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=80
+- **Числа:** действий=22, время=<1 мин, токены=—
+- **Гипотеза/зачем:** _(заполнить)_
+- **Итог:** _(заполнить)_
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-oct22-scope-library-baseline-r1`

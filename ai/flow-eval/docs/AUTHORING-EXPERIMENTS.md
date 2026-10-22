@@ -1,6 +1,8 @@
 # Template-owned authoring: baseline and controlled evolution
 
-Status: infrastructure and deterministic controls implemented; fresh model baseline not yet collected.
+Status: infrastructure and deterministic controls implemented. The first live exploratory campaign
+was stopped after fixture/rubric faults were found; it is not a qualified baseline. See
+[retained report](../results/authoring-campaigns/template-authoring-oct22/REPORT.md).
 Frozen product baseline: main `f8c93d9d5c5a9549da7ae2fbf8af96d8a6b34b71`. Production templates,
 owner directives, operator approval boundaries and mechanical product validators are unchanged.
 
@@ -100,7 +102,7 @@ time-of-day/provider/cache confounding; repeat noisy results and use held-out ca
 
 | Variant        | One hypothesis                                                                                   | State              |
 | -------------- | ------------------------------------------------------------------------------------------------ | ------------------ |
-| baseline       | Current generated templates + current owner instructions                                         | ready to measure   |
+| baseline       | Current generated templates + current owner instructions                                         | repair/remeasure   |
 | local-guidance | Move missing/duplicated section instructions into templates; derive manifest output              | not implemented    |
 | concise-owner  | Remove content-level repetition from owner fill steps; retain workflow/safety                    | not implemented    |
 | lazy-formats   | Load heavy supporting formats only at the owning section                                         | not implemented    |
@@ -118,10 +120,11 @@ credentials/setup. Never print credentials, use another model on failure or publ
 
 ```bash
 npm run build
+authoring_eval_root=$(mktemp -d)
 node --import tsx ai/flow-eval/scripts/authoring-experiment.ts plan \
-  --campaign template-authoring --variant baseline --repetitions 3 --out /tmp/authoring-baseline.json
-node --import tsx ai/flow-eval/cli.ts --scenario-file /tmp/authoring-baseline.json \
-  --directory /tmp/owned-authoring-sandboxes --gennady-root "$PWD" \
+  --campaign template-authoring --variant baseline --repetitions 3 --out "$authoring_eval_root/plan.json"
+node --import tsx ai/flow-eval/cli.ts --scenario-file "$authoring_eval_root/plan.json" \
+  --directory "$authoring_eval_root" --gennady-root "$PWD" \
   --base-url http://127.0.0.1:4109 --model llm-proxy/deepseek-v4-flash \
   --judge-model llm-proxy/deepseek-v4-flash --concurrency 1 \
   --observe-every-ms 2500 --stuck-after 12 --max-observations 80 --max-wall-clock-ms 180000

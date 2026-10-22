@@ -113,6 +113,43 @@ export function referenceSpec(
     RESEARCH: 'No research documents for this bounded deterministic draft.',
     IMPLEMENTATION_INSIGHTS: 'Not implemented; no implementation findings claimed.',
   };
+  if (kind === 'infrastructure' && path === 'specs/infra-base/infra-base.spec.md') {
+    Object.assign(bodies, {
+      VISION:
+        'Own the local specification-authoring environment: Node.js 22 and the installed Gennady CLI. Product behavior belongs to its separate scope and module owners.',
+      OVERVIEW:
+        '```mermaid\nflowchart LR\n  author --> localCLI[Installed Gennady CLI]\n  localCLI --> drafts[Markdown drafts]\n```\n_Локальный CLI создаёт и проверяет черновики спецификаций._',
+      REQUIREMENTS_AND_CONSTRAINTS: `### ${acr}-REQ-1 [должен]
+**Когда** автор создаёт или проверяет черновик, **окружение должно** предоставлять локальный Gennady CLI через npx --no-install без загрузки пакетов из registry.
+> Один предоставленный harness набор инструментов делает авторинг воспроизводимым.
+
+### ${acr}-REQ-2 [должен · нештатная]
+**Если** локальный CLI или Node.js 22 недоступен, **то автор должен** остановиться до изменения целевого артефакта и сообщить фактическую ошибку запуска, не устанавливая другой инструмент.
+> Отсутствие инструмента нельзя маскировать выдуманным результатом проверки.
+
+### Out-of-Scope
+- Product-domain algorithms, application APIs and product implementation.
+
+### Runtime & Deferred Scope
+The harness provisions the local CLI and dependency bindings; this reference is not an execution or verification receipt.
+
+### Rules
+No additional activated rule set.`,
+      TOOL_STACK:
+        '| Tool | Role |\n|---|---|\n| Node.js 22 | Local CLI runtime |\n| Installed Gennady CLI | Canonical artifact creation and scoped authoring checks |',
+      WORKFLOW_EXAMPLE:
+        'Use npx --no-install gennady sdd-new with the case-owned arguments, read the created template, then author the requested draft. Scope/module drafts use npx --no-install gennady sdd-check --spec with their exact target and --authoring. Missing tooling stops the workflow; no registry installation or fabricated receipt.',
+      FILE_STRUCTURE:
+        'Provisioned tooling and authored drafts are separate:\n```text\nnode_modules/.bin/gennady\nnode_modules/gennady/\nspecs/\n```',
+      EFFECTIVE_RULES:
+        'No extra activated rules.\n<details><summary>Rule audit</summary>The infrastructure supplies local authoring tools only; it does not own product-domain requirements.</details>',
+      VERIFICATION_COMMANDS:
+        'For scope/module drafts, use npx --no-install gennady sdd-check --spec with the exact draft path and --authoring. Portal/index cases use the host artifact oracle; no exact product authoring CLI is asserted for them. No verification result is claimed here.',
+      DECISION_LOG: `${acr}-DL-1 — use the provided local tool copy without registry installation; operator approval remains pending.\n<details><summary>Boundary</summary>No product behavior, implementation or operator approval is owned by this tooling reference.</details>`,
+      BOOTSTRAP_REQUIREMENTS:
+        'No external bootstrap required.\n<details><summary>Bootstrap audit</summary>The harness already supplies the local CLI and dependency bindings. If unavailable, stop and report the concrete invocation error; do not install a replacement.</details>',
+    });
+  }
   const template = TEMPLATES[kind];
   return (
     `# ${heading}: ${kind} specification\n\n` +

@@ -201,7 +201,7 @@ export function getAuthoringCase(id: AuthoringCaseId): AuthoringCase {
     : `ai/directives/sdd-v2/${owner}.directive.xml`;
   const brief = `# Template-owned authoring: ${id}
 Read owner instructions: ${ownerPath}. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.
-Create ${target} using the actual installed CLI command: gennady sdd-new ${createArgs.join(' ')}.
+Create ${target} using the actual installed CLI command: npx --no-install gennady sdd-new ${createArgs.join(' ')}.
 Read its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only ${target} may change.
 Intent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.
 ${requiredFacts.map((fact) => `- ${fact.id} in ${fact.section}: ${fact.description}`).join('\n')}
@@ -209,7 +209,7 @@ ${kind === 'module-index' ? 'Keep Slug Registry exactly normalize/reject; Intra-
 ${kind === 'scope-index' ? 'Scope link is ./token.spec.md. Only normalize module exists. Inter-Module DAG has the normalize node and no dependency edges. Cascade Table contains infra-base (traversed) and token (target) with all four rule cells —; no additional rule IDs have been activated.' : ''}
 ${kind === 'project-index' ? 'Keep canonical Project-Wide Conventions verbatim. Scope Tracker links ./token/token.3-tasks.md with Tasks=2, Done=0/2 and ./infra-base/infra-base.3-tasks.md with Tasks=0, Done=0/0. Cross-Scope DAG follows the portal: token --> infra-base.' : ''}
 All references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.
-${target.endsWith('.spec.md') ? `After writing, run actual gennady sdd-check --spec ${target} --authoring; heed its authoring diagnostics.` : 'There is no exact sdd-check --spec CLI for portal/index artifacts: do not fake one. The trusted host artifact oracle grades this format after you stop.'}
+${target.endsWith('.spec.md') ? `After writing, run actual npx --no-install gennady sdd-check --spec ${target} --authoring; heed its authoring diagnostics.` : 'There is no exact sdd-check --spec CLI for portal/index artifacts: do not fake one. The trusted host artifact oracle grades this format after you stop.'}
 `;
   files['inputs/brief.md'] = brief;
   return { id, kind, target, createArgs, brief, files, requiredFacts };

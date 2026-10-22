@@ -7,6 +7,7 @@ import { it } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import {
   linkSync,
+  chmodSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -15,7 +16,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, posix } from 'node:path';
+import { delimiter, dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   AUTHORING_CASE_IDS,
@@ -156,6 +157,76 @@ it('reference spec seeds also pass the actual draft checker and resolve all non-
         );
       }
     }
+  }
+});
+
+it('every brief resolves its installed CLI without relying on a global gennady executable', () => {
+  for (const id of AUTHORING_CASE_IDS) {
+    const item = getAuthoringCase(id);
+    assert.ok(item.brief.includes(`npx --no-install gennady sdd-new ${item.createArgs.join(' ')}`));
+    if (item.target.endsWith('.spec.md'))
+      assert.ok(
+        item.brief.includes(`npx --no-install gennady sdd-check --spec ${item.target} --authoring`)
+      );
+    assert.doesNotMatch(item.brief, /command: gennady |run actual gennady /);
+  }
+  const env = fixture('portal', false);
+  try {
+    const shim = join(env.root, 'node_modules/.bin/gennady');
+    put(
+      env.root,
+      'node_modules/.bin/gennady',
+      `#!/bin/sh\nexec "${process.execPath}" --import "${fileURLToPath(new URL(import.meta.resolve('tsx')))}" "${CLI}" "$@"\n`
+    );
+    chmodSync(shim, 0o755);
+    const output = execFileSync(
+      'npx',
+      ['--no-install', 'gennady', 'sdd-new', ...env.item.createArgs],
+      {
+        cwd: env.root,
+        encoding: 'utf8',
+        timeout: 20000,
+        env: {
+          ...process.env,
+          PATH: [dirname(process.execPath), process.env.PATH].join(delimiter),
+          GENNADY_NO_UPDATE_CHECK: '1',
+          npm_config_offline: 'true',
+          npm_config_cache: join(env.root, '.npm-cache'),
+        },
+      }
+    );
+    assert.match(output, /specs\/README\.md/);
+    assert.match(readFileSync(join(env.root, env.item.target), 'utf8'), /^# <project-name>/);
+  } finally {
+    env.cleanup();
+  }
+});
+
+it('infra-base is a read-only authoring-tooling owner, not a second product-domain specification', () => {
+  const path = 'specs/infra-base/infra-base.spec.md';
+  for (const id of AUTHORING_CASE_IDS) {
+    const item = getAuthoringCase(id);
+    const infra = item.files[path]!;
+    assert.deepEqual(checkSpecAuthoringDraft(path, infra), []);
+    assert.doesNotMatch(infra, /normalizeToken|TypeError|Foo__BAR|foo-bar|src\/normalize-token/);
+    assert.match(infra, /npx --no-install/);
+    assert.match(infra, /IB-REQ-1 \[должен\]/);
+    assert.match(infra, /IB-REQ-2 \[должен · нештатная\]/);
+    assert.match(infra, /Node\.js 22/);
+  }
+  const env = fixture('portal');
+  try {
+    assert.equal(checkAuthoringBenchmark(env.root, 'portal').pass, true);
+    const oldDomainSeed = env.item.files[path]!.replace(
+      /<!--SECTION:VISION-->[\s\S]*?<!--\/SECTION:VISION-->/,
+      '<!--SECTION:VISION-->\n## Vision\nOwn normalizeToken and its TypeError product-domain behavior.\n<!--/SECTION:VISION-->'
+    );
+    put(env.root, path, oldDomainSeed);
+    const result = checkAuthoringBenchmark(env.root, 'portal');
+    assert.equal(result.pass, false, result.detail);
+    assert.equal(result.checks.find((check) => check.id === 'seeded-bytes')?.pass, false);
+  } finally {
+    env.cleanup();
   }
 });
 

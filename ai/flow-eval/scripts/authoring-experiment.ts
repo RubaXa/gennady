@@ -42,6 +42,7 @@ export function createAuthoringMatrix(
         intent: `Author only ${definition.target} from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.`,
         acceptance:
           definition.brief +
+          '\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.' +
           '\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.',
         budgetMs: 180000,
         trajectoryRules: {

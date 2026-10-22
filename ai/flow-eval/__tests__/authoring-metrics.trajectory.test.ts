@@ -85,6 +85,11 @@ it('rejects echoed/help/failed commands, overlapping operations and stale checks
 });
 
 it('rejects foreign executables, noncreating manifest/list calls and invalid/overlapping Write intervals', () => {
+  for (const index of [0, 3]) {
+    const broken = path();
+    (broken.events[index] as ToolEvent).arg = JSON.stringify({ workdir: '/another/project' });
+    assert.equal(measureAuthoringPath(broken, target, root).pass, false);
+  }
   for (const command of [
     '/tmp/fake/gennady sdd-new library --scope demo',
     'npx gennady sdd-new library --manifest',

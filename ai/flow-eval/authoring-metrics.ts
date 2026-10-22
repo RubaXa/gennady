@@ -29,6 +29,18 @@ export type AuthoringPathMetrics = {
 /** @purpose Recognize a single actual CLI invocation; quoted prose, shell composition and help are not proof. */
 function directCommand(event: ToolEvent, verb: string, directory: string): string[] | undefined {
   if (event.tool !== 'bash' || event.status !== 'completed' || event.exitCode !== 0) return;
+  try {
+    const input = JSON.parse(event.arg ?? '{}') as Record<string, unknown>;
+    for (const key of ['workdir', 'cwd'])
+      if (
+        input[key] !== undefined &&
+        (typeof input[key] !== 'string' ||
+          resolve(directory, input[key] as string) !== resolve(directory))
+      )
+        return;
+  } catch {
+    return;
+  }
   const command = event.command ?? '';
   if (/[;&|<>`$\n]/.test(command) || /(?:^|\s)(?:--help|--version|-h|-v)(?:\s|$)/.test(command))
     return;

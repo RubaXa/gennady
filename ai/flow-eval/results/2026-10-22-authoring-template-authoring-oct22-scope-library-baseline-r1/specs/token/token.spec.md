@@ -1,0 +1,133 @@
+# <scope-name>: Library Specification
+
+<!--SECTION:SPEC_ID-->
+TOKEN
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:SCOPE_TYPE-->
+## scope-type
+library
+<!--/SECTION:SCOPE_TYPE-->
+
+<!--SECTION:VISION-->
+## Vision & Primary Goal
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что делает library и какую главную проблему решает. -->
+<!--/SECTION:VISION-->
+
+<!--SECTION:OVERVIEW-->
+## Overview
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: дай один fenced mermaid или ASCII diagram подключения consumer к library. Подпись сразу под fence: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ Единственный образец: -->
+
+```mermaid
+flowchart LR
+  consumer -->|imports| library
+  library --> capability
+```
+_Что здесь главное, одной фразой._
+<!--/SECTION:OVERVIEW-->
+
+<!--SECTION:GOLDEN_DX-->
+## Target Experience
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: публичный API DX — init/setup, happy path и error path; поясни намерение. -->
+<!--/SECTION:GOLDEN_DX-->
+
+<!--SECTION:SCOPE_DEPENDENCIES-->
+## Scope Dependencies
+- **Depends on:** <!-- infra-* и interface scopes; «None», если нет -->
+- **Provides to:** <!-- consumer scopes; «None», если нет -->
+<!--/SECTION:SCOPE_DEPENDENCIES-->
+
+<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+## Requirements & Constraints
+
+### Requirements
+<!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
+
+### <ACR>-REQ-1 [должен · нештатная]
+**Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
+
+> Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
+
+### Out-of-Scope
+
+### Runtime & Deferred Scope
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: runtime backing каждой крупной capability и явно deferred части. -->
+
+### Rules
+| Rule | Category | Source |
+|---|---|---|
+<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+<!--SECTION:DATA_FLOW-->
+## Data Flow
+[MANDATORY for product/library (AX_SPEC_MANDATORY_DIAGRAM, new rung per the 2026-08-20 visualization-chain decision) — drawn AFTER Requirements & Constraints closes. A `flowchart` built from exactly four node kinds: external entity, process, store, labelled data-flow arrow — NO conditions, NO loops (a data diagram, not a control-flow chart); ≤7 nodes. Caption per DIAGRAM_CAPTION_FORMAT naming the requirement IDs this diagram shows. This rung is mandatory for NEW specs only — an existing spec written before this rung existed is not retroactively broken by its absence.]
+
+```mermaid
+flowchart LR
+  user(user) -->|request data| process[Process]
+  process --> store[(Store)]
+  process -->|response data| user
+```
+_<Что показывает одной фразой> — <ACR>-REQ-<N>[, <ACR>-REQ-<M>]._
+<!--/SECTION:DATA_FLOW-->
+
+<!--SECTION:PUBLIC_API_SURFACE-->
+## Public API Surface
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: composition-level capabilities для consumer; каждую свяжи с owning module spec. Operations/signatures остаются в Entity Surfaces/Contracts модуля. -->
+<!--/SECTION:PUBLIC_API_SURFACE-->
+
+<!--SECTION:ARCHITECTURE-->
+## Architecture
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: выбранный design pattern и кратко rejected alternatives. -->
+<!--/SECTION:ARCHITECTURE-->
+
+<!--SECTION:MODULE_MAP-->
+## Module Map
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: до декомпозиции напиши «Modules not yet decomposed». После неё перечисли каждый модуль один раз как `- [<module>](./<module>/<module>.spec.md) — <purpose>`, затем Inter-Module Dependency Map, Stack Dependencies и Handoff to Tasks. -->
+<!--/SECTION:MODULE_MAP-->
+
+<!--SECTION:RESEARCH-->
+## Research
+[Опционально. Реестр ресёрчей, на которые опирается эта спека — по одной строке на документ.
+Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`).]
+
+| Документ | Что ресёрчили | Что дал для спеки |
+|---|---|---|
+| [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+<!--/SECTION:RESEARCH-->
+
+<!--SECTION:DECISION_LOG-->
+## Decision Log
+[One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+<details>
+<summary>Полные записи Decision Log</summary>
+
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
+
+</details>
+<!--/SECTION:DECISION_LOG-->
+
+<!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+## Prerequisites
+[One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+<details>
+<summary>Таблица предусловий</summary>
+
+| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+|---|---|---|---|---|---|
+<!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+</details>
+<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
+
+<!--SECTION:HANDOFF-->
+## Handoff to Modules
+- **Areas requiring decomposition:** [list]
+- **Named abstractions:** [from Target Experience]
+- **Bootstrap tickets ready for cascade:** see Prerequisites
+- **Open risks:** [validation needs]
+
+<!-- Pivot Invalidation List — only in pivot mode -->
+<!--/SECTION:HANDOFF-->

@@ -349,7 +349,7 @@ function boundedMessageEntries(
         const projected =
           input && captureRoot
             ? Object.fromEntries(
-                ['command', 'filePath', 'path', 'pattern', 'subagent_type']
+                ['command', 'workdir', 'cwd', 'filePath', 'path', 'pattern', 'subagent_type']
                   .filter((key) => typeof input[key] === 'string')
                   .map((key) => [key, safeVerifyText(String(input[key]), captureRoot)])
               )
@@ -638,6 +638,16 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
           complete = false;
           continue;
         }
+        if (
+          [
+            info.tokens.input,
+            info.tokens.output,
+            info.tokens.reasoning,
+            info.tokens.cache?.read,
+            info.tokens.cache?.write,
+          ].some((value) => typeof value !== 'number' || !Number.isFinite(value) || value < 0)
+        )
+          complete = false;
         const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
         const input = n(info.tokens.input);
         const output = n(info.tokens.output);

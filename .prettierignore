@@ -27,3 +27,5 @@ ai/flow-eval/results/*/judge.md
 ai/flow-eval/results/*/specs/**
 # Exact scenario bytes are SHA-256-bound in summary.json; reformatting breaks provenance.
 ai/flow-eval/results/*/scenario-input.json
+# Original authoring matrix bytes are bound by the campaign's scenario SHA-256.
+ai/flow-eval/results/authoring-campaigns/*/plan.json
