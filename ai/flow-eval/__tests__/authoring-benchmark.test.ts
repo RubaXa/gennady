@@ -1,0 +1,395 @@
+// @file: Artifact oracle controls for all ten real template-owned authoring cases.
+// @spec: AI-SKILLS
+// @consumers: authoring-benchmark; flow-eval integration
+
+import assert from 'node:assert/strict';
+import { it } from 'node:test';
+import { execFileSync } from 'node:child_process';
+import {
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  AUTHORING_CASE_IDS,
+  buildAuthoringFixture,
+  checkAuthoringBenchmark,
+  getAuthoringCase,
+  type AuthoringCaseId,
+} from '../authoring-benchmark.ts';
+import {
+  REFERENCE_PORTAL,
+  referenceIndex,
+  referenceSpec,
+} from '../authoring-benchmark-fixtures.ts';
+import { checkSpecAuthoringDraft } from '../../../shared/sdd/check.ts';
+import { extractSection } from '../../../shared/sdd/section.ts';
+import { TEMPLATES } from '../../../shared/sdd/templates.ts';
+
+const CLI = fileURLToPath(new URL('../../../cli/gennady.ts', import.meta.url));
+function put(root: string, file: string, value: string): void {
+  mkdirSync(dirname(join(root, file)), { recursive: true });
+  writeFileSync(join(root, file), value);
+}
+function positive(id: AuthoringCaseId): string {
+  const item = getAuthoringCase(id);
+  if (item.kind === 'portal') return REFERENCE_PORTAL;
+  if (item.kind === 'module-index' || item.kind === 'scope-index' || item.kind === 'project-index')
+    return referenceIndex(item.kind);
+  return referenceSpec(
+    item.kind as 'product' | 'library' | 'infrastructure' | 'interface' | 'module',
+    item.target,
+    item.kind === 'module' ? { parent: 'specs/token/token.spec.md' } : {}
+  );
+}
+function fixture(id: AuthoringCaseId, authored = true) {
+  const root = mkdtempSync(join(tmpdir(), 'sdd-authoring-benchmark-'));
+  const item = getAuthoringCase(id);
+  for (const [path, text] of Object.entries(buildAuthoringFixture(id))) put(root, path, text);
+  if (authored) put(root, item.target, positive(id));
+  return { root, item, cleanup: () => rmSync(root, { recursive: true, force: true }) };
+}
+function expectRejected(
+  id: AuthoringCaseId,
+  mutate: (text: string) => string,
+  check?: string
+): void {
+  const env = fixture(id);
+  try {
+    assert.equal(checkAuthoringBenchmark(env.root, id).pass, true, 'positive before mutation');
+    put(env.root, env.item.target, mutate(positive(id)));
+    const result = checkAuthoringBenchmark(env.root, id);
+    assert.equal(result.pass, false, JSON.stringify(result));
+    if (check)
+      assert.equal(result.checks.find((item) => item.id === check)?.pass, false, result.detail);
+  } finally {
+    env.cleanup();
+  }
+}
+
+for (const id of AUTHORING_CASE_IDS) {
+  it(`${id}: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes`, () => {
+    const env = fixture(id, false);
+    try {
+      assert.equal(
+        env.item.files[env.item.target],
+        undefined,
+        'fixture never contains the selected answer'
+      );
+      assert.deepEqual(env.item.files, buildAuthoringFixture(id));
+      assert.equal(checkAuthoringBenchmark(env.root, id).pass, false, 'missing artifact is RED');
+      const output = execFileSync(
+        process.execPath,
+        ['--import', import.meta.resolve('tsx'), CLI, 'sdd-new', ...env.item.createArgs],
+        {
+          cwd: env.root,
+          encoding: 'utf8',
+          timeout: 20000,
+          env: { ...process.env, GENNADY_NO_UPDATE_CHECK: '1' },
+        }
+      );
+      assert.match(output, new RegExp(env.item.target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+      const scaffold = readFileSync(join(env.root, env.item.target), 'utf8');
+      assert.match(scaffold, /^# /);
+      const red = checkAuthoringBenchmark(env.root, id);
+      assert.equal(red.pass, false, `untouched actual skeleton must not pass: ${red.detail}`);
+      put(env.root, env.item.target, positive(id));
+      const before = Object.fromEntries(
+        [...Object.keys(env.item.files), env.item.target].map((path) => [
+          path,
+          readFileSync(join(env.root, path)),
+        ])
+      );
+      const result = checkAuthoringBenchmark(env.root, id);
+      assert.equal(result.pass, true, JSON.stringify(result, null, 2));
+      assert.match(result.detail, /independent semantic review not claimed/);
+      if (env.item.target.endsWith('.spec.md')) {
+        const receipt = execFileSync(
+          process.execPath,
+          [
+            '--import',
+            import.meta.resolve('tsx'),
+            CLI,
+            'sdd-check',
+            '--spec',
+            env.item.target,
+            '--authoring',
+          ],
+          {
+            cwd: env.root,
+            encoding: 'utf8',
+            timeout: 20000,
+            env: { ...process.env, GENNADY_NO_UPDATE_CHECK: '1' },
+          }
+        );
+        assert.match(receipt, /AUTHORING|authoring|Draft/i);
+      }
+      for (const [path, bytes] of Object.entries(before))
+        assert.deepEqual(readFileSync(join(env.root, path)), bytes, `oracle is read-only: ${path}`);
+    } finally {
+      env.cleanup();
+    }
+  });
+}
+
+it('reference spec seeds also pass the actual draft checker and resolve all non-future local links', () => {
+  for (const id of AUTHORING_CASE_IDS) {
+    const item = getAuthoringCase(id);
+    for (const [path, text] of Object.entries(item.files)) {
+      if (!path.endsWith('.spec.md')) continue;
+      assert.deepEqual(checkSpecAuthoringDraft(path, text), [], `${id}/${path}`);
+    }
+    for (const [path, text] of Object.entries(item.files)) {
+      if (!path.endsWith('.md')) continue;
+      for (const match of text.matchAll(/\[[^\]\n]*\]\(([^)\s]+)\)/g)) {
+        const target = posix.normalize(posix.join(posix.dirname(path), match[1]!));
+        assert.ok(
+          target === item.target || Object.hasOwn(item.files, target),
+          `${id}: ${path} has unresolved seed link ${match[1]}`
+        );
+      }
+    }
+  }
+});
+
+it('accepts semantically identical linked/backticked tracker IDs instead of demanding exact cell spelling', () => {
+  const env = fixture('index-module');
+  try {
+    put(
+      env.root,
+      env.item.target,
+      positive('index-module')
+        .replace('| NOR-normalize |', '| [NOR-normalize](./normalize.task.NOR-normalize.md) |')
+        .replace('| NOR-reject |', '| `NOR-reject` |')
+    );
+    const result = checkAuthoringBenchmark(env.root, env.item.id);
+    assert.equal(result.pass, true, result.detail);
+  } finally {
+    env.cleanup();
+  }
+});
+
+it('rejects wrong positive and negative facts even when the expected words remain elsewhere', () => {
+  for (const id of AUTHORING_CASE_IDS.filter((id) =>
+    getAuthoringCase(id).target.endsWith('.spec.md')
+  )) {
+    expectRejected(
+      id,
+      (text) => text.replace('| `"foo-bar"` |', '| `"Foo_BAR"` |') + '\nfoo-bar TypeError\n',
+      'required-facts'
+    );
+    expectRejected(
+      id,
+      (text) => text.replace('| `TypeError` |', '| `""` |') + '\nTypeError\n',
+      'required-facts'
+    );
+    expectRejected(
+      id,
+      (text) => text.replace('[должен · нештатная]', '[должен]'),
+      'required-facts'
+    );
+    expectRejected(
+      id,
+      (text) => text.replace('| Input | Outcome |', '| Unrelated | Notes |'),
+      'required-facts'
+    );
+    expectRejected(
+      id,
+      (text) => text.replace('| `""` | `TypeError` |', '| `""` | `TypeError` |\n| `""` | `""` |'),
+      'required-facts'
+    );
+  }
+});
+
+it('rejects duplicate anchors, missing required sections, duplicate IDs and conflicting kind', () => {
+  expectRejected(
+    'scope-library',
+    (text) => text + '\n<!--SECTION:VISION-->Extra<!--/SECTION:VISION-->\n',
+    'canonical-shape'
+  );
+  expectRejected(
+    'scope-library',
+    (text) => text.replace(/<!--SECTION:VISION-->[\s\S]*?<!--\/SECTION:VISION-->/, ''),
+    'canonical-shape'
+  );
+  expectRejected(
+    'scope-library',
+    (text) => text.replace('TOK-REQ-2', 'TOK-REQ-1'),
+    'canonical-shape'
+  );
+  expectRejected(
+    'scope-library',
+    (text) => text.replace('TOKEN\n<!--/SECTION:SPEC_ID-->', 'WRONG\n<!--/SECTION:SPEC_ID-->'),
+    'canonical-shape'
+  );
+  expectRejected(
+    'module-flat',
+    (text) => text + '\n<!--SECTION:SCOPE_TYPE-->library<!--/SECTION:SCOPE_TYPE-->\n',
+    'canonical-shape'
+  );
+  expectRejected(
+    'scope-library',
+    (text) => text.replace('## Vision & Primary Goal', '### Vision & Primary Goal'),
+    'canonical-shape'
+  );
+  expectRejected('portal', (text) => text + '\n## Scopes\nNo rows here.\n', 'canonical-shape');
+  expectRejected(
+    'index-module',
+    (text) => text + '\n## Tracker Index\nNo rows here.\n',
+    'canonical-shape'
+  );
+  expectRejected(
+    'index-scope',
+    (text) => text.replace('```mermaid\ngraph TD\n  normalize\n```', 'no diagram'),
+    'canonical-shape'
+  );
+  expectRejected(
+    'scope-library',
+    (text) => text.replace('**Depends on:** infra-base', '**Depends on:** None'),
+    'canonical-shape'
+  );
+});
+
+it('rejects forged approval in owner handoff, owner decisions and portal statuses', () => {
+  expectRejected(
+    'scope-library',
+    (text) => text.replace('**Operator decision:** pending', '**Operator decision:** approved'),
+    'pending-approval'
+  );
+  expectRejected(
+    'module-flat',
+    (text) => text.replace('No independent module decisions or approval.', '**Status:** approved'),
+    'pending-approval'
+  );
+  expectRejected('portal', (text) => text.replace('🚧', '✅'), 'pending-approval');
+  expectRejected(
+    'index-module',
+    (text) =>
+      text.replace('No decisions or approvals recorded.', 'NOR-DL-1 approved [verdict: accepted]'),
+    'pending-approval'
+  );
+});
+
+it('rejects tracker status/dependency/slug/DAG and project rollup distortions', () => {
+  expectRejected('index-module', (text) => text.replace('[ ] TODO', '[x] DONE'), 'required-facts');
+  expectRejected(
+    'index-module',
+    (text) => text.replace('| NOR-normalize | [ ] TODO', '| — | [ ] TODO'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-module',
+    (text) => text.replace('- reject', '- invented'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-module',
+    (text) => text.replace('NOR-reject --> NOR-normalize', 'NOR-normalize --> NOR-reject'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-scope',
+    (text) => text.replace('| normalize | NOR-normalize', '| other | NOR-normalize'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-project',
+    (text) => text.replace('| 2 | 0/2 |', '| 2 | 2/2 |'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-project',
+    (text) => text.replace('token --> infra-base', 'infra-base --> token'),
+    'required-facts'
+  );
+  expectRejected(
+    'portal',
+    (text) => text.replace('token --> infra-base', 'infra-base --> token'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-scope',
+    (text) => text.replace('./token.spec.md', '../infra-base/infra-base.spec.md'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-scope',
+    (text) => text.replace('| token (target) | — |', '| token (target) | invented-rules |'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-module',
+    (text) => text.replace('../../3-tasks.md', '../../README.md'),
+    'required-facts'
+  );
+  expectRejected(
+    'index-project',
+    (text) => text.replace('[Specs Portal](./README.md)', '[Specs Portal](./token/token.spec.md)'),
+    'required-facts'
+  );
+});
+
+it('rejects remaining guidance, broken/escaping links and altered canonical project vocabulary', () => {
+  expectRejected(
+    'scope-library',
+    (text) => text + '\n<!-- fill after authoring -->\n',
+    'no-skeleton'
+  );
+  expectRejected('portal', (text) => text + '\n<project-name>\n', 'no-skeleton');
+  expectRejected(
+    'module-nested',
+    (text) => text.replace('../../token.spec.md', '../token.spec.md'),
+    'relative-links'
+  );
+  expectRejected(
+    'index-module',
+    (text) => text.replace('../../3-tasks.md', '../../../../outside.md'),
+    'relative-links'
+  );
+  expectRejected(
+    'index-project',
+    (text) => text.replace('every phase', 'some phases'),
+    'no-skeleton'
+  );
+});
+
+it('rejects seeded-file mutation, unexpected sidecars, symlink/hardlink targets and oversized input', () => {
+  for (const mutation of ['seed', 'extra', 'symlink', 'hardlink', 'oversize'] as const) {
+    const env = fixture('scope-library');
+    try {
+      assert.equal(checkAuthoringBenchmark(env.root, env.item.id).pass, true);
+      if (mutation === 'seed') put(env.root, 'docs/token-contract.md', 'rewritten expected facts');
+      if (mutation === 'extra') put(env.root, 'golden/expected.json', '{}');
+      if (mutation === 'oversize') put(env.root, env.item.target, 'x'.repeat(256 * 1024 + 1));
+      if (mutation === 'symlink' || mutation === 'hardlink') {
+        const path = join(env.root, env.item.target);
+        rmSync(path);
+        const other = join(env.root, 'docs/token-contract.md');
+        if (mutation === 'symlink') symlinkSync(other, path);
+        else linkSync(other, path);
+      }
+      assert.equal(checkAuthoringBenchmark(env.root, env.item.id).pass, false, mutation);
+    } finally {
+      env.cleanup();
+    }
+  }
+});
+
+it('does not permit caller mutation of required facts/seed truth to alter the independent oracle', () => {
+  const item = getAuthoringCase('scope-library');
+  item.requiredFacts.length = 0;
+  item.files['docs/token-contract.md'] = 'changed';
+  const fresh = getAuthoringCase('scope-library');
+  assert.equal(fresh.requiredFacts.length, 2);
+  assert.notEqual(fresh.files['docs/token-contract.md'], 'changed');
+  assert.throws(() => getAuthoringCase('../outside' as AuthoringCaseId), /Unknown authoring case/);
+  assert.equal(extractSection(positive('module-flat'), 'SPEC_ID').status, 'ok');
+  assert.ok(TEMPLATES.module.sections.length > 8);
+});

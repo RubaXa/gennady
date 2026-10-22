@@ -6,6 +6,10 @@ import type { SddEvalMode, SddEvalPhase, SddEvalScenario } from './types.ts';
 import { appendSddSessionBoundary } from '../../shared/sdd/session-boundary.ts';
 
 const PHASE_PROMPTS: Record<SddEvalPhase, string> = {
+  'artifact-authoring': `This is an ISOLATED artifact-authoring benchmark, not the whole SDD workflow.
+Read inputs/brief.md, then the actual installed owner directive/format named there. Create ONLY the requested target with the exact installed sdd-new invocation from that brief. Read the created on-disk template and write the complete artifact using its section instructions and the current owner instructions. Preserve all seeded files and do not implement code, create extra specs/tickets, or approve anything.
+For a *.spec.md target, invoke sdd-check --spec <exact-target> --authoring after the final whole-file Write, and address its actual findings. Portal and index targets have no exact authoring CLI today: do NOT substitute --all or claim that --spec supports them. Their terminal artifact oracle runs independently after you stop.
+Report the actual target and any remaining uncertainty. This benchmark proves artifact authoring only, never full routing, independent review or operator approval.`,
   'spec-authoring': `Run the installed SDD flow for full specification authoring.
 Read and follow the installed SDD skill and router/directive chain (starting at ai/skills/sdd/SKILL.md and ai/directives/sdd-v2/router.directive.xml).
 Perform discovery, interview/amplification, and write the complete canonical spec artifacts.

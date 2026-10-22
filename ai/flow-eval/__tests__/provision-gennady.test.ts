@@ -85,6 +85,47 @@ function scenario(dir: string): SddEvalScenario {
   return { id: 's', intent: 'x', phase: 'execute', mode: 'canonical-execute', directory: dir };
 }
 
+it('authoring workers cannot read benchmark reference answers/oracles from the installed package', async () => {
+  const root = fakeGennadyRoot('// real build placeholder for provisioning-only test\n');
+  for (const name of ['flow-eval', 'flow-sim', 'drafts', 'inspector']) {
+    mkdirSync(join(root, 'ai', name), { recursive: true });
+    writeFileSync(join(root, 'ai', name, 'private-answer.txt'), 'REFERENCE ANSWER\n');
+  }
+  const [item] = await provisionScenarioDirectories(
+    [
+      {
+        id: 'authoring-isolation',
+        phase: 'artifact-authoring',
+        mode: 'template-to-artifact',
+        fixture: 'authoring-benchmark',
+        intent: 'Author the portal.',
+        authoringBenchmark: {
+          campaign: 'isolation',
+          caseId: 'portal',
+          variant: 'baseline',
+          repetition: 1,
+        },
+      },
+    ],
+    { rootDirectory: temporaryRoot('authoring-isolation-'), gennadyRoot: root }
+  );
+  assert.ok(item);
+  for (const name of ['flow-eval', 'flow-sim', 'drafts', 'inspector'])
+    assert.equal(existsSync(join(item.directory, 'node_modules/gennady/ai', name)), false, name);
+  assert.equal(existsSync(join(item.directory, 'ai/directives/sdd-v2/router.directive.xml')), true);
+  assert.equal(
+    existsSync(
+      join(item.directory, 'node_modules/gennady/ai/directives/sdd-v2/router.directive.xml')
+    ),
+    true
+  );
+  assert.equal(
+    existsSync(join(item.directory, 'specs/README.md')),
+    false,
+    'selected answer is not preseeded'
+  );
+});
+
 describe('provisioned sandbox uses the fresh local dist (not a package, not stale)', () => {
   it('materializes the local built dist and a bin shim that execs it', async () => {
     const root = fakeGennadyRoot('// BUILD V1\n');

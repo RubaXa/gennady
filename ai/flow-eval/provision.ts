@@ -16,7 +16,7 @@ import {
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import { TEMPLATES } from '../../shared/sdd/templates.ts';
 import { fixtureToolchainSpec } from './fixture-toolchain-spec.ts';
@@ -29,6 +29,7 @@ import {
   type EvalDependencyStore,
 } from './dependency-store.ts';
 import type { SddEvalFixtureId, SddEvalScenario } from './types.ts';
+import { buildAuthoringFixture } from './authoring-benchmark.ts';
 import { DEVIATION_VERDICT_FILES } from './fixtures/deviation-verdict.ts';
 
 const execFileAsync = promisify(execFile);
@@ -999,6 +1000,7 @@ echo "PASS"
 
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
+  'authoring-benchmark': {},
   'v2-brownfield-routing': BROWNFIELD_ROUTING_FILES,
   'deviation-verdict': DEVIATION_VERDICT_FILES,
   'fibonacci-library': {
@@ -1474,7 +1476,8 @@ async function materializeLocalCli(
   directory: string,
   gennadyRoot: string,
   dependencyStore: EvalDependencyStore,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  hideBenchmarkAnswers = false
 ): Promise<void> {
   throwIfProvisioningAborted(signal);
   const packageTarget = join(directory, 'node_modules/gennady');
@@ -1494,7 +1497,16 @@ async function materializeLocalCli(
     force: true,
   });
   throwIfProvisioningAborted(signal);
-  await cp(join(gennadyRoot, 'ai'), join(packageTarget, 'ai'), { recursive: true, force: true });
+  const aiRoot = join(gennadyRoot, 'ai');
+  await cp(aiRoot, join(packageTarget, 'ai'), {
+    recursive: true,
+    force: true,
+    filter: (source) =>
+      !hideBenchmarkAnswers ||
+      !['flow-eval', 'flow-sim', 'drafts', 'inspector'].includes(
+        relative(aiRoot, source).split(sep)[0] ?? ''
+      ),
+  });
   throwIfProvisioningAborted(signal);
   // The dependency tree is never copied per scenario. The content-addressed store validates the
   // package-lock + installed-lock contract and exposes only verified symlink entries.
@@ -1590,7 +1602,10 @@ export async function provisionScenarioDirectories(
       throwIfProvisioningAborted(options?.signal);
       if (generatedDirectory) await initGitRepository(directory);
       if (scenario.fixture) {
-        const files = FIXTURE_FILES[scenario.fixture];
+        const files =
+          scenario.fixture === 'authoring-benchmark'
+            ? buildAuthoringFixture(scenario.authoringBenchmark!.caseId)
+            : FIXTURE_FILES[scenario.fixture];
         if (!files) throw new Error(`unknown SDD eval fixture: ${scenario.fixture}`);
         for (const [relativePath, contents] of Object.entries(files)) {
           throwIfProvisioningAborted(options?.signal);
@@ -1607,7 +1622,13 @@ export async function provisionScenarioDirectories(
       await materializeFlow(directory, sourceRoot, options?.signal);
       throwIfProvisioningAborted(options?.signal);
       if (!dependencyStore) throw new Error('flow-eval dependency store was not prepared');
-      await materializeLocalCli(directory, sourceRoot, dependencyStore, options?.signal);
+      await materializeLocalCli(
+        directory,
+        sourceRoot,
+        dependencyStore,
+        options?.signal,
+        scenario.fixture === 'authoring-benchmark'
+      );
       if (generatedDirectory) await commitFixtureBaseline(directory);
       provisioned.push({ ...scenario, directory });
     }

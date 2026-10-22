@@ -50,6 +50,8 @@ export type SddEvalDurableOutcome =
 
 /** @purpose One scenario's durable outcome record — the ai/flow-eval/results/<dir>/summary.json shape. */
 export type SddEvalDurableSummary = {
+  /** @purpose Isolated authoring observations; absent on historical/full-flow scenarios. */
+  authoringBenchmark?: import('./authoring-metrics.ts').AuthoringObservation;
   scenarioId: string;
   /** @purpose UTC calendar date the run finished, `YYYY-MM-DD` — also the directory name's prefix. */
   date: string;
@@ -81,6 +83,8 @@ export type SddEvalDurableSummary = {
   trajectory?: { rule: string; pass: boolean; detail: string };
   hasJudge: boolean;
   specFiles: string[];
+  /** @purpose Exact additional portal/index artifact snapshots, never promoted to spec files. */
+  artifactFiles?: string[];
 };
 
 /** @purpose `git rev-parse HEAD` at `root`; never throws — undefined outside a git checkout. */
@@ -171,6 +175,7 @@ export async function persistDurableResult(
     judgeFile?: string;
     trajectoryFile?: string;
     specs?: { root: string; files: readonly string[] };
+    artifacts?: { root: string; files: readonly string[] };
   } = {}
 ): Promise<string> {
   const dir = await reserveResultDirectory(resultsRoot, summary.date, summary.scenarioId);
@@ -192,9 +197,27 @@ export async function persistDurableResult(
     await writeFile(join(dir, path), observed.content, 'utf8');
     savedSpecs.push(path);
   }
+  const savedArtifacts: string[] = [];
+  for (const file of options.artifacts?.files ?? []) {
+    const root = options.artifacts!.root;
+    const path = relative(root, file).split(sep).join('/');
+    if (!path.startsWith('specs/') || !path.endsWith('.md'))
+      throw new Error('artifact snapshot escaped its bound artifact root');
+    const proof = proveRepoFile(root, path);
+    if (!proof.ok) throw new Error('artifact snapshot path is unsafe');
+    const observed = readProvenRepoFile(proof.identity);
+    if (!observed.ok) throw new Error('artifact snapshot identity changed');
+    await mkdir(join(dir, path, '..'), { recursive: true });
+    await writeFile(join(dir, path), observed.content, 'utf8');
+    savedArtifacts.push(path);
+  }
   // Publish the record only after its required evidence exists: table readers must not see
   // a successful summary after an evidence-copy failure.
-  const record = options.specs ? { ...summary, specFiles: savedSpecs } : summary;
+  const record = {
+    ...summary,
+    ...(options.specs ? { specFiles: savedSpecs } : {}),
+    ...(options.artifacts ? { artifactFiles: savedArtifacts } : {}),
+  };
   await writeFile(join(dir, 'summary.json'), `${JSON.stringify(record, null, 2)}\n`, 'utf8');
   return dir;
 }

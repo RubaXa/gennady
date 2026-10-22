@@ -18,6 +18,18 @@ import {
 import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
+import {
+  AUTHORING_CASE_IDS,
+  getAuthoringCase,
+  checkAuthoringBenchmark,
+} from './authoring-benchmark.ts';
+import {
+  bindAuthoringScenario,
+  measureAuthoringPath,
+  type AuthoringPathMetrics,
+  type AuthoringObservation,
+} from './authoring-metrics.ts';
+import { authoringProtocolIdentity, readAuthoringRuntimeVersion } from './authoring-protocol.ts';
 import { resolveBasePrompt } from './prompts.ts';
 import {
   checkR1Structure,
@@ -53,6 +65,7 @@ import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { SDD_EVAL_PHASES, SDD_EVAL_MODES } from './types.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
 import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
+import { proveRepoFile } from '../../shared/common/repo-file-identity.ts';
 
 /** @purpose Parsed command-line options; all model values retain provider/model configurability. */
 type SddEvalCliOptions = {
@@ -195,6 +208,31 @@ export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   const scales = new Set(['product', 'module', 'function', 'fix']);
   for (const item of value as Array<Record<string, unknown>>) {
     const id = String(item.id ?? '<unknown>');
+    if (
+      item.phase === 'artifact-authoring' ||
+      item.authoringBenchmark !== undefined ||
+      item.fixture === 'authoring-benchmark'
+    ) {
+      const benchmark = item.authoringBenchmark as Record<string, unknown> | undefined;
+      if (
+        item.phase !== 'artifact-authoring' ||
+        item.mode !== 'template-to-artifact' ||
+        item.fixture !== 'authoring-benchmark' ||
+        item.directory !== undefined ||
+        !benchmark ||
+        typeof benchmark !== 'object' ||
+        Array.isArray(benchmark) ||
+        !(AUTHORING_CASE_IDS as readonly unknown[]).includes(benchmark.caseId) ||
+        typeof benchmark.campaign !== 'string' ||
+        !/^[a-z][a-z0-9-]{0,47}$/.test(benchmark.campaign) ||
+        typeof benchmark.variant !== 'string' ||
+        !/^[a-z][a-z0-9-]{0,47}$/.test(benchmark.variant) ||
+        !Number.isSafeInteger(benchmark.repetition) ||
+        Number(benchmark.repetition) < 1 ||
+        Number(benchmark.repetition) > 100
+      )
+        throw new Error(`scenario ${id} has invalid isolated AUTHORING benchmark`);
+    }
     if (
       item.authoringTargets !== undefined &&
       (item.phase !== 'spec-authoring' ||
@@ -428,6 +466,26 @@ export async function runAndReportBody(
     options.config
   );
   const byId = new Map(isolated.map((scenario) => [scenario.id, scenario]));
+  const authoringIdentity = new Map<
+    string,
+    Awaited<ReturnType<typeof authoringProtocolIdentity>>
+  >();
+  if (isolated.some((scenario) => scenario.authoringBenchmark)) {
+    const runtimeVersion = await readAuthoringRuntimeVersion(options.config.baseUrl);
+    for (const scenario of isolated)
+      if (scenario.authoringBenchmark) {
+        const identity = await authoringProtocolIdentity(
+          gennadyRootForResults,
+          scenario.authoringBenchmark.caseId,
+          options.config,
+          runtimeVersion
+        );
+        authoringIdentity.set(scenario.id, {
+          ...identity,
+          taskDigest: bindAuthoringScenario(identity.taskDigest, scenario),
+        });
+      }
+  }
   await new SddEvalRunner(runtime, evidence, options.config).runAll(isolated, async (result) => {
     let interrupted = options.config.signal?.aborted === true;
     let verdict = interrupted
@@ -459,7 +517,12 @@ export async function runAndReportBody(
       scenario.phase !== 'task' &&
       (scenario.phase !== 'brownfield' || brownfieldSpecMode);
     let quality: SddEvalRunArtifact['quality'];
-    if (!interrupted && scenario?.phase === 'migration' && scenario.directory) {
+    if (!interrupted && scenario?.authoringBenchmark && scenario.directory) {
+      quality = checkAuthoringBenchmark(scenario.directory, scenario.authoringBenchmark.caseId);
+      console.log(
+        `  quality ${quality.rule}: ${quality.pass ? 'pass' : 'FAIL'} — ${quality.detail}`
+      );
+    } else if (!interrupted && scenario?.phase === 'migration' && scenario.directory) {
       // Frozen deterministic bar: FLOW_VERSION=v2 + zero migration-introduced findings (baseline-diff).
       const { stateOutput, checkOutput } = await runMigrationChecks(scenario.directory);
       const g = computeMigrationGrade(
@@ -497,6 +560,7 @@ export async function runAndReportBody(
     // only the verdict, so without this a 'fail'/'inconclusive' is undiagnosable after the run.
     const directory = scenario?.directory;
     let judgeFile: string | undefined;
+    let authoringPathMetrics: AuthoringPathMetrics | undefined;
     if (result.judge?.rationale && directory) {
       const target = join(directory, `.sdd-eval-judge.${result.worker.scenarioId}.md`);
       await writeFile(
@@ -564,6 +628,19 @@ export async function runAndReportBody(
         const traj: Trajectory = buildTrajectory(result.worker.scenarioId, tools, checkpoints);
         traj.coverage = capture.coverage;
         trajectoryGrade = gradeTrajectory(traj, scenario?.trajectoryRules);
+        if (scenario?.authoringBenchmark) {
+          const definition = getAuthoringCase(scenario.authoringBenchmark.caseId);
+          const measured = measureAuthoringPath(
+            traj,
+            definition.target,
+            directory,
+            definition.target.endsWith('.spec.md'),
+            definition.createArgs
+          );
+          authoringPathMetrics = measured.metrics;
+          if (!measured.pass)
+            trajectoryGrade = { rule: measured.rule, pass: false, detail: measured.detail };
+        }
         if (interrupted || options.config.signal?.aborted)
           trajectoryGrade = {
             rule: 'TRAJECTORY',
@@ -675,10 +752,45 @@ export async function runAndReportBody(
         hasJudge: Boolean(judgeFile),
         specFiles: artifact.specFiles,
       };
+      const benchmark = scenario?.authoringBenchmark;
+      const identity = authoringIdentity.get(result.worker.scenarioId);
+      if (benchmark && identity && authoringPathMetrics) {
+        const observation: AuthoringObservation = {
+          ...identity,
+          ...benchmark,
+          sourceCommit: sha ?? '',
+          dirty: experimentSource.dirty,
+          model: `${options.config.runnerModel.providerID}/${options.config.runnerModel.modelID}`,
+          modelVerified:
+            u?.complete === true &&
+            u.models?.length === 1 &&
+            u.models[0] === 'llm-proxy/deepseek-v4-flash' &&
+            u.sessions ===
+              (JSON.parse(await readFile(trajectoryFile!, 'utf8')) as Trajectory).coverage
+                ?.sessions,
+          artifactPass:
+            quality?.pass === true && artifact.status === 'completed' && !budgetExhausted,
+          semanticVerdict: verdict,
+          trajectoryPass: trajectoryGrade?.pass === true,
+          durationMs: u?.wallClockMs,
+          nonCacheTokens: u?.total,
+          metrics: authoringPathMetrics,
+        };
+        durableSummary.authoringBenchmark = observation;
+      }
+      const benchmarkTarget = benchmark
+        ? join(directory, getAuthoringCase(benchmark.caseId).target)
+        : undefined;
+      const benchmarkTargetProof = benchmarkTarget
+        ? proveRepoFile(directory, getAuthoringCase(benchmark!.caseId).target)
+        : undefined;
       const resultDir = await persistDurableResult(resultsRoot, durableSummary, {
         judgeFile,
         trajectoryFile,
         specs: { root: directory, files: artifact.specFiles },
+        ...(benchmarkTargetProof?.ok
+          ? { artifacts: { root: directory, files: [benchmarkTarget!] } }
+          : {}),
       });
       if (resultDir) console.log(`  results → ${resultDir}`);
       // GAP-E-6/D-62 (в): a stub entry per run, append-only — see the template documented at the

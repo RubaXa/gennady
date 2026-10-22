@@ -590,6 +590,10 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
   // and info.cost; user messages carry none. Not bounded by the tail/child limits — the true total.
   async readUsage(sessionId: string): Promise<SddEvalUsage> {
     const directory = this.#sessionDirectory(sessionId);
+    const models = new Set<string>();
+    let complete = true;
+    let earliest = Infinity;
+    let latest = -Infinity;
     const zero: SddEvalUsage = {
       messages: 0,
       input: 0,
@@ -604,6 +608,9 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
       for (const raw of infos) {
         const info = raw as {
           role?: unknown;
+          providerID?: unknown;
+          modelID?: unknown;
+          time?: { created?: number; completed?: number };
           cost?: unknown;
           tokens?: {
             input?: unknown;
@@ -612,7 +619,25 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
             cache?: { read?: unknown; write?: unknown };
           };
         };
-        if (info.role !== 'assistant' || !info.tokens) continue;
+        if (typeof info.time?.created === 'number' && Number.isFinite(info.time.created))
+          earliest = Math.min(earliest, info.time.created);
+        if (info.role !== 'assistant') continue;
+        if (typeof info.providerID === 'string' && typeof info.modelID === 'string')
+          models.add(`${info.providerID}/${info.modelID}`);
+        else complete = false;
+        if (typeof info.time?.completed === 'number' && Number.isFinite(info.time.completed))
+          latest = Math.max(latest, info.time.completed);
+        else complete = false;
+        if (
+          typeof info.time?.created !== 'number' ||
+          !Number.isFinite(info.time.created) ||
+          (typeof info.time.completed === 'number' && info.time.completed < info.time.created)
+        )
+          complete = false;
+        if (!info.tokens) {
+          complete = false;
+          continue;
+        }
         const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
         const input = n(info.tokens.input);
         const output = n(info.tokens.output);
@@ -635,14 +660,25 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     });
     if (!children.error && children.data)
       sessionIds.push(...children.data.map((child) => child.id));
+    else complete = false;
     const usage = { ...zero };
     for (const id of sessionIds) {
       const messages = await this.#client.session.messages({ path: { id }, query: { directory } });
-      if (messages.error || !messages.data) continue;
+      if (messages.error || !messages.data) {
+        complete = false;
+        continue;
+      }
       add(
         usage,
         messages.data.map((message) => (message as { info?: unknown }).info)
       );
+    }
+    if (models.size) {
+      usage.models = [...models].sort();
+      usage.complete = complete;
+      usage.sessions = sessionIds.length;
+      if (complete && Number.isFinite(earliest) && Number.isFinite(latest) && latest >= earliest)
+        usage.wallClockMs = latest - earliest;
     }
     return usage;
   }

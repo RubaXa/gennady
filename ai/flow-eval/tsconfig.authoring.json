@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "authoring-benchmark.ts",
+    "authoring-benchmark-fixtures.ts",
+    "authoring-metrics.ts",
+    "authoring-protocol.ts",
+    "scripts/authoring-experiment.ts"
+  ],
+  "exclude": ["**/*.test.ts", "**/__tests__/**"]
+}
