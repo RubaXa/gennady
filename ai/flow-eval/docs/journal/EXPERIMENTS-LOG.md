@@ -788,3 +788,17 @@ not `R-COMPLETE`— a pre-existing`cli.ts` quirk (`quality`is only overwritten b
 fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; the terminal log line
 (`quality R-COMPLETE: pass`) is the authoritative record of what actually ran.
 - **Сырые данные:** `ai/flow-eval/results/2026-09-10-slugify-toolchain-4`
+
+## 2026-10-22 — `v2-native-scope-authoring` (fail/fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=40
+- **Числа:** действий=32, время=~1 мин, токены=104238
+- **Гипотеза/зачем:** проверить реальный native-scope маршрут после восстановления ориентации,
+  сохранив действия агента и конечные артефакты. Первый exploratory запуск сделан на dirty source:
+  fingerprint сохранён, но это не воспроизводимый clean-commit baseline для строгого A/B.
+- **Итог:** FAIL: exact-path orientation прошла, модульный шаг повторил несовместимый `--scope`
+  (exit 4), затем агент вызвал запрещённый help. 17 read + 15 bash, ноль Write/Edit/reviewer;
+  спеки остались skeleton, шесть структурных ошибок. Сохранены исходные trace/summary/judge и
+  точные копии спек; разбор и корректирующие гипотезы — в ANALYSIS.md этой записи. Не выдавать
+  help за verification; следующий qualified run — после отдельного clean-source commit.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-native-scope-authoring`

@@ -1101,6 +1101,15 @@ ai/skills/sdd-execute/SKILL.md
 ai/skills/sdd-reconcile/SKILL.md
 ai/skills/sdd-scaffold/SKILL.md
 ai/skills/sdd/SKILL.md
+ai/skills/session-context-recover/SKILL.md
+ai/skills/session-context-recover/agents/openai.yaml
+ai/skills/session-context-recover/references/audit-protocol.md
+ai/skills/session-context-recover/references/providers/claude.md
+ai/skills/session-context-recover/references/providers/codex.md
+ai/skills/session-context-recover/references/providers/opencode.md
+ai/skills/session-context-recover/references/recovery-protocol.md
+ai/skills/session-context-recover/references/report-schema.md
+ai/skills/session-context-recover/scripts/session-recover.mjs
 ai/skills/workspace-permission-setup/SKILL.md
 cli/cmd/README.md
 cli/cmd/orient/README.md

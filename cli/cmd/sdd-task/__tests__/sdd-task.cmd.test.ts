@@ -33,6 +33,8 @@ import { runWithSddAttemptJournal } from '../../../../shared/sdd/verify/sdd-atte
 import type { VerifyRunReport } from '../../../../shared/verify/model/verify-report.type.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..');
+const LEGACY_TICKET =
+  '# Task: historical\n\n## 1. Meta\n- **Task-ID:** TSK-1 | **Status:** [x] DONE\n\n## 6. Execution Log\n';
 
 function git(root: string, ...args: string[]): string {
   return execFileSync('git', ['-C', root, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
@@ -224,6 +226,7 @@ function writeCrossSpecMapFixture(root: string, flow: 'v1' | 'v2', withAudit: bo
   if (flow === 'v1') {
     mkdirSync(join(root, 'tasks', 'a'), { recursive: true });
     mkdirSync(join(root, 'tasks', 'b'), { recursive: true });
+    writeFileSync(join(root, 'tasks', 'a', 'legacy.task-1.md'), LEGACY_TICKET);
   }
   const aFile = join(aDir, 'a.task.A-one.md');
   const aContent = mapTicket('A-one', 'a', '[x] DONE');
@@ -247,10 +250,11 @@ function writeCrossSpecMapFixture(root: string, flow: 'v1' | 'v2', withAudit: bo
   writeFileSync(join(bDir, 'b.spec.md'), '# B\n', 'utf-8');
 }
 
-/** @purpose Mark generic root-level ticket fixtures as legacy so V2 owning-spec rules are not
+/** @purpose Seed actual historical ticket evidence so V2 owning-spec rules are not
  *  accidentally exercised by tests whose subject is map formatting or runtime readiness. */
 function markLegacyFlow(root: string): void {
   mkdirSync(join(root, 'tasks'), { recursive: true });
+  writeFileSync(join(root, 'tasks', 'legacy.task-1.md'), LEGACY_TICKET);
 }
 
 /** @purpose Seed one canonical co-located V2 phase-plan ticket owner for positive dispatch fixtures. */

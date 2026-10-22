@@ -1,5 +1,5 @@
-// @spec: AI-SKILLS
 #!/usr/bin/env node
+// @spec: AI-SKILLS
 
 import { execFileSync } from 'node:child_process';
 import { createReadStream, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';

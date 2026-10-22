@@ -17,11 +17,11 @@ describe('VcsGitlabMergeDiscussions — createDiscussion', () => {
 
   it('posts a general discussion with only a body', async () => {
     await disc.createDiscussion({ project: 'g/p', iid: 1, body: 'hello' });
-    const [path, init] = requestFn.mock.calls[0].arguments as [string, { method?: string }];
-    assert.ok(path.startsWith('/projects/g%2Fp/merge_requests/1/discussions?'));
+    const [path, init] = requestFn.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(path, '/projects/g%2Fp/merge_requests/1/discussions');
     assert.strictEqual(init.method, 'POST');
-    assert.ok(decodeURIComponent(path).includes('body=hello'));
-    assert.ok(!path.includes('position'));
+    assert.deepEqual(init.headers, { 'Content-Type': 'application/x-www-form-urlencoded' });
+    assert.deepEqual([...new URLSearchParams(String(init.body))], [['body', 'hello']]);
   });
 
   it('posts a line comment with diff position', async () => {
@@ -37,13 +37,29 @@ describe('VcsGitlabMergeDiscussions — createDiscussion', () => {
         newLine: 42,
       },
     });
-    const path = decodeURIComponent(requestFn.mock.calls[0].arguments[0] as string);
-    assert.ok(path.includes('position[position_type]=text'));
-    assert.ok(path.includes('position[head_sha]=h'));
-    assert.ok(path.includes('position[new_path]=src/x.ts'));
-    assert.ok(path.includes('position[new_line]=42'));
-    // old_path defaults to new_path when omitted
-    assert.ok(path.includes('position[old_path]=src/x.ts'));
+    const [path, init] = requestFn.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(path, '/projects/g%2Fp/merge_requests/2/discussions');
+    assert.strictEqual(init.method, 'POST');
+    assert.deepEqual(init.headers, { 'Content-Type': 'application/x-www-form-urlencoded' });
+    assert.deepEqual(Object.fromEntries(new URLSearchParams(String(init.body))), {
+      body: 'nit',
+      'position[position_type]': 'text',
+      'position[base_sha]': 'b',
+      'position[start_sha]': 's',
+      'position[head_sha]': 'h',
+      'position[new_path]': 'src/x.ts',
+      'position[new_line]': '42',
+      // old_path defaults to new_path when omitted
+      'position[old_path]': 'src/x.ts',
+    });
+  });
+
+  it('keeps a long Unicode comment out of the request URL without losing its bytes', async () => {
+    const body = 'Замечание к реализации & проверка + тесты\n'.repeat(1000);
+    await disc.createDiscussion({ project: 'g/p', iid: 3, body });
+    const [path, init] = requestFn.mock.calls[0].arguments as [string, RequestInit];
+    assert.equal(path, '/projects/g%2Fp/merge_requests/3/discussions');
+    assert.equal(new URLSearchParams(String(init.body)).get('body'), body);
   });
 
   it('propagates request errors', async () => {

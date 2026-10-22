@@ -74,6 +74,7 @@ const INCIDENT_TEST_LAYERS = {
     'ai/kit/__tests__/stateless-sdd-flow-contract.test.ts',
   ],
   local: [
+    'ai/skills/session-context-recover/scripts/session-recover.test.mjs',
     'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
     'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
     // GAP-2: real child_process (git-fixture) / setupMockAgent (mock-http) boundary signals put
@@ -119,6 +120,11 @@ const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6,
 // independent of `availableParallelism()` — to cut IPC pressure from local's subprocess-heavy
 // suites (see R-REL-15.md / V-BATCH-03.md finding F6).
 const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=4';
+const OWNED_FILE_TIMEOUTS: Readonly<Record<string, string>> = {
+  'scripts/__tests__/declared-exports.test.ts': '--test-timeout=360000',
+  'ai/flow-eval/scripts/__tests__/release-migration-scopes.test.ts': '--test-timeout=120000',
+  'plugins/swift/__tests__/swift-hardening.test.ts': '--test-timeout=120000',
+};
 
 type Layer = (typeof TEST_LAYERS)[number];
 type RunnerProbe = { args: string[]; env: NodeJS.ProcessEnv };
@@ -129,7 +135,8 @@ function discoverUnder(dir: string): string[] {
     if (entry.name.startsWith('.')) continue;
     const path = join(dir, entry.name);
     if (entry.isDirectory()) files.push(...discoverUnder(path));
-    else if (/\.test\.ts$/.test(entry.name)) files.push(relative(ROOT, path).split(sep).join('/'));
+    else if (/\.test\.(?:ts|mjs)$/.test(entry.name))
+      files.push(relative(ROOT, path).split(sep).join('/'));
   }
   return files;
 }
@@ -279,13 +286,84 @@ await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?failure-proof-${mod
 }
 
 describe('test topology contract', () => {
+  it('keeps default deadlines at 30s and scopes every larger budget to its exact owned file', () => {
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
+      for (const { args } of probeSpawns(mode)) {
+        const deadlines = args.filter((arg) => arg.startsWith('--test-timeout='));
+        assert.equal(deadlines.length, 1, mode);
+        for (const file of args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)))
+          assert.equal(deadlines[0], OWNED_FILE_TIMEOUTS[file] ?? '--test-timeout=30000', file);
+      }
+    }
+  });
+
+  it('enforces a real whole-file timeout while allowing the same work under its owned budget', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'gennady-topology-budget-'));
+    try {
+      const slow = join(directory, 'slow.test.mjs');
+      writeFileSync(
+        slow,
+        "import test from 'node:test'; test('bounded work', async () => { await new Promise(done => setTimeout(done, 600)); });\n"
+      );
+      const marker = '__REAL_BUDGET_STATS__';
+      const source = `
+import { mock } from 'node:test';
+import { spawnSync as invoke } from 'node:child_process';
+const observed = [];
+mock.module('node:child_process', { namedExports: { spawnSync: (command, args, options) => {
+  observed.push(args.find(arg => arg.startsWith('--test-timeout=')));
+  // Scale only the wall-clock for this causal probe; execute the real node:test process/reporters.
+  return invoke(command, args.map(arg => arg === '--test-timeout=30000' ? '--test-timeout=300'
+    : arg === '--test-timeout=120000' ? '--test-timeout=2000'
+    : arg === 'plugins/swift/__tests__/swift-hardening.test.ts' ? ${JSON.stringify(slow)} : arg), options);
+} } });
+const { runNodeTests } = await import(${JSON.stringify(pathToFileURL(RUNNER).href)});
+const options = { coverage: false, networkGuard: false, concurrency: 1 };
+const start = Date.now();
+const ordinary = runNodeTests([${JSON.stringify(slow)}], options);
+const owned = runNodeTests(['plugins/swift/__tests__/swift-hardening.test.ts'], options);
+process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owned, observed, elapsed: Date.now() - start }) + '\\n');
+`;
+      const env = { ...process.env };
+      delete env.NODE_TEST_CONTEXT;
+      const helper = spawnSync(
+        process.execPath,
+        [
+          '--import',
+          'tsx',
+          '--experimental-test-module-mocks',
+          '--input-type=module',
+          '--eval',
+          source,
+        ],
+        {
+          cwd: ROOT,
+          encoding: 'utf8',
+          env,
+          timeout: 6_000,
+        }
+      );
+      assert.equal(helper.status, 0, helper.stderr);
+      const encoded = helper.stdout.split('\n').find((line) => line.startsWith(marker));
+      assert.ok(encoded, helper.stdout);
+      const result = JSON.parse(encoded.slice(marker.length));
+      assert.equal(result.ordinary.status, 1);
+      assert.equal(result.owned.status, 0);
+      assert.deepEqual(result.owned.stats, { executed: 1, passed: 1, failed: 0, skipped: 0 });
+      assert.deepEqual(result.observed, ['--test-timeout=30000', '--test-timeout=120000']);
+      assert.ok(result.elapsed >= 600 && result.elapsed < 5_000, JSON.stringify(result));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('retains normalized statistics from a real nonzero node:test run', () => {
     const directory = mkdtempSync(join(tmpdir(), 'gennady-topology-failure-'));
     try {
       const failingTest = join(directory, 'failure.test.mjs');
       writeFileSync(
         failingTest,
-        "import test from 'node:test'; import assert from 'node:assert/strict'; test('fails', () => assert.fail('expected probe failure'));\n"
+        `import test from 'node:test'; import assert from 'node:assert/strict'; test('fails', () => assert.fail('expected probe failure --token=diagnostic-private-value ' + 'Ошибка '.repeat(3000)));\n`
       );
       const marker = '__REAL_FAILURE_STATS__';
       const env = { ...process.env };
@@ -302,6 +380,13 @@ describe('test topology contract', () => {
         { cwd: ROOT, encoding: 'utf8', env, timeout: 5_000 }
       );
       assert.equal(helper.status, 0, helper.stderr);
+      assert.match(helper.stderr, /not ok.*fails/);
+      assert.match(helper.stderr, /expected probe failure/);
+      assert.doesNotMatch(helper.stderr, /diagnostic-private-value/);
+      assert.ok(
+        Buffer.byteLength(helper.stderr) <= 8192,
+        `diagnostic bytes=${Buffer.byteLength(helper.stderr)}`
+      );
       const encoded = helper.stdout.split('\n').find((line) => line.startsWith(marker));
       assert.ok(encoded, helper.stdout);
       assert.deepEqual(JSON.parse(encoded.slice(marker.length)), {
@@ -440,11 +525,11 @@ describe('test topology contract', () => {
     const topology = listedTopology();
     const deterministicSpawns = probeSpawns('deterministic');
     const deterministic = deterministicSpawns.flatMap(({ args }) =>
-      args.filter((arg) => /\.test\.ts$/.test(arg))
+      args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg))
     );
     const coverageSpawns = probeSpawns('coverage');
     const coverage = coverageSpawns.flatMap(({ args }) =>
-      args.filter((arg) => /\.test\.ts$/.test(arg))
+      args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg))
     );
     const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as {
       scripts: Record<string, string>;
@@ -454,26 +539,30 @@ describe('test topology contract', () => {
     // Set identity + exactly-once are still asserted below and by the sorted comparison here.
     assert.deepStrictEqual([...deterministic].sort(), expected);
     assert.strictEqual(new Set(deterministic).size, deterministic.length);
-    // REL-7: `deterministic` is two sequential partitions — `local` alone, then the rest — same
-    // shape as `coverage`'s observed/black-box split below.
-    assert.strictEqual(deterministicSpawns.length, 2, 'local partition + rest partition');
+    // REL-7 local partition keeps its concurrency, subdivided only by explicit owned file deadline.
+    assert.strictEqual(deterministicSpawns.length, 4, 'three local budget groups + rest partition');
     assert.deepStrictEqual(
-      deterministicSpawns[0].args.filter((arg) => /\.test\.ts$/.test(arg)),
-      [...topology.local]
+      deterministicSpawns[0].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
+      topology.local.filter((file) => !OWNED_FILE_TIMEOUTS[file])
     );
     assert.ok(deterministicSpawns[0].args.includes(LOCAL_PARTITION_CONCURRENCY));
     assert.deepStrictEqual(
-      deterministicSpawns[1].args.filter((arg) => /\.test\.ts$/.test(arg)),
+      deterministicSpawns[3].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
       [...topology.contract, ...topology.external, ...topology.unit]
     );
-    assert.ok(deterministicSpawns[1].args.includes(BOUNDED_OUTER_CONCURRENCY));
+    assert.ok(deterministicSpawns[3].args.includes(BOUNDED_OUTER_CONCURRENCY));
     assert.deepStrictEqual([...coverage].sort(), expected);
     assert.strictEqual(new Set(coverage).size, coverage.length);
     // D-60: neither mode may ever touch the experimental layer.
     assert.ok(topology.experimental.length > 0);
     assert.ok(!deterministic.some((file) => topology.experimental.includes(file)));
     assert.ok(!coverage.some((file) => topology.experimental.includes(file)));
-    assert.strictEqual(coverageSpawns.length, 2);
+    assert.strictEqual(coverageSpawns.length, 4);
+    assert.strictEqual(
+      coverageSpawns.filter(({ args }) => args.some((arg) => arg.endsWith('/c8/bin/c8.js'))).length,
+      1,
+      'observed coverage must never be overwritten by a second c8 invocation'
+    );
     assert.ok(coverageSpawns[0].args.some((arg) => arg.endsWith('/c8/bin/c8.js')));
     assert.ok(
       coverageSpawns[0].args.some(
@@ -485,18 +574,27 @@ describe('test topology contract', () => {
     assert.ok(coverageSpawns[0].args.includes(topology.contract[0]));
     assert.ok(!coverageSpawns[0].args.some((arg) => topology.local.includes(arg)));
     assert.ok(!coverageSpawns[0].args.some((arg) => topology.external.includes(arg)));
-    assert.ok(!coverageSpawns[1].args.some((arg) => arg.endsWith('/c8/bin/c8.js')));
-    assert.ok(
-      !coverageSpawns[1].args.some(
-        (arg) => arg.startsWith('data:text/javascript,') && arg.includes('NODE_V8_COVERAGE')
-      )
-    );
+    for (const spawn of coverageSpawns.slice(1)) {
+      assert.ok(!spawn.args.some((arg) => arg.endsWith('/c8/bin/c8.js')));
+      assert.ok(
+        !spawn.args.some(
+          (arg) => arg.startsWith('data:text/javascript,') && arg.includes('NODE_V8_COVERAGE')
+        )
+      );
+      assert.ok(spawn.args.includes(LOCAL_PARTITION_CONCURRENCY));
+    }
     assert.deepStrictEqual(
-      coverageSpawns[1].args.filter((arg) => /\.test\.ts$/.test(arg)),
-      [...topology.local, ...topology.external].sort()
+      coverageSpawns[1].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
+      [...topology.local, ...topology.external].sort().filter((file) => !OWNED_FILE_TIMEOUTS[file])
     );
     assert.ok(coverageSpawns[0].args.includes(BOUNDED_OUTER_CONCURRENCY));
-    assert.ok(coverageSpawns[1].args.includes(LOCAL_PARTITION_CONCURRENCY));
+    for (const mode of [deterministicSpawns, coverageSpawns]) {
+      for (const [file, timeout] of Object.entries(OWNED_FILE_TIMEOUTS)) {
+        assert.ok(topology.local.includes(file), `owned heavy test stays mandatory local: ${file}`);
+        const [spawn] = mode.filter(({ args }) => args.includes(file));
+        assert.ok(spawn.args.includes(timeout), `${file}: ${timeout}`);
+      }
+    }
     assert.strictEqual(
       pkg.scripts.test,
       'node --import tsx scripts/test-topology.ts deterministic'
@@ -547,7 +645,7 @@ describe('test topology contract', () => {
 
   it('REL-7: deterministic runs the local layer at concurrency 4 as its own partition, the rest unchanged', () => {
     const spawns = probeSpawns('deterministic');
-    assert.strictEqual(spawns.length, 2, 'local partition + rest partition');
+    assert.strictEqual(spawns.length, 4, 'three local budget groups + rest partition');
     for (const { args } of spawns) {
       assert.strictEqual(
         args.filter((arg) => arg.startsWith('--test-concurrency=')).length,
@@ -555,17 +653,19 @@ describe('test topology contract', () => {
         JSON.stringify(args)
       );
     }
+    for (const { args } of spawns.slice(0, 3)) {
+      assert.ok(
+        args.includes(LOCAL_PARTITION_CONCURRENCY),
+        `local partition: ${JSON.stringify(args)}`
+      );
+      assert.ok(
+        !args.includes(BOUNDED_OUTER_CONCURRENCY),
+        'local partition must not carry unpartitioned concurrency'
+      );
+    }
     assert.ok(
-      spawns[0].args.includes(LOCAL_PARTITION_CONCURRENCY),
-      `local partition: ${JSON.stringify(spawns[0].args)}`
-    );
-    assert.ok(
-      !spawns[0].args.includes(BOUNDED_OUTER_CONCURRENCY),
-      'local partition must not also carry the unpartitioned outer concurrency'
-    );
-    assert.ok(
-      spawns[1].args.includes(BOUNDED_OUTER_CONCURRENCY),
-      `rest partition: ${JSON.stringify(spawns[1].args)}`
+      spawns[3].args.includes(BOUNDED_OUTER_CONCURRENCY),
+      `rest partition: ${JSON.stringify(spawns[3].args)}`
     );
   });
 

@@ -14,6 +14,8 @@ type CheckModule = typeof import('../sdd-check.cmd.ts');
 let mod: CheckModule;
 let originalArgv: string[];
 let originalExit: typeof process.exit;
+const LEGACY_TICKET =
+  '# Task: historical\n\n## 1. Meta\n- **Task-ID:** TSK-1 | **Status:** [x] DONE\n\n## 6. Execution Log\n';
 
 function argv(...rest: string[]): string[] {
   return ['node', 'gennady', 'sdd-check', ...rest];
@@ -67,9 +69,13 @@ function fixture(options: {
   const root = mkdtempSync(join(tmpdir(), 'sdd-check-ownership-'));
   mkdirSync(join(root, 'specs', 'app'), { recursive: true });
   mkdirSync(join(root, 'src'), { recursive: true });
-  if (options.legacy) mkdirSync(join(root, 'tasks', 'app'), { recursive: true });
+  if (options.legacy) {
+    mkdirSync(join(root, 'tasks', 'app'), { recursive: true });
+    writeFileSync(join(root, 'tasks', 'app', 'legacy.task-1.md'), LEGACY_TICKET);
+  }
   if (options.migratedMixed) {
     mkdirSync(join(root, 'tasks', 'legacy'), { recursive: true });
+    writeFileSync(join(root, 'tasks', 'legacy', 'legacy.task-1.md'), LEGACY_TICKET);
     writeFileSync(join(root, 'specs', 'app', 'app.3-tasks.md'), '# migrated tracker\n');
   }
   writeFileSync(join(root, 'package.json'), '{}\n');

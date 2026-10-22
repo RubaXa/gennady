@@ -168,7 +168,7 @@ All options bound. No deferred.
 ```
 cli/cmd/_shared/
 ├── update-check.ts              # UpdateCheck Service (~206 lines)
-├── update-check-worker.ts       # UpdateCheckWorker Command (~60 lines)
+├── update-check-worker.ts       # UpdateCheckWorker Command; dedicated bundled JS entry
 └── __tests__/
     ├── update-check.test.ts     # Unit: cache logic, opt-out, CI skip, TTY guard, deferred notify (~130 lines)
     └── update-check-worker.test.ts  # Integration: local HTTP server mock, timeout, network error, unexpected JSON (~120 lines)

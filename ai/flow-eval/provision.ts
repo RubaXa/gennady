@@ -385,6 +385,22 @@ const exitCode = await new Promise((resolveExit) => {
 process.exitCode = exitCode;
 `;
 
+// The wrapper is deliberately opaque to autodetection. Declare its actual stdout protocol,
+// rather than weakening required statistics or teaching the plugin one fixture-specific filename.
+const REAL_VERIFY_CONFIG = `verify:
+  presets:
+    node:
+      phases:
+        unit:
+          include: [code, unit, coverage]
+      steps:
+        unit:
+          testStats:
+            policy: required
+            protocol: node-test-summary-v1
+            runner: node:test
+`;
+
 const REAL_TEST_RUNNER = `import { spawn } from 'node:child_process';
 import { glob } from 'node:fs/promises';
 
@@ -985,6 +1001,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'inputs/brief.md':
       '# Fibonacci brief\nProvide a reusable TypeScript `nth(n: number): number` API. Accept only integer indexes from 0 through 77, with F(0)=0 and F(1)=1. Reject negative, non-integer, and greater-than-77 inputs with explicit errors. Keep the API pure and document every edge case. Author specifications only; no product code.\n',
     'README.md': '# Fibonacci library\n\nImplement the requested API and tests.\n',
+    'gennady.yaml': REAL_VERIFY_CONFIG,
     'scripts/test.mjs': REAL_TEST_RUNNER,
     'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
     'tsconfig.json': REAL_TS_CONFIG,
@@ -1028,6 +1045,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
     'specs/tic-tac-toe/engine/engine.spec.md': canonicalModule('tic-tac-toe', 'ENG', 'engine'),
     'src/game.ts':
       '// @file: Deterministic tic-tac-toe game types.\n// @spec: ENG\n// @consumers: tic-tac-toe runtime\n\nexport type Mark = "X" | "O";\nexport type Board = Array<Mark | null>;\n',
+    'gennady.yaml': REAL_VERIFY_CONFIG,
     'scripts/test.mjs':
       '// @file: Test runner for the tic-tac-toe fixture.\n// @spec: ENG\n// @consumers: npm test\n\n' +
       REAL_TEST_RUNNER,
@@ -1096,6 +1114,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       'src/slugify.ts'
     ),
     'src/slugify.ts': 'export function slugify(value: string): string { return value; }\n',
+    'gennady.yaml': REAL_VERIFY_CONFIG,
     'scripts/test.mjs': REAL_TEST_RUNNER,
     'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
     'tsconfig.json': REAL_TS_CONFIG,
@@ -1148,6 +1167,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
       'flowchart LR\n  caller --> calc[compute F(n)]\n  calc --> caller'
     ),
     'src/nth.ts': 'export function nth(n: number): number {\n  return n;\n}\n',
+    'gennady.yaml': REAL_VERIFY_CONFIG,
     'scripts/test.mjs': REAL_TEST_RUNNER,
     'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
     'tsconfig.json': REAL_TS_CONFIG,

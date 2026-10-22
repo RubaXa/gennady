@@ -19,6 +19,17 @@ export type ToolEvent = {
   tool: string;
   /** Short arg summary (command line, file path). */
   arg?: string;
+  messageId?: string;
+  callId?: string;
+  status?: string;
+  sessionId?: string;
+  parentSessionId?: string;
+  command?: string;
+  startedAt?: number;
+  finishedAt?: number;
+  error?: string;
+  exitCode?: number;
+  diagnostic?: string;
 };
 
 /** @purpose A deterministic checkpoint: a fixed CLI command run against the sandbox with its exit code — a pure function of the files, no LLM. */
@@ -32,6 +43,7 @@ export type CheckpointEvent = {
   cmd: string;
   exit: number;
   green: boolean;
+  diagnostic?: string;
 };
 
 export type TrajectoryEvent = ToolEvent | CheckpointEvent;
@@ -39,7 +51,86 @@ export type TrajectoryEvent = ToolEvent | CheckpointEvent;
 export type Trajectory = {
   scenario: string;
   events: TrajectoryEvent[];
+  /** Collection coverage, not an inferred promise from a bounded observer tail. */
+  coverage?: { complete: boolean; sessions: number; reasons: string[] };
 };
+
+/** @purpose Scenario-owned behavioural constraints; required/order entries are direct CLI verbs,
+ * forbidden entries are literal command substrings. An invocation proves an attempt, not exit zero. */
+export type TrajectoryRules = {
+  requiredCommands?: readonly string[];
+  forbiddenCommands?: readonly string[];
+  maxTools?: number;
+  /** @purpose Observed completion-to-start ordering; terminal checkpoints cannot prove this. */
+  commandOrder?: readonly string[];
+};
+
+function invokesCommand(event: ToolEvent, name: string): boolean {
+  if (
+    event.tool !== 'bash' ||
+    !event.command ||
+    !['completed', 'error'].includes(event.status ?? '')
+  )
+    return false;
+  if (/(?:^|\s)(?:--help|--version|-h|-v)(?:\s|$)/.test(event.command)) return false;
+  const verb = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Deliberately accept direct CLI invocations only, not prose/echo/heredoc mentions.
+  const runner =
+    '(?:npx\\s+(?:--[\\w-]+\\s+)*(?:gennady|tsx\\s+\\S*gennady\\.ts)|node\\s+(?:--import[=\\s]+tsx\\s+)?\\S*gennady\\.(?:ts|js)|tsx\\s+\\S*gennady\\.ts|(?:[\\w./-]+/)?gennady)';
+  return new RegExp(`^\\s*${runner}\\s+${verb}(?:\\s|$)`).test(event.command);
+}
+
+/** @purpose Grade a freshly captured path independently of the judge and agent self-report. */
+export function gradeTrajectory(
+  trajectory: Trajectory,
+  rules: TrajectoryRules = {}
+): { rule: string; pass: boolean; detail: string } {
+  const failures: string[] = [];
+  if (trajectory.coverage?.complete !== true) failures.push('missing or incomplete trace');
+  const tools = trajectory.events.filter((event): event is ToolEvent => event.type === 'tool');
+  if (tools.length === 0) failures.push('no observed tool actions');
+  if (tools.some((event) => !event.callId || event.callId === 'unknown' || !event.messageId))
+    failures.push('missing tool action identity');
+  if (tools.some((event) => !['completed', 'error'].includes(event.status ?? '')))
+    failures.push('nonterminal tool actions');
+  for (const required of rules.requiredCommands ?? [])
+    if (!tools.some((event) => invokesCommand(event, required)))
+      failures.push(`required command not observed: ${required}`);
+  for (const forbidden of rules.forbiddenCommands ?? [])
+    if (tools.some((event) => (event.command ?? '').includes(forbidden)))
+      failures.push(`forbidden command observed: ${forbidden}`);
+  let previousEnd = -Infinity;
+  const orderedCalls = new Set<string>();
+  for (const name of rules.commandOrder ?? []) {
+    const match = tools.find(
+      (event) =>
+        invokesCommand(event, name) &&
+        !orderedCalls.has(`${event.messageId}:${event.callId}`) &&
+        typeof event.startedAt === 'number' &&
+        Number.isFinite(event.startedAt) &&
+        typeof event.finishedAt === 'number' &&
+        Number.isFinite(event.finishedAt) &&
+        event.finishedAt >= event.startedAt &&
+        event.startedAt >= previousEnd
+    );
+    if (!match) {
+      failures.push(`command order not proven at: ${name}`);
+      break;
+    }
+    orderedCalls.add(`${match.messageId}:${match.callId}`);
+    previousEnd = match.finishedAt!;
+  }
+  if (rules.maxTools !== undefined && tools.length > rules.maxTools)
+    failures.push(`tool budget exceeded: ${tools.length} > ${rules.maxTools}`);
+  for (const event of trajectory.events)
+    if (event.type === 'checkpoint' && !event.green)
+      failures.push(`terminal checkpoint failed: ${event.id} (${event.exit})`);
+  return {
+    rule: 'TRAJECTORY',
+    pass: failures.length === 0,
+    detail: failures.length ? failures.join('; ') : `${tools.length} tools; complete capture`,
+  };
+}
 
 /** @purpose A deterministic checkpoint to evaluate against the sandbox: a stable id and the exact command whose exit code is the verdict. */
 export type CheckpointSpec = { id: string; cmd: string };
@@ -50,18 +141,36 @@ export type CheckpointResult = {
   cmd: string;
   exit: number;
   green: boolean;
+  diagnostic?: string;
   t?: number;
 };
 
 /** @purpose Runs a command and reports only its exit code — the sole signal a checkpoint needs. */
-export type Exec = (cmd: string) => { exit: number };
+export type Exec = (cmd: string) => { exit: number; diagnostic?: string };
 
 /** @purpose Normalize the harness's bounded tail entries into a flat, ordered tool-event list (one per tool call), dropping OpenCode-specific shape. | @param entries Session tail entries (assistant messages with toolCalls). | @returns ToolEvent[] in call order. */
 export function toolEventsFrom(entries: readonly SddEvalTailEntry[]): ToolEvent[] {
   const out: ToolEvent[] = [];
   for (const e of entries) {
     for (const c of e.toolCalls) {
-      out.push({ type: 'tool', i: 0, t: e.createdAt, tool: c.tool, arg: c.inputSummary });
+      out.push({
+        type: 'tool',
+        i: 0,
+        t: c.startedAt ?? e.createdAt,
+        tool: c.tool,
+        arg: c.inputSummary,
+        messageId: e.messageId,
+        callId: c.callId,
+        status: c.status,
+        sessionId: e.sessionId,
+        parentSessionId: e.parentSessionId,
+        command: c.command,
+        startedAt: c.startedAt,
+        finishedAt: c.finishedAt,
+        error: c.error,
+        exitCode: c.exitCode,
+        diagnostic: c.diagnostic,
+      });
     }
   }
   return out.map((e, i) => ({ ...e, i }));
@@ -74,8 +183,15 @@ export function runCheckpoints(
   t?: number
 ): CheckpointResult[] {
   return specs.map((s) => {
-    const { exit } = exec(s.cmd);
-    return { id: s.id, cmd: s.cmd, exit, green: exit === 0, t };
+    const { exit, diagnostic } = exec(s.cmd);
+    return {
+      id: s.id,
+      cmd: s.cmd,
+      exit,
+      green: exit === 0,
+      t,
+      ...(diagnostic ? { diagnostic } : {}),
+    };
   });
 }
 
@@ -96,6 +212,7 @@ export function buildTrajectory(
         cmd: c.cmd,
         exit: c.exit,
         green: c.green,
+        ...(c.diagnostic ? { diagnostic: c.diagnostic } : {}),
       })
     ),
   ];

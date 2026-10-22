@@ -8,13 +8,14 @@ import { readdirSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import {
   ARCHIVE_ROOT,
+  FROZEN_PROOF_SOURCE,
   checkFrozenMain,
   readSafe,
 } from '../../../scripts/main-carry-disposition.ts';
 import { unitFilePath, unitStatus } from '../../../shared/sdd/migration-plan.ts';
 
 function git(root: string, args: string[]): Buffer {
-  const result = spawnSync('git', args, {
+  const result = spawnSync('git', ['--no-replace-objects', ...args], {
     cwd: root,
     timeout: 30_000,
     maxBuffer: 32 * 1024 * 1024,
@@ -46,11 +47,24 @@ function migrationUnitGitPath(spec: string): string {
     .join('/');
 }
 
-/** @purpose Reconstruct scopes from the existing committed unit ledger, never directory presence alone. */
+/**
+ * @purpose Reconstruct historical scopes from the committed unit ledger, never current V2 scope presence.
+ * @param root Repository containing the evidence source and cutover history.
+ * @param sourceCommit Exact committed evidence source identity.
+ * @returns Complete sorted scopes from verified historical migration units.
+ */
 export function committedMigrationScopes(root: string, sourceCommit: string): string[] {
   if (!/^[0-9a-f]{40}$/.test(sourceCommit))
     throw new Error('migration sourceCommit must be full SHA');
   git(root, ['cat-file', '-e', `${sourceCommit}^{commit}`]);
+  if (git(root, ['rev-parse', '--is-shallow-repository']).toString('utf8').trim() !== 'false')
+    throw new Error('migration source ancestry is incomplete: shallow repository');
+  // invariant: a complete parent graph proves the cutover boundary even if a descendant deletes
+  // its checker and archive; missing parent objects must fail instead of selecting the old contract.
+  const cutoverAncestor = git(root, ['rev-list', '--parents', sourceCommit])
+    .toString('utf8')
+    .split('\n')
+    .some((line) => line.split(' ')[0] === FROZEN_PROOF_SOURCE);
   const entries = new Map(
     git(root, [
       'ls-tree',
@@ -131,7 +145,10 @@ export function committedMigrationScopes(root: string, sourceCommit: string): st
     if (path.endsWith('.migration.md') && !plans.has(path))
       throw new Error(`unlisted migration unit: ${path}`);
   }
-  for (const path of entries.keys()) {
+  // invariant: evidence preceding the archive checker retains its original source-scope contract.
+  const archiveChecker = entries.get('scripts/main-carry-disposition.ts');
+  const requiresArchive = cutoverAncestor || archiveChecker !== undefined;
+  for (const path of requiresArchive ? [] : entries.keys()) {
     const parts = path.split('/');
     if (
       parts[0] === 'specs' &&
@@ -144,9 +161,31 @@ export function committedMigrationScopes(root: string, sourceCommit: string): st
   }
   // The canonical checker and archive were introduced atomically. Older evidence sources
   // predate both; a source with that checker cannot silently lose the complete archive.
-  const archiveChecker = entries.get('scripts/main-carry-disposition.ts');
-  if (archiveChecker && (archiveChecker.mode !== '100644' || !directories.has('frozen-main'))) {
+  if (requiresArchive && (archiveChecker?.mode !== '100644' || !directories.has('frozen-main'))) {
     throw new Error('source archive required by canonical integrity checker');
+  }
+  if (requiresArchive) {
+    // invariant: the exact merged V2 cutover owns the completed migration inventory; native V2
+    // scopes added later do not create historical obligations or permit omission of real units.
+    const historicalLedger = git(root, ['show', `${FROZEN_PROOF_SOURCE}:migration/README.md`]);
+    if (ledger !== historicalLedger.toString('utf8'))
+      throw new Error('historical migration ledger drift');
+    const historicalUnits = new Map(
+      git(root, ['ls-tree', '-r', '-z', FROZEN_PROOF_SOURCE, '--', 'migration'])
+        .toString('utf8')
+        .split('\0')
+        .filter(Boolean)
+        .map((entry) => {
+          const match = /^(\d+) blob ([0-9a-f]{40})\t(.+)$/u.exec(entry);
+          if (!match) throw new Error(`invalid cutover migration tree entry: ${entry}`);
+          return [match[3], { mode: match[1], oid: match[2] }] as const;
+        })
+    );
+    for (const plan of plans) {
+      const historical = historicalUnits.get(plan);
+      if (historical?.mode !== '100644' || entries.get(plan)?.oid !== historical.oid)
+        throw new Error(`historical migration unit drift: ${plan}`);
+    }
   }
   for (const scope of directories) {
     if (scopes.has(scope)) continue;

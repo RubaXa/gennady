@@ -19,6 +19,8 @@ export const FROZEN_REFS = {
 export const ARCHIVE_ROOT = 'migration/frozen-main';
 export const MANIFEST_PATH = `${ARCHIVE_ROOT}/manifest.json`;
 export const DECISIONS_PATH = `${ARCHIVE_ROOT}/dispositions.json`;
+/** @purpose Exact merged V2 cutover owning the immutable disposition proof and migration ledger. */
+export const FROZEN_PROOF_SOURCE = '521d3042e374444fcd20e633ef8c1b0a9212cfc2';
 
 type Disposition = 'retain' | 'adapt' | 'archive' | 'exclude';
 type BlobIdentity = { oid: string; mode: string; sha256: string; bytes: number };
@@ -55,7 +57,7 @@ function fail(code: string, detail: string): never {
 
 /** @purpose Git plumbing bound to one explicit repo; never uses a shell or external fixture refs. */
 export function git(root: string, args: string[], input?: Buffer | string): Buffer {
-  return execFileSync('git', ['-C', root, ...args], {
+  return execFileSync('git', ['--no-replace-objects', '-C', root, ...args], {
     input,
     timeout: 30_000,
     maxBuffer: 128 * 1024 * 1024,
@@ -198,8 +200,8 @@ function decisionsByPath(decisions: Decisions): Map<string, Decision> {
   return result;
 }
 
-/** @purpose Capture current proof bytes, not a self-referential eventual commit identity. */
-export function currentProof(root: string, decisions: Decisions): FileIdentity[] {
+/** @purpose Enumerate the complete owner, target and checker proof surface of reviewed decisions. */
+function proofPaths(decisions: Decisions): string[] {
   const paths = new Set<string>([
     DECISIONS_PATH,
     `${ARCHIVE_ROOT}/README.md`,
@@ -215,10 +217,57 @@ export function currentProof(root: string, decisions: Decisions): FileIdentity[]
     for (const proof of decision.proof) paths.add(proof);
     if (decision.disposition === 'retain') for (const path of decision.paths) paths.add(path);
   }
-  return [...paths].sort().map((path) => {
+  return [...paths].sort();
+}
+
+/** @purpose Read exact regular Git blobs from the immutable merged V2 cutover, without live files. */
+function frozenProofFiles(root: string, paths: string[]): Map<string, Buffer> {
+  const entries = git(root, ['ls-tree', '-r', '-z', FROZEN_PROOF_SOURCE, '--', ...paths])
+    .toString('utf8')
+    .split('\0')
+    .filter(Boolean)
+    .map((entry) => {
+      const match = /^(100644|100755) blob ([0-9a-f]{40})\t(.+)$/u.exec(entry);
+      if (!match) fail('PROOF_SOURCE', `unsafe cutover proof entry: ${entry}`);
+      return [match[3], match[2]] as const;
+    });
+  const byPath = new Map(entries);
+  for (const path of paths) {
+    safePath(path);
+    if (!byPath.has(path)) fail('PROOF_SOURCE', `cutover proof missing: ${path}`);
+  }
+  const oids = [...new Set(entries.map(([, oid]) => oid))];
+  const batch = git(root, ['cat-file', '--batch'], `${oids.join('\n')}\n`);
+  const bytesByOid = new Map<string, Buffer>();
+  let offset = 0;
+  for (const oid of oids) {
+    const end = batch.indexOf(10, offset);
+    const [observed, type, size] = batch.subarray(offset, end).toString().split(' ');
+    if (observed !== oid || type !== 'blob' || !/^\d+$/.test(size)) fail('PROOF_SOURCE', oid);
+    offset = end + 1;
+    bytesByOid.set(oid, batch.subarray(offset, offset + Number(size)));
+    offset += Number(size) + 1;
+  }
+  return new Map(entries.map(([path, oid]) => [path, bytesByOid.get(oid)!]));
+}
+
+/**
+ * @purpose Capture complete proof identities from live authoring or an explicit immutable source.
+ * @param root Repository containing the proof files.
+ * @param decisions Reviewed owner, target and proof mappings.
+ * @param [sourceFiles] Exact source blobs; absent only during explicit live authoring.
+ * @returns Sorted blob and digest identities for the complete proof surface.
+ */
+export function currentProof(
+  root: string,
+  decisions: Decisions,
+  sourceFiles?: ReadonlyMap<string, Buffer>
+): FileIdentity[] {
+  return proofPaths(decisions).map((path) => {
     if (path === MANIFEST_PATH || path.startsWith(`${ARCHIVE_ROOT}/objects/`))
       fail('SELF_REFERENCE', path);
-    const bytes = readSafe(root, path);
+    const bytes = sourceFiles ? sourceFiles.get(path) : readSafe(root, path);
+    if (!bytes) fail('PROOF_SOURCE', path);
     return {
       path,
       oid: createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),
@@ -228,8 +277,16 @@ export function currentProof(root: string, decisions: Decisions): FileIdentity[]
   });
 }
 
-/** @purpose Build a reviewable immutable source manifest; only the separate generator persists it. */
-export function createFrozenManifest(root: string): FrozenManifest {
+/**
+ * @purpose Build a reviewable immutable source manifest; only the separate generator persists it.
+ * @param root Repository containing authored decisions and reviewed Git history.
+ * @param [sourceFiles] Exact historical proof blobs; absent for the explicit authoring generator.
+ * @returns Complete source, decision and proof identities for independent verification.
+ */
+export function createFrozenManifest(
+  root: string,
+  sourceFiles?: ReadonlyMap<string, Buffer>
+): FrozenManifest {
   const decisionBytes = readSafe(root, DECISIONS_PATH);
   const decisions = JSON.parse(decisionBytes.toString('utf8')) as Decisions;
   const byPath = decisionsByPath(decisions);
@@ -248,7 +305,7 @@ export function createFrozenManifest(root: string): FrozenManifest {
     commits: sourceCommits(root),
     decisionsDigest: sha256(decisionBytes),
     rows,
-    currentProof: currentProof(root, decisions),
+    currentProof: currentProof(root, decisions, sourceFiles),
   };
 }
 
@@ -265,7 +322,12 @@ function archiveInventory(root: string, path: string): string[] {
   return paths.sort();
 }
 
-/** @purpose Check source exhaustiveness, inert archive, live refs/lineage and actual current proof. */
+/**
+ * @purpose Verify historical cutover proof and inert archive, plus live bytes/lineage only before reconciliation.
+ * @param root Repository containing the inert archive and immutable source objects.
+ * @param [options] Explicit pre-reconciliation boundary requiring current bytes and lineage.
+ * @returns Verified historical inventory, disposition counts and manifest digest.
+ */
 export function checkFrozenMain(
   root: string,
   options: { preReconciliation?: boolean } = {}
@@ -316,7 +378,9 @@ export function checkFrozenMain(
     fail('COUNT', 'expected 520 delta records and 117 MAIN-only commits');
   const paths = manifest.rows.map((row) => row.path);
   if (new Set(paths).size !== paths.length) fail('DUPLICATE', 'delta path');
-  const expected = createFrozenManifest(root);
+  const decisions = JSON.parse(readSafe(root, DECISIONS_PATH).toString('utf8')) as Decisions;
+  const sourceFiles = frozenProofFiles(root, proofPaths(decisions));
+  const expected = createFrozenManifest(root, sourceFiles);
   if (new Set(expected.rows.flatMap((row) => [row.oldPath, row.path])).size !== 521)
     fail('COUNT', 'expected 521 raw path identities including both rename sides');
   same(manifest.commits, expected.commits, 'COMMITS', 'MAIN-only commit refs changed');
@@ -332,12 +396,6 @@ export function checkFrozenMain(
     'ROWS',
     'source blob, path, ref or disposition mapping changed'
   );
-  same(
-    manifest.currentProof,
-    expected.currentProof,
-    'CURRENT_DRIFT',
-    'current target/owner/checker proof bytes changed'
-  );
   const proofs = new Map(manifest.currentProof.map((proof) => [proof.path, proof]));
   const objects = new Map<string, BlobIdentity>();
   const counts: Record<Disposition, number> = { retain: 0, adapt: 0, archive: 0, exclude: 0 };
@@ -345,12 +403,12 @@ export function checkFrozenMain(
     counts[row.decision.disposition]++;
     if (row.decision.disposition === 'adapt' && row.decision.target?.endsWith('.ts')) {
       const headers = parseSourceOwnershipHeader(
-        readSafe(root, row.decision.target).toString('utf8')
+        sourceFiles.get(row.decision.target)!.toString('utf8')
       );
       const declared = headers.blocks.filter((block) => block.tag === 'spec');
-      const owner = parseSpecId(readSafe(root, row.decision.owner).toString('utf8'));
+      const owner = parseSpecId(sourceFiles.get(row.decision.owner)!.toString('utf8'));
       if (declared.length !== 1 || owner.status !== 'valid' || declared[0].value !== owner.id)
-        fail('OWNER', `${row.path}: current declared source owner does not match mapping`);
+        fail('OWNER', `${row.path}: cutover declared source owner does not match mapping`);
     }
     if (row.decision.disposition === 'retain') {
       if (!row.source || proofs.get(row.path)?.oid !== row.source.oid)
@@ -359,6 +417,25 @@ export function checkFrozenMain(
     for (const identity of [row.base, row.source])
       if (identity) objects.set(identity.oid, identity);
   }
+  same(
+    manifest.currentProof,
+    expected.currentProof,
+    'CURRENT_DRIFT',
+    `historical target/owner/checker proof differs from cutover ${FROZEN_PROOF_SOURCE}`
+  );
+  // invariant: inert evidence remains byte-exact even when active owners and targets evolve.
+  for (const proof of expected.currentProof.filter((item) =>
+    item.path.startsWith(`${ARCHIVE_ROOT}/`)
+  ))
+    if (!readSafe(root, proof.path).equals(sourceFiles.get(proof.path)!))
+      fail('CURRENT_DRIFT', `historical archive proof bytes changed: ${proof.path}`);
+  if (options.preReconciliation)
+    same(
+      manifest.currentProof,
+      currentProof(root, decisions),
+      'CURRENT_DRIFT',
+      'live reconciliation proof bytes changed'
+    );
   const objectPaths = [...objects.keys()]
     .map((oid) => `${ARCHIVE_ROOT}/objects/${oid}.blob`)
     .sort();

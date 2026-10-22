@@ -11,8 +11,8 @@
 // is naming the retired command in the description of the v2 skill that now owns the intent, so the
 // router's own classifier still recognizes operators who type the old name. This is the regression
 // lock: every one of these seven names must appear as a trigger in EXACTLY one skill's description,
-// and the total skill count must not grow past today's baseline (no new skill was created to host
-// them).
+// and the SDD skill namespace must not grow through wrappers/aliases. Independent non-SDD skills
+// can be added, but their descriptions remain subject to the same retired-trigger ownership checks.
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,9 +22,15 @@ import { resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '../../..');
 const SKILLS_DIR = resolve(ROOT, 'ai/skills');
 
-// Baseline skill count at the time this lock was written (T-B6-07, batch 21). v1 names are retired
-// as triggers, never as new skills — this number must not grow because of that retirement.
-const BASELINE_SKILL_COUNT = 12;
+const SDD_SKILL_NAMES = ['sdd', 'sdd-audit', 'sdd-check', 'sdd-code-review', 'sdd-critic', 'sdd-execute', 'sdd-reconcile', 'sdd-scaffold'];
+
+function sddNamespace(dirs: readonly string[]): string[] {
+  return dirs.filter((dir) => dir === 'sdd' || dir.startsWith('sdd-')).sort();
+}
+
+function triggerOwners(skills: readonly { dir: string; description: string }[], trigger: string): string[] {
+  return skills.filter((skill) => skill.description.includes(trigger)).map((skill) => skill.dir);
+}
 
 // The seven retired v1 skill/command names and the description text expected to carry each trigger.
 const RETIRED_V1_NAMES = [
@@ -52,17 +58,27 @@ function descriptionOf(skillDir: string): string {
 
 describe('retired v1 skill names live only as triggers (T-B6-07)', () => {
   const skillDirs = listSkillDirs();
+  const skills = skillDirs.map((dir) => ({ dir, description: descriptionOf(dir) }));
 
-  it('does not exceed the pre-retirement skill count — no wrapper/alias skill was created', () => {
-    assert.ok(
-      skillDirs.length <= BASELINE_SKILL_COUNT,
-      `expected at most ${BASELINE_SKILL_COUNT} skills, found ${skillDirs.length}: ${skillDirs.join(', ')}`
-    );
+  it('keeps the SDD namespace closed to wrapper/alias skills without limiting independent non-SDD tools', () => {
+    assert.deepEqual(sddNamespace(skillDirs), [...SDD_SKILL_NAMES].sort());
+    assert.deepEqual(sddNamespace([...skillDirs, 'independent-session-tool']), [...SDD_SKILL_NAMES].sort());
+    for (const name of RETIRED_V1_NAMES)
+      assert.notDeepEqual(sddNamespace([...skillDirs, name.slice(1)]), [...SDD_SKILL_NAMES].sort(), name);
+  });
+
+  it('still rejects a retired trigger claimed by a wrapper outside the SDD directory namespace', () => {
+    const independent = { dir: 'independent-session-tool', description: 'Locate and audit a session' };
+    for (const name of RETIRED_V1_NAMES) {
+      const owners = triggerOwners(skills, name);
+      assert.deepEqual(triggerOwners([...skills, independent], name), owners);
+      assert.notDeepEqual(triggerOwners([...skills, { ...independent, description: `Alias for ${name}` }], name), owners);
+    }
   });
 
   for (const name of RETIRED_V1_NAMES) {
     it(`"${name}" is a trigger in exactly one skill description`, () => {
-      const owners = skillDirs.filter((dir) => descriptionOf(dir).includes(name));
+      const owners = triggerOwners(skills, name);
       assert.equal(owners.length, 1, `expected exactly one owner for ${name}, found: ${owners.join(', ') || '(none)'}`);
     });
   }

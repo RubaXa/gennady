@@ -10,6 +10,7 @@ import { promisify } from 'node:util';
 import { createSddEvalOpenCodeClient } from './opencode-client.ts';
 import { fingerprintTail } from './observer.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
+import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
 import type {
   SddEvalEvent,
   SddEvalEvidenceSource,
@@ -163,7 +164,8 @@ async function boundedUntrackedEvidence(directory?: string): Promise<string> {
 function boundedMessageEntries(
   messages: readonly unknown[],
   sourceSessionId: string,
-  sourceLabel?: string
+  sourceLabel?: string,
+  captureRoot?: string
 ): SddEvalTailEntry[] {
   const entries: SddEvalTailEntry[] = [];
   for (const rawMessage of messages) {
@@ -188,20 +190,66 @@ function boundedMessageEntries(
         const tool = part as {
           callID?: unknown;
           tool?: unknown;
-          state?: { status?: unknown; input?: Record<string, unknown> };
+          state?: {
+            status?: unknown;
+            input?: Record<string, unknown>;
+            time?: { start?: number; end?: number };
+            error?: unknown;
+            output?: unknown;
+            metadata?: { exit?: unknown };
+          };
         };
         const input = tool.state?.input;
+        // Capture action identity, never authored file bodies, prompts, credentials or env objects.
+        const projected =
+          input && captureRoot
+            ? Object.fromEntries(
+                ['command', 'filePath', 'path', 'pattern', 'subagent_type']
+                  .filter((key) => typeof input[key] === 'string')
+                  .map((key) => [key, safeVerifyText(String(input[key]), captureRoot)])
+              )
+            : input;
+        const summary = projected ? JSON.stringify(projected) : undefined;
+        const limit = captureRoot ? 16_384 : 240;
         return {
           callId: typeof tool.callID === 'string' ? tool.callID : 'unknown',
           tool: typeof tool.tool === 'string' ? tool.tool : 'unknown',
           status: typeof tool.state?.status === 'string' ? tool.state.status : 'unknown',
-          inputSummary: input ? JSON.stringify(input).slice(0, 240) : undefined,
+          inputSummary: summary?.slice(0, limit),
+          ...(captureRoot && summary && summary.length > limit
+            ? { inputSummaryTruncated: true }
+            : {}),
+          ...(captureRoot
+            ? {
+                command:
+                  typeof projected?.command === 'string'
+                    ? projected.command.slice(0, limit)
+                    : undefined,
+                startedAt: tool.state?.time?.start,
+                finishedAt: tool.state?.time?.end,
+                error:
+                  typeof tool.state?.error === 'string'
+                    ? safeVerifyText(tool.state.error, captureRoot).slice(0, 1024)
+                    : undefined,
+                exitCode: Number.isSafeInteger(tool.state?.metadata?.exit)
+                  ? Number(tool.state?.metadata?.exit)
+                  : undefined,
+                diagnostic:
+                  (tool.state?.status === 'error' ||
+                    (Number.isSafeInteger(tool.state?.metadata?.exit) &&
+                      tool.state?.metadata?.exit !== 0)) &&
+                  typeof tool.state?.output === 'string'
+                    ? safeVerifyText(tool.state.output, captureRoot).slice(0, 8192)
+                    : undefined,
+              }
+            : {}),
         };
       });
     if ((!text && toolCalls.length === 0) || typeof info?.id !== 'string') continue;
     const role = typeof info.role === 'string' ? info.role : 'unknown';
     entries.push({
       messageId: `${sourceSessionId}:${info.id}`,
+      sessionId: sourceSessionId,
       role: sourceLabel ? `child:${sourceLabel}:${role}` : role,
       createdAt: typeof info.time?.created === 'number' ? info.time.created : undefined,
       text,
@@ -243,6 +291,57 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     if (!directory)
       throw new Error(`OpenCode session ${sessionId} has no evidence directory binding`);
     return resolve(directory);
+  }
+
+  /** @purpose Capture bounded root AND descendant history; never claim a polling tail is complete. */
+  async readTrajectory(sessionId: string): Promise<{
+    entries: SddEvalTailEntry[];
+    coverage: { complete: boolean; sessions: number; reasons: string[] };
+  }> {
+    const directory = this.#sessionDirectory(sessionId);
+    const pending: Array<{ id: string; parent?: string }> = [{ id: sessionId }];
+    const visited = new Set<string>();
+    const entries: SddEvalTailEntry[] = [];
+    const reasons: string[] = [];
+    const messageLimit = 2_000;
+    // One total deadline for post-run capture; an unavailable local server must not hang cleanup.
+    const signal = AbortSignal.timeout(30_000);
+    while (pending.length && visited.size < 32) {
+      const { id, parent } = pending.shift()!;
+      if (visited.has(id)) continue;
+      visited.add(id);
+      const messages = await this.#client.session.messages({
+        path: { id },
+        query: { directory, limit: messageLimit },
+        signal,
+      });
+      if (messages.error || !messages.data) throw new Error(errorMessage(messages));
+      if (messages.data.length >= messageLimit) reasons.push(`message limit reached: ${id}`);
+      const normalized = boundedMessageEntries(messages.data, id, undefined, directory).map(
+        (entry) => ({ ...entry, parentSessionId: parent })
+      );
+      if (normalized.some((entry) => entry.toolCalls.some((call) => call.inputSummaryTruncated)))
+        reasons.push(`action projection truncated: ${id}`);
+      entries.push(...normalized);
+      const children = await this.#client.session.children({
+        path: { id },
+        query: { directory },
+        signal,
+      });
+      if (children.error || !children.data) throw new Error(errorMessage(children));
+      for (const child of children.data) {
+        if (resolve(child.directory) !== directory)
+          throw new Error('trajectory child escaped its bound sandbox');
+        if (!visited.has(child.id)) pending.push({ id: child.id, parent: id });
+      }
+    }
+    if (pending.length) reasons.push('descendant session limit reached');
+    const unique = [...new Map(entries.map((entry) => [entry.messageId, entry])).values()];
+    unique.sort((left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0));
+    return {
+      entries: unique,
+      coverage: { complete: reasons.length === 0, sessions: visited.size, reasons },
+    };
   }
 
   async readTail(sessionId: string, limit: number): Promise<SddEvalTailEntry[]> {

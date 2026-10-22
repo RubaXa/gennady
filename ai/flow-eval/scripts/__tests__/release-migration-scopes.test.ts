@@ -21,10 +21,10 @@ import { after, afterEach, before, it } from 'node:test';
 import { committedMigrationScopes } from '../release-migration-scopes.ts';
 import { sourceScopes } from '../release-evidence-pack-check.ts';
 import { releaseEvidenceCommandPlan } from '../release-evidence-contract.ts';
-import { scanMigrationUnits } from '../../../../shared/sdd/migration-plan.ts';
 import {
   ARCHIVE_ROOT,
   FROZEN_REFS,
+  FROZEN_PROOF_SOURCE,
   MANIFEST_PATH,
   git as frozenGit,
 } from '../../../../scripts/main-carry-disposition.ts';
@@ -87,7 +87,7 @@ after(() => {
   rmSync(context.holder, { recursive: true, force: true });
 });
 
-it('reconstructs the same committed ledger independently of uncommitted filesystem drift', () => {
+it('preserves pre-archive evidence contracts independently of uncommitted filesystem drift', () => {
   const root = fixture();
   const source = commit(root);
   write(root, 'migration/unknown/foreign.txt', 'uncommitted');
@@ -95,6 +95,27 @@ it('reconstructs the same committed ledger independently of uncommitted filesyst
   const failures: string[] = [];
   assert.deepEqual(sourceScopes(root, source, failures), ['cli']);
   assert.deepEqual(failures, []);
+});
+
+it('rejects shallow ancestry instead of silently selecting the pre-cutover contract', () => {
+  const root = fixture();
+  const source = commit(root);
+  write(root, '.git/shallow', `${source}\n`);
+  assert.throws(() => committedMigrationScopes(root, source), /ancestry is incomplete: shallow/);
+});
+
+it('rejects missing parent objects instead of silently selecting the pre-cutover contract', () => {
+  const root = fixture();
+  const source = commit(root);
+  const tree = git(root, ['rev-parse', `${source}^{tree}`]);
+  const broken = frozenGit(
+    root,
+    ['hash-object', '-t', 'commit', '-w', '--stdin'],
+    `tree ${tree}\nparent ${'f'.repeat(40)}\nauthor Fixture <fixture@example.invalid> 1 +0000\ncommitter Fixture <fixture@example.invalid> 1 +0000\n\nmissing parent\n`
+  )
+    .toString('utf8')
+    .trim();
+  assert.throws(() => committedMigrationScopes(root, broken), /migration source Git failure/);
 });
 
 const mutations: Array<[string, (root: string) => void, RegExp]> = [
@@ -152,7 +173,7 @@ const mutations: Array<[string, (root: string) => void, RegExp]> = [
     /inert archive cannot be a migration unit/,
   ],
   [
-    'source spec scope omitted from migration units',
+    'pre-archive source spec scope omitted from migration units',
     (root) => write(root, 'specs/foreign/foreign.spec.md', '# no historical contract\n'),
     /source spec scope has no migration units/,
   ],
@@ -327,13 +348,11 @@ it('verifies the real inert archive, excludes no genuine scope and rejects corru
   const pack = frozenGit(
     ROOT,
     ['pack-objects', '--stdout', '--revs'],
-    `${baseSource}\n${FROZEN_REFS.main}\n${FROZEN_REFS.releaseAudit}\n`
+    `${baseSource}\n${FROZEN_PROOF_SOURCE}\n${FROZEN_REFS.main}\n${FROZEN_REFS.releaseAudit}\n`
   );
   frozenGit(root, ['index-pack', '--stdin'], pack);
   git(root, ['update-ref', 'HEAD', baseSource]);
   const manifest = JSON.parse(readFileSync(join(ROOT, MANIFEST_PATH), 'utf8'));
-  for (const proof of manifest.currentProof)
-    write(root, proof.path, readFileSync(join(ROOT, proof.path)));
   cpSync(join(ROOT, ARCHIVE_ROOT), join(root, ARCHIVE_ROOT), { recursive: true });
   if (
     !frozenGit(ROOT, ['show', `${baseSource}:${MANIFEST_PATH}`]).equals(
@@ -341,31 +360,19 @@ it('verifies the real inert archive, excludes no genuine scope and rejects corru
     )
   )
     assert.throws(() => committedMigrationScopes(root, baseSource), /source archive drift/);
-  // The gate may inspect staged authoring: do not mix committed old archive bytes with live proofs.
-  // Preserve all unmaterialized source contracts in the owned index; stage only copied paths.
-  git(root, ['read-tree', baseSource]);
-  git(root, [
-    'add',
-    '--',
-    ...manifest.currentProof.map((proof: { path: string }) => proof.path),
-    ARCHIVE_ROOT,
-  ]);
-  if (git(root, ['write-tree']) !== git(root, ['rev-parse', `${baseSource}^{tree}`]))
-    git(root, [
-      '-c',
-      'user.name=Fixture',
-      '-c',
-      'user.email=fixture@example.invalid',
-      'commit',
-      '--quiet',
-      '-m',
-      'owned matching current proof source',
-    ]);
-  const source = git(root, ['rev-parse', 'HEAD']);
+  const source = baseSource;
   const scopes = committedMigrationScopes(root, source);
+  const historicalLedger = frozenGit(ROOT, [
+    'show',
+    `${FROZEN_PROOF_SOURCE}:migration/README.md`,
+  ]).toString('utf8');
   assert.deepEqual(
     scopes,
-    [...new Set(scanMigrationUnits(ROOT).units.map((unit) => unit.scope))].sort()
+    [
+      ...new Set(
+        [...historicalLedger.matchAll(/^\|\s*`migration\/([^/]+)\//gmu)].map((row) => row[1])
+      ),
+    ].sort()
   );
   assert.equal(scopes.length, 12);
   assert.ok(!scopes.includes('frozen-main'));
@@ -374,6 +381,116 @@ it('verifies the real inert archive, excludes no genuine scope and rejects corru
   const failures: string[] = [];
   assert.deepEqual(sourceScopes(root, source, failures), scopes);
   assert.deepEqual(failures, []);
+  git(root, ['read-tree', source]);
+  write(root, 'specs/native-v2/native-v2.spec.md', '# New native V2 scope\n');
+  git(root, ['add', '--', 'specs/native-v2/native-v2.spec.md']);
+  git(root, [
+    '-c',
+    'user.name=Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'owned native V2 scope without historical migration',
+  ]);
+  const nativeSource = git(root, ['rev-parse', 'HEAD']);
+  assert.deepEqual(committedMigrationScopes(root, nativeSource), scopes);
+  const nativeFailures: string[] = [];
+  assert.deepEqual(sourceScopes(root, nativeSource, nativeFailures), scopes);
+  assert.deepEqual(nativeFailures, []);
+
+  // contract: losing a complete historical scope cannot be disguised as a native V2 scope.
+  git(root, ['read-tree', source]);
+  write(
+    root,
+    'migration/README.md',
+    historicalLedger
+      .split('\n')
+      .filter((line) => !/^\|\s*`migration\/mr-stats\//u.test(line))
+      .join('\n')
+  );
+  git(root, ['rm', '--cached', '-r', '--', 'migration/mr-stats']);
+  git(root, ['add', '--', 'migration/README.md']);
+  git(root, [
+    '-c',
+    'user.name=Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'owned omitted historical scope',
+  ]);
+  const omittedSource = git(root, ['rev-parse', 'HEAD']);
+  assert.throws(
+    () => committedMigrationScopes(root, omittedSource),
+    /historical migration ledger drift/
+  );
+  const omittedFailures: string[] = [];
+  assert.deepEqual(sourceScopes(root, omittedSource, omittedFailures), []);
+  assert.match(omittedFailures.join('\n'), /historical migration ledger drift/);
+
+  // contract: deleting both archive markers cannot reclassify a cutover descendant as old evidence.
+  git(root, ['read-tree', omittedSource]);
+  const nativeSpecs = [
+    ...new Set(
+      git(root, ['ls-tree', '-r', '--name-only', source, '--', 'specs'])
+        .split('\n')
+        .filter((path) => /\.(?:spec|1-spec)\.md$/u.test(path) && path.split('/').length >= 3)
+        .map((path) => path.split('/')[1])
+        .filter((scope) => !scopes.includes(scope))
+    ),
+  ];
+  git(root, [
+    'rm',
+    '--cached',
+    '-r',
+    '--',
+    'scripts/main-carry-disposition.ts',
+    ARCHIVE_ROOT,
+    'specs/mr-stats',
+    ...nativeSpecs.map((scope) => `specs/${scope}`),
+  ]);
+  git(root, [
+    '-c',
+    'user.name=Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'owned deleted checker archive and historical scope',
+  ]);
+  const disguisedSource = git(root, ['rev-parse', 'HEAD']);
+  assert.throws(() => committedMigrationScopes(root, disguisedSource), /source archive required/);
+  const disguisedFailures: string[] = [];
+  assert.deepEqual(sourceScopes(root, disguisedSource, disguisedFailures), []);
+  assert.match(disguisedFailures.join('\n'), /source archive required/);
+
+  git(root, ['read-tree', source]);
+  const plan = 'migration/mr-stats/mr-stats.spec.migration.md';
+  write(
+    root,
+    plan,
+    `${frozenGit(ROOT, ['show', `${source}:${plan}`]).toString('utf8')}\nchanged historical bytes\n`
+  );
+  git(root, ['add', '--', plan]);
+  git(root, [
+    '-c',
+    'user.name=Fixture',
+    '-c',
+    'user.email=fixture@example.invalid',
+    'commit',
+    '--quiet',
+    '-m',
+    'owned corrupted historical unit',
+  ]);
+  const changedUnitSource = git(root, ['rev-parse', 'HEAD']);
+  assert.throws(
+    () => committedMigrationScopes(root, changedUnitSource),
+    /historical migration unit drift/
+  );
   const object = manifest.rows.find((row: { source?: { oid: string } }) => row.source).source.oid;
   git(root, ['read-tree', source]);
   git(root, ['rm', '--cached', `${ARCHIVE_ROOT}/objects/${object}.blob`]);

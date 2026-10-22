@@ -16,6 +16,7 @@ import {
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import {
   planScopeMove,
@@ -26,7 +27,164 @@ import {
 import { scanMigrationUnits, scaffoldUnitFile, unitFilePath } from '../migration-plan.ts';
 import { planMigrationFileHeaders } from '../migration-file-headers.ts';
 import { parseSourceOwnershipHeader } from '../source-ownership-header.ts';
-import { inspectRepoPath } from '../../common/repo-path.ts';
+
+// Exact merged cutover owns this historical one-shot map, not today's independently editable headers.
+const OWNERSHIP_CUTOVER = '521d3042e374444fcd20e633ef8c1b0a9212cfc2';
+const OWNER_MAP = 'migration/FILE-SPEC-MAP.tsv';
+
+function ownershipRows(map: string): string[][] {
+  const rows = map.split(/\r?\n/).filter((row) => row.trim() && !row.startsWith('#'));
+  const seen = new Set<string>();
+  return rows.map((row, index) => {
+    const cells = row.split('\t');
+    assert.equal(cells.length, 3, `map row ${index + 1}`);
+    const [file = '', , evidence = ''] = cells;
+    assert.ok(file && !file.startsWith('/') && !file.includes('\\'), `unsafe map path: ${file}`);
+    assert.ok(
+      file.split('/').every((part) => part && part !== '.' && part !== '..'),
+      `unsafe map path: ${file}`
+    );
+    assert.ok(evidence.trim(), `missing owner evidence: ${file}`);
+    assert.ok(!seen.has(file), `duplicate source: ${file}`);
+    seen.add(file);
+    return cells;
+  });
+}
+
+function historicalOwnershipFiles(repository: string, paths: string[]): Map<string, string> {
+  const git = (args: string[], input?: string) =>
+    execFileSync('git', ['--no-replace-objects', '-C', repository, ...args], {
+      input,
+      maxBuffer: 128 * 1024 * 1024,
+    });
+  const tree = git(['ls-tree', '-r', '-z', OWNERSHIP_CUTOVER])
+    .toString()
+    .split('\0')
+    .filter(Boolean);
+  const blobs = new Map(
+    tree.map((entry) => {
+      const [metadata, path] = entry.split('\t');
+      return [path, metadata.split(' ')] as const;
+    })
+  );
+  const oids = paths.map((path) => {
+    const entry = blobs.get(path);
+    assert.ok(entry, `missing cutover source: ${path}`);
+    assert.ok(['100644', '100755'].includes(entry[0]), `unsafe cutover source: ${path}`);
+    assert.equal(entry[1], 'blob', `not a cutover blob: ${path}`);
+    return entry[2];
+  });
+  const batch = git(['cat-file', '--batch'], `${oids.join('\n')}\n`);
+  let offset = 0;
+  return new Map(
+    paths.map((path, index) => {
+      const end = batch.indexOf(10, offset);
+      const [oid, type, size] = batch.subarray(offset, end).toString().split(' ');
+      assert.equal(oid, oids[index], `cutover object identity: ${path}`);
+      assert.equal(type, 'blob', `cutover object type: ${path}`);
+      assert.match(size, /^\d+$/);
+      offset = end + 1;
+      const bytes = batch.subarray(offset, offset + Number(size));
+      assert.equal(bytes.length, Number(size), `truncated cutover source: ${path}`);
+      assert.equal(
+        createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex'),
+        oid,
+        `corrupt cutover source: ${path}`
+      );
+      offset += bytes.length + 1;
+      return [path, bytes.toString()] as const;
+    })
+  );
+}
+
+function assertHistoricalOwnershipMap(map: string, files: Map<string, string>): void {
+  assert.equal(map, files.get(OWNER_MAP), 'one-shot map differs from reviewed cutover');
+  const rows = ownershipRows(map);
+  assert.equal(rows.length, 1207, 'historical source inventory count');
+  for (const [file, owner] of rows) {
+    const content = files.get(file);
+    assert.notEqual(content, undefined, `missing cutover source: ${file}`);
+    const declared = parseSourceOwnershipHeader(content!)
+      .blocks.filter((block) => block.tag === 'spec')
+      .map((block) => block.value.trim());
+    assert.deepEqual(declared, [owner], `cutover canonical owner: ${file}`);
+  }
+}
+
+function assertHistoricalOwnership(repository: string, files: Map<string, string>): void {
+  assertHistoricalOwnershipMap(readFileSync(join(repository, OWNER_MAP), 'utf8'), files);
+}
+
+describe('FO-6 historical one-shot source-owner proof', () => {
+  let map: string;
+  let files: Map<string, string>;
+  before(() => {
+    const repository = fileURLToPath(new URL('../../../', import.meta.url));
+    map = readFileSync(join(repository, OWNER_MAP), 'utf8');
+    files = historicalOwnershipFiles(repository, [
+      OWNER_MAP,
+      ...ownershipRows(map).map(([file]) => file),
+    ]);
+  });
+
+  it('validates all reviewed map entries against exact cutover headers, not current source bytes', () => {
+    assertHistoricalOwnership(fileURLToPath(new URL('../../../', import.meta.url)), files);
+  });
+
+  it('allows ordinary current header edits without weakening historical source integrity', () => {
+    const project = mkdtempSync(join(tmpdir(), 'historical-ownership-current-'));
+    const [file, owner] = ownershipRows(map)[0];
+    try {
+      mkdirSync(join(project, file, '..'), { recursive: true });
+      mkdirSync(join(project, 'migration'));
+      writeFileSync(join(project, OWNER_MAP), map);
+      writeFileSync(join(project, file), '// @spec: LEGITIMATE-CURRENT-OWNER\n');
+      assert.notEqual(readFileSync(join(project, file), 'utf8'), files.get(file));
+      assertHistoricalOwnership(project, files);
+      const corrupted = new Map(files).set(file, '// @spec: CORRUPTED-HISTORICAL-OWNER\n');
+      assert.throws(() => assertHistoricalOwnership(project, corrupted), /cutover canonical owner/);
+      assert.notEqual(owner, 'CORRUPTED-HISTORICAL-OWNER');
+      corrupted.delete(file);
+      assert.throws(() => assertHistoricalOwnership(project, corrupted), /missing cutover source/);
+    } finally {
+      rmSync(project, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects changed, omitted, duplicate, unsafe, and evidenceless historical map entries', () => {
+    const rows = map.split('\n');
+    const index = rows.findIndex((row) => row && !row.startsWith('#'));
+    for (const replacement of [
+      '',
+      rows[index] + '\n' + rows[index],
+      '../outside.ts\tOWNER\tevidence',
+      'source.ts\tOWNER\t',
+    ]) {
+      const altered = [...rows];
+      altered[index] = replacement;
+      assert.throws(
+        () => assertHistoricalOwnershipMap(altered.join('\n'), files),
+        /one-shot map differs/
+      );
+    }
+    assert.throws(() => ownershipRows(rows[index] + '\n' + rows[index]), /duplicate source/);
+    assert.throws(() => ownershipRows('../outside.ts\tOWNER\tevidence'), /unsafe map path/);
+    assert.throws(() => ownershipRows('source.ts\tOWNER\t'), /missing owner evidence/);
+    assert.throws(() => ownershipRows('source.ts\tOWNER'), /map row/);
+    const omitted = rows.filter((_, rowIndex) => rowIndex !== index).join('\n');
+    assert.throws(
+      () => assertHistoricalOwnershipMap(omitted, new Map(files).set(OWNER_MAP, omitted)),
+      /historical source inventory count/
+    );
+    assert.throws(
+      () =>
+        historicalOwnershipFiles(fileURLToPath(new URL('../../../', import.meta.url)), [
+          'missing-cutover-source.ts',
+        ]),
+      /missing cutover source/
+    );
+  });
+});
 
 let root: string;
 
@@ -186,34 +344,6 @@ describe('migration-move', () => {
   });
   after(() => {
     rmSync(root, { recursive: true, force: true });
-  });
-
-  it('FO-6: versioned live source-owner map resolves unique current canonical headers', () => {
-    const repository = fileURLToPath(new URL('../../../', import.meta.url));
-    const map = readFileSync(join(repository, 'migration', 'FILE-SPEC-MAP.tsv'), 'utf8');
-    const seen = new Set<string>();
-    const errors: string[] = [];
-    for (const [index, row] of map.split(/\r?\n/).entries()) {
-      if (!row.trim() || row.startsWith('#')) continue;
-      const cells = row.split('\t');
-      assert.equal(cells.length, 3, `map row ${index + 1}`);
-      const [file = '', owner = '', evidence = ''] = cells;
-      assert.ok(evidence.trim(), `missing owner evidence: ${file}`);
-      if (seen.has(file)) errors.push(`duplicate source: ${file}`);
-      seen.add(file);
-      const inspected = inspectRepoPath(repository, file, 'file');
-      if (!inspected.ok) {
-        errors.push(`${file}: ${inspected.detail}`);
-        continue;
-      }
-      const declared = parseSourceOwnershipHeader(readFileSync(join(repository, file), 'utf8'))
-        .blocks.filter((block) => block.tag === 'spec')
-        .map((block) => block.value.trim());
-      if (declared.length !== 1 || declared[0] !== owner)
-        errors.push(`${file}: canonical @spec ${JSON.stringify(declared)} != ${owner}`);
-    }
-    assert.ok(seen.size > 0, 'versioned live map must not be empty');
-    assert.deepEqual(errors, [], errors.join('\n'));
   });
 
   it('без слоя миграции план заблокирован с внятными причинами', () => {

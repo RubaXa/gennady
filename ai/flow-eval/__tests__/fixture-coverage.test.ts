@@ -46,6 +46,9 @@ describe('SDD eval fixtures can satisfy the required coverage gate', () => {
         !GLOB_META.test(coverageScript),
         `${fixture} test:coverage must carry no glob token (sdd-verify rejects them): ${coverageScript}`
       );
+      assert.match(files['gennady.yaml'] ?? '', /policy: required/);
+      assert.match(files['gennady.yaml'] ?? '', /protocol: node-test-summary-v1/);
+      assert.match(files['gennady.yaml'] ?? '', /include: \[code, unit, coverage\]/);
     });
   }
 });

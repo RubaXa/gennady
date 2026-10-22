@@ -24,7 +24,11 @@ lifecycle.registerOwnedDirectory('interrupted', owned);
 const controller = new AbortController();
 const boundary = lifecycle.installSignalHandlers(controller);
 process.kill(process.pid, signal);
-await new Promise<void>((resolve) => setImmediate(resolve));
+// Delivery is asynchronous (and loader-dependent): wait for the production boundary, not one tick.
+const signalDeadline = performance.now() + 1_000;
+while (!boundary.received() && performance.now() < signalDeadline) {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
 const received = boundary.received();
 if (!received || !controller.signal.aborted) throw new Error('signal was not observed');
 const finalized = await lifecycle.finalize(received);

@@ -76,6 +76,7 @@ type GateBucket = 'pass' | 'fail' | 'budget-exhausted' | 'undetermined';
 
 function gateBucket(run: SddEvalDurableSummary): GateBucket {
   if (run.outcome === 'budget-exhausted') return 'budget-exhausted';
+  if (run.trajectory?.pass === false) return 'fail';
   if (run.verdict === 'worker-error') return 'fail';
   if (run.quality) return run.quality.pass ? 'pass' : 'fail';
   return 'undetermined';

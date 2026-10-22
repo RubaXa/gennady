@@ -1,0 +1,24 @@
+[
+  {
+    "id": "v2-native-scope-authoring",
+    "fixture": "fibonacci-library",
+    "phase": "spec-authoring",
+    "mode": "full-spec-to-approval-1",
+    "scale": "function",
+    "intent": "Author a NEW V2 library scope named fibonacci and its cohesive core module from inputs/brief.md. This is native V2 authoring, not a migration. Use the installed flow; do not implement product code.",
+    "acceptance": "The fibonacci scope and core module specifications exist and satisfy the real checker. Preserve the requested nth API and negative cases. Stop at Approval #1 pending, never forge approval. No root tasks or migration directory is created and no tool/gate is disabled.",
+    "budgetMs": 600000,
+    "checkpoints": [
+      { "id": "scope-exists", "cmd": "test -f specs/fibonacci/fibonacci.spec.md" },
+      { "id": "module-exists", "cmd": "test -f specs/fibonacci/core/core.spec.md" },
+      { "id": "native-v2-only", "cmd": "test ! -e tasks && test ! -e migration" },
+      { "id": "specs-clean", "cmd": "npx --no-install gennady sdd-check --all ." }
+    ],
+    "trajectoryRules": {
+      "requiredCommands": ["sdd-new", "sdd-orient", "sdd-check"],
+      "commandOrder": ["sdd-new", "sdd-orient", "sdd-check"],
+      "forbiddenCommands": ["sdd-migrate", "--no-verify"],
+      "maxTools": 120
+    }
+  }
+]

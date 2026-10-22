@@ -293,6 +293,7 @@ describe('run --dry-run', () => {
 
   it('SO-12: refuses v2 skill sync over a v1 consumer before directives or skills mutate', () => {
     mkdirSync(join(_tmpDir, 'tasks'), { recursive: true });
+    writeFileSync(join(_tmpDir, 'tasks', 'legacy.task-1.md'), '# Task: legacy\n');
     createFile(join(_sourceDir, 'sdd-audit'), 'SKILL.md', '# New');
     createFile(_directivesDir, 'sdd-v2/a.xml', '<directive/>');
     const stderr = captureStream();

@@ -58,12 +58,14 @@ export class SddEvalJudge {
   async evaluate(
     scenarioId: string,
     directory: string,
-    input: SddEvalJudgeInput
+    input: SddEvalJudgeInput,
+    signal?: AbortSignal
   ): Promise<SddEvalJudgeResult> {
     const rationale = await this.#runtime.judge({
       directory,
       model: this.#model,
       prompt: composeJudgePrompt(input),
+      signal,
     });
     return {
       scenarioId,

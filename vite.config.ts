@@ -69,6 +69,7 @@ export default defineConfig({
         'providers/claude': resolve(__dirname, 'services/agent-mon/providers/claude/index.ts'),
         'providers/opencode': resolve(__dirname, 'services/agent-mon/providers/opencode/index.ts'),
         stack: resolve(__dirname, 'shared/verify/plugin-api.ts'),
+        'update-check-worker': resolve(__dirname, 'cli/cmd/_shared/update-check-worker.ts'),
       },
       formats: ['es'],
       fileName: (_, name) => (name === 'cli' ? 'gennady.js' : `${name}.js`),
@@ -94,8 +95,12 @@ export default defineConfig({
             ? 'gennady.js'
             : chunkInfo.name === 'index'
               ? 'index.js'
-              : '[name].js',
+              : chunkInfo.name === 'update-check-worker'
+                ? 'chunks/update-check-worker.js'
+                : '[name].js',
         manualChunks(id) {
+          // Worker top-level execution must never be hoisted into the shared runtime chunk.
+          if (id.endsWith('/cli/cmd/_shared/update-check-worker.ts')) return undefined;
           if (id.includes('shared/')) return 'shared';
           if (id.includes('services/')) return 'services';
           return undefined;

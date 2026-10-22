@@ -18,7 +18,7 @@ function isFile(path: string): boolean {
  * @purpose Refuse a destructive first v2 sync over a repository whose canonical layout is still
  *   SDD v1, before either sync command writes a byte (SO-12/D-23).
  * @param root Consumer repository root used by the sync command.
- * @returns A complete operator-facing refusal when `tasks/` marks v1; otherwise `null`.
+ * @returns A complete refusal for SDD V1 tickets or an unsafe tasks inventory; otherwise `null`.
  */
 export function v1ConsumerSyncRefusal(root: string): string | null {
   if (detectFlowVersion(root) === 'v2') return null;
@@ -28,11 +28,11 @@ export function v1ConsumerSyncRefusal(root: string): string | null {
     : `Файл ${manifest} не найден; прежнее владение файлами sync неизвестно.`;
   return [
     'Error: синхронизация SDD v2 остановлена до записи файлов.',
-    `Найдено: ${join(root, 'tasks')} — канонический маркер SDD v1.`,
+    `Найдено: ${join(root, 'tasks')} — SDD v1 tickets или небезопасный для проверки inventory.`,
     'Причина: наложение v2-директив и v2-скиллов на живое v1-дерево оставит смешанный, неоднозначный consumer.',
     manifestHint,
-    'Что сделать: сначала выполните `npx gennady sdd-migrate bootstrap .`, проверьте dry-run и повторите с `--write`.',
+    'Что сделать: сначала устраните небезопасные/нечитаемые пути; если найдены SDD v1 tickets, выполните `npx gennady sdd-migrate bootstrap .`, проверьте dry-run и повторите с `--write`.',
     'Bootstrap безопасно заменит только доказанно package-owned V1 tooling и установит свежий runtime миграции; затем выполните шаги из `migration/README.md`.',
-    'Повторите sync только когда `npx gennady sdd-state .` сообщает `FLOW_VERSION=v2` и каталог `tasks/` отсутствует.',
+    'Повторите sync, когда `npx gennady sdd-state .` сообщает `FLOW_VERSION=v2`: SDD v1 tickets мигрированы, inventory читаем и безопасен. Обычный build-каталог `tasks/` удалять не требуется.',
   ].join('\n');
 }

@@ -6,7 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -17,12 +17,55 @@ import {
   readAllDurableSummaries,
   relativeResultDir,
   resolveGitSha,
+  resolveExperimentSource,
   type SddEvalDurableSummary,
 } from '../results-archive.ts';
 
 function tempDir(): string {
   return mkdtempSync(join(tmpdir(), 'results-archive-'));
 }
+
+it('binds experiments to tracked, untracked, scenario and configuration inputs without following aliases', async () => {
+  const root = tempDir();
+  const external = tempDir();
+  const git = (...args: string[]) => execFileSync('git', ['-C', root, ...args]);
+  try {
+    git('init');
+    writeFileSync(join(root, 'source.ts'), 'initial');
+    writeFileSync(join(root, 'scenario.json'), '[]');
+    git('add', '.');
+    git(
+      '-c',
+      'user.name=Eval Test',
+      '-c',
+      'user.email=eval@example.test',
+      'commit',
+      '-m',
+      'fixture'
+    );
+    const capture = (config = { model: 'fixed' }) =>
+      resolveExperimentSource(root, join(root, 'scenario.json'), config);
+    const clean = await capture();
+    assert.equal(clean.dirty, false);
+    writeFileSync(join(root, 'source.ts'), 'modified');
+    const tracked = await capture();
+    assert.notEqual(tracked.worktreeSha256, clean.worktreeSha256);
+    writeFileSync(join(root, 'new.ts'), 'new source');
+    const untracked = await capture();
+    assert.notEqual(untracked.worktreeSha256, tracked.worktreeSha256);
+    symlinkSync(join(external, 'missing-secret'), join(root, 'alias'));
+    const link = await capture();
+    assert.notEqual(link.worktreeSha256, untracked.worktreeSha256);
+    writeFileSync(join(external, 'missing-secret'), 'never read this');
+    assert.equal((await capture()).worktreeSha256, link.worktreeSha256);
+    assert.notEqual((await capture({ model: 'other' })).configSha256, link.configSha256);
+    writeFileSync(join(root, 'scenario.json'), '[{}]');
+    assert.notEqual((await capture()).scenarioSha256, clean.scenarioSha256);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(external, { recursive: true, force: true });
+  }
+});
 
 function fakeSummary(overrides: Partial<SddEvalDurableSummary> = {}): SddEvalDurableSummary {
   return {
@@ -53,6 +96,132 @@ function fakeSummary(overrides: Partial<SddEvalDurableSummary> = {}): SddEvalDur
 }
 
 describe('GAP-E-6: persistDurableResult writes a real, permanent per-scenario directory', () => {
+  it('atomically reserves eight concurrent same-scenario results without mixing or overwriting evidence', async () => {
+    const root = tempDir();
+    const results = join(root, 'permanent');
+    try {
+      const writers = Array.from({ length: 8 }, (_, index) => {
+        const source = join(root, 'source', String(index));
+        mkdirSync(join(source, 'specs/app'), { recursive: true });
+        const judgeFile = join(source, 'judge.md');
+        const trajectoryFile = join(source, 'trajectory.json');
+        const specFile = join(source, 'specs/app/app.spec.md');
+        const spec = `# Writer ${index}\r\n`;
+        writeFileSync(judgeFile, `judge:${index}\n`);
+        writeFileSync(trajectoryFile, JSON.stringify({ writer: index }));
+        writeFileSync(specFile, spec);
+        return { index, source, judgeFile, trajectoryFile, specFile, spec };
+      });
+      const directories = await Promise.all(
+        writers.map(({ index, source, judgeFile, trajectoryFile, specFile }) =>
+          persistDurableResult(results, fakeSummary({ actions: index }), {
+            judgeFile,
+            trajectoryFile,
+            specs: { root: source, files: [specFile] },
+          })
+        )
+      );
+      assert.equal(
+        new Set(directories).size,
+        8,
+        'each writer must own an atomic directory reservation'
+      );
+      assert.equal((await readAllDurableSummaries(results)).length, 8);
+      for (const [index, directory] of directories.entries()) {
+        assert.equal(
+          JSON.parse(await readFile(join(directory, 'summary.json'), 'utf8')).actions,
+          index
+        );
+        assert.equal(await readFile(join(directory, 'judge.md'), 'utf8'), `judge:${index}\n`);
+        assert.equal(
+          JSON.parse(await readFile(join(directory, 'trajectory.json'), 'utf8')).writer,
+          index
+        );
+        assert.equal(
+          await readFile(join(directory, 'specs/app/app.spec.md'), 'utf8'),
+          writers[index].spec
+        );
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves incomplete reservations and propagates filesystem errors instead of retrying them', async () => {
+    const root = tempDir();
+    try {
+      const results = join(root, 'permanent');
+      await assert.rejects(
+        persistDurableResult(results, fakeSummary(), { trajectoryFile: join(root, 'missing') })
+      );
+      const next = await persistDurableResult(results, fakeSummary());
+      assert.equal(next, join(results, '2026-09-08-fibonacci-library-2'));
+      assert.equal((await readAllDurableSummaries(results)).length, 1);
+      const file = join(root, 'regular-file');
+      writeFileSync(file, 'preserve');
+      await assert.rejects(persistDurableResult(join(file, 'results'), fakeSummary()), {
+        code: 'ENOTDIR',
+      });
+      assert.equal(await readFile(file, 'utf8'), 'preserve');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps exact authored specs after sandbox deletion and refuses alias snapshots', async () => {
+    const root = tempDir();
+    const sandbox = join(root, 'sandbox');
+    const file = join(sandbox, 'specs/app/app.spec.md');
+    mkdirSync(join(sandbox, 'specs/app'), { recursive: true });
+    const bytes = '# Authored spec\r\n\r\nPending approval\r\n';
+    writeFileSync(file, bytes);
+    try {
+      const dir = await persistDurableResult(join(root, 'results'), fakeSummary(), {
+        specs: { root: sandbox, files: [file] },
+      });
+      rmSync(file);
+      symlinkSync(join(dir, 'specs/app/app.spec.md'), file);
+      await assert.rejects(
+        persistDurableResult(join(root, 'results'), fakeSummary(), {
+          specs: { root: sandbox, files: [file] },
+        }),
+        /unsafe/
+      );
+      rmSync(sandbox, { recursive: true, force: true });
+      assert.equal(await readFile(join(dir, 'specs/app/app.spec.md'), 'utf8'), bytes);
+      assert.deepEqual(JSON.parse(await readFile(join(dir, 'summary.json'), 'utf8')).specFiles, [
+        'specs/app/app.spec.md',
+      ]);
+      assert.equal((await readAllDurableSummaries(join(root, 'results'))).length, 1);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+  it('persists trajectory outside the disposable source and rejects missing required evidence', async () => {
+    const root = tempDir();
+    const source = join(root, 'source-trajectory.json');
+    writeFileSync(source, '{"scenario":"native","events":[]}\n');
+    try {
+      const dir = await persistDurableResult(join(root, 'results'), fakeSummary(), {
+        trajectoryFile: source,
+      });
+      rmSync(source);
+      assert.equal(
+        await readFile(join(dir, 'trajectory.json'), 'utf8'),
+        '{"scenario":"native","events":[]}\n'
+      );
+      await assert.rejects(
+        persistDurableResult(join(root, 'results'), fakeSummary(), { trajectoryFile: source })
+      );
+      assert.equal(
+        (await readAllDurableSummaries(join(root, 'results'))).length,
+        1,
+        'failed evidence copy must not publish a second successful record'
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
   it('writes summary.json (pretty JSON) and judge.md into <date>-<scenarioId>/', async () => {
     const root = tempDir();
     const judgeSrc = join(root, 'judge-source.md');

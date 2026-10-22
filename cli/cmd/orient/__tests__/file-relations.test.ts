@@ -14,6 +14,8 @@ import { fileRelationsDocument, renderFileRelations } from '../render/render-fil
 
 const ORIENT_CMD = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'orient.cmd.ts');
 const TSX_IMPORT = import.meta.resolve('tsx');
+const LEGACY_TICKET =
+  '# Task: historical\n\n## 1. Meta\n- **Task-ID:** TSK-1 | **Status:** [x] DONE\n\n## 6. Execution Log\n';
 
 function fixture(run: (root: string, source: string) => void): void {
   const root = mkdtempSync(join(tmpdir(), 'orient-relations-'));
@@ -150,6 +152,7 @@ describe('orient file relations', () => {
   it('keeps a legacy @tasks-only file V1-lenient', () => {
     fixture((root, source) => {
       mkdirSync(join(root, 'tasks', 'cli'), { recursive: true });
+      writeFileSync(join(root, 'tasks', 'cli', 'legacy.task-1.md'), LEGACY_TICKET);
       const result = resolveOrientFileRelations(root, source, {
         file: 'query',
         tasks: ['DP-fields'],
@@ -194,6 +197,7 @@ describe('orient file relations', () => {
   it('keeps legacy tickets grandfathered inside a mixed corpus', () => {
     fixture((root, source) => {
       mkdirSync(join(root, 'tasks', 'cli'), { recursive: true });
+      writeFileSync(join(root, 'tasks', 'cli', 'legacy.task-1.md'), LEGACY_TICKET);
       const ticket = join(root, 'specs', 'cli', 'orient', 'orient.task.ORIENT-nav.md');
       writeFileSync(ticket, readFileSync(ticket, 'utf8').replace(/  - Contract:.*\n/, ''));
       const result = resolveOrientFileRelations(root, source, {

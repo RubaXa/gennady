@@ -502,7 +502,7 @@ describe('documented call still present verbatim in its directive (drift guard)'
 });
 
 describe('sdd-orient documented invocation contract', () => {
-  const authoring = ['infra', 'scope', 'module', 'interface'];
+  const authoring = ['infra', 'interface'];
 
   for (const name of authoring) {
     it(`${name} uses the pre-materialization --scope form without a positional path`, () => {
@@ -520,6 +520,26 @@ describe('sdd-orient documented invocation contract', () => {
       assert.doesNotMatch(text, /sdd-orient [^`\n]+ --scope <scope>/);
     });
   }
+
+  it('scope orients the exact scaffold path before portal registration', () => {
+    const text = readFileSync(
+      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'scope.directive.xml'),
+      'utf-8'
+    );
+    assert.match(text, /npx gennady sdd-orient <scope-spec-path>/);
+    assert.match(text, /exact created path from the STEP_0_CREATE product\/library manifest/);
+    assert.doesNotMatch(text, /npx gennady sdd-orient --scope/);
+  });
+
+  it('module orients its exact scaffold path before portal registration', () => {
+    const text = readFileSync(
+      join(REPO_ROOT, 'ai', 'directives', 'sdd-v2', 'module.directive.xml'),
+      'utf-8'
+    );
+    assert.match(text, /npx gennady sdd-orient <module-spec-path>/);
+    assert.match(text, /exact created path from the STEP_0_CREATE moduleManifest/);
+    assert.doesNotMatch(text, /npx gennady sdd-orient --scope/);
+  });
 
   it('critic reviews the bounded artifact set directly without an obsolete orient detour', () => {
     const text = readFileSync(

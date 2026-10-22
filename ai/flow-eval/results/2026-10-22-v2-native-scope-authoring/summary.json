@@ -1,0 +1,57 @@
+{
+  "scenarioId": "v2-native-scope-authoring",
+  "date": "2026-10-22",
+  "timestamp": "2026-10-22T14:47:30.156Z",
+  "sha": "396c8abdd70592b70c6ad8d8c2a0aaf15510d70b",
+  "source": {
+    "dirty": true,
+    "worktreeSha256": "6bdb37cba965f64ac61ce7e28de11f4afb701b4f3b40456c8b2a2f41a4cd8530",
+    "scenarioSha256": "5e50922887a8f1fee2d16d72183c26aa92075617e1546bcc5bf53db96213a477",
+    "configSha256": "a50e74301e910dbdfa8bdd56599ffafc3f0618a880bb8f17d31d637b012efc60"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 4,
+    "tailLimit": 20
+  },
+  "verdict": "fail",
+  "status": "running",
+  "outcome": "fail",
+  "actions": 32,
+  "durationMs": 60113,
+  "usage": {
+    "messages": 14,
+    "input": 97348,
+    "output": 2764,
+    "reasoning": 4126,
+    "cacheRead": 981632,
+    "cacheWrite": 0,
+    "total": 104238,
+    "cost": 0
+  },
+  "quality": {
+    "rule": "R1",
+    "pass": false,
+    "detail": "6 sdd-check error(s)"
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": false,
+    "detail": "terminal checkpoint failed: specs-clean (1)"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "/private/tmp/gennady-v2-eval-live.Qarj2A/sdd-flow-eval-rV43IZ/specs/fibonacci/core/core.spec.md",
+    "/private/tmp/gennady-v2-eval-live.Qarj2A/sdd-flow-eval-rV43IZ/specs/fibonacci/fibonacci.spec.md"
+  ]
+}

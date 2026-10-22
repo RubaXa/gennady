@@ -12,6 +12,11 @@ lerna-debug.log*
 node_modules
 dist
 coverage
+# Review coverage is source code; keep generated coverage reports ignored everywhere else.
+!/services/agent-inbox/modules/inbox-pipeline/coverage/
+/services/agent-inbox/modules/inbox-pipeline/coverage/*
+!/services/agent-inbox/modules/inbox-pipeline/coverage/review-repair-coordinator.ts
+!/services/agent-inbox/modules/inbox-pipeline/coverage/review-structural-validator.ts
 *.local
 
 # Editor directories and files

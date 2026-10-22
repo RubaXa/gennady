@@ -20,3 +20,8 @@ ai/inspector/web/trace.json
 # Column widths follow the real cell content, not prettier's GFM padding; the freshness gate is
 # `npm run results:table:check` (byte-identical regeneration), not prettier.
 ai/flow-eval/docs/journal/RESULTS.md
+
+# Runtime evidence is byte-preserved output, not authored project documentation. Formatting a
+# failed spec or judge response would change the evidence being investigated.
+ai/flow-eval/results/*/judge.md
+ai/flow-eval/results/*/specs/**

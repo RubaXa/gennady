@@ -131,7 +131,10 @@ export class SddEvalRunner {
   }
 
   /** @purpose Launch one worker session, then observe only through the external evidence source. */
-  async runScenario(scenario: SddEvalScenario): Promise<SddEvalResult> {
+  async runScenario(
+    scenario: SddEvalScenario,
+    onFailure?: (result: SddEvalResult) => Promise<void>
+  ): Promise<SddEvalResult> {
     if (!scenario.directory) throw new Error(`scenario ${scenario.id} has no isolated directory`);
     this.#throwIfAborted();
     const session = await this.#runtime.createSession({
@@ -139,118 +142,168 @@ export class SddEvalRunner {
       directory: scenario.directory,
     });
     const workerPrompt = composeSddPhasePrompt(scenario);
+    const observed: SddEvalObservation[] = [];
+    let workerResult: SddEvalWorkerResult | undefined;
 
-    let observations: SddEvalObservation[];
-    let workerError: string | undefined;
-    let budgetExhausted: SddEvalWorkerResult['budgetExhausted'];
     try {
-      const work = (async (): Promise<SddEvalObservation[]> => {
-        this.#throwIfAborted();
-        await this.#runtime.prompt({
-          sessionId: session.id,
-          directory: scenario.directory,
-          text: workerPrompt,
-          model: this.#config.runnerModel,
-          agent: this.#config.agent,
-        });
-        return new SddEvalObserver(this.#evidence, {
-          everyMs: this.#config.observeEveryMs,
-          stuckAfter: this.#config.stuckAfter,
-          tailLimit: this.#config.tailLimit,
-          abort: (sessionId) => this.#runtime.abort?.(sessionId) ?? Promise.resolve(),
-          onObservation: (_sessionId, observation) =>
-            this.#config.onObservation?.(scenario.id, observation),
-        }).collect(session.id, this.#config.maxObservations);
-      })();
-      observations = await this.#withWallClock(
-        work,
-        session.id,
-        scenario.budgetMs ?? this.#config.maxWallClockMs
+      let observations: SddEvalObservation[];
+      let workerError: string | undefined;
+      let budgetExhausted: SddEvalWorkerResult['budgetExhausted'];
+      try {
+        const work = (async (): Promise<SddEvalObservation[]> => {
+          this.#throwIfAborted();
+          await this.#runtime.prompt({
+            sessionId: session.id,
+            directory: scenario.directory,
+            text: workerPrompt,
+            model: this.#config.runnerModel,
+            agent: this.#config.agent,
+          });
+          return new SddEvalObserver(this.#evidence, {
+            everyMs: this.#config.observeEveryMs,
+            stuckAfter: this.#config.stuckAfter,
+            tailLimit: this.#config.tailLimit,
+            abort: (sessionId) => this.#runtime.abort?.(sessionId) ?? Promise.resolve(),
+            onObservation: (_sessionId, observation) => {
+              observed.push(observation);
+              this.#config.onObservation?.(scenario.id, observation);
+            },
+          }).collect(session.id, this.#config.maxObservations);
+        })();
+        observations = await this.#withWallClock(
+          work,
+          session.id,
+          scenario.budgetMs ?? this.#config.maxWallClockMs
+        );
+        const budgetEnd = observations.at(-1);
+        if (
+          observations.length >= this.#config.maxObservations &&
+          budgetEnd &&
+          budgetEnd.status !== 'completed' &&
+          budgetEnd.status !== 'error' &&
+          !budgetEnd.stuck
+        ) {
+          await this.#runtime.abort?.(session.id);
+          observations[observations.length - 1] = {
+            ...budgetEnd,
+            stuck: true,
+            errors: [...budgetEnd.errors, 'observation budget exceeded'],
+          };
+          budgetExhausted = {
+            kind: 'observation',
+            detail: `observation budget ${this.#config.maxObservations} exhausted`,
+          };
+        }
+      } catch (cause) {
+        if (cause instanceof SddEvalAbortError) throw cause;
+        if (cause instanceof SddEvalWallClockBudgetError) {
+          budgetExhausted = { kind: 'wall-clock', detail: cause.message };
+        } else {
+          workerError = cause instanceof Error ? cause.message : String(cause);
+        }
+        observations = [];
+      }
+
+      const finalObservation = observations.at(-1);
+      if (finalObservation?.stuck && !budgetExhausted)
+        workerError ??= finalObservation.errors.at(-1) ?? 'observer stopped a stuck worker';
+      let diff = '';
+      try {
+        diff = await this.#evidence.readDiff(session.id);
+      } catch (cause) {
+        workerError ??= cause instanceof Error ? cause.message : String(cause);
+      }
+      const tail = finalObservation?.tail ?? [];
+      const events = finalObservation?.events ?? [];
+      let usage: SddEvalWorkerResult['usage'];
+      try {
+        usage = await this.#evidence.readUsage?.(session.id);
+      } catch {
+        // Usage is best-effort A/B telemetry; never fail a run because token totals could not be read.
+      }
+      const worker: SddEvalWorkerResult = {
+        scenarioId: scenario.id,
+        sessionId: session.id,
+        intent: scenario.intent,
+        diff,
+        observations,
+        events,
+        tail,
+        status: workerError ? 'error' : (finalObservation?.status ?? 'unknown'),
+        ...(usage ? { usage } : {}),
+        ...(budgetExhausted && !workerError ? { budgetExhausted } : {}),
+        ...(workerError ? { error: workerError } : {}),
+      };
+      workerResult = worker;
+      this.#throwIfAborted();
+      if (workerError || budgetExhausted) return { worker };
+      const judge = await this.#judge?.evaluate(
+        scenario.id,
+        scenario.directory,
+        {
+          intent: worker.intent,
+          acceptance: scenario.acceptance,
+          state: {
+            status: worker.status,
+            stuck: finalObservation?.stuck ?? false,
+            waiting: finalObservation?.waiting ?? false,
+            errors: finalObservation?.errors ?? [],
+          },
+          diff: worker.diff,
+          events: worker.events,
+          tail: worker.tail,
+        },
+        this.#config.signal
       );
-      const budgetEnd = observations.at(-1);
-      if (
-        observations.length >= this.#config.maxObservations &&
-        budgetEnd &&
-        budgetEnd.status !== 'completed' &&
-        budgetEnd.status !== 'error' &&
-        !budgetEnd.stuck
-      ) {
-        await this.#runtime.abort?.(session.id);
-        observations[observations.length - 1] = {
-          ...budgetEnd,
-          stuck: true,
-          errors: [...budgetEnd.errors, 'observation budget exceeded'],
-        };
-        budgetExhausted = {
-          kind: 'observation',
-          detail: `observation budget ${this.#config.maxObservations} exhausted`,
-        };
-      }
+      return { worker, ...(judge ? { judge } : {}) };
     } catch (cause) {
-      if (cause instanceof SddEvalAbortError) throw cause;
-      if (cause instanceof SddEvalWallClockBudgetError) {
-        budgetExhausted = { kind: 'wall-clock', detail: cause.message };
-      } else {
-        workerError = cause instanceof Error ? cause.message : String(cause);
-      }
-      observations = [];
+      const failure =
+        this.#config.signal?.aborted && !(cause instanceof SddEvalAbortError)
+          ? new SddEvalAbortError(this.#config.signal.reason)
+          : cause;
+      const last = observed.at(-1);
+      await onFailure?.({
+        worker: {
+          ...(workerResult ?? {
+            scenarioId: scenario.id,
+            sessionId: session.id,
+            intent: scenario.intent,
+            diff: '',
+            observations: [...observed],
+            events: last?.events ?? [],
+            tail: last?.tail ?? [],
+          }),
+          status: 'error',
+          error: failure instanceof Error ? failure.message : String(failure),
+        },
+      });
+      throw failure;
     }
-
-    const finalObservation = observations.at(-1);
-    let diff = '';
-    try {
-      diff = await this.#evidence.readDiff(session.id);
-    } catch (cause) {
-      workerError ??= cause instanceof Error ? cause.message : String(cause);
-    }
-    const tail = finalObservation?.tail ?? [];
-    const events = finalObservation?.events ?? [];
-    let usage: SddEvalWorkerResult['usage'];
-    try {
-      usage = await this.#evidence.readUsage?.(session.id);
-    } catch {
-      // Usage is best-effort A/B telemetry; never fail a run because token totals could not be read.
-    }
-    const worker: SddEvalWorkerResult = {
-      scenarioId: scenario.id,
-      sessionId: session.id,
-      intent: scenario.intent,
-      diff,
-      observations,
-      events,
-      tail,
-      status: finalObservation?.status ?? (workerError ? 'error' : 'unknown'),
-      ...(usage ? { usage } : {}),
-      ...(budgetExhausted && !workerError ? { budgetExhausted } : {}),
-      ...(workerError ? { error: workerError } : {}),
-    };
-    if (workerError || budgetExhausted) return { worker };
-    const judge = await this.#judge?.evaluate(scenario.id, scenario.directory, {
-      intent: worker.intent,
-      acceptance: scenario.acceptance,
-      state: {
-        status: worker.status,
-        stuck: finalObservation?.stuck ?? false,
-        waiting: finalObservation?.waiting ?? false,
-        errors: finalObservation?.errors ?? [],
-      },
-      diff: worker.diff,
-      events: worker.events,
-      tail: worker.tail,
-    });
-    return { worker, ...(judge ? { judge } : {}) };
   }
 
   /** @purpose Execute scenarios in parallel batches without spawning subprocesses or writing artifacts. */
-  async runAll(scenarios: SddEvalScenario[]): Promise<SddEvalResult[]> {
+  async runAll(
+    scenarios: SddEvalScenario[],
+    onResult?: (result: SddEvalResult) => Promise<void>
+  ): Promise<SddEvalResult[]> {
     if (scenarios.some((scenario) => !scenario.directory)) {
       throw new Error('every parallel SDD eval scenario must have an isolated directory');
     }
     assertUniqueScenarioDirectories(scenarios as Array<SddEvalScenario & { directory: string }>);
     const results: SddEvalResult[] = [];
     for (let index = 0; index < scenarios.length; index += this.#config.concurrency) {
+      this.#throwIfAborted();
       const batch = scenarios.slice(index, index + this.#config.concurrency);
-      results.push(...(await Promise.all(batch.map((scenario) => this.runScenario(scenario)))));
+      const settled = await Promise.allSettled(
+        batch.map(async (scenario) => {
+          const result = await this.runScenario(scenario, onResult);
+          await onResult?.(result);
+          return result;
+        })
+      );
+      for (const result of settled) if (result.status === 'fulfilled') results.push(result.value);
+      const rejected = settled.find((result) => result.status === 'rejected');
+      if (rejected?.status === 'rejected') throw rejected.reason;
     }
     return results;
   }

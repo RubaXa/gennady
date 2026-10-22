@@ -1662,6 +1662,10 @@ describe('SddCheckCommand', () => {
       '<!--/SECTION:MODULE_VISION-->',
     ].join('\n');
     mkdirSync(join(root, 'tasks', 'old-scope'), { recursive: true });
+    writeFileSync(
+      join(root, 'tasks', 'old-scope', 'legacy.task-1.md'),
+      CLEAN_TICKET.replace('cli-foo', 'TSK-1')
+    );
     mkdirSync(join(root, 'specs', 'old-scope', 'mod'), { recursive: true });
     mkdirSync(join(root, 'specs', 'new-scope', 'mod'), { recursive: true });
     writeFileSync(join(root, 'specs', 'old-scope', 'mod', 'mod.spec.md'), MODULE_SPEC, 'utf-8');
@@ -1739,6 +1743,10 @@ describe('SddCheckCommand', () => {
   it('--all: SDD_TASK_ID_GRAMMAR does NOT fire for the same bad id in an un-migrated (v1) scope', async () => {
     const root = join(dir, 'grammar-v1-proj');
     mkdirSync(join(root, 'tasks', 'old-scope'), { recursive: true });
+    writeFileSync(
+      join(root, 'tasks', 'old-scope', 'legacy.task-1.md'),
+      CLEAN_TICKET.replace('cli-foo', 'TSK-1')
+    );
     mkdirSync(join(root, 'specs', 'old-scope', 'mod'), { recursive: true });
     writeFileSync(
       join(root, 'specs', 'old-scope', 'mod', 'mod.task.gat-login.md'),
