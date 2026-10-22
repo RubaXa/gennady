@@ -4,8 +4,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSddCheckResult, checkCompletion } from '../quality-gate.ts';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { parseSddCheckResult, checkCompletion, checkR1Structure } from '../quality-gate.ts';
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -16,6 +16,27 @@ import {
 } from '../../../shared/sdd/group-receipt.ts';
 
 describe('parseSddCheckResult (R1, both outcomes)', () => {
+  it('a real nonzero checker exit wins over a zero-error stdout summary', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-r1-exit-'));
+    const bin = join(root, 'node_modules/.bin/gennady');
+    mkdirSync(dirname(bin), { recursive: true });
+    try {
+      writeFileSync(
+        bin,
+        '#!/usr/bin/env node\nconsole.log("[sdd-check] 0 error(s), 1 warning(s) across 1 file(s)");process.exit(2);\n'
+      );
+      chmodSync(bin, 0o755);
+      assert.equal((await checkR1Structure(root)).pass, false);
+      writeFileSync(
+        bin,
+        '#!/usr/bin/env node\nconsole.log("[sdd-check] 0 error(s), 1 warning(s) across 1 file(s)");\n'
+      );
+      assert.equal((await checkR1Structure(root)).pass, true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('PASS on a clean summary', () => {
     const r = parseSddCheckResult('[sdd-check] ✅ clean — 6 file(s) checked');
     assert.strictEqual(r.pass, true);

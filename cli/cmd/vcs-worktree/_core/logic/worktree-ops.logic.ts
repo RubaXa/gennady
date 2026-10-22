@@ -47,16 +47,31 @@ async function fetchRef(
   localRef: string,
   fetchFlags: string[] = []
 ): Promise<string> {
-  await git([
-    '-C',
-    clonePath,
-    '-c',
-    'core.hooksPath=/dev/null',
-    'fetch',
-    ...fetchFlags,
-    'origin',
-    `+${remoteRef}:${localRef}`,
-  ]);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await git([
+        '-C',
+        clonePath,
+        '-c',
+        'core.hooksPath=/dev/null',
+        'fetch',
+        ...fetchFlags,
+        'origin',
+        `+${remoteRef}:${localRef}`,
+      ]);
+      break;
+    } catch (cause) {
+      // Another process may briefly register a linked worktree before its HEAD is readable.
+      // Re-run Git's real connectivity check; never treat that diagnostic as a successful fetch.
+      if (
+        attempt >= 4 ||
+        !(cause instanceof Error) ||
+        !/^fatal: bad object worktrees\/[^/\s]+\/HEAD\r?$/m.test(cause.message)
+      )
+        throw cause;
+      await new Promise<void>((resume) => setTimeout(resume, 50 * 2 ** attempt));
+    }
+  }
   return git(['-C', clonePath, 'rev-parse', localRef]);
 }
 

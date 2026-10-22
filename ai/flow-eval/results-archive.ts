@@ -253,9 +253,20 @@ export async function appendExperimentLogStub(
 ): Promise<string | undefined> {
   if (!existsSync(logPath)) return undefined;
   const tokens = (summary.usage as { total?: unknown } | undefined)?.total;
+  const mechanical =
+    summary.outcome === 'budget-exhausted'
+      ? 'budget-exhausted'
+      : summary.status === 'interrupted' ||
+          summary.verdict === 'worker-error' ||
+          summary.quality?.pass === false ||
+          summary.trajectory?.pass === false
+        ? 'FAIL'
+        : summary.quality?.pass === true || summary.trajectory?.pass === true
+          ? 'PASS'
+          : 'unproven';
   const block = [
     '',
-    `## ${summary.date} — \`${summary.scenarioId}\` (${summary.verdict}/${summary.outcome})`,
+    `## ${summary.date} — \`${summary.scenarioId}\` (gate=${mechanical}; judge=${summary.verdict})`,
     '',
     `- **Модель:** ${summary.model.providerID}/${summary.model.modelID} / судья ` +
       `${summary.judgeModel.providerID}/${summary.judgeModel.modelID} — бюджет: ` +

@@ -20,6 +20,9 @@ export type SddEvalScenario = {
   scale?: 'product' | 'module' | 'function' | 'fix';
   /** @purpose Optional acceptance signal the judge can use when interpreting the diff. */
   acceptance?: string;
+  /** @purpose Exact scenario-owned spec targets for read-only pre-Approval-1 readiness.
+   * Never supplied by the evaluated worker; ordinary project integrity remains R1. */
+  authoringTargets?: string[];
   /** @purpose Optional declared execute target for the mechanical completion rule (R-COMPLETE). When
    *  present on an execute scenario, the quality gate reads these files from disk and fails the run if
    *  the artifact was built but the ticket did not reach a real DONE (closed round + group receipts).
@@ -98,6 +101,8 @@ export type SddEvalMode = (typeof SDD_EVAL_MODES)[number];
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =
+  | 'v2-brownfield-routing'
+  | 'deviation-verdict'
   | 'fibonacci-library'
   | 'tic-tac-toe'
   | 'slugify-toolchain'

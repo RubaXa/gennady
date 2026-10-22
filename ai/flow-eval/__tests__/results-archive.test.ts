@@ -325,6 +325,24 @@ describe('GAP-E-6: resolveGitSha', () => {
 });
 
 describe('GAP-E-6: appendExperimentLogStub (one append-only stub per run)', () => {
+  it('does not present judge pass as mechanical pass when a required checkpoint failed', async () => {
+    const root = tempDir();
+    const logPath = join(root, 'log.md');
+    writeFileSync(logPath, '# log\n');
+    try {
+      const block = await appendExperimentLogStub(
+        logPath,
+        fakeSummary({
+          trajectory: { rule: 'TRAJECTORY', pass: false, detail: 'checkpoint failed' },
+        }),
+        'ai/flow-eval/results/red'
+      );
+      assert.match(block!, /gate=FAIL; judge=pass/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('appends a stub block with mechanical numbers filled in and prose placeholders left blank', async () => {
     const root = tempDir();
     const logPath = join(root, 'EXPERIMENTS-LOG.md');
@@ -340,7 +358,7 @@ describe('GAP-E-6: appendExperimentLogStub (one append-only stub per run)', () =
         'ai/flow-eval/results/2026-09-08-x'
       );
       assert.ok(block);
-      assert.match(block!, /## 2026-09-08 — `fibonacci-library` \(pass\/pass\)/);
+      assert.match(block!, /## 2026-09-08 — `fibonacci-library` \(gate=PASS; judge=pass\)/);
       assert.match(block!, /действий=74/);
       assert.match(block!, /токены=191000/);
       assert.match(block!, /- \*\*Гипотеза\/зачем:\*\* _\(заполнить\)_/);

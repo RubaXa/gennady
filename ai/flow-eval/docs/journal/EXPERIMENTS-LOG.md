@@ -802,3 +802,11 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
   точные копии спек; разбор и корректирующие гипотезы — в ANALYSIS.md этой записи. Не выдавать
   help за verification; следующий qualified run — после отдельного clean-source commit.
 - **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-native-scope-authoring`
+
+## 2026-10-22 — `v2-native-scope-authoring` (gate=FAIL; judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash / судья llm-proxy/deepseek-v4-flash — бюджет: concurrency=1 max-observations=40
+- **Числа:** действий=74, время=~6 мин, токены=164831
+- **Гипотеза/зачем:** проверить исправленный module orientation на чистом `0576eb9c` и сохранить полную траекторию с двумя независимыми review.
+- **Итог:** механический FAIL, exit 1: 74 tool actions, обе спеки написаны; MAJOR о приоритете TypeError/RangeError исправлен, повторный reviewer CLEAN (проверен публичный SDK-ответ), Approval #1 pending. R1/сплошной checkpoint упали на двух неразрешённых владельцах служебных runner-ов исходной фикстуры. Также `--all` требует tickets до наступления decomposition. Это артефакт fixture/oracle, не доказанный полный PASS и не повод переписывать старую оценку. См. ANALYSIS.md; денежная стоимость неизвестна, cache-read учитывается отдельно.
+- **Сырые данные:** `ai/flow-eval/results/2026-10-22-v2-native-scope-authoring-2`

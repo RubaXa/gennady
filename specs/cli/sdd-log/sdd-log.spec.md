@@ -56,7 +56,7 @@ _Обзор пути от контракта к реализации и пров
 - `complete` требует `--phase P<N>`, typed payload с `artifacts` / `decisions` / `open` / `deviations`, receipt этой фазы и ровно один её skeleton в последнем Round
 - `authoring-complete` требует exact `*.spec.md` путь (не Task-ID), чистый `checkSpecAuthoringDraft` и записывает draft/final authoring receipt на саму спеку — `sdd-log` для тикетов и этот режим для спек делят одну команду, не парсер журнала
 - `audit-receipt`/`review-receipt` требуют single-line `<verdict>` (≤120 символов, без плейсхолдера) и группу, где каждый член резолвится и стоит `[x]` DONE; пишут group-completion receipt на владеющую спеку, не в `EXECUTION_LOG` тикета
-- `deviation-verdict <D-id> <accepted|rework|rolled-back>` переводит ровно одну существующую Decision Log запись из `pending-operator` в terminal verdict (повтор того же terminal — byte-no-op; другой terminal не переписывает историю); sidecar/новую запись не создаёт. Audit/review receipt фиксирует уже полученный реальный verdict до финального deviation review, а окончательное закрытие группы блокирует `sdd-check --all`, пока остаётся `SDD_DEVIATION_VERDICT_MISSING`.
+- `deviation-verdict <D-id> <accepted|rework|rolled-back>` переводит ровно одну существующую Decision Log запись из `pending-operator` в terminal verdict (повтор того же terminal — byte-no-op; другой terminal не переписывает историю); sidecar/новую запись не создаёт. Владельцы: ticket `DECISION_LOG`, module-spec `MODULE_DECISION_LOG`, canonical `specs/3-tasks.md` или `specs/<scope>/<module...>/<name>.3-tasks.md` с `## Decision Log (project task level|scope task level|module-task level)`. Audit/review receipt фиксирует уже полученный реальный verdict до финального deviation review, а окончательное закрытие группы блокирует `sdd-check --all`, пока остаётся `SDD_DEVIATION_VERDICT_MISSING`.
 - Round-номер авто-инкремент по числу `### Round N`
 - exit `0` записано · `1` файл · `2` нет секции / receipt / согласованного phase-state / group-receipt state · `4` плохой вызов / обязательный флаг / authoring state
 <!--/SECTION:MODULE_VISION-->
@@ -245,6 +245,17 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 - Invariants:
   - Receipt воспроизводим: тот же verdict/участники/git-ref дают тот же текст блока (upsert заменяет предыдущий receipt того же kind, не дублирует)
 
+### 4.6 Bounded Deviation Verdict
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+
+**Contract (DbC):**
+
+- Preconditions: one exact live repo-local artifact path (or existing ticket Task-ID), one canonical DL-ID, and one terminal verdict; one unambiguous owning log boundary and exactly one matching entry carrying exactly one verdict token. Legacy/evidence paths and unsafe aliases remain read-only.
+- Postconditions: only the selected entry's `[verdict: pending-operator]` token becomes the requested terminal token; newline style, adjacent entries, fenced examples and all other sections remain byte-identical. Same-terminal retry is a byte-no-op; any other terminal rewrite is refused.
+- Invariants: no generic document-wide token replacement; duplicate sections/headings, duplicate exact IDs (including an ordinary entry with that ID), duplicate verdict tokens, unknown IDs/verdicts and malformed boundaries fail before the identity-preserving write. Tasks-index headings stop at the next same-or-higher-level heading; arbitrary Markdown files do not gain heading-based write authority.
+
 </details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -265,7 +276,7 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 | `complete "<typed payload>" --phase P<N>`                           | mode   | Одной записью закрыть проверенную фазу                               |
 | `authoring-complete <spec.md>`                                      | mode   | Заменить draft-маркер спеки на final authoring receipt (см. 4.4)     |
 | `audit-receipt "<verdict>"` / `review-receipt "<verdict>"`          | mode   | Записать group-completion receipt на владеющую спеку (см. 4.5)       |
-| `deviation-verdict <D-id> <accepted\|rework\|rolled-back>`          | mode   | Править verdict существующей ticket-local DL-записи                  |
+| `deviation-verdict <D-id> <accepted\|rework\|rolled-back>`          | mode   | Exact ticket/module/tasks-index DL-запись (см. 4.6)                  |
 | `--content-file .claude/tmp/<name>`                                 | flag   | One-shot literal payload for round/line/phase/handoff/resolved       |
 | `--payload-file .claude/tmp/<name>.json`                            | flag   | Strict `{reason,axiom,unblock}` blocker payload                      |
 

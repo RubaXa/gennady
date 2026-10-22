@@ -19,6 +19,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { TEMPLATES } from '../../shared/sdd/templates.ts';
+import { fixtureToolchainSpec } from './fixture-toolchain-spec.ts';
+import { BROWNFIELD_ROUTING_FILES } from './fixtures/brownfield-routing.ts';
 import {
   bindEvalDependencies,
   prepareEvalDependencyStore,
@@ -27,6 +29,7 @@ import {
   type EvalDependencyStore,
 } from './dependency-store.ts';
 import type { SddEvalFixtureId, SddEvalScenario } from './types.ts';
+import { DEVIATION_VERDICT_FILES } from './fixtures/deviation-verdict.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -996,14 +999,21 @@ echo "PASS"
 
 /** @purpose Minimal prepared source trees used by the three cheap SDD eval scenarios. */
 export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
+  'v2-brownfield-routing': BROWNFIELD_ROUTING_FILES,
+  'deviation-verdict': DEVIATION_VERDICT_FILES,
   'fibonacci-library': {
     '.gitignore': REAL_GITIGNORE,
     'inputs/brief.md':
       '# Fibonacci brief\nProvide a reusable TypeScript `nth(n: number): number` API. Accept only integer indexes from 0 through 77, with F(0)=0 and F(1)=1. Reject negative, non-integer, and greater-than-77 inputs with explicit errors. Keep the API pure and document every edge case. Author specifications only; no product code.\n',
     'README.md': '# Fibonacci library\n\nImplement the requested API and tests.\n',
     'gennady.yaml': REAL_VERIFY_CONFIG,
-    'scripts/test.mjs': REAL_TEST_RUNNER,
-    'scripts/test-coverage.mjs': REAL_COVERAGE_RUNNER,
+    'scripts/test.mjs':
+      '// @file: Node fixture test runner.\n// @spec: ET\n// @consumers: npm test\n\n' +
+      REAL_TEST_RUNNER,
+    'scripts/test-coverage.mjs':
+      '// @file: c8 fixture coverage runner.\n// @spec: ET\n// @consumers: npm run test:coverage\n\n' +
+      REAL_COVERAGE_RUNNER,
+    'specs/eval-tools/eval-tools.spec.md': fixtureToolchainSpec(),
     'tsconfig.json': REAL_TS_CONFIG,
     'package.json':
       JSON.stringify(
@@ -1033,7 +1043,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
         2
       ) + '\n',
     'specs/README.md':
-      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n',
+      '# Fixture Project\n\n## Scopes\n\n| Scope | Type | Spec | Description |\n|---|---|---|---|\n| [`eval-tools`](./eval-tools/eval-tools.spec.md) | infrastructure | 🚧 | Recovered existing fixture runners; no product approval implied |\n',
   },
   'tic-tac-toe': {
     '.gitignore': REAL_GITIGNORE,

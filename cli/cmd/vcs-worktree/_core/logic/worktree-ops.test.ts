@@ -212,6 +212,52 @@ describe('prepareMrWorktree', () => {
     );
   }
 
+  it('retries only transient linked-worktree HEAD visibility and returns the dedicated fetched ref', async () => {
+    const transient = new Error(
+      'fatal: bad object worktrees/wt-4/HEAD\nerror: origin did not send all necessary objects'
+    );
+    gitResponses = {
+      'worktree-prune': [''],
+      'fetch-mr': [transient, transient, ''],
+      'rev-parse-fetch': ['owned-head'],
+      'worktree-add': [''],
+    };
+    const result = await prepareMrWorktree(cloneDir, iid, worktreeDir);
+    assert.equal(result.headSha, 'owned-head');
+    assert.equal(
+      mockExecFile.mock.calls.filter((call) => gitCmd(call.arguments[1] as string[]) === 'fetch-mr')
+        .length,
+      3
+    );
+  });
+
+  it('bounds retries of persistent linked-worktree corruption and never hides unrelated fetch failures', async () => {
+    const transient = new Error(
+      'fatal: bad object worktrees/wt-4/HEAD\nerror: origin did not send all necessary objects'
+    );
+    gitResponses = {
+      'worktree-prune': [''],
+      'fetch-mr': Array.from({ length: 5 }, () => transient),
+    };
+    await assert.rejects(prepareMrWorktree(cloneDir, iid, worktreeDir), /bad object worktrees/);
+    assert.equal(
+      mockExecFile.mock.calls.filter((call) => gitCmd(call.arguments[1] as string[]) === 'fetch-mr')
+        .length,
+      5
+    );
+    mockExecFile.mock.resetCalls();
+    gitResponses = {
+      'worktree-prune': [''],
+      'fetch-mr': [new Error('fatal: bad object refs/heads/main')],
+    };
+    await assert.rejects(prepareMrWorktree(cloneDir, iid, worktreeDir), /bad object refs/);
+    assert.equal(
+      mockExecFile.mock.calls.filter((call) => gitCmd(call.arguments[1] as string[]) === 'fetch-mr')
+        .length,
+      1
+    );
+  });
+
   it('reuses existing worktree via fetch + reset, updates mtime', async () => {
     mkdirSync(worktreeDir);
     gitResponses = {

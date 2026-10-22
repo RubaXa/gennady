@@ -51,7 +51,7 @@ export function printHelp(): void {
     '  npx gennady sdd-log <group> review-receipt <verdict>  # record the durable group-code-review fact on the owning spec'
   );
   console.info(
-    '  npx gennady sdd-log <ticket> deviation-verdict <D-id> <accepted|rework|rolled-back>  # resolve an existing Decision Log deviation'
+    '  npx gennady sdd-log <artifact> deviation-verdict <D-id> <accepted|rework|rolled-back>  # ticket, module spec, canonical tasks index'
   );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
@@ -93,7 +93,10 @@ export function printHelp(): void {
     '    forge-resistant SDD_AUDIT_RECEIPT / SDD_REVIEW_RECEIPT block on the owning spec. A reopen invalidates it.'
   );
   console.info(
-    '  - deviation-verdict edits exactly one existing ticket-local Decision Log token and never creates a sidecar.'
+    '  - deviation-verdict edits one exact ID in ticket DECISION_LOG, module MODULE_DECISION_LOG, or the canonical tasks-index Decision Log heading.'
+  );
+  console.info(
+    '    Duplicate sections/IDs/tokens are refused; fenced examples and other sections remain byte-identical. No sidecar or new entry is created.'
   );
   console.info(
     "  - complete requires this phase's CLI-owned sdd-verify receipt, the current-Round skeleton,"

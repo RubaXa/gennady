@@ -1,0 +1,22 @@
+[
+  {
+    "id": "v2-brownfield-routing",
+    "fixture": "v2-brownfield-routing",
+    "phase": "task",
+    "mode": "brief-to-artifact",
+    "intent": "Perform the bounded route smoke in inputs/brief.md against the existing Grunt tasks and internal documentation aliases. Inspect the real installed SDD commands; do not initialize or migrate the project.",
+    "acceptance": "Existing build files are preserved, both exact symbolic links exist, actual sdd-state says FLOW_VERSION=v2 and READINESS=not-ready, sdd-task succeeds, dry sync succeeds without writing a sync manifest. No migration, ticket or approval is invented.",
+    "budgetMs": 120000,
+    "checkpoints": [
+      {
+        "id": "real-route-and-preserved-build",
+        "cmd": "node --input-type=module -e 'import assert from \"node:assert/strict\"; import {readFileSync,readlinkSync,existsSync} from \"node:fs\"; import {execFileSync} from \"node:child_process\"; assert.equal(readlinkSync(\"CLAUDE.md\"),\"AGENTS.md\"); assert.equal(readlinkSync(\"README.md\"),\"docs\"); assert.equal(readFileSync(\"tasks/build.js\",\"utf8\"),\"export function build() { return \\\"build ready\\\"; }\\n\"); assert.equal(readFileSync(\"tasks/README.md\",\"utf8\"),\"# Build tasks\\nThese are JavaScript build tasks, not SDD tickets.\\n\"); const run=(...args)=>execFileSync(\"node_modules/.bin/gennady\",args,{encoding:\"utf8\",timeout:20000}); const state=run(\"sdd-state\",\".\"); assert.match(state,/FLOW_VERSION=v2/); assert.match(state,/READINESS=not-ready/); run(\"sdd-task\"); run(\"sync-skills\",\"--dry-run\"); assert.equal(existsSync(\"migration\"),false); assert.equal(existsSync(\".claude/skills/.gennady-synced\"),false);'"
+      }
+    ],
+    "trajectoryRules": {
+      "requiredCommands": ["sdd-state", "sdd-task", "sync-skills"],
+      "forbiddenCommands": ["sdd-migrate", "--no-verify"],
+      "maxTools": 32
+    }
+  }
+]

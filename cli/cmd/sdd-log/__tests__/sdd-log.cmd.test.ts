@@ -17,7 +17,9 @@ import {
 } from 'node:fs';
 import { isAbsolute, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import { runCli } from '../../../__tests__/tool-behavior/run-cli.ts';
+import { DEVIATION_VERDICT_FILES } from '../../../../ai/flow-eval/fixtures/deviation-verdict.ts';
 import { readScratchPayloadFile } from '../../../../shared/common/scratch-payload-file.ts';
 import { checkPhaseDependencies } from '../../../../shared/sdd/phase-dependencies.ts';
 import {
@@ -170,6 +172,147 @@ describe('SddLogCommand', () => {
     assert.match(next, /DEM-DL-1.*\[verdict: accepted\]/);
     assert.doesNotMatch(next, /pending-operator/);
     assert.equal(existsSync(join(dir, 'deviations.json')), false);
+  });
+
+  it('resolves module and all canonical tasks-index logs without touching adjacent sections', async () => {
+    const cases = [
+      [
+        'specs/demo/core/core.spec.md',
+        '<!--SECTION:MODULE_VISION-->\ncore\n<!--/SECTION:MODULE_VISION-->\n<!--SECTION:MODULE_DECISION_LOG-->',
+        '<!--/SECTION:MODULE_DECISION_LOG-->',
+      ],
+      ['specs/demo/core/core.3-tasks.md', '## Decision Log (module-task level)', '## Conventions'],
+      ['specs/demo/demo.3-tasks.md', '## Decision Log (scope task level)', '## Other'],
+      ['specs/3-tasks.md', '## Decision Log (project task level)', '## Other'],
+    ];
+    for (const [path, open, close] of cases) {
+      const target = join(dir, path!);
+      mkdirSync(join(target, '..'), { recursive: true });
+      const original = `${open}\r\nDEM-DL-1 choice [verdict: pending-operator]\r\nDEM-DL-10 other [verdict: pending-operator]\r\n${close}\r\nDEM-DL-1 outside [verdict: pending-operator]\r\n`;
+      writeFileSync(target, original);
+      const outcome = await mod.run(
+        argv(target, 'deviation-verdict', 'DEM-DL-1', 'accepted'),
+        CLOCK
+      );
+      assert.equal(outcome.ok, true, JSON.stringify(outcome));
+      const expected = original.replace(
+        'choice [verdict: pending-operator]',
+        'choice [verdict: accepted]'
+      );
+      assert.equal(readFileSync(target, 'utf8'), expected);
+      const retry = await mod.run(argv(target, 'deviation-verdict', 'DEM-DL-1', 'accepted'), CLOCK);
+      assert.equal(retry.ok, true);
+      const rewrite = await mod.run(
+        argv(target, 'deviation-verdict', 'DEM-DL-1', 'rolled-back'),
+        CLOCK
+      );
+      assert.equal(rewrite.ok, false);
+      assert.equal(readFileSync(target, 'utf8'), expected);
+    }
+  });
+
+  it('refuses duplicated module sections and noncanonical index paths without writes', async () => {
+    for (const [path, original] of [
+      [
+        'specs/demo/core/core.spec.md',
+        '<!--SECTION:MODULE_VISION-->\ncore\n<!--/SECTION:MODULE_VISION-->\n' +
+          '<!--SECTION:MODULE_DECISION_LOG-->\nDEM-DL-1 choice [verdict: pending-operator]\n<!--/SECTION:MODULE_DECISION_LOG-->\n'.repeat(
+            2
+          ),
+      ],
+      [
+        'notes.md',
+        '## Decision Log (module-task level)\nDEM-DL-1 choice [verdict: pending-operator]\n',
+      ],
+    ]) {
+      const target = join(dir, path!);
+      mkdirSync(join(target, '..'), { recursive: true });
+      writeFileSync(target, original!);
+      const outcome = await mod.run(
+        argv(target, 'deviation-verdict', 'DEM-DL-1', 'accepted'),
+        CLOCK
+      );
+      assert.equal(outcome.ok, false);
+      assert.equal(readFileSync(target, 'utf8'), original);
+    }
+  });
+
+  it('real CLI resolves an existing module verdict and rejects a missing exact ID without writes', () => {
+    const path = 'specs/runtime/core/core.spec.md';
+    const target = join(dir, path);
+    mkdirSync(join(target, '..'), { recursive: true });
+    const original =
+      '<!--SECTION:MODULE_VISION-->\ncore\n<!--/SECTION:MODULE_VISION-->\n<!--SECTION:MODULE_DECISION_LOG-->\nCOR-DL-1 choice [verdict: pending-operator]\n<!--/SECTION:MODULE_DECISION_LOG-->\n';
+    writeFileSync(target, original);
+    const result = runCli(['sdd-log', path, 'deviation-verdict', 'COR-DL-1', 'accepted'], dir);
+    assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+    const accepted = original.replace('[verdict: pending-operator]', '[verdict: accepted]');
+    assert.equal(readFileSync(target, 'utf8'), accepted);
+    const missing = runCli(['sdd-log', path, 'deviation-verdict', 'COR-DL-10', 'accepted'], dir);
+    assert.equal(missing.exitCode, 4);
+    assert.equal(readFileSync(target, 'utf8'), accepted);
+  });
+
+  it('the separate live fixture is mechanically RED before and GREEN after three actual CLI transitions', () => {
+    const root = mkdtempSync(join(tmpdir(), 'sdd-deviation-eval-'));
+    try {
+      for (const [path, bytes] of Object.entries(DEVIATION_VERDICT_FILES)) {
+        mkdirSync(join(root, path, '..'), { recursive: true });
+        writeFileSync(join(root, path), bytes);
+      }
+      const verify = () =>
+        spawnSync('bash', ['golden/verify.sh'], { cwd: root, encoding: 'utf8', timeout: 5000 });
+      const checkpointCommand = JSON.parse(
+        readFileSync(
+          new URL('../../../../ai/flow-eval/scenarios-v2-deviation-verdict.json', import.meta.url),
+          'utf8'
+        )
+      )[0].checkpoints[0].cmd as string;
+      const checkpoint = () =>
+        spawnSync('bash', ['-c', checkpointCommand], {
+          cwd: root,
+          encoding: 'utf8',
+          timeout: 5000,
+        });
+      assert.equal(
+        verify().status,
+        1,
+        'pending fixture must not satisfy terminal verdict acceptance'
+      );
+      for (const [path, id, verdict] of [
+        ['specs/demo/core/core.spec.md', 'COR-DL-1', 'accepted'],
+        ['specs/demo/core/core.3-tasks.md', 'COR-DL-2', 'rework'],
+        ['specs/demo/core/core.task.COR-review.md', 'COR-DL-3', 'rolled-back'],
+      ]) {
+        const result = runCli(['sdd-log', path!, 'deviation-verdict', id!, verdict!], root);
+        assert.equal(result.exitCode, 0, result.stdout + result.stderr);
+      }
+      const green = verify();
+      assert.equal(green.status, 0, green.stdout + green.stderr);
+      assert.equal(checkpoint().status, 0);
+      const target = join(root, 'specs/demo/core/core.3-tasks.md');
+      writeFileSync(
+        target,
+        readFileSync(target, 'utf8').replace('Never alter this section.', 'tampered')
+      );
+      assert.equal(verify().status, 1, 'golden must reject mutation of an unrelated section');
+      const expectedFile = join(root, 'golden/expected.json');
+      const forged = JSON.parse(readFileSync(expectedFile, 'utf8')) as Record<string, string>;
+      forged['specs/demo/core/core.3-tasks.md'] = readFileSync(target, 'utf8');
+      writeFileSync(expectedFile, JSON.stringify(forged));
+      assert.equal(
+        verify().status,
+        0,
+        'mutable golden alone could falsely accept the corrupt artifact'
+      );
+      assert.equal(
+        checkpoint().status,
+        1,
+        'source-bound checkpoint rejects rewritten golden evidence'
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('V14-2b refuses unknown verdicts and duplicate deviation ids without changing bytes', async () => {

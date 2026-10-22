@@ -19,7 +19,7 @@ import { SddEvalOpenCodeEvidenceSource } from './evidence.ts';
 import { parseOpenCodeModel, SddEvalOpenCodeRuntime } from './opencode-runtime.ts';
 import { provisionScenarioDirectories } from './provision.ts';
 import { resolveBasePrompt } from './prompts.ts';
-import { checkR1Structure, checkCompletion } from './quality-gate.ts';
+import { checkR1Structure, checkAuthoringReadiness, checkCompletion } from './quality-gate.ts';
 import {
   captureBaseline,
   runMigrationChecks,
@@ -190,6 +190,17 @@ export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   const scales = new Set(['product', 'module', 'function', 'fix']);
   for (const item of value as Array<Record<string, unknown>>) {
     const id = String(item.id ?? '<unknown>');
+    if (
+      item.authoringTargets !== undefined &&
+      (item.phase !== 'spec-authoring' ||
+        !Array.isArray(item.authoringTargets) ||
+        item.authoringTargets.length === 0 ||
+        item.authoringTargets.some(
+          (target) => typeof target !== 'string' || !target.endsWith('.spec.md')
+        ) ||
+        new Set(item.authoringTargets).size !== item.authoringTargets.length)
+    )
+      throw new Error(`scenario ${id} has invalid AUTHORING targets`);
     if (item.checkpoints !== undefined) {
       if (
         !Array.isArray(item.checkpoints) ||
@@ -454,7 +465,9 @@ export async function runAndReportBody(
       quality = { rule: 'MIGRATION', pass: g.pass, detail: g.detail };
       console.log(`  migration: ${g.pass ? 'PASS' : 'FAIL'} — ${g.detail}`);
     } else if (!interrupted && scenario && scenario.directory && producesSpecs) {
-      const r1 = await checkR1Structure(scenario.directory);
+      const r1 = scenario.authoringTargets
+        ? checkAuthoringReadiness(scenario.directory, scenario.authoringTargets)
+        : await checkR1Structure(scenario.directory);
       quality = { rule: r1.rule, pass: r1.pass, detail: r1.detail };
       console.log(`  quality ${r1.rule}: ${r1.pass ? 'pass' : 'FAIL'} — ${r1.detail}`);
     }

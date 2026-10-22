@@ -39,6 +39,7 @@ function responseText(value: unknown): string {
   return parts
     .map((part) => {
       if (!part || typeof part !== 'object') return '';
+      if ((part as { type?: unknown }).type !== 'text') return '';
       const text = (part as { text?: unknown }).text;
       return typeof text === 'string' ? text : '';
     })

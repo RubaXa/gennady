@@ -424,7 +424,18 @@ async function runCommand(
         'deviation-verdict requires exactly <D-id> <accepted|rework|rolled-back>'
       );
     }
-    const edited = setDeviationVerdict(content, deviationId, verdict as DeviationVerdict);
+    const path = resolved.identity.relative.split(sep).join('/');
+    const parts = path.split('/');
+    const index =
+      path === 'specs/3-tasks.md' ||
+      (parts[0] === 'specs' && parts.length >= 3 && parts.at(-1) === `${parts.at(-2)}.3-tasks.md`);
+    const module = path.endsWith('.spec.md') && content.includes('<!--SECTION:MODULE_VISION-->');
+    const edited = setDeviationVerdict(
+      content,
+      deviationId,
+      verdict as DeviationVerdict,
+      index ? 'tasks-index' : module ? 'module' : 'ticket'
+    );
     if (!edited.ok) return badInvocation(edited.detail);
     const written = writeProvenRepoFile(resolved.identity, edited.content);
     if (!written.ok) return fileError(displayPath);

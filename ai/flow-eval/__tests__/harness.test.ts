@@ -79,7 +79,7 @@ class FakeRuntime implements SddEvalRuntime {
   active = 0;
   peak = 0;
   aborts: string[] = [];
-  judgeResult = 'pass: diff satisfies intent';
+  judgeResult = 'VERDICT: pass\ndiff satisfies intent';
   async createSession() {
     return { id: `ses_${this.prompts.length + 1}` };
   }
