@@ -4,6 +4,7 @@
 
 import { SddEvalJudge } from './judge.ts';
 import { captureAuthoringJudgeEvidence } from './authoring-judge-evidence.ts';
+import { withEvalSignal } from './eval-signal.ts';
 import { SddEvalObserver } from './observer.ts';
 import { assertUniqueScenarioDirectories } from './provision.ts';
 import { composeSddPhasePrompt } from './prompts.ts';
@@ -218,7 +219,10 @@ export class SddEvalRunner {
       const events = finalObservation?.events ?? [];
       let usage: SddEvalWorkerResult['usage'];
       try {
-        usage = await this.#evidence.readUsage?.(session.id);
+        usage = await withEvalSignal(
+          () => this.#evidence.readUsage?.(session.id) ?? Promise.resolve(undefined),
+          AbortSignal.timeout(5000)
+        );
       } catch {
         // Usage is best-effort A/B telemetry; never fail a run because token totals could not be read.
       }
@@ -264,6 +268,17 @@ export class SddEvalRunner {
         },
         this.#config.signal
       );
+      if (judge?.sessionId) {
+        try {
+          const judgeSessionId = judge.sessionId;
+          judge.usage = await withEvalSignal(
+            () => this.#evidence.readUsage?.(judgeSessionId) ?? Promise.resolve(undefined),
+            AbortSignal.timeout(5000)
+          );
+        } catch {
+          /* separate telemetry remains unknown */
+        }
+      }
       return { worker, ...(judge ? { judge } : {}) };
     } catch (cause) {
       const failure =

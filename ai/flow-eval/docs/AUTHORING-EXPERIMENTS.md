@@ -108,6 +108,11 @@ time-of-day/provider/cache confounding; repeat noisy results and use held-out ca
 
 ## Evolution sequence (no combined mutation)
 
+The operator's updated criterion and symmetric first experiment are preregistered in
+[AUTHORING-EVOLUTION-PILOT.md](./AUTHORING-EVOLUTION-PILOT.md). Direction is not predetermined:
+compare template-rich, owner-rich and concise-both placements. Post-task self-reflection is captured
+after immutable primary evidence and checked against the trace, never treated as authoritative.
+
 | Variant        | One hypothesis                                                                                   | State              |
 | -------------- | ------------------------------------------------------------------------------------------------ | ------------------ |
 | baseline       | Current generated templates + current owner instructions                                         | repair/remeasure   |

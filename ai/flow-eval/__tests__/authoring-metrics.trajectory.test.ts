@@ -162,6 +162,14 @@ function observations(): AuthoringObservation[] {
       model: 'llm-proxy/deepseek-v4-flash',
       modelVerified: true,
       artifactPass: true,
+      semanticVerdict: 'pass',
+      prompt: {
+        schema: 'gennady.authoring-instruction-envelope.1',
+        bytes: variant === 'baseline' ? 1000 : 800,
+        approximateTokens: 100,
+        digest: (variant === 'baseline' ? 'e' : 'f').repeat(64),
+        parts: [],
+      },
       trajectoryPass: true,
       durationMs: variant === 'baseline' ? 3000 : 2000,
       nonCacheTokens: 100,
@@ -216,4 +224,30 @@ it('does not discard failed candidate observations to manufacture a speed win', 
   assert.deepEqual(result.regressions, ['scope-library']);
   assert.equal(result.recommendation, 'reject');
   assert.equal(result.cases[0]!.candidate.runs, 3);
+});
+it('rejects prompt reduction bought with more tools or lower semantic quality', () => {
+  for (const mutate of [
+    (row: AuthoringObservation) => {
+      row.metrics = { ...row.metrics, tools: row.metrics.tools + 1 };
+    },
+    (row: AuthoringObservation) => {
+      row.semanticVerdict = 'fail';
+    },
+    (row: AuthoringObservation) => {
+      row.semanticVerdict = 'inconclusive';
+    },
+  ]) {
+    const rows = observations();
+    mutate(rows[3]!);
+    assert.equal(compare(rows).recommendation, 'reject');
+  }
+  const unchanged = observations();
+  for (const row of unchanged) row.prompt!.bytes = 1000;
+  assert.equal(compare(unchanged).recommendation, 'no-prompt-reduction');
+  const larger = observations();
+  for (const row of larger.filter((row) => row.variant === 'candidate')) row.prompt!.bytes = 1100;
+  assert.equal(compare(larger).recommendation, 'reject');
+  const missing = observations();
+  delete missing[0]!.prompt;
+  assert.equal(compare(missing).comparable, false);
 });

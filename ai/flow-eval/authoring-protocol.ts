@@ -8,6 +8,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 import { getAuthoringCase, type AuthoringCaseId } from './authoring-benchmark.ts';
 import type { SddEvalConfig } from './types.ts';
+import { measureAuthoringPromptFootprint } from './authoring-prompt-footprint.ts';
 import { TEMPLATES, foldSections, loadBearingSections } from '../../shared/sdd/templates.ts';
 import {
   collectHeadings,
@@ -200,6 +201,7 @@ export async function authoringProtocolIdentity(
     'scripts/authoring-experiment.ts',
   ].map((name) => `ai/flow-eval/${name}`);
   return {
+    prompt: measureAuthoringPromptFootprint(root, caseId),
     taskDigest: hash({
       caseId,
       kind: definition.kind,

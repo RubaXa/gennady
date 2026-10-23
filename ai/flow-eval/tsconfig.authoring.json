@@ -6,6 +6,9 @@
     "authoring-metrics.ts",
     "authoring-protocol.ts",
     "authoring-judge-evidence.ts",
+    "authoring-prompt-footprint.ts",
+    "authoring-reflection.ts",
+    "eval-signal.ts",
     "scripts/authoring-experiment.ts"
   ],
   "exclude": ["**/*.test.ts", "**/__tests__/**"]

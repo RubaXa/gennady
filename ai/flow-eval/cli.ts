@@ -30,6 +30,7 @@ import {
   type AuthoringObservation,
 } from './authoring-metrics.ts';
 import { authoringProtocolIdentity, readAuthoringRuntimeVersion } from './authoring-protocol.ts';
+import { collectAuthoringReflection } from './authoring-reflection.ts';
 import { resolveBasePrompt } from './prompts.ts';
 import {
   checkR1Structure,
@@ -747,6 +748,9 @@ export async function runAndReportBody(
             ? lastObservation.at - firstObservation.at
             : undefined,
         usage: u,
+        ...(result.judge?.sessionId
+          ? { judgeUsage: { sessionId: result.judge.sessionId, usage: result.judge.usage } }
+          : {}),
         quality,
         trajectory: trajectoryGrade,
         hasJudge: Boolean(judgeFile),
@@ -793,6 +797,41 @@ export async function runAndReportBody(
           : {}),
       });
       if (resultDir) console.log(`  results → ${resultDir}`);
+      if (
+        benchmark &&
+        resultDir &&
+        trajectoryFile &&
+        result.worker.status === 'completed' &&
+        !interrupted &&
+        !budgetExhausted
+      ) {
+        try {
+          const reflection = await collectAuthoringReflection(runtime, evidence, {
+            sessionId: result.worker.sessionId,
+            directory,
+            trajectory: JSON.parse(await readFile(trajectoryFile, 'utf8')) as Trajectory,
+            quality,
+            semanticVerdict: verdict,
+            signal: options.config.signal,
+          });
+          await writeFile(
+            join(resultDir, 'reflection.json'),
+            JSON.stringify(reflection, null, 2) + '\n',
+            'utf8'
+          );
+          console.log(`  reflection: ${reflection.status} (separate from primary measurements)`);
+        } catch {
+          await writeFile(
+            join(resultDir, 'reflection.json'),
+            JSON.stringify({
+              status: 'capture-error',
+              authority: 'unknown; primary record unchanged',
+            }) + '\n',
+            'utf8'
+          );
+          console.log('  reflection: capture-error (primary record unchanged)');
+        }
+      }
       // GAP-E-6/D-62 (в): a stub entry per run, append-only — see the template documented at the
       // top of EXPERIMENTS-LOG.md. Best-effort: a missing/moved log file must never fail a real run.
       if (resultDir) {

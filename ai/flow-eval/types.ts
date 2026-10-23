@@ -323,6 +323,8 @@ export type SddEvalJudgeInput = {
 
 /** @purpose Structured judge outcome. */
 export type SddEvalJudgeResult = {
+  sessionId?: string;
+  usage?: SddEvalUsage;
   scenarioId: string;
   verdict: 'pass' | 'fail' | 'inconclusive';
   rationale: string;
@@ -331,7 +333,11 @@ export type SddEvalJudgeResult = {
 
 /** @purpose Provider-neutral SDK operations required by the harness. */
 export interface SddEvalRuntime {
-  createSession(input: { title: string; directory: string }): Promise<{ id: string }>;
+  createSession(input: {
+    title: string;
+    directory: string;
+    signal?: AbortSignal;
+  }): Promise<{ id: string }>;
   prompt(input: {
     sessionId: string;
     /** @purpose Exact sandbox cwd repeated on the worker prompt request. */
@@ -348,6 +354,10 @@ export interface SddEvalRuntime {
     prompt: string;
     model: OpenCodeModel;
     signal?: AbortSignal;
+    /** @purpose Post-measurement reflection may resume only its exact existing worker session. */
+    sessionId?: string;
+    readOnly?: boolean;
+    onSession?: (sessionId: string) => void;
   }): Promise<string>;
 }
 

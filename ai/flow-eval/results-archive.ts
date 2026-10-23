@@ -79,6 +79,8 @@ export type SddEvalDurableSummary = {
   /** @purpose Wall-clock span between the first and last observation, in ms; undefined with < 2. */
   durationMs?: number;
   usage?: unknown;
+  /** @purpose Separate judge session/counters; never silently folded into worker consumption. */
+  judgeUsage?: { sessionId: string; usage?: import('./types.ts').SddEvalUsage };
   quality?: { rule: string; pass: boolean; detail: string };
   trajectory?: { rule: string; pass: boolean; detail: string };
   hasJudge: boolean;

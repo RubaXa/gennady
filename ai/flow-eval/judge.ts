@@ -65,10 +65,12 @@ export function parseVerdict(text: string): SddEvalJudgeResult['verdict'] {
 export class SddEvalJudge {
   readonly #runtime: SddEvalRuntime;
   readonly #model: OpenCodeModel;
+  readonly #authoringTimeoutMs: number;
 
-  constructor(runtime: SddEvalRuntime, model: OpenCodeModel) {
+  constructor(runtime: SddEvalRuntime, model: OpenCodeModel, authoringTimeoutMs = 180000) {
     this.#runtime = runtime;
     this.#model = model;
+    this.#authoringTimeoutMs = authoringTimeoutMs;
   }
 
   async evaluate(
@@ -86,17 +88,36 @@ export class SddEvalJudge {
         model: this.#model,
       };
     }
-    const rationale = await this.#runtime.judge({
-      directory,
-      model: this.#model,
-      prompt: composeJudgePrompt(input),
-      signal,
-    });
+    const timeout = input.authoring ? AbortSignal.timeout(this.#authoringTimeoutMs) : undefined;
+    const boundedSignal = timeout
+      ? signal
+        ? AbortSignal.any([signal, timeout])
+        : timeout
+      : signal;
+    let sessionId: string | undefined;
+    let rationale: string;
+    try {
+      rationale = await this.#runtime.judge({
+        directory,
+        model: this.#model,
+        prompt: composeJudgePrompt(input),
+        signal: boundedSignal,
+        ...(input.authoring ? { readOnly: true } : {}),
+        onSession: (id) => {
+          sessionId = id;
+        },
+      });
+    } catch (cause) {
+      if (signal?.aborted || !timeout?.aborted) throw cause;
+      rationale =
+        'VERDICT: inconclusive\nAuthoring judge deadline exceeded; no semantic pass inferred.';
+    }
     return {
       scenarioId,
       verdict: parseVerdict(rationale),
       rationale,
       model: this.#model,
+      ...(sessionId ? { sessionId } : {}),
     };
   }
 }

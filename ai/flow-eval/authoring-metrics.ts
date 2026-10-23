@@ -224,6 +224,7 @@ export function measureAuthoringPath(
 
 /** @purpose One source-bound observation; missing provenance never qualifies for optimization claims. */
 export type AuthoringObservation = {
+  prompt?: import('./authoring-prompt-footprint.ts').AuthoringPromptFootprint;
   campaign: string;
   caseId: string;
   variant: string;
@@ -307,6 +308,29 @@ export function compareAuthoringExperiments(
         issues.push(`${caseId}: missing/duplicate repetition`);
     }
     const all = [...left, ...right];
+    for (const group of [left, right]) {
+      if (
+        group.some(
+          (record) =>
+            !record.prompt ||
+            record.prompt.schema !== 'gennady.authoring-instruction-envelope.1' ||
+            !Number.isSafeInteger(record.prompt.bytes) ||
+            record.prompt.bytes <= 0 ||
+            !Number.isSafeInteger(record.prompt.approximateTokens) ||
+            record.prompt.approximateTokens <= 0 ||
+            !/^[a-f0-9]{64}$/.test(record.prompt.digest)
+        ) ||
+        new Set(group.map((record) => record.prompt?.digest)).size !== 1 ||
+        new Set(group.map((record) => record.prompt?.bytes)).size !== 1
+      )
+        issues.push(`${caseId}: missing/invalid/mixed instruction footprint`);
+      if (
+        group.some(
+          (record) => !['pass', 'fail', 'inconclusive'].includes(record.semanticVerdict ?? '')
+        )
+      )
+        issues.push(`${caseId}: missing semantic assessment`);
+    }
     for (const field of [
       'taskDigest',
       'oracleDigest',
@@ -351,6 +375,10 @@ export function compareAuthoringExperiments(
         artifactPasses: group.filter((record) => record.artifactPass).length,
         semanticPasses: group.filter((record) => record.semanticVerdict === 'pass').length,
         trajectoryPasses: group.filter((record) => record.trajectoryPass).length,
+        promptBytes: group[0]?.prompt?.bytes ?? null,
+        approximatePromptTokens: group[0]?.prompt?.approximateTokens ?? null,
+        totalTools: group.reduce((sum, record) => sum + record.metrics.tools, 0),
+        maxTools: group.length ? Math.max(...group.map((record) => record.metrics.tools)) : null,
         medianTools: group.length ? median(group.map((record) => record.metrics.tools)) : null,
         medianDurationMs: usable.length ? median(usable.map((record) => record.durationMs!)) : null,
         durationRangeMs: usable.length
@@ -370,20 +398,40 @@ export function compareAuthoringExperiments(
     .filter(
       (row) =>
         row.candidate.artifactPasses < row.baseline.artifactPasses ||
-        row.candidate.trajectoryPasses < row.baseline.trajectoryPasses
+        row.candidate.semanticPasses < row.baseline.semanticPasses ||
+        row.candidate.trajectoryPasses < row.baseline.trajectoryPasses ||
+        row.candidate.totalTools > row.baseline.totalTools ||
+        (row.candidate.medianTools ?? Infinity) > (row.baseline.medianTools ?? Infinity) ||
+        (row.candidate.maxTools ?? Infinity) > (row.baseline.maxTools ?? Infinity) ||
+        (row.candidate.promptBytes ?? Infinity) > (row.baseline.promptBytes ?? Infinity)
     )
     .map((row) => row.caseId);
   return {
-    protocol: 'gennady.authoring-comparison.1',
+    protocol: 'gennady.authoring-comparison.2',
     comparable: issues.length === 0,
     issues: [...new Set(issues)],
     cases,
     regressions,
+    successCriteria:
+      'smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth',
+    promptShrank: cases.some(
+      (row) =>
+        row.candidate.promptBytes !== null &&
+        row.baseline.promptBytes !== null &&
+        row.candidate.promptBytes < row.baseline.promptBytes
+    ),
     recommendation: issues.length
       ? 'inconclusive'
       : regressions.length
         ? 'reject'
-        : 'review-measured-results',
+        : cases.some(
+              (row) =>
+                row.candidate.promptBytes !== null &&
+                row.baseline.promptBytes !== null &&
+                row.candidate.promptBytes < row.baseline.promptBytes
+            )
+          ? 'review-measured-results'
+          : 'no-prompt-reduction',
     inference:
       'descriptive only; no general speed/quality guarantee or statistical significance claim',
     monetaryCost: 'unknown',
