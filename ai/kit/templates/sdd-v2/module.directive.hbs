@@ -49,24 +49,25 @@
     <Step id="STEP_2_FILL">
       <Goal>Generate and write the complete module specification once.</Goal>
       <Action>
-        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before
-        writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
-        the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
-        writes are forbidden in authoring. Retain every SECTION marker and replace every
-        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a
-        closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,
-        file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats
-        only from the comments inside their owning sections, at the moment each section is filled.
-        Remove every instructional comment. The scope owns its requirement IDs. With no narrower
-        obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
+        Retain every SECTION marker. Replace every guidance/instructional comment with authored
+        content; remove all such comments before Write. Keep a closed inventory, one owner for
+        shared files/errors, public surfaces, per-operation DbC, file structure, and negative behavior.
+        The scope owns its requirement IDs. With no narrower obligation write
+        `No module-specific requirements. Implements parent requirements: <IDs>.`
         A disputed autonomous boundary choice is one module Decision Log line per
         `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
         Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a
         postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed
         `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings
-        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target —
-        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` for the list
-        format.
+        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` gives the list format.
+        `Edit`, `Patch`, and per-section writes are forbidden in authoring.
+
+        Read the on-disk skeleton once. Compose the COMPLETE module document in memory.
+        When filling an entity-inventory, entity-surface, or DbC section, read its format only
+        from the comments inside that owning section, at that moment.
+        Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`.
+        Replace the skeleton with exactly ONE whole-file `Write`.
       </Action>
     </Step>
 
