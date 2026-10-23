@@ -149,6 +149,10 @@ M0: all primary manifest files must exist in the Git index, not just the develop
 The review found30 ignored `cli.log` files. Their original hashes are retained; a campaign-scoped
 ignore exception and index-membership regression close that defect. A clean tracked-only checkout
 must also pass hash/replay checks without copying local raw files or reusing its parent Git index.
+That clean run exposed eight more ignored preflight logs in the earlier placement campaign; their
+original hashes also match. The index regression covers both frozen manifests, including these
+preflight files, and SHA-256-authenticates the actual staged blobs rather than only local bytes.
+Neither archive's manifest, raw grades nor report is rewritten to bypass missing data.
 
 M1: the raw15 awaiting-approval phrase is rejected by explicit `calibrated` and accepted only by
 the new `calibrated-v2`/future default. Focused regression replays the complete actual artifact with

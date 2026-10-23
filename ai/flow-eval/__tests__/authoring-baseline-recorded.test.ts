@@ -24,14 +24,30 @@ const manifest = load('primary-manifest.json') as {
 const hash = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const archivePrefix = relative(repository, fileURLToPath(root)).split('\\').join('/');
+const resultsPrefix = 'ai/flow-eval/results';
+const placementManifest = JSON.parse(
+  readFileSync(
+    new URL(
+      '../results/authoring-campaigns/template-placement-oct22/evidence-manifest.json',
+      import.meta.url
+    ),
+    'utf8'
+  )
+) as { files: Record<string, string> };
+const evidenceEntries = [
+  ...manifest.files.map((entry) => ({ ...entry, path: `${archivePrefix}/${entry.path}` })),
+  ...Object.entries(placementManifest.files).map(([path, sha256]) => ({
+    path: `${resultsPrefix}/${path}`,
+    sha256,
+  })),
+];
+const evidencePaths = evidenceEntries.map((entry) => entry.path);
 
-function missingPrimaryFiles(tracked: ReadonlySet<string>): string[] {
-  return manifest.files
-    .map((entry) => `${archivePrefix}/${entry.path}`)
-    .filter((path) => !tracked.has(path));
+function missingEvidenceFiles(tracked: ReadonlySet<string>): string[] {
+  return evidencePaths.filter((path) => !tracked.has(path));
 }
 
-it('requires every primary manifest file in the Git index, not merely the local ignored tree', () => {
+it('requires both frozen manifests in the Git index, not merely the local ignored tree', () => {
   const env = { ...process.env };
   for (const key of [
     'GIT_DIR',
@@ -42,34 +58,62 @@ it('requires every primary manifest file in the Git index, not merely the local 
     'GIT_ALTERNATE_OBJECT_DIRECTORIES',
   ])
     delete env[key];
-  const output = execFileSync('git', ['ls-files', '--stage', '-z', '--', archivePrefix], {
+  const output = execFileSync('git', ['ls-files', '--stage', '-z', '--', resultsPrefix], {
     cwd: repository,
     env,
     encoding: 'utf8',
     maxBuffer: 1024 * 1024,
   });
-  const tracked = new Set(
+  const tracked = new Map(
     output
       .split('\0')
       .filter(Boolean)
       .map((entry) => {
-        const match = /^[0-7]{6} [0-9a-f]{40,64} 0\t(.+)$/.exec(entry);
+        const match = /^100(?:644|755) ([0-9a-f]{40,64}) 0\t(.+)$/.exec(entry);
         assert.ok(match, 'Only resolved stage-0 primary files qualify');
-        return match[1]!;
+        return [match[2]!, match[1]!] as const;
       })
   );
   assert.deepEqual(
-    missingPrimaryFiles(tracked),
+    missingEvidenceFiles(new Set(tracked.keys())),
     [],
     'Manifest files must survive a clean checkout'
   );
+  // Authenticate INDEX bytes too: unchanged local files cannot hide a different staged blob.
+  const blobs = execFileSync('git', ['cat-file', '--batch'], {
+    cwd: repository,
+    env,
+    input: evidencePaths.map((path) => tracked.get(path)!).join('\n') + '\n',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  let cursor = 0;
+  for (const entry of evidenceEntries) {
+    const end = blobs.indexOf(10, cursor);
+    assert.ok(end >= cursor, `Missing Git blob header: ${entry.path}`);
+    const header = /^([0-9a-f]{40,64}) blob ([0-9]+)$/.exec(
+      blobs.subarray(cursor, end).toString('utf8')
+    );
+    assert.ok(header, `Invalid Git blob header: ${entry.path}`);
+    assert.equal(header[1], tracked.get(entry.path));
+    const size = Number(header[2]);
+    cursor = end + 1;
+    assert.ok(Number.isSafeInteger(size) && size >= 0 && cursor + size < blobs.length);
+    assert.equal(hash(blobs.subarray(cursor, cursor + size)), entry.sha256, entry.path);
+    cursor += size;
+    assert.equal(blobs[cursor++], 10, `Missing Git blob delimiter: ${entry.path}`);
+  }
+  assert.equal(cursor, blobs.length);
 });
 
-it('detects an omitted cli.log even when every other primary file is tracked', () => {
-  const tracked = new Set(manifest.files.map((entry) => `${archivePrefix}/${entry.path}`));
-  const omitted = `${archivePrefix}/raw/0/cli.log`;
-  assert.ok(tracked.delete(omitted));
-  assert.deepEqual(missingPrimaryFiles(tracked), [omitted]);
+it('detects an omitted log from either frozen campaign when all other evidence is tracked', () => {
+  for (const omitted of [
+    `${archivePrefix}/raw/0/cli.log`,
+    `${resultsPrefix}/authoring-campaigns/template-placement-oct22/evidence/preflight/gennady-authoring-gen2-commit.log`,
+  ]) {
+    const tracked = new Set(evidencePaths);
+    assert.ok(tracked.delete(omitted));
+    assert.deepEqual(missingEvidenceFiles(tracked), [omitted]);
+  }
 });
 
 it('hash-binds all primary records, frozen protocol, plan and collector without following external paths', () => {
