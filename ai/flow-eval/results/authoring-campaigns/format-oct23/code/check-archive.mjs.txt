@@ -1,0 +1,83 @@
+// From the archive root: node --input-type=module < code/check-archive.mjs.txt
+// No dependencies, original temporary paths, live server, model or Git checkout required.
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { join, resolve, relative, isAbsolute } from 'node:path';
+
+const root = fs.realpathSync(process.cwd());
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const bounded = path => {
+  const s = fs.lstatSync(path);
+  assert(s.isFile() && !s.isSymbolicLink() && s.size <= 8 * 1024 * 1024, 'Bounded regular file required');
+  return fs.readFileSync(path);
+};
+const json = path => JSON.parse(bounded(join(root, path)).toString('utf8'));
+const manifest = json('manifest.json');
+assert.equal(manifest.schema, 'gennady.authoring-campaign-archive.1');
+assert.equal(manifest.planned, 24);
+assert.equal(manifest.recordedPrimary, 4);
+assert.deepEqual(manifest.safeExportChecks.gitIgnoredArchiveFiles, []);
+assert(Array.isArray(manifest.files) && manifest.files.length > 0 && manifest.files.length <= 1000);
+const listed = [];
+let bytes = 0;
+for (const file of manifest.files) {
+  assert(typeof file.path === 'string' && !isAbsolute(file.path) && !file.path.split('/').includes('..'));
+  const path = resolve(root, file.path);
+  assert(relative(root, path) !== '' && path.startsWith(root + '/'));
+  const data = bounded(path);
+  assert.equal(data.length, file.bytes, file.path + ': byte count');
+  assert.equal(digest(data), file.sha256, file.path + ': SHA-256');
+  listed.push(file.path);
+  bytes += data.length;
+}
+const actual = [];
+function walk(dir) {
+  for (const name of fs.readdirSync(dir)) {
+    const path = join(dir, name), stat = fs.lstatSync(path);
+    assert(!stat.isSymbolicLink(), 'No archive symlinks');
+    if (stat.isDirectory()) walk(path);
+    else { assert(stat.isFile()); const rel = relative(root, path).split('\\').join('/'); if (rel !== 'manifest.json') actual.push(rel); }
+  }
+}
+walk(root);
+assert.deepEqual(actual.sort(), listed.sort(), 'Exhaustive inventory; no ignored/missing extra file');
+for (const mapping of json('original-byte-mappings.json')) {
+  const data = bounded(join(root, mapping.path));
+  assert.equal(digest(data), mapping.sha256, mapping.path + ': original-byte mapping');
+  assert.equal(data.length, mapping.bytes);
+}
+const raw = json('report-v1/raw-metrics.json');
+assert.equal(raw.planned, 24);
+assert.equal(raw.recordedPrimary, 4);
+assert.equal(raw.complete, false);
+assert.equal(raw.attempts.filter(r => !r.missing && r.status === 'completed').length, 3);
+assert.equal(raw.attempts.filter(r => !r.missing && r.status === 'interrupted').length, 1);
+assert.equal(raw.attempts.filter(r => r.missing).length, 20);
+assert(raw.attempts.filter(r => !r.missing).every(r => r.contractObservations.observedViolation));
+const baseline = raw.attempts.find(r => !r.missing && r.variant === 'baseline');
+assert.equal(baseline.judge.complete, true);
+assert.equal(baseline.judge.total, 0);
+assert.equal(baseline.usageQualification.judge.deadlineExceeded, true);
+assert.equal(baseline.usageQualification.judge.qualified, false);
+const judgeRow = raw.roleRows.find(r => r.arm === 'baseline' && r.caseId === 'module-flat' && r.role === 'judge');
+assert.equal(judgeRow.qualifiedUsage, 0);
+assert.equal(judgeRow.metrics.total.median, null);
+assert.equal(judgeRow.metrics.cost.median, null);
+const cleanup = json('cleanup-proof.json');
+assert.equal(cleanup.attempts.length, 4);
+assert.equal(cleanup.sessionDeletionAcknowledgements, 7);
+assert(cleanup.attempts.every(r => r.persistence && r.tempRemoved && r.caseDirectoryAbsent && r.cleanupErrors.length === 0 && r.sessionDeletionAcknowledgements.every(s => s.deleted && s.directoryAbsent)));
+assert(cleanup.journals.every(r => r.restored));
+assert.equal(cleanup.ownedServer.launcherPidPresent, false);
+assert.equal(cleanup.ownedServer.serverPidPresent, false);
+assert(cleanup.postRunOperationalCleanup.privateDirectories.every(r => r.absent));
+const replay = json('replay-proof.json');
+assert.equal(replay.commands.length, 13);
+assert(replay.allExpectedExits && replay.allProducedResultsByteEqual && replay.primaryInputBytesUnchanged && replay.temporaryReplayDirectoryRemoved);
+assert(json('report-v1/comparisons.json').every(r => !r.comparable && r.recommendation === 'inconclusive'));
+const preregistered = json('protocol/preregistered-protocol.json');
+assert.equal(digest(bounded(join(root, 'code/controller.mjs.txt'))), preregistered.controlProgram.sha256);
+assert.equal(digest(bounded(join(root, 'code/prepare-campaign.mts.txt'))), preregistered.controlProgram.preparationSha256);
+assert.equal(digest(bounded(join(root, 'protocol/config.json'))), preregistered.config.sha256);
+console.log(JSON.stringify({ pass: true, files: listed.length, bytes, expectedPartialCampaign: true, modelCalls: 0, temporaryDependencies: 0 }));

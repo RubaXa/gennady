@@ -1,0 +1,169 @@
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import {
+  AUTHORING_CASE_IDS,
+  CURRENT_AUTHORING_BENCHMARK_REVISION,
+  buildAuthoringFixture,
+  checkAuthoringBenchmark,
+  getAuthoringCase,
+  type AuthoringCaseId,
+} from './plan/ai/flow-eval/authoring-benchmark.ts';
+
+const ownRoot = '/private/tmp/gennady-format-oct23.xNC5Zx';
+const repository = join(ownRoot, 'plan');
+const campaign = join(repository, 'ai/flow-eval/results/authoring-campaigns/spec-trajectory-oct23');
+const output = join(ownRoot, 'calibrated-v3-replay.json');
+const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
+const readBounded = (path: string): Buffer => {
+  const stat = lstatSync(path);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 256 * 1024)
+    throw new Error(`Unsafe or oversized source: ${path}`);
+  return readFileSync(path);
+};
+const mappingPath = join(campaign, 'mapping.json');
+const mapping = JSON.parse(readBounded(mappingPath).toString('utf8')) as {
+  index: number;
+  scenarioId: string;
+  originalName: string;
+}[];
+if (mapping.length !== 30 || new Set(mapping.map((row) => row.index)).size !== 30)
+  throw new Error('Expected exactly 30 unique historical mappings');
+const sources: { campaign: string; attempt: string; caseId: AuthoringCaseId; root: string }[] =
+  mapping.map((row) => {
+    const caseId = AUTHORING_CASE_IDS.find((id) =>
+      new RegExp(`^authoring-spec-trajectory-oct23-${id}-baseline-r[123]$`).test(row.scenarioId)
+    );
+    if (!caseId || !Number.isInteger(row.index) || row.index < 0 || row.index >= 30)
+      throw new Error(`Invalid mapping: ${JSON.stringify(row)}`);
+    return {
+      campaign: 'spec-trajectory-oct23',
+      attempt: row.scenarioId,
+      caseId,
+      root: join(campaign, 'raw', String(row.index)),
+    };
+  });
+for (const arm of ['baseline', 'prose', 'pseudocode', 'observation']) {
+  const name = `2026-10-23-authoring-format-oct23-module-flat-${arm}-r1`;
+  sources.push({
+    campaign: 'format-oct23',
+    attempt: name,
+    caseId: 'module-flat',
+    root: join(ownRoot, 'permanent', name),
+  });
+}
+
+const scratch = mkdtempSync(join(ownRoot, 'oracle-replay-v3-'));
+const rows: unknown[] = [];
+let fixturesCreated = 0;
+let fixturesRemoved = 0;
+try {
+  for (const source of sources) {
+    const item = getAuthoringCase(source.caseId);
+    const artifactPath = join(source.root, item.target);
+    const artifact = readBounded(artifactPath);
+    const fixtureTruth = buildAuthoringFixture(source.caseId);
+    const savedReferences = Object.keys(fixtureTruth)
+      .filter((path) => existsSync(join(source.root, path)))
+      .map((path) => {
+        const bytes = readBounded(join(source.root, path));
+        return { path, bytes, sha256: sha(bytes), matchesCurrentFixture: sha(bytes) === sha(fixtureTruth[path]!) };
+      });
+    for (const mode of ['current-reference-fixture', 'available-saved-references'] as const) {
+      const fixture = mkdtempSync(join(scratch, 'fixture-'));
+      fixturesCreated++;
+      try {
+        const put = (path: string, bytes: string | Buffer) => {
+          const target = join(fixture, path);
+          mkdirSync(dirname(target), { recursive: true });
+          writeFileSync(target, bytes);
+        };
+        for (const [path, bytes] of Object.entries(fixtureTruth)) put(path, bytes);
+        if (mode === 'available-saved-references')
+          for (const reference of savedReferences) put(reference.path, reference.bytes);
+        put(item.target, artifact);
+        const v2 = checkAuthoringBenchmark(fixture, source.caseId, 'calibrated-v2');
+        const v3 = checkAuthoringBenchmark(fixture, source.caseId, 'calibrated-v3');
+        const differences = v2.checks.flatMap((before) => {
+          const after = v3.checks.find((row) => row.id === before.id);
+          if (!after) throw new Error(`Missing v3 check: ${before.id}`);
+          return JSON.stringify(before) === JSON.stringify(after) ? [] : [{ id: before.id, before, after }];
+        });
+        if (v2.checks.length !== v3.checks.length) throw new Error('Check inventory changed');
+        rows.push({
+          campaign: source.campaign,
+          attempt: source.attempt,
+          caseId: source.caseId,
+          mode,
+          artifactPath,
+          artifactSHA256: sha(artifact),
+          currentFixtureDigest: sha(JSON.stringify(fixtureTruth)),
+          availableSavedReferences: savedReferences.map(({ bytes, ...metadata }) => metadata),
+          missingSavedReferencePaths: Object.keys(fixtureTruth).filter((path) => !savedReferences.some((row) => row.path === path)),
+          v2,
+          v3,
+          differences,
+        });
+        if (sha(readBounded(artifactPath)) !== sha(artifact)) throw new Error('Source artifact drift');
+        if (sha(readBounded(join(fixture, item.target))) !== sha(artifact)) throw new Error('Oracle mutated target');
+        for (const reference of savedReferences)
+          if (sha(readBounded(join(source.root, reference.path))) !== reference.sha256)
+            throw new Error(`Saved reference changed: ${reference.path}`);
+      } finally {
+        if (realpathSync(fixture) !== fixture || !fixture.startsWith(scratch + '/fixture-'))
+          throw new Error(`Unsafe fixture cleanup: ${fixture}`);
+        rmSync(fixture, { recursive: true });
+        fixturesRemoved++;
+      }
+    }
+  }
+} finally {
+  if (realpathSync(scratch) !== scratch || !scratch.startsWith(ownRoot + '/oracle-replay-v3-'))
+    throw new Error('Unsafe scratch cleanup');
+  rmSync(scratch, { recursive: true });
+}
+
+const records = rows as { campaign: string; mode: string; attempt: string; differences: unknown[]; v2: { pass: boolean }; v3: { pass: boolean } }[];
+const summary = [...new Set(records.map((row) => `${row.campaign}/${row.mode}`))].map((key) => {
+  const selected = records.filter((row) => `${row.campaign}/${row.mode}` === key);
+  return {
+    key,
+    artifacts: selected.length,
+    v2Passed: selected.filter((row) => row.v2.pass).length,
+    v3Passed: selected.filter((row) => row.v3.pass).length,
+    changed: selected.filter((row) => row.differences.length).map((row) => ({ attempt: row.attempt, differences: row.differences })),
+  };
+});
+const report = {
+  schema: 'authoring-oracle-recalibration/v1',
+  purpose: 'Offline v2/v3 check-by-check comparison; not a replacement for original grades or a semantic-quality claim.',
+  historicalGradesReplaced: false,
+  liveModelCalls: 0,
+  sequential: true,
+  oracleDefault: CURRENT_AUTHORING_BENCHMARK_REVISION,
+  sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository, encoding: 'utf8' }).trim(),
+  oracleSHA256: sha(readBounded(join(repository, 'ai/flow-eval/authoring-benchmark.ts'))),
+  scriptSHA256: sha(readBounded(fileURLToPath(import.meta.url))),
+  mappingSHA256: sha(readBounded(mappingPath)),
+  method: {
+    currentReferenceFixture: 'Fresh current buildAuthoringFixture per case, unchanged complete saved target; isolates the oracle revision.',
+    availableSavedReferences: 'Same fixture, replacing only known seeded paths with unchanged saved bytes where available; absent saved seeds remain current and are enumerated. Historical fixture mismatches are not suppressed.',
+    limitations: 'Saved artifacts/available references only, not complete historical worktrees, process evidence or original scenario grades. Equal v2/v3 outcomes do not establish semantic correctness.',
+  },
+  cleanup: { fixturesCreated, fixturesRemoved, scratchRemoved: !existsSync(scratch) },
+  summary,
+  records: rows,
+};
+writeFileSync(output, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' });
+console.log(JSON.stringify({ output, sha256: sha(readBounded(output)), summary, cleanup: report.cleanup }, null, 2));

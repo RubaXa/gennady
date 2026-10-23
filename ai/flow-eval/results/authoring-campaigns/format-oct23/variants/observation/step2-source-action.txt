@@ -1,0 +1,23 @@
+
+        Retain every SECTION marker. Replace every guidance/instructional comment with authored
+        content; remove all such comments before Write. Keep a closed inventory, one owner for
+        shared files/errors, public surfaces, per-operation DbC, file structure, and negative behavior.
+        The scope owns its requirement IDs. With no narrower obligation write
+        `No module-specific requirements. Implements parent requirements: <IDs>.`
+        A disputed autonomous boundary choice is one module Decision Log line per
+        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
+        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a
+        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed
+        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings
+        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` gives the list format.
+        `Edit`, `Patch`, and per-section writes are forbidden in authoring.
+
+        Action → expected observation (notation, not shell):
+          Read on-disk skeleton once → skeleton.
+          Compose COMPLETE module in memory → full draft:
+            while filling entity-inventory, entity-surface, or DbC:
+              read format only from that owning section's comments, at that moment → section format.
+          Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK` → pre-write check done.
+          exactly ONE whole-file Write → skeleton replaced with the composed document.
+      

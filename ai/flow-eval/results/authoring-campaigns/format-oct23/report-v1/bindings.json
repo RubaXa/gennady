@@ -1,0 +1,83 @@
+{
+  "configSha256": "08f17bbd5b3b25b04436655609ca3720af9a4879c56c5dae69293987f5078730",
+  "protocolSha256": "0716b6e78faaf413dd3c352d7524e88c62a89e23ba195da4d015fdbedf0b6d63",
+  "preregistrationSha256": "ca9562c4822216e8f233109f45c01f2dd6253cca705ad58286a41be71f7911da",
+  "analysisProgramSha256": "a50cf45b835b0ac10156c64a3e56fd999928b428638df1576d7cf080f66c0131",
+  "analysisModuleRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+  "reusedModuleHashes": {
+    "authoring-baseline-report.ts": "a68f9948569799d38ef71272ad77741dbfe420115e6b071940dc1bb99ffddb27",
+    "authoring-benchmark.ts": "18a9765bf6aa300916b0b732c32cd0d4be6b8ea3e11bebb4030d01bbcb6c7f8f",
+    "authoring-metrics.ts": "e33e3dfee2c2add746f082291abe901aeb5697c98b81e3003fed9fddb750b6d2",
+    "authoring-trajectory-profile.ts": "4372f5012e89c7f0fb1e5ebc7369672fd406bf7e312b312075e1e0cc2d3eb7cf",
+    "authoring-call-audit.ts": "3a49cb933693914abbabc5e2b7253007568e7e4035b4d1ed7356ab665c63a12d",
+    "scripts/authoring-baseline-report.ts": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+    "scripts/authoring-call-audit.ts": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+    "scripts/authoring-experiment.ts": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52"
+  },
+  "replayInputs": {
+    "baseline.input.json": {
+      "sha256": "40ddf170644852a08467ea50db508f881fb7a2a5c7a1211fc2f242e40c382f06",
+      "bytes": 55180
+    },
+    "prose.input.json": {
+      "sha256": "7dd96d14c34b4c5f3dec3bdb24cfae51a76327c2f55764d38f3ae3abaa05f2f4",
+      "bytes": 67589
+    },
+    "pseudocode.input.json": {
+      "sha256": "8aae55b392b9e3fbbf4b7b45b61237a196fca42336d3eb649f02e8509b33d4e5",
+      "bytes": 57264
+    },
+    "observation.input.json": {
+      "sha256": "f1a3ba49521264c4ad27820c3e3c1e9cb43709bd23a6a70f5f0177496654ce5e",
+      "bytes": 55051
+    }
+  },
+  "bindings": [
+    {
+      "index": 1,
+      "scenarioId": "authoring-format-oct23-module-flat-baseline-r1",
+      "directory": "2026-10-23-authoring-format-oct23-module-flat-baseline-r1",
+      "controllerRecordSha256": "7a81288055cb147af7614d29b0e52cbd4a921d13aafd129819f6587fc250941d",
+      "summarySha256": "0b1fa000f60cda15a693873a88f58481ecfca57f01e8585bdf4563463a51cdd6",
+      "trajectorySha256": "59065f9ad13a9a456b8822d9aa606a3326e2a12c6536abb9f5b7faa902ee5eb3",
+      "reflectionSha256": "75586b7233b55f6b5647635b1fafae1159e9100756d07d117050cacb8ef79f01",
+      "judgeDiagnosticSha256": "84d59459999f1a022b21ae17b22a18168fe074874b23c561af792049cff3cbbd",
+      "judgeDeadlineObserved": true
+    },
+    {
+      "index": 0,
+      "scenarioId": "authoring-format-oct23-module-flat-prose-r1",
+      "directory": "2026-10-23-authoring-format-oct23-module-flat-prose-r1",
+      "controllerRecordSha256": "8f616bf25e386b441469e587a157a399d7ef061792d4da16fb524139653f0dee",
+      "summarySha256": "c28a8f93622289831710313f8c836a65e28dac36696ede9fd6a8c74a377455a0",
+      "trajectorySha256": "eddad2e2165de10cec83afacd8e289505c6bd8b91e49baff308f404ec67542fb",
+      "reflectionSha256": "822a59c6a6d15e7dd2a76ef6556456f14bb9a7bedbf65af6ce98aaa30d56e4da",
+      "judgeDiagnosticSha256": "a35f17b17e620e8fb68ea54971f583329c73e4d383ee88c5ccb71b894d2b77bc",
+      "judgeDeadlineObserved": false
+    },
+    {
+      "index": 2,
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r1",
+      "directory": "2026-10-23-authoring-format-oct23-module-flat-pseudocode-r1",
+      "controllerRecordSha256": "5a00f9ed74716ee509cb839a10c0c97069ae849c03fd06c0c9b32487a61d95c1",
+      "summarySha256": "b327f367312b57ae5a6f4f1d02c738d64fcd5995a15027adabfcdf431a9aee2e",
+      "trajectorySha256": "6be9722f9b4e296d07bb1088439a0469a200d3f3ecc95007813e778671060b30",
+      "reflectionSha256": "c627902a6065508af5c0fff19fa334d2d341a485317128daffb502cbd3d607e5",
+      "judgeDiagnosticSha256": "c711245cf9c02d402c4e985a82cd9b52fa7524c574faeef47ec8d3a9fc31842d",
+      "judgeDeadlineObserved": false
+    },
+    {
+      "index": 3,
+      "scenarioId": "authoring-format-oct23-module-flat-observation-r1",
+      "directory": "2026-10-23-authoring-format-oct23-module-flat-observation-r1",
+      "controllerRecordSha256": "d52ff5eb772064a294b0b4c1a3194f4bfa1bee8dda3454e079de47c036d6888f",
+      "summarySha256": "cdf8c8781733d80db5ed88d3d1beaf9d76272f83031489916c6bcb704407a01e",
+      "trajectorySha256": "7db7d99f36acda22815d23afb4d5407e018d86bb2df18cd2165e47c001e51f69",
+      "reflectionSha256": null,
+      "judgeDiagnosticSha256": null,
+      "judgeDeadlineObserved": false
+    }
+  ],
+  "sdkRequests": "unknown: controller did not retain per-request counters",
+  "monetaryCost": "unknown: provider-priced monetary estimate not established"
+}

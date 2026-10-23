@@ -21,9 +21,11 @@ import { delimiter, dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   AUTHORING_CASE_IDS,
+  CURRENT_AUTHORING_BENCHMARK_REVISION,
   buildAuthoringFixture,
   checkAuthoringBenchmark,
   getAuthoringCase,
+  type AuthoringBenchmarkRevision,
   type AuthoringCaseId,
 } from '../authoring-benchmark.ts';
 import {
@@ -61,13 +63,18 @@ function fixture(id: AuthoringCaseId, authored = true) {
 function expectRejected(
   id: AuthoringCaseId,
   mutate: (text: string) => string,
-  check?: string
+  check?: string,
+  revision?: AuthoringBenchmarkRevision
 ): void {
   const env = fixture(id);
   try {
-    assert.equal(checkAuthoringBenchmark(env.root, id).pass, true, 'positive before mutation');
+    assert.equal(
+      checkAuthoringBenchmark(env.root, id, revision).pass,
+      true,
+      'positive before mutation'
+    );
     put(env.root, env.item.target, mutate(positive(id)));
-    const result = checkAuthoringBenchmark(env.root, id);
+    const result = checkAuthoringBenchmark(env.root, id, revision);
     assert.equal(result.pass, false, JSON.stringify(result));
     if (check)
       assert.equal(result.checks.find((item) => item.id === check)?.pass, false, result.detail);
@@ -559,7 +566,8 @@ it('calibrated-v2: rejects negated awaiting forms and contradictory granted clai
           /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
           `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${handoff}\n<!--/SECTION:HANDOFF-->`
         ),
-      'pending-approval'
+      'pending-approval',
+      'calibrated-v2'
     );
 });
 
@@ -586,6 +594,123 @@ it('calibrated-v2: actual raw15 artifact is separately calibrated, never rewritt
     assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), artifact);
   } finally {
     env.cleanup();
+  }
+});
+
+it('calibrated-v3: accepts the recorded not-issued clause without regrading historical revisions', () => {
+  assert.equal(CURRENT_AUTHORING_BENCHMARK_REVISION, 'calibrated-v3');
+  for (const id of ['module-flat', 'module-nested'] as const) {
+    const env = fixture(id);
+    try {
+      const authored = positive(id).replace(
+        /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+        '<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n- **Open risks & validation needs:** Операторское одобрение не выдано; реализация не начата.\n<!--/SECTION:HANDOFF-->'
+      );
+      put(env.root, env.item.target, authored);
+      const current = checkAuthoringBenchmark(env.root, id);
+      assert.equal(current.pass, true, current.detail);
+      assert.deepEqual(checkAuthoringBenchmark(env.root, id, 'calibrated-v3'), current);
+      for (const revision of ['frozen-oct22', 'calibrated', 'calibrated-v2'] as const) {
+        const historical = checkAuthoringBenchmark(env.root, id, revision);
+        assert.equal(historical.checks.find((row) => row.id === 'pending-approval')?.pass, false);
+        // frozen-oct22 deliberately owns older seed bytes; compare other checks only for
+        // calibrations that share the current fixture, not across different fixture revisions.
+        if (revision !== 'frozen-oct22')
+          assert.deepEqual(
+            current.checks.filter((row) => row.id !== 'pending-approval'),
+            historical.checks.filter((row) => row.id !== 'pending-approval'),
+            revision
+          );
+      }
+      assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), authored, 'read-only');
+    } finally {
+      env.cleanup();
+    }
+  }
+});
+
+it('calibrated-v3: a not-issued disclaimer does not override explicit subsequent approval', () => {
+  for (const grant of [
+    'Оператор одобрил спецификацию.',
+    'Спецификация утверждена оператором.',
+    'Операторское одобрение выдано.',
+    'Одобрение оператора уже получено.',
+    '**Операторское одобрение:** выдано.',
+    '**Одобрение оператора:** получено.',
+    '**Статус:** одобрено.',
+    'Operator approval has been granted.',
+    'Approved by operator.',
+    '**Operator decision:** approved',
+    '[verdict: accepted]',
+    '✅',
+  ]) {
+    for (const separator of ['; ', '.\n- ']) {
+      expectRejected(
+        'module-flat',
+        (text) =>
+          text.replace(
+            /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+            `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\nОператорское одобрение не выдано${separator}${grant}\n<!--/SECTION:HANDOFF-->`
+          ),
+        'pending-approval'
+      );
+    }
+  }
+});
+
+it('calibrated-v3: replays the unchanged actual FORMAT1 baseline artifact with its field-prefix clause', () => {
+  const env = fixture('module-flat');
+  try {
+    const path = new URL(
+      '../results/authoring-campaigns/format-oct23/report-v1/permanent/2026-10-23-authoring-format-oct23-module-flat-baseline-r1/specs/token/normalize/normalize.spec.md',
+      import.meta.url
+    );
+    const artifact = readFileSync(path, 'utf8');
+    assert.equal(
+      createHash('sha256').update(artifact).digest('hex'),
+      '0f4ae617da0c0cd40f803594ac0f83e7642307562d5e97f49d37e122175d638a'
+    );
+    assert.match(
+      artifact,
+      /- \*\*Open risks & validation needs:\*\* Операторское одобрение не выдано; реализация не начата;/
+    );
+    put(env.root, env.item.target, artifact);
+    const historical = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v2');
+    assert.equal(historical.pass, false);
+    assert.equal(historical.checks.find((row) => row.id === 'pending-approval')?.pass, false);
+    const current = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v3');
+    assert.equal(current.pass, true, current.detail);
+    assert.deepEqual(
+      current.checks.filter((row) => row.id !== 'pending-approval'),
+      historical.checks.filter((row) => row.id !== 'pending-approval')
+    );
+    assert.equal(readFileSync(path, 'utf8'), artifact, 'raw model output is never rewritten');
+    assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), artifact, 'read-only');
+  } finally {
+    env.cleanup();
+  }
+});
+
+it('calibrated-v3: rejects incomplete, questioned or negated not-issued wording', () => {
+  for (const handoff of [
+    'Implementation may start.',
+    'No status specified.',
+    'Не выдано.',
+    'Операторское одобрение выдано.',
+    'Операторское одобрение не выдано ли?',
+    'Неверно, что операторское одобрение не выдано.',
+    'Операторское одобрение не выдано — работа разрешена.',
+    'pending-operator\nNot awaiting operator approval.',
+  ]) {
+    expectRejected(
+      'module-flat',
+      (text) =>
+        text.replace(
+          /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+          `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${handoff}\n<!--/SECTION:HANDOFF-->`
+        ),
+      'pending-approval'
+    );
   }
 });
 

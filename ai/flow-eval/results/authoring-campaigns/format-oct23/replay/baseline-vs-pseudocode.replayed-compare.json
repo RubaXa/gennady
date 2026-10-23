@@ -1,0 +1,92 @@
+{
+  "protocol": "gennady.authoring-comparison.2",
+  "comparable": false,
+  "issues": [
+    "module-flat: missing/duplicate repetition",
+    "module-nested: missing/duplicate repetition",
+    "module-nested: missing/invalid/mixed instruction footprint",
+    "module-nested: incomparable taskDigest",
+    "module-nested: incomparable oracleDigest",
+    "module-nested: incomparable harnessDigest",
+    "module-nested: incomparable environmentDigest",
+    "module-nested: mixed source revisions within variant"
+  ],
+  "cases": [
+    {
+      "caseId": "module-flat",
+      "baseline": {
+        "runs": 1,
+        "artifactPasses": 0,
+        "semanticPasses": 0,
+        "trajectoryPasses": 0,
+        "promptBytes": 43574,
+        "approximatePromptTokens": 8742,
+        "totalTools": 23,
+        "maxTools": 23,
+        "medianTools": 23,
+        "medianDurationMs": 83904,
+        "durationRangeMs": [
+          83904,
+          83904
+        ],
+        "medianNonCacheTokens": 49336
+      },
+      "candidate": {
+        "runs": 1,
+        "artifactPasses": 1,
+        "semanticPasses": 1,
+        "trajectoryPasses": 0,
+        "promptBytes": 43607,
+        "approximatePromptTokens": 8738,
+        "totalTools": 25,
+        "maxTools": 25,
+        "medianTools": 25,
+        "medianDurationMs": 91735,
+        "durationRangeMs": [
+          91735,
+          91735
+        ],
+        "medianNonCacheTokens": 50483
+      }
+    },
+    {
+      "caseId": "module-nested",
+      "baseline": {
+        "runs": 0,
+        "artifactPasses": 0,
+        "semanticPasses": 0,
+        "trajectoryPasses": 0,
+        "promptBytes": null,
+        "approximatePromptTokens": null,
+        "totalTools": 0,
+        "maxTools": null,
+        "medianTools": null,
+        "medianDurationMs": null,
+        "durationRangeMs": null,
+        "medianNonCacheTokens": null
+      },
+      "candidate": {
+        "runs": 0,
+        "artifactPasses": 0,
+        "semanticPasses": 0,
+        "trajectoryPasses": 0,
+        "promptBytes": null,
+        "approximatePromptTokens": null,
+        "totalTools": 0,
+        "maxTools": null,
+        "medianTools": null,
+        "medianDurationMs": null,
+        "durationRangeMs": null,
+        "medianNonCacheTokens": null
+      }
+    }
+  ],
+  "regressions": [
+    "module-flat"
+  ],
+  "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+  "promptShrank": false,
+  "recommendation": "inconclusive",
+  "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+  "monetaryCost": "unknown"
+}

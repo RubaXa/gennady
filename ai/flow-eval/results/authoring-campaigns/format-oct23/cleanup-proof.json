@@ -1,0 +1,164 @@
+{
+  "schema": "gennady.authoring-public-cleanup-proof.1",
+  "observedAt": "2026-10-23T20:27:17.763Z",
+  "evidenceBasis": "Original controller acknowledgements plus read-only local absence/permissions/PID checks; no post-shutdown SDK/session query",
+  "attempts": [
+    {
+      "index": 0,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e95a2dbd6ffehCxq2VNgaAzr2x",
+          "deleted": true,
+          "originalDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/0/sdd-flow-eval-RsnqB2",
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e95a0936dffefNr6nWXVYpWw1h",
+          "deleted": true,
+          "originalDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/0/sdd-flow-eval-RsnqB2",
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e959ff423ffeVFvN3rnedhHHj1",
+          "deleted": true,
+          "originalDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/1/sdd-flow-eval-n4xXQq",
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e959ea7b3ffeyjk9fTpKLv3X4L",
+          "deleted": true,
+          "originalDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/1/sdd-flow-eval-n4xXQq",
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e959bb5beffeDjdOnBLKXt61di",
+          "deleted": true,
+          "originalDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/2/sdd-flow-eval-4PFHFS",
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e959a4bbafferQsNENkdxdDYRX",
+          "deleted": true,
+          "originalDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/2/sdd-flow-eval-4PFHFS",
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e9599a35dffevLVCy6xOhxu8EM",
+          "deleted": true,
+          "originalDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/3/sdd-flow-eval-mru0gr",
+          "directoryAbsent": true
+        }
+      ]
+    }
+  ],
+  "sessionDeletionAcknowledgements": 7,
+  "journals": [
+    {
+      "path": "/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "expectedMode": 420,
+      "actualMode": 420,
+      "restored": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-oct23.xNC5Zx/prose/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "expectedMode": 420,
+      "actualMode": 420,
+      "restored": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "expectedMode": 420,
+      "actualMode": 420,
+      "restored": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-oct23.xNC5Zx/observation/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "expectedMode": 420,
+      "actualMode": 420,
+      "restored": true
+    }
+  ],
+  "ownedServer": {
+    "launcherPid": 80351,
+    "serverPid": 80802,
+    "launcherPidPresent": false,
+    "serverPidPresent": false
+  },
+  "postRunOperationalCleanup": {
+    "authority": "owner cleanup report plus local absence checks; not model evidence",
+    "approximateMiBReclaimedOwnerReported": 202,
+    "privateDirectories": [
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-config",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-npm-cache",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-tmp",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-data",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-cache",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-state",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-runtime",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-home",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-bun",
+        "absent": true
+      },
+      {
+        "path": "/private/tmp/gennady-format-oct23.xNC5Zx/server-bun-cache",
+        "absent": true
+      }
+    ]
+  }
+}

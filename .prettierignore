@@ -68,3 +68,16 @@ ai/flow-eval/results/authoring-campaigns/semantic-qualification-oct23/**/*.json
 
 # Generated 626-call research ledger; authoring-call-audit.test.ts checks exact regeneration.
 ai/flow-eval/docs/AUTHORING-CALL-AUDIT.md
+
+# Stopped FORMAT1 pilot: exact frozen inputs/raw outputs and generated replay projections.
+# authoring-format-recorded.test.ts verifies the exhaustive manifest and portable bindings;
+# REPORT.md remains authored, format-checked documentation.
+ai/flow-eval/results/authoring-campaigns/format-oct23/*.json
+ai/flow-eval/results/authoring-campaigns/format-oct23/protocol/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/records/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/controller-output/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/report-*/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/recalibration/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/replay/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/variants/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/code/**

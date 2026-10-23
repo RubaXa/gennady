@@ -1,0 +1,13 @@
+/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/scripts/authoring-call-audit.ts:18
+    throw new Error('[renderAuthoringCallAudit] Incomplete or unbound baseline');
+          ^
+
+
+Error: [renderAuthoringCallAudit] Incomplete or unbound baseline
+    at renderAuthoringCallAudit (/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/scripts/authoring-call-audit.ts:18:11)
+    at <anonymous> (/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/scripts/authoring-call-audit.ts:126:5)
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.19.0
