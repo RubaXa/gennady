@@ -1,12 +1,12 @@
 # Authoring: source map and one-variable hypotheses
 
 Status: offline source inspection at main `056870393ea2138a9470b7ef6188a01dc7885f81`.
-Every hypothesis below is **NOT TESTED**. This document changes neither production instructions
-nor the running frozen baseline. Follow the [analysis checklist](./11-ANALYSIS-CHECKLIST.md):
+Every optimization hypothesis below is **NOT TESTED**. This document changes neither production
+instructions nor the recorded baseline. Follow the [analysis checklist](./11-ANALYSIS-CHECKLIST.md):
 check fixture/oracle/collection defects before attributing an outcome to agent behavior.
 
 The new observational baseline contains all ten [authoring cases](./AUTHORING-EXPERIMENTS.md), three
-attempts each, captured under explicit `calibrated` at the source above. It is not a qualified A/B
+attempts each, captured under that source's frozen `calibrated` default. It is not a qualified A/B
 control for the subsequently changed `calibrated-v2` oracle. The earlier30 module attempts are
 rejected composite wording/placement arms (including adaptive acronym guidance), preserved in
 [their report](../results/authoring-campaigns/template-placement-oct22/REPORT.md). They are neither
@@ -59,6 +59,23 @@ semantic quality; each candidate still needs blinded artifact review and repeate
 | S1 / steps         | Move only the existing retry/content-hint paragraph before the declared ToolCall in scope owner's `STEP_3_CHECK`; keep its text, command, checker and module owner unchanged.                                                                              | Fewer unnecessary repeated checker invocations after earlier exposure to the existing rule; retain final receipt after autofix.                  | Earlier wording could suppress a required final check or distract from actual findings.                               | Same paragraph/ToolCall bytes and owner/activation bindings; clean/autofix/content-error workflow controls retain exit, findings, mutation bytes and required final receipt.                                                         | NOT TESTED |
 | B1 / tool batching | Add an opt-in creation receipt containing exact newly written skeleton bytes/path/hash together with the existing manifest. Default create semantics and all content guidance stay fixed. Candidate: `sdd-new` command/report builders.                    | Replace create→separate-target-read transport with one response; total tools/messages and complete-context size are measured, not assumed lower. | Stale/partial skeleton payload or unsafe path; a “batch” that omits the actual artifact facts.                        | Exact file bytes/hash/spec identity, create-no-overwrite and read-safety parity; capture the returned-read fact before final Write. Equivalent receipt must not require an extra literal Read solely to satisfy the old path oracle. | NOT TESTED |
 | B2 / tool batching | Change only transport of already selected independent reference reads into one bounded read-only multi-file receipt. Selection/content/owner workflow stay unchanged. Candidate: orientation/reference reader and existing repo-file identity guards.      | Fewer read calls/assistant messages for adjacent independent reads; record byte totals, dependencies and unknowns.                               | Hidden dependency between reads; truncation or external/symlink/hardlink exposure; a large bundle may increase input. | Same ordered selected paths, exact hashes/bytes/ranges and per-file failures as individual reads; cross-root/changed-identity/over-limit controls fail closed. No foreign context is added by default.                               | NOT TESTED |
+
+### Reviewer additions: scoped exploration, stop rules and demonstrations
+
+These four are post-baseline proposals, not tested outcomes or changes to the frozen run plan.
+[Primary-source checks and limits](./AUTHORING-RESEARCH-NOTES.md) motivate the experiments, not
+their expected effect size on Flash. `STOP1` names the stop-rule proposal without reusing a flow-version label.
+
+| ID / axis               | One switchable variable                                                                                                                                                                                                                                                   | Predicted measurement                                                                                   | Quality risk                                                                                                            | Deterministic prerequisite                                                                                                                                                                                                                                               | Status              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| E1 / exploration        | Add only an evidence-triggered expansion rule in the owning authoring step: after the unchanged mandatory inputs, read extra context for a concrete missing fact or conflict. Do not simultaneously change path lists, numeric budgets, tools, stop rule or model effort. | Fewer non-required exploration calls without more messages/context or missing dependencies.             | Early commitment on ambiguous tasks, suppressing required portal/parent/tooling reads.                                  | Same required facts/paths in both arms; missing/contradictory-input controls must trigger further reading or a truthful blocked outcome, never an invented default. Preserve library dependency and ambiguous-requirement negatives.                                     | NOT TESTED          |
+| STOP1 / verification    | Replace only open-ended recheck prose with a state-bound rule: applicable validation follows the final mutation; repeat after invalidation, not merely to increase confidence. Preserve legitimate transient environment/timeout retry policy.                            | Fewer redundant checks of the same effective input/environment state; final fresh check still observed. | Accepting stale success, missing check-induced autofix, forbidding necessary retry or hiding failure.                   | Mutation after green invalidates it; check/autofix-induced drift requires fresh proof. Environment recovery retries are retained as attempts. Failed, missing or inapplicable checks never become pass; portal/index never acquire a fictitious spec CLI.                | NOT TESTED          |
+| T2 / trajectory snippet | Add only a short case-kind-specific action/observable-state snippet to the owning step. It illustrates the existing workflow, not a completed answer or a new context/stop policy.                                                                                        | Less discovery and rule lookup; measured tokens can increase because snippets add bytes.                | Overfitting one artifact kind, teaching a nonexistent command, leaking benchmark answers or bypassing approval.         | Validate every referenced operation/state against current tools and each selected kind before live calls. For portal/index use the declared host artifact oracle, not an invented spec check. Whole-write, exact-target and pending-approval negatives remain unchanged. | NOT TESTED          |
+| S2 / self-bootstrap     | Add selected action/observation examples from an independently verified training pool; selection/format is the single experimental variable. Never extract private reasoning.                                                                                             | Better execution with less handcrafted guidance; no savings assumed.                                    | Copying invalid paths, fabricated approvals, leaking held-out answers or selecting only successful evaluation attempts. | Blocked until M3 provides genuine path proof and M2 independent semantic labels. Separate training/holdout task identities, retain all evaluation failures, inject no complete target answer. Does not require B1/B2 if path proof is obtained independently.            | BLOCKED; NOT TESTED |
+
+The review's combined E1 (new path list + budget + early-stop) is deliberately not one mutation.
+Numeric context caps would require a separate arm and an evidence-based escape hatch. The snippet
+arm does not add that policy implicitly. Necessary context is not waste just because it costs calls.
 
 ## Early r1 snapshot (retained; full snapshot follows)
 
@@ -128,6 +145,11 @@ Self-report cross-checks:
 
 ### Measurement prerequisites, not optimization hypotheses
 
+M0: all primary manifest files must exist in the Git index, not just the developer's working tree.
+The review found30 ignored `cli.log` files. Their original hashes are retained; a campaign-scoped
+ignore exception and index-membership regression close that defect. A clean tracked-only checkout
+must also pass hash/replay checks without copying local raw files or reusing its parent Git index.
+
 M1: the raw15 awaiting-approval phrase is rejected by explicit `calibrated` and accepted only by
 the new `calibrated-v2`/future default. Focused regression replays the complete actual artifact with
 its exact hash, plus negated-waiting and pending-plus-granted negatives; raw grades and the old
@@ -140,11 +162,35 @@ labelled grader controls before claims of semantic improvement. The observed inf
 not certify every requirement: its broad positive trigger also deserves a contradiction control.
 Do not silently turn these uncertainties into agent defects, fixed grades or successful hypotheses.
 
+M3: path-observation qualification precedes workflow-success or S2 claims. Define and version the
+facts proving creation, delivered context, whole-target write and applicable fresh validation.
+Positive controls must distinguish legal read-only operations from actual shell/partial mutations;
+negatives include the recorded Python rewrite, stale checks, outside-target writes, missing identity
+and opaque execution. An allowlisted command string or final file snapshot alone is not complete
+write provenance. Unknown remains unproven, never silently green. Use the same instrumentation,
+tool capability and oracle in both arms; keep all30 old path grades unchanged. Instrumentation is
+a prerequisite, not bundled with an optimization or necessarily with a new batched tool.
+
+M4: freeze a tool-role taxonomy before categorical A/B claims. Rule lookup, filesystem discovery
+and verification are useful analysis lenses, but a command can combine roles; `find ai` alone does
+not prove unnecessary implementation archaeology. The review's approximate Bash thirds are not
+independently reproduced counts. Retain unknown/mixed classifications and raw totals; classify
+by observed operations rather than tool names or inferred motive. Do not average away required
+portal reads, failed validation or retry after a real change.
+
 ## Measurement, prioritization and non-negotiable boundaries
 
-Prioritize I1/I2 as small, independently reviewable wording changes suggested by concrete lookups;
-then T1, A1 or S1 separately. B1/B2 need tool-contract equivalence tests before any optimization run.
+Close M0, qualify M2/M3/M4, then prioritize E1 → STOP1 → T2 as separate pilot arms; I1/I2 remain
+small independently reviewable alternatives motivated by concrete lookups. T1/A1/S1 follow
+separately. B1/B2 need tool-contract equivalence tests; S2 needs verified examples, not just more calls.
 This ordering is a research priority, not a declaration that any candidate works.
+
+Keep success rate and cost per compliant success primary; saved calls by role are explanatory.
+Accuracy loss per saved call is not monetary cost. With no proven successful paths, that success
+denominator is zero and the ratio is undefined, not evidence of efficiency. Ratios with no saved
+calls are also undefined. Report per-case quality, tool/message counts, bytes, token/cache counters
+and wall time; monetary/provider retry data stays unknown unless actually observed. Blind semantic
+review uses fixed independently labelled controls, not the worker's own confidence or selected best run.
 
 Freeze task/oracle/harness/model/config/acceptance and the selected population before each pair;
 change only the declared variable, retain every failed/incomplete attempt, and report per-case

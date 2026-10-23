@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, lstatSync, realpathSync } from 'node:fs';
 import { relative, isAbsolute } from 'node:path';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { it } from 'node:test';
 import { summarizeAuthoringBaseline } from '../authoring-baseline-report.ts';
 import {
@@ -20,6 +22,55 @@ const manifest = load('primary-manifest.json') as {
   files: Array<{ path: string; bytes: number; sha256: string }>;
 };
 const hash = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
+const repository = fileURLToPath(new URL('../../../', import.meta.url));
+const archivePrefix = relative(repository, fileURLToPath(root)).split('\\').join('/');
+
+function missingPrimaryFiles(tracked: ReadonlySet<string>): string[] {
+  return manifest.files
+    .map((entry) => `${archivePrefix}/${entry.path}`)
+    .filter((path) => !tracked.has(path));
+}
+
+it('requires every primary manifest file in the Git index, not merely the local ignored tree', () => {
+  const env = { ...process.env };
+  for (const key of [
+    'GIT_DIR',
+    'GIT_WORK_TREE',
+    'GIT_INDEX_FILE',
+    'GIT_OBJECT_DIRECTORY',
+    'GIT_COMMON_DIR',
+    'GIT_ALTERNATE_OBJECT_DIRECTORIES',
+  ])
+    delete env[key];
+  const output = execFileSync('git', ['ls-files', '--stage', '-z', '--', archivePrefix], {
+    cwd: repository,
+    env,
+    encoding: 'utf8',
+    maxBuffer: 1024 * 1024,
+  });
+  const tracked = new Set(
+    output
+      .split('\0')
+      .filter(Boolean)
+      .map((entry) => {
+        const match = /^[0-7]{6} [0-9a-f]{40,64} 0\t(.+)$/.exec(entry);
+        assert.ok(match, 'Only resolved stage-0 primary files qualify');
+        return match[1]!;
+      })
+  );
+  assert.deepEqual(
+    missingPrimaryFiles(tracked),
+    [],
+    'Manifest files must survive a clean checkout'
+  );
+});
+
+it('detects an omitted cli.log even when every other primary file is tracked', () => {
+  const tracked = new Set(manifest.files.map((entry) => `${archivePrefix}/${entry.path}`));
+  const omitted = `${archivePrefix}/raw/0/cli.log`;
+  assert.ok(tracked.delete(omitted));
+  assert.deepEqual(missingPrimaryFiles(tracked), [omitted]);
+});
 
 it('hash-binds all primary records, frozen protocol, plan and collector without following external paths', () => {
   const seen = new Set<string>();
