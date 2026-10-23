@@ -1,0 +1,8 @@
+{
+  "blindId": "B13",
+  "dispatchIndex": 12,
+  "startedAt": "2026-10-23T05:25:33.233Z",
+  "promptSha256": "af7ecd2bde3c12f54f27f34e12648aa6b6656a1afbec3e824ba4b3ca3fa31cd4",
+  "artifactSha256": "6d90df24507b1b669c7170d1529ac85c638113fb1d256334060d511e394404bc",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b"
+}

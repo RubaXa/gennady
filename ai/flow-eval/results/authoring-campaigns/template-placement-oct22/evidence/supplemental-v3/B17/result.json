@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B17",
+  "sessionId": "ses_e98c56f14ffeXDaEPGuKjTNJtu",
+  "startedAt": "2026-10-23T05:27:33.861Z",
+  "finishedAt": "2026-10-23T05:30:22.350Z",
+  "promptSha256": "0aa1978216e4d173e360c9a7d114b04b599a546fb137fef9b4e6a93ee9353938",
+  "artifactSha256": "dd9ca5a7ab7ff75c17ff119612425e99e4633d7a293d906b414726be917f88bc",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "inconclusive",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4783,
+    "output": 0,
+    "reasoning": 32000,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 36783,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 168438
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": ""
+}

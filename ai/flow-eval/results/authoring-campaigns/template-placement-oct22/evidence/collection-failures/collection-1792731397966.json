@@ -1,0 +1,135 @@
+{
+  "schema": "gennady.authoring-public-tool-collection.1",
+  "collectedAt": "2026-10-23T04:56:37.966Z",
+  "endpoint": "http://127.0.0.1:4110",
+  "campaign": "template-placement-oct22",
+  "collectorSha256": "4dbd2f0799024352a88f337c150efbb9018ae5a5eb14f6e3d249d0d7c9180f00",
+  "variants": [
+    "baseline",
+    "template-rich"
+  ],
+  "modelCalls": 0,
+  "primaryModified": false,
+  "results": [
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r1",
+      "reused": false,
+      "complete": true,
+      "calls": 4,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 750
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r2",
+      "reused": false,
+      "complete": true,
+      "calls": 5,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 1,
+      "diagnosticsBytes": 750
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r3",
+      "reused": false,
+      "complete": true,
+      "calls": 4,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 750
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r1",
+      "reused": false,
+      "complete": true,
+      "calls": 5,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 1,
+      "diagnosticsBytes": 750
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r2",
+      "reused": false,
+      "complete": true,
+      "calls": 2,
+      "writes": 1,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 43
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r3",
+      "reused": false,
+      "complete": true,
+      "calls": 4,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 750
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r1",
+      "reused": false,
+      "complete": true,
+      "calls": 4,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 768
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r2",
+      "reused": false,
+      "complete": true,
+      "calls": 4,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 768
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r3",
+      "reused": false,
+      "complete": true,
+      "calls": 4,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 768
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r1",
+      "reused": false,
+      "complete": true,
+      "calls": 5,
+      "writes": 3,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 768
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r2",
+      "reused": false,
+      "complete": true,
+      "calls": 6,
+      "writes": 3,
+      "missing": 0,
+      "opaque": 1,
+      "diagnosticsBytes": 768
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r3",
+      "reused": false,
+      "complete": true,
+      "calls": 4,
+      "writes": 2,
+      "missing": 0,
+      "opaque": 1,
+      "diagnosticsBytes": 725
+    }
+  ]
+}

@@ -60,7 +60,10 @@ repeat surprising observations before any broad claim.
 
 ## Reflection and causal evolution
 
-Persist the primary artifact, complete trace, verdicts, identity and counters BEFORE the interview.
+Persist the primary artifact, observed tool sequence/coverage, verdicts, identity and counters BEFORE
+the interview. The trace projects tool arguments: it is not a complete transcript of arbitrary Bash
+output or every Write body. Separately hash-bound public tool enrichment may capture allowlisted
+checker diagnostics and Write-content digests; never infer absent evidence from self-report.
 Then ask the SAME worker for short public factual notes: instruction path/anchor, observed tool-call
 ID, what helped, what was unclear/duplicated/missing and one change to test next. Do not request or
 export private reasoning. Tools are mechanically disabled using the verified server tool inventory.

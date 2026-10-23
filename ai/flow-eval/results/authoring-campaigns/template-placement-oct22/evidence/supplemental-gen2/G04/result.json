@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "G04",
+  "sessionId": "ses_e98b4a57dffe0Kux80iV0KpM2T",
+  "startedAt": "2026-10-23T05:45:54.032Z",
+  "finishedAt": "2026-10-23T05:47:04.668Z",
+  "promptSha256": "c3bc5dcf4381c9b22d68629d9ffd9c5ad3d64460e465a91961a81dae641361eb",
+  "artifactSha256": "83235a8cf05862929464c5fd0e7ed516a2041c023cdda86c68f7780b8a8c616f",
+  "frozenInputsSha256": "e847320f137e8021ad5a2e72eb468b887684d79c123922e343b9a077075d23f3",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4464,
+    "output": 146,
+    "reasoning": 11534,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 16144,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 70541
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\n\nThe module directly implements parent requirements TOK-REQ-1 and TOK-REQ-2, explicitly naming both IDs, and MODULE_REQUIREMENTS contains the required Input/Outcome table with `\"  Foo__BAR  \"` → `\"foo-bar\"` and `\"\"` → `TypeError`. The contracts correctly encode ASCII-only input, trimming, ASCII lowercasing, separator collapse, and TypeError rejection for empty, separator-only, and non-ASCII input without I/O. Parent and module links are consistent, the module-map responsibility is meaningful, and the handoff remains pending (`pending-operator`) with no approval, ticket, or execution claim."
+}

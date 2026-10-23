@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B10",
+  "sessionId": "ses_e98c7fa57ffeenDt0d7nU2F5A8",
+  "startedAt": "2026-10-23T05:24:47.133Z",
+  "finishedAt": "2026-10-23T05:27:31.985Z",
+  "promptSha256": "3c074e3233ae36b8e67cee5cf8e5051a5fff05ae0d0d100b3a2bb9dc0c8503ff",
+  "artifactSha256": "a50dda6b278c73b8401d4df1c64963dd2571fe62200455ef0be9c0b963cecfae",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4677,
+    "output": 170,
+    "reasoning": 31051,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 35898,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 164797
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\n\n`NOR-REQ-1`/`NOR-REQ-2` substantively refine `TOK-REQ-1`/`TOK-REQ-2`, and the `MODULE_REQUIREMENTS` table correctly encodes `\"  Foo__BAR  \"` → `\"foo-bar\"` and `\"\"` → `TypeError`, including separator-only and non-ASCII rejection without I/O. The artifact preserves the parent’s pure, stateless `normalizeToken` responsibility and pending-operator handoff without claiming implementation or approval. Minor non-blocking labeling: the “Consumers” fields name the implementation file as an internal consumer, and `Scope Reference (cross-scope): None` omits the parent’s authoring-only infra-base link."
+}

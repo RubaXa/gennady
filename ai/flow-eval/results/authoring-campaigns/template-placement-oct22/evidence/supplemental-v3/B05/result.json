@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B05",
+  "sessionId": "ses_e98ca898fffeqEHRyGqXhTQCyJ",
+  "startedAt": "2026-10-23T05:21:59.397Z",
+  "finishedAt": "2026-10-23T05:24:18.537Z",
+  "promptSha256": "bef90227b780faed2d7d939d7fefe1219dd2cf6e3f461e72370df420fcb1ff72",
+  "artifactSha256": "a32ff91640050805b8ca642f3dabc2a646935cc9e9084a0e9fff3b77b3f04827",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "fail",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4810,
+    "output": 113,
+    "reasoning": 23845,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 28768,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 139042
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: fail\n\n`NOR-REQ-1` mandates normalization for every non-empty ASCII string, which includes separator-only inputs such as `\"___\"`. `NOR-REQ-2` simultaneously requires those same inputs to throw `TypeError`, and the brief/contract explicitly require that rejection. The contract `Pre` excludes separator-only strings, but the normative requirement text does not, so the requirement section contradicts itself and the specified negative behavior. The API example, required table rows, parent link, and pending handoff otherwise align."
+}

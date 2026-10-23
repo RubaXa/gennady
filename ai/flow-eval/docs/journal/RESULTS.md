@@ -37,6 +37,36 @@ eval — это проверка: даём модели задачу и смот
 | `authoring-template-authoring-wall180-oct22-scope-interface-baseline-r1` | 1 | 26 | ~2 мин | ~56 000 | Не проходит (1/1) | pass (1/1) |
 | `authoring-template-authoring-wall180-oct22-scope-library-baseline-r1` | 1 | 20 | ~1 мин | ~44 000 | Не проходит (1/1) | pass (1/1) |
 | `authoring-template-authoring-wall180-oct22-scope-product-baseline-r1` | 1 | 24 | ~3 мин | ~78 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-flat-baseline-r1` | 1 | 25 | ~2 мин | ~57 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-baseline-r2` | 1 | 34 | ~2 мин | ~85 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-baseline-r3` | 1 | 24 | ~2 мин | ~51 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-concise-acronym-r1` | 1 | 29 | ~2 мин | ~65 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-concise-acronym-r2` | 1 | 26 | ~2 мин | ~55 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-flat-concise-acronym-r3` | 1 | 33 | ~2 мин | ~60 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-flat-concise-both-r1` | 1 | 20 | ~2 мин | ~51 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-concise-both-r2` | 1 | 29 | ~2 мин | ~59 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-flat-concise-both-r3` | 1 | 20 | ~2 мин | ~50 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-flat-owner-rich-r1` | 1 | 32 | ~2 мин | ~67 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-owner-rich-r2` | 1 | 31 | ~2 мин | ~61 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-flat-owner-rich-r3` | 1 | 22 | ~2 мин | ~47 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-template-rich-r1` | 1 | 30 | ~3 мин | ~75 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-template-rich-r2` | 1 | 27 | ~2 мин | ~66 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-flat-template-rich-r3` | 1 | 23 | ~2 мин | ~62 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-baseline-r1` | 1 | 21 | ~1 мин | ~52 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-baseline-r2` | 1 | 30 | ~3 мин | ~67 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-baseline-r3` | 1 | 17 | ~1 мин | ~36 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-concise-acronym-r1` | 1 | 23 | ~1 мин | ~49 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-concise-acronym-r2` | 1 | 26 | ~2 мин | ~49 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-concise-acronym-r3` | 1 | 21 | ~2 мин | ~49 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-nested-concise-both-r1` | 1 | 24 | ~1 мин | ~47 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-concise-both-r2` | 1 | 27 | ~2 мин | ~57 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-concise-both-r3` | 1 | 21 | ~2 мин | ~56 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-owner-rich-r1` | 1 | 29 | ~2 мин | ~63 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-owner-rich-r2` | 1 | 25 | ~2 мин | ~58 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-nested-owner-rich-r3` | 1 | 21 | ~2 мин | ~56 000 | Не проходит (1/1) | pass (1/1) |
+| `authoring-template-placement-oct22-module-nested-template-rich-r1` | 1 | 30 | ~2 мин | ~57 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-template-rich-r2` | 1 | 22 | ~2 мин | ~53 000 | Не проходит (1/1) | fail (0/1) |
+| `authoring-template-placement-oct22-module-nested-template-rich-r3` | 1 | 24 | ~2 мин | ~59 000 | Не проходит (1/1) | pass (1/1) |
 | `infra-log-summary` | 3 | 11 | ~2 мин | ~15 000 | нет мех. гейта (3) — см. golden/verify.sh вручную | pass (3/3) |
 | `slugify-toolchain` | 4 | 21 | ~5 мин | ~102 000 | Смешанно: pass 3, fail 1/4 | Смешанно: pass 1/4 |
 | `v2-bounded-deviation-verdict` | 2 | 13 | <1 мин | ~14 000 | Смешанно: pass 1, н/д 1/2 | Смешанно: pass 1/2 |

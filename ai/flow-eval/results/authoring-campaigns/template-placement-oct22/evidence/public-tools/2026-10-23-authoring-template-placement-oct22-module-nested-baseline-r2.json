@@ -1,0 +1,128 @@
+{
+  "schema": "gennady.authoring-public-tool-enrichment.1",
+  "collectedAt": "2026-10-23T05:16:13.463Z",
+  "authority": "public SDK tool-input/output projection only; not a full transcript or causal-effect proof",
+  "endpoint": "http://127.0.0.1:4110",
+  "collectorSha256": "e6e33765c712e408cce474557c81a09e48e6be361dc417a6bcb31db53c0bfecc",
+  "scenarioId": "authoring-template-placement-oct22-module-nested-baseline-r2",
+  "target": "specs/token/pipeline/normalize/normalize.spec.md",
+  "sourceCommit": "3fb6c935df5a7e78724ca992ecbe5ae5485c3350",
+  "primaryModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "measuredModel": "llm-proxy/deepseek-v4-flash",
+  "modelVerified": true,
+  "primaryDirty": false,
+  "taskDigest": "6738e533b3eda4483cd98a147bdff9d1aabebdf3f97fcbf913f35d3c565ed099",
+  "oracleDigest": "1f6f78585343354458b7c939977fb3f34c8b9e7f209987be0444d3a868b0668b",
+  "harnessDigest": "0e711842c00e340821b8da9010d46107d6ff65b3b695818aa27639d540710f67",
+  "summarySha256": "4340dc498a9f34eb36147b2b3c7948ca345806f4ed20ad3427e4f13ea699972e",
+  "trajectorySha256": "febe12452b86029f3acf73fe434c15a146c9fa66ec66c384df36300d9b27e7f1",
+  "archivedCoverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "sessions": [
+    {
+      "sessionId": "ses_e98fc892effe68UDYlJp9K63xX",
+      "title": "sdd-eval:authoring-template-placement-oct22-module-nested-baseline-r2",
+      "directory": "/private/tmp/gennady-authoring-placement-live.wP6OFw/sdd-flow-eval-7BtAKQ",
+      "sdkMessages": 27,
+      "limit": 2000
+    }
+  ],
+  "calls": [
+    {
+      "sessionId": "ses_e98fc892effe68UDYlJp9K63xX",
+      "callId": "call_00_fHCJIz6sTDANXPkhMzgl6256",
+      "tool": "write",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792729763360,
+      "finishedAt": 1792729763367,
+      "archivedStartedAt": 1792729763360,
+      "archivedFinishedAt": 1792729763367,
+      "complete": true,
+      "classification": "target-write-input",
+      "contentSha256": "c9a4952bdfc1615688bf1f3ed18108a6877caecef626308880193ae83c9f2d20",
+      "contentBytes": 12017,
+      "requirementIds": [
+        "NORM-REQ-1",
+        "NORM-REQ-2"
+      ]
+    },
+    {
+      "sessionId": "ses_e98fc892effe68UDYlJp9K63xX",
+      "callId": "call_00_r4dxyu6PcWOvykz64E074222",
+      "tool": "bash",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792729766030,
+      "finishedAt": 1792729766038,
+      "archivedStartedAt": 1792729766030,
+      "archivedFinishedAt": 1792729766038,
+      "complete": true,
+      "classification": "direct",
+      "diagnosticEligible": true,
+      "command": "npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring",
+      "exit": 0,
+      "outputSha256": "a24455f5c5770201ca3e4a9ba78331464057408bc49550a4a32ee9a965539bbc",
+      "outputBytes": 963,
+      "diagnosticCodes": [
+        "SDD_REQ_ACRONYM_MISMATCH"
+      ],
+      "diagnosticExcerpt": "specs/token/pipeline/normalize/normalize.spec.md: warn: SDD_REQ_ACRONYM_MISMATCH  Draft hint: Requirement-ID \"NORM-REQ-1\" использует акроним \"NORM\", а акроним этой спеки — \"NOR\" (выведен из имени файла спеки, contract AX_REQ_DL_ID_GRAMMAR) — используй `NOR-REQ-1`.\nspecs/token/pipeline/normalize/normalize.spec.md: warn: SDD_REQ_ACRONYM_MISMATCH  Draft hint: Requirement-ID \"NORM-REQ-2\" использует акроним \"NORM\", а акроним этой спеки — \"NOR\" (выведен из имени файла спеки, contract AX_REQ_DL_ID_GRAMMAR) — используй `NOR-REQ-2`.\n[sdd-check] 0 error(s), 2 warning(s) across 1 file(s)",
+      "diagnosticExcerptBytes": 725,
+      "diagnosticTruncated": false
+    },
+    {
+      "sessionId": "ses_e98fc892effe68UDYlJp9K63xX",
+      "callId": "call_00_WiEI8rEwLSa7f7mHJNFv7848",
+      "tool": "write",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792729777791,
+      "finishedAt": 1792729777799,
+      "archivedStartedAt": 1792729777791,
+      "archivedFinishedAt": 1792729777799,
+      "complete": true,
+      "classification": "target-write-input",
+      "contentSha256": "e078241ea7538a70be5142898197990ff9582ed6a156ba7c0ef32c1a7ba6d3e3",
+      "contentBytes": 12012,
+      "requirementIds": [
+        "NOR-REQ-1",
+        "NOR-REQ-2"
+      ]
+    },
+    {
+      "sessionId": "ses_e98fc892effe68UDYlJp9K63xX",
+      "callId": "call_00_ET_A9xL1VMaV0RhNaPeAXcM9577",
+      "tool": "bash",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792729781051,
+      "finishedAt": 1792729781074,
+      "archivedStartedAt": 1792729781051,
+      "archivedFinishedAt": 1792729781074,
+      "complete": true,
+      "classification": "direct",
+      "diagnosticEligible": true,
+      "command": "npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring",
+      "exit": 0,
+      "outputSha256": "3c42030406ef0780876370107dda07584351052f393ef47aa3c648802aa8abf3",
+      "outputBytes": 130,
+      "diagnosticCodes": [],
+      "diagnosticExcerpt": "[sdd-check] ✅ clean — 1 file(s) checked",
+      "diagnosticExcerptBytes": 43,
+      "diagnosticTruncated": false
+    }
+  ],
+  "missing": [],
+  "diagnosticBudgetBytes": 1024,
+  "modelCalls": 0,
+  "originalResultsModified": false,
+  "diagnosticBytes": 768,
+  "complete": true
+}

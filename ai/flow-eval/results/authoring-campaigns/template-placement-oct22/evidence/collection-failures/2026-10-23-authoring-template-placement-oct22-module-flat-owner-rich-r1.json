@@ -1,0 +1,56 @@
+{
+  "schema": "gennady.authoring-public-tool-enrichment.1",
+  "collectedAt": "2026-10-23T05:15:33.005Z",
+  "authority": "public SDK tool-input/output projection only; not a full transcript or causal-effect proof",
+  "endpoint": "http://127.0.0.1:4110",
+  "collectorSha256": "4dbd2f0799024352a88f337c150efbb9018ae5a5eb14f6e3d249d0d7c9180f00",
+  "scenarioId": "authoring-template-placement-oct22-module-flat-owner-rich-r1",
+  "target": "specs/token/normalize/normalize.spec.md",
+  "sourceCommit": "5b08b801a2adbe5f73b7361120eb170f9611b313",
+  "primaryModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "measuredModel": "llm-proxy/deepseek-v4-flash",
+  "modelVerified": true,
+  "primaryDirty": false,
+  "taskDigest": "1d2118dbd766c96ad8c29760531c59428bb915882e87ee280b2935646ff15ae7",
+  "oracleDigest": "1f6f78585343354458b7c939977fb3f34c8b9e7f209987be0444d3a868b0668b",
+  "harnessDigest": "0e711842c00e340821b8da9010d46107d6ff65b3b695818aa27639d540710f67",
+  "summarySha256": "cd2c5c524bb073c72ca7e0c9353c142a2a194b397a850800e8874a19d80985b0",
+  "trajectorySha256": "5753c6e3690f33cba17e7e9795aaa4866cfc1ed1d606bb911b267acae117169b",
+  "archivedCoverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "sessions": [],
+  "calls": [],
+  "missing": [
+    {
+      "sessionId": "ses_e98d3d0a2ffeIoj7xW3mlSt0yU",
+      "callId": "call_00_x2tW5MjRabFmMiLV4iEL0031",
+      "reason": "SDK session binding or public evidence unavailable"
+    },
+    {
+      "sessionId": "ses_e98d3d0a2ffeIoj7xW3mlSt0yU",
+      "callId": "call_00_xyIAPw3zoiobDEPXUX8P6961",
+      "reason": "SDK session binding or public evidence unavailable"
+    },
+    {
+      "sessionId": "ses_e98d3d0a2ffeIoj7xW3mlSt0yU",
+      "callId": "call_00_DABM1CNqIG9IzlDoyEQr4874",
+      "reason": "SDK session binding or public evidence unavailable"
+    },
+    {
+      "sessionId": "ses_e98d3d0a2ffeIoj7xW3mlSt0yU",
+      "callId": "call_00_ET_u9IDXqpanW1XfacpsX797989",
+      "reason": "SDK session binding or public evidence unavailable"
+    }
+  ],
+  "diagnosticBudgetBytes": 1024,
+  "modelCalls": 0,
+  "originalResultsModified": false,
+  "diagnosticBytes": 0,
+  "complete": false
+}

@@ -994,3 +994,303 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
 - **Гипотеза/зачем:** Диагностика authoring до изменения production templates/directives; не утверждение об улучшении.
 - **Итог:** Observer-censored cohort: ранний 30s idle cutoff; не baseline и не доказательство зависания. См. repaired REPORT.
 - **Сырые данные:** `ai/flow-eval/results/2026-10-22-authoring-template-authoring-repaired-oct22-scope-interface-baseline-r1`
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-baseline-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`3fb6c935df5a7e78724ca992ecbe5ae5485c3350`.
+- **Числа:** tool calls=25; whole Writes=2; partial Writes=0; worker=101.961s; non-cache tokens=57345.
+- **Гипотеза/зачем:** Замороженный контроль до переноса инструкций.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Контроль, не оптимизация.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-baseline-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`3fb6c935df5a7e78724ca992ecbe5ae5485c3350`.
+- **Числа:** tool calls=21; whole Writes=2; partial Writes=0; worker=79.653s; non-cache tokens=51879.
+- **Гипотеза/зачем:** Замороженный контроль до переноса инструкций.
+- **Итог:** bounded artifact=RED; path=UNPROVEN; primary semantics=inconclusive. Контроль, не оптимизация.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-baseline-r2` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`3fb6c935df5a7e78724ca992ecbe5ae5485c3350`.
+- **Числа:** tool calls=34; whole Writes=2; partial Writes=0; worker=132.076s; non-cache tokens=85419.
+- **Гипотеза/зачем:** Замороженный контроль до переноса инструкций.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Контроль, не оптимизация.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-baseline-r2` (gate=FAIL; primary judge=fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`3fb6c935df5a7e78724ca992ecbe5ae5485c3350`.
+- **Числа:** tool calls=30; whole Writes=2; partial Writes=0; worker=155.836s; non-cache tokens=66544.
+- **Гипотеза/зачем:** Замороженный контроль до переноса инструкций.
+- **Итог:** bounded artifact=RED; path=UNPROVEN; primary semantics=fail. Контроль, не оптимизация.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-baseline-r3` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`3fb6c935df5a7e78724ca992ecbe5ae5485c3350`.
+- **Числа:** tool calls=24; whole Writes=2; partial Writes=0; worker=107.726s; non-cache tokens=51395.
+- **Гипотеза/зачем:** Замороженный контроль до переноса инструкций.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Контроль, не оптимизация.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-baseline-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-baseline-r3` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`3fb6c935df5a7e78724ca992ecbe5ae5485c3350`.
+- **Числа:** tool calls=17; whole Writes=2; partial Writes=0; worker=79.657s; non-cache tokens=36023.
+- **Гипотеза/зачем:** Замороженный контроль до переноса инструкций.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Контроль, не оптимизация.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-baseline-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-concise-acronym-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`adf42274df08e89355c781994317e20658d9c487`.
+- **Числа:** tool calls=29; whole Writes=1; partial Writes=0; worker=110.911s; non-cache tokens=64964.
+- **Гипотеза/зачем:** Второе поколение: одна общая подсказка об acronym из имени файла поверх concise-both.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-concise-acronym-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`adf42274df08e89355c781994317e20658d9c487`.
+- **Числа:** tool calls=23; whole Writes=1; partial Writes=0; worker=80.726s; non-cache tokens=48889.
+- **Гипотеза/зачем:** Второе поколение: одна общая подсказка об acronym из имени файла поверх concise-both.
+- **Итог:** bounded artifact=RED; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-concise-acronym-r2` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`adf42274df08e89355c781994317e20658d9c487`.
+- **Числа:** tool calls=26; whole Writes=1; partial Writes=0; worker=124.023s; non-cache tokens=54816.
+- **Гипотеза/зачем:** Второе поколение: одна общая подсказка об acronym из имени файла поверх concise-both.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-concise-acronym-r2` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`adf42274df08e89355c781994317e20658d9c487`.
+- **Числа:** tool calls=26; whole Writes=1; partial Writes=0; worker=90.489s; non-cache tokens=48915.
+- **Гипотеза/зачем:** Второе поколение: одна общая подсказка об acronym из имени файла поверх concise-both.
+- **Итог:** bounded artifact=RED; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-concise-acronym-r3` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`adf42274df08e89355c781994317e20658d9c487`.
+- **Числа:** tool calls=33; whole Writes=1; partial Writes=0; worker=112.830s; non-cache tokens=59524.
+- **Гипотеза/зачем:** Второе поколение: одна общая подсказка об acronym из имени файла поверх concise-both.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-concise-acronym-r3` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`adf42274df08e89355c781994317e20658d9c487`.
+- **Числа:** tool calls=21; whole Writes=1; partial Writes=0; worker=94.234s; non-cache tokens=48860.
+- **Гипотеза/зачем:** Второе поколение: одна общая подсказка об acronym из имени файла поверх concise-both.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-concise-both-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`9073686e628e1409173ebd8bb83bae196dd60476`.
+- **Числа:** tool calls=20; whole Writes=3; partial Writes=0; worker=104.492s; non-cache tokens=51255.
+- **Гипотеза/зачем:** Короткие подсказки в шаблоне и директиве без повторных развёрнутых рецептов.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-concise-both-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`9073686e628e1409173ebd8bb83bae196dd60476`.
+- **Числа:** tool calls=24; whole Writes=1; partial Writes=1; worker=67.832s; non-cache tokens=46627.
+- **Гипотеза/зачем:** Короткие подсказки в шаблоне и директиве без повторных развёрнутых рецептов.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-concise-both-r2` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`9073686e628e1409173ebd8bb83bae196dd60476`.
+- **Числа:** tool calls=29; whole Writes=2; partial Writes=0; worker=110.839s; non-cache tokens=59275.
+- **Гипотеза/зачем:** Короткие подсказки в шаблоне и директиве без повторных развёрнутых рецептов.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-concise-both-r2` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`9073686e628e1409173ebd8bb83bae196dd60476`.
+- **Числа:** tool calls=27; whole Writes=2; partial Writes=0; worker=110.002s; non-cache tokens=56600.
+- **Гипотеза/зачем:** Короткие подсказки в шаблоне и директиве без повторных развёрнутых рецептов.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-concise-both-r3` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`9073686e628e1409173ebd8bb83bae196dd60476`.
+- **Числа:** tool calls=20; whole Writes=2; partial Writes=0; worker=104.769s; non-cache tokens=49797.
+- **Гипотеза/зачем:** Короткие подсказки в шаблоне и директиве без повторных развёрнутых рецептов.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-concise-both-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-concise-both-r3` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`9073686e628e1409173ebd8bb83bae196dd60476`.
+- **Числа:** tool calls=21; whole Writes=2; partial Writes=0; worker=115.208s; non-cache tokens=56396.
+- **Гипотеза/зачем:** Короткие подсказки в шаблоне и директиве без повторных развёрнутых рецептов.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-concise-both-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-owner-rich-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`5b08b801a2adbe5f73b7361120eb170f9611b313`.
+- **Числа:** tool calls=32; whole Writes=2; partial Writes=0; worker=143.037s; non-cache tokens=67303.
+- **Гипотеза/зачем:** Концентрированный рецепт в директиве-владельце вместо секционных подсказок.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-owner-rich-r1` (gate=FAIL; primary judge=fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`5b08b801a2adbe5f73b7361120eb170f9611b313`.
+- **Числа:** tool calls=29; whole Writes=2; partial Writes=0; worker=129.395s; non-cache tokens=62749.
+- **Гипотеза/зачем:** Концентрированный рецепт в директиве-владельце вместо секционных подсказок.
+- **Итог:** bounded artifact=RED; path=UNPROVEN; primary semantics=fail. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-owner-rich-r2` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`5b08b801a2adbe5f73b7361120eb170f9611b313`.
+- **Числа:** tool calls=31; whole Writes=2; partial Writes=0; worker=132.930s; non-cache tokens=61275.
+- **Гипотеза/зачем:** Концентрированный рецепт в директиве-владельце вместо секционных подсказок.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-owner-rich-r2` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`5b08b801a2adbe5f73b7361120eb170f9611b313`.
+- **Числа:** tool calls=25; whole Writes=2; partial Writes=0; worker=102.505s; non-cache tokens=58499.
+- **Гипотеза/зачем:** Концентрированный рецепт в директиве-владельце вместо секционных подсказок.
+- **Итог:** bounded artifact=RED; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-owner-rich-r3` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`5b08b801a2adbe5f73b7361120eb170f9611b313`.
+- **Числа:** tool calls=22; whole Writes=1; partial Writes=0; worker=92.124s; non-cache tokens=47359.
+- **Гипотеза/зачем:** Концентрированный рецепт в директиве-владельце вместо секционных подсказок.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-owner-rich-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-owner-rich-r3` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`5b08b801a2adbe5f73b7361120eb170f9611b313`.
+- **Числа:** tool calls=21; whole Writes=1; partial Writes=0; worker=106.305s; non-cache tokens=56052.
+- **Гипотеза/зачем:** Концентрированный рецепт в директиве-владельце вместо секционных подсказок.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-owner-rich-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-template-rich-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`236666fff0306b326a2ad2fedac96ca40a7941e8`.
+- **Числа:** tool calls=30; whole Writes=2; partial Writes=0; worker=176.221s; non-cache tokens=75011.
+- **Гипотеза/зачем:** Перенос содержательного рецепта в секции шаблона; сокращение дублирования.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-template-rich-r1` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`236666fff0306b326a2ad2fedac96ca40a7941e8`.
+- **Числа:** tool calls=30; whole Writes=3; partial Writes=0; worker=120.284s; non-cache tokens=56595.
+- **Гипотеза/зачем:** Перенос содержательного рецепта в секции шаблона; сокращение дублирования.
+- **Итог:** bounded artifact=RED; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r1/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r1/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r1/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-template-rich-r2` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`236666fff0306b326a2ad2fedac96ca40a7941e8`.
+- **Числа:** tool calls=27; whole Writes=1; partial Writes=0; worker=104.899s; non-cache tokens=65508.
+- **Гипотеза/зачем:** Перенос содержательного рецепта в секции шаблона; сокращение дублирования.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-template-rich-r2` (gate=FAIL; primary judge=inconclusive)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`236666fff0306b326a2ad2fedac96ca40a7941e8`.
+- **Числа:** tool calls=22; whole Writes=3; partial Writes=0; worker=117.247s; non-cache tokens=52971.
+- **Гипотеза/зачем:** Перенос содержательного рецепта в секции шаблона; сокращение дублирования.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=inconclusive. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r2/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r2/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r2/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-flat-template-rich-r3` (gate=FAIL; primary judge=fail)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`236666fff0306b326a2ad2fedac96ca40a7941e8`.
+- **Числа:** tool calls=23; whole Writes=2; partial Writes=0; worker=99.899s; non-cache tokens=62318.
+- **Гипотеза/зачем:** Перенос содержательного рецепта в секции шаблона; сокращение дублирования.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=fail. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-flat-template-rich-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — `authoring-template-placement-oct22-module-nested-template-rich-r3` (gate=FAIL; primary judge=pass)
+
+- **Модель:** llm-proxy/deepseek-v4-flash; actual model verified=true; clean source=`236666fff0306b326a2ad2fedac96ca40a7941e8`.
+- **Числа:** tool calls=24; whole Writes=2; partial Writes=0; worker=118.524s; non-cache tokens=58939.
+- **Гипотеза/зачем:** Перенос содержательного рецепта в секции шаблона; сокращение дублирования.
+- **Итог:** bounded artifact=PASS; path=UNPROVEN; primary semantics=pass. Вариант отклонён по неизменному per-case порогу числа вызовов инструментов.
+- **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
+- **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r3/reflection.json).
+- **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).

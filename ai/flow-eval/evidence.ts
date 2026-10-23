@@ -510,12 +510,13 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
           query: { directory, limit: CHILD_TAIL_LIMIT },
         });
         if (messages.error || !messages.data) throw new Error(errorMessage(messages));
-        return boundedMessageEntries(messages.data, child.id, child.title ?? child.id);
+        return boundedMessageEntries(messages.data, child.id, child.title ?? child.id, directory);
       })
     );
-    const entries = [...boundedMessageEntries(result.data, sessionId), ...childEntries.flat()].sort(
-      (left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0)
-    );
+    const entries = [
+      ...boundedMessageEntries(result.data, sessionId, undefined, directory),
+      ...childEntries.flat(),
+    ].sort((left, right) => (left.createdAt ?? 0) - (right.createdAt ?? 0));
     return entries.slice(-Math.max(1, limit)).map((entry) => ({
       ...entry,
       fingerprint: fingerprintTail([entry]),

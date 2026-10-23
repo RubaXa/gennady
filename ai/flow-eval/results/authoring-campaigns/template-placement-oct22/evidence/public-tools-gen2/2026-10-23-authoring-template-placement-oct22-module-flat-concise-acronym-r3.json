@@ -1,0 +1,85 @@
+{
+  "schema": "gennady.authoring-public-tool-enrichment.1",
+  "collectedAt": "2026-10-23T05:44:37.409Z",
+  "authority": "public SDK tool-input/output projection only; not a full transcript or causal-effect proof",
+  "endpoint": "http://127.0.0.1:4110",
+  "collectorSha256": "10a8bea2ee68d37f3a9fcbc315cd4697d7c05bed510e267d3470864a90f74e74",
+  "scenarioId": "authoring-template-placement-oct22-module-flat-concise-acronym-r3",
+  "target": "specs/token/normalize/normalize.spec.md",
+  "sourceCommit": "adf42274df08e89355c781994317e20658d9c487",
+  "primaryModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "measuredModel": "llm-proxy/deepseek-v4-flash",
+  "modelVerified": true,
+  "primaryDirty": false,
+  "taskDigest": "1d2118dbd766c96ad8c29760531c59428bb915882e87ee280b2935646ff15ae7",
+  "oracleDigest": "1f6f78585343354458b7c939977fb3f34c8b9e7f209987be0444d3a868b0668b",
+  "harnessDigest": "0e711842c00e340821b8da9010d46107d6ff65b3b695818aa27639d540710f67",
+  "summarySha256": "c2284a92c8a59b92a183a8fda2bf74e95562659e2f9e6d0c1600c6b1332dd177",
+  "trajectorySha256": "3b9c34d3f03402bc258270060eb888a82d7a2cda14340346222d7d234229a70a",
+  "archivedCoverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "sessions": [
+    {
+      "sessionId": "ses_e98bafa43ffeIUSnjAAkiGvRUa",
+      "title": "sdd-eval:authoring-template-placement-oct22-module-flat-concise-acronym-r3",
+      "directory": "/private/tmp/gennady-authoring-placement-live.wP6OFw/sdd-flow-eval-Sw5W1B",
+      "sdkMessages": 20,
+      "limit": 2000
+    }
+  ],
+  "calls": [
+    {
+      "sessionId": "ses_e98bafa43ffeIUSnjAAkiGvRUa",
+      "callId": "call_00_PowmUeQMVm2dv43PoSlQ1349",
+      "tool": "write",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792734034166,
+      "finishedAt": 1792734034183,
+      "archivedStartedAt": 1792734034166,
+      "archivedFinishedAt": 1792734034183,
+      "complete": true,
+      "classification": "target-write-input",
+      "contentSha256": "d64fcd390d4d9c9b1e87c53c9d3f911cab7c7b9373e4ef9c4c98baef85d9d8af",
+      "contentBytes": 8801,
+      "requirementIds": [
+        "NOR-REQ-1",
+        "NOR-REQ-2"
+      ]
+    },
+    {
+      "sessionId": "ses_e98bafa43ffeIUSnjAAkiGvRUa",
+      "callId": "call_00_nRuOvhFhp1xZEOrpjnoj3297",
+      "tool": "bash",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792734036812,
+      "finishedAt": 1792734036817,
+      "archivedStartedAt": 1792734036812,
+      "archivedFinishedAt": 1792734036817,
+      "complete": true,
+      "classification": "direct",
+      "diagnosticEligible": true,
+      "command": "npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring",
+      "exit": 0,
+      "outputSha256": "3c42030406ef0780876370107dda07584351052f393ef47aa3c648802aa8abf3",
+      "outputBytes": 130,
+      "diagnosticCodes": [],
+      "diagnosticExcerpt": "[sdd-check] ✅ clean — 1 file(s) checked",
+      "diagnosticExcerptBytes": 43,
+      "diagnosticTruncated": false
+    }
+  ],
+  "missing": [],
+  "diagnosticBudgetBytes": 1024,
+  "modelCalls": 0,
+  "originalResultsModified": false,
+  "diagnosticBytes": 43,
+  "complete": true
+}

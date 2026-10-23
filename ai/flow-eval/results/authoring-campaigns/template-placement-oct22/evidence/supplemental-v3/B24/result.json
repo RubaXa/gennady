@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B24",
+  "sessionId": "ses_e98c12500ffeubnY7QpQggAwvm",
+  "startedAt": "2026-10-23T05:32:14.964Z",
+  "finishedAt": "2026-10-23T05:33:24.364Z",
+  "promptSha256": "99fff8999debbf9dd4a714c81c82a653c0a71658e4cbb6eca3a207b596300103",
+  "artifactSha256": "10fbb9bae9ab1a8b1722781b6c97117c6c075a49b28c2a808364252fbe06a064",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4806,
+    "output": 163,
+    "reasoning": 11819,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 16788,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 69351
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\nNOR-REQ-1 correctly refines TOK-REQ-1: valid ASCII input is trimmed, ASCII letters lowercased, and maximal runs of spaces/underscores/hyphens collapsed to one hyphen. NOR-REQ-2 correctly refines TOK-REQ-2: empty, separator-only, and non-ASCII input throw `TypeError` without I/O. MODULE_REQUIREMENTS contains both required table rows exactly—`\"  Foo__BAR  \"` → `\"foo-bar\"` and `\"\"` → `TypeError`—and the parent link, single `normalizeToken` surface, justified N/A sections, and pending-operator handoff remain consistent with no implementation, ticket, or approval claim."
+}

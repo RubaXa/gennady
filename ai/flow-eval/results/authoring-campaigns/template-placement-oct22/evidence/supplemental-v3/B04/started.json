@@ -1,0 +1,8 @@
+{
+  "blindId": "B04",
+  "dispatchIndex": 3,
+  "startedAt": "2026-10-23T05:21:10.118Z",
+  "promptSha256": "fb2dbfce4d64c96d835c4b00366ee0f0ec38130fd21b3fc6e7c9f47b13775d2c",
+  "artifactSha256": "31405e43387e3c345b4e594d629ec69d2bb36f69658de4ab0196ae6ff5686ffc",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b"
+}

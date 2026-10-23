@@ -1,0 +1,172 @@
+{
+  "schema": "gennady.authoring-role-usage.1",
+  "campaign": "template-placement-oct22",
+  "population": "original24 plus separate adaptive gen2 six; never pooled as one experimental arm",
+  "source": "immutable summary.json usage, judgeUsage.usage and reflection.json usageDelta",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "money": "UNKNOWN: SDK cost=0 is not an authoritative price or proof of free use",
+  "cache": "cacheRead/cacheWrite are separate observed counters; not added to reported non-cache total",
+  "timing": "descriptive only; host/provider/cache noise and some full-hook overlap; no causal speed claim",
+  "variants": [
+    {
+      "variant": "baseline",
+      "n": 6,
+      "artifacts": 4,
+      "worker": {
+        "input": 251893,
+        "output": 42253,
+        "reasoning": 54459,
+        "cacheRead": 3772800,
+        "cacheWrite": 0,
+        "total": 348605,
+        "messages": 105
+      },
+      "judge": {
+        "input": 22538,
+        "output": 419,
+        "reasoning": 45168,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 68125,
+        "messages": 6
+      },
+      "reflection": {
+        "input": 254157,
+        "output": 5463,
+        "reasoning": 1905,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 261525,
+        "messages": 6
+      }
+    },
+    {
+      "variant": "concise-acronym",
+      "n": 6,
+      "artifacts": 4,
+      "worker": {
+        "input": 238578,
+        "output": 27973,
+        "reasoning": 59417,
+        "cacheRead": 3049984,
+        "cacheWrite": 0,
+        "total": 325968,
+        "messages": 98
+      },
+      "judge": {
+        "input": 21683,
+        "output": 578,
+        "reasoning": 49738,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 71999,
+        "messages": 6
+      },
+      "reflection": {
+        "input": 229732,
+        "output": 5826,
+        "reasoning": 1857,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 237415,
+        "messages": 6
+      }
+    },
+    {
+      "variant": "concise-both",
+      "n": 6,
+      "artifacts": 6,
+      "worker": {
+        "input": 229114,
+        "output": 42405,
+        "reasoning": 48431,
+        "cacheRead": 3477504,
+        "cacheWrite": 0,
+        "total": 319950,
+        "messages": 109
+      },
+      "judge": {
+        "input": 22662,
+        "output": 814,
+        "reasoning": 35095,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 58571,
+        "messages": 6
+      },
+      "reflection": {
+        "input": 231220,
+        "output": 5480,
+        "reasoning": 3582,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 240282,
+        "messages": 6
+      }
+    },
+    {
+      "variant": "owner-rich",
+      "n": 6,
+      "artifacts": 4,
+      "worker": {
+        "input": 247234,
+        "output": 38088,
+        "reasoning": 67915,
+        "cacheRead": 4069376,
+        "cacheWrite": 0,
+        "total": 353237,
+        "messages": 112
+      },
+      "judge": {
+        "input": 22133,
+        "output": 698,
+        "reasoning": 61432,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 84263,
+        "messages": 6
+      },
+      "reflection": {
+        "input": 247497,
+        "output": 5470,
+        "reasoning": 2775,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 255742,
+        "messages": 6
+      }
+    },
+    {
+      "variant": "template-rich",
+      "n": 6,
+      "artifacts": 5,
+      "worker": {
+        "input": 256055,
+        "output": 43340,
+        "reasoning": 71947,
+        "cacheRead": 4279680,
+        "cacheWrite": 0,
+        "total": 371342,
+        "messages": 116
+      },
+      "judge": {
+        "input": 21696,
+        "output": 686,
+        "reasoning": 36134,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 58516,
+        "messages": 6
+      },
+      "reflection": {
+        "input": 259041,
+        "output": 5971,
+        "reasoning": 1981,
+        "cacheRead": 19968,
+        "cacheWrite": 0,
+        "total": 266993,
+        "messages": 6
+      }
+    }
+  ]
+}
