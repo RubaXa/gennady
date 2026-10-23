@@ -55,3 +55,9 @@ ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/obser
 ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/calibration.json
 ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/source-snapshot.json
 ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/collector.mjs.txt
+
+# Fresh 30-attempt observational baseline: preserve primary bytes; replay/hash tests own
+# validation. TRAJECTORIES.md is generated, unlike the authored REPORT.md and hypothesis matrix.
+ai/flow-eval/results/authoring-campaigns/spec-trajectory-oct23/raw/**
+ai/flow-eval/results/authoring-campaigns/spec-trajectory-oct23/*.json
+ai/flow-eval/results/authoring-campaigns/spec-trajectory-oct23/TRAJECTORIES.md

@@ -3,6 +3,7 @@
 // @consumers: authoring-benchmark; flow-eval integration
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { it } from 'node:test';
 import { execFileSync } from 'node:child_process';
 import {
@@ -517,6 +518,75 @@ it('rejects missing or contradictory approval even if a pending disclaimer is al
         ),
       'pending-approval'
     );
+});
+
+it('calibrated-v2: accepts recorded awaiting-approval wording without changing explicit calibrated', () => {
+  const env = fixture('module-flat');
+  try {
+    const authored = positive('module-flat').replace(
+      /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+      '<!--SECTION:HANDOFF-->\n## Handoff to Tasks\nРеализация не создана; спекa ожидает операторского approval.\n<!--/SECTION:HANDOFF-->'
+    );
+    put(env.root, env.item.target, authored);
+    const historical = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated');
+    assert.equal(historical.checks.find((row) => row.id === 'pending-approval')?.pass, false);
+    const revised = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v2');
+    assert.equal(revised.pass, true, revised.detail);
+    assert.deepEqual(
+      revised.checks.filter((row) => row.id !== 'pending-approval'),
+      historical.checks.filter((row) => row.id !== 'pending-approval')
+    );
+    assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), authored);
+  } finally {
+    env.cleanup();
+  }
+});
+
+it('calibrated-v2: rejects negated awaiting forms and contradictory granted claims', () => {
+  for (const handoff of [
+    'Спецификация не ожидает операторского approval.',
+    'pending-operator\nСпецификация не ожидает операторского approval.',
+    'Not awaiting operator approval.',
+    'pending-operator\nNot awaiting operator approval.',
+    'Спецификация ожидает операторского approval.\n- Operator approval has been granted.',
+    'Спецификация ожидает операторского approval.\n- Оператор одобрил спецификацию.',
+    'pending-operator\n- **Одобрение оператора:** получено.',
+  ])
+    expectRejected(
+      'module-flat',
+      (text) =>
+        text.replace(
+          /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+          `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${handoff}\n<!--/SECTION:HANDOFF-->`
+        ),
+      'pending-approval'
+    );
+});
+
+it('calibrated-v2: actual raw15 artifact is separately calibrated, never rewritten or historically regraded', () => {
+  const env = fixture('module-flat');
+  try {
+    const artifact = readFileSync(
+      new URL(
+        '../results/authoring-campaigns/spec-trajectory-oct23/raw/15/specs/token/normalize/normalize.spec.md',
+        import.meta.url
+      ),
+      'utf8'
+    );
+    assert.equal(
+      createHash('sha256').update(artifact).digest('hex'),
+      'bce1d093fbeb5f04380305e98b7cd8094f6cefec55713e7a3c02cab500e2fe78'
+    );
+    put(env.root, env.item.target, artifact);
+    const historical = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated');
+    assert.equal(historical.pass, false);
+    assert.equal(historical.checks.find((row) => row.id === 'pending-approval')?.pass, false);
+    assert.equal(checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v2').pass, true);
+    assert.equal(checkAuthoringBenchmark(env.root, env.item.id).pass, true);
+    assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), artifact);
+  } finally {
+    env.cleanup();
+  }
 });
 
 it('the current reference positive domain excludes the invalid inputs owned by the negative requirement', () => {

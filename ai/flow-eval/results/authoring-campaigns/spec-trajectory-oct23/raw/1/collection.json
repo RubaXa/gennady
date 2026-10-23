@@ -1,0 +1,32 @@
+{
+  "scenarioId": "authoring-spec-trajectory-oct23-scope-product-baseline-r1",
+  "caseId": "scope-product",
+  "repetition": 1,
+  "startedAt": "2026-10-23T10:11:27.087Z",
+  "sessions": [
+    {
+      "id": "ses_e97c17c91ffeyifyMYHoayUs0i",
+      "directory": "/private/tmp/gennady-authoring-baseline.jiFoYt/runs/1/sdd-flow-eval-Z7Uk9i",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "requests": {
+    "measurement GET /global/health": 1,
+    "measurement GET /config": 1,
+    "measurement POST /session": 1,
+    "measurement POST /session/{session}/prompt_async": 1,
+    "measurement GET /session/{session}/message": 12,
+    "measurement GET /event": 1,
+    "measurement GET /session/status": 9,
+    "measurement GET /session/{session}/children": 11,
+    "measurement POST /session/{session}/abort": 1,
+    "cleanup GET /session/{session}/children": 1,
+    "cleanup DELETE /session/{session}": 1
+  },
+  "metadata": "SDK HTTP calls are not provider HTTP requests/retries; worker assistant-message counts are separate observed model steps.",
+  "cleanupErrors": [],
+  "cliExitCode": 1,
+  "endedAt": "2026-10-23T10:11:51.365Z",
+  "tempRemoved": true
+}

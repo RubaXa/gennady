@@ -1,0 +1,79 @@
+// Post-run export only. Never modifies frozen source, sessions, plan or raw results.
+import { readFileSync, readdirSync, lstatSync, mkdirSync, copyFileSync, writeFileSync, existsSync } from 'node:fs';
+import { join, relative } from 'node:path';
+import { createHash } from 'node:crypto';
+import { summarizeAuthoringBaseline } from '/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/ai/flow-eval/authoring-baseline-report.ts';
+import { renderAuthoringBaselineReport } from '/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/ai/flow-eval/scripts/authoring-baseline-report.ts';
+
+const owned = '/private/tmp/gennady-authoring-baseline.jiFoYt';
+const destination = '/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/ai/flow-eval/results/authoring-campaigns/spec-trajectory-oct23';
+const read = (path) => {
+  const s = lstatSync(path);
+  if (!s.isFile() || s.isSymbolicLink() || s.size > 2 * 1024 * 1024) throw new Error('Unsafe archive input');
+  return readFileSync(path);
+};
+const json = (path) => JSON.parse(read(path).toString('utf8'));
+const plan = json(join(owned, 'plan.json'));
+const protocol = json(join(owned, 'protocol.json'));
+const batch = json(join(owned, 'batch.json'));
+if (batch.completed !== 30 || batch.planned !== 30 || batch.dispatched !== 30 || batch.stop) throw new Error('Baseline not finished; no complete export');
+if (existsSync(destination)) throw new Error('Archive already exists; no overwrite');
+const records = [];
+const mapping = [];
+for (const [index, scenario] of plan.entries()) {
+  const selected = readdirSync(join(owned, 'permanent')).filter(name => name.endsWith('-' + scenario.id));
+  if (selected.length !== 1) throw new Error('Missing/duplicate primary result');
+  const primary = join(owned, 'permanent', selected[0]);
+  const collection = json(join(owned, 'records', `${index}.json`));
+  if (!collection.tempRemoved || collection.cleanupErrors.length || existsSync(join(owned, 'runs', String(index)))) throw new Error('Per-case cleanup not proven');
+  const summary = json(join(primary, 'summary.json'));
+  const trajectory = json(join(primary, 'trajectory.json'));
+  const reflection = existsSync(join(primary, 'reflection.json')) ? json(join(primary, 'reflection.json')) : undefined;
+  records.push({ summary, trajectory, reflection, cleanup: collection });
+  mapping.push({ index, scenarioId: scenario.id, originalName: selected[0] });
+}
+const input = { identity: { sourceCommit: protocol.sourceCommit, model: protocol.model }, plan, records };
+const report = summarizeAuthoringBaseline(plan, records, input.identity);
+if (!report.complete) throw new Error('Archive bindings/capture/cleanup incomplete; inspect before export');
+mkdirSync(join(destination, 'raw'), { recursive: true });
+let bytes = 0;
+function copyTree(source, target) {
+  mkdirSync(target, { recursive: true });
+  for (const entry of readdirSync(source, { withFileTypes: true })) {
+    const from = join(source, entry.name), to = join(target, entry.name);
+    if (entry.isDirectory()) copyTree(from, to);
+    else {
+      bytes += read(from).length;
+      if (bytes > 12 * 1024 * 1024) throw new Error('Bounded archive exceeded');
+      copyFileSync(from, to);
+    }
+  }
+}
+for (const row of mapping) {
+  const target = join(destination, 'raw', String(row.index));
+  copyTree(join(owned, 'permanent', row.originalName), target);
+  copyFileSync(join(owned, 'records', `${row.index}.json`), join(target, 'collection.json'));
+  copyFileSync(join(owned, 'logs', `${row.index}.log`), join(target, 'cli.log'));
+}
+for (const name of ['plan.json', 'protocol.json', 'batch.json']) copyFileSync(join(owned, name), join(destination, name));
+copyFileSync(join(owned, 'baseline.mjs'), join(destination, 'collector.mjs.txt'));
+copyFileSync(join(owned, 'export.mjs'), join(destination, 'exporter.mjs.txt'));
+const save = (name, value) => writeFileSync(join(destination, name), JSON.stringify(value, null, 2) + '\n', { flag: 'wx' });
+save('mapping.json', mapping);
+save('input.json', input);
+const manifest = [];
+function inventory(directory) {
+  for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) inventory(path);
+    else {
+      const content = read(path);
+      manifest.push({ path: relative(destination, path), bytes: content.length, sha256: createHash('sha256').update(content).digest('hex') });
+    }
+  }
+}
+inventory(destination);
+save('primary-manifest.json', { schema: 'gennady.authoring-baseline-primary.1', files: manifest });
+save('report.json', report);
+writeFileSync(join(destination, 'TRAJECTORIES.md'), renderAuthoringBaselineReport(report), { flag: 'wx' });
+console.log(JSON.stringify({ complete: report.complete, planned: report.planned, recorded: report.recorded, cases: report.cases, destination }, null, 2));

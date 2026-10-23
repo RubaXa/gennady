@@ -1,0 +1,39 @@
+{
+  "scenarioId": "authoring-spec-trajectory-oct23-scope-infrastructure-baseline-r3",
+  "caseId": "scope-infrastructure",
+  "repetition": 3,
+  "startedAt": "2026-10-23T10:27:41.845Z",
+  "sessions": [
+    {
+      "id": "ses_e97b2a084ffesSAbXTPU104bUe",
+      "directory": "/private/tmp/gennady-authoring-baseline.jiFoYt/runs/23/sdd-flow-eval-4zupTH",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e97b0d8b0ffew8MMxeToM1r4kP",
+      "directory": "/private/tmp/gennady-authoring-baseline.jiFoYt/runs/23/sdd-flow-eval-4zupTH",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "requests": {
+    "measurement GET /global/health": 1,
+    "measurement GET /config": 1,
+    "measurement POST /session": 2,
+    "measurement POST /session/{session}/prompt_async": 1,
+    "measurement GET /session/{session}/message": 54,
+    "measurement GET /event": 1,
+    "measurement GET /session/status": 46,
+    "measurement GET /session/{session}/children": 52,
+    "measurement GET /experimental/tool/ids": 2,
+    "measurement POST /session/{session}/message": 2,
+    "cleanup GET /session/{session}/children": 2,
+    "cleanup DELETE /session/{session}": 2
+  },
+  "metadata": "SDK HTTP calls are not provider HTTP requests/retries; worker assistant-message counts are separate observed model steps.",
+  "cleanupErrors": [],
+  "cliExitCode": 1,
+  "endedAt": "2026-10-23T10:30:34.388Z",
+  "tempRemoved": true
+}

@@ -1,17 +1,21 @@
 # Template-owned authoring: baseline and controlled evolution
 
-Status: infrastructure and deterministic controls implemented; ten-case live diagnostic completed.
-No production improvement is claimed. A calibrated, repeated baseline and A/B comparison are still
-pending. See the [complete diagnostic report](../results/authoring-campaigns/template-authoring-wall180-oct22/REPORT.md),
+Status: corrected-main repeated observational baseline recorded (ten cases × three attempts):
+[results and limitations](../results/authoring-campaigns/spec-trajectory-oct23/REPORT.md).
+No production optimization is accepted. The next experiments are declared individually
+in the [hypothesis matrix and source map](./AUTHORING-HYPOTHESIS-MATRIX.md).
+See the [earlier diagnostic report](../results/authoring-campaigns/template-authoring-wall180-oct22/REPORT.md),
 [first fixture-fault cohort](../results/authoring-campaigns/template-authoring-oct22/REPORT.md) and
 [observer-censored cohort](../results/authoring-campaigns/template-authoring-repaired-oct22/REPORT.md).
-Frozen product baseline: main `f8c93d9d5c5a9549da7ae2fbf8af96d8a6b34b71`. Production templates,
+Fresh baseline source: main `056870393ea2138a9470b7ef6188a01dc7885f81` (after evaluator/fixture repairs).
+The earlier diagnostic used `f8c93d9d5c5a9549da7ae2fbf8af96d8a6b34b71`; do not pool the cohorts. Production templates,
 owner directives, operator approval boundaries and mechanical product validators are unchanged.
 
 ## Goal
 
-Move section-content instructions to their owning templates and leave concise workflow instructions
-in owner directives. This is a hypothesis, not a proven optimization. A shorter directive alone is
+Find the cheapest instruction/tool arrangement that preserves document quality: template-local
+content, richer owner steps, concise reminders and batching are competing hypotheses, not a fixed
+destination. A shorter directive alone is
 not a win: the agent must still read the template, so count total actual context, actions, retries,
 artifact correctness and elapsed work. Preserve failures rather than optimizing the reported subset.
 
@@ -151,8 +155,31 @@ creation and refuse to overwrite a previous plan. Before comparison retain exact
 each result and verify their SHA-256 against its original source record. Use a new campaign for a
 new corpus/oracle; never relabel old results or update criteria after observing an agent failure.
 The observer idle bound must exceed the hard worker deadline for long-form generation; otherwise
-normal thinking is censored as stuck. Judge wall time is separate (the current generic judge does
-not have its own deadline); monitor it and retain cancellation rather than silently claiming a pass.
+normal thinking is censored as stuck. Judge wall time is separate; artifact-authoring semantic
+review currently has a 180-second deadline. Monitor it and retain cancellation rather than silently
+claiming a pass.
+
+For the repeated trajectory campaign, cleanup is **per attempt**, not only after the whole matrix:
+persist bounded primary evidence/reflection, finalize the sandbox and lease, delete only the SDK
+session trees whose creation was observed inside that attempt's owned directory, then remove that
+directory. Stop dispatch on cleanup failure. Never sweep unrelated sessions or delete shared stores.
+Frozen collector/protocol and cleanup records are retained with the campaign; historical temporary
+paths identify past attempts, never a filesystem dependency of an offline test.
+
+The offline trajectory report is reproducible without a proxy, model or old temporary directory:
+
+```bash
+node --import tsx ai/flow-eval/scripts/authoring-baseline-report.ts \
+  --input ai/flow-eval/results/authoring-campaigns/spec-trajectory-oct23/input.json
+```
+
+It reports every expected attempt, not just passes: ordered safe tool calls, paths, directive/format
+reads, write/check attempts, repeat reads, per-case distributions and separate worker/judge/reflection
+counters. An SDK REST poll is not a provider inference request; actual transport retries and money
+remain unknown. Multiple tool calls can already share an assistant response, so batching tools is
+not automatically a reduction in model round trips. Opaque shell classification and incomplete
+capture are separate states. A repeated observational baseline with oracle findings is not a
+qualified A/B control for a revised oracle; keep old outcomes and preregister the next matched pair.
 
 ## Delivery
 

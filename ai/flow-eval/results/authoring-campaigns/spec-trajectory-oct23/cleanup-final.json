@@ -1,0 +1,13 @@
+{
+  "schema": "gennady.authoring-campaign-cleanup.1",
+  "checkedAt": "2026-10-23T10:37:06Z",
+  "attempts": 30,
+  "perAttemptTemporaryDirectoriesRemoved": 30,
+  "perAttemptSessionCleanupErrors": 0,
+  "ownedOpenCodeServerStopped": true,
+  "ownedTemporaryWorktreeRemoved": true,
+  "ownedTemporaryRootRemoved": true,
+  "offlineReplayAfterExport": "24/24 focused tests passed, including full primary hashes and report replay",
+  "preserved": "Primary raw evidence, failure outcomes, judge/reflection, protocol, collector bytes and reports remain in this campaign directory.",
+  "notRemoved": "User sessions, other servers, user checkouts and shared dependency stores were not swept."
+}

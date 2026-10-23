@@ -1,0 +1,152 @@
+[
+  {
+    "index": 0,
+    "scenarioId": "authoring-spec-trajectory-oct23-portal-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-portal-baseline-r1"
+  },
+  {
+    "index": 1,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-product-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-product-baseline-r1"
+  },
+  {
+    "index": 2,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-library-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-library-baseline-r1"
+  },
+  {
+    "index": 3,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-infrastructure-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-infrastructure-baseline-r1"
+  },
+  {
+    "index": 4,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-interface-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-interface-baseline-r1"
+  },
+  {
+    "index": 5,
+    "scenarioId": "authoring-spec-trajectory-oct23-module-flat-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-module-flat-baseline-r1"
+  },
+  {
+    "index": 6,
+    "scenarioId": "authoring-spec-trajectory-oct23-module-nested-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-module-nested-baseline-r1"
+  },
+  {
+    "index": 7,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-module-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-module-baseline-r1"
+  },
+  {
+    "index": 8,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-scope-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-scope-baseline-r1"
+  },
+  {
+    "index": 9,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-project-baseline-r1",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-project-baseline-r1"
+  },
+  {
+    "index": 10,
+    "scenarioId": "authoring-spec-trajectory-oct23-portal-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-portal-baseline-r2"
+  },
+  {
+    "index": 11,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-product-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-product-baseline-r2"
+  },
+  {
+    "index": 12,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-library-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-library-baseline-r2"
+  },
+  {
+    "index": 13,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-infrastructure-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-infrastructure-baseline-r2"
+  },
+  {
+    "index": 14,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-interface-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-interface-baseline-r2"
+  },
+  {
+    "index": 15,
+    "scenarioId": "authoring-spec-trajectory-oct23-module-flat-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-module-flat-baseline-r2"
+  },
+  {
+    "index": 16,
+    "scenarioId": "authoring-spec-trajectory-oct23-module-nested-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-module-nested-baseline-r2"
+  },
+  {
+    "index": 17,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-module-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-module-baseline-r2"
+  },
+  {
+    "index": 18,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-scope-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-scope-baseline-r2"
+  },
+  {
+    "index": 19,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-project-baseline-r2",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-project-baseline-r2"
+  },
+  {
+    "index": 20,
+    "scenarioId": "authoring-spec-trajectory-oct23-portal-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-portal-baseline-r3"
+  },
+  {
+    "index": 21,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-product-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-product-baseline-r3"
+  },
+  {
+    "index": 22,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-library-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-library-baseline-r3"
+  },
+  {
+    "index": 23,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-infrastructure-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-infrastructure-baseline-r3"
+  },
+  {
+    "index": 24,
+    "scenarioId": "authoring-spec-trajectory-oct23-scope-interface-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-scope-interface-baseline-r3"
+  },
+  {
+    "index": 25,
+    "scenarioId": "authoring-spec-trajectory-oct23-module-flat-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-module-flat-baseline-r3"
+  },
+  {
+    "index": 26,
+    "scenarioId": "authoring-spec-trajectory-oct23-module-nested-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-module-nested-baseline-r3"
+  },
+  {
+    "index": 27,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-module-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-module-baseline-r3"
+  },
+  {
+    "index": 28,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-scope-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-scope-baseline-r3"
+  },
+  {
+    "index": 29,
+    "scenarioId": "authoring-spec-trajectory-oct23-index-project-baseline-r3",
+    "originalName": "2026-10-23-authoring-spec-trajectory-oct23-index-project-baseline-r3"
+  }
+]

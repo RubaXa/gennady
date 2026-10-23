@@ -1,0 +1,18 @@
+{
+  "schema": "gennady.authoring-trajectory-baseline.1",
+  "sourceCommit": "056870393ea2138a9470b7ef6188a01dc7885f81",
+  "planSha256": "c1aa7fef2c37ab70fb54ec9c7f468d73a64c129924e52628af9f34558ba9be49",
+  "collectorSha256": "e20d2e75ef1985e439cb26fcbd7998f48d368f706d88512704d339e3c21638e7",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "cases": 10,
+  "repetitions": 3,
+  "attempts": 30,
+  "concurrency": 3,
+  "serverVersion": "1.17.15",
+  "node": "v22.19.0",
+  "frozenAt": "2026-10-23T10:11:26.730Z",
+  "sourceJournal": "Read-only to keep exact source clean; durable results and controller records are authoritative.",
+  "acceptance": "No quality degradation and no tool/model-message growth per case; never average regressions away. Preserve errors/timeouts/inconclusive. No private reasoning captured. Fresh baseline, not pooled with old30.",
+  "cleanup": "Every single-case CLI finalizes its sandboxes/leases; wrapper deletes only its observed SDK session trees, then its temporary case directory. Fail closed on cleanup errors.",
+  "limitations": "Artifact authoring only, not whole interactive SDD. SDK assistant messages are observed model completions, not exact proxy/provider HTTP attempts. Transport retries and money unknown."
+}
