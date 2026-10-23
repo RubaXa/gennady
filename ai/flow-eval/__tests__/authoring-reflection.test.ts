@@ -28,11 +28,17 @@ it('deadline covers passive metadata and SDK creation before the model call', as
   try {
     const reflection = collectAuthoringReflection(
       {
+        createSession: async () => {
+          throw new Error('Unexpected worker creation');
+        },
+        prompt: async () => {
+          throw new Error('Unexpected worker prompt');
+        },
         judge: async () => {
           modelCalls++;
           return '';
         },
-      } as SddEvalRuntime,
+      },
       {
         readDiff: async () => '',
         readUsage: pending,
@@ -121,7 +127,7 @@ it('same-worker reflection uses no tools, sees factual IDs, and records only sep
 });
 it('SDK denies the verified tool inventory on same-session reflection and excludes private output', async () => {
   let created = 0;
-  let body: { tools?: Record<string, boolean> } = {};
+  let body: { tools?: Record<string, boolean>; system?: string } = {};
   const runtime = new SddEvalOpenCodeRuntime({
     directory: '/owned',
     client: {
@@ -156,6 +162,8 @@ it('SDK denies the verified tool inventory on same-session reflection and exclud
   assert.equal(text, 'Public factual notes');
   assert.ok(Object.values(body.tools!).every((enabled) => enabled === false));
   assert.equal(body.tools!.mcp_unexpected, false);
+  assert.match(body.system!, /text-only read-only reviewer/);
+  assert.match(body.system!, /no tools/);
 });
 it('artifact judge timeout is inconclusive and preserves its session identity', async () => {
   const runtime = {

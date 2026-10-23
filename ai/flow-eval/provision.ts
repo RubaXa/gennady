@@ -2,17 +2,7 @@
 // @spec: AI-SKILLS
 // @consumers: CLI, SddEvalRunner tests; never removes existing directories.
 
-import {
-  chmod,
-  cp,
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  realpath,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { chmod, cp, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { tmpdir } from 'node:os';

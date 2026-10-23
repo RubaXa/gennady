@@ -91,7 +91,7 @@ it('recorded placement24: exact hashes, independent seeds, raw counters and sepa
     const t = json(`${prefix}/trajectory.json`) as Trajectory;
     const reflection = json(`${prefix}/reflection.json`);
     const receipt = json(`${campaign}/evidence/public-tools/${prefix}.json`);
-    const definition = getAuthoringCase(input.caseId);
+    const definition = getAuthoringCase(input.caseId, 'frozen-oct22');
     const declared = protocol.expected.find(
       (row: { blindId: string }) => row.blindId === input.blindId
     );
@@ -146,7 +146,7 @@ it('recorded placement24: exact hashes, independent seeds, raw counters and sepa
     assert.ok(Date.parse(reflection.startedAt) >= Date.parse(s.timestamp));
     assert.equal(reflection.sessionId, receipt.sessions[0].sessionId);
     // Citation mistakes remain raw diagnostics, not a reason to edit/drop the observation.
-    const fixture = buildAuthoringFixture(input.caseId);
+    const fixture = buildAuthoringFixture(input.caseId, 'frozen-oct22');
     for (const [path, text] of Object.entries(fixture))
       if (path.endsWith('.spec.md')) assert.equal(read(`${prefix}/${path}`).toString('utf8'), text);
     const artifact = read(`${prefix}/${definition.target}`);
@@ -161,7 +161,7 @@ it('recorded placement24: exact hashes, independent seeds, raw counters and sepa
       }
       mkdirSync(dirname(join(root, definition.target)), { recursive: true });
       writeFileSync(join(root, definition.target), artifact);
-      const oracle = checkAuthoringBenchmark(root, input.caseId);
+      const oracle = checkAuthoringBenchmark(root, input.caseId, 'frozen-oct22');
       assert.equal(oracle.pass, s.quality.pass); // Original RED remains RED under this frozen oracle.
       assert.deepEqual(oracle.checks, s.quality.checks);
     } finally {
@@ -278,7 +278,7 @@ it('recorded concise-acronym six: identical secondary rubric/seeds, local correc
     const t = json(`${input.directory}/trajectory.json`) as Trajectory;
     const reflection = json(`${input.directory}/reflection.json`);
     const receipt = json(`${campaign}/evidence/public-tools-gen2/${input.directory}.json`);
-    const definition = getAuthoringCase(input.caseId);
+    const definition = getAuthoringCase(input.caseId, 'frozen-oct22');
     const artifact = read(`${input.directory}/${definition.target}`);
     assert.equal(s.sha, protocol.gen2PrimarySource);
     assert.equal(s.sha, input.primarySourceSha);
@@ -347,7 +347,7 @@ it('recorded concise-acronym six: identical secondary rubric/seeds, local correc
     assert.equal(reflection.diffUnchanged, true);
     assert.equal(reflection.newToolCalls, 0);
     assert.ok(Date.parse(reflection.startedAt) >= Date.parse(s.timestamp));
-    const fixture = buildAuthoringFixture(input.caseId);
+    const fixture = buildAuthoringFixture(input.caseId, 'frozen-oct22');
     const root = mkdtempSync(join(tmpdir(), 'placement-gen2-replay-'));
     try {
       for (const [path, text] of Object.entries(fixture)) {
@@ -360,7 +360,7 @@ it('recorded concise-acronym six: identical secondary rubric/seeds, local correc
       }
       mkdirSync(dirname(join(root, definition.target)), { recursive: true });
       writeFileSync(join(root, definition.target), artifact);
-      const oracle = checkAuthoringBenchmark(root, input.caseId);
+      const oracle = checkAuthoringBenchmark(root, input.caseId, 'frozen-oct22');
       assert.equal(oracle.pass, s.quality.pass);
       assert.deepEqual(oracle.checks, s.quality.checks); // Preserve both pending-literal REDs.
     } finally {

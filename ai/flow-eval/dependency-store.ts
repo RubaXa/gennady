@@ -6,6 +6,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
 import {
   lstat,
   mkdir,
@@ -600,7 +601,7 @@ async function scanAndCleanLeases(
   report: EvalDependencyStoreGcEntry[]
 ): Promise<ScannedStore[]> {
   const nowMs = runtimeNow(options.runtime, options.nowMs);
-  let entries: Awaited<ReturnType<typeof readdir>>;
+  let entries: Dirent[];
   try {
     entries = await readdir(storeRoot, { withFileTypes: true });
   } catch {
@@ -677,7 +678,7 @@ async function scanAndCleanLeases(
       if (rechecked.status !== 'stale' || rechecked.identity !== state.identity) {
         active ||= rechecked.status === 'active';
         quarantined ||= rechecked.status === 'quarantined';
-        raceProtected ||= rechecked.identity !== state.identity;
+        raceProtected ||= !('identity' in rechecked) || rechecked.identity !== state.identity;
         report.push({
           path: leaseFile,
           kind: 'lease',

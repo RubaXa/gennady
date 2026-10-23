@@ -217,7 +217,13 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
           body: {
             parts: [{ type: 'text', text: input.prompt }],
             model,
-            ...(tools ? { tools } : {}),
+            ...(tools
+              ? {
+                  tools,
+                  system:
+                    'You are a text-only read-only reviewer. Use only the evidence in the user message. You have no tools and must not inspect the filesystem or emit tool-call markup. Return the requested public review text, not implementation work.',
+                }
+              : {}),
           },
           signal: input.signal,
         }),

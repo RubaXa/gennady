@@ -8,6 +8,8 @@
     "authoring-judge-evidence.ts",
     "authoring-prompt-footprint.ts",
     "authoring-reflection.ts",
+    "runner.ts",
+    "evidence.ts",
     "eval-signal.ts",
     "scripts/authoring-experiment.ts"
   ],

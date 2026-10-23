@@ -1294,3 +1294,24 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
 - **Интервью после freeze:** completed; new tools=0; diff unchanged=true. Не заменяет измерения или независимый semantic verdict.
 - **Сырые данные:** [summary](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r3/summary.json), [trajectory](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r3/trajectory.json), [reflection](../../results/2026-10-23-authoring-template-placement-oct22-module-nested-template-rich-r3/reflection.json).
 - **Сравнение и ограничения:** [отчёт кампании](../../results/authoring-campaigns/template-placement-oct22/REPORT.md).
+
+## 2026-10-23 — исправления стенда после template-placement-oct22
+
+- **Гипотезы:** четыре варианта переноса/сокращения инструкций отклонены. Обычный модуль выигрывает
+  у concise-both по токенам и инструментам, вложенный регрессирует; усреднение не скрывает регрессию.
+  Полный реестр изменений, чисел, решений и ограничений причинной атрибуции —
+  [H1–H4 в отчёте](../../results/authoring-campaigns/template-placement-oct22/REPORT.md#hypothesis-register).
+- **Подтверждённые ошибки:** английское-only pending в oracle; пересекающиеся позитивные и негативные
+  требования в seed; отсутствие source-owned parent/contract в primary judge. Исправлены текущие
+  seed/oracle/evidence и text-only роль. Сохранён fail-closed на поддельное одобрение и отсутствующий
+  вердикт. Historical replay явно использует прежнюю ревизию, не перекрашивая старые 30 исходов.
+- **Живая калибровка:** шесть заранее зафиксированных случаев, только llm-proxy/deepseek-v4-flash;
+  3 ожидаемых PASS и 3 ожидаемых FAIL, включая противоречивый документ с навязанным VERDICT: pass.
+  Совпадение 6/6, tools=0, non-cache=43055, cache-read=9984; денежная цена неизвестна.
+- **Cleanup:** все шесть собственных сессий удалены, шесть фикстур удалены после вызовов; собственный
+  сервер остановлен и временная папка удалена. Сохранено 216 КБ ограниченных доказательств.
+- **Граница вывода:** это исправление и калибровка оценщика, не новая оптимизация автора. Измеренные
+  source bytes зафиксированы с sourceDirty=true; никакого заявления clean-source A/B. Для следующих
+  гипотез нужен новый frozen baseline. Прежние ошибочные документы и отрицательные исходы сохранены.
+- **Сырые данные и воспроизведение:** [calibration](../../results/authoring-campaigns/template-calibration-oct23/calibration.json),
+  [описание и границы](../../results/authoring-campaigns/template-calibration-oct23/README.md).

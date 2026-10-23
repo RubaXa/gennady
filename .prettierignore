@@ -50,3 +50,8 @@ ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/prefl
 ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/*-comparison.json
 ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/observed-totals.json
 ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/observed-supplemental-usage.json
+
+# Exact live grader calibration bytes; validated by authoring-calibration-recorded.test.ts.
+ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/calibration.json
+ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/source-snapshot.json
+ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/collector.mjs.txt

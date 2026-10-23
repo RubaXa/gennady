@@ -465,6 +465,98 @@ it('rejects forged approval in owner handoff, owner decisions and portal statuse
   );
 });
 
+it('accepts explicit unapproved handoffs in English and Russian, not only the word pending', () => {
+  for (const handoff of [
+    'Одобрения нет. Решение оператора ещё не получено.',
+    'Спецификация не утверждена оператором.',
+    'Ожидает решения оператора.',
+    'Одобрение оператора отсутствует, тикеты не созданы, выполнение не начато.',
+    'Спецификация ожидает operator approval; тикеты не созданы.',
+    'Операторское одобрение отсутствует; реализация не запрошена.',
+    'No operator approval has been given.',
+    'Operator approval has not been granted.',
+    'Awaiting operator approval.',
+    '**Status:** pending-operator',
+  ]) {
+    const env = fixture('module-nested');
+    try {
+      const authored = positive('module-nested').replace(
+        /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+        `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${handoff}\n<!--/SECTION:HANDOFF-->`
+      );
+      put(env.root, env.item.target, authored);
+      const result = checkAuthoringBenchmark(env.root, env.item.id);
+      assert.equal(result.pass, true, `${handoff}: ${result.detail}`);
+      assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), authored);
+    } finally {
+      env.cleanup();
+    }
+  }
+});
+
+it('rejects missing or contradictory approval even if a pending disclaimer is also present', () => {
+  for (const handoff of [
+    'Implementation may start.',
+    'No status specified.',
+    'pending-operator\nОператор одобрил спецификацию.',
+    'pending\nСпецификация утверждена оператором.',
+    'pending\nOperator approval has been granted.',
+    'pending\nApproved by operator.',
+    'pending\n- Operator approval has been granted.',
+    'pending\n- Approved by operator.',
+    'pending\n- Оператор одобрил спецификацию.',
+    'pending\n1. Оператор одобрил спецификацию.',
+    'pending\n- **Одобрение оператора:** получено.',
+  ])
+    expectRejected(
+      'module-nested',
+      (text) =>
+        text.replace(
+          /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+          `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${handoff}\n<!--/SECTION:HANDOFF-->`
+        ),
+      'pending-approval'
+    );
+});
+
+it('the current reference positive domain excludes the invalid inputs owned by the negative requirement', () => {
+  const scope = getAuthoringCase('module-flat').files['specs/token/token.spec.md']!;
+  const requirements = extractSection(scope, 'REQUIREMENTS_AND_CONSTRAINTS');
+  assert.equal(requirements.status, 'ok');
+  if (requirements.status !== 'ok') return;
+  const positiveDomain = requirements.content.split('TOK-REQ-2')[0]!;
+  assert.match(
+    positiveDomain,
+    /ASCII-строка.*содержит хотя бы один символ, отличный от пробела, underscore и hyphen/
+  );
+  assert.match(requirements.content, /состоит из разделителей/);
+});
+
+it('current approval calibration accepts the three actual Russian handoffs without regrading frozen outcomes', () => {
+  for (const [prefix, id] of [
+    ['module-nested-baseline-r1', 'module-nested'],
+    ['module-nested-concise-acronym-r1', 'module-nested'],
+    ['module-nested-concise-acronym-r2', 'module-nested'],
+  ] as const) {
+    const env = fixture(id);
+    try {
+      const path = new URL(
+        `../results/2026-10-23-authoring-template-placement-oct22-${prefix}/${env.item.target}`,
+        import.meta.url
+      );
+      const bytes = readFileSync(path, 'utf8');
+      put(env.root, env.item.target, bytes);
+      const current = checkAuthoringBenchmark(env.root, id);
+      assert.equal(current.checks.find((row) => row.id === 'pending-approval')?.pass, true);
+      const historical = checkAuthoringBenchmark(env.root, id, 'frozen-oct22');
+      assert.equal(historical.checks.find((row) => row.id === 'pending-approval')?.pass, false);
+      assert.equal(readFileSync(path, 'utf8'), bytes, 'saved model output never rewritten');
+    } finally {
+      env.cleanup();
+    }
+  }
+});
+
 it('rejects tracker status/dependency/slug/DAG and project rollup distortions', () => {
   expectRejected('index-module', (text) => text.replace('[ ] TODO', '[x] DONE'), 'required-facts');
   expectRejected(

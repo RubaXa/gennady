@@ -138,10 +138,11 @@ export class SddEvalRunner {
     onFailure?: (result: SddEvalResult) => Promise<void>
   ): Promise<SddEvalResult> {
     if (!scenario.directory) throw new Error(`scenario ${scenario.id} has no isolated directory`);
+    const directory = scenario.directory;
     this.#throwIfAborted();
     const session = await this.#runtime.createSession({
       title: `sdd-eval:${scenario.id}`,
-      directory: scenario.directory,
+      directory,
     });
     const workerPrompt = composeSddPhasePrompt(scenario);
     const observed: SddEvalObservation[] = [];
@@ -156,7 +157,7 @@ export class SddEvalRunner {
           this.#throwIfAborted();
           await this.#runtime.prompt({
             sessionId: session.id,
-            directory: scenario.directory,
+            directory,
             text: workerPrompt,
             model: this.#config.runnerModel,
             agent: this.#config.agent,

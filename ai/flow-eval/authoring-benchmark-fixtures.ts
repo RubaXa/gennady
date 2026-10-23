@@ -13,11 +13,21 @@ export const TOKEN_EXAMPLES = [
   { id: 'empty-input-rejection', input: '', outcome: 'TypeError' },
 ] as const;
 
+/** @purpose Keep historical experiment inputs replayable without silently regrading their results. */
+export type AuthoringRevision = 'frozen-oct22' | 'calibrated';
+
 /** @purpose Small concrete requirement context, shared by reference owners, not an implementation. */
-export function tokenRequirements(path: string): string {
+export function tokenRequirements(
+  path: string,
+  revision: AuthoringRevision = 'calibrated'
+): string {
   const acr = deriveSpecAcronym(path);
+  const domain =
+    revision === 'frozen-oct22'
+      ? 'передана ASCII-строка'
+      : 'передана ASCII-строка, которая содержит хотя бы один символ, отличный от пробела, underscore и hyphen';
   return `### ${acr}-REQ-1 [должен]
-**Когда** передана ASCII-строка, **нормализатор должен** обрезать крайние пробелы, привести буквы к lower-case и свернуть пробелы, underscore и hyphen в один hyphen.
+**Когда** ${domain}, **нормализатор должен** обрезать крайние пробелы, привести буквы к lower-case и свернуть пробелы, underscore и hyphen в один hyphen.
 > Один детерминированный формат токена нужен CLI и библиотечным потребителям.
 
 ### ${acr}-REQ-2 [должен · нештатная]
@@ -41,11 +51,11 @@ The authoring fixture has no executable product code, package setup or external 
 export function referenceSpec(
   kind: 'product' | 'library' | 'infrastructure' | 'interface' | 'module',
   path: string,
-  options: { child?: string; parent?: string } = {}
+  options: { child?: string; parent?: string; revision?: AuthoringRevision } = {}
 ): string {
   const heading = posix.basename(path, '.spec.md');
   const acr = deriveSpecAcronym(path);
-  const requirements = tokenRequirements(path);
+  const requirements = tokenRequirements(path, options.revision);
   const related = options.parent
     ? `[Parent specification](${posix.relative(posix.dirname(path), options.parent)})`
     : 'No external scope dependency.';
@@ -101,7 +111,11 @@ export function referenceSpec(
     ENTITY_SURFACES:
       'One public function.\n<details><summary>Function surface</summary>\nnormalizeToken(input: string): string. Invalid input throws TypeError. No lifecycle or emitted events.\n</details>',
     MODULE_CONTRACTS:
-      'One pure service, no ports/adapters or call-chain graph.\n<details><summary>Contract</summary>\nPre: ASCII input with letters or digits. Post: trim, lower-case, collapse separator runs to hyphen. On violation: TypeError; no I/O or mutation.\n</details>',
+      'One pure service, no ports/adapters or call-chain graph.\n<details><summary>Contract</summary>\nPre: ' +
+      (options.revision === 'frozen-oct22'
+        ? 'ASCII input with letters or digits.'
+        : 'ASCII input containing at least one non-separator character; empty, separator-only and non-ASCII inputs are invalid.') +
+      ' Post: trim, lower-case, collapse separator runs to hyphen. On violation: TypeError; no I/O or mutation.\n</details>',
     PUBLIC_OPTIONS:
       'No public options.\n<details><summary>Policy</summary>Fixed deterministic transformation; no mutable configuration.</details>',
     DECISION_LOG: `${acr}-DL-1 — keep authoring pending; no operator approval exists.\n<details><summary>Boundary</summary>Pure local operation; no implementation or approval claimed.</details>`,
