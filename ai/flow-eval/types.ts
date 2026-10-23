@@ -217,6 +217,8 @@ export type SddEvalTailEntry = {
     error?: string;
     exitCode?: number;
     diagnostic?: string;
+    /** @purpose Public SDK-result fingerprint; absent on historical captures, never inferred. */
+    observation?: import('./tool-observation.ts').ToolObservation;
     /** @purpose A bounded projection lost command/path evidence; cannot prove path coverage. */
     inputSummaryTruncated?: boolean;
   }>;

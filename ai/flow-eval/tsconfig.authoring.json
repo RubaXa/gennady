@@ -10,11 +10,15 @@
     "authoring-reflection.ts",
     "authoring-trajectory-profile.ts",
     "authoring-baseline-report.ts",
+    "authoring-call-audit.ts",
+    "authoring-semantic-controls.ts",
     "runner.ts",
     "evidence.ts",
     "eval-signal.ts",
     "scripts/authoring-experiment.ts",
-    "scripts/authoring-baseline-report.ts"
+    "scripts/authoring-baseline-report.ts",
+    "scripts/authoring-call-audit.ts",
+    "scripts/authoring-semantic-calibration.ts"
   ],
   "exclude": ["**/*.test.ts", "**/__tests__/**"]
 }

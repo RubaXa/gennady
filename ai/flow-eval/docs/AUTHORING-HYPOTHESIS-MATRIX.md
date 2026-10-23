@@ -165,6 +165,9 @@ M2: infrastructure task/ownership interpretation and portal high-level wording n
 labelled grader controls before claims of semantic improvement. The observed infra r1 PASS does
 not certify every requirement: its broad positive trigger also deserves a contradiction control.
 Do not silently turn these uncertainties into agent defects, fixed grades or successful hypotheses.
+The [qualification slice](./AUTHORING-MEASUREMENT-QUALIFICATION.md) repairs missing portal evidence
+and defines reviewed portal/library controls. Infrastructure is explicitly unqualified because its
+synthetic task conflicts with its owning kind contract; the dependency distinction alone is not a fix.
 
 M3: path-observation qualification precedes workflow-success or S2 claims. Define and version the
 facts proving creation, delivered context, whole-target write and applicable fresh validation.
@@ -184,7 +187,13 @@ portal reads, failed validation or retry after a real change.
 
 ## Measurement, prioritization and non-negotiable boundaries
 
-Close M0, qualify M2/M3/M4, then prioritize E1 → STOP1 → T2 as separate pilot arms; I1/I2 remain
+The [bounded call research plan](./AUTHORING-TRAJECTORY-RESEARCH.md) and
+[626-call audit](./AUTHORING-CALL-AUDIT.md) distinguish candidate investigation from proof of
+workflow compliance. Descriptive tool counts and a scoped STOP1 pilot do not require solving
+all M3 write-history guarantees first. M3 stays open for workflow-success/S2 claims; missing
+historical output remains unknown. No optimization arm has run under this amendment.
+
+Close M0, qualify M2 and freeze the applicable taxonomy, then prioritize STOP1 → E1 → T2 as separate pilot arms; I1/I2 remain
 small independently reviewable alternatives motivated by concrete lookups. T1/A1/S1 follow
 separately. B1/B2 need tool-contract equivalence tests; S2 needs verified examples, not just more calls.
 This ordering is a research priority, not a declaration that any candidate works.

@@ -30,6 +30,8 @@ export type ToolEvent = {
   error?: string;
   exitCode?: number;
   diagnostic?: string;
+  /** @purpose Public tool output identity and requested window, not hidden reasoning or raw bodies. */
+  observation?: import('./tool-observation.ts').ToolObservation;
 };
 
 /** @purpose A deterministic checkpoint: a fixed CLI command run against the sandbox with its exit code — a pure function of the files, no LLM. */
@@ -170,6 +172,7 @@ export function toolEventsFrom(entries: readonly SddEvalTailEntry[]): ToolEvent[
         error: c.error,
         exitCode: c.exitCode,
         diagnostic: c.diagnostic,
+        ...(c.observation ? { observation: c.observation } : {}),
       });
     }
   }

@@ -1,0 +1,37 @@
+{
+  "id": "library-nonempty-overlap",
+  "repetition": 1,
+  "expected": "fail",
+  "artifactSha256": "e979cf16f657110b68f3ce293e0c3ead71632dc6601aa82589e2afbc087a0020",
+  "status": "recorded",
+  "sessionId": "ses_e96ef57ccffeDdEsYHZ6pnrpEu",
+  "verdict": "fail",
+  "rationale": "VERDICT: fail\nTOK-REQ-1 requires that for any nonempty ASCII string the normalizer return a token, while TOK-REQ-2 requires separator-only input (e.g. `\"___\"`, also nonempty ASCII) to throw `TypeError`; no exception or precedence is stated, so the two normative requirements contradict on that witness. The required Input/Outcome table rows (`\"  Foo__BAR  \"` → `\"foo-bar\"`, `\"\"` → `TypeError`) are present, the `../infra-base/infra-base.spec.md` link is valid, and the handoff remains pending-operator with no approval/ticket/execution claim.",
+  "usage": {
+    "messages": 1,
+    "input": 4590,
+    "output": 149,
+    "reasoning": 2007,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 6746,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 13148
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": true,
+  "elapsedMs": 13210,
+  "cleanup": {
+    "sessions": [
+      "ses_e96ef57ccffeDdEsYHZ6pnrpEu"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}

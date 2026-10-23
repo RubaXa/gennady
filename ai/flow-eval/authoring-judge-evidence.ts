@@ -48,7 +48,12 @@ export function captureAuthoringJudgeEvidence(
     const references: NonNullable<AuthoringJudgeEvidence['references']> = [];
     let referenceBytes = Buffer.byteLength(definition.brief);
     for (const [path, expected] of Object.entries(definition.files)) {
-      if (path !== 'docs/token-contract.md' && !path.endsWith('.spec.md')) continue;
+      if (
+        path !== 'docs/token-contract.md' &&
+        path !== 'specs/README.md' &&
+        !path.endsWith('.spec.md')
+      )
+        continue;
       const proof = proveRepoFile(root, path);
       if (!proof.ok) return unavailable('source reference missing or unsafe');
       const stat = lstatSync(proof.identity.absolute);

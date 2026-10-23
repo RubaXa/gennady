@@ -1,0 +1,37 @@
+{
+  "id": "portal-reversed-dependency",
+  "repetition": 2,
+  "expected": "fail",
+  "artifactSha256": "7fcffdb1bd8c90c97a652b224eec05a5a0604c636b188c08600a2513820bcd92",
+  "status": "recorded",
+  "sessionId": "ses_e96eec284ffeoPIBBwb34YrEcL",
+  "verdict": "fail",
+  "rationale": "VERDICT: fail\n\nThe Scopes table correctly lists exactly `token` (library) and `infra-base` (infrastructure), both 🚧 with valid relative links. However, the Scope Graph reverses the required dependency: `infra-base --> token` states that infra-base depends on token, whereas the intent and `token.spec.md` require `token` to depend on `infra-base`, never the reverse. Change the edge direction to `token --> infra-base`.",
+  "usage": {
+    "messages": 1,
+    "input": 5578,
+    "output": 101,
+    "reasoning": 375,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 6054,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 4861
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": true,
+  "elapsedMs": 4927,
+  "cleanup": {
+    "sessions": [
+      "ses_e96eec284ffeoPIBBwb34YrEcL"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}
