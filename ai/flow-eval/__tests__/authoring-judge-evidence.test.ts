@@ -51,6 +51,9 @@ it('captures the complete artifact and source-owned oracle, not a truncated diff
     assert.equal(contract?.content, env.item.files['docs/token-contract.md']);
     assert.equal(contract?.sha256, createHash('sha256').update(contract!.content).digest('hex'));
     assert.ok(captured.references?.some((entry) => entry.path === 'specs/token/token.spec.md'));
+    const portal = captured.references?.find((entry) => entry.path === 'specs/README.md');
+    assert.equal(portal?.content, env.item.files['specs/README.md']);
+    assert.equal(portal?.sha256, createHash('sha256').update(portal!.content).digest('hex'));
     env.put('# Broken artifact\n');
     assert.equal(captureAuthoringJudgeEvidence(env.root, 'module-flat').oracle?.pass, false);
   } finally {
@@ -69,6 +72,22 @@ it('tampered source reference makes semantic evidence unavailable instead of exp
     const captured = captureAuthoringJudgeEvidence(env.root, 'module-flat');
     assert.equal(captured.complete, false);
     assert.equal(captured.content, undefined);
+    assert.equal(captured.references, undefined);
+  } finally {
+    env.cleanup();
+  }
+});
+
+it('refuses a modified portal rather than inventing source-owned dependency evidence', () => {
+  const env = fixture();
+  try {
+    env.put(env.content);
+    writeFileSync(
+      join(env.root, 'specs/README.md'),
+      env.item.files['specs/README.md']!.replace('token --> infra-base', 'infra-base --> token')
+    );
+    const captured = captureAuthoringJudgeEvidence(env.root, 'module-flat');
+    assert.equal(captured.complete, false);
     assert.equal(captured.references, undefined);
   } finally {
     env.cleanup();
@@ -107,6 +126,9 @@ it('the actual judge prompt is text-only and contains the validated parent and c
     assert.match(prompt, /SOURCE_OWNED_REFERENCES/);
     assert.ok(prompt.includes(JSON.stringify(env.item.files['docs/token-contract.md'])));
     assert.ok(prompt.includes(JSON.stringify(env.item.files['specs/token/token.spec.md'])));
+    assert.ok(prompt.includes(JSON.stringify(env.item.files['specs/README.md'])));
+    assert.match(prompt, /dependency from containment/);
+    assert.match(prompt, /separator-only/);
     assert.match(prompt, /contradict/i);
   } finally {
     env.cleanup();

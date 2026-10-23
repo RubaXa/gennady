@@ -165,6 +165,9 @@ M2: infrastructure task/ownership interpretation and portal high-level wording n
 labelled grader controls before claims of semantic improvement. The observed infra r1 PASS does
 not certify every requirement: its broad positive trigger also deserves a contradiction control.
 Do not silently turn these uncertainties into agent defects, fixed grades or successful hypotheses.
+The [qualification slice](./AUTHORING-MEASUREMENT-QUALIFICATION.md) repairs missing portal evidence
+and defines reviewed portal/library controls. Infrastructure is explicitly unqualified because its
+synthetic task conflicts with its owning kind contract; the dependency distinction alone is not a fix.
 
 M3: path-observation qualification precedes workflow-success or S2 claims. Define and version the
 facts proving creation, delivered context, whole-target write and applicable fresh validation.
