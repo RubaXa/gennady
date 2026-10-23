@@ -1,0 +1,29 @@
+TAP version 13
+# Subtest: prepareMrWorktree — concurrent prepares on one clone (FETCH_HEAD race)
+    # Subtest: rechecks real Git connectivity after a locked in-progress linked HEAD becomes valid
+    ok 1 - rechecks real Git connectivity after a locked in-progress linked HEAD becomes valid
+      ---
+      duration_ms: 1058.194625
+      type: 'test'
+      ...
+    # Subtest: each MR checks out its own head when N MRs of one project are prepared in parallel
+    ok 2 - each MR checks out its own head when N MRs of one project are prepared in parallel
+      ---
+      duration_ms: 451.442875
+      type: 'test'
+      ...
+    1..2
+ok 1 - prepareMrWorktree — concurrent prepares on one clone (FETCH_HEAD race)
+  ---
+  duration_ms: 1510.140625
+  type: 'suite'
+  ...
+1..1
+# tests 2
+# suites 1
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1660.269375

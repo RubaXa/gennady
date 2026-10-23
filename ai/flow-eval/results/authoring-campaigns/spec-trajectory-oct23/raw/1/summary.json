@@ -1,0 +1,139 @@
+{
+  "scenarioId": "authoring-spec-trajectory-oct23-scope-product-baseline-r1",
+  "date": "2026-10-23",
+  "timestamp": "2026-10-23T10:11:50.939Z",
+  "sha": "056870393ea2138a9470b7ef6188a01dc7885f81",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "73f18ba6dd244630698118281f31e3eee06946b43f8cba1cff519e091429b655",
+    "configSha256": "35d7910c6122fdbdce531daa61d00fc96c4e81007cde5e5159017fc271c3d685"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 100,
+    "observeEveryMs": 2500,
+    "stuckAfter": 80,
+    "tailLimit": 20
+  },
+  "verdict": "worker-error",
+  "status": "error",
+  "outcome": "worker-error",
+  "actions": 12,
+  "durationMs": 20562,
+  "usage": {
+    "messages": 8,
+    "input": 29654,
+    "output": 1080,
+    "reasoning": 379,
+    "cacheRead": 109568,
+    "cacheWrite": 0,
+    "total": 31113,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 20961
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": false,
+    "detail": "canonical-shape: Missing or duplicate required section: VISION; no-skeleton: Unreplaced skeleton guidance or placeholder; pending-approval: Handoff must remain pending; relative-links: specs/token/research/<yyyy-mm-dd>-<slug>.research.md: path is missing; required-facts: Expected one Input/Outcome table in REQUIREMENTS_AND_CONSTRAINTS",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": false,
+        "detail": "Missing or duplicate required section: VISION"
+      },
+      {
+        "id": "no-skeleton",
+        "pass": false,
+        "detail": "Unreplaced skeleton guidance or placeholder"
+      },
+      {
+        "id": "pending-approval",
+        "pass": false,
+        "detail": "Handoff must remain pending"
+      },
+      {
+        "id": "relative-links",
+        "pass": false,
+        "detail": "specs/token/research/<yyyy-mm-dd>-<slug>.research.md: path is missing"
+      },
+      {
+        "id": "required-facts",
+        "pass": false,
+        "detail": "Expected one Input/Outcome table in REQUIREMENTS_AND_CONSTRAINTS"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven; actual create→target read→whole Write order not proven; successful target check after final Write not proven"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/infra-base/infra-base.spec.md",
+    "specs/token/token.spec.md"
+  ],
+  "authoringBenchmark": {
+    "taskDigest": "ddcf44c6d59ddae0d5113fa2c38bb220c999ef48831b56d631f0d54c9a7d78cd",
+    "oracleDigest": "142af305fad5fa0cd19868847a4839ae3e4974462243bb76deeed92b114b90d9",
+    "harnessDigest": "96253363a5b2942ccae41460ab1f4f990773a39efff39d7d11208ac390ca9446",
+    "environmentDigest": "82c6f93c708db360471b2d6d4e652f2a72a21fff19aced08c5418d445491d748",
+    "environmentVerified": true,
+    "campaign": "spec-trajectory-oct23",
+    "caseId": "scope-product",
+    "variant": "baseline",
+    "repetition": 1,
+    "sourceCommit": "056870393ea2138a9470b7ef6188a01dc7885f81",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": false,
+    "semanticVerdict": "worker-error",
+    "trajectoryPass": false,
+    "durationMs": 20961,
+    "nonCacheTokens": 31113,
+    "metrics": {
+      "tools": 12,
+      "targetReads": 1,
+      "repeatedTargetReads": 0,
+      "wholeWrites": 0,
+      "partialWrites": 0,
+      "failedTools": 1,
+      "checks": 0,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 17317
+    }
+  },
+  "artifactFiles": [
+    "specs/token/token.spec.md"
+  ]
+}

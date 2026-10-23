@@ -1,0 +1,8 @@
+{
+  "completed": 30,
+  "planned": 30,
+  "dispatched": 30,
+  "stop": false,
+  "errors": 1,
+  "completedAt": "2026-10-23T10:35:01.829Z"
+}

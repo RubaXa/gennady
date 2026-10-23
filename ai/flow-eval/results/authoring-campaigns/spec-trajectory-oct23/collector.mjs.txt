@@ -1,0 +1,148 @@
+import { spawn, execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, statSync, createWriteStream } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const own = '/private/tmp/gennady-authoring-baseline.jiFoYt';
+const source = join(own, 'source');
+const permanent = join(own, 'permanent');
+const baseUrl = 'http://127.0.0.1:4112';
+const model = 'llm-proxy/deepseek-v4-flash';
+const sha = (value) => createHash('sha256').update(value).digest('hex');
+const plan = JSON.parse(readFileSync(join(own, 'plan.json'), 'utf8'));
+const load = (p) => import(pathToFileURL(join(source, 'ai/flow-eval', p)).href);
+const { createSddEvalOpenCodeClient } = await load('opencode-client.ts');
+
+if (process.argv[2] === 'case') {
+  const index = Number(process.argv[3]);
+  const scenario = plan[index];
+  const directory = join(own, 'runs', String(index));
+  mkdirSync(directory, { recursive: true });
+  const file = join(directory, 'scenario.json');
+  writeFileSync(file, JSON.stringify([scenario], null, 2) + '\n');
+  const sessions = new Map();
+  const requests = {};
+  let phase = 'measurement';
+  const fetchOriginal = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const requestUrl = typeof input === 'string' || input instanceof URL ? new URL(input) : new URL(input.url);
+    if (requestUrl.origin === baseUrl) {
+      const route = requestUrl.pathname.replace(/\bses_[\w-]+\b/g, '{session}').replace(/\bmsg_[\w-]+\b/g, '{message}');
+      const key = `${phase} ${(init?.method ?? (input instanceof Request ? input.method : 'GET')).toUpperCase()} ${route}`;
+      requests[key] = (requests[key] ?? 0) + 1;
+    }
+    return fetchOriginal(input, init);
+  };
+  const { SddEvalOpenCodeRuntime } = await load('opencode-runtime.ts');
+  const originalCreate = SddEvalOpenCodeRuntime.prototype.createSession;
+  SddEvalOpenCodeRuntime.prototype.createSession = async function(input) {
+    if (!resolve(input.directory).startsWith(directory + '/')) throw new Error('Session escaped owned case root');
+    return originalCreate.call(this, { ...input, onCreated: (id) => {
+      sessions.set(id, input.directory);
+      input.onCreated?.(id);
+    } });
+  };
+  const record = { scenarioId: scenario.id, caseId: scenario.authoringBenchmark.caseId, repetition: scenario.authoringBenchmark.repetition, startedAt: new Date().toISOString(), sessions: [], requests, metadata: 'SDK HTTP calls are not provider HTTP requests/retries; worker assistant-message counts are separate observed model steps.' };
+  let failure;
+  try {
+    const { main } = await load('cli.ts');
+    await main([
+      '--scenario-file', file, '--directory', directory,
+      '--gennady-root', source, '--base-url', baseUrl,
+      '--model', model, '--judge-model', model, '--concurrency', '1',
+      '--observe-every-ms', '2500', '--stuck-after', '80', '--max-observations', '100',
+      '--tail-limit', '20', '--artifacts-dir', join(directory, 'transient'),
+      '--results-dir', permanent,
+    ]);
+  } catch { failure = 'Case runner threw; no success inferred'; }
+  finally {
+    phase = 'cleanup';
+    const client = createSddEvalOpenCodeClient({ baseUrl });
+    const deleted = new Set();
+    const errors = [];
+    async function removeSession(id, boundDirectory, parent) {
+      if (deleted.has(id)) return;
+      const children = await client.session.children({ path: { id }, query: { directory: boundDirectory }, signal: AbortSignal.timeout(10000) });
+      if (children.error || !Array.isArray(children.data)) throw new Error('Owned session children unavailable');
+      if (children.data.length > 20) throw new Error('Owned session child bound exceeded');
+      for (const child of children.data) {
+        if (child.directory !== boundDirectory || child.parentID !== id) throw new Error('Child ownership mismatch');
+        await removeSession(child.id, boundDirectory, id);
+      }
+      const result = await client.session.delete({ path: { id }, query: { directory: boundDirectory }, signal: AbortSignal.timeout(10000) });
+      if (result.error || result.data !== true) throw new Error('Owned session deletion failed');
+      deleted.add(id);
+      record.sessions.push({ id, directory: boundDirectory, parent: parent ?? null, deleted: true });
+    }
+    for (const [id, boundDirectory] of sessions) {
+      try { await removeSession(id, boundDirectory); }
+      catch { errors.push({ id, kind: 'owned-session-cleanup-failed' }); }
+    }
+    record.cleanupErrors = errors;
+    record.cliExitCode = process.exitCode ?? 0;
+    if (failure) record.failure = failure;
+    record.endedAt = new Date().toISOString();
+    record.tempRemoved = errors.length === 0;
+    if (record.tempRemoved) rmSync(directory, { recursive: true, force: true });
+    mkdirSync(join(own, 'records'), { recursive: true });
+    writeFileSync(join(own, 'records', `${index}.json`), JSON.stringify(record, null, 2) + '\n');
+    globalThis.fetch = fetchOriginal;
+    SddEvalOpenCodeRuntime.prototype.createSession = originalCreate;
+    if (errors.length) process.exitCode = 2;
+  }
+} else {
+  const client = createSddEvalOpenCodeClient({ baseUrl, directory: own });
+  const c = await client.config.get({ query: { directory: own }, signal: AbortSignal.timeout(10000) });
+  if (c.error || !c.data || c.data.model !== model || c.data.small_model !== model ||
+      Object.values(c.data.agent ?? {}).some(a => a.model && a.model !== model) ||
+      Object.values(c.data.mcp ?? {}).some(a => a.enabled !== false) || (c.data.plugin ?? []).length)
+    throw new Error('Flash-only isolated preflight failed; no model calls made');
+  if (execFileSync('git', ['status', '--porcelain'], { cwd: source, encoding: 'utf8' }).trim()) throw new Error('Baseline source is dirty');
+  const health = await (await fetch(`${baseUrl}/global/health`)).json();
+  const protocol = {
+    schema: 'gennady.authoring-trajectory-baseline.1',
+    sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: source, encoding: 'utf8' }).trim(),
+    planSha256: sha(readFileSync(join(own, 'plan.json'))), collectorSha256: sha(readFileSync(new URL(import.meta.url))),
+    model, cases: 10, repetitions: 3, attempts: 30, concurrency: 3,
+    serverVersion: health.version, node: process.version,
+    frozenAt: new Date().toISOString(), sourceJournal: 'Read-only to keep exact source clean; durable results and controller records are authoritative.',
+    acceptance: 'No quality degradation and no tool/model-message growth per case; never average regressions away. Preserve errors/timeouts/inconclusive. No private reasoning captured. Fresh baseline, not pooled with old30.',
+    cleanup: 'Every single-case CLI finalizes its sandboxes/leases; wrapper deletes only its observed SDK session trees, then its temporary case directory. Fail closed on cleanup errors.',
+    limitations: 'Artifact authoring only, not whole interactive SDD. SDK assistant messages are observed model completions, not exact proxy/provider HTTP attempts. Transport retries and money unknown.',
+  };
+  writeFileSync(join(own, 'protocol.json'), JSON.stringify(protocol, null, 2) + '\n', { flag: 'wx' });
+  mkdirSync(permanent, { recursive: true });
+  mkdirSync(join(own, 'logs'), { recursive: true });
+  let next = 0, errors = 0, stop = false;
+  const children = new Set();
+  for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
+    stop = true;
+    for (const child of children) child.kill('SIGTERM');
+  });
+  async function slot() {
+    while (!stop && next < plan.length) {
+      const i = next++;
+      if (execFileSync('git', ['status', '--porcelain'], { cwd: source, encoding: 'utf8' }).trim()) throw new Error('Baseline source drift');
+      const log = createWriteStream(join(own, 'logs', `${i}.log`), { flags: 'wx' });
+      const child = spawn(process.execPath, ['--import', join(source, 'node_modules/tsx/dist/loader.mjs'), new URL(import.meta.url).pathname, 'case', String(i)], { cwd: source, env: process.env, stdio: ['ignore', 'pipe', 'pipe'], timeout: 540000, killSignal: 'SIGTERM' });
+      children.add(child);
+      child.stdout.pipe(log, { end: false }); child.stderr.pipe(log, { end: false });
+      const exit = await new Promise(resolve => child.once('close', resolve));
+      children.delete(child); log.end();
+      const recordFile = join(own, 'records', `${i}.json`);
+      const record = existsSync(recordFile) ? JSON.parse(readFileSync(recordFile, 'utf8')) : null;
+      const summaryDir = readdirSync(permanent).find(name => name.endsWith(`-${plan[i].id}`));
+      const summaryFile = summaryDir ? join(permanent, summaryDir, 'summary.json') : null;
+      const summary = summaryFile && existsSync(summaryFile) ? JSON.parse(readFileSync(summaryFile, 'utf8')) : null;
+      if (!record?.tempRemoved || !summary || summary.status === 'error') errors++;
+      if (!record?.tempRemoved || errors >= 5) stop = true;
+      console.log(JSON.stringify({ index: i, scenario: plan[i].id, exit, artifact: summary?.quality?.pass, judge: summary?.verdict, actions: summary?.actions, tokens: summary?.usage?.total, messages: summary?.usage?.messages, cleanup: record?.tempRemoved, errors }));
+    }
+  }
+  await Promise.all([slot(), slot(), slot()]);
+  const completed = readdirSync(permanent).length;
+  writeFileSync(join(own, 'batch.json'), JSON.stringify({ completed, planned: plan.length, dispatched: next, stop, errors, completedAt: new Date().toISOString() }, null, 2) + '\n');
+  console.log(JSON.stringify({ completed, planned: plan.length, stop, errors }));
+  process.exitCode = stop || completed !== plan.length ? 1 : 0;
+}

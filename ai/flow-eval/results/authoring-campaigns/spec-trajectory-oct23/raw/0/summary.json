@@ -1,0 +1,159 @@
+{
+  "scenarioId": "authoring-spec-trajectory-oct23-portal-baseline-r1",
+  "date": "2026-10-23",
+  "timestamp": "2026-10-23T10:12:26.456Z",
+  "sha": "056870393ea2138a9470b7ef6188a01dc7885f81",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "6a784a2605b59d3b7f8b67ca0e61faa4d467d2e9beab50b6a6cb8150a26bcaff",
+    "configSha256": "35d7910c6122fdbdce531daa61d00fc96c4e81007cde5e5159017fc271c3d685"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 100,
+    "observeEveryMs": 2500,
+    "stuckAfter": 80,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 16,
+  "durationMs": 36055,
+  "usage": {
+    "messages": 9,
+    "input": 29346,
+    "output": 1789,
+    "reasoning": 2043,
+    "cacheRead": 207104,
+    "cacheWrite": 0,
+    "total": 33178,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 33689
+  },
+  "judgeUsage": {
+    "sessionId": "ses_e97c0ed89ffeBa7imwg2wFpW9J",
+    "usage": {
+      "messages": 1,
+      "input": 5388,
+      "output": 130,
+      "reasoning": 3142,
+      "cacheRead": 3456,
+      "cacheWrite": 0,
+      "total": 8660,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 1,
+      "wallClockMs": 20012
+    }
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": true,
+    "detail": "portal: bounded artifact checks passed; independent semantic review not claimed",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "no-skeleton",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "pending-approval",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "relative-links",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "required-facts",
+        "pass": true,
+        "detail": "passed"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "specs/infra-base/infra-base.spec.md",
+    "specs/token/normalize/normalize.spec.md",
+    "specs/token/token.spec.md"
+  ],
+  "authoringBenchmark": {
+    "taskDigest": "88bd27082389f725c9375b475427b9af1b04fcfba49528017995bf9e10103284",
+    "oracleDigest": "142af305fad5fa0cd19868847a4839ae3e4974462243bb76deeed92b114b90d9",
+    "harnessDigest": "96253363a5b2942ccae41460ab1f4f990773a39efff39d7d11208ac390ca9446",
+    "environmentDigest": "82c6f93c708db360471b2d6d4e652f2a72a21fff19aced08c5418d445491d748",
+    "environmentVerified": true,
+    "campaign": "spec-trajectory-oct23",
+    "caseId": "portal",
+    "variant": "baseline",
+    "repetition": 1,
+    "sourceCommit": "056870393ea2138a9470b7ef6188a01dc7885f81",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": true,
+    "semanticVerdict": "pass",
+    "trajectoryPass": false,
+    "durationMs": 33689,
+    "nonCacheTokens": 33178,
+    "metrics": {
+      "tools": 16,
+      "targetReads": 2,
+      "repeatedTargetReads": 1,
+      "wholeWrites": 1,
+      "partialWrites": 0,
+      "failedTools": 0,
+      "checks": 0,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 26549
+    }
+  },
+  "artifactFiles": [
+    "specs/README.md"
+  ]
+}

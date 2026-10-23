@@ -8,10 +8,13 @@
     "authoring-judge-evidence.ts",
     "authoring-prompt-footprint.ts",
     "authoring-reflection.ts",
+    "authoring-trajectory-profile.ts",
+    "authoring-baseline-report.ts",
     "runner.ts",
     "evidence.ts",
     "eval-signal.ts",
-    "scripts/authoring-experiment.ts"
+    "scripts/authoring-experiment.ts",
+    "scripts/authoring-baseline-report.ts"
   ],
   "exclude": ["**/*.test.ts", "**/__tests__/**"]
 }

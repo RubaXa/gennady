@@ -1,0 +1,29 @@
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=unknown progress=true artifact=none artifact-wait=1 tools=0 repeat=0 stuck=false tail=no messages
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=none artifact-wait=2 tools=0 repeat=0 stuck=false tail=user: This is an ISOLATED artifact-authoring benchmark, not the whole SDD workflow. Read inputs/brief.md, then the actual installed owner directive/format named there. Create ONLY the re
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=none artifact-wait=3 tools=3 repeat=0 stuck=false tail=assistant: {}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=changed artifact-wait=0 tools=4 repeat=0 stuck=false tail=assistant: {"command":"npx --no-install gennady sdd-new portal","workdir":"."}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=same artifact-wait=1 tools=8 repeat=0 stuck=false tail=assistant: {}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=same artifact-wait=2 tools=9 repeat=0 stuck=false tail=assistant: {"filePath":"./specs/token/normalize/normalize.spec.md"}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=same artifact-wait=3 tools=11 repeat=0 stuck=false tail=assistant: {"command":"find ai -type f | sort","workdir":"."}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=same artifact-wait=4 tools=13 repeat=0 stuck=false tail=assistant: {"filePath":"./docs/token-contract.md"}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=false artifact=same artifact-wait=5 tools=13 repeat=1 stuck=false tail=assistant: {"filePath":"./docs/token-contract.md"}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=false artifact=same artifact-wait=6 tools=13 repeat=2 stuck=false tail=assistant: {"filePath":"./docs/token-contract.md"}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=false artifact=same artifact-wait=7 tools=13 repeat=3 stuck=false tail=assistant: {"filePath":"./docs/token-contract.md"}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=changed artifact-wait=0 tools=14 repeat=0 stuck=false tail=assistant: {"filePath":"./specs/README.md"}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=same artifact-wait=1 tools=16 repeat=0 stuck=false tail=assistant: {"command":"git status --short && git diff --stat","workdir":"."}
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=running progress=true artifact=same artifact-wait=2 tools=16 repeat=0 stuck=false tail=assistant: Created `specs/README.md` only, via `npx --no-install gennady sdd-new portal`, with Vision, `token --> infra-base` Scope Graph, and the two-row Scopes table (both 🚧, valid links).
+authoring-spec-trajectory-oct23-portal-baseline-r1: status=completed progress=false artifact=same artifact-wait=3 tools=16 repeat=1 stuck=false tail=assistant: Created `specs/README.md` only, via `npx --no-install gennady sdd-new portal`, with Vision, `token --> infra-base` Scope Graph, and the two-row Scopes table (both 🚧, valid links).
+authoring-spec-trajectory-oct23-portal-baseline-r1: pass (completed)
+  [diag] last assistant: Created `specs/README.md` only, via `npx --no-install gennady sdd-new portal`, with Vision, `token --> infra-base` Scope Graph, and the two-row Scopes table (both 🚧, valid links). Seeded files untouc
+  quality AUTHORING: pass — portal: bounded artifact checks passed; independent semantic review not claimed
+  usage: total=33178 (in=29346 out=1789 reason=2043 cache r/w=207104/0) cost=0.0000 msgs=9
+  judge rationale → /private/tmp/gennady-authoring-baseline.jiFoYt/runs/0/sdd-flow-eval-BxKkLc/.sdd-eval-judge.authoring-spec-trajectory-oct23-portal-baseline-r1.md
+  trajectory → /private/tmp/gennady-authoring-baseline.jiFoYt/runs/0/sdd-flow-eval-BxKkLc/.sdd-eval-trajectory.authoring-spec-trajectory-oct23-portal-baseline-r1.json (16 tools · 0/0 checkpoints green)
+  trajectory gate: FAIL — opaque Bash command: whole-write-only path unproven
+  gate: FAIL
+  results → /private/tmp/gennady-authoring-baseline.jiFoYt/permanent/2026-10-23-authoring-spec-trajectory-oct23-portal-baseline-r1
+  reflection: completed (separate from primary measurements)
+  results: could not append experiments-log stub — EACCES: permission denied, open '/private/tmp/gennady-authoring-baseline.jiFoYt/source/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md'
+artifacts → /private/tmp/gennady-authoring-baseline.jiFoYt/runs/0/transient/run-2026-10-23T10-11-27-657Z
+sandboxes: removed=1 retained=0 pending=0
+batch outcome: exit 1 (1 scenario(s) reported)

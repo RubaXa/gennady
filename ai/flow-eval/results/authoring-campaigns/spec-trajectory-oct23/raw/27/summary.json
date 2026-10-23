@@ -1,0 +1,159 @@
+{
+  "scenarioId": "authoring-spec-trajectory-oct23-index-module-baseline-r3",
+  "date": "2026-10-23",
+  "timestamp": "2026-10-23T10:33:34.632Z",
+  "sha": "056870393ea2138a9470b7ef6188a01dc7885f81",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "6173f8b07796c773ffd54e70e3981073174eb8aa219d0c884b4a4842237fc648",
+    "configSha256": "35d7910c6122fdbdce531daa61d00fc96c4e81007cde5e5159017fc271c3d685"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 100,
+    "observeEveryMs": 2500,
+    "stuckAfter": 80,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 24,
+  "durationMs": 49529,
+  "usage": {
+    "messages": 14,
+    "input": 23585,
+    "output": 2764,
+    "reasoning": 2469,
+    "cacheRead": 250752,
+    "cacheWrite": 0,
+    "total": 28818,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 47450
+  },
+  "judgeUsage": {
+    "sessionId": "ses_e97ae716effebCL2nd1P0sdrA9",
+    "usage": {
+      "messages": 1,
+      "input": 5361,
+      "output": 119,
+      "reasoning": 13694,
+      "cacheRead": 3456,
+      "cacheWrite": 0,
+      "total": 19174,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 1,
+      "wallClockMs": 76699
+    }
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": true,
+    "detail": "index-module: bounded artifact checks passed; independent semantic review not claimed",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "no-skeleton",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "pending-approval",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "relative-links",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "required-facts",
+        "pass": true,
+        "detail": "passed"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "specs/infra-base/infra-base.spec.md",
+    "specs/token/normalize/normalize.spec.md",
+    "specs/token/token.spec.md"
+  ],
+  "authoringBenchmark": {
+    "taskDigest": "349aa7854106f061cdccef8f6edfc758a3058eed2c5a89911dd615f1533cd9ad",
+    "oracleDigest": "142af305fad5fa0cd19868847a4839ae3e4974462243bb76deeed92b114b90d9",
+    "harnessDigest": "96253363a5b2942ccae41460ab1f4f990773a39efff39d7d11208ac390ca9446",
+    "environmentDigest": "82c6f93c708db360471b2d6d4e652f2a72a21fff19aced08c5418d445491d748",
+    "environmentVerified": true,
+    "campaign": "spec-trajectory-oct23",
+    "caseId": "index-module",
+    "variant": "baseline",
+    "repetition": 3,
+    "sourceCommit": "056870393ea2138a9470b7ef6188a01dc7885f81",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": true,
+    "semanticVerdict": "pass",
+    "trajectoryPass": false,
+    "durationMs": 47450,
+    "nonCacheTokens": 28818,
+    "metrics": {
+      "tools": 24,
+      "targetReads": 2,
+      "repeatedTargetReads": 1,
+      "wholeWrites": 1,
+      "partialWrites": 0,
+      "failedTools": 1,
+      "checks": 0,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 41122
+    }
+  },
+  "artifactFiles": [
+    "specs/token/normalize/normalize.3-tasks.md"
+  ]
+}
