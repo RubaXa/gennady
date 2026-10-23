@@ -1,0 +1,461 @@
+[
+  {
+    "baseline": "baseline",
+    "candidate": "prose",
+    "protocol": "gennady.authoring-comparison.2",
+    "comparable": true,
+    "issues": [],
+    "cases": [
+      {
+        "caseId": "module-flat",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 84,
+          "maxTools": 31,
+          "medianTools": 29,
+          "medianDurationMs": 88824,
+          "durationRangeMs": [
+            73703,
+            97499
+          ],
+          "medianNonCacheTokens": 52856
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43538,
+          "approximatePromptTokens": 8729,
+          "totalTools": 82,
+          "maxTools": 29,
+          "medianTools": 28,
+          "medianDurationMs": 112690,
+          "durationRangeMs": [
+            95899,
+            114197
+          ],
+          "medianNonCacheTokens": 57165
+        }
+      },
+      {
+        "caseId": "module-nested",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 3,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 79,
+          "maxTools": 30,
+          "medianTools": 27,
+          "medianDurationMs": 88466,
+          "durationRangeMs": [
+            79011,
+            105148
+          ],
+          "medianNonCacheTokens": 57299
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 0,
+          "trajectoryPasses": 0,
+          "promptBytes": 43538,
+          "approximatePromptTokens": 8729,
+          "totalTools": 84,
+          "maxTools": 35,
+          "medianTools": 30,
+          "medianDurationMs": 104820,
+          "durationRangeMs": [
+            83870,
+            127136
+          ],
+          "medianNonCacheTokens": 56702
+        }
+      }
+    ],
+    "regressions": [
+      "module-nested"
+    ],
+    "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+    "promptShrank": true,
+    "recommendation": "reject",
+    "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+    "monetaryCost": "unknown"
+  },
+  {
+    "baseline": "baseline",
+    "candidate": "pseudocode",
+    "protocol": "gennady.authoring-comparison.2",
+    "comparable": true,
+    "issues": [],
+    "cases": [
+      {
+        "caseId": "module-flat",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 84,
+          "maxTools": 31,
+          "medianTools": 29,
+          "medianDurationMs": 88824,
+          "durationRangeMs": [
+            73703,
+            97499
+          ],
+          "medianNonCacheTokens": 52856
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 1,
+          "trajectoryPasses": 0,
+          "promptBytes": 43607,
+          "approximatePromptTokens": 8738,
+          "totalTools": 72,
+          "maxTools": 29,
+          "medianTools": 22,
+          "medianDurationMs": 77148,
+          "durationRangeMs": [
+            64037,
+            99774
+          ],
+          "medianNonCacheTokens": 48631
+        }
+      },
+      {
+        "caseId": "module-nested",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 3,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 79,
+          "maxTools": 30,
+          "medianTools": 27,
+          "medianDurationMs": 88466,
+          "durationRangeMs": [
+            79011,
+            105148
+          ],
+          "medianNonCacheTokens": 57299
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 3,
+          "trajectoryPasses": 0,
+          "promptBytes": 43607,
+          "approximatePromptTokens": 8738,
+          "totalTools": 85,
+          "maxTools": 29,
+          "medianTools": 28,
+          "medianDurationMs": 95501,
+          "durationRangeMs": [
+            81506,
+            105075
+          ],
+          "medianNonCacheTokens": 49902
+        }
+      }
+    ],
+    "regressions": [
+      "module-flat",
+      "module-nested"
+    ],
+    "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+    "promptShrank": false,
+    "recommendation": "reject",
+    "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+    "monetaryCost": "unknown"
+  },
+  {
+    "baseline": "baseline",
+    "candidate": "observation",
+    "protocol": "gennady.authoring-comparison.2",
+    "comparable": true,
+    "issues": [],
+    "cases": [
+      {
+        "caseId": "module-flat",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 84,
+          "maxTools": 31,
+          "medianTools": 29,
+          "medianDurationMs": 88824,
+          "durationRangeMs": [
+            73703,
+            97499
+          ],
+          "medianNonCacheTokens": 52856
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43680,
+          "approximatePromptTokens": 8749,
+          "totalTools": 77,
+          "maxTools": 29,
+          "medianTools": 26,
+          "medianDurationMs": 79972,
+          "durationRangeMs": [
+            70485,
+            82875
+          ],
+          "medianNonCacheTokens": 50370
+        }
+      },
+      {
+        "caseId": "module-nested",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 3,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 79,
+          "maxTools": 30,
+          "medianTools": 27,
+          "medianDurationMs": 88466,
+          "durationRangeMs": [
+            79011,
+            105148
+          ],
+          "medianNonCacheTokens": 57299
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43680,
+          "approximatePromptTokens": 8749,
+          "totalTools": 81,
+          "maxTools": 29,
+          "medianTools": 29,
+          "medianDurationMs": 103293,
+          "durationRangeMs": [
+            89329,
+            110284
+          ],
+          "medianNonCacheTokens": 57470
+        }
+      }
+    ],
+    "regressions": [
+      "module-flat",
+      "module-nested"
+    ],
+    "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+    "promptShrank": false,
+    "recommendation": "reject",
+    "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+    "monetaryCost": "unknown"
+  },
+  {
+    "baseline": "prose",
+    "candidate": "pseudocode",
+    "protocol": "gennady.authoring-comparison.2",
+    "comparable": true,
+    "issues": [],
+    "cases": [
+      {
+        "caseId": "module-flat",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43538,
+          "approximatePromptTokens": 8729,
+          "totalTools": 82,
+          "maxTools": 29,
+          "medianTools": 28,
+          "medianDurationMs": 112690,
+          "durationRangeMs": [
+            95899,
+            114197
+          ],
+          "medianNonCacheTokens": 57165
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 1,
+          "trajectoryPasses": 0,
+          "promptBytes": 43607,
+          "approximatePromptTokens": 8738,
+          "totalTools": 72,
+          "maxTools": 29,
+          "medianTools": 22,
+          "medianDurationMs": 77148,
+          "durationRangeMs": [
+            64037,
+            99774
+          ],
+          "medianNonCacheTokens": 48631
+        }
+      },
+      {
+        "caseId": "module-nested",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 0,
+          "trajectoryPasses": 0,
+          "promptBytes": 43538,
+          "approximatePromptTokens": 8729,
+          "totalTools": 84,
+          "maxTools": 35,
+          "medianTools": 30,
+          "medianDurationMs": 104820,
+          "durationRangeMs": [
+            83870,
+            127136
+          ],
+          "medianNonCacheTokens": 56702
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 3,
+          "trajectoryPasses": 0,
+          "promptBytes": 43607,
+          "approximatePromptTokens": 8738,
+          "totalTools": 85,
+          "maxTools": 29,
+          "medianTools": 28,
+          "medianDurationMs": 95501,
+          "durationRangeMs": [
+            81506,
+            105075
+          ],
+          "medianNonCacheTokens": 49902
+        }
+      }
+    ],
+    "regressions": [
+      "module-flat",
+      "module-nested"
+    ],
+    "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+    "promptShrank": false,
+    "recommendation": "reject",
+    "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+    "monetaryCost": "unknown"
+  },
+  {
+    "baseline": "prose",
+    "candidate": "observation",
+    "protocol": "gennady.authoring-comparison.2",
+    "comparable": true,
+    "issues": [],
+    "cases": [
+      {
+        "caseId": "module-flat",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43538,
+          "approximatePromptTokens": 8729,
+          "totalTools": 82,
+          "maxTools": 29,
+          "medianTools": 28,
+          "medianDurationMs": 112690,
+          "durationRangeMs": [
+            95899,
+            114197
+          ],
+          "medianNonCacheTokens": 57165
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43680,
+          "approximatePromptTokens": 8749,
+          "totalTools": 77,
+          "maxTools": 29,
+          "medianTools": 26,
+          "medianDurationMs": 79972,
+          "durationRangeMs": [
+            70485,
+            82875
+          ],
+          "medianNonCacheTokens": 50370
+        }
+      },
+      {
+        "caseId": "module-nested",
+        "baseline": {
+          "runs": 3,
+          "artifactPasses": 2,
+          "semanticPasses": 0,
+          "trajectoryPasses": 0,
+          "promptBytes": 43538,
+          "approximatePromptTokens": 8729,
+          "totalTools": 84,
+          "maxTools": 35,
+          "medianTools": 30,
+          "medianDurationMs": 104820,
+          "durationRangeMs": [
+            83870,
+            127136
+          ],
+          "medianNonCacheTokens": 56702
+        },
+        "candidate": {
+          "runs": 3,
+          "artifactPasses": 3,
+          "semanticPasses": 2,
+          "trajectoryPasses": 0,
+          "promptBytes": 43680,
+          "approximatePromptTokens": 8749,
+          "totalTools": 81,
+          "maxTools": 29,
+          "medianTools": 29,
+          "medianDurationMs": 103293,
+          "durationRangeMs": [
+            89329,
+            110284
+          ],
+          "medianNonCacheTokens": 57470
+        }
+      }
+    ],
+    "regressions": [
+      "module-flat",
+      "module-nested"
+    ],
+    "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+    "promptShrank": false,
+    "recommendation": "reject",
+    "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+    "monetaryCost": "unknown"
+  }
+]

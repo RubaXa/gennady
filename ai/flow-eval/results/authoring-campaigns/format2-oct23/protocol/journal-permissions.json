@@ -1,0 +1,11 @@
+{
+  "authority": "local file modes only; primary experiment evidence lives outside source trees",
+  "before": {
+    "plan/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md": "644",
+    "prose/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md": "644",
+    "pseudocode/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md": "644",
+    "observation/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md": "644"
+  },
+  "during": "444",
+  "restorationRequired": true
+}

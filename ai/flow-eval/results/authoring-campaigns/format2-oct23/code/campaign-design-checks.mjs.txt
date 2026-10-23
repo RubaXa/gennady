@@ -1,0 +1,71 @@
+// Pure design controls; no server/provider access, no fixtures, no model calls.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { createAuthoringMatrix } from './plan/ai/flow-eval/scripts/authoring-experiment.ts';
+
+const campaign = 'format2-oct23';
+const seed = 'format2-oct23-v1';
+const arms = ['baseline', 'prose', 'pseudocode', 'observation'];
+const cases = ['module-flat', 'module-nested'];
+const preparer = readFileSync(new URL('./prepare-campaign.mts', import.meta.url), 'utf8');
+const start = preparer.indexOf('function orderFor(');
+const end = preparer.indexOf('\nconst matrix =', start);
+assert.ok(start > 0 && end > start);
+// Only the frozen pure permutation function is extracted; TypeScript annotations removed mechanically.
+const pure = preparer.slice(start, end)
+  .replace('caseId: string, repetition: number', 'caseId, repetition')
+  .replace('const armOrder: Array<typeof ARMS[number]>', 'const armOrder')
+  .replace('(bound: number)', '(bound)')
+  .replace('armOrder[j]!', 'armOrder[j]')
+  .replace('armOrder[i]!', 'armOrder[i]');
+const orderFor = new Function('createHash', 'SEED', 'ARMS', `${pure}; return orderFor;`)(createHash, seed, arms);
+
+test('FORMAT2 is exactly24 fresh attempts with unchanged scenario content per case', () => {
+  const rows = arms.flatMap((arm) => createAuthoringMatrix(campaign, arm, 3, cases));
+  assert.equal(rows.length, 24);
+  assert.equal(new Set(rows.map((row) => row.id)).size, 24);
+  const prior = new Set(arms.flatMap((arm) => createAuthoringMatrix('format-oct23', arm, 3, cases)).map((row) => row.id));
+  for (const row of rows) {
+    assert.equal(prior.has(row.id), false);
+    assert.equal(row.budgetMs, 180000);
+    assert.equal(row.trajectoryRules.maxTools, 40);
+  }
+  for (const caseId of cases) {
+    const selected = rows.filter((row) => row.authoringBenchmark.caseId === caseId);
+    assert.equal(selected.length, 12);
+    const content = (row) => {
+      const copy = structuredClone(row);
+      delete copy.id;
+      delete copy.authoringBenchmark.campaign;
+      delete copy.authoringBenchmark.variant;
+      delete copy.authoringBenchmark.repetition;
+      return copy;
+    };
+    for (const row of selected) assert.deepEqual(content(row), content(selected[0]));
+    for (const arm of arms) assert.equal(selected.filter((row) => row.authoringBenchmark.variant === arm).length, 3);
+  }
+});
+
+test('FORMAT2 fixed-seed cyclic order gives3 distinct positions per arm/case', () => {
+  for (const caseId of cases) {
+    const positions = new Map(arms.map((arm) => [arm, new Set()]));
+    for (let repetition = 1; repetition <= 3; repetition++) {
+      const order = orderFor(caseId, repetition);
+      assert.deepEqual([...order].sort(), [...arms].sort());
+      assert.deepEqual(orderFor(caseId, repetition), order);
+      for (const [index, arm] of order.entries()) positions.get(arm).add(index);
+    }
+    for (const [arm, slots] of positions) assert.equal(slots.size, 3, `${caseId}/${arm}`);
+  }
+});
+
+test('FORMAT2 variants change only source commit metadata, not treatment facts or action bytes', () => {
+  const current = JSON.parse(readFileSync(new URL('./variants.json', import.meta.url), 'utf8'));
+  const historical = JSON.parse(readFileSync(new URL('../gennady-format-oct23.xNC5Zx/variants.json', import.meta.url), 'utf8'));
+  assert.equal(current.source.commit, 'c676bb090e6f4f93a199c9a46f9726be9260c865');
+  assert.equal(current.facts.length, 22);
+  current.source.commit = historical.source.commit;
+  assert.deepEqual(current, historical);
+});

@@ -1,0 +1,180 @@
+// Execute only after the root agent has reviewed the completed 24-attempt batch.
+// Removes the ten isolated server-private directories, never sources/dependencies/results.
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import {
+  chmodSync, lstatSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync,
+} from 'node:fs';
+import { basename, join } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
+
+const ROOT = '/private/tmp/gennady-format-repeat-oct23.AbxCDQ';
+const BASE_URL = 'http://127.0.0.1:4198';
+const SERVER_PID_SHA256 = 'f3fed8fa35153f4d18035ea363208073a5a0397e59e6582eeb40f39b9ee88170';
+const START = 'Fri Oct 23 23:54:18 2026';
+const PRIVATE = {
+  cwd: 'server-home', config: 'server-config', data: 'server-data', cache: 'server-cache',
+  state: 'server-state', runtime: 'server-runtime', temporary: 'server-tmp',
+  bun: 'server-bun', bunCache: 'server-bun-cache', npmCache: 'server-npm-cache',
+};
+const JOURNALS = ['plan', 'prose', 'pseudocode', 'observation']
+  .map(arm => `${arm}/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md`);
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const fail = code => { throw new Error(code); };
+function absent(path) {
+  try { lstatSync(path); return false; }
+  catch (error) { if (error.code === 'ENOENT') return true; throw error; }
+}
+function physical(path, kind) {
+  const stat = lstatSync(path);
+  if (stat.isSymbolicLink() || realpathSync(path) !== path ||
+      (kind === 'directory' ? !stat.isDirectory() : !stat.isFile() || stat.nlink !== 1))
+    fail('UNSAFE_PATH_IDENTITY');
+  return stat;
+}
+function bytes(path, limit = 1024 * 1024) {
+  if (physical(path, 'file').size > limit) fail('OVERSIZED_METADATA');
+  return readFileSync(path);
+}
+const json = path => JSON.parse(bytes(path).toString('utf8'));
+function command(binary, args) {
+  return execFileSync(binary, args, {
+    encoding: 'utf8', timeout: 2000, maxBuffer: 16384,
+    env: { ...process.env, LC_ALL: 'C', LANG: 'C' },
+  }).trim();
+}
+function processInfo(pid) {
+  let line;
+  try { line = command('/bin/ps', ['-p', String(pid), '-o', 'pid=,ppid=,lstart=,command=']); }
+  catch (error) { if (error.status === 1) return null; throw error; }
+  if (!line) return null;
+  const match = line.match(/^(\d+)\s+(\d+)\s+(\w{3}\s+\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\d{4})\s+(.+)$/);
+  if (!match) fail('PROCESS_IDENTITY_UNREADABLE');
+  return { pid: Number(match[1]), ppid: Number(match[2]), start: match[3], command: match[4] };
+}
+function alive(pid) {
+  try { process.kill(pid, 0); return true; }
+  catch (error) { if (error.code === 'ESRCH') return false; throw error; }
+}
+function cwd(pid) {
+  const lines = command('/usr/sbin/lsof', ['-a', '-p', String(pid), '-d', 'cwd', '-Fn'])
+    .split('\n').filter(line => line.startsWith('n')).map(line => line.slice(1));
+  if (lines.length !== 1) fail('PROCESS_CWD_UNREADABLE');
+  return realpathSync(lines[0]);
+}
+
+// Complete every read-only preflight before sending a signal, chmod, or removing anything.
+physical(ROOT, 'directory');
+const summaryPath = join(ROOT, 'runtime-cleanup-summary.json');
+if (!absent(summaryPath)) fail('CLEANUP_SUMMARY_ALREADY_EXISTS');
+const pidFile = join(ROOT, 'server-pid.json');
+if (sha(bytes(pidFile)) !== SERVER_PID_SHA256) fail('SERVER_PID_METADATA_DRIFT');
+const server = json(pidFile);
+if (server.launcherPid !== 41372 || server.serverPid !== 41384 || server.baseUrl !== BASE_URL ||
+    JSON.stringify(Object.keys(server.paths).sort()) !== JSON.stringify(Object.keys(PRIVATE).sort()))
+  fail('SERVER_METADATA_MISMATCH');
+const privatePaths = Object.entries(PRIVATE).map(([key, name]) => {
+  const path = join(ROOT, name);
+  if (server.paths[key] !== path) fail('FOREIGN_PRIVATE_PATH');
+  physical(path, 'directory');
+  return path;
+});
+const config = json(join(ROOT, 'config.json'));
+if (config.ownRoot !== ROOT || new URL(config.baseUrl).origin !== BASE_URL || config.attempts?.length !== 24)
+  fail('CAMPAIGN_CONFIG_MISMATCH');
+const batch = json(join(ROOT, 'batch.json'));
+if (batch.planned !== 24 || batch.dispatched !== 24 || batch.recorded !== 24 || batch.complete !== true ||
+    batch.interrupted !== null || batch.errors !== 0 || !batch.endedAt || batch.rows?.length !== 24)
+  fail('BATCH_NOT_FINISHED');
+let deletedSessions = 0;
+for (let index = 0; index < 24; index++) {
+  const row = batch.rows[index], attempt = config.attempts[index];
+  const record = json(join(ROOT, 'records', `${index}.json`));
+  const directory = join(ROOT, 'runs', String(index));
+  if (row.index !== index || row.scenarioId !== attempt.scenario.id || row.code !== 0 || row.signal !== null ||
+      row.complete !== true || row.qualification?.dispatchMayContinue !== true ||
+      record.index !== index || record.scenarioId !== row.scenarioId || record.directory !== directory ||
+      record.persistence !== true || record.tempRemoved !== true || record.interrupted !== null ||
+      !record.endedAt || !Array.isArray(record.cleanupErrors) || record.cleanupErrors.length || !absent(directory))
+    fail('ATTEMPT_NOT_SAFELY_FINALIZED');
+  if (!Array.isArray(record.sessions) || !record.sessions.length || record.sessions.length > 64 ||
+      !Array.isArray(record.knownSessions) || !record.knownSessions.length || record.knownSessions.length > 64)
+    fail('SESSION_EVIDENCE_MISSING');
+  const deleted = new Map();
+  for (const session of record.sessions) {
+    if (!/^ses_[\w-]+$/.test(session.id) || deleted.has(session.id) || session.deleted !== true ||
+        !session.directory?.startsWith(directory + '/sdd-flow-eval-') || !absent(session.directory))
+      fail('SESSION_NOT_DELETED');
+    deleted.set(session.id, session.directory);
+  }
+  for (const known of record.knownSessions)
+    if (deleted.get(known.id) !== known.directory) fail('KNOWN_SESSION_NOT_DELETED');
+  deletedSessions += deleted.size;
+  const primary = record.primary;
+  if (!primary || primary.directory !== row.primary?.directory || basename(primary.directory) !== primary.directory ||
+      !/^20\d{2}-\d{2}-\d{2}-authoring-format2-oct23-/.test(primary.directory))
+    fail('PERSISTED_RESULT_IDENTITY_MISMATCH');
+  for (const [file, expected] of [['summary.json', primary.summarySha256], ['trajectory.json', primary.trajectorySha256]])
+    if (!/^[a-f0-9]{64}$/.test(expected) || sha(bytes(join(ROOT, 'permanent', primary.directory, file), 16 * 1024 * 1024)) !== expected)
+      fail('PERSISTED_RESULT_HASH_MISMATCH');
+}
+physical(join(ROOT, 'runs'), 'directory');
+if (readdirSync(join(ROOT, 'runs')).length) fail('ACTIVE_RUN_DIRECTORY');
+const permissions = json(join(ROOT, 'journal-permissions.json'));
+if (permissions.restorationRequired !== true || permissions.during !== '444' ||
+    JSON.stringify(Object.keys(permissions.before).sort()) !== JSON.stringify([...JOURNALS].sort()))
+  fail('JOURNAL_PERMISSION_MANIFEST_MISMATCH');
+const journals = JOURNALS.map(relative => {
+  const path = join(ROOT, relative), stat = physical(path, 'file');
+  if (permissions.before[relative] !== '644' || (stat.mode & 0o777) !== 0o444)
+    fail('JOURNAL_MODE_DRIFT');
+  return { path, sha256: sha(bytes(path)), before: '444', restore: '644' };
+});
+const launcher = processInfo(server.launcherPid), child = processInfo(server.serverPid);
+if (!launcher || !child || launcher.start !== START || child.start !== START ||
+    launcher.command !== 'node server-launcher.mjs --launch' || child.ppid !== launcher.pid ||
+    child.command !== '/opt/homebrew/bin/opencode serve --hostname 127.0.0.1 --port 4198 --log-level WARN' ||
+    cwd(launcher.pid) !== ROOT || cwd(child.pid) !== join(ROOT, PRIVATE.cwd))
+  fail('SERVER_PROCESS_IDENTITY_MISMATCH');
+const listeners = command('/usr/sbin/lsof', ['-nP', '-iTCP:4198', '-sTCP:LISTEN', '-Fp'])
+  .split('\n').filter(line => line.startsWith('p')).map(line => Number(line.slice(1)));
+if (listeners.length !== 1 || listeners[0] !== child.pid) fail('FOREIGN_PORT_LISTENER');
+
+const report = {
+  schema: 'gennady.owned-runtime-cleanup.1', ownRoot: ROOT, status: 'blocked',
+  attemptsFinalized: 24, deletedSessionFacts: deletedSessions,
+  server: { launcherPid: launcher.pid, serverPid: child.pid, port: 4198, signal: null, stopped: false },
+  removedPaths: [], journalModesRestored: [], errors: [],
+  preserved: ['source worktrees', 'shared dependencies', 'dist', 'permanent results', 'records', 'logs', 'public metadata'],
+};
+try {
+  // Recheck the same processes immediately before the only signal. No SIGKILL/force fallback.
+  if (JSON.stringify(processInfo(launcher.pid)) !== JSON.stringify(launcher) ||
+      JSON.stringify(processInfo(child.pid)) !== JSON.stringify(child)) fail('SERVER_PROCESS_DRIFT');
+  process.kill(launcher.pid, 'SIGTERM');
+  report.server.signal = 'SIGTERM';
+  const deadline = Date.now() + 8000;
+  while ((alive(launcher.pid) || alive(child.pid)) && Date.now() < deadline) await delay(150);
+  if (alive(launcher.pid) || alive(child.pid)) fail('SERVER_STOP_DEADLINE');
+  report.server.stopped = true;
+  for (const journal of journals) {
+    if (sha(bytes(journal.path)) !== journal.sha256) fail('JOURNAL_CONTENT_DRIFT');
+    chmodSync(journal.path, 0o644);
+    report.journalModesRestored.push({ path: journal.path, from: '444', to: '644', sha256: journal.sha256 });
+  }
+  for (const path of privatePaths) {
+    physical(path, 'directory');
+    // rm does not traverse nested symlinks: package-cache links themselves are removed,
+    // while their targets (including anything outside the owned directory) remain untouched.
+    rmSync(path, { recursive: true });
+    if (!absent(path)) fail('PRIVATE_DIRECTORY_NOT_REMOVED');
+    report.removedPaths.push(path);
+  }
+  report.status = 'complete';
+} catch (error) {
+  report.errors.push(/^[A-Z][A-Z0-9_]+$/.test(error.message) ? error.message : 'CLEANUP_OPERATION_FAILED');
+  process.exitCode = 2;
+} finally {
+  writeFileSync(summaryPath, JSON.stringify(report, null, 2) + '\n', { flag: 'wx', mode: 0o644 });
+  console.log(JSON.stringify(report));
+}

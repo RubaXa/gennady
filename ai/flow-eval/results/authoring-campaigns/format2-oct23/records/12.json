@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 12,
+  "scenarioId": "authoring-format2-oct23-module-nested-pseudocode-r2",
+  "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+  "startedAt": "2026-10-23T21:42:39.783Z",
+  "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/12",
+  "sessions": [
+    {
+      "id": "ses_e9548ad68ffeEXQ6PY0WfeWVaF",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/12/sdd-flow-eval-vnZjUD",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e9547096bffeVGF2xtUAz8LO5u",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/12/sdd-flow-eval-vnZjUD",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-23-authoring-format2-oct23-module-nested-pseudocode-r2",
+    "summarySha256": "39bbcf0320403907b8a379ed99f05b6ddefb95113336440cd201e6b7a1f86f7c",
+    "trajectorySha256": "4f25ba2ed66155035cf27e8d85f81ff800539ca2d91d304ed16e9efdaabb01f5",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 28,
+    "nonCacheTokens": 58368,
+    "messages": 17
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-23T21:45:39.401Z",
+  "knownSessions": [
+    {
+      "id": "ses_e9548ad68ffeEXQ6PY0WfeWVaF",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/12/sdd-flow-eval-vnZjUD"
+    },
+    {
+      "id": "ses_e9547096bffeVGF2xtUAz8LO5u",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/12/sdd-flow-eval-vnZjUD"
+    }
+  ]
+}

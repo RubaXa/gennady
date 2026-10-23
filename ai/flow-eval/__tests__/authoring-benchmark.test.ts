@@ -598,7 +598,6 @@ it('calibrated-v2: actual raw15 artifact is separately calibrated, never rewritt
 });
 
 it('calibrated-v3: accepts the recorded not-issued clause without regrading historical revisions', () => {
-  assert.equal(CURRENT_AUTHORING_BENCHMARK_REVISION, 'calibrated-v3');
   for (const id of ['module-flat', 'module-nested'] as const) {
     const env = fixture(id);
     try {
@@ -607,9 +606,9 @@ it('calibrated-v3: accepts the recorded not-issued clause without regrading hist
         '<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n- **Open risks & validation needs:** Операторское одобрение не выдано; реализация не начата.\n<!--/SECTION:HANDOFF-->'
       );
       put(env.root, env.item.target, authored);
-      const current = checkAuthoringBenchmark(env.root, id);
+      const current = checkAuthoringBenchmark(env.root, id, 'calibrated-v3');
       assert.equal(current.pass, true, current.detail);
-      assert.deepEqual(checkAuthoringBenchmark(env.root, id, 'calibrated-v3'), current);
+      assert.deepEqual(checkAuthoringBenchmark(env.root, id), current);
       for (const revision of ['frozen-oct22', 'calibrated', 'calibrated-v2'] as const) {
         const historical = checkAuthoringBenchmark(env.root, id, revision);
         assert.equal(historical.checks.find((row) => row.id === 'pending-approval')?.pass, false);
@@ -652,7 +651,8 @@ it('calibrated-v3: a not-issued disclaimer does not override explicit subsequent
             /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
             `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\nОператорское одобрение не выдано${separator}${grant}\n<!--/SECTION:HANDOFF-->`
           ),
-        'pending-approval'
+        'pending-approval',
+        'calibrated-v3'
       );
     }
   }
@@ -709,8 +709,143 @@ it('calibrated-v3: rejects incomplete, questioned or negated not-issued wording'
           /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
           `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${handoff}\n<!--/SECTION:HANDOFF-->`
         ),
-      'pending-approval'
+      'pending-approval',
+      'calibrated-v3'
     );
+  }
+});
+
+it('calibrated-v4: accepts bounded not-received families while explicit v3 remains unchanged', () => {
+  assert.equal(CURRENT_AUTHORING_BENCHMARK_REVISION, 'calibrated-v4');
+  // Exact HANDOFF line from FORMAT2 prose-r2, raw SHA-256:
+  // de5dfad52f82682c510298576d0d4024c611467970cd050653f275a70a866cb4.
+  // This is a fixture-level lexical regression, not a regrade or live replay of that attempt.
+  const recorded =
+    '- **Open risks & validation needs:** Реализация и тесты не созданы и не запускались; поведение для ASCII-границ и `TypeError` требует проверки задачами. Операторское одобрение не получено.';
+  for (const id of ['module-flat', 'module-nested'] as const) {
+    const env = fixture(id);
+    try {
+      for (const clause of [
+        recorded,
+        'Операторское одобрение не получено.',
+        'Одобрение оператора ещё не получено; реализация не начата.',
+        'Операторское одобрение пока не выдано.',
+      ]) {
+        const authored = positive(id).replace(
+          /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+          `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${clause}\n<!--/SECTION:HANDOFF-->`
+        );
+        put(env.root, env.item.target, authored);
+        const historical = checkAuthoringBenchmark(env.root, id, 'calibrated-v3');
+        const revised = checkAuthoringBenchmark(env.root, id, 'calibrated-v4');
+        assert.equal(historical.checks.find((row) => row.id === 'pending-approval')?.pass, false);
+        assert.equal(revised.pass, true, revised.detail);
+        assert.deepEqual(checkAuthoringBenchmark(env.root, id), revised);
+        assert.deepEqual(
+          revised.checks.filter((row) => row.id !== 'pending-approval'),
+          historical.checks.filter((row) => row.id !== 'pending-approval')
+        );
+        for (const revision of ['calibrated', 'calibrated-v2'] as const)
+          assert.equal(
+            checkAuthoringBenchmark(env.root, id, revision).checks.find(
+              (row) => row.id === 'pending-approval'
+            )?.pass,
+            false
+          );
+        assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), authored, 'read-only');
+      }
+    } finally {
+      env.cleanup();
+    }
+  }
+});
+
+it('calibrated-v4: not-received wording retains the existing granted/approved-claim protections', () => {
+  for (const terminal of [
+    'Операторское одобрение получено.',
+    'Оператор одобрил спецификацию.',
+    'Одобрение оператора уже получено.',
+    'Operator approval has been granted.',
+    'Approved by operator.',
+    '**Operator decision:** approved',
+    '✅',
+  ]) {
+    for (const separator of ['; ', '.\n- '])
+      expectRejected(
+        'module-flat',
+        (text) =>
+          text.replace(
+            /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+            `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\nОператорское одобрение не получено${separator}${terminal}\n<!--/SECTION:HANDOFF-->`
+          ),
+        'pending-approval',
+        'calibrated-v4'
+      );
+  }
+});
+
+it('calibrated-v4: a rejected domain status outside HANDOFF is not a new operator-decision claim', () => {
+  const env = fixture('module-flat');
+  try {
+    const authored = positive(env.item.id).replace(
+      '<!--/SECTION:IMPLEMENTATION_INSIGHTS-->',
+      'Invalid-input diagnostic example (not an operator decision): `Status: rejected`.\n<!--/SECTION:IMPLEMENTATION_INSIGHTS-->'
+    );
+    assert.match(authored, /Status: rejected/);
+    const handoff = extractSection(authored, 'HANDOFF');
+    assert.equal(handoff.status, 'ok');
+    if (handoff.status === 'ok') assert.doesNotMatch(handoff.content, /Status: rejected/);
+    put(env.root, env.item.target, authored);
+    const historical = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v3');
+    const revised = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v4');
+    assert.equal(historical.pass, true, historical.detail);
+    assert.equal(revised.pass, true, revised.detail);
+    assert.deepEqual(revised, historical);
+    assert.equal(readFileSync(join(env.root, env.item.target), 'utf8'), authored, 'read-only');
+  } finally {
+    env.cleanup();
+  }
+});
+
+it('calibrated-v4: rejects missing, questioned and negated not-received clauses', () => {
+  for (const clause of [
+    'Implementation may start.',
+    'Не получено.',
+    'Операторское одобрение получено.',
+    'Операторское одобрение не получено ли?',
+    'Неверно, что операторское одобрение не получено.',
+    'Одобрение оператора не получено — работа разрешена.',
+    'pending-operator\nNot awaiting operator approval.',
+  ])
+    expectRejected(
+      'module-flat',
+      (text) =>
+        text.replace(
+          /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+          `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${clause}\n<!--/SECTION:HANDOFF-->`
+        ),
+      'pending-approval',
+      'calibrated-v4'
+    );
+});
+
+it('calibrated-v4: a valid pending clause never excuses malformed relative links', () => {
+  const env = fixture('module-flat');
+  try {
+    put(
+      env.root,
+      env.item.target,
+      positive(env.item.id).replace(
+        /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+        '<!--SECTION:HANDOFF-->\n## Handoff to Tasks\nОператорское одобрение не получено.\n[missing](../../../missing.md)\n<!--/SECTION:HANDOFF-->'
+      )
+    );
+    const result = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v4');
+    assert.equal(result.checks.find((row) => row.id === 'pending-approval')?.pass, true);
+    assert.equal(result.checks.find((row) => row.id === 'relative-links')?.pass, false);
+    assert.equal(result.pass, false);
+  } finally {
+    env.cleanup();
   }
 });
 

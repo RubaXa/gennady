@@ -1,0 +1,28 @@
+{
+  "schema": "gennady.authoring-reflection.1",
+  "sessionId": "ses_e953018d9ffedO06ow2qL5ufmK",
+  "status": "completed",
+  "startedAt": "2026-10-23T22:11:18.217Z",
+  "completedAt": "2026-10-23T22:11:24.595Z",
+  "authority": "self-report hypothesis only; primary metrics and verdicts remain frozen",
+  "diffUnchanged": true,
+  "newToolCalls": 0,
+  "usageDelta": {
+    "input": 38800,
+    "output": 0,
+    "reasoning": 806,
+    "cacheRead": 2048,
+    "cacheWrite": 0,
+    "total": 39606,
+    "messages": 1
+  },
+  "usageComplete": true,
+  "citedCallIds": [],
+  "unknownCallIds": [],
+  "models": [
+    "llm-proxy/deepseek-v4-flash"
+  ],
+  "monetaryCost": "unknown",
+  "text": "",
+  "textTruncated": false
+}

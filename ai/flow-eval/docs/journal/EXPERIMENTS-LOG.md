@@ -1315,3 +1315,23 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
   гипотез нужен новый frozen baseline. Прежние ошибочные документы и отрицательные исходы сохранены.
 - **Сырые данные и воспроизведение:** [calibration](../../results/authoring-campaigns/template-calibration-oct23/calibration.json),
   [описание и границы](../../results/authoring-campaigns/template-calibration-oct23/README.md).
+
+## 2026-10-24 — FORMAT2: 24 новых попытки, три гипотезы отклонены
+
+- **Frozen source:** `c676bb09`; candidate children меняют только STEP_2_FILL в source/generated
+  owner-файлах. `module-flat/module-nested` × 4 arm × 3 повтора, `concurrency=1`, Flash-only AI Proxy.
+- **Collection:** 24/24 complete, 644 tools, capture/model/cleanup квалифицированы 24/24;
+  никакого resampling. Исторические результаты не переиспользованы как контроль.
+- **Эффект:** prose — без экономии; pseudocode экономит действия на flat, но semantic 1/3
+  против 2/3; observation даёт небольшой flat выигрыш и nested регрессию. Не достигнуты
+  ≥10% non-cache tokens на обоих сценариях без роста tools/messages. Активные prompts не меняем.
+- **Методологические errata:** attempt 9 — false-negative «не получено», отдельно исправлен
+  v4; attempt 15 — неоднозначное смешение authoring validation/implementation execution у judge.
+  Сырые 15 PASS / 9 FAIL не переписаны; два спорных исхода не объявлены новым semantic PASS.
+- **Офлайн:** 58 документов × 2 режима = 116 очищенных фикстур; новые raw-v3 воспроизведены
+  24/24, единственная v4 разница — pending у attempt 9. 13 CLI на копии данных — byte-equal.
+- **Расход:** worker 1 283 863, judge 314 014, reflection 990 835 non-cache tokens; денежная
+  стоимость неизвестна. Серия 55m50s, source preparation/tests отдельно.
+- **Cleanup:** 48 SDK deletion acknowledgements; 24 fixtures removed; свой server остановлен,
+  десять private roots удалены, source journal modes восстановлены. Shared dependencies не тронуты.
+- **Доказательства/решения:** [полный отчёт](../../results/authoring-campaigns/format2-oct23/REPORT.md).

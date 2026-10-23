@@ -281,3 +281,26 @@ digest, маленькие физические копии build; никаких
 удалить его изолированные state/cache и физические worktree после сохранения bounded evidence.
 Не использовать общий prefix sweep `sandbox.ts clean`. При ошибке cleanup следующая попытка
 не стартует. Dirty user checkout, общий dependency owner и ранее сохранённые evidence не трогаются.
+
+## FORMAT2 — свежая серия завершена (2026-10-24)
+
+По разрешению оператора выполнены **24/24 новые попытки**: `module-flat/module-nested`,
+baseline/prose/pseudocode/observation, по три повтора. Общий frozen source — `c676bb09`,
+модель только `llm-proxy/deepseek-v4-flash`; старые FORMAT1/30 попыток не стали контролем.
+Порядок частично контрбалансирован; один runtime/dependency owner, последовательный запуск.
+
+**Ни один вариант не переносим в активные директивы.** У псевдокода локально меньше
+tools/tokens, но на flat semantic 1/3 против 2/3; на nested растут tools/time.
+Observation выигрывает немного на flat, но регрессирует на nested. Prose не экономит
+на обоих сценариях. ≥10% non-cache tokens на обоих при отсутствии роста tools/messages
+не достигнуты ни одним arm; static/path условия не ослаблялись.
+
+Два измерительных errata сохранены отдельно: лексический false-negative «одобрение не
+получено» исправлен versioned `calibrated-v4` после серии; judge смешал authoring validation
+с implementation execution в другой попытке. Первичные FAIL не заменены на PASS.
+116 artifact fixtures и 13 переносимых CLI replay проверены без новых model calls.
+
+Полные per-case медианы, локальные выигрыши/потери, 644 вызова, токены трёх ролей,
+ограничения и решение: [FORMAT2 REPORT](../results/authoring-campaigns/format2-oct23/REPORT.md).
+Следующий кандидат FACT1/LINK1 мотивирован общими поисками ACR/формата, но его эффект
+ещё не измерен: не выдаём объяснение траектории за принятую оптимизацию.

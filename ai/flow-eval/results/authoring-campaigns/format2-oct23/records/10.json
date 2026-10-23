@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 10,
+  "scenarioId": "authoring-format2-oct23-module-flat-pseudocode-r2",
+  "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+  "startedAt": "2026-10-23T21:37:34.662Z",
+  "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/10",
+  "sessions": [
+    {
+      "id": "ses_e954d5595ffeYYmepvvP1Lp5CK",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/10/sdd-flow-eval-8kfgPM",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e954bc564ffeRMkrlGvUIQWnjM",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/10/sdd-flow-eval-8kfgPM",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-23-authoring-format2-oct23-module-flat-pseudocode-r2",
+    "summarySha256": "2e95778805cce95ceda5878c3ae04cda5dff4aa20111fefeb006d8941f2a74cf",
+    "trajectorySha256": "403d9ed81550912ea4e4b7b0d22d4deba56cbbf788680059c01e816eada7da7d",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 29,
+    "nonCacheTokens": 53380,
+    "messages": 25
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-23T21:39:47.653Z",
+  "knownSessions": [
+    {
+      "id": "ses_e954d5595ffeYYmepvvP1Lp5CK",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/10/sdd-flow-eval-8kfgPM"
+    },
+    {
+      "id": "ses_e954bc564ffeRMkrlGvUIQWnjM",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/10/sdd-flow-eval-8kfgPM"
+    }
+  ]
+}

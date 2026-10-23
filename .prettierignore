@@ -81,3 +81,13 @@ ai/flow-eval/results/authoring-campaigns/format-oct23/recalibration/**
 ai/flow-eval/results/authoring-campaigns/format-oct23/replay/**
 ai/flow-eval/results/authoring-campaigns/format-oct23/variants/**
 ai/flow-eval/results/authoring-campaigns/format-oct23/code/**
+
+# Completed FORMAT2: exact raw/protocol/replay bytes, authenticated by the recorded test.
+ai/flow-eval/results/authoring-campaigns/format2-oct23/*.json
+ai/flow-eval/results/authoring-campaigns/format2-oct23/protocol/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/records/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/controller-output/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/report-*/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/recalibration/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/variants/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/code/**
