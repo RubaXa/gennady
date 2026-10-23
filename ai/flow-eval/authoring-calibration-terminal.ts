@@ -6,7 +6,10 @@
 export function projectAuthoringJudgeTerminal(messages: unknown) {
   if (!Array.isArray(messages) || messages.length > 512)
     throw new Error('Missing or oversized judge message capture');
-  const message = messages.findLast((row) => row?.info?.role === 'assistant');
+  const message = messages
+    .slice()
+    .reverse()
+    .find((row) => row?.info?.role === 'assistant');
   const info = message?.info;
   for (const key of ['id', 'sessionID', 'providerID', 'modelID'])
     if (typeof info?.[key] !== 'string' || !/^[a-zA-Z0-9_.:-]{1,128}$/.test(info[key]))

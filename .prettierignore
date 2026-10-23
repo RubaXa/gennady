@@ -65,3 +65,6 @@ ai/flow-eval/results/authoring-campaigns/spec-trajectory-oct23/TRAJECTORIES.md
 # Exact live semantic calibration JSON is hash-bound by manifest.json and replayed by
 # authoring-semantic-recorded.test.ts. Keep provider output bytes, including whitespace.
 ai/flow-eval/results/authoring-campaigns/semantic-qualification-oct23/**/*.json
+
+# Generated 626-call research ledger; authoring-call-audit.test.ts checks exact regeneration.
+ai/flow-eval/docs/AUTHORING-CALL-AUDIT.md

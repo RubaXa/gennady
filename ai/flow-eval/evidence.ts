@@ -11,6 +11,7 @@ import { createSddEvalOpenCodeClient } from './opencode-client.ts';
 import { fingerprintTail } from './observer.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
+import { projectToolObservation } from './tool-observation.ts';
 import { proveRepoFile, readProvenRepoFile } from '../../shared/common/repo-file-identity.ts';
 import type {
   SddEvalEvent,
@@ -372,6 +373,12 @@ function boundedMessageEntries(
                     : undefined,
                 startedAt: tool.state?.time?.start,
                 finishedAt: tool.state?.time?.end,
+                observation: projectToolObservation(
+                  typeof tool.tool === 'string' ? tool.tool : 'unknown',
+                  input,
+                  tool.state?.output,
+                  captureRoot
+                ),
                 error:
                   typeof tool.state?.error === 'string'
                     ? safeVerifyText(tool.state.error, captureRoot).slice(0, 1024)

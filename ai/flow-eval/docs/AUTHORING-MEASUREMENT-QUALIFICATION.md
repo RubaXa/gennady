@@ -81,6 +81,13 @@ No production quality claim follows from a small calibration PASS. Keep the perm
 
 ## Next slice: M3 before optimization
 
+Scope clarification: the [call research plan](./AUTHORING-TRAJECTORY-RESEARCH.md) separates
+descriptive/counterfactual call research from a claim of fully proven workflow compliance.
+Full M3 remains necessary for that stronger claim and S2, not for observing call counts in a
+bounded pilot with identical instrumentation and explicitly unknown path facts. The current
+PR includes the [626-call ledger](./AUTHORING-CALL-AUDIT.md) and forward-only public output
+fingerprints/read-window telemetry. It does not reconstruct missing historical results.
+
 Live qualification on source `07ca6d92` is [recorded here](../results/authoring-campaigns/semantic-qualification-oct23/REPORT.md):
 main13/14 plus one separately retained diagnostic replay1/1. The empty response remains inconclusive;
 the diagnostic does not replace it. All15 sessions and both isolated servers were cleaned. This is
@@ -92,8 +99,9 @@ fresh validation. Test positive behavior with real owned CLI/filesystem operatio
 ordering, identity, partial/outside writes, stale validation and opaque execution one at a time.
 `proven`, `observed violation` and `unproven` must not collapse into one misleading success count.
 Do not infer absence of writes from a plausible command, final snapshot or agent reflection.
-Use identical qualified instrumentation and task/oracle/model/config in both arms. Only then run
-E1 or STOP1 as a separate one-variable pilot on explicitly qualified cases. Infrastructure remains
+Use identical instrumentation and task/oracle/model/config in both arms. Run STOP1 as a separate
+bounded one-variable pilot under the scoped research plan; do not promote an unknown path into
+proven compliance. Infrastructure remains
 excluded until its task/owner mismatch is repaired with a separately versioned fixture and controls.
 
 Visual artifact: none — this is backend/CLI evidence, not a UI task.
