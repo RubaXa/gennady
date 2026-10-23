@@ -30,3 +30,5 @@ Historical collector scripts may mention original temporary paths and SDK sessio
 provenance. Offline replay must not execute those collectors, contact the server, or expect those
 paths to exist: it uses checked-in bytes and creates/cleans its own temporary artifact fixture.
 Reflection is public factual self-report, not private reasoning and not grading authority.
+Archived collector source is stored as `.mjs.txt`, including the prior preparation: its bytes and
+script digest are preserved, but it is not active executable project code.
