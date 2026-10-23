@@ -1,0 +1,37 @@
+{
+  "id": "library-ascii-overlap",
+  "repetition": 2,
+  "expected": "fail",
+  "artifactSha256": "0720ae97192bc675cc4afc88f9c9ae04494d79c842442a705b9b7a074466dd35",
+  "status": "recorded",
+  "sessionId": "ses_e96ee3432ffeSesQQ4tFw1a8BE",
+  "verdict": "fail",
+  "rationale": "VERDICT: fail\n\nTOK-REQ-1 requires any passed ASCII string to be normalized and returned, while TOK-REQ-2 requires empty, separator-only, and non-ASCII input to throw TypeError. Concrete witnesses such as `\"\"` and `\"___\"`/`\"   \"` are ASCII strings satisfying TOK-REQ-1's precondition, so the two normative clauses impose an overlapping return-vs-throw obligation with no stated exception or precedence. The Input/Outcome table correctly encodes both required rows (`\"  Foo__BAR  \"` → `\"foo-bar\"`; `\"\"` → `TypeError`), and the pending-operator handoff plus token → infra-base dependency are consistent, but the normative contradiction makes the artifact semantically incorrect.",
+  "usage": {
+    "messages": 1,
+    "input": 4588,
+    "output": 165,
+    "reasoning": 4585,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 9338,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 27772
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": true,
+  "elapsedMs": 27845,
+  "cleanup": {
+    "sessions": [
+      "ses_e96ee3432ffeSesQQ4tFw1a8BE"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}

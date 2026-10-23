@@ -120,6 +120,9 @@ export class SddEvalJudge {
       rationale =
         'VERDICT: inconclusive\nAuthoring judge deadline exceeded; no semantic pass inferred.';
     }
+    if (!rationale.trim())
+      rationale =
+        'VERDICT: inconclusive\nEmpty public judge response: no semantic decision was received. The provider/runtime cause and actual cost are unknown. Inspect terminal metadata; any diagnostic retry must be a separate retained attempt, not a replacement.';
     return {
       scenarioId,
       verdict: parseVerdict(rationale),

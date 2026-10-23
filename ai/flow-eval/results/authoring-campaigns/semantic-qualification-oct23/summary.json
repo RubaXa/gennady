@@ -1,0 +1,41 @@
+{
+  "schema": "gennady.authoring-semantic-summary.1",
+  "sourceCommit": "07ca6d92d57c0d16e13069d5059a7d6b77b4c9c3",
+  "main": {
+    "planned": 14,
+    "recorded": 14,
+    "matched": 13,
+    "inconclusive": 1,
+    "totals": {
+      "messages": 14,
+      "input": 65714,
+      "output": 1677,
+      "reasoning": 28639,
+      "cacheRead": 21632,
+      "cacheWrite": 0,
+      "total": 96030,
+      "elapsedMs": 209821
+    }
+  },
+  "supplementary": {
+    "attempts": 1,
+    "expected": "fail",
+    "verdict": "fail",
+    "totals": {
+      "messages": 1,
+      "input": 4582,
+      "output": 93,
+      "reasoning": 1178,
+      "cacheRead": 1664,
+      "cacheWrite": 0,
+      "total": 5853,
+      "elapsedMs": 9776
+    }
+  },
+  "allToolCalls": 0,
+  "model": "llm-proxy/deepseek-v4-flash",
+  "dollarCost": null,
+  "providerHttpAttempts": null,
+  "accounting": "Observed SDK counters only. One empty reply reported zero counters; this is not proof of zero actual usage/cost.",
+  "inference": "Known-label portal/library calibration, not worker optimization, ten-kind readiness or a statistically estimated production rate. Main13/14 remains unchanged; supplementary1/1 is not a replacement."
+}

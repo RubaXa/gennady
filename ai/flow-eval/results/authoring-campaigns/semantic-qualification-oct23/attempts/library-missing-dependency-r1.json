@@ -1,0 +1,37 @@
+{
+  "id": "library-missing-dependency",
+  "repetition": 1,
+  "expected": "fail",
+  "artifactSha256": "e659c9275b89259d75f5a9f5bc570e1158903a35c962bdd57d438cd2c0c7cb4b",
+  "status": "recorded",
+  "sessionId": "ses_e96efd8a1ffecHxBaUDZQ7iPz1",
+  "verdict": "fail",
+  "rationale": "VERDICT: fail\n\nThe target says “Depends on: None,” contradicting the supplied portal’s `token --> infra-base` edge and infra-base’s provision of authoring tooling to token scopes. The unlabeled `[Authoring infrastructure](../infra-base/infra-base.spec.md)` link does not resolve that contradiction. The normalization and TypeError requirements, including both required Input/Outcome rows, otherwise match the intent.",
+  "usage": {
+    "messages": 1,
+    "input": 4612,
+    "output": 93,
+    "reasoning": 3968,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 8673,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 25272
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": true,
+  "elapsedMs": 25345,
+  "cleanup": {
+    "sessions": [
+      "ses_e96efd8a1ffecHxBaUDZQ7iPz1"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}

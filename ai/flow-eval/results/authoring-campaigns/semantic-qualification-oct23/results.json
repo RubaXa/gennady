@@ -1,0 +1,527 @@
+{
+  "protocolSha256": "e230c8f5670903883446a7d433dd587d8f68d6c3155c9676a18cf3eb4beec708",
+  "planned": 14,
+  "recorded": 14,
+  "complete": true,
+  "interrupted": false,
+  "rows": [
+    {
+      "id": "portal-summary-valid",
+      "repetition": 1,
+      "expected": "pass",
+      "artifactSha256": "3d7b8598ad90d1269358e9f21e2e4bb1ac2246472ee8d2b52916858a56eadeb1",
+      "status": "recorded",
+      "sessionId": "ses_e96f0ce68ffeYNLnHySfmBg53f",
+      "verdict": "pass",
+      "rationale": "VERDICT: pass\n\nThe Scopes table contains exactly `token`/library and `infra-base`/infrastructure, both marked 🚧, with correct relative links. The Scope Graph shows only `token --> infra-base`, matching the required dependency direction. The Vision's empty, separator-only and non-ASCII `TypeError` rule matches INTENT, and the Decision Log leaves approval and both specifications pending without any ✅, accepted verdict, ticket or execution claim.",
+      "usage": {
+        "messages": 1,
+        "input": 5577,
+        "output": 98,
+        "reasoning": 5405,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 11080,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 34507
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 34615,
+      "cleanup": {
+        "sessions": [
+          "ses_e96f0ce68ffeYNLnHySfmBg53f"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "portal-summary-contradiction",
+      "repetition": 1,
+      "expected": "fail",
+      "artifactSha256": "6f8a09c1571696c3951785847d6c3a7b4d93d553f12f97fc08d337edd46bad94",
+      "status": "recorded",
+      "sessionId": "ses_e96f0472bffexRFG0PX04aVvoF",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\n\nThe Scope Graph (`token --> infra-base`) and Scopes table satisfy the required scope-map and dependency direction, with both scopes marked 🚧 and correct relative links. However, the Vision contradicts itself and the contract: it promises that “For every input, including empty, separator-only and non-ASCII strings, the normalizer always returns a string and never throws,” while also saying empty input is rejected with `TypeError` and that those invalid inputs throw. The parent token contract and module contract require `TypeError` for empty, separator-only, and non-ASCII inputs, so the universal return promise is a semantic contradiction, not merely summary wording.",
+      "usage": {
+        "messages": 1,
+        "input": 5593,
+        "output": 140,
+        "reasoning": 339,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 6072,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 4659
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 4714,
+      "cleanup": {
+        "sessions": [
+          "ses_e96f0472bffexRFG0PX04aVvoF"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "portal-reversed-dependency",
+      "repetition": 1,
+      "expected": "fail",
+      "artifactSha256": "7fcffdb1bd8c90c97a652b224eec05a5a0604c636b188c08600a2513820bcd92",
+      "status": "recorded",
+      "sessionId": "ses_e96f034c2ffedX3mmsh94crcDy",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\nThe Scope Graph reverses the required dependency: `infra-base --> token` means infra-base depends on token, but the Intent and owning specs require token to depend on infra-base (`token --> infra-base`). The Scopes table otherwise matches: exactly token/library and infra-base/infrastructure, both 🚧 with correct relative links, and no approval or execution claim.",
+      "usage": {
+        "messages": 1,
+        "input": 5576,
+        "output": 82,
+        "reasoning": 966,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 6624,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 7829
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 7872,
+      "cleanup": {
+        "sessions": [
+          "ses_e96f034c2ffedX3mmsh94crcDy"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-tooling-dependency-valid",
+      "repetition": 1,
+      "expected": "pass",
+      "artifactSha256": "754519cd7cc77337ff16b8d7504c437fc37f8c2c2aa4cb00b9b1777f1a3d1b6c",
+      "status": "recorded",
+      "sessionId": "ses_e96f015f8ffeuAqAb2C931EHa2",
+      "verdict": "pass",
+      "rationale": "VERDICT: pass\nRationale: The artifact contains the required Input/Outcome table inside REQUIREMENTS_AND_CONSTRAINTS with both witnesses (`\"  Foo__BAR  \"` → `\"foo-bar\"`; `\"\"` → `TypeError`). TOK-REQ-1's positive precondition requires an ASCII string with at least one non-separator character, so empty, separator-only and non-ASCII inputs fall outside its return obligation and are covered solely by TOK-REQ-2's `TypeError` rule — no overlap or contradiction. The dependency on `infra-base` matches the portal edge and linked parent path (`../infra-base/infra-base.spec.md`) without importing containment; pending handoff and non-decomposed MODULE_MAP sentinel are consistent with the brief. Deterministic CLI/execution gates are outside this semantic verdict.",
+      "usage": {
+        "messages": 1,
+        "input": 4615,
+        "output": 186,
+        "reasoning": 2349,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 7150,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 15648
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 15695,
+      "cleanup": {
+        "sessions": [
+          "ses_e96f015f8ffeuAqAb2C931EHa2"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-missing-dependency",
+      "repetition": 1,
+      "expected": "fail",
+      "artifactSha256": "e659c9275b89259d75f5a9f5bc570e1158903a35c962bdd57d438cd2c0c7cb4b",
+      "status": "recorded",
+      "sessionId": "ses_e96efd8a1ffecHxBaUDZQ7iPz1",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\n\nThe target says “Depends on: None,” contradicting the supplied portal’s `token --> infra-base` edge and infra-base’s provision of authoring tooling to token scopes. The unlabeled `[Authoring infrastructure](../infra-base/infra-base.spec.md)` link does not resolve that contradiction. The normalization and TypeError requirements, including both required Input/Outcome rows, otherwise match the intent.",
+      "usage": {
+        "messages": 1,
+        "input": 4612,
+        "output": 93,
+        "reasoning": 3968,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 8673,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 25272
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 25345,
+      "cleanup": {
+        "sessions": [
+          "ses_e96efd8a1ffecHxBaUDZQ7iPz1"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-ascii-overlap",
+      "repetition": 1,
+      "expected": "fail",
+      "artifactSha256": "0720ae97192bc675cc4afc88f9c9ae04494d79c842442a705b9b7a074466dd35",
+      "status": "recorded",
+      "sessionId": "ses_e96ef758dffeOBhOsC0x1Bo87c",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\n\nTOK-REQ-1 obliges a return for every “ASCII string,” while TOK-REQ-2 throws TypeError for empty and separator-only inputs, which are themselves ASCII strings. No exception or precedence resolves the overlap, and the table itself includes `\"\"` as such a witness. The required example rows and pending handoff are otherwise present.",
+      "usage": {
+        "messages": 1,
+        "input": 4588,
+        "output": 80,
+        "reasoning": 798,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 5466,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 7387
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 7615,
+      "cleanup": {
+        "sessions": [
+          "ses_e96ef758dffeOBhOsC0x1Bo87c"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-nonempty-overlap",
+      "repetition": 1,
+      "expected": "fail",
+      "artifactSha256": "e979cf16f657110b68f3ce293e0c3ead71632dc6601aa82589e2afbc087a0020",
+      "status": "recorded",
+      "sessionId": "ses_e96ef57ccffeDdEsYHZ6pnrpEu",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\nTOK-REQ-1 requires that for any nonempty ASCII string the normalizer return a token, while TOK-REQ-2 requires separator-only input (e.g. `\"___\"`, also nonempty ASCII) to throw `TypeError`; no exception or precedence is stated, so the two normative requirements contradict on that witness. The required Input/Outcome table rows (`\"  Foo__BAR  \"` → `\"foo-bar\"`, `\"\"` → `TypeError`) are present, the `../infra-base/infra-base.spec.md` link is valid, and the handoff remains pending-operator with no approval/ticket/execution claim.",
+      "usage": {
+        "messages": 1,
+        "input": 4590,
+        "output": 149,
+        "reasoning": 2007,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 6746,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 13148
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 13210,
+      "cleanup": {
+        "sessions": [
+          "ses_e96ef57ccffeDdEsYHZ6pnrpEu"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "portal-summary-valid",
+      "repetition": 2,
+      "expected": "pass",
+      "artifactSha256": "3d7b8598ad90d1269358e9f21e2e4bb1ac2246472ee8d2b52916858a56eadeb1",
+      "status": "recorded",
+      "sessionId": "ses_e96ef242bffew96T60h1RvNAv0",
+      "verdict": "pass",
+      "rationale": "VERDICT: pass\nScopes lists exactly `token` (library, 🚧, ./token/token.spec.md) and `infra-base` (infrastructure, 🚧, ./infra-base/infra-base.spec.md), satisfying the required map with valid relative links. The Scope Graph contains only `token --> infra-base`, so the dependency is correct and not reversed. Vision and principles consistently reject empty, separator-only, and non-ASCII input with TypeError, with `\"  Foo__BAR  \"` yielding `\"foo-bar\"`. Decision Log leaves approval pending with no ✅/approved status, ticket, or execution claim.",
+      "usage": {
+        "messages": 1,
+        "input": 5579,
+        "output": 136,
+        "reasoning": 2996,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 8711,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 20425
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 20480,
+      "cleanup": {
+        "sessions": [
+          "ses_e96ef242bffew96T60h1RvNAv0"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "portal-summary-contradiction",
+      "repetition": 2,
+      "expected": "fail",
+      "artifactSha256": "6f8a09c1571696c3951785847d6c3a7b4d93d553f12f97fc08d337edd46bad94",
+      "status": "recorded",
+      "sessionId": "ses_e96eed415ffeZAuvge6t2LIa02",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\n\nThe target contradicts itself on its central contract: the Vision promises that \"For every input, including empty, separator-only and non-ASCII strings, the normalizer always returns a string and never throws,\" while the same section says \"Empty input is rejected with TypeError\" and its principles state those invalid inputs \"throw TypeError without I/O.\" The latter matches the intent and token reference contract, but the universal \"always returns\" obligation directly conflicts with it and has no stated exception or precedence. The Scope Graph correctly has `token --> infra-base`, and the Scopes table contains exactly `token` (library) and `infra-base` (infrastructure), both 🚧 with correct relative links, but that structural correctness does not cure the semantic contradiction.",
+      "usage": {
+        "messages": 1,
+        "input": 5591,
+        "output": 158,
+        "reasoning": 220,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 5969,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 4441
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 4500,
+      "cleanup": {
+        "sessions": [
+          "ses_e96eed415ffeZAuvge6t2LIa02"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "portal-reversed-dependency",
+      "repetition": 2,
+      "expected": "fail",
+      "artifactSha256": "7fcffdb1bd8c90c97a652b224eec05a5a0604c636b188c08600a2513820bcd92",
+      "status": "recorded",
+      "sessionId": "ses_e96eec284ffeoPIBBwb34YrEcL",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\n\nThe Scopes table correctly lists exactly `token` (library) and `infra-base` (infrastructure), both 🚧 with valid relative links. However, the Scope Graph reverses the required dependency: `infra-base --> token` states that infra-base depends on token, whereas the intent and `token.spec.md` require `token` to depend on `infra-base`, never the reverse. Change the edge direction to `token --> infra-base`.",
+      "usage": {
+        "messages": 1,
+        "input": 5578,
+        "output": 101,
+        "reasoning": 375,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 6054,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 4861
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 4927,
+      "cleanup": {
+        "sessions": [
+          "ses_e96eec284ffeoPIBBwb34YrEcL"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-tooling-dependency-valid",
+      "repetition": 2,
+      "expected": "pass",
+      "artifactSha256": "754519cd7cc77337ff16b8d7504c437fc37f8c2c2aa4cb00b9b1777f1a3d1b6c",
+      "status": "recorded",
+      "sessionId": "ses_e96eeaf2dffeTgwMlJF68PIqqF",
+      "verdict": "pass",
+      "rationale": "VERDICT: pass\n\nTOK-REQ-1 handles non-empty, non-separator-only ASCII input with trim/lowercase/collapse, while TOK-REQ-2 separately covers empty, separator-only, and non-ASCII input with TypeError and no I/O; their preconditions do not overlap. The required Input/Outcome table is inside REQUIREMENTS_AND_CONSTRAINTS and correctly records `\"  Foo__BAR  \"` → `\"foo-bar\"` and `\"\"` → `TypeError`. The `infra-base` reference is a dependency link, not containment, and the pending-operator handoff makes no approval or execution claim.",
+      "usage": {
+        "messages": 1,
+        "input": 4617,
+        "output": 142,
+        "reasoning": 2730,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 7489,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 18015
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 18081,
+      "cleanup": {
+        "sessions": [
+          "ses_e96eeaf2dffeTgwMlJF68PIqqF"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-missing-dependency",
+      "repetition": 2,
+      "expected": "fail",
+      "artifactSha256": "e659c9275b89259d75f5a9f5bc570e1158903a35c962bdd57d438cd2c0c7cb4b",
+      "status": "recorded",
+      "sessionId": "ses_e96ee6889ffemIP7UFDkDy2hAk",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\n\nThe artifact's `Scope Dependencies` says `Depends on: None`, but the supplied portal has `token --> infra-base` and the infra-base reference says it “Provides to: token authoring scopes.” The unlabeled infra-base link acknowledges that dependency while the text denies it, contradicting the portal/reference relationship.\n\nThe token behavior is otherwise consistent: TOK-REQ-1 covers the positive ASCII case, TOK-REQ-2 covers empty, separator-only, and non-ASCII `TypeError`, and the required two-row Input/Outcome table is present inside `REQUIREMENTS_AND_CONSTRAINTS`. Handoff remains pending-operator.",
+      "usage": {
+        "messages": 1,
+        "input": 4610,
+        "output": 147,
+        "reasoning": 1901,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 6658,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 13319
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 13378,
+      "cleanup": {
+        "sessions": [
+          "ses_e96ee6889ffemIP7UFDkDy2hAk"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-ascii-overlap",
+      "repetition": 2,
+      "expected": "fail",
+      "artifactSha256": "0720ae97192bc675cc4afc88f9c9ae04494d79c842442a705b9b7a074466dd35",
+      "status": "recorded",
+      "sessionId": "ses_e96ee3432ffeSesQQ4tFw1a8BE",
+      "verdict": "fail",
+      "rationale": "VERDICT: fail\n\nTOK-REQ-1 requires any passed ASCII string to be normalized and returned, while TOK-REQ-2 requires empty, separator-only, and non-ASCII input to throw TypeError. Concrete witnesses such as `\"\"` and `\"___\"`/`\"   \"` are ASCII strings satisfying TOK-REQ-1's precondition, so the two normative clauses impose an overlapping return-vs-throw obligation with no stated exception or precedence. The Input/Outcome table correctly encodes both required rows (`\"  Foo__BAR  \"` → `\"foo-bar\"`; `\"\"` → `TypeError`), and the pending-operator handoff plus token → infra-base dependency are consistent, but the normative contradiction makes the artifact semantically incorrect.",
+      "usage": {
+        "messages": 1,
+        "input": 4588,
+        "output": 165,
+        "reasoning": 4585,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 9338,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 27772
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": true,
+      "elapsedMs": 27845,
+      "cleanup": {
+        "sessions": [
+          "ses_e96ee3432ffeSesQQ4tFw1a8BE"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    },
+    {
+      "id": "library-nonempty-overlap",
+      "repetition": 2,
+      "expected": "fail",
+      "artifactSha256": "e979cf16f657110b68f3ce293e0c3ead71632dc6601aa82589e2afbc087a0020",
+      "status": "recorded",
+      "sessionId": "ses_e96edc764ffewzhbBIj7bxyt6T",
+      "verdict": "inconclusive",
+      "rationale": "",
+      "usage": {
+        "messages": 1,
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 11492
+      },
+      "tools": 0,
+      "captureComplete": true,
+      "matched": false,
+      "elapsedMs": 11544,
+      "cleanup": {
+        "sessions": [
+          "ses_e96edc764ffewzhbBIj7bxyt6T"
+        ],
+        "temporaryDirectoryRemoved": true,
+        "errors": []
+      }
+    }
+  ]
+}

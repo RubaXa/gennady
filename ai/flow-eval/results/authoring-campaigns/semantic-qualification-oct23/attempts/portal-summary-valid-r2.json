@@ -1,0 +1,37 @@
+{
+  "id": "portal-summary-valid",
+  "repetition": 2,
+  "expected": "pass",
+  "artifactSha256": "3d7b8598ad90d1269358e9f21e2e4bb1ac2246472ee8d2b52916858a56eadeb1",
+  "status": "recorded",
+  "sessionId": "ses_e96ef242bffew96T60h1RvNAv0",
+  "verdict": "pass",
+  "rationale": "VERDICT: pass\nScopes lists exactly `token` (library, 🚧, ./token/token.spec.md) and `infra-base` (infrastructure, 🚧, ./infra-base/infra-base.spec.md), satisfying the required map with valid relative links. The Scope Graph contains only `token --> infra-base`, so the dependency is correct and not reversed. Vision and principles consistently reject empty, separator-only, and non-ASCII input with TypeError, with `\"  Foo__BAR  \"` yielding `\"foo-bar\"`. Decision Log leaves approval pending with no ✅/approved status, ticket, or execution claim.",
+  "usage": {
+    "messages": 1,
+    "input": 5579,
+    "output": 136,
+    "reasoning": 2996,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 8711,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 20425
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": true,
+  "elapsedMs": 20480,
+  "cleanup": {
+    "sessions": [
+      "ses_e96ef242bffew96T60h1RvNAv0"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}

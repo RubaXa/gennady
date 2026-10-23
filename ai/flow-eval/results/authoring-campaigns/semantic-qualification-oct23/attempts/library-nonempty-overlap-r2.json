@@ -1,0 +1,37 @@
+{
+  "id": "library-nonempty-overlap",
+  "repetition": 2,
+  "expected": "fail",
+  "artifactSha256": "e979cf16f657110b68f3ce293e0c3ead71632dc6601aa82589e2afbc087a0020",
+  "status": "recorded",
+  "sessionId": "ses_e96edc764ffewzhbBIj7bxyt6T",
+  "verdict": "inconclusive",
+  "rationale": "",
+  "usage": {
+    "messages": 1,
+    "input": 0,
+    "output": 0,
+    "reasoning": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 11492
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": false,
+  "elapsedMs": 11544,
+  "cleanup": {
+    "sessions": [
+      "ses_e96edc764ffewzhbBIj7bxyt6T"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}

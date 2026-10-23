@@ -1,0 +1,37 @@
+{
+  "id": "library-ascii-overlap",
+  "repetition": 1,
+  "expected": "fail",
+  "artifactSha256": "0720ae97192bc675cc4afc88f9c9ae04494d79c842442a705b9b7a074466dd35",
+  "status": "recorded",
+  "sessionId": "ses_e96ef758dffeOBhOsC0x1Bo87c",
+  "verdict": "fail",
+  "rationale": "VERDICT: fail\n\nTOK-REQ-1 obliges a return for every “ASCII string,” while TOK-REQ-2 throws TypeError for empty and separator-only inputs, which are themselves ASCII strings. No exception or precedence resolves the overlap, and the table itself includes `\"\"` as such a witness. The required example rows and pending handoff are otherwise present.",
+  "usage": {
+    "messages": 1,
+    "input": 4588,
+    "output": 80,
+    "reasoning": 798,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 5466,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 7387
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": true,
+  "elapsedMs": 7615,
+  "cleanup": {
+    "sessions": [
+      "ses_e96ef758dffeOBhOsC0x1Bo87c"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}

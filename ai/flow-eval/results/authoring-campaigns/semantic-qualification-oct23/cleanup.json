@@ -1,0 +1,11 @@
+{
+  "exit": {
+    "code": 1,
+    "signal": null
+  },
+  "interrupted": false,
+  "serverStopped": true,
+  "runtimeRemoved": true,
+  "recoveredTemporaryDirectories": 0,
+  "globalConfigurationChanged": false
+}

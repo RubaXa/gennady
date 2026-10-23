@@ -17,6 +17,29 @@ import { createAuthoringMatrix } from '../scripts/authoring-experiment.ts';
 import type { SddEvalJudgeInput, SddEvalRuntime } from '../types.ts';
 
 const model = { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' };
+for (const response of ['', '   \n']) {
+  it(`empty public response ${JSON.stringify(response)} stays inconclusive with actionable diagnostics`, async () => {
+    const judge = new SddEvalJudge(
+      {
+        createSession: async () => ({ id: 'unused' }),
+        prompt: async () => {},
+        judge: async () => response,
+      },
+      model
+    );
+    const result = await judge.evaluate('empty-control', '/owned', {
+      intent: 'Review supplied evidence only',
+      state: { status: 'completed', stuck: false, waiting: false, errors: [] },
+      diff: '',
+      events: [],
+      tail: [],
+    });
+    assert.equal(result.verdict, 'inconclusive');
+    assert.match(result.rationale, /Empty public judge response/);
+    assert.match(result.rationale, /separate retained attempt/);
+    assert.doesNotMatch(result.rationale, /cause.*(?:timeout|authentication)/);
+  });
+}
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'authoring-judge-'));
   const item = getAuthoringCase('module-flat');

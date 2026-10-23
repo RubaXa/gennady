@@ -1,0 +1,37 @@
+{
+  "id": "portal-summary-contradiction",
+  "repetition": 2,
+  "expected": "fail",
+  "artifactSha256": "6f8a09c1571696c3951785847d6c3a7b4d93d553f12f97fc08d337edd46bad94",
+  "status": "recorded",
+  "sessionId": "ses_e96eed415ffeZAuvge6t2LIa02",
+  "verdict": "fail",
+  "rationale": "VERDICT: fail\n\nThe target contradicts itself on its central contract: the Vision promises that \"For every input, including empty, separator-only and non-ASCII strings, the normalizer always returns a string and never throws,\" while the same section says \"Empty input is rejected with TypeError\" and its principles state those invalid inputs \"throw TypeError without I/O.\" The latter matches the intent and token reference contract, but the universal \"always returns\" obligation directly conflicts with it and has no stated exception or precedence. The Scope Graph correctly has `token --> infra-base`, and the Scopes table contains exactly `token` (library) and `infra-base` (infrastructure), both 🚧 with correct relative links, but that structural correctness does not cure the semantic contradiction.",
+  "usage": {
+    "messages": 1,
+    "input": 5591,
+    "output": 158,
+    "reasoning": 220,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 5969,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 4441
+  },
+  "tools": 0,
+  "captureComplete": true,
+  "matched": true,
+  "elapsedMs": 4500,
+  "cleanup": {
+    "sessions": [
+      "ses_e96eed415ffeZAuvge6t2LIa02"
+    ],
+    "temporaryDirectoryRemoved": true,
+    "errors": []
+  }
+}

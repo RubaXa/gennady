@@ -81,6 +81,12 @@ No production quality claim follows from a small calibration PASS. Keep the perm
 
 ## Next slice: M3 before optimization
 
+Live qualification on source `07ca6d92` is [recorded here](../results/authoring-campaigns/semantic-qualification-oct23/REPORT.md):
+main13/14 plus one separately retained diagnostic replay1/1. The empty response remains inconclusive;
+the diagnostic does not replace it. All15 sessions and both isolated servers were cleaned. This is
+not an all-green end-to-end judge/channel qualification or a new authoring baseline. A subsequent
+unit-backed change gives empty public responses actionable diagnostics without guessing their cause.
+
 Define/version facts for exact creation, delivered context, whole-target mutation and applicable
 fresh validation. Test positive behavior with real owned CLI/filesystem operations, then mutate
 ordering, identity, partial/outside writes, stale validation and opaque execution one at a time.

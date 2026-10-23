@@ -19,6 +19,7 @@ import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.t
 import type { SddEvalUsage } from '../types.ts';
 import { withEvalSignal } from '../eval-signal.ts';
 import { finalizeAuthoringCalibration } from '../authoring-calibration-cleanup.ts';
+import { projectAuthoringJudgeTerminal } from '../authoring-calibration-terminal.ts';
 
 const repository = fileURLToPath(new URL('../../../', import.meta.url));
 const model = { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' };
@@ -171,6 +172,20 @@ async function main(argv: string[], signal: AbortSignal) {
         });
         persistAttempt();
         const captureSignal = AbortSignal.any([signal, AbortSignal.timeout(10000)]);
+        const messages = await withEvalSignal(
+          () =>
+            client.session.messages({
+              path: { id: result.sessionId! },
+              query: { directory },
+              signal: captureSignal,
+            }),
+          captureSignal
+        );
+        if (messages.error || !messages.data)
+          throw new Error('Public terminal capture unavailable');
+        const terminal = projectAuthoringJudgeTerminal(messages.data);
+        row.publicTerminalMetadata = terminal;
+        persistAttempt();
         const usage: SddEvalUsage = await withEvalSignal(
           () => evidenceSource.readUsage(result.sessionId!),
           captureSignal
@@ -188,7 +203,11 @@ async function main(argv: string[], signal: AbortSignal) {
           models[0] === modelName &&
           trajectory.coverage.complete === true &&
           trajectory.coverage.sessions === 1 &&
-          tools === 0;
+          tools === 0 &&
+          terminal.sessionId === result.sessionId &&
+          terminal.model === modelName &&
+          !terminal.errorPresent &&
+          terminal.publicTextPresent;
         Object.assign(row, {
           status: trusted ? 'recorded' : 'unqualified',
           verdict: result.verdict,

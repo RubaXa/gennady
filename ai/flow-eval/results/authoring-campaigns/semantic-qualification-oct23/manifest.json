@@ -1,0 +1,106 @@
+{
+  "schema": "gennady.authoring-semantic-archive.1",
+  "sourceCommit": "07ca6d92d57c0d16e13069d5059a7d6b77b4c9c3",
+  "files": [
+    {
+      "path": "attempts/library-ascii-overlap-r1.json",
+      "bytes": 1150,
+      "sha256": "0677b0568ae7d178398940062381c95897abeee7870931a291692b368af2c639"
+    },
+    {
+      "path": "attempts/library-ascii-overlap-r2.json",
+      "bytes": 1496,
+      "sha256": "4b518a1665468d35491b50d1c99d4fe42020cb35b1eec51f2be2f25d1f13d078"
+    },
+    {
+      "path": "attempts/library-missing-dependency-r1.json",
+      "bytes": 1231,
+      "sha256": "a619b05e7056f8f6fec5c8225a2d912556c780b3d2e6b1722139afe55ef3acfc"
+    },
+    {
+      "path": "attempts/library-missing-dependency-r2.json",
+      "bytes": 1433,
+      "sha256": "e58213d126611dab142d5a1cff1d57d5a98c0e425b146339c01e0be61285eb6d"
+    },
+    {
+      "path": "attempts/library-nonempty-overlap-r1.json",
+      "bytes": 1359,
+      "sha256": "531909f0b4dcb9132efa0d35787c13f7c3374bdbe9fac95310fac97dffec67ea"
+    },
+    {
+      "path": "attempts/library-nonempty-overlap-r2.json",
+      "bytes": 799,
+      "sha256": "548e4a9612e4283485f00f83d625bffe9123ec449fe2823722d0c73ebc880ed6"
+    },
+    {
+      "path": "attempts/library-tooling-dependency-valid-r1.json",
+      "bytes": 1584,
+      "sha256": "00d9c31b86126082f91818dd928fdbc774fef32c8cfa93350ae053e042626e9c"
+    },
+    {
+      "path": "attempts/library-tooling-dependency-valid-r2.json",
+      "bytes": 1354,
+      "sha256": "6fc40e0d5f4597053c783cd6afdbb900bb42f073fb7c99b99634976728744f58"
+    },
+    {
+      "path": "attempts/portal-reversed-dependency-r1.json",
+      "bytes": 1184,
+      "sha256": "50fdef2e0d1e9b1632702e057f3022a203ad0485cfa3de351a5c51c3d1427535"
+    },
+    {
+      "path": "attempts/portal-reversed-dependency-r2.json",
+      "bytes": 1227,
+      "sha256": "89bdd2b56a9f3cda49f5fec3a901a04b77e41aa1e37bb55ebb2a2d60208a6f8a"
+    },
+    {
+      "path": "attempts/portal-summary-contradiction-r1.json",
+      "bytes": 1502,
+      "sha256": "2a154581bb755a69f7d80b381837b51b33dba2a914610ebd3e236acd69aad47f"
+    },
+    {
+      "path": "attempts/portal-summary-contradiction-r2.json",
+      "bytes": 1620,
+      "sha256": "2592ffd30765b3a774dfcdbf5ead49b9f598411c55924a9df005522b8c5851b9"
+    },
+    {
+      "path": "attempts/portal-summary-valid-r1.json",
+      "bytes": 1254,
+      "sha256": "dffadba438e576429f043b2133f9dde8c62dad92e6090a092fd0ff2cdc005d95"
+    },
+    {
+      "path": "attempts/portal-summary-valid-r2.json",
+      "bytes": 1355,
+      "sha256": "2f51e1d3befa033a509941f84feff4388d2b5acd4e1c4990eeb1670e08822a1c"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 206,
+      "sha256": "228dd092cf6a0b64aed1885b8ba909327ad663a484278e289e470c927d1c4d06"
+    },
+    {
+      "path": "protocol.json",
+      "bytes": 22748,
+      "sha256": "e230c8f5670903883446a7d433dd587d8f68d6c3155c9676a18cf3eb4beec708"
+    },
+    {
+      "path": "results.json",
+      "bytes": 20820,
+      "sha256": "3149074d8ca65ed4afc930aa3aceba7fb8d592ac33a80a9d7917fc88f676eb90"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 1185,
+      "sha256": "44272449e90034bfa8d97bbd277f7651d3fb65123b24821d071e800fa945f1ec"
+    },
+    {
+      "path": "supplementary-cleanup.json",
+      "bytes": 206,
+      "sha256": "57bbfa0bc8436f2839dc84d7c0fd00d370c1f1d9a5b87ade2225861ce025f921"
+    },
+    {
+      "path": "supplementary-diagnostic.json",
+      "bytes": 1614,
+      "sha256": "8867084d034a70fc6b363355a6029d9ac8ab465cf037b04dc0a3e1484d217499"
+    }
+  ]
+}
