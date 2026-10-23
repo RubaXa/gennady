@@ -1,0 +1,136 @@
+{
+  "scenarioId": "authoring-template-authoring-oct22-portal-baseline-r1",
+  "date": "2026-10-22",
+  "timestamp": "2026-10-22T19:25:09.413Z",
+  "sha": "c60738a240d356923e0d05665adef45c6eb2907b",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "85c3f92b09d392818d62a065e38a7aed7b741c366cc381984256679bcc0fcbf0",
+    "configSha256": "54522d6771941e4035a926a87625b42e3c6495330538cc08a185b7d8b4ee51a5"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 80,
+    "observeEveryMs": 2500,
+    "stuckAfter": 12,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 12,
+  "durationMs": 33241,
+  "usage": {
+    "messages": 10,
+    "input": 26132,
+    "output": 1434,
+    "reasoning": 1853,
+    "cacheRead": 223616,
+    "cacheWrite": 0,
+    "total": 29419,
+    "cost": 0,
+    "models": ["llm-proxy/deepseek-v4-flash"],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 31009
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": true,
+    "detail": "portal: bounded artifact checks passed; independent semantic review not claimed",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "no-skeleton",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "pending-approval",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "relative-links",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "required-facts",
+        "pass": true,
+        "detail": "passed"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "specs/infra-base/infra-base.spec.md",
+    "specs/token/normalize/normalize.spec.md",
+    "specs/token/token.spec.md"
+  ],
+  "authoringBenchmark": {
+    "taskDigest": "d750641d40b9c1f7b098d8c5064f1ceac34e72fbe471c875097e451963d2e1ff",
+    "oracleDigest": "3b2ebbb55519e1d0aefb209bfd4ccfeaf1d8df008941971eb578ab099e146722",
+    "harnessDigest": "4ceff15f67282ed35779ddc27bf256710eeb7af898e370aa7a7e9dc5bed38006",
+    "environmentDigest": "1602a2483b72b2ea5962d78210c9893356f623c25c5fa9ed0439c2c2da418a38",
+    "environmentVerified": true,
+    "campaign": "template-authoring-oct22",
+    "caseId": "portal",
+    "variant": "baseline",
+    "repetition": 1,
+    "sourceCommit": "c60738a240d356923e0d05665adef45c6eb2907b",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": true,
+    "semanticVerdict": "pass",
+    "trajectoryPass": false,
+    "durationMs": 31009,
+    "nonCacheTokens": 29419,
+    "metrics": {
+      "tools": 12,
+      "targetReads": 1,
+      "repeatedTargetReads": 0,
+      "wholeWrites": 1,
+      "partialWrites": 0,
+      "failedTools": 1,
+      "checks": 0,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 24486
+    }
+  },
+  "artifactFiles": ["specs/README.md"]
+}

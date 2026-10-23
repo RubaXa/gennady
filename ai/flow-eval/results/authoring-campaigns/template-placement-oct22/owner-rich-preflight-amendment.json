@@ -1,0 +1,36 @@
+{
+  "schema": "gennady.authoring-preflight-amendment.1",
+  "variant": "owner-rich",
+  "recordedAt": "2026-10-23T04:54:22Z",
+  "beforeAnyOwnerRichPrimaryCall": true,
+  "reason": "The contract-activation preflight correctly rejected three plain-text reads after the format recipes moved to the owning directive. Make their existing section-lazy bindings explicit; no criterion or gate is weakened.",
+  "originalVariantRecordRetained": "variants.json",
+  "sourceFile": "ai/kit/templates/sdd-v2/module.directive.hbs",
+  "replacements": [
+    {
+      "before": "read ai/directives/sdd-v2/formats/entity-inventory-format.xml",
+      "after": "READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/entity-inventory-format.xml\")"
+    },
+    {
+      "before": "read ai/directives/sdd-v2/formats/entity-surface-format.xml",
+      "after": "READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/entity-surface-format.xml\")"
+    },
+    {
+      "before": "read ai/directives/sdd-v2/formats/dbc-contracts.xml",
+      "after": "READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/dbc-contracts.xml\")"
+    }
+  ],
+  "instructionEnvelope": {
+    "bytes": 40103,
+    "approximateTokens": 8311,
+    "digest": "81585e0ccbf5a996335d40eeabb7ec22dc54034378d751b592c195da019724c9"
+  },
+  "unchanged": [
+    "task facts and artifact oracle",
+    "phase selectors and model route",
+    "template topology and section flags",
+    "format source bytes and lazy-read timing",
+    "tool-call acceptance thresholds",
+    "baseline and template-rich primary records"
+  ]
+}

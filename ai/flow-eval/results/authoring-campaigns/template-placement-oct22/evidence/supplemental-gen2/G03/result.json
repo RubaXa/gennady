@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "G03",
+  "sessionId": "ses_e98b5b04dffejGqaZPRv0FJXHW",
+  "startedAt": "2026-10-23T05:44:45.692Z",
+  "finishedAt": "2026-10-23T05:46:15.235Z",
+  "promptSha256": "765ee2cf24f9e4ac8fc46ecda8d275b52002a31ae43367f28e1f4b54038b15f3",
+  "artifactSha256": "b7632f9be38bc86eb4026f91843e35f2ee51d85eb819dd8799325c8c280c7c53",
+  "frozenInputsSha256": "e847320f137e8021ad5a2e72eb468b887684d79c123922e343b9a077075d23f3",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4707,
+    "output": 135,
+    "reasoning": 15249,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 20091,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 89392
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\n\nThe module defines `normalizeToken` with the required ASCII trimming/lowercasing/collapsing behavior and `TypeError` for empty, separator-only, or non-ASCII input without I/O (`NOR-REQ-1`/`NOR-REQ-2`, contract pre/post). Both mandated example rows are present and correct, parent IDs TOK-REQ-1/2 are explicitly referenced, relative parent/infra links are valid, and the handoff remains `pending-operator` with justified N/A sections and no implementation, approval, ticket, or execution claim. No substantive internal or parent contradiction found."
+}

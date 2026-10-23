@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "G05",
+  "sessionId": "ses_e98b45284ffeuH24I6xf6GfmYj",
+  "startedAt": "2026-10-23T05:46:15.239Z",
+  "finishedAt": "2026-10-23T05:49:13.376Z",
+  "promptSha256": "86affa48c304d97e6a210d28a756969cf06675d1ebbc0953e7d5915d93561f63",
+  "artifactSha256": "d64fcd390d4d9c9b1e87c53c9d3f911cab7c7b9373e4ef9c4c98baef85d9d8af",
+  "frozenInputsSha256": "e847320f137e8021ad5a2e72eb468b887684d79c123922e343b9a077075d23f3",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4575,
+    "output": 112,
+    "reasoning": 29484,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 34171,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 178014
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\nThe module correctly refines TOK-REQ-1/2 into NOR-REQ-1/2 and states the required ASCII trim/lowercase/collapse behavior plus TypeError-without-I/O for empty, separator-only, and non-ASCII input. Both required Input/Outcome rows are correct inside MODULE_REQUIREMENTS, and the parent link, no-sibling dependency, justified N/A sections, and pending-operator handoff are consistent; no implementation, ticket, or approval is claimed."
+}

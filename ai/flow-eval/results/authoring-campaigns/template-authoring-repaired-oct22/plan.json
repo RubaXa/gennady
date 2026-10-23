@@ -1,0 +1,252 @@
+[
+  {
+    "id": "authoring-template-authoring-repaired-oct22-portal-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "portal",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/README.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: portal\nRead owner instructions: ai/directives/sdd-v2/root.directive.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/README.md using the actual installed CLI command: npx --no-install gennady sdd-new portal.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/README.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- scope-map in Scopes: Exactly token/library and infra-base/infrastructure, both 🚧 with correct relative links.\n- scope-dependency in Scope Graph: token depends on infra-base, never the reverse.\n\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nThere is no exact sdd-check --spec CLI for portal/index artifacts: do not fake one. The trusted host artifact oracle grades this format after you stop.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-scope-product-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "scope-product",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/token/token.spec.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: scope-product\nRead owner instructions: ai/directives/sdd-v2/scope.directive.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/token/token.spec.md using the actual installed CLI command: npx --no-install gennady sdd-new product --scope token.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/token/token.spec.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- normalize-example in REQUIREMENTS_AND_CONSTRAINTS: Input \"  Foo__BAR  \" has outcome \"foo-bar\". Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n- empty-input-rejection in REQUIREMENTS_AND_CONSTRAINTS: Input \"\" has outcome TypeError. Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nAfter writing, run actual npx --no-install gennady sdd-check --spec specs/token/token.spec.md --authoring; heed its authoring diagnostics.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-scope-library-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "scope-library",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/token/token.spec.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: scope-library\nRead owner instructions: ai/directives/sdd-v2/scope.directive.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/token/token.spec.md using the actual installed CLI command: npx --no-install gennady sdd-new library --scope token.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/token/token.spec.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- normalize-example in REQUIREMENTS_AND_CONSTRAINTS: Input \"  Foo__BAR  \" has outcome \"foo-bar\". Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n- empty-input-rejection in REQUIREMENTS_AND_CONSTRAINTS: Input \"\" has outcome TypeError. Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nAfter writing, run actual npx --no-install gennady sdd-check --spec specs/token/token.spec.md --authoring; heed its authoring diagnostics.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-scope-infrastructure-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "scope-infrastructure",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/infra-token/infra-token.spec.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: scope-infrastructure\nRead owner instructions: ai/directives/sdd-v2/infra.directive.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/infra-token/infra-token.spec.md using the actual installed CLI command: npx --no-install gennady sdd-new infrastructure --scope infra-token.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/infra-token/infra-token.spec.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- normalize-example in REQUIREMENTS_AND_CONSTRAINTS: Input \"  Foo__BAR  \" has outcome \"foo-bar\". Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n- empty-input-rejection in REQUIREMENTS_AND_CONSTRAINTS: Input \"\" has outcome TypeError. Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nAfter writing, run actual npx --no-install gennady sdd-check --spec specs/infra-token/infra-token.spec.md --authoring; heed its authoring diagnostics.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-scope-interface-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "scope-interface",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/token-api/token-api.spec.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: scope-interface\nRead owner instructions: ai/directives/sdd-v2/interface.directive.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/token-api/token-api.spec.md using the actual installed CLI command: npx --no-install gennady sdd-new interface --scope token-api.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/token-api/token-api.spec.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- normalize-example in REQUIREMENTS_AND_CONSTRAINTS: Input \"  Foo__BAR  \" has outcome \"foo-bar\". Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n- empty-input-rejection in REQUIREMENTS_AND_CONSTRAINTS: Input \"\" has outcome TypeError. Encode both rows in an Input/Outcome Markdown table inside REQUIREMENTS_AND_CONSTRAINTS.\n\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nAfter writing, run actual npx --no-install gennady sdd-check --spec specs/token-api/token-api.spec.md --authoring; heed its authoring diagnostics.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-module-flat-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/token/normalize/normalize.spec.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: module-flat\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/token/normalize/normalize.spec.md using the actual installed CLI command: npx --no-install gennady sdd-new module --scope token --module normalize.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/token/normalize/normalize.spec.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- normalize-example in MODULE_REQUIREMENTS: Input \"  Foo__BAR  \" has outcome \"foo-bar\". Encode both rows in an Input/Outcome Markdown table inside MODULE_REQUIREMENTS.\n- empty-input-rejection in MODULE_REQUIREMENTS: Input \"\" has outcome TypeError. Encode both rows in an Input/Outcome Markdown table inside MODULE_REQUIREMENTS.\n\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nAfter writing, run actual npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring; heed its authoring diagnostics.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-module-nested-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/token/pipeline/normalize/normalize.spec.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: module-nested\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/token/pipeline/normalize/normalize.spec.md using the actual installed CLI command: npx --no-install gennady sdd-new module --scope token --module pipeline/normalize.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/token/pipeline/normalize/normalize.spec.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- normalize-example in MODULE_REQUIREMENTS: Input \"  Foo__BAR  \" has outcome \"foo-bar\". Encode both rows in an Input/Outcome Markdown table inside MODULE_REQUIREMENTS.\n- empty-input-rejection in MODULE_REQUIREMENTS: Input \"\" has outcome TypeError. Encode both rows in an Input/Outcome Markdown table inside MODULE_REQUIREMENTS.\n\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nAfter writing, run actual npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring; heed its authoring diagnostics.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-index-module-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "index-module",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/token/normalize/normalize.3-tasks.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: index-module\nRead owner instructions: ai/directives/sdd-v2/formats/module-tasks-index.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/token/normalize/normalize.3-tasks.md using the actual installed CLI command: npx --no-install gennady sdd-new module-index --scope token --module normalize.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/token/normalize/normalize.3-tasks.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- todo-truth in Tracker Index: Reflect exactly the two seeded TODO tickets; NOR-reject depends on NOR-normalize, none is complete.\nKeep Slug Registry exactly normalize/reject; Intra-Module DAG is NOR-reject --> NOR-normalize. Link project conventions using the true relative path.\n\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nThere is no exact sdd-check --spec CLI for portal/index artifacts: do not fake one. The trusted host artifact oracle grades this format after you stop.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-index-scope-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "index-scope",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/token/token.3-tasks.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: index-scope\nRead owner instructions: ai/directives/sdd-v2/formats/scope-tasks-index.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/token/token.3-tasks.md using the actual installed CLI command: npx --no-install gennady sdd-new scope-index --scope token.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/token/token.3-tasks.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- todo-truth in Tracker: Reflect exactly the two seeded TODO tickets; NOR-reject depends on NOR-normalize, none is complete.\n\nScope link is ./token.spec.md. Only normalize module exists. Inter-Module DAG has the normalize node and no dependency edges. Cascade Table contains infra-base (traversed) and token (target) with all four rule cells —; no additional rule IDs have been activated.\n\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nThere is no exact sdd-check --spec CLI for portal/index artifacts: do not fake one. The trusted host artifact oracle grades this format after you stop.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  },
+  {
+    "id": "authoring-template-authoring-repaired-oct22-index-project-baseline-r1",
+    "fixture": "authoring-benchmark",
+    "phase": "artifact-authoring",
+    "mode": "template-to-artifact",
+    "authoringBenchmark": {
+      "campaign": "template-authoring-repaired-oct22",
+      "caseId": "index-project",
+      "variant": "baseline",
+      "repetition": 1
+    },
+    "intent": "Author only specs/3-tasks.md from inputs/brief.md using the actual installed template and owner instructions. No product implementation, extra artifact creation, or operator approval.",
+    "acceptance": "# Template-owned authoring: index-project\nRead owner instructions: ai/directives/sdd-v2/formats/project-tasks-index.xml. This is isolated template-to-artifact authoring, not the owner's complete interactive workflow.\nCreate specs/3-tasks.md using the actual installed CLI command: npx --no-install gennady sdd-new project-index.\nRead its returned manifest and local skeleton instructions; fill the canonical artifact, then remove guidance and placeholders. Do not create the target by copying a complete answer from a reference owner. Only specs/3-tasks.md may change.\nIntent: a local deterministic CLI/library token normalizer. normalizeToken(input: string): string trims leading/trailing ASCII spaces, lowercases ASCII letters, collapses runs of spaces/underscore/hyphen into one hyphen. Empty, separator-only and non-ASCII input throws TypeError without I/O. No implementation is requested.\n- todo-truth in Scope Tracker: Reflect exactly the two seeded TODO tickets; NOR-reject depends on NOR-normalize, none is complete.\n\n\nKeep canonical Project-Wide Conventions verbatim. Scope Tracker links ./token/token.3-tasks.md with Tasks=2, Done=0/2 and ./infra-base/infra-base.3-tasks.md with Tasks=0, Done=0/0. Cross-Scope DAG follows the portal: token --> infra-base.\nAll references are read-only. Retain valid relative links and stable identity. No operator approval has been given: owner handoff must remain pending; no approved/✅ status, accepted verdict, ticket creation or execution claim. State explicitly when a required section is not applicable and why. Stop after bounded authoring, not project --all/ticket completion.\nThere is no exact sdd-check --spec CLI for portal/index artifacts: do not fake one. The trusted host artifact oracle grades this format after you stop.\n\nWhere the canonical scope template has MODULE_MAP, its initial “Modules not yet decomposed — run `module-decomposition <scope-name>`” line with the actual scope name is a valid pending-decomposition state, not leftover guidance or an N/A claim. Do not demand or create child modules for this isolated authoring task.\nThe source-owned artifact oracle and observed create/read/whole-write path must pass; preserve all existing seed bytes. Independent semantic review and full SDD routing are not claimed.",
+    "budgetMs": 180000,
+    "trajectoryRules": {
+      "requiredCommands": [
+        "sdd-new"
+      ],
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ],
+      "maxTools": 40
+    }
+  }
+]

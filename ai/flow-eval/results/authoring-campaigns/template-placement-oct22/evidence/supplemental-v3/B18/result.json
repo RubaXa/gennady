@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B18",
+  "sessionId": "ses_e98c4b234ffeZcgCz5UC5OdRYM",
+  "startedAt": "2026-10-23T05:28:22.210Z",
+  "finishedAt": "2026-10-23T05:29:40.364Z",
+  "promptSha256": "2bf7b25543f7ccc02eede44e82c418eb249132de8124b48654d7d4138421fdfd",
+  "artifactSha256": "63d35bb128fd7fb608e00e8f49f2ff9888803f4fd6dbe2940b0662ab6ffa9586",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "fail",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4870,
+    "output": 187,
+    "reasoning": 13469,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 18526,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 78099
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: fail\n\n- Parent `Scope Dependencies` explicitly depends on `infra-base` and links `../infra-base/infra-base.spec.md`; the module instead declares `Depends on: none` and `Scope Reference (cross-scope): none`, dropping a parent reference.\n- `NOR-REQ-1`/`NOR-REQ-2` essentially restate `TOK-REQ-1`/`TOK-REQ-2` under new IDs. The “Уточняет …” notes add no module-specific semantics, so this is duplicated parent wording rather than genuine refinement or clear canonical delegation.\n- The handoff admits ASCII characters outside letters/spaces/`_`/`-` have undefined behavior, while `NOR-REQ-1` covers any ASCII string and promises a canonical token; the contract remains incomplete for valid inputs."
+}

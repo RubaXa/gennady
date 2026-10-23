@@ -1,0 +1,224 @@
+diff --git a/ai/directives/sdd-v2/module.directive.xml b/ai/directives/sdd-v2/module.directive.xml
+index cff1da07..e8b80dba 100644
+--- a/ai/directives/sdd-v2/module.directive.xml
++++ b/ai/directives/sdd-v2/module.directive.xml
+@@ -96,11 +96,10 @@
+         writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
+         the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
+         writes are forbidden in authoring. Retain every SECTION marker and replace every
+-        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a
+-        closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,
+-        file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats
+-        only from the comments inside their owning sections, at the moment each section is filled.
+-        Remove every instructional comment. The scope owns its requirement IDs. With no narrower
++        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Follow local section recipes. Cover ownership/links, main-flow overview, isolated init/happy/error
++        use, closed inventory with unique shared-file/error owners, public surfaces and per-operation
++        DbC with negative behavior; retain the declared file structure. Load format references only
++        while filling their section. The scope owns its requirement IDs. With no narrower
+         obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
+         A disputed autonomous boundary choice is one module Decision Log line per
+         `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
+diff --git a/ai/kit/templates/sdd-v2/module.directive.hbs b/ai/kit/templates/sdd-v2/module.directive.hbs
+index 569dba3d..ab86047a 100644
+--- a/ai/kit/templates/sdd-v2/module.directive.hbs
++++ b/ai/kit/templates/sdd-v2/module.directive.hbs
+@@ -53,11 +53,10 @@
+         writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
+         the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section
+         writes are forbidden in authoring. Retain every SECTION marker and replace every
+-        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a
+-        closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,
+-        file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats
+-        only from the comments inside their owning sections, at the moment each section is filled.
+-        Remove every instructional comment. The scope owns its requirement IDs. With no narrower
++        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Follow local section recipes. Cover ownership/links, main-flow overview, isolated init/happy/error
++        use, closed inventory with unique shared-file/error owners, public surfaces and per-operation
++        DbC with negative behavior; retain the declared file structure. Load format references only
++        while filling their section. The scope owns its requirement IDs. With no narrower
+         obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`
+         A disputed autonomous boundary choice is one module Decision Log line per
+         `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
+diff --git a/shared/sdd/__tests__/rc-recovery-invariants.test.ts b/shared/sdd/__tests__/rc-recovery-invariants.test.ts
+index 5c20b176..d61ef724 100644
+--- a/shared/sdd/__tests__/rc-recovery-invariants.test.ts
++++ b/shared/sdd/__tests__/rc-recovery-invariants.test.ts
+@@ -223,7 +223,7 @@ test('RC invariant: generated coverage artifacts stay ignored', () => {
+   assert.match(ignore, /^coverage\/?$/m);
+ });
+ 
+-test('RC invariant: authoring skeleton owns format and exposes only section-lazy references', () => {
++test('RC invariant: authoring guidance exposes section-lazy format references without prescribing placement', () => {
+   const library = TEMPLATES.library.skeleton;
+   const module = TEMPLATES.module.skeleton;
+   const directiveSources = ['scope', 'module', 'root', 'discover-from-code']
+@@ -235,9 +235,23 @@ test('RC invariant: authoring skeleton owns format and exposes only section-lazy
+   assert.match(library, /УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ/);
+   assert.match(library, /### <ACR>-REQ-1 \[должен · нештатная\]/);
+   assert.match(library, /\.\/<module>\/<module>\.spec\.md/);
+-  assert.match(module, /ENTITY_INVENTORY[\s\S]*entity-inventory-format\.xml только сейчас/);
+-  assert.match(module, /ENTITY_SURFACES[\s\S]*entity-surface-format\.xml только сейчас/);
+-  assert.match(module, /MODULE_CONTRACTS[\s\S]*dbc-contracts\.xml только сейчас/);
++  const owner = readFileSync(
++    join(REPOSITORY_ROOT, 'ai/kit/templates/sdd-v2/module.directive.hbs'),
++    'utf8'
++  );
++  for (const [section, format] of [
++    ['ENTITY_INVENTORY', 'entity-inventory-format.xml'],
++    ['ENTITY_SURFACES', 'entity-surface-format.xml'],
++    ['MODULE_CONTRACTS', 'dbc-contracts.xml'],
++  ]) {
++    const local =
++      module.split(`<!--SECTION:${section}-->`)[1]?.split(`<!--/SECTION:${section}-->`)[0] ?? '';
++    const recipe =
++      owner.split('\n').find((line) => line.trimStart().startsWith(`- ${section}:`)) ?? '';
++    const guidance = [local, recipe].join('\n');
++    assert.ok(guidance.includes(format), `${section} must name its exact format`);
++    assert.match(guidance, /только сейчас|while filling this section|read [^\n]+ now/i);
++  }
+   assert.doesNotMatch(
+     directiveSources,
+     /READ_AND_USE_DIRECTIVE[^\n]*(?:library-spec-structure|module-spec-structure|requirement-entry-format|module-map-update|diagram-vocabulary|portal-structure)/
+diff --git a/shared/sdd/__tests__/templates.test.ts b/shared/sdd/__tests__/templates.test.ts
+index 1ba83850..ccc7a581 100644
+--- a/shared/sdd/__tests__/templates.test.ts
++++ b/shared/sdd/__tests__/templates.test.ts
+@@ -74,14 +74,22 @@ describe("B2-15 — specs/3-tasks.md (this repo's own project index) matches the
+ });
+ 
+ describe('templates registry', () => {
+-  it('module skeleton points the scope-spec backlink at the flat-module depth (../<scope>), not ../../', () => {
++  it('module authoring guidance points the scope-spec backlink at the flat-module depth (../<scope>), not ../../', () => {
+     // chain10 clamp: the MODULE_VISION guidance instructed `../../<scope>.spec.md`, which resolves
+     // two levels up (specs/<scope>.spec.md — nonexistent) for a flat module, so a worker that
+-    // followed it verbatim produced SDD_BROKEN_SPEC_LINK. The skeleton is the format: it must teach
+-    // the correct default depth.
+-    const skeleton = TEMPLATES.module.skeleton;
+-    assert.doesNotMatch(skeleton, /\.\.\/\.\.\/<scope>\.spec\.md/);
+-    assert.match(skeleton, /\.\.\/<scope>\.spec\.md/);
++    // followed it verbatim produced SDD_BROKEN_SPEC_LINK. Preserve the correct default depth,
++    // whether the experiment places the recipe in the template or the owning directive.
++    const guidance = [
++      TEMPLATES.module.skeleton,
++      readFileSync(
++        fileURLToPath(
++          new URL('../../../ai/kit/templates/sdd-v2/module.directive.hbs', import.meta.url)
++        ),
++        'utf8'
++      ),
++    ].join('\n');
++    assert.doesNotMatch(guidance, /\.\.\/\.\.\/<scope>\.spec\.md/);
++    assert.match(guidance, /\.\.\/<scope>\.spec\.md/);
+   });
+ 
+   it('keeps shared manifest/lock ownership DAG-serialized in source and generated infra format', () => {
+diff --git a/shared/sdd/templates.ts b/shared/sdd/templates.ts
+index 88ef2231..bce6c4d0 100644
+--- a/shared/sdd/templates.ts
++++ b/shared/sdd/templates.ts
+@@ -1019,12 +1019,12 @@ const MODULE_SKELETON = `# Module: <ModuleName>
+ 
+ <!--SECTION:MODULE_VISION-->
+ ## Module Vision
+-<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на спеку скоупа ../<scope>.spec.md (плоский модуль = один ../ ; на каждый лишний сегмент пути --module добавь ещё один ../) и на parent/child modules, если есть. -->
++<!-- Remove after authoring. Ownership; links to scope and relevant sibling/parent/child modules. Scope href: ../<scope>.spec.md for one --module segment, plus ../ per extra segment. -->
+ <!--/SECTION:MODULE_VISION-->
+ 
+ <!--SECTION:OVERVIEW-->
+ ## Overview
+-<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: ≥1 fenced mermaid или ASCII diagram главного потока модуля. Inter-Module Dependencies не заменяет Overview. Подпись: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ Единственный образец: -->
++<!-- Remove after authoring. At least one fenced Mermaid/ASCII main-flow diagram; dependency graphs do not substitute. Type: formats/diagram-vocabulary.xml. Caption immediately below: _<one phrase>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._; IDs only when illustrated. -->
+ 
+ \`\`\`mermaid
+ flowchart LR
+@@ -1037,7 +1037,7 @@ _Что здесь главное, одной фразой._
+ 
+ <!--SECTION:MODULE_USAGE_EXAMPLE-->
+ ## Module Usage Example
+-<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: self-sufficient snippet на target language — init, happy path, минимальный error path. Не дублируй composition соседних модулей. -->
++<!-- Remove after authoring. Isolated target-language init/setup + happy + minimal error snippet, with intent commentary; no neighboring composition. -->
+ <!--/SECTION:MODULE_USAGE_EXAMPLE-->
+ 
+ <!--SECTION:MODULE_REQUIREMENTS-->
+@@ -1067,12 +1067,12 @@ graph TD
+ 
+ <!--SECTION:ENTITY_INVENTORY-->
+ ## Entity Inventory
+-<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-inventory-format.xml только сейчас, при заполнении этой секции; создай закрытый Name/Type/Purpose inventory и владельца ошибок. -->
++<!-- Remove after authoring. Read ai/directives/sdd-v2/formats/entity-inventory-format.xml now. Closed Name/Type/Purpose inventory per ENTITY_INVENTORY_FORMAT; one owner per shared file/error. -->
+ <!--/SECTION:ENTITY_INVENTORY-->
+ 
+ <!--SECTION:ENTITY_SURFACES-->
+ ## Entity Surfaces
+-<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-surface-format.xml только сейчас; оставь one-line summary, а per-entity detail помести в details. -->
++<!-- Remove after authoring. Read ai/directives/sdd-v2/formats/entity-surface-format.xml now. One-line summary; public per-entity detail in existing details per ENTITY_SURFACE_FORMAT. -->
+ 
+ <details>
+ <summary>Полные поверхности сущностей</summary>
+@@ -1084,7 +1084,7 @@ graph TD
+ 
+ <!--SECTION:MODULE_CONTRACTS-->
+ ## Module Contracts
+-<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/dbc-contracts.xml только сейчас. Напиши one-line summary; dependency graph и Call Chain (при ≥2 абстракциях) поставь над details; DbC per operation — внутри. Подпись diagram: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ -->
++<!-- Remove after authoring. Read ai/directives/sdd-v2/formats/dbc-contracts.xml now. One-line Ports/Adapters/Services summary; per-operation positive/negative DbC in existing details (DBC_PORT_FORMAT/DBC_ADAPTER_FORMAT as applicable). Dependency graph + Call Chain for at least two abstractions above details; one-phrase caption, optional illustrated Requirement-IDs. -->
+ 
+ <!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
+      Unnumbered \`###\` headers (e.g. \`### Ports\`, \`### OperationDef Pattern\`). -->
+@@ -1178,15 +1178,21 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
+     required: true,
+     loadBearing: true,
+     fold: false,
+-    fill: 'What this module owns; link to the parent scope spec and to sibling/parent/child modules.',
++    fill: 'Use local MODULE_VISION recipe.',
++  },
++  {
++    name: 'OVERVIEW',
++    required: true,
++    loadBearing: false,
++    fold: false,
++    fill: 'Use local OVERVIEW recipe.',
+   },
+-  { name: 'OVERVIEW', required: true, loadBearing: false, fold: false, fill: OVERVIEW_FILL },
+   {
+     name: 'MODULE_USAGE_EXAMPLE',
+     required: true,
+     loadBearing: true,
+     fold: false,
+-    fill: 'MANDATORY: self-sufficient happy-path snippet in the target language showing how a consumer uses this module in isolation (init/happy-path/minimal error path). No cross-module composition here.',
++    fill: 'Use local MODULE_USAGE_EXAMPLE recipe.',
+   },
+   {
+     // New for module; loadBearing:false (OVERVIEW pattern) — ~25 existing v2 module specs predate this section, promote once the corpus migrates.
+@@ -1194,7 +1200,7 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
+     required: true,
+     loadBearing: false,
+     fold: false,
+-    fill: 'Only module-owned behavioral refinements: use this module acronym and name parent Requirement-IDs in each explanation. If there is no narrower module obligation, explicitly list the parent Requirement-IDs implemented here; never copy scope requirements or reuse their IDs.',
++    fill: 'Use the unchanged local requirements recipe.',
+   },
+   {
+     name: 'INTER_MODULE_DEPENDENCIES',
+@@ -1208,21 +1214,21 @@ const MODULE_SECTIONS: SectionManifestEntry[] = [
+     required: true,
+     loadBearing: true,
+     fold: false,
+-    fill: 'The closed-world entity inventory per ENTITY_INVENTORY_FORMAT.',
++    fill: 'Use local ENTITY_INVENTORY recipe.',
+   },
+   {
+     name: 'ENTITY_SURFACES',
+     required: true,
+     loadBearing: false,
+     fold: true,
+-    fill: 'One-line summary of what the surfaces cover; per-entity detail per ENTITY_SURFACE_FORMAT folds under <details>.',
++    fill: 'Use local ENTITY_SURFACES recipe.',
+   },
+   {
+     name: 'MODULE_CONTRACTS',
+     required: true,
+     loadBearing: true,
+     fold: true,
+-    fill: 'One-line summary of which Ports/Adapters/Services this module defines; the DbC contract bodies (Ports per DBC_PORT_FORMAT, Adapters per DBC_ADAPTER_FORMAT) fold under <details>.',
++    fill: 'Use local MODULE_CONTRACTS recipe.',
+   },
+   {
+     name: 'PUBLIC_OPTIONS',

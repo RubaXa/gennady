@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B22",
+  "sessionId": "ses_e98c1c326ffeZeXr621uz24vv3",
+  "startedAt": "2026-10-23T05:31:34.479Z",
+  "finishedAt": "2026-10-23T05:32:14.579Z",
+  "promptSha256": "ef67d3e7e1a628703adecb524daee2f6d0ce8c5fa09e51c409bf60070f4849ad",
+  "artifactSha256": "f47b10d14ae5c2e5dfcb3108db4dbb4430a31f0157a578a940931820d4ea7afe",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4896,
+    "output": 151,
+    "reasoning": 6376,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 11423,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 40027
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\n\nNOR-REQ-1/2 are genuine refinements of TOK-REQ-1/2, explicitly linked to the parent, and correctly cover trimming, ASCII lowercasing, separator collapsing, and TypeError-on-empty/separator-only/non-ASCII without I/O. The required Input/Outcome table contains both mandated rows (`\"  Foo__BAR  \"` → `\"foo-bar\"`, `\"\"` → `TypeError`). The module vision, public API, single-pure-function architecture, and no-sibling-dependency claims align with the parent; N/A sections are justified, and handoff remains `pending-operator` with no approval, tickets, or runtime claims."
+}

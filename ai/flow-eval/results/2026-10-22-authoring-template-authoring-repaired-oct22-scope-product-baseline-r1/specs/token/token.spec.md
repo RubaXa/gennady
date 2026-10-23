@@ -1,0 +1,149 @@
+# <scope-name>: Scope Specification
+
+<!--SECTION:SPEC_ID-->
+TOKEN
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:SCOPE_TYPE-->
+## scope-type
+product
+<!--/SECTION:SCOPE_TYPE-->
+
+<!--SECTION:VISION-->
+## Vision & Primary Goal
+<!--/SECTION:VISION-->
+
+<!--SECTION:OVERVIEW-->
+## Overview
+[MANDATORY per `AX_SPEC_MANDATORY_DIAGRAM` — ≥1 diagram right up top so a reader grasps the scope at a glance (checked by `SDD_NO_DIAGRAM_BLOCK` / `SDD_DIAGRAM_BLOCK_EMPTY`). The floor is one system-context / high-level view; add more (user flow, data flow) by author judgment. Fenced mermaid OR ASCII; pick the diagram type per `formats/diagram-vocabulary.xml`. Example:]
+
+```mermaid
+flowchart TD
+  user --> product
+  product --> dep1[dependency]
+  product --> dep2[dependency]
+```
+_Что здесь главное, одной фразой._
+<!--/SECTION:OVERVIEW-->
+
+<!--SECTION:PROJECT_TYPE-->
+## Project Type
+- **Type:** app[mobile|desktop|spa] | service-module-sdk | cli-utility
+- **Why this type:** [Краткое обоснование.]
+<!--/SECTION:PROJECT_TYPE-->
+
+<!--SECTION:GOLDEN_DX-->
+## Target Experience
+[Commentary-rich: init/setup + happy path + error/degradation path.]
+<!--/SECTION:GOLDEN_DX-->
+
+<!--SECTION:SCOPE_DEPENDENCIES-->
+## Scope Dependencies
+- **Depends on:** [infra-*, api, design-system-* scopes]
+- **Provides to:** [consumer scopes, if any]
+<!--/SECTION:SCOPE_DEPENDENCIES-->
+
+<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+## Requirements & Constraints
+
+### Requirements
+<!-- УДАЛИ ЭТУ ПОДСКАЗКУ ПОСЛЕ ЗАПОЛНЕНИЯ. Пиши плоский список: ### <ACR>-REQ-N [должен | должен · нештатная], затем одно наблюдаемое условие и обязательство, затем краткое rationale в цитате. Используй уникальные последовательные ID этой спеки. Обязательно покрой happy path, ограничения и хотя бы один негативный сценарий. Единственный образец: -->
+
+### <ACR>-REQ-1 [должен · нештатная]
+**Если** запись в журнал аудита не удалась, **то сервис должен** отклонить операцию и вернуть 503.
+
+> Аудит — комплаенс-требование; без записи операция не легитимна, откат обязателен.
+
+### Out-of-Scope
+
+### Runtime & Deferred Scope
+[Per `AX_RUNTIME_BACKING_EXPLICIT`. Backing per major capability + deferred parts + trust boundaries требующие real runtime hook.]
+
+### Rules
+| Rule | Category | Source |
+|---|---|---|
+<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->
+
+<!--SECTION:USE_CASES-->
+## Use Cases
+[MANDATORY for scope-type=product (AX_SPEC_MANDATORY_DIAGRAM ladder, rung 3) — drawn AFTER
+Requirements & Constraints closes (2026-08-20 visualization-chain decision): actors → scenario
+diagram, harvested from the «Потребители» / «Худший сценарий» topics closed at scope
+STEP_2_INTENT_CAPTURE. Fenced mermaid `flowchart TD`: actor nodes → scenario nodes, one-line
+"зачем" per scenario; the worst-case scenario marked distinctly (⚠️). ASCII form shown in
+chat first, per formats/diagram-vocabulary.xml. Caption per DIAGRAM_CAPTION_FORMAT naming the
+requirement IDs this diagram shows, e.g. `_Сценарии добавления и отмены задачи — TDM-REQ-2,
+TDM-REQ-5._`]
+<!--/SECTION:USE_CASES-->
+
+<!--SECTION:DATA_FLOW-->
+## Data Flow
+[MANDATORY for product/library (AX_SPEC_MANDATORY_DIAGRAM, new rung per the 2026-08-20 visualization-chain decision) — drawn AFTER Requirements & Constraints closes. A `flowchart` built from exactly four node kinds: external entity, process, store, labelled data-flow arrow — NO conditions, NO loops (a data diagram, not a control-flow chart); ≤7 nodes. Caption per DIAGRAM_CAPTION_FORMAT naming the requirement IDs this diagram shows. This rung is mandatory for NEW specs only — an existing spec written before this rung existed is not retroactively broken by its absence.]
+
+```mermaid
+flowchart LR
+  user(user) -->|request data| process[Process]
+  process --> store[(Store)]
+  process -->|response data| user
+```
+_<Что показывает одной фразой> — <ACR>-REQ-<N>[, <ACR>-REQ-<M>]._
+<!--/SECTION:DATA_FLOW-->
+
+<!--SECTION:ARCHITECTURE-->
+## High-Level Architecture
+[Выбранный вариант. Block diagram. Краткие описания.]
+
+### Rejected Alternatives
+<!--/SECTION:ARCHITECTURE-->
+
+<!--SECTION:MODULE_MAP-->
+## Module Map
+[Appended by `module-decomposition`. Initially: «Modules not yet decomposed — run `module-decomposition <scope-name>`».]
+<!--/SECTION:MODULE_MAP-->
+
+<!--SECTION:RESEARCH-->
+## Research
+[Опционально. Реестр ресёрчей, на которые опирается эта спека — по одной строке на документ.
+Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`).]
+
+| Документ | Что ресёрчили | Что дал для спеки |
+|---|---|---|
+| [<yyyy-mm-dd>-<slug>](./research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+<!--/SECTION:RESEARCH-->
+
+<!--SECTION:DECISION_LOG-->
+## Decision Log
+[One-line human summary — how many decisions, what area. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — history, never needed to grasp the scope NOW.]
+
+<details>
+<summary>Полные записи Decision Log</summary>
+
+[<ACR>-DL-N entries per DECISION_LOG_ENTRY_FORMAT.]
+
+</details>
+<!--/SECTION:DECISION_LOG-->
+
+<!--SECTION:BOOTSTRAP_REQUIREMENTS-->
+## Prerequisites
+[One-line human summary — is anything outstanding. Full table folds (reference detail, checked by `SDD_SECTION_NOT_FOLDED`).]
+
+<details>
+<summary>Таблица предусловий</summary>
+
+| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |
+|---|---|---|---|---|---|
+<!-- Empty list allowed only when STEP_7 audit produced zero external assumptions — declare explicitly. -->
+
+</details>
+<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->
+
+<!--SECTION:HANDOFF-->
+## Handoff to Modules
+- **Primary input:** `specs/<scope-name>/<scope-name>.spec.md`
+- **Areas requiring decomposition:** [list]
+- **Named abstractions:** [from Target Experience]
+- **Bootstrap tickets ready for cascade:** see Prerequisites
+- **Open risks:** [validation needs]
+
+<!-- Pivot Invalidation List — only in pivot mode -->
+<!--/SECTION:HANDOFF-->

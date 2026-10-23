@@ -1,0 +1,227 @@
+{
+  "startedAt": "2026-10-23T05:19:54.545Z",
+  "finishedAt": "2026-10-23T05:34:03.951Z",
+  "concurrency": 3,
+  "aborted": false,
+  "complete": true,
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "originalResultsReplaced": false,
+  "states": [
+    {
+      "blindId": "B01",
+      "dispatchIndex": 0,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:19:54.546Z",
+      "sessionId": "ses_e98cc713fffe3vYdzwFAfmBl2C",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B02",
+      "dispatchIndex": 1,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:19:54.547Z",
+      "sessionId": "ses_e98cc7138ffeFpwihlTjMJ6S0O",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B03",
+      "dispatchIndex": 2,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:19:54.547Z",
+      "sessionId": "ses_e98cc7136ffeuupuREv1HycLpn",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B04",
+      "dispatchIndex": 3,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:21:10.116Z",
+      "sessionId": "ses_e98cb4a0cffeSiNKP9YDXZH0Wb",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B05",
+      "dispatchIndex": 4,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:21:59.395Z",
+      "sessionId": "ses_e98ca898fffeqEHRyGqXhTQCyJ",
+      "verdict": "fail"
+    },
+    {
+      "blindId": "B06",
+      "dispatchIndex": 5,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:22:10.599Z",
+      "sessionId": "ses_e98ca5dceffeBsYGl3ZZP8vsJv",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B07",
+      "dispatchIndex": 6,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:22:47.823Z",
+      "sessionId": "ses_e98c9cc64ffeRVrH1nWZNQBuQm",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B08",
+      "dispatchIndex": 7,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:24:05.971Z",
+      "sessionId": "ses_e98c89b1effefmgb1CGBLt5Q1B",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B09",
+      "dispatchIndex": 8,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:24:18.538Z",
+      "sessionId": "ses_e98c86a09ffeUGHh32YluP1Zlo",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B10",
+      "dispatchIndex": 9,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:24:47.131Z",
+      "sessionId": "ses_e98c7fa57ffeenDt0d7nU2F5A8",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B11",
+      "dispatchIndex": 10,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:24:55.053Z",
+      "sessionId": "ses_e98c7da11ffeSqL4hUHKVMUjtP",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B12",
+      "dispatchIndex": 11,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:25:23.676Z",
+      "sessionId": "ses_e98c76b91ffe9kTMKevb0FK0mO",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B13",
+      "dispatchIndex": 12,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:25:33.231Z",
+      "sessionId": "ses_e98c74642ffeImzCouPFABvrNW",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B14",
+      "dispatchIndex": 13,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:26:15.718Z",
+      "sessionId": "ses_e98c6a044ffejcz2AKo1JEc5rw",
+      "verdict": "fail"
+    },
+    {
+      "blindId": "B15",
+      "dispatchIndex": 14,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:27:09.319Z",
+      "sessionId": "ses_e98c5cee5ffeGDTYMUuGC8VSoJ",
+      "verdict": "inconclusive"
+    },
+    {
+      "blindId": "B16",
+      "dispatchIndex": 15,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:27:31.985Z",
+      "sessionId": "ses_e98c5765effekaf5hCQZ50wLNp",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B17",
+      "dispatchIndex": 16,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:27:33.860Z",
+      "sessionId": "ses_e98c56f14ffeXDaEPGuKjTNJtu",
+      "verdict": "inconclusive"
+    },
+    {
+      "blindId": "B18",
+      "dispatchIndex": 17,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:28:22.208Z",
+      "sessionId": "ses_e98c4b234ffeZcgCz5UC5OdRYM",
+      "verdict": "fail"
+    },
+    {
+      "blindId": "B19",
+      "dispatchIndex": 18,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:28:37.132Z",
+      "sessionId": "ses_e98c477ebffeFa0yqA8g7sEZyz",
+      "verdict": "inconclusive"
+    },
+    {
+      "blindId": "B20",
+      "dispatchIndex": 19,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:29:40.365Z",
+      "sessionId": "ses_e98c380e7ffeSSQ5FlhP0TUJhk",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B21",
+      "dispatchIndex": 20,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:30:22.351Z",
+      "sessionId": "ses_e98c2dce0ffeFM9YT7SoJTzR4F",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B22",
+      "dispatchIndex": 21,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:31:34.477Z",
+      "sessionId": "ses_e98c1c326ffeZeXr621uz24vv3",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B23",
+      "dispatchIndex": 22,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:32:14.580Z",
+      "sessionId": "ses_e98c12677ffeGTIgGZSCpAkBrv",
+      "verdict": "pass"
+    },
+    {
+      "blindId": "B24",
+      "dispatchIndex": 23,
+      "status": "recorded",
+      "reason": "captured",
+      "dispatchedAt": "2026-10-23T05:32:14.962Z",
+      "sessionId": "ses_e98c12500ffeubnY7QpQggAwvm",
+      "verdict": "pass"
+    }
+  ]
+}

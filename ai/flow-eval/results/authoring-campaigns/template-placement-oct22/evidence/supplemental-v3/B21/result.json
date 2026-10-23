@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B21",
+  "sessionId": "ses_e98c2dce0ffeFM9YT7SoJTzR4F",
+  "startedAt": "2026-10-23T05:30:22.353Z",
+  "finishedAt": "2026-10-23T05:32:20.028Z",
+  "promptSha256": "abe37ac5ec42457e141a003532575bc602925e3dee866bb4bbd05f64d7645f01",
+  "artifactSha256": "775c99c32700a7b8758b8b0dc81eb530ac1a0de2daac37d03f73e7567e7b6161",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4754,
+    "output": 234,
+    "reasoning": 22761,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 27749,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 117591
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\n\nMODULE_REQUIREMENTS contains the required Input/Outcome table with both exact rows (`\"  Foo__BAR  \"` → `\"foo-bar\"`; `\"\"` → `TypeError`) and implements NOR-REQ-1/NOR-REQ-2 as explicit refinements of TOK-REQ-1/TOK-REQ-2: trim edge ASCII spaces, lowercase ASCII letters, collapse space/underscore/hyphen runs, and synchronously throw TypeError without I/O for empty, separator-only, or non-ASCII input. The DbC pre/post, entity surface, invariants, and usage example describe the same single pure `normalizeToken` function and show both the happy path and empty-input rejection. The parent link `../../token.spec.md` is correct, the single-module map and no-sibling-dependency claims match the parent, and non-applicable sections (Port/Adapter graph, call chain, ER sketch, implementation insights) are explicitly justified. Handoff remains `pending-operator` with no approval, ticket, or execution claim."
+}

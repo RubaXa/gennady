@@ -1,0 +1,5 @@
+# authoring-template-authoring-wall180-oct22-scope-library-baseline-r1 — pass (completed)
+
+VERDICT: pass
+
+The requested `specs/token/token.spec.md` was created via the exact `sdd-new library --scope token` invocation and filled with the template's sections. Both required observable rows are present as an `Input`/`Outcome` table (``"  Foo__BAR  "`` → `"foo-bar"`, `""` → `TypeError`), and the contract (trim, lowercase, separator collapse, TypeError on empty/separator-only/non-ASCII, no I/O) is captured in requirements and rejected alternatives. The final whole-file Write was followed by `sdd-check --spec specs/token/token.spec.md --authoring`, reported clean with 0 findings. The worker stayed bounded: only the target spec changed, MODULE_MAP remains in the valid pending-decomposition state for `token`, and no approval/✅ status, verdict, ticket, or execution claim was made (owner handoff explicitly pending). Caveat: the diff is truncated after ARCHITECTURE, so the full trailing sections (including MODULE_MAP and approval text) and raw check output are only corroborated by the worker's final report and absence of errors, not directly visible.

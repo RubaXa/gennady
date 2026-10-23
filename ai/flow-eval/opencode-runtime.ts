@@ -7,6 +7,7 @@ import { createSddEvalOpenCodeClient } from './opencode-client.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import type { OpenCodeModel, SddEvalRuntime, SddEvalSessionDirectoryRegistry } from './types.ts';
 import { resolve } from 'node:path';
+import { withEvalSignal } from './eval-signal.ts';
 
 /** @purpose Options for connecting the harness to an already running OpenCode server. */
 type SddEvalOpenCodeRuntimeOptions = {
@@ -77,7 +78,12 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
     return directory;
   }
 
-  async createSession(input: { title: string; directory: string }): Promise<{ id: string }> {
+  async createSession(input: {
+    title: string;
+    directory: string;
+    signal?: AbortSignal;
+    onCreated?: (sessionId: string) => void;
+  }): Promise<{ id: string }> {
     const requestedDirectory = input.directory || this.#directory;
     if (!requestedDirectory) {
       throw new Error('OpenCode session creation requires a working directory');
@@ -86,11 +92,13 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
     const result = await this.#client.session.create({
       body: { title: input.title },
       query: { directory },
+      signal: input.signal,
     });
     if (result.error || !result.data) {
       throw new Error(`OpenCode session creation failed: ${JSON.stringify(result.error)}`);
     }
     this.#registry.set(result.data.id, directory);
+    input.onCreated?.(result.data.id);
     return { id: result.data.id };
   }
 
@@ -120,11 +128,16 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
 
   async abort(sessionId: string): Promise<void> {
     const directory = this.#sessionDirectory(sessionId);
-    const result = await this.#client.session.abort({
-      path: { id: sessionId },
-      query: { directory },
-      signal: AbortSignal.timeout(10_000),
-    });
+    const deadline = AbortSignal.timeout(10_000);
+    const result = await withEvalSignal(
+      () =>
+        this.#client.session.abort({
+          path: { id: sessionId },
+          query: { directory },
+          signal: deadline,
+        }),
+      deadline
+    );
     if (result.error)
       throw new Error(`OpenCode worker abort failed: ${JSON.stringify(result.error)}`);
   }
@@ -134,12 +147,54 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
     prompt: string;
     model: OpenCodeModel;
     signal?: AbortSignal;
+    sessionId?: string;
+    readOnly?: boolean;
+    onSession?: (sessionId: string) => void;
   }): Promise<string> {
     input.signal?.throwIfAborted();
-    const session = await this.createSession({
-      title: 'sdd-eval-judge',
-      directory: input.directory,
-    });
+    let creationCancellation: Promise<void> | undefined;
+    let session: { id: string };
+    try {
+      session = input.sessionId
+        ? { id: input.sessionId }
+        : await withEvalSignal(
+            () =>
+              this.createSession({
+                title: 'sdd-eval-judge',
+                directory: input.directory,
+                signal: input.signal,
+                onCreated: (id) => {
+                  input.onSession?.(id);
+                  if (input.signal?.aborted) creationCancellation ??= this.abort(id);
+                  // Late creation after an already returned timeout still gets a cleanup attempt;
+                  // its rejection is observed even when no caller can await that late promise.
+                  void creationCancellation?.catch(() => undefined);
+                },
+              }),
+            input.signal
+          );
+    } catch (cause) {
+      // A known session created concurrently with cancellation is owned and must actually stop.
+      await creationCancellation;
+      throw cause;
+    }
+    const directory = this.#sessionDirectory(session.id, input.directory);
+    if (input.sessionId) input.onSession?.(session.id);
+    let tools: Record<string, boolean> | undefined;
+    if (input.readOnly) {
+      const ids = await withEvalSignal(
+        () => this.#client.tool.ids({ query: { directory }, signal: input.signal }),
+        input.signal
+      );
+      if (
+        ids.error ||
+        !Array.isArray(ids.data) ||
+        !ids.data.length ||
+        ids.data.some((id) => typeof id !== 'string')
+      )
+        throw new Error('Read-only model call requires a verified tool inventory');
+      tools = Object.fromEntries(['*', ...ids.data].map((id) => [id, false]));
+    }
     const model = splitModel(input.model);
     let cancellation: Promise<void> | undefined;
     let onAbort!: () => void;
@@ -159,7 +214,17 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
         this.#client.session.prompt({
           path: { id: session.id },
           query: { directory: this.#sessionDirectory(session.id, input.directory) },
-          body: { parts: [{ type: 'text', text: input.prompt }], model },
+          body: {
+            parts: [{ type: 'text', text: input.prompt }],
+            model,
+            ...(tools
+              ? {
+                  tools,
+                  system:
+                    'You are a text-only read-only reviewer. Use only the evidence in the user message. You have no tools and must not inspect the filesystem or emit tool-call markup. Return the requested public review text, not implementation work.',
+                }
+              : {}),
+          },
           signal: input.signal,
         }),
         stopped,

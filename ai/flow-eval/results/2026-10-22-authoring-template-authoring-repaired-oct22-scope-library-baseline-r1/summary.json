@@ -1,0 +1,132 @@
+{
+  "scenarioId": "authoring-template-authoring-repaired-oct22-scope-library-baseline-r1",
+  "date": "2026-10-22",
+  "timestamp": "2026-10-22T19:50:03.495Z",
+  "sha": "a681444f17e1199857a13b60bb3763b125dd8436",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "72a21bbe3a9b02a9146884ce27ec56e38951559c85025b511d08c1f21738ce41",
+    "configSha256": "54522d6771941e4035a926a87625b42e3c6495330538cc08a185b7d8b4ee51a5"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 80,
+    "observeEveryMs": 2500,
+    "stuckAfter": 12,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 18,
+  "durationMs": 72484,
+  "usage": {
+    "messages": 11,
+    "input": 29349,
+    "output": 5057,
+    "reasoning": 5852,
+    "cacheRead": 280192,
+    "cacheWrite": 0,
+    "total": 40258,
+    "cost": 0,
+    "models": ["llm-proxy/deepseek-v4-flash"],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 71172
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": true,
+    "detail": "scope-library: bounded artifact checks passed; independent semantic review not claimed",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "no-skeleton",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "pending-approval",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "relative-links",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "required-facts",
+        "pass": true,
+        "detail": "passed"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven"
+  },
+  "hasJudge": true,
+  "specFiles": ["specs/infra-base/infra-base.spec.md", "specs/token/token.spec.md"],
+  "authoringBenchmark": {
+    "taskDigest": "d8b07354a0e0f21191f367c8e534d3bbc7d7bdaf184d9891cbc34eb7d1f2f14c",
+    "oracleDigest": "b4981ee53b71c5e377ab7160f65ec0a4b7cdbc7e5bfa0b8199c108bcaa591057",
+    "harnessDigest": "9903191f3724d510aba79c9b93bca37c9ee284444dedb78124f6538eeb6cf400",
+    "environmentDigest": "1602a2483b72b2ea5962d78210c9893356f623c25c5fa9ed0439c2c2da418a38",
+    "environmentVerified": true,
+    "campaign": "template-authoring-repaired-oct22",
+    "caseId": "scope-library",
+    "variant": "baseline",
+    "repetition": 1,
+    "sourceCommit": "a681444f17e1199857a13b60bb3763b125dd8436",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": true,
+    "semanticVerdict": "pass",
+    "trajectoryPass": false,
+    "durationMs": 71172,
+    "nonCacheTokens": 40258,
+    "metrics": {
+      "tools": 18,
+      "targetReads": 1,
+      "repeatedTargetReads": 0,
+      "wholeWrites": 2,
+      "partialWrites": 0,
+      "failedTools": 0,
+      "checks": 2,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 65008
+    }
+  },
+  "artifactFiles": ["specs/token/token.spec.md"]
+}

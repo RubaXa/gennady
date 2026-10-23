@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B20",
+  "sessionId": "ses_e98c380e7ffeSSQ5FlhP0TUJhk",
+  "startedAt": "2026-10-23T05:29:40.367Z",
+  "finishedAt": "2026-10-23T05:32:14.962Z",
+  "promptSha256": "7f511d8124327b8861069a3455355538aacae7c21b7f57d10bcc51dbce158692",
+  "artifactSha256": "3a0efb196facdefc8940272bf77eb6380b6645f291c1e860c47e94edc9926362",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4679,
+    "output": 113,
+    "reasoning": 27660,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 32452,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 154466
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\nThe MODULE_REQUIREMENTS table exactly encodes `\"  Foo__BAR  \"` → `\"foo-bar\"` and `\"\"` → `TypeError`; NOR-REQ-1/2 trace to TOK-REQ-1/2 and match the contract’s trim/lowercase/collapse and TypeError/no-I/O rules. The function-only surface, deterministic no-state invariants, and pending-operator handoff are consistent with the parent and brief; no substantive contradiction is present."
+}

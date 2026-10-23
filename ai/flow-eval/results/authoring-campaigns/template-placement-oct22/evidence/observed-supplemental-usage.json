@@ -1,0 +1,47 @@
+{
+  "schema": "gennady.authoring-supplemental-usage.1",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "money": "UNKNOWN; SDK cost0 is not proof of free use",
+  "populations": [
+    {
+      "population": "v3",
+      "complete": true,
+      "aborted": false,
+      "rows": 24,
+      "verdicts": {
+        "pass": 18,
+        "fail": 3,
+        "inconclusive": 3
+      },
+      "usage": {
+        "input": 115525,
+        "output": 3305,
+        "reasoning": 424327,
+        "cacheRead": 39936,
+        "cacheWrite": 0,
+        "total": 543157,
+        "messages": 24
+      },
+      "toolCalls": 0
+    },
+    {
+      "population": "gen2",
+      "complete": true,
+      "aborted": false,
+      "rows": 6,
+      "verdicts": {
+        "pass": 6
+      },
+      "usage": {
+        "input": 28318,
+        "output": 822,
+        "reasoning": 96057,
+        "cacheRead": 9984,
+        "cacheWrite": 0,
+        "total": 125197,
+        "messages": 6
+      },
+      "toolCalls": 0
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B15",
+  "sessionId": "ses_e98c5cee5ffeGDTYMUuGC8VSoJ",
+  "startedAt": "2026-10-23T05:27:09.321Z",
+  "finishedAt": "2026-10-23T05:28:37.132Z",
+  "promptSha256": "05c1dc14ca9ba420f99a775f40e17748f18e1e646fbb5ba3cb8406f4cee8a720",
+  "artifactSha256": "e078241ea7538a70be5142898197990ff9582ed6a156ba7c0ef32c1a7ba6d3e3",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "inconclusive",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 5046,
+    "output": 156,
+    "reasoning": 15269,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 20471,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 87721
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDID: pass — no, must be exactly VERDICT: pass.\n\nVERDICT: pass\nNOR-REQ-1/2 correctly refine TOK-REQ-1/2: trimming ASCII spaces, ASCII lowercasing, collapsing spaces/underscore/hyphen, and throwing `TypeError` without I/O for empty, separator-only, or non-ASCII input. The required two-row Input/Outcome table is present and exact (`\"  Foo__BAR  \"` → `\"foo-bar\"`, `\"\"` → `TypeError`), and the example, API, entity, and contract sections are consistent. No implementation, tickets, or approval are claimed; the handoff remains pending. No substantive contradiction found."
+}

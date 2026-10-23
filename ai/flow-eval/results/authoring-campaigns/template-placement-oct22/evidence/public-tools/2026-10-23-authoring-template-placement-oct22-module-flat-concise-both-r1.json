@@ -1,0 +1,147 @@
+{
+  "schema": "gennady.authoring-public-tool-enrichment.1",
+  "collectedAt": "2026-10-23T05:16:13.289Z",
+  "authority": "public SDK tool-input/output projection only; not a full transcript or causal-effect proof",
+  "endpoint": "http://127.0.0.1:4110",
+  "collectorSha256": "e6e33765c712e408cce474557c81a09e48e6be361dc417a6bcb31db53c0bfecc",
+  "scenarioId": "authoring-template-placement-oct22-module-flat-concise-both-r1",
+  "target": "specs/token/normalize/normalize.spec.md",
+  "sourceCommit": "9073686e628e1409173ebd8bb83bae196dd60476",
+  "primaryModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "measuredModel": "llm-proxy/deepseek-v4-flash",
+  "modelVerified": true,
+  "primaryDirty": false,
+  "taskDigest": "1d2118dbd766c96ad8c29760531c59428bb915882e87ee280b2935646ff15ae7",
+  "oracleDigest": "1f6f78585343354458b7c939977fb3f34c8b9e7f209987be0444d3a868b0668b",
+  "harnessDigest": "0e711842c00e340821b8da9010d46107d6ff65b3b695818aa27639d540710f67",
+  "summarySha256": "8089593e959cb88691849483633a8b2f879e4684334a3c4b3497947fb93e7fb6",
+  "trajectorySha256": "6b61fc01d682f131ef60d687bf9a70e96a6df5d66afa33b932eb698479431be8",
+  "archivedCoverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "sessions": [
+    {
+      "sessionId": "ses_e98da3175ffevibsezczbGzn5r",
+      "title": "sdd-eval:authoring-template-placement-oct22-module-flat-concise-both-r1",
+      "directory": "/private/tmp/gennady-authoring-placement-live.wP6OFw/sdd-flow-eval-mgLEHW",
+      "sdkMessages": 21,
+      "limit": 2000
+    }
+  ],
+  "calls": [
+    {
+      "sessionId": "ses_e98da3175ffevibsezczbGzn5r",
+      "callId": "call_00_wksh4kXTRQ7ECfXHQ9HB1545",
+      "tool": "write",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792731957446,
+      "finishedAt": 1792731957454,
+      "archivedStartedAt": 1792731957446,
+      "archivedFinishedAt": 1792731957454,
+      "complete": true,
+      "classification": "target-write-input",
+      "contentSha256": "c020ef63535a5be05778b6dff6e62e9644a6607e0707778c543217640f4715af",
+      "contentBytes": 11951,
+      "requirementIds": [
+        "NORM-REQ-1",
+        "NORM-REQ-2"
+      ]
+    },
+    {
+      "sessionId": "ses_e98da3175ffevibsezczbGzn5r",
+      "callId": "call_00_u0IBYl8QOY6TyBdLdREs3186",
+      "tool": "write",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792731968280,
+      "finishedAt": 1792731968288,
+      "archivedStartedAt": 1792731968280,
+      "archivedFinishedAt": 1792731968288,
+      "complete": true,
+      "classification": "target-write-input",
+      "contentSha256": "9fcc12c4469e97231f12ae87c8e85d6198c7ee8da1bafe4d21412a2b51164d0f",
+      "contentBytes": 11967,
+      "requirementIds": [
+        "NORM-REQ-1",
+        "NORM-REQ-2"
+      ]
+    },
+    {
+      "sessionId": "ses_e98da3175ffevibsezczbGzn5r",
+      "callId": "call_00_hjhrRqbIAUey9XxlSftR8391",
+      "tool": "bash",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792731971327,
+      "finishedAt": 1792731971344,
+      "archivedStartedAt": 1792731971327,
+      "archivedFinishedAt": 1792731971344,
+      "complete": true,
+      "classification": "direct",
+      "diagnosticEligible": true,
+      "command": "npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring",
+      "exit": 0,
+      "outputSha256": "099e5ee3fd59076bd78160b3137b2150e9cf31cb02189729de231bd460e1c71e",
+      "outputBytes": 945,
+      "diagnosticCodes": [
+        "SDD_REQ_ACRONYM_MISMATCH"
+      ],
+      "diagnosticExcerpt": "specs/token/normalize/normalize.spec.md: warn: SDD_REQ_ACRONYM_MISMATCH  Draft hint: Requirement-ID \"NORM-REQ-1\" использует акроним \"NORM\", а акроним этой спеки — \"NOR\" (выведен из имени файла спеки, contract AX_REQ_DL_ID_GRAMMAR) — используй `NOR-REQ-1`.\nspecs/token/normalize/normalize.spec.md: warn: SDD_REQ_ACRONYM_MISMATCH  Draft hint: Requirement-ID \"NORM-REQ-2\" использует акроним \"NORM\", а акроним этой спеки — \"NOR\" (выведен из имени файла спеки, contract AX_REQ_DL_ID_GRAMMAR) — используй `NOR-REQ-2`.\n[sdd-check] 0 error(s), 2 warning(s) across 1 file(s)",
+      "diagnosticExcerptBytes": 707,
+      "diagnosticTruncated": false
+    },
+    {
+      "sessionId": "ses_e98da3175ffevibsezczbGzn5r",
+      "callId": "call_00_NTH7I8QIQcR78n87Hkqb4775",
+      "tool": "write",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792731982770,
+      "finishedAt": 1792731982779,
+      "archivedStartedAt": 1792731982770,
+      "archivedFinishedAt": 1792731982779,
+      "complete": true,
+      "classification": "target-write-input",
+      "contentSha256": "31405e43387e3c345b4e594d629ec69d2bb36f69658de4ab0196ae6ff5686ffc",
+      "contentBytes": 11962,
+      "requirementIds": [
+        "NOR-REQ-1",
+        "NOR-REQ-2"
+      ]
+    },
+    {
+      "sessionId": "ses_e98da3175ffevibsezczbGzn5r",
+      "callId": "call_00_ET_nPEiEGJZktAZSV5Az69W1802",
+      "tool": "bash",
+      "status": "completed",
+      "model": "llm-proxy/deepseek-v4-flash",
+      "startedAt": 1792731984835,
+      "finishedAt": 1792731984845,
+      "archivedStartedAt": 1792731984835,
+      "archivedFinishedAt": 1792731984845,
+      "complete": true,
+      "classification": "direct",
+      "diagnosticEligible": true,
+      "command": "npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring",
+      "exit": 0,
+      "outputSha256": "3c42030406ef0780876370107dda07584351052f393ef47aa3c648802aa8abf3",
+      "outputBytes": 130,
+      "diagnosticCodes": [],
+      "diagnosticExcerpt": "[sdd-check] ✅ clean — 1 file(s) checked",
+      "diagnosticExcerptBytes": 43,
+      "diagnosticTruncated": false
+    }
+  ],
+  "missing": [],
+  "diagnosticBudgetBytes": 1024,
+  "modelCalls": 0,
+  "originalResultsModified": false,
+  "diagnosticBytes": 750,
+  "complete": true
+}

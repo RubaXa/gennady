@@ -23,6 +23,13 @@ export type SddEvalScenario = {
   /** @purpose Exact scenario-owned spec targets for read-only pre-Approval-1 readiness.
    * Never supplied by the evaluated worker; ordinary project integrity remains R1. */
   authoringTargets?: string[];
+  /** @purpose Source-owned isolated artifact case; labels never change the brief or oracle. */
+  authoringBenchmark?: {
+    campaign: string;
+    caseId: import('./authoring-benchmark.ts').AuthoringCaseId;
+    variant: string;
+    repetition: number;
+  };
   /** @purpose Optional declared execute target for the mechanical completion rule (R-COMPLETE). When
    *  present on an execute scenario, the quality gate reads these files from disk and fails the run if
    *  the artifact was built but the ticket did not reach a real DONE (closed round + group receipts).
@@ -52,6 +59,7 @@ export type SddEvalScenario = {
 // instead of silently falling back to a different (or empty) worker prompt (H-16).
 /** @purpose Supported intellectual SDD flow phases exercised by the harness. */
 export const SDD_EVAL_PHASES = [
+  'artifact-authoring',
   'spec-authoring',
   'scaffold',
   'execute',
@@ -67,6 +75,7 @@ export type SddEvalPhase = (typeof SDD_EVAL_PHASES)[number];
 
 /** @purpose Human-auditable phase modes with approval boundaries. */
 export const SDD_EVAL_MODES = [
+  'template-to-artifact',
   'full-spec-to-approval-1',
   'actual-tickets-to-approval-2',
   'canonical-execute',
@@ -101,6 +110,7 @@ export type SddEvalMode = (typeof SDD_EVAL_MODES)[number];
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =
+  | 'authoring-benchmark'
   | 'v2-brownfield-routing'
   | 'deviation-verdict'
   | 'fibonacci-library'
@@ -261,6 +271,14 @@ export type SddEvalUsage = {
   total: number;
   /** @purpose Provider-reported cost, summed. */
   cost: number;
+  /** @purpose Actual provider/model identities observed in SDK assistant records, never requested labels. */
+  models?: string[];
+  /** @purpose SDK message-created → last assistant-completed span; independent of observer polling. */
+  wallClockMs?: number;
+  /** @purpose Whether every discovered usage session was read successfully. */
+  complete?: boolean;
+  /** @purpose Number of root/direct-child sessions included; compared with complete trace coverage. */
+  sessions?: number;
 };
 
 /** @purpose Worker result plus the evidence needed by the judge. */
@@ -287,6 +305,8 @@ export type SddEvalWorkerResult = {
 
 /** @purpose Narrow judge input; worker prompt/response and unbounded session data are excluded. */
 export type SddEvalJudgeInput = {
+  /** @purpose Artifact-only semantic review; execution proof remains a separate deterministic gate. */
+  authoring?: import('./authoring-judge-evidence.ts').AuthoringJudgeEvidence;
   intent: string;
   /** @purpose Exact bounded acceptance facts; unlike the intent, this carries numeric/negative edges. */
   acceptance?: string;
@@ -303,6 +323,8 @@ export type SddEvalJudgeInput = {
 
 /** @purpose Structured judge outcome. */
 export type SddEvalJudgeResult = {
+  sessionId?: string;
+  usage?: SddEvalUsage;
   scenarioId: string;
   verdict: 'pass' | 'fail' | 'inconclusive';
   rationale: string;
@@ -311,7 +333,11 @@ export type SddEvalJudgeResult = {
 
 /** @purpose Provider-neutral SDK operations required by the harness. */
 export interface SddEvalRuntime {
-  createSession(input: { title: string; directory: string }): Promise<{ id: string }>;
+  createSession(input: {
+    title: string;
+    directory: string;
+    signal?: AbortSignal;
+  }): Promise<{ id: string }>;
   prompt(input: {
     sessionId: string;
     /** @purpose Exact sandbox cwd repeated on the worker prompt request. */
@@ -328,6 +354,10 @@ export interface SddEvalRuntime {
     prompt: string;
     model: OpenCodeModel;
     signal?: AbortSignal;
+    /** @purpose Post-measurement reflection may resume only its exact existing worker session. */
+    sessionId?: string;
+    readOnly?: boolean;
+    onSession?: (sessionId: string) => void;
   }): Promise<string>;
 }
 

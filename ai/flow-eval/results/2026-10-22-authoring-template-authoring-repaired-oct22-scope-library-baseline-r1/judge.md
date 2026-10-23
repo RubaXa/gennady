@@ -1,0 +1,5 @@
+# authoring-template-authoring-repaired-oct22-scope-library-baseline-r1 — pass (completed)
+
+VERDICT: pass
+
+The requested target `specs/token/token.spec.md` was authored through the exact installed command (`sdd-new library --scope token`), with the created skeleton and local format instructions read before the whole-file write. The final artifact contains the required `Input | Outcome` table with both rows (`"  Foo__BAR  "` → `"foo-bar"` and `""` → `TypeError`), keeps MODULE_MAP in a valid pending-decomposition state, contains no implementation or approval claim, and the worker stopped at the authoring boundary with approval, tickets, and execution explicitly pending. The final `sdd-check --spec specs/token/token.spec.md --authoring` run completed and was reported clean, and the diff/status shows only the target file changed. The diff is truncated after the MODULE_MAP line and the check output is not reproduced, but no red gate, cancellation, stuck state, or missing required artifact is evidenced.

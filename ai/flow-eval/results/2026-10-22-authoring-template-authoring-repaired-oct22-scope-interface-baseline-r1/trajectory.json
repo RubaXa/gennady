@@ -1,0 +1,133 @@
+{
+  "scenario": "authoring-template-authoring-repaired-oct22-scope-interface-baseline-r1",
+  "events": [
+    {
+      "type": "tool",
+      "i": 0,
+      "t": 1792698649519,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./inputs/brief.md\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a83e5001FQfH08JxS6OXeD",
+      "callId": "call_00_ET_6DcM8feQKCCDNKTsWfc90701",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "startedAt": 1792698649519,
+      "finishedAt": 1792698649527
+    },
+    {
+      "type": "tool",
+      "i": 1,
+      "t": 1792698649695,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/interface.directive.xml\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a83e5001FQfH08JxS6OXeD",
+      "callId": "call_01_ET_ZsiGWjlaqPneLzCLh8la9380",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "startedAt": 1792698649695,
+      "finishedAt": 1792698649699
+    },
+    {
+      "type": "tool",
+      "i": 2,
+      "t": 1792698651146,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls -la && ls specs 2>/dev/null && ls specs/token-api 2>/dev/null; git status --short\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a8cca001rkYYswJZJ74Em3",
+      "callId": "call_00_OFdvmufHXgZKthVTMJDB0109",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "command": "ls -la && ls specs 2>/dev/null && ls specs/token-api 2>/dev/null; git status --short",
+      "startedAt": 1792698651146,
+      "finishedAt": 1792698651170,
+      "exitCode": 0
+    },
+    {
+      "type": "tool",
+      "i": 3,
+      "t": 1792698651838,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-new interface --scope token-api\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a8cca001rkYYswJZJ74Em3",
+      "callId": "call_01_xOlNG5PlsBKdUpZCK5xG7709",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "command": "npx --no-install gennady sdd-new interface --scope token-api",
+      "startedAt": 1792698651838,
+      "finishedAt": 1792698651846,
+      "exitCode": 0
+    },
+    {
+      "type": "tool",
+      "i": 4,
+      "t": 1792698653560,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/token-api/token-api.spec.md\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a954d001LOyNnhreRSm3ch",
+      "callId": "call_00_IjNl9zRhwBR2e9LHjxzc7188",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "startedAt": 1792698653560,
+      "finishedAt": 1792698653568
+    },
+    {
+      "type": "tool",
+      "i": 5,
+      "t": 1792698653683,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls ai/directives/sdd-v2 ai/directives/sdd-v2/formats; cat specs/README.md\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a954d001LOyNnhreRSm3ch",
+      "callId": "call_01_35ljtiRb1yxj7ekYKdgk1843",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "command": "ls ai/directives/sdd-v2 ai/directives/sdd-v2/formats; cat specs/README.md",
+      "startedAt": 1792698653683,
+      "finishedAt": 1792698653684,
+      "exitCode": 0
+    },
+    {
+      "type": "tool",
+      "i": 6,
+      "t": 1792698655422,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/interface-spec-structure.xml\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a9c66001OB46hoFM1OKe7N",
+      "callId": "call_00_GqQRI9X8gdFzS5SBvK889142",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "startedAt": 1792698655422,
+      "finishedAt": 1792698655431
+    },
+    {
+      "type": "tool",
+      "i": 7,
+      "t": 1792698655589,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/requirement-entry-format.xml\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a9c66001OB46hoFM1OKe7N",
+      "callId": "call_01_AYpI1oXyaEmUdlm2S6Ep8121",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "startedAt": 1792698655589,
+      "finishedAt": 1792698655592
+    },
+    {
+      "type": "tool",
+      "i": 8,
+      "t": 1792698655737,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/infra-base/infra-base.spec.md\"}",
+      "messageId": "ses_e9ad57c83ffei23P6UJCQAZNNj:msg_1652a9c66001OB46hoFM1OKe7N",
+      "callId": "call_02_caPyJYVPgGd3vTGKVTnb9914",
+      "status": "completed",
+      "sessionId": "ses_e9ad57c83ffei23P6UJCQAZNNj",
+      "startedAt": 1792698655737,
+      "finishedAt": 1792698655741
+    }
+  ],
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  }
+}

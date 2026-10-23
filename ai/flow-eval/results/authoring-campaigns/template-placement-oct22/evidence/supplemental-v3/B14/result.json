@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B14",
+  "sessionId": "ses_e98c6a044ffejcz2AKo1JEc5rw",
+  "startedAt": "2026-10-23T05:26:15.720Z",
+  "finishedAt": "2026-10-23T05:27:33.860Z",
+  "promptSha256": "5b1c87f6530d5de5a7c1f2a8956286ed99fe2807c7a50c95034d3e5acaa66f70",
+  "artifactSha256": "278c275cf625fa3a20078f33ea347d4ac5396c603a7f9f7731d231f07e0969c8",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "fail",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4810,
+    "output": 98,
+    "reasoning": 12578,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 17486,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 78078
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: fail\nNOR-REQ-1 and the DbC postcondition limit separator collapsing to runs \"внутри строки\", so valid inputs such as `__Foo__` or `Foo--` are not guaranteed to become `-foo-`/`foo-` as the source contract requires (\"collapse spaces/underscores/hyphens to one hyphen\"). The required examples, empty-input rejection, module responsibility, and pending handoff are otherwise consistent."
+}

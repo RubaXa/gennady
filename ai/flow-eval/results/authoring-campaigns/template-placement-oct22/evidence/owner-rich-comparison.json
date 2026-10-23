@@ -1,0 +1,90 @@
+{
+  "protocol": "gennady.authoring-comparison.2",
+  "comparable": true,
+  "issues": [],
+  "cases": [
+    {
+      "caseId": "module-flat",
+      "baseline": {
+        "runs": 3,
+        "artifactPasses": 3,
+        "semanticPasses": 0,
+        "trajectoryPasses": 0,
+        "promptBytes": 43574,
+        "approximatePromptTokens": 8742,
+        "totalTools": 83,
+        "maxTools": 34,
+        "medianTools": 25,
+        "medianDurationMs": 107726,
+        "durationRangeMs": [
+          101961,
+          132076
+        ],
+        "medianNonCacheTokens": 57345
+      },
+      "candidate": {
+        "runs": 3,
+        "artifactPasses": 3,
+        "semanticPasses": 1,
+        "trajectoryPasses": 0,
+        "promptBytes": 40103,
+        "approximatePromptTokens": 8311,
+        "totalTools": 85,
+        "maxTools": 32,
+        "medianTools": 31,
+        "medianDurationMs": 132930,
+        "durationRangeMs": [
+          92124,
+          143037
+        ],
+        "medianNonCacheTokens": 61275
+      }
+    },
+    {
+      "caseId": "module-nested",
+      "baseline": {
+        "runs": 3,
+        "artifactPasses": 1,
+        "semanticPasses": 0,
+        "trajectoryPasses": 0,
+        "promptBytes": 43574,
+        "approximatePromptTokens": 8742,
+        "totalTools": 68,
+        "maxTools": 30,
+        "medianTools": 21,
+        "medianDurationMs": 79657,
+        "durationRangeMs": [
+          79653,
+          155836
+        ],
+        "medianNonCacheTokens": 51879
+      },
+      "candidate": {
+        "runs": 3,
+        "artifactPasses": 1,
+        "semanticPasses": 2,
+        "trajectoryPasses": 0,
+        "promptBytes": 40103,
+        "approximatePromptTokens": 8311,
+        "totalTools": 75,
+        "maxTools": 29,
+        "medianTools": 25,
+        "medianDurationMs": 106305,
+        "durationRangeMs": [
+          102505,
+          129395
+        ],
+        "medianNonCacheTokens": 58499
+      }
+    }
+  ],
+  "regressions": [
+    "module-flat",
+    "module-nested"
+  ],
+  "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+  "promptShrank": true,
+  "recommendation": "reject",
+  "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+  "monetaryCost": "unknown"
+}

@@ -3,6 +3,8 @@
 // @consumers: sdd-flow-eval command, fake-backed tests
 
 import { SddEvalJudge } from './judge.ts';
+import { captureAuthoringJudgeEvidence } from './authoring-judge-evidence.ts';
+import { withEvalSignal } from './eval-signal.ts';
 import { SddEvalObserver } from './observer.ts';
 import { assertUniqueScenarioDirectories } from './provision.ts';
 import { composeSddPhasePrompt } from './prompts.ts';
@@ -136,10 +138,11 @@ export class SddEvalRunner {
     onFailure?: (result: SddEvalResult) => Promise<void>
   ): Promise<SddEvalResult> {
     if (!scenario.directory) throw new Error(`scenario ${scenario.id} has no isolated directory`);
+    const directory = scenario.directory;
     this.#throwIfAborted();
     const session = await this.#runtime.createSession({
       title: `sdd-eval:${scenario.id}`,
-      directory: scenario.directory,
+      directory,
     });
     const workerPrompt = composeSddPhasePrompt(scenario);
     const observed: SddEvalObservation[] = [];
@@ -154,7 +157,7 @@ export class SddEvalRunner {
           this.#throwIfAborted();
           await this.#runtime.prompt({
             sessionId: session.id,
-            directory: scenario.directory,
+            directory,
             text: workerPrompt,
             model: this.#config.runnerModel,
             agent: this.#config.agent,
@@ -217,7 +220,10 @@ export class SddEvalRunner {
       const events = finalObservation?.events ?? [];
       let usage: SddEvalWorkerResult['usage'];
       try {
-        usage = await this.#evidence.readUsage?.(session.id);
+        usage = await withEvalSignal(
+          () => this.#evidence.readUsage?.(session.id) ?? Promise.resolve(undefined),
+          AbortSignal.timeout(5000)
+        );
       } catch {
         // Usage is best-effort A/B telemetry; never fail a run because token totals could not be read.
       }
@@ -241,6 +247,14 @@ export class SddEvalRunner {
         scenario.id,
         scenario.directory,
         {
+          ...(scenario.authoringBenchmark
+            ? {
+                authoring: captureAuthoringJudgeEvidence(
+                  scenario.directory,
+                  scenario.authoringBenchmark.caseId
+                ),
+              }
+            : {}),
           intent: worker.intent,
           acceptance: scenario.acceptance,
           state: {
@@ -255,6 +269,17 @@ export class SddEvalRunner {
         },
         this.#config.signal
       );
+      if (judge?.sessionId) {
+        try {
+          const judgeSessionId = judge.sessionId;
+          judge.usage = await withEvalSignal(
+            () => this.#evidence.readUsage?.(judgeSessionId) ?? Promise.resolve(undefined),
+            AbortSignal.timeout(5000)
+          );
+        } catch {
+          /* separate telemetry remains unknown */
+        }
+      }
       return { worker, ...(judge ? { judge } : {}) };
     } catch (cause) {
       const failure =

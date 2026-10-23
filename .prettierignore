@@ -27,3 +27,31 @@ ai/flow-eval/results/*/judge.md
 ai/flow-eval/results/*/specs/**
 # Exact scenario bytes are SHA-256-bound in summary.json; reformatting breaks provenance.
 ai/flow-eval/results/*/scenario-input.json
+# Original authoring matrix bytes are bound by the campaign's scenario SHA-256.
+ai/flow-eval/results/authoring-campaigns/*/plan.json
+
+# Immutable instruction-placement experiment records: primary JSON is hash-bound by the
+# independent semantic review. Offline replay/hash tests validate these bytes instead.
+ai/flow-eval/results/2026-10-23-authoring-template-placement-oct22-*/summary.json
+ai/flow-eval/results/2026-10-23-authoring-template-placement-oct22-*/trajectory.json
+ai/flow-eval/results/2026-10-23-authoring-template-placement-oct22-*/reflection.json
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/*-plan.json
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/variants.json
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/owner-rich-preflight-amendment.json
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/concise-acronym-preregistration.json
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/public-tools/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/public-tools-gen2/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/collection-failures/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/supplemental-v3/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/supplemental-gen2/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/supplemental-preparations/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/collectors/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/preflight/**
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/*-comparison.json
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/observed-totals.json
+ai/flow-eval/results/authoring-campaigns/template-placement-oct22/evidence/observed-supplemental-usage.json
+
+# Exact live grader calibration bytes; validated by authoring-calibration-recorded.test.ts.
+ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/calibration.json
+ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/source-snapshot.json
+ai/flow-eval/results/authoring-campaigns/template-calibration-oct23/collector.mjs.txt

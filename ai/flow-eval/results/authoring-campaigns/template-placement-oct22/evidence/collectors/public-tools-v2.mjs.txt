@@ -1,0 +1,224 @@
+// Read-only SDK projection of archived public tools. No model calls or primary writes.
+import { createHash } from 'node:crypto';
+import { lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
+import { basename, join, relative, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const REPO = '/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady';
+const ROOT = '/private/tmp/gennady-authoring-placement-live.wP6OFw';
+const PRIMARY = join(ROOT, 'permanent');
+const OUT = '/private/tmp/gennady-authoring-public-tool-evidence-v2';
+const BASE_URL = 'http://127.0.0.1:4110';
+const CAMPAIGN = 'template-placement-oct22';
+const FLASH = 'llm-proxy/deepseek-v4-flash';
+const sha = (value) => createHash('sha256').update(value).digest('hex');
+const json = (value) => JSON.stringify(value, null, 2) + '\n';
+const fail = (value) => { throw new Error(value); };
+const safeRead = (root, path, maximum = 16 * 1024 * 1024) => {
+  let at = realpathSync(root);
+  for (const part of path.split('/')) {
+    if (!part || part === '.' || part === '..') fail('unsafe archive path');
+    at = join(at, part);
+    if (lstatSync(at).isSymbolicLink()) fail('symlink archive input');
+  }
+  const st = lstatSync(at);
+  if (!st.isFile() || st.nlink !== 1 || st.size > maximum) fail('unsafe archive input');
+  return readFileSync(at);
+};
+function boundedUtf8(text, bytes) {
+  let output = '';
+  let used = 0;
+  for (const character of text) {
+    const size = Buffer.byteLength(character);
+    if (used + size > bytes) break;
+    output += character;
+    used += size;
+  }
+  return output;
+}
+function classify(command, directory, target) {
+  const exact = `npx --no-install gennady sdd-check --spec ${target} --authoring`;
+  if (command === exact) return 'direct';
+  for (const cwd of ['.', directory]) {
+    for (const spelling of [cwd, `"${cwd}"`, `'${cwd}'`]) {
+      if (command === `cd ${spelling} && ${exact}`) return 'cd-only-compound';
+    }
+  }
+  return 'opaque-command-output-not-read';
+}
+
+const { createSddEvalOpenCodeClient } = await import(pathToFileURL(join(REPO, 'ai/flow-eval/opencode-client.ts')).href);
+const { safeVerifyText } = await import(pathToFileURL(join(REPO, 'shared/verify/reporting/report-safety.ts')).href);
+const client = createSddEvalOpenCodeClient({ baseUrl: BASE_URL });
+const variants = process.argv[2] === 'all'
+  ? ['baseline', 'template-rich', 'owner-rich', 'concise-both']
+  : ['baseline', 'template-rich'];
+if (process.argv[2] && process.argv[2] !== 'all') fail('usage: SCRIPT [all]');
+mkdirSync(OUT, { recursive: true });
+const collectorSha256 = sha(readFileSync(new URL(import.meta.url)));
+const selected = readdirSync(PRIMARY).filter((name) =>
+  /^2026-10-23-authoring-template-placement-oct22-module-(?:flat|nested)-(?:baseline|template-rich|owner-rich|concise-both)-r[123]$/.test(name) &&
+  variants.some((variant) => name.includes(`-${variant}-r`))
+).sort();
+const totals = [];
+for (const name of selected) {
+  const root = join(PRIMARY, name);
+  const summaryBytes = safeRead(root, 'summary.json');
+  const traceBytes = safeRead(root, 'trajectory.json');
+  const summary = JSON.parse(summaryBytes);
+  const trajectory = JSON.parse(traceBytes);
+  const b = summary.authoringBenchmark;
+  const expectedId = name.slice('2026-10-23-'.length);
+  if (summary.scenarioId !== expectedId || trajectory.scenario !== expectedId ||
+      b?.campaign !== CAMPAIGN || !variants.includes(b.variant) ||
+      !['module-flat', 'module-nested'].includes(b.caseId) ||
+      ![1, 2, 3].includes(b.repetition) || summary.sha !== b.sourceCommit)
+    fail('archive scenario/source binding mismatch');
+  const target = b.caseId === 'module-flat'
+    ? 'specs/token/normalize/normalize.spec.md'
+    : 'specs/token/pipeline/normalize/normalize.spec.md';
+  const trajectorySha256 = sha(traceBytes);
+  const summarySha256 = sha(summaryBytes);
+  const receiptPath = join(OUT, `${name}.json`);
+  try {
+    const previous = JSON.parse(safeRead(OUT, `${name}.json`));
+    if (previous.trajectorySha256 !== trajectorySha256 || previous.summarySha256 !== summarySha256)
+      fail('previous receipt primary binding changed');
+    totals.push({ name, reused: true, complete: previous.complete, calls: previous.calls.length,
+      missing: previous.missing.length, opaque: previous.calls.filter((c) => c.classification === 'opaque-command-output-not-read').length });
+    continue;
+  } catch (cause) { if (cause?.code !== 'ENOENT') throw cause; }
+  const events = (trajectory.events ?? []).filter((e) => e.type === 'tool');
+  const archived = events.filter((e) => e.tool === 'write' ||
+    (e.tool === 'bash' && /\bsdd-check\b/.test(e.command ?? '')));
+  const ids = archived.map((e) => e.callId);
+  if (ids.some((id) => typeof id !== 'string') || new Set(ids).size !== ids.length)
+    fail('missing or duplicate archived call IDs');
+  const sessions = [...new Set(archived.map((e) => e.sessionId))];
+  const receipt = {
+    schema: 'gennady.authoring-public-tool-enrichment.1', collectedAt: new Date().toISOString(),
+    authority: 'public SDK tool-input/output projection only; not a full transcript or causal-effect proof',
+    endpoint: BASE_URL, collectorSha256, scenarioId: expectedId, target, sourceCommit: summary.sha,
+    primaryModel: summary.model, measuredModel: b.model, modelVerified: b.modelVerified,
+    primaryDirty: summary.source?.dirty, taskDigest: b.taskDigest, oracleDigest: b.oracleDigest,
+    harnessDigest: b.harnessDigest, summarySha256, trajectorySha256,
+    archivedCoverage: trajectory.coverage, sessions: [], calls: [], missing: [],
+    diagnosticBudgetBytes: 1024, modelCalls: 0, originalResultsModified: false,
+  };
+  let remaining = 1024;
+  for (const sessionId of sessions) {
+    const wanted = new Map(archived.filter((e) => e.sessionId === sessionId).map((e) => [e.callId, e]));
+    const flagAll = (reason) => {
+      for (const id of wanted.keys()) receipt.missing.push({ sessionId, callId: id, reason });
+    };
+    if (typeof sessionId !== 'string' || !/^ses_[A-Za-z0-9]+$/.test(sessionId)) {
+      flagAll('invalid archived session identity');
+      continue;
+    }
+    let info;
+    let messages;
+    try {
+      const metadata = await client.session.get({ path: { id: sessionId }, signal: AbortSignal.timeout(10000) });
+      info = metadata.data;
+      if (metadata.error || info?.id !== sessionId ||
+          !info.title?.includes(expectedId) || typeof info.directory !== 'string' ||
+          !/^sdd-flow-eval-[A-Za-z0-9]+$/.test(basename(info.directory)) ||
+          resolve(info.directory, '..') !== ROOT) fail('SDK session provenance mismatch');
+      const result = await client.session.messages({ path: { id: sessionId },
+        query: { directory: info.directory, limit: 2000 }, signal: AbortSignal.timeout(10000) });
+      if (result.error || !Array.isArray(result.data)) fail('SDK public tool messages unavailable');
+      messages = result.data;
+      if (messages.length >= 2000) flagAll('SDK message bound reached; coverage unknown');
+    } catch {
+      flagAll('SDK session binding or public evidence unavailable');
+      continue;
+    }
+    receipt.sessions.push({ sessionId, title: info.title, directory: info.directory,
+      sdkMessages: messages.length, limit: 2000 });
+    const found = new Set();
+    for (const message of messages) {
+      // Intentionally never inspect text/reasoning/private parts. Only known archived tool IDs.
+      for (const part of message.parts ?? []) {
+        if (part.type !== 'tool' || !wanted.has(part.callID)) continue;
+        const event = wanted.get(part.callID);
+        if (found.has(part.callID)) { receipt.missing.push({ sessionId, callId: part.callID, reason: 'duplicate SDK call ID' }); continue; }
+        found.add(part.callID);
+        const state = part.state ?? {};
+        const actualModel = `${message.info?.providerID}/${message.info?.modelID}`;
+        const base = { sessionId, callId: part.callID, tool: part.tool, status: state.status,
+          model: actualModel, startedAt: state.time?.start, finishedAt: state.time?.end,
+          archivedStartedAt: event.startedAt, archivedFinishedAt: event.finishedAt };
+        if (part.tool !== event.tool || actualModel !== FLASH || state.status !== 'completed' ||
+            state.time?.start !== event.startedAt || state.time?.end !== event.finishedAt) {
+          receipt.calls.push({ ...base, complete: false, reason: 'tool/model/status/timestamp mismatch' });
+          continue;
+        }
+        if (part.tool === 'write') {
+          const filePath = state.input?.filePath;
+          const content = state.input?.content;
+          if (typeof filePath !== 'string' || resolve(info.directory, filePath) !== join(info.directory, target) ||
+              typeof content !== 'string' || Buffer.byteLength(content) > 128 * 1024) {
+            receipt.calls.push({ ...base, complete: false, reason: 'target Write input unavailable/unsafe/oversized' });
+            continue;
+          }
+          receipt.calls.push({ ...base, complete: true, classification: 'target-write-input',
+            contentSha256: sha(content), contentBytes: Buffer.byteLength(content),
+            requirementIds: [...new Set([...content.matchAll(/^###\s+([A-Z][A-Z0-9]*-REQ-[0-9]+)\b/gm)].map((m) => m[1]))] });
+          continue;
+        }
+        const command = state.input?.command;
+        const workdir = state.input?.workdir ?? state.input?.cwd ?? info.directory;
+        const classification = typeof command === 'string'
+          ? classify(command, info.directory, target) : 'opaque-command-output-not-read';
+        const archivedClassification = classify(event.command ?? '', '.', target);
+        if (classification === 'opaque-command-output-not-read' || archivedClassification !== classification ||
+            typeof workdir !== 'string' || resolve(info.directory, workdir) !== info.directory) {
+          // Never access state.output on arbitrary/opaque compound Bash commands.
+          receipt.calls.push({ ...base, complete: true, classification: 'opaque-command-output-not-read',
+            diagnosticEligible: false, shellExit: state.metadata?.exit, reason: 'not exact direct or cd-only target check' });
+          continue;
+        }
+        const output = state.output;
+        if (typeof output !== 'string' || Buffer.byteLength(output) > 256 * 1024) {
+          receipt.calls.push({ ...base, complete: false, classification, reason: 'allowlisted checker output unavailable/oversized' });
+          continue;
+        }
+        const plain = output.replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, '');
+        const diagnostics = plain.split(/\r?\n/).filter((line) =>
+          /SDD_[A-Z0-9_]+/.test(line) || /^\[sdd-check\]/.test(line.trim()));
+        const sanitized = safeVerifyText(diagnostics.join('\n'), info.directory);
+        const excerpt = boundedUtf8(sanitized, remaining);
+        const excerptBytes = Buffer.byteLength(excerpt);
+        remaining -= excerptBytes;
+        receipt.calls.push({ ...base, complete: true, classification, diagnosticEligible: true,
+          command: `npx --no-install gennady sdd-check --spec ${target} --authoring`,
+          exit: state.metadata?.exit, outputSha256: sha(output), outputBytes: Buffer.byteLength(output),
+          diagnosticCodes: [...new Set(plain.match(/SDD_[A-Z0-9_]+/g) ?? [])],
+          diagnosticExcerpt: excerpt, diagnosticExcerptBytes: excerptBytes,
+          diagnosticTruncated: excerptBytes < Buffer.byteLength(sanitized) });
+      }
+    }
+    for (const callId of wanted.keys()) if (!found.has(callId))
+      receipt.missing.push({ sessionId, callId, reason: 'archived call ID absent from SDK public parts' });
+  }
+  receipt.calls.sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0));
+  receipt.diagnosticBytes = 1024 - remaining;
+  receipt.complete = receipt.archivedCoverage?.complete === true && receipt.missing.length === 0 &&
+    receipt.calls.length === archived.length && receipt.calls.every((c) => c.complete);
+  // Bind inputs again after network reads; do not attribute a receipt to a changing primary.
+  if (sha(safeRead(root, 'summary.json')) !== summarySha256 || sha(safeRead(root, 'trajectory.json')) !== trajectorySha256)
+    fail('primary changed during collection');
+  writeFileSync(receiptPath, json(receipt), { flag: 'wx' });
+  const row = { name, reused: false, complete: receipt.complete, calls: receipt.calls.length,
+    writes: receipt.calls.filter((c) => c.classification === 'target-write-input').length,
+    missing: receipt.missing.length, opaque: receipt.calls.filter((c) => c.classification === 'opaque-command-output-not-read').length,
+    diagnosticsBytes: receipt.diagnosticBytes };
+  totals.push(row);
+  console.log(json(row));
+}
+const manifest = { schema: 'gennady.authoring-public-tool-collection.1', collectedAt: new Date().toISOString(),
+  endpoint: BASE_URL, campaign: CAMPAIGN, collectorSha256, variants, modelCalls: 0, primaryModified: false, results: totals };
+const manifestName = `collection-${Date.now()}.json`;
+writeFileSync(join(OUT, manifestName), json(manifest), { flag: 'wx' });
+console.log(json({ manifest: join(OUT, manifestName), results: totals.length,
+  complete: totals.filter((r) => r.complete).length, modelCalls: 0 }));

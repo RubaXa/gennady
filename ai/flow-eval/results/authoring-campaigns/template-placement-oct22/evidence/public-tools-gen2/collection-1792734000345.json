@@ -1,0 +1,44 @@
+{
+  "schema": "gennady.authoring-public-tool-collection.1",
+  "collectedAt": "2026-10-23T05:40:00.345Z",
+  "endpoint": "http://127.0.0.1:4110",
+  "campaign": "template-placement-oct22",
+  "collectorSha256": "10a8bea2ee68d37f3a9fcbc315cd4697d7c05bed510e267d3470864a90f74e74",
+  "variants": [
+    "concise-acronym"
+  ],
+  "modelCalls": 0,
+  "primaryModified": false,
+  "results": [
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r1",
+      "reused": false,
+      "complete": true,
+      "calls": 2,
+      "writes": 1,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 43
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-flat-concise-acronym-r2",
+      "reused": false,
+      "complete": true,
+      "calls": 2,
+      "writes": 1,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 43
+    },
+    {
+      "name": "2026-10-23-authoring-template-placement-oct22-module-nested-concise-acronym-r1",
+      "reused": false,
+      "complete": true,
+      "calls": 2,
+      "writes": 1,
+      "missing": 0,
+      "opaque": 0,
+      "diagnosticsBytes": 43
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "schema": "gennady.authoring-evolution-hypothesis.1",
+  "campaign": "template-placement-oct22",
+  "variant": "concise-acronym",
+  "generation": 2,
+  "status": "preregistered-before-any-gen2-model-call",
+  "parentVariant": "concise-both",
+  "parentSource": "9073686e628e1409173ebd8bb83bae196dd60476",
+  "baselineSource": "3fb6c935df5a7e78724ca992ecbe5ae5485c3350",
+  "selectionHistory": "Chosen after first-generation observations, not a previously unobserved confirmatory hypothesis. Original 24 attempts remain unchanged. Owner-rich third repetition was still running at preparation; its two completed flat tool counts already force rejection under the fixed median criterion.",
+  "hypothesis": "A generic filename-derived acronym sentence before the first Write reduces acronym-warning correction cycles without degrading artifact quality or increasing measured tool calls against the original baseline.",
+  "edit": {
+    "path": "ai/kit/templates/sdd-v2/module.directive.hbs",
+    "anchor": "STEP_2_FILL: immediately before Read the on-disk skeleton once",
+    "sentence": "Before the first Write, derive <ACR> for this spec’s own REQ/DL IDs from its filename stem (strip .spec.md, not SPEC_ID or directories): split on hyphens, discard empty parts, then uppercase each part’s initial if there are multiple parts, otherwise uppercase the first up to three characters.",
+    "sentenceUtf8Bytes": 297,
+    "generatedOutput": "ai/directives/sdd-v2/module.directive.xml",
+    "allOtherRuntimeBytesEqualParent": true
+  },
+  "sourceTruth": "shared/sdd/requirement-id.ts: deriveSpecAcronym; canonical .spec.md filenames only for newly authored modules",
+  "offlineExamples": [
+    { "file": "specs/cache/cache-store/cache-store.spec.md", "expected": "CS" },
+    { "file": "specs/runtime/parser/parser.spec.md", "expected": "PAR" },
+    { "file": "specs/interface/ui/ui.spec.md", "expected": "UI" }
+  ],
+  "population": {
+    "caseIds": ["module-flat", "module-nested"],
+    "repetitionsPerCase": 3,
+    "attempts": 6,
+    "plan": "concise-acronym-plan.json",
+    "allAttemptsRetained": true,
+    "noRetriesOrExclusionsByOutcome": true,
+    "separateResultRoot": "gen2-permanent"
+  },
+  "model": {
+    "worker": "llm-proxy/deepseek-v4-flash",
+    "judge": "llm-proxy/deepseek-v4-flash",
+    "fallback": false,
+    "sameFrozenRuntimeConfigurationRequired": true
+  },
+  "decisionCriterion": {
+    "implementation": "unchanged compareAuthoringExperiments comparator v2",
+    "adoptionReference": "original baseline, not an easier post-hoc threshold",
+    "secondaryContrast": "report separately against parent concise-both",
+    "prompt": "per-case nonincrease and at least one strict decrease against baseline",
+    "quality": "no decrease of per-case artifact, semantic-pass or proven-path counts",
+    "tools": "per-case sum, median and maximum must not increase",
+    "provenance": "all six clean source/model/task/oracle/harness/environment bindings required",
+    "unknownIsNotPass": true,
+    "noAutomaticAdoptionOrMerge": true
+  },
+  "mechanismDiagnostic": "Separately report first-Write requirement heading IDs, actual public SDD_REQ_ACRONYM_MISMATCH diagnostics and subsequent Writes. Canonical parent delegation is valid, with no invented local REQ IDs; it is not excluded from quality or tool metrics. Reflections are diagnostic hypotheses, not grading authority.",
+  "staticFootprint": {
+    "bytes": 40133,
+    "approximateTokens": 8375,
+    "digest": "2d3e9a807e740fc31915e808926b59b506d66477e7feb3cf9a705805851357e7",
+    "parentBytes": 39827,
+    "originalBaselineBytes": 43574,
+    "scope": "same six-part static instruction envelope, not provider context or tokenizer"
+  },
+  "nonRuntimeCarriedChanges": "Six own completed template-rich journal entries are preserved from the reused worktree; they are not Gen2 observations. Plan and preregistration are metadata only. No CLI/runtime/oracle/policy/package changes.",
+  "semanticLimit": "Original primary judges and path grades remain unchanged; this pilot does not claim independent full-flow review or turn inconclusive judgments into passes. Original 24-member supplemental population remains separate from these six new attempts."
+}

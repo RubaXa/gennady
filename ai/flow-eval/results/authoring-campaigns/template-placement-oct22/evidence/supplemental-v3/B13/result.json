@@ -1,0 +1,37 @@
+{
+  "schema": "supplemental-authoring-semantics.1",
+  "blindId": "B13",
+  "sessionId": "ses_e98c74642ffeImzCouPFABvrNW",
+  "startedAt": "2026-10-23T05:25:33.233Z",
+  "finishedAt": "2026-10-23T05:26:15.718Z",
+  "promptSha256": "af7ecd2bde3c12f54f27f34e12648aa6b6656a1afbec3e824ba4b3ca3fa31cd4",
+  "artifactSha256": "6d90df24507b1b669c7170d1529ac85c638113fb1d256334060d511e394404bc",
+  "frozenInputsSha256": "9c6ae1dfad8479cedd2d4e950736d89a57621b8c2aa48a333a9913b7dd4f7d3b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "verdict": "pass",
+  "originalResultsReplaced": false,
+  "batchAborted": false,
+  "usage": {
+    "messages": 1,
+    "input": 4778,
+    "output": 131,
+    "reasoning": 6721,
+    "cacheRead": 1664,
+    "cacheWrite": 0,
+    "total": 11630,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 42407
+  },
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  },
+  "tools": [],
+  "publicText": "VERDICT: pass\n\nNOR-REQ-1/2 substantively implement parent TOK-REQ-1/2, including trimming, ASCII lowercasing, separator collapsing, and TypeError for empty/separator-only/non-ASCII input without I/O. The required Input/Outcome table contains both exact rows. Scope, links, entity surface, explicit N/A sections, and pending-operator handoff are consistent; no implementation, ticket, approval, or accepted-status claim is made. The separator-only overlap is resolved by NOR-REQ-2 and the DbC pre-violation rule, not a material contradiction."
+}
