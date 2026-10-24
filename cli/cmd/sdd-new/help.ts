@@ -100,6 +100,9 @@ export function printHelp(): void {
   console.info('');
   console.info('Output:');
   console.info(
+    '  Module success adds computed Spec ID/acronym, REQ/DL syntax, and exact existing scope-section links; no requirements or decision history are invented.'
+  );
+  console.info(
     '  On success — created-path + section manifest table; task adds path-aware owning spec, bounded typed contract anchors, rule tuples, and deferred-test literals; exit 0.'
   );
   console.info(

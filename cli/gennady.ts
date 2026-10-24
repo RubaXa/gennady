@@ -215,6 +215,7 @@ if (restArgs.some((a) => helpFlags.has(a))) {
       break;
 
     case 'sdd-new':
+      // The owner help describes path-aware module facts as well as scaffold syntax.
       await import('./cmd/sdd-new/help.ts').then((m) => m.printHelp());
       helpLoaded = true;
       break;

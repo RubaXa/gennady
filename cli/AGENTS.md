@@ -39,7 +39,7 @@
 | sdd-state         | [cmd/sdd-state/](cmd/sdd-state/)                 | Детерминированный снимок SDD-состояния проекта                                      |
 | sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | V2 ownership/checks; legacy diagnostics grandfathered, no header append-only gate   |
 | sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                      |
-| sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
+| sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold + module ID/link facts; no authored requirements or decisions              |
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Thin SDD task/phase facade over universal Verify                                    |
 | verify            | [cmd/verify/](cmd/verify/)                       | SDD-agnostic unified phase runner; `--plan` strictly read-only                      |
 | rules             | [cmd/rules/](cmd/rules/)                         | Read-only embedded rule inventory/detail and explicit-scope resolver                |
