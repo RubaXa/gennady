@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 14,
+  "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r4",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:38:11.993Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/14",
+  "sessions": [
+    {
+      "id": "ses_e91dddb8bffePpmDoqeMD0g1xO",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/14/sdd-flow-eval-svRevo",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91dbf182ffegE55PB8IxchLuO",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/14/sdd-flow-eval-svRevo",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4",
+    "summarySha256": "6b77504a67b8c90b5b952f275f2a166b49ef22dad97a44f3855f4721cea409ee",
+    "trajectorySha256": "855375ef13c4d636f97b5979b80092cae33674c0ebe119d05010d7a7f6623137",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 33,
+    "nonCacheTokens": 78358,
+    "messages": 19
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:41:23.705Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91dddb8bffePpmDoqeMD0g1xO",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/14/sdd-flow-eval-svRevo"
+    },
+    {
+      "id": "ses_e91dbf182ffegE55PB8IxchLuO",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/14/sdd-flow-eval-svRevo"
+    }
+  ]
+}

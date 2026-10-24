@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 7,
+  "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r2",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "startedAt": "2026-10-24T13:20:53.652Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/7",
+  "sessions": [
+    {
+      "id": "ses_e91edb35dffeMFkS4rFAiqLYgl",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/7/sdd-flow-eval-lx7Rpm",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91ec13e3ffeI3jj2Ax0l3EQ3s",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/7/sdd-flow-eval-lx7Rpm",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2",
+    "summarySha256": "3fc2ce1f039034a4eba2ffd4616c944dd680222a25a4ca4b1659e93213c40e50",
+    "trajectorySha256": "80de2a7c45f20be41ccb91625a148521fa67ee098b1ad9c2392edd7f65c8f297",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 27,
+    "nonCacheTokens": 47210,
+    "messages": 21
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:23:30.124Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91edb35dffeMFkS4rFAiqLYgl",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/7/sdd-flow-eval-lx7Rpm"
+    },
+    {
+      "id": "ses_e91ec13e3ffeI3jj2Ax0l3EQ3s",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/7/sdd-flow-eval-lx7Rpm"
+    }
+  ]
+}

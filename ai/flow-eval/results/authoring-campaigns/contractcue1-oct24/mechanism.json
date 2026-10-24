@@ -1,0 +1,4342 @@
+{
+  "schema": "gennady.contractcue1-observed-mechanism.1",
+  "authority": "lexical observed-call categories only; not necessity or private-reasoning inference",
+  "limitations": [
+    "opaque Bash remains unknown",
+    "a source lookup can be justified",
+    "absence of these searches is not proof no archaeology occurred",
+    "moduleCreateCommand is an observed command occurrence, not proof the agent understood or used every returned fact"
+  ],
+  "groups": [
+    {
+      "arm": "baseline",
+      "caseId": "module-flat",
+      "recorded": 6,
+      "totalCalls": 165,
+      "counts": {
+        "acronymSourceSearch": 5,
+        "decisionSourceSearch": 6,
+        "repositoryDiscovery": 20,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 6,
+        "moduleCreateCommand": 6,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "moduleCreateOutputs": [
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r1",
+          "callId": "call_00_oZPp9c8OPaYmlkjkNbY75348",
+          "exitCode": 0,
+          "outputBytes": 9751,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r2",
+          "callId": "call_00_bRvXVj2YAnS9m0NO5boS2849",
+          "exitCode": 0,
+          "outputBytes": 9751,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r3",
+          "callId": "call_00_PWgSAfU7ysvAS8XZlXcA9422",
+          "exitCode": 0,
+          "outputBytes": 9751,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r4",
+          "callId": "call_00_YkGGhcgF9IM3kc91Eqn62274",
+          "exitCode": 0,
+          "outputBytes": 9753,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r5",
+          "callId": "call_00_k124LB6EoQFppXTB3fww7871",
+          "exitCode": 0,
+          "outputBytes": 9753,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r6",
+          "callId": "call_00_EcTR7JTSWoIGKVHG5J905912",
+          "exitCode": 0,
+          "outputBytes": 9753,
+          "prefixComplete": true
+        }
+      ]
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-nested",
+      "recorded": 6,
+      "totalCalls": 153,
+      "counts": {
+        "acronymSourceSearch": 10,
+        "decisionSourceSearch": 5,
+        "repositoryDiscovery": 23,
+        "fullRootRead": 2,
+        "nativeScopeSpecRead": 5,
+        "moduleCreateCommand": 6,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "moduleCreateOutputs": [
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r1",
+          "callId": "call_00_XWGjEEogd3e64M5SnJtc4802",
+          "exitCode": 0,
+          "outputBytes": 9778,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r2",
+          "callId": "call_00_XL92JmnZUqdAb90WQcBz2713",
+          "exitCode": 0,
+          "outputBytes": 9778,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r3",
+          "callId": "call_00_ET_KucqLKtgCzZG7CNmNonK6138",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r4",
+          "callId": "call_00_vYIYNhX2aL3SOnVAESZD8090",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r5",
+          "callId": "call_00_iwDjmDqqkKgejYUPlhDR4458",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r6",
+          "callId": "call_01_k8AxWCPjr0IqGi0QhPmm7154",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "prefixComplete": true
+        }
+      ]
+    },
+    {
+      "arm": "facts",
+      "caseId": "module-flat",
+      "recorded": 6,
+      "totalCalls": 122,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 21,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 5,
+        "moduleCreateCommand": 6,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "moduleCreateOutputs": [
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r1",
+          "callId": "call_00_olbbgAqigENyxnWlKJ4w9787",
+          "exitCode": 0,
+          "outputBytes": 11139,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r2",
+          "callId": "call_00_VwaLTbU1JutafWividVp0427",
+          "exitCode": 0,
+          "outputBytes": 11139,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r3",
+          "callId": "call_00_KLEMhAZrmRWXI0JU5ced8601",
+          "exitCode": 0,
+          "outputBytes": 11139,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r4",
+          "callId": "call_00_d40Nr68M9291GPBNAiB28262",
+          "exitCode": 0,
+          "outputBytes": 11141,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r5",
+          "callId": "call_00_EtPZrI3myrOyPFFHc7LR2481",
+          "exitCode": 0,
+          "outputBytes": 11141,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r6",
+          "callId": "call_00_SKgcxreJS7Wcba5DLwNV7775",
+          "exitCode": 0,
+          "outputBytes": 11141,
+          "prefixComplete": true
+        }
+      ]
+    },
+    {
+      "arm": "facts",
+      "caseId": "module-nested",
+      "recorded": 6,
+      "totalCalls": 139,
+      "counts": {
+        "acronymSourceSearch": 6,
+        "decisionSourceSearch": 9,
+        "repositoryDiscovery": 20,
+        "fullRootRead": 2,
+        "nativeScopeSpecRead": 6,
+        "moduleCreateCommand": 6,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "moduleCreateOutputs": [
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r1",
+          "callId": "call_00_7dJ3L5VFS1lxL1S4VibW5348",
+          "exitCode": 0,
+          "outputBytes": 11187,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r2",
+          "callId": "call_00_ax87w2LTpZqRMXgrCmA50064",
+          "exitCode": 0,
+          "outputBytes": 11187,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r3",
+          "callId": "call_00_l0XrToBYWIiadkXYHjEY5773",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r4",
+          "callId": "call_00_EC1A1vcSM8fktmw1JdXH4086",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r5",
+          "callId": "call_00_NF9eQxxCIEa647Z9or9w1384",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "prefixComplete": true
+        },
+        {
+          "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r6",
+          "callId": "call_00_pNgtXNP5tdn0fBIfrGbj5210",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "prefixComplete": true
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "index": 0,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r1",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 1,
+      "traceSha256": "c45868fedd3750af7d1bb87ead4dd36869bace91e2484c511d1cef47a0d1ba04",
+      "totalCalls": 24,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_olbbgAqigENyxnWlKJ4w9787",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 11139,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_Jbmlc2ct5fYvpgF4Qg4S8126",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4684,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_CovGVoh9062QTeFPBnFD4149",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_Suz19kZmf8axtYQAfQJF9367",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 2235,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_9frDLpIZhEVbGAX88glG2201",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && find . -maxdepth 2 -type f -not -path './node_modules/*' | sort | sed -n '1,120p'",
+          "exitCode": 0,
+          "outputBytes": 818,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_nxBvbhRZXkIMn1DDxLUq2565",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives && ls ai/directives/coding 2>/dev/null; ls ai/directives/testing 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 402,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r1",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 1,
+      "traceSha256": "953493b6fcf8108658d9ba115da35611cfe31aa6e8f35093619de9b23144e4ac",
+      "totalCalls": 30,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 5,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_ET_rtyGEYvxfL6qt1DOVeGt3932",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la",
+          "exitCode": 0,
+          "outputBytes": 634,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_9PBevWfreUkhlwQjPX3B6800",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai specs docs -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 5625,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_oZPp9c8OPaYmlkjkNbY75348",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 9751,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_Ghyt7SraBdXUJ3JPs5Sr3631",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4684,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_0C2FXHS5SmXT52fdW6mF0415",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json; git status --porcelain; find specs -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 212,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_C31td30OTCekm1Of8DpO9405",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat .gitignore 2>/dev/null; ls specs/token",
+          "exitCode": 0,
+          "outputBytes": 24,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_yC3L2dOF3rEPVi0ehdZE0994",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --porcelain; grep -n \"УДАЛИ\\|<Module\\|<ACR>\\|<this-module>\\|TODO\\|TBD\\|Placeholder\\|\\[Per \\|Оmit\\|deferred / not consumed\" specs/token/normalize/normalize.spec.md || true",
+          "exitCode": 0,
+          "outputBytes": 26,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ECMklJUcJS3YsGc0MQzl6862",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git diff --stat; find specs/token/normalize -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 40,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r1",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 1,
+      "traceSha256": "8ebb4534255fd6fa0248fcfb144dbf415c04454cc825335662e574f9b7923741",
+      "totalCalls": 23,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_XWGjEEogd3e64M5SnJtc4802",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 9778,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ZXoxczJ9P2iqt7HNpj7y0405",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f | sort; echo ---; ls ai/directives/sdd-v2/formats",
+          "exitCode": 0,
+          "outputBytes": 729,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_c7n5DPGJvEsqOl33ZWrO0472",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4693,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Bchq60QAspSuSlPvZy2U4491",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"module acronym|ACR|SPEC_ID\" ai/directives/sdd-v2 --glob '*.xml' | head -80",
+          "exitCode": 0,
+          "outputBytes": 12953,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_cqBZGRIFRToFBwRw4N2g2056",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null; echo ---; ls ai/directives/sdd-v2/formats | rg -i 'decision|handoff'",
+          "exitCode": 1,
+          "outputBytes": 399,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_v6747AgXQ1982K6AUAco8447",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; find . -maxdepth 2 -type d -not -path './.git*' | sort | head -40; cat package.json 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 901,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r1",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 1,
+      "traceSha256": "14f0f6c8102a088f7f0f9c0d6288a3f285f122500c41a4b291cdd67d3f8d1cf2",
+      "totalCalls": 27,
+      "counts": {
+        "acronymSourceSearch": 2,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_7dJ3L5VFS1lxL1S4VibW5348",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 11187,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_7jqWGL3nrJMmCdSr1lhI4679",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4693,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_nvFipjYokGwPG04yjYN11177",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_vgERGVDeImQ9TBcbny0B8579",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -a; ls specs/token; ls specs/token/pipeline; find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json' | head",
+          "exitCode": 0,
+          "outputBytes": 123,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_wdLd8zYqpwTsOlCm8tCm4082",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 395,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_bOwQ3MYBr31VrHvH8m8m2474",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f -maxdepth 4",
+          "exitCode": 0,
+          "outputBytes": 127,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_QcBifCaVmry6Jm8cmPR49061",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 | head -20",
+          "exitCode": 0,
+          "outputBytes": 2829,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_NXmUegtxb4mCNAaZrryJ1796",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"УДАЛИ\\|<ModuleName>\\|\\[One-line\\|\\[All publicly\\|\\[<ACR>\\|\\[Опционально\\|\\[Содержимое\\|\\[Per `DBC\" specs/token/pipeline/normalize/normalize.spec.md || true",
+          "exitCode": 1,
+          "outputBytes": 19,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_rXB8saQqad2VUfWzxcXv4158",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n 'УДАЛИ\\|<ModuleName>\\|\\[One-line\\|\\[All publicly\\|\\[<ACR>\\|\\[Опционально\\|\\[Содержимое' specs/token/pipeline/normalize/normalize.spec.md || true",
+          "exitCode": 0,
+          "outputBytes": 11,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r2",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 2,
+      "traceSha256": "30c2c4ece2ec3c630b6992b068e2d7a25dfc9b61496fb984b6006aff15fcff67",
+      "totalCalls": 30,
+      "counts": {
+        "acronymSourceSearch": 2,
+        "decisionSourceSearch": 2,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_bRvXVj2YAnS9m0NO5boS2849",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 9751,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_gtMkC7QCayMqEdLjFULm4358",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs | head -80; echo \"---FORMATS---\"; ls ai/directives/sdd-v2/formats",
+          "exitCode": 0,
+          "outputBytes": 757,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_eC4HYbdyy75JbXulVuHg4284",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4684,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_nhlsFX9JziVIhewwprxU1222",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; echo ---; cat package.json 2>/dev/null; echo ---; find . -maxdepth 2 -name '*.json' -not -path './node_modules/*' | head; echo ---; ls specs/token/normalize",
+          "exitCode": 0,
+          "outputBytes": 747,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_wRLDX981ieXAdRiyvRwL3294",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find docs -type f | head -50; echo ---; cat AGENTS.md",
+          "exitCode": 0,
+          "outputBytes": 191,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_AcMjubdtQBD8aZZjrCdY8604",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"acronym\\|ACR\" ai/directives/sdd-v2/module.directive.xml ai/directives/sdd-v2/formats/module-spec-structure.xml | head -40",
+          "exitCode": 0,
+          "outputBytes": 1362,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_JmIZQO6z5kgtkhQHGVVd0191",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"SPEC_ID\\|acronym\" ai/directives/sdd-v2/*.xml | grep -i \"module\\|acronym\\|spec_id\" | head -40",
+          "exitCode": 0,
+          "outputBytes": 1356,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_hW4WnSfmyIIMkurz9bqY7594",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type d; echo ---; ls ai/directives/coding 2>/dev/null; echo ---; ls ai/directives/testing 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 701,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_6HzCECfmNQ9u4HpkHItk5460",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"DECISION_LOG_ENTRY_FORMAT\" -A45 ai/directives/sdd-v2/infra.directive.xml | head -70",
+          "exitCode": 0,
+          "outputBytes": 6099,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ccg2UMbrX25m9eXm4u057164",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2/infra.directive.xml | head",
+          "exitCode": 0,
+          "outputBytes": 367,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r2",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 2,
+      "traceSha256": "7a4e96416b62efffc3cc6149c0697959ba0bb4fbe17130cd906472eea36d8d3f",
+      "totalCalls": 19,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_VwaLTbU1JutafWividVp0427",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 11139,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_KwiNNEBXoihktwesPgX03375",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4684,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_lQpkKHvO9SowY8SgE4Ts1022",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_IIcV7ABukZziKZ2a3tSA6663",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; ls specs/token; git status --short",
+          "exitCode": 0,
+          "outputBytes": 684,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_s3iRbAki63sfNOMe1Qpk9375",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f; find ai/directives -maxdepth 2 -type d",
+          "exitCode": 0,
+          "outputBytes": 462,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_bk6nxTJsBGOH07NnxmDP0388",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/testing ai/directives/coding ai/directives/architecture",
+          "exitCode": 0,
+          "outputBytes": 434,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r2",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 2,
+      "traceSha256": "5a384579d853ad93246ce54e7cac23d0eb7fad6ab0c8c775547a3a0760ea320d",
+      "totalCalls": 18,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_ET_hH3dvrb2tY4i7hICJQoH1247",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; echo \"---\"; ls -la ai/directives/sdd-v2/ 2>/dev/null; echo \"---\"; cat package.json 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 3427,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_rIjm6hSDHyDMb2Ptcvww1997",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f | head -50; echo \"---\"; find ai/directives/sdd-v2/formats -maxdepth 2 -type f | head -60",
+          "exitCode": 0,
+          "outputBytes": 1376,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ax87w2LTpZqRMXgrCmA50064",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 11187,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_mgzh0DFZrfAhVMXJwL1w4324",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4693,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_XdyfwUQwHyVX1QpHN4jp4361",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives; echo \"---\"; ls ai/directives/coding 2>/dev/null; echo \"---\"; ls ai/directives/testing 2>/dev/null; echo \"---\"; git status --short; echo \"---\"; cat specs/README.md",
+          "exitCode": 0,
+          "outputBytes": 1260,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_7Hd6rprjLKnbhJfLvTms2159",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short; echo \"---\"; rg -n \"УДАЛИ|One-line human summary|<ACR>|<scope>|<module>|<path>|\\[Per|\\[Опционально|\\[Содержимое\" specs/token/pipeline/normalize/normalize.spec.md || true; echo \"---\"; wc -l specs/token/pipeline/normalize/normalize.spec.md",
+          "exitCode": 0,
+          "outputBytes": 91,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_y0kFwO3UmWv7Baqb5WPM1053",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs/token/pipeline -type f -print; echo \"---\"; git diff --stat; echo \"---\"; rg -n \"Approval|pending|approved|✅|accepted\" specs/token/pipeline/normalize/normalize.spec.md",
+          "exitCode": 0,
+          "outputBytes": 431,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r2",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 2,
+      "traceSha256": "80de2a7c45f20be41ccb91625a148521fa67ee098b1ad9c2392edd7f65c8f297",
+      "totalCalls": 27,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 0,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_XL92JmnZUqdAb90WQcBz2713",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 9778,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ebVInbJD2Q0Uo6vC416R8570",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs/token -maxdepth 3 -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 75,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_MQPt80fUqiWzYETfBqGG8223",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/ && cat ai/directives/sdd-v2/formats/entity-inventory-format.xml",
+          "exitCode": 0,
+          "outputBytes": 3895,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_DanEB27meWl1M94rCTEU1239",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 | head -20",
+          "exitCode": 0,
+          "outputBytes": 2829,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_mdVZoCyBrrMLmreNo1d84228",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && find . -maxdepth 2 -type f -not -path './.git/*' | sort | head -80",
+          "exitCode": 0,
+          "outputBytes": 722,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_VPV3EbNM3TT6cr6R9T0H9251",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives/coding ai/directives/testing -maxdepth 1 -type f 2>/dev/null | sort | head -60",
+          "exitCode": 0,
+          "outputBytes": 757,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_QO9T2tMBpXUpzPvAmZDC8667",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"<!--\\|<ModuleName>\\|<ACR>\\|TODO\\|TBD\\|\\[.*\\]\" specs/token/pipeline/normalize/normalize.spec.md | head -50",
+          "exitCode": 0,
+          "outputBytes": 1719,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r3",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 3,
+      "traceSha256": "5814c21a8ea67d2d90e66b8f899d39bb2687d0d780875c812f676972c11166f9",
+      "totalCalls": 24,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 5,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_KLEMhAZrmRWXI0JU5ced8601",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 11139,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_voar84MjXdZq918JeeUi1587",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4684,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Ql8C0CDSXH2yvc4tFtRW0686",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_d5Mi4DzwLYEcyvLPffa18448",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs/token -maxdepth 3 -type f | sort; echo ---; ls ai/directives/sdd-v2",
+          "exitCode": 0,
+          "outputBytes": 899,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_kOry573g8nn1cpIOP9tL0931",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT\" ai/directives | head -20",
+          "exitCode": 0,
+          "outputBytes": 2735,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_DipQAKXcfezm9U0xIJjY4619",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; ls inputs; git status --short; git log --oneline -5",
+          "exitCode": 0,
+          "outputBytes": 708,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_yypRrE6my14dIvRMHTDK0250",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -l \"## Inter-Module Dependencies|SECTION:INTER_MODULE_DEPENDENCIES\" . --glob '!node_modules/**' --glob '!.git/**' | head -20; ls docs; find docs -type f | head",
+          "exitCode": 0,
+          "outputBytes": 140,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_9lSJyuPKFrmRytm4rV3w0199",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -maxdepth 3 -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 118,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r3",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 3,
+      "traceSha256": "a1cb53553c2e4c055160f52e5f482d7f419faaf6068dd8da9bfb32f6814e6ecf",
+      "totalCalls": 22,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_PWgSAfU7ysvAS8XZlXcA9422",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 9751,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_tYgnN5pHPA1x6XV23Y7k5609",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs ai/directives/sdd-v2 -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 4018,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Dw3KQtRV3dWMEl4BM1jb8138",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4684,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_eEf3Sx932A01lecEASre6111",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; ls ai/directives/coding ai/directives/testing 2>/dev/null; cat package.json 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 1097,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_FIraLQTc79OS9WhU7PDk7133",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --porcelain; rg -n \"УДАЛИ|\\[One-line|<EntityName>|<ACR>|<module>|TODO|PLACEHOLDER\" specs/token/normalize/normalize.spec.md || true",
+          "exitCode": 0,
+          "outputBytes": 26,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r3",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 3,
+      "traceSha256": "b2bad4ae0f560cd2819b6d2baf774cfa3b8b0468134db8587e1d243fd3e30749",
+      "totalCalls": 22,
+      "counts": {
+        "acronymSourceSearch": 3,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_hG9pyilUJ9AlEm2OeFUz2636",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && ls -R specs 2>/dev/null | head -50 && git status --short",
+          "exitCode": 0,
+          "outputBytes": 727,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_KucqLKtgCzZG7CNmNonK6138",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_DBGidEWoKtewknnZGDvc6250",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_2AtetO75Nh5JigztcTvv4523",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_6tNSI71aQNq06NU7V00l2161",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"No module-specific requirements\\|module-specific requirement\\|<ACR>-REQ\" ai/directives/sdd-v2 --include=*.xml | head -30",
+          "exitCode": 0,
+          "outputBytes": 41,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_PDTnNHCANJeOnJFnziqu6742",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json && ls node_modules/.bin && find docs -type f | head",
+          "exitCode": 0,
+          "outputBytes": 112,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_1NZaVJhnHP2ZJIV9nu0F9621",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"module-specific requirement\\|<ACR>\" ai/directives/sdd-v2 | head -30",
+          "exitCode": 0,
+          "outputBytes": 6843,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ms1vDy09QzHg4XL70qaP1484",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null; ls ai/directives",
+          "exitCode": 0,
+          "outputBytes": 448,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_m0lrpK33R94J7o8l9BcC1358",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short && grep -n \"УДАЛИ\\|<ModuleName>\\|\\[Per \\|<ACR>\\|pending-operator\\|✅\" specs/token/pipeline/normalize/normalize.spec.md",
+          "exitCode": 0,
+          "outputBytes": 574,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r3",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 3,
+      "traceSha256": "e1d6269f16cf270d7fd8cd24e8df3cbb26b55d7da91d8e0c8cab38a10f93c08b",
+      "totalCalls": 26,
+      "counts": {
+        "acronymSourceSearch": 2,
+        "decisionSourceSearch": 5,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_l0XrToBYWIiadkXYHjEY5773",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_04_Dw6VdFt7npZp8odvbOUj6231",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_UrRctCfVpcqmOq45yXTB9618",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -l \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2/formats ai/directives/sdd-v2 | head -20",
+          "exitCode": 0,
+          "outputBytes": 1043,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_CQgOOfir87TKRKk7Yh5Z9246",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n -A40 'Contract id=\"DECISION_LOG_ENTRY_FORMAT\"' ai/directives/sdd-v2/formats/module-spec-structure.xml",
+          "exitCode": 1,
+          "outputBytes": 11,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_VGiEAwCdnLFeQWGLqQko9900",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n 'DECISION_LOG_ENTRY_FORMAT' ai/directives/sdd-v2/formats/module-spec-structure.xml ai/directives/sdd-v2/formats/*.xml",
+          "exitCode": 0,
+          "outputBytes": 1288,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_cA6Uk3DNodbV3sx4hB9q9524",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n -A25 'DECISION_LOG_ENTRY_FORMAT' ai/directives/sdd-v2/root.directive.xml ai/directives/sdd-v2/*.xml | head -80",
+          "exitCode": 0,
+          "outputBytes": 9636,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ySZegpLbO9L2D3w0mi2Q5054",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n -B3 -A20 'id=\"DECISION_LOG_ENTRY_FORMAT\"' ai/directives/sdd-v2/root.directive.xml ai/directives/sdd-v2/shared 2>/dev/null | head -60; rg -n 'DECISION_LOG_ENTRY_FORMAT' ai/directives/sdd-v2/root.directive.xml",
+          "exitCode": 0,
+          "outputBytes": 2898,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_PH1NiCZTkYHWJ65JaA2X0888",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f -maxdepth 6 | sort; echo '---'; find . -maxdepth 2 -type f | sort | head -50",
+          "exitCode": 0,
+          "outputBytes": 315,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_zfoQZFO0nYW25RO60O2z5253",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type f | sort | sed -n '1,120p'",
+          "exitCode": 0,
+          "outputBytes": 2951,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_c7KeDB98OJFmJR1ZKSEF1149",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n 'УДАЛИ|<!-- (?!SECTION|/SECTION)|<ModuleName>|<ACR>|<scope>|\\[Per |TODO|TBD' specs/token/pipeline/normalize/normalize.spec.md || true",
+          "exitCode": 0,
+          "outputBytes": 305,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Cp1j8Uovju9lOSpSygrN2962",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n 'УДАЛИ|<ModuleName>|<ACR>|<scope>|\\[Per |TODO|TBD|placeholder' specs/token/pipeline/normalize/normalize.spec.md || true; rg -n '<!--' specs/token/pipeline/normalize/normalize.spec.md",
+          "exitCode": 0,
+          "outputBytes": 1045,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r4",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 4,
+      "traceSha256": "a830e41f48e0dfb0211d7d4de22d85528aa8146fc7887fdcab06d747124944fd",
+      "totalCalls": 32,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_YkGGhcgF9IM3kc91Eqn62274",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 9753,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_LZQrpijvQzdl9NSAzIME0869",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la specs specs/token specs/token/normalize 2>/dev/null; ls ai/directives/sdd-v2/formats",
+          "exitCode": 0,
+          "outputBytes": 1352,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_BYyZUMd7EXcpAT7eJFaz3007",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4685,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_02_w2xc8E2v4smYor0sc9u67623",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; git status --short; git log --oneline -5",
+          "exitCode": 0,
+          "outputBytes": 699,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_SuDiNQCPFhLNaqev1Qyk7268",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json; find ai -maxdepth 3 -type f | head -100; ls docs",
+          "exitCode": 0,
+          "outputBytes": 3060,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_y9b1admWY5IdmWkmIRWD5370",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find .claude ai/skills -maxdepth 3 -type f | head -50",
+          "exitCode": 0,
+          "outputBytes": 305,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r4",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 4,
+      "traceSha256": "e0bd98a6234d329f5b67e053a93f2e2ec355e16e91378cf104d4630af8866a63",
+      "totalCalls": 16,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_d40Nr68M9291GPBNAiB28262",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 11141,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_IISA6gjBKWEZNXc8r63b7859",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4685,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Lmu8uINUhZS4equ48Z7w5571",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_J0y2eUub5oYfMzBqG5Qg1555",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls; ls ai/directives/coding 2>/dev/null; ls ai/directives/testing 2>/dev/null; find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json' | head",
+          "exitCode": 0,
+          "outputBytes": 421,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r4",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 4,
+      "traceSha256": "855375ef13c4d636f97b5979b80092cae33674c0ebe119d05010d7a7f6623137",
+      "totalCalls": 33,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 2,
+        "repositoryDiscovery": 5,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_K7Na0KnHmDjCTZ5af8tR4513",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && ls -la specs 2>/dev/null && ls -la ai/directives/sdd-v2",
+          "exitCode": 0,
+          "outputBytes": 3641,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_EC1A1vcSM8fktmw1JdXH4086",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_oRe8r48Ih90fjMjMBwko8363",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f -maxdepth 4 -print",
+          "exitCode": 0,
+          "outputBytes": 127,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_9LmsWTZDdwznQTSyU1Op5057",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_9cVHLmSWblv7MlOIPvSY7463",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_C6cIUgkPf6SowTYJ1ksc4985",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -l \"DECISION_LOG_ENTRY_FORMAT|Input.*Outcome|requirement-entry\" ai/directives/sdd-v2 | head -30",
+          "exitCode": 0,
+          "outputBytes": 814,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_TMoY45Ntq5BHDGXMvtTx2866",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2/root.directive.xml ai/directives/sdd-v2/scaffold.directive.xml ai/directives/sdd-v2/formats/module-spec-structure.xml",
+          "exitCode": 0,
+          "outputBytes": 866,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_GB79xrRfVGZm0SYXKmtj2095",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 3429,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_HiD0jHhzYrE4MtBCQ7Yy2624",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type f | sort | head -60",
+          "exitCode": 0,
+          "outputBytes": 2788,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_auXyrR3ngqkK0D04HTPv6599",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find . -maxdepth 3 -type d | sort | head -60",
+          "exitCode": 0,
+          "outputBytes": 1105,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r4",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 4,
+      "traceSha256": "9f50a57704da5b48efe4c0aeda5b04e206253428f0e62985e27c97e638311749",
+      "totalCalls": 23,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 2,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_vYIYNhX2aL3SOnVAESZD8090",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_rhBzJS9Rqd58sWbu8rYB7664",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs ai/directives/sdd-v2/formats | head -100",
+          "exitCode": 0,
+          "outputBytes": 822,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_nq4XInkFO75AcjaRka4q6155",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_02_Nsc8jABR16iULy4SSSUD2415",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rl \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 | head",
+          "exitCode": 0,
+          "outputBytes": 525,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_jpdnljUQjnqMhdHccOJc6286",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"<Contract id=\\\"DECISION_LOG_ENTRY_FORMAT\\\"\" ai/directives/sdd-v2",
+          "exitCode": 0,
+          "outputBytes": 370,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_pmhKiOzReCvbO9jU2q291611",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 2620,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_swhT0qHidU1Zs39ZzRaa5180",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null; cat package.json 2>/dev/null | head -40; ls",
+          "exitCode": 0,
+          "outputBytes": 520,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_Gv92gCp6PSTDyKj4wxlC8723",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"УДАЛИ\\|<ModuleName>\\|<ACR>\\|<scope>\\|\\[Authoring\\|\\[One-line\\|\\[Опционально\\|\\[<ACR>\" specs/token/pipeline/normalize/normalize.spec.md || true",
+          "exitCode": 0,
+          "outputBytes": 11,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_6iwUjj8p7YmLqjHbTQeD4981",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs/token/pipeline -type f -print",
+          "exitCode": 0,
+          "outputBytes": 49,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r5",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 5,
+      "traceSha256": "5cd8de98f90e405af441b8d56998d3fbc0aca9de172640532126fbc5558d7938",
+      "totalCalls": 21,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_EtPZrI3myrOyPFFHc7LR2481",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 11141,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_yKbon1Lx7BPw4Ao19eSU8682",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la specs/token && find specs/token -maxdepth 2 -type f",
+          "exitCode": 0,
+          "outputBytes": 303,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_J4YPJPxMvSjF5aZfAbA34741",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4685,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_HqpYE2WmbhOWNukGKIAv9025",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_CNL0F7kuwVlKzGFAoMJw4812",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && printf '\\n--- package ---\\n' && ls package.json 2>/dev/null; printf '\\n--- coding ---\\n' && ls ai/directives/coding 2>/dev/null; printf '\\n--- testing ---\\n' && ls ai/directives/testing 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 1046,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_FRfFDAlthbQSAjFydq3n5958",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json && printf '\\n--- docs ---\\n' && find docs -maxdepth 2 -type f && printf '\\n--- specs ---\\n' && find specs -maxdepth 3 -type f",
+          "exitCode": 0,
+          "outputBytes": 238,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_8rqyKxkRc19xXS1XrZ6X8718",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --porcelain && printf '\\n--- leftover guidance/placeholder scan ---\\n' && rg -n 'УДАЛИ ПОСЛЕ|<ModuleName>|<ACR>|<SCOPE|<list|<path|<lang>|<framework>|\\[Per `DBC|\\[One-line|\\[Optional|\\[All publicly|\\[<ACR>' specs/token/normalize/normalize.spec.md || true",
+          "exitCode": 0,
+          "outputBytes": 70,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r5",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 5,
+      "traceSha256": "e3a34e87ea16b5b82ad4d81a20a6c2ceb8da7697698cb738bbbf5f3ce8c7c1a0",
+      "totalCalls": 23,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_k124LB6EoQFppXTB3fww7871",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 9753,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_rq8qT6lV69AAnodZX8hs6783",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f | sort && echo \"---\" && ls ai/directives/sdd-v2/formats",
+          "exitCode": 0,
+          "outputBytes": 720,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_dDw6px5Yqeo6QCV2t3Hq7680",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4685,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_cMebqQa1DnMAXog1ohWT4441",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"acronym|ACR\" ai/directives/sdd-v2 --glob '*.xml' | head -60",
+          "exitCode": 0,
+          "outputBytes": 10540,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_32D5P92YEr9loVGbRVGW9982",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json' -o -maxdepth 2 -name '*.md' | sort | head -40 && echo '---coding/testing---' && ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 1138,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Z2I5yr5NRu0MdO1NWHbU8769",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 -l && rg -n \"id=\\\"DECISION_LOG_ENTRY_FORMAT\\\"\" ai/directives/sdd-v2 -A 40",
+          "exitCode": 0,
+          "outputBytes": 14978,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r5",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 5,
+      "traceSha256": "fd5c569209f97aa65b72f2b278f36fda1a65f1a0f13af09617d185926f52eb6f",
+      "totalCalls": 31,
+      "counts": {
+        "acronymSourceSearch": 3,
+        "decisionSourceSearch": 2,
+        "repositoryDiscovery": 5,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_iwDjmDqqkKgejYUPlhDR4458",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_7gKoGOThG08Dsg88D7iZ5994",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs/token 2>/dev/null; ls specs",
+          "exitCode": 0,
+          "outputBytes": 134,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_rCXOwKvoaoDGVdQ2t7am1611",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_KyR6KdHgT0AThDCseej97327",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_GASzFU4lnVIucsJqzgVy0704",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"module acronym|MODULE.*ACR|ACR.*module|module spec.*acronym|SPEC_ID\" ai specs inputs -g '!**/normalize.spec.md' | head -40",
+          "exitCode": 0,
+          "outputBytes": 1730,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_YjGalK52CokPnWcVfK9E5411",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls; cat package.json 2>/dev/null; ls specs/token/pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 143,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_wixbv9GelCpwDvkNy8w68334",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find docs -type f -maxdepth 3 | head -50; rg -n \"TOKEN-PIPELINE|normalize|acronym|ACR\" docs | head -60",
+          "exitCode": 0,
+          "outputBytes": 253,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_tpNKFEKFPHbytMyZ2I859719",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type f | sort | head -80; find ai/directives/testing ai/directives/coding -type f 2>/dev/null",
+          "exitCode": 0,
+          "outputBytes": 3708,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_f13nWefgwbhmqEEMT7rS2018",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 -l",
+          "exitCode": 0,
+          "outputBytes": 814,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_FxF8o0QkURIsSBGtjfTt1462",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n -A30 -B4 \"id=\\\"DECISION_LOG_ENTRY_FORMAT\\\"\" ai/directives/sdd-v2/root.directive.xml",
+          "exitCode": 0,
+          "outputBytes": 2175,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_kjIaRQQESNaRfjxQWWi46764",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"УДАЛИ|<!-- |\\[Per |<ModuleName>|<ACR>|placeholder|TODO\" specs/token/pipeline/normalize/normalize.spec.md",
+          "exitCode": 1,
+          "outputBytes": 11,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r5",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 5,
+      "traceSha256": "cd000727bd1de2fbd78c9486ab944f7bea68917ef145cbb6d59c77320c9fa527",
+      "totalCalls": 19,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_NF9eQxxCIEa647Z9or9w1384",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_siVZPtBx3zmBxjw0PSO57841",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_IMEkU6yaE756zRtjbMDq3886",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats",
+          "exitCode": 0,
+          "outputBytes": 598,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ZzFdNWLiyLb6Z8ZQEMna4111",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT|REQUIREMENTS_AND_CONSTRAINTS|MODULE_REQUIREMENTS\" ai/directives/sdd-v2 -g '*.xml'",
+          "exitCode": 0,
+          "outputBytes": 4837,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_B5cuhjlR8s8uTnkPfmqm9641",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 2620,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_9KpR7JwOIhW1diLdme0a6263",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && find specs -maxdepth 4 -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 761,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_KboqNj3qvLajl66rjEed9338",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type d | sort && find ai/directives/testing -maxdepth 1 -type f 2>/dev/null | sort && find ai/directives/coding -maxdepth 1 -type f 2>/dev/null | sort",
+          "exitCode": 0,
+          "outputBytes": 1101,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r6",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 6,
+      "traceSha256": "97a0ff9690f85947c40fc9cd7f0a91efb1ef432e9f7a9c9ec74dc1e6f57164ba",
+      "totalCalls": 28,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 3,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_EcTR7JTSWoIGKVHG5J905912",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 9753,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Bqn3fwAhlcAf1SMnkApH6785",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls specs/token && ls ai/directives/sdd-v2/formats/",
+          "exitCode": 0,
+          "outputBytes": 622,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_bzatfB1H4z2ahdFipfwW0974",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4685,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_MlZxttNnHfbBS0ev20aY8219",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -l \"DECISION_LOG_ENTRY_FORMAT\" ai/directives",
+          "exitCode": 0,
+          "outputBytes": 814,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_RsdclgFjFCIvCe6jTkCf3971",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && find . -maxdepth 2 -type f -not -path './node_modules/*' -not -path './.git/*' | sort",
+          "exitCode": 0,
+          "outputBytes": 722,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Pr17edETAEztY1VTOXjY3467",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n -A30 \"Contract id=\\\"DECISION_LOG_ENTRY_FORMAT\\\"\" ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml ai/directives/sdd-v2/formats/library-spec-structure.xml",
+          "exitCode": 1,
+          "outputBytes": 11,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Pb3goMzjzhz6PyteAPhu1246",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2/formats/infrastructure-spec-structure.xml ai/directives/sdd-v2/root.directive.xml",
+          "exitCode": 0,
+          "outputBytes": 514,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_etCL5pCtRswgT34ZECCf2824",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 2620,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_nJBRQ8Vq14YGRMeNkjZu8228",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null; find ai/directives -maxdepth 2 -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 3346,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r6",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 6,
+      "traceSha256": "ab26468b0d8968fa046b8bb0f3867cadb34a11091b88bf96f1770785c9dd39c4",
+      "totalCalls": 18,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 0,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_ET_8qcVFS49gTao5cSebf7f9219",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && cat ai/directives/sdd-v2/module.directive.xml",
+          "exitCode": 0,
+          "outputBytes": 11031,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_SKgcxreJS7Wcba5DLwNV7775",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+          "exitCode": 0,
+          "outputBytes": 11141,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_rvTbi1gPpOU2Ktymwwz29845",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 3 -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 4630,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_TFRmlFczbQBEPrxYAGZj7095",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json && find specs -maxdepth 3 -type f | sort && find docs -maxdepth 3 -type f | sort && cat AGENTS.md",
+          "exitCode": 0,
+          "outputBytes": 373,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r6",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 6,
+      "traceSha256": "c78080b315ecd3a69791911fa2f1c025f7aeba35f37ace7d35515b436c97bbb4",
+      "totalCalls": 16,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_pNgtXNP5tdn0fBIfrGbj5210",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 11189,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_Y6zolvNhLdM7tJiaNlff4298",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Yj4tlVEZB92LxKYGlKbi4814",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; ls specs; find . -maxdepth 2 -type d | sort | head -50",
+          "exitCode": 0,
+          "outputBytes": 931,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_8v9gw9Fvp1fR6r9bSog14434",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 2951,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_OWfafoTxj9PEcxPRxHbS6322",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --porcelain; grep -n \"УДАЛИ\\|<ModuleName>\\|<SCOPE-REQ\\|<ACR>\\|<.*>\" specs/token/pipeline/normalize/normalize.spec.md | head -30",
+          "exitCode": 0,
+          "outputBytes": 1021,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r6",
+      "campaign": "contractcue1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 6,
+      "traceSha256": "8382cf7eb1cc92a2693ed69660968a1dccb96e773674962b869b9c6cdd59eec9",
+      "totalCalls": 27,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 1,
+        "nativeScopeSpecRead": 1,
+        "moduleCreateCommand": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_ET_Y4zHrWqQ1g7XlnzNdC286614",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la . && git -C . status --short",
+          "exitCode": 0,
+          "outputBytes": 634,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_m4M8kzf9DG2hHrYDlbgT8614",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ./specs ./ai -type f | sort",
+          "exitCode": 0,
+          "outputBytes": 14642,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_0nnNgfTwgY42vdIa1Chn6228",
+          "tool": "read",
+          "status": "completed",
+          "path": "./specs/token/token.spec.md",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 4694,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": true,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_k8AxWCPjr0IqGi0QhPmm7154",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+          "exitCode": 0,
+          "outputBytes": 9780,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_3yffo6ZJXPuTHBNjuO3g3977",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "exitCode": null,
+          "outputBytes": 3034,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_eJ81FWm9ri7ZX5RFgMDT5820",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json && ls -la specs/token && find specs -maxdepth 4 -type d | sort",
+          "exitCode": 0,
+          "outputBytes": 391,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_CwtBBFqh38YI6JbAeVZN5652",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"УДАЛИ|\\[One-line|\\[Per |<ModuleName>|<scope>|<module>|<ACR>|<SCOPE-REQ|SPACE|placeholder|TODO\" specs/token/pipeline/normalize/normalize.spec.md || true",
+          "exitCode": 0,
+          "outputBytes": 11,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_WIp8UDcKLFHoYMvvILNf8591",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs/token/pipeline -type f -print && rg -n \"^<!--SECTION:\" specs/token/pipeline/normalize/normalize.spec.md | wc -l && rg -n \"^<!--/SECTION:\" specs/token/pipeline/normalize/normalize.spec.md | wc -l",
+          "exitCode": 0,
+          "outputBytes": 67,
+          "outputPrefixComplete": true,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "nativeScopeSpecRead": false,
+            "moduleCreateCommand": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    }
+  ]
+}

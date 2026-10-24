@@ -112,3 +112,12 @@ ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/report-*/**
 ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/recalibration/**
 ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/variants/**
 ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/code/**
+
+# CONTRACTCUE1: exact frozen evidence bytes; authored REPORT.md remains format-checked.
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/*.json
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/protocol/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/records/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/controller-output/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/report-*/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/variants/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/code/**

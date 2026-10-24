@@ -1,0 +1,635 @@
+{
+  "planned": 24,
+  "dispatched": 24,
+  "recorded": 24,
+  "interrupted": null,
+  "errors": 0,
+  "complete": true,
+  "rows": [
+    {
+      "index": 0,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1",
+        "summarySha256": "df0f739f2e6e5dfcf00513685c606195c41bc2ae2925bed2a330796bb0741b96",
+        "trajectorySha256": "c45868fedd3750af7d1bb87ead4dd36869bace91e2484c511d1cef47a0d1ba04",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 24,
+        "nonCacheTokens": 51889,
+        "messages": 15
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 1,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1",
+        "summarySha256": "e74bd30e3bf0c48866967789b12e58ae304349f953c8f96ae927dc319053fcec",
+        "trajectorySha256": "953493b6fcf8108658d9ba115da35611cfe31aa6e8f35093619de9b23144e4ac",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 30,
+        "nonCacheTokens": 61369,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 2,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1",
+        "summarySha256": "ed6c19ae0ec396b235d55b39d3da91c8068b76cc2560f6015f793a7259126a53",
+        "trajectorySha256": "8ebb4534255fd6fa0248fcfb144dbf415c04454cc825335662e574f9b7923741",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 23,
+        "nonCacheTokens": 52191,
+        "messages": 24
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 3,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1",
+        "summarySha256": "2a2d4b55b4c30f33365f4b87dda87817a390e807f8c107d622df8945f734528c",
+        "trajectorySha256": "14f0f6c8102a088f7f0f9c0d6288a3f285f122500c41a4b291cdd67d3f8d1cf2",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 27,
+        "nonCacheTokens": 48771,
+        "messages": 19
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 4,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2",
+        "summarySha256": "39fd2b9c7d13b6ca8f51fc215f86db08702f38ea13420e565f5348c51233ccb8",
+        "trajectorySha256": "30c2c4ece2ec3c630b6992b068e2d7a25dfc9b61496fb984b6006aff15fcff67",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 30,
+        "nonCacheTokens": 60080,
+        "messages": 21
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 5,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2",
+        "summarySha256": "7660a88f722e8d0ac4842f3cc73b70e93248c5b4c67fce015a3c46d3463ad640",
+        "trajectorySha256": "7a4e96416b62efffc3cc6149c0697959ba0bb4fbe17130cd906472eea36d8d3f",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 19,
+        "nonCacheTokens": 46374,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 6,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2",
+        "summarySha256": "e268ac04f9274d2bc90986d2263dac328bf492cdab084d6406f2ab20e0617a4c",
+        "trajectorySha256": "5a384579d853ad93246ce54e7cac23d0eb7fad6ab0c8c775547a3a0760ea320d",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 18,
+        "nonCacheTokens": 42966,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 7,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2",
+        "summarySha256": "3fc2ce1f039034a4eba2ffd4616c944dd680222a25a4ca4b1659e93213c40e50",
+        "trajectorySha256": "80de2a7c45f20be41ccb91625a148521fa67ee098b1ad9c2392edd7f65c8f297",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 27,
+        "nonCacheTokens": 47210,
+        "messages": 21
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 8,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3",
+        "summarySha256": "58002132117e94056e0d9b19a2c67a910e3fc8d89e42ac124b02e3d4c1eb7d87",
+        "trajectorySha256": "5814c21a8ea67d2d90e66b8f899d39bb2687d0d780875c812f676972c11166f9",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 24,
+        "nonCacheTokens": 47919,
+        "messages": 16
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 9,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3",
+        "summarySha256": "bc3e4eed5e82c4ac50ef7f853d13ad3737b425af949233055eeaa574ca27d699",
+        "trajectorySha256": "a1cb53553c2e4c055160f52e5f482d7f419faaf6068dd8da9bfb32f6814e6ecf",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 22,
+        "nonCacheTokens": 48626,
+        "messages": 15
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 10,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3",
+        "summarySha256": "f9d54b8f78cf45b6efe39e94c4068d5d48a021e5874ef853458f0c5609c47f4d",
+        "trajectorySha256": "b2bad4ae0f560cd2819b6d2baf774cfa3b8b0468134db8587e1d243fd3e30749",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 22,
+        "nonCacheTokens": 43509,
+        "messages": 16
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 11,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3",
+        "summarySha256": "8b517cc92bf1cd5caf3b276a81d0413a8e199c77f043b934d45abffdb0073c30",
+        "trajectorySha256": "e1d6269f16cf270d7fd8cd24e8df3cbb26b55d7da91d8e0c8cab38a10f93c08b",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 26,
+        "nonCacheTokens": 56362,
+        "messages": 20
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 12,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4",
+        "summarySha256": "715f559cb1f0ca9970f77a338726ade7884138a65ec4d0709c99f1845b15f367",
+        "trajectorySha256": "a830e41f48e0dfb0211d7d4de22d85528aa8146fc7887fdcab06d747124944fd",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 32,
+        "nonCacheTokens": 64779,
+        "messages": 17
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 13,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4",
+        "summarySha256": "d88c3a22885ac0bdff33cdc5bc313cfb324df08a71d886ee2b432352540301c3",
+        "trajectorySha256": "e0bd98a6234d329f5b67e053a93f2e2ec355e16e91378cf104d4630af8866a63",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 16,
+        "nonCacheTokens": 34176,
+        "messages": 11
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 14,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4",
+        "summarySha256": "6b77504a67b8c90b5b952f275f2a166b49ef22dad97a44f3855f4721cea409ee",
+        "trajectorySha256": "855375ef13c4d636f97b5979b80092cae33674c0ebe119d05010d7a7f6623137",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 33,
+        "nonCacheTokens": 78358,
+        "messages": 19
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 15,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4",
+        "summarySha256": "f63929427d9e9539225706df5906adc20b5ddba629edcc7245719b6038ef0a67",
+        "trajectorySha256": "9f50a57704da5b48efe4c0aeda5b04e206253428f0e62985e27c97e638311749",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 23,
+        "nonCacheTokens": 45424,
+        "messages": 16
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 16,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5",
+        "summarySha256": "dc36d95b667a24d56d9e348b91d1f85c4bd2c7e53567ea7cc3035230595ededd",
+        "trajectorySha256": "5cd8de98f90e405af441b8d56998d3fbc0aca9de172640532126fbc5558d7938",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 21,
+        "nonCacheTokens": 45775,
+        "messages": 15
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 17,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5",
+        "summarySha256": "17b805f49679f5084a87bb5e56abb6cf089e15df2d0104aeff95fca84dfebd9c",
+        "trajectorySha256": "e3a34e87ea16b5b82ad4d81a20a6c2ceb8da7697698cb738bbbf5f3ce8c7c1a0",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 23,
+        "nonCacheTokens": 55363,
+        "messages": 17
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 18,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5",
+        "summarySha256": "455751c1f43be58f6c63f6989a3e38767fff7716df4fcd37376e708aeaa39f5b",
+        "trajectorySha256": "fd5c569209f97aa65b72f2b278f36fda1a65f1a0f13af09617d185926f52eb6f",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 31,
+        "nonCacheTokens": 55150,
+        "messages": 21
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 19,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5",
+        "summarySha256": "9d9a2c4937e404e5f03e43af027d483402c57f14abc7a9bc55e4953cc3962d04",
+        "trajectorySha256": "cd000727bd1de2fbd78c9486ab944f7bea68917ef145cbb6d59c77320c9fa527",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 19,
+        "nonCacheTokens": 42957,
+        "messages": 14
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 20,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6",
+        "summarySha256": "e5486f4235988a16174c1dc94b8825d33f4baa07917e3a0f2b7c489221c0c0d9",
+        "trajectorySha256": "97a0ff9690f85947c40fc9cd7f0a91efb1ef432e9f7a9c9ec74dc1e6f57164ba",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 28,
+        "nonCacheTokens": 49734,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 21,
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6",
+        "summarySha256": "f7fb2c043065121f3cfc454f29c6e1e3c7bc7a4de9a5ed0fdcceb1a2e67b8a86",
+        "trajectorySha256": "ab26468b0d8968fa046b8bb0f3867cadb34a11091b88bf96f1770785c9dd39c4",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 18,
+        "nonCacheTokens": 49739,
+        "messages": 15
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 22,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6",
+        "summarySha256": "bbc1b366a5e88bbe64e9a8e4042e3013824c6776c19a282784ddebcde52462be",
+        "trajectorySha256": "c78080b315ecd3a69791911fa2f1c025f7aeba35f37ace7d35515b436c97bbb4",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 16,
+        "nonCacheTokens": 39233,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 23,
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6",
+        "summarySha256": "0108547a7484f9eae5b2936a8140bcec9cfd86631491db6d5920636065fac7ba",
+        "trajectorySha256": "8382cf7eb1cc92a2693ed69660968a1dccb96e773674962b869b9c6cdd59eec9",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 27,
+        "nonCacheTokens": 61881,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    }
+  ],
+  "endedAt": "2026-10-24T14:04:03.704Z"
+}

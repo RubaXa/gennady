@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 13,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r4",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:34:39.235Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/13",
+  "sessions": [
+    {
+      "id": "ses_e91e11a7effekpS0tn5he5Yvas",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/13/sdd-flow-eval-vzMH2k",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91e03dfeffePve57AT5sdoEwN",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/13/sdd-flow-eval-vzMH2k",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4",
+    "summarySha256": "d88c3a22885ac0bdff33cdc5bc313cfb324df08a71d886ee2b432352540301c3",
+    "trajectorySha256": "e0bd98a6234d329f5b67e053a93f2e2ec355e16e91378cf104d4630af8866a63",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 16,
+    "nonCacheTokens": 34176,
+    "messages": 11
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:38:11.454Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91e11a7effekpS0tn5he5Yvas",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/13/sdd-flow-eval-vzMH2k"
+    },
+    {
+      "id": "ses_e91e03dfeffePve57AT5sdoEwN",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/13/sdd-flow-eval-vzMH2k"
+    }
+  ]
+}

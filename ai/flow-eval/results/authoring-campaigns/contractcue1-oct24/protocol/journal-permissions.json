@@ -1,0 +1,8 @@
+{
+  "before": {
+    "plan/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md": "644",
+    "facts/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md": "644"
+  },
+  "during": "444",
+  "restorationRequired": true
+}

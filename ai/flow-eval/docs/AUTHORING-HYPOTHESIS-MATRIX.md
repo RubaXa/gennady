@@ -1,9 +1,12 @@
 # Authoring: source map and one-variable hypotheses
 
-Latest controlled result (2026-10-24): **TOOLFACT1 rejected**. A fresh 24-attempt comparison
-of computed facts/links in `sdd-new` output reduced worker tokens by about 13% in both module
-cases, but semantic PASS dropped from 12/12 to 7/12. Production directives and CLI output remain
-unchanged. See [the measured result](../results/authoring-campaigns/toolfact1-oct24/REPORT.md).
+Latest controlled result (2026-10-24): **CONTRACTCUE1 partially positive, not selected for production**.
+After examining all five TOOLFACT1 failures, 24 fresh Flash attempts tested the computed packet
+plus a bounded source-contract consistency cue. Flat: tokens −18.3%, tools −31.0%, time −9.9%,
+semantic 4/6→6/6. Nested: −7.7%/−10.0%/−18.9%, semantic 5/6→5/6. The ≥10% token target in BOTH
+cases is not met; one candidate semantic error remains and complete path proof is unknown.
+Production directives and CLI output remain unchanged. See
+[the measured result and five-case analysis](../results/authoring-campaigns/contractcue1-oct24/REPORT.md).
 The offline status statements below describe their historical snapshot and named mutations,
 not permission to relabel later pilots as untested or successful.
 
@@ -259,3 +262,19 @@ them on both success and failure. No live model call or heavy test was run for t
 - Keep the experimental branch and bounded evidence; do not enable its output in the shipped CLI.
   Do not repeat this same bundled packet as a new “improvement”. A future trial must identify a
   different variable and a mechanism preserving the exact parent domain contract, not just ID syntax.
+
+## CONTRACTCUE1 — completed; positive flat pilot, combined threshold missed
+
+- One revised tool-output packet: existing computed facts plus compare(scope/local Trigger, DbC
+  Pre/Post), preserve input-domain qualifiers unless an explicit brief delta applies, and try a
+  boundary witness before Write. No domain answer/counterexample or directive/template expansion.
+- 24 fresh paired Flash attempts at `ddd26bd8`/`bab3ecc8`; frozen v6 throughout both arms. Historical
+  TOOLFACT1 attempts are diagnosis, not fresh controls or an isolated cue-only contrast.
+- Flat meets the net-resource pilot target with semantic 4→6 of six. Nested saves median resources
+  but tokens only −7.7% (target ≥10%); semantic 5→5. Overall PASS 9→11 of twelve is not statistical
+  equivalence, and the remaining candidate error loses ASCII-only in DbC despite correct Trigger.
+- A disputed baseline pending-approval FAIL remains raw; no regrade or oracle change mid-series.
+  Complete Bash path proof stays unknown. Five existing offline CLI replays are byte-equal.
+- Do not ship the general packet or introduce a depth-specific benchmark switch. Preserve prototype
+  and all outcomes. Next UNTESTED axes are source-contract duplication and authoring boundary clarity;
+  do not change both together. [Evidence](../results/authoring-campaigns/contractcue1-oct24/REPORT.md).

@@ -1378,3 +1378,24 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
   десять private roots удалены, journal modes восстановлены. Shared dependencies сохранены.
 - **Решение:** рабочие prompts/CLI не меняем, вариант остаётся в экспериментальной ветке/архиве.
   [Отчёт и каждый call](../../results/authoring-campaigns/toolfact1-oct24/REPORT.md).
+
+## 2026-10-24 — CONTRACTCUE1: source-contract cue, частично успешный пилот
+
+- Все пять TOOLFACT1 failures разобраны по документам/trace/reflection: 3 потерянных ASCII-only
+  qualifiers, 1 ошибочное сужение домена, 1 выдуманный edge-hyphen Post. Родитель прочитан в 5/5;
+  причинность «это из-за facts» не установлена, self-report не является доказательством.
+- 24 НОВЫХ попытки, `ddd26bd8`/`bab3ecc8`, Flash AI Proxy, frozen v6/AB-BA/шесть повторов.
+  Revised tool-output packet: механические факты плюс короткая generic проверка Trigger/Pre/Post
+  и boundary witness. Domain answers не инжектируются, директивы/шаблоны не увеличены.
+- Flat: tokens 57 721.5→47 146.5, tools 29→20, time 100.793→90.841s, semantic 4/6→6/6.
+  Nested: tokens 49 700.5→45 868.5, tools 25→22.5, time 103.969→84.276s, semantic 5/6→5/6.
+  Формальная цель ≥10% tokens в обоих случаях не выполнена. Один candidate semantic FAIL остался.
+- 579 calls полностью сохранены; суммарно tools 318→261, worker non-cache 645 316→584 519.
+  Все 72 role usages qualified: worker 1 229 835 / judge 366 209 / reflection 929 602 non-cache;
+  cache-read всего 12 504 832. Денежная цена/HTTP/retries unknown. Live span 62m11.3s.
+- Контроль имеет свои реальные ошибки. Baseline nested r5 disputed pending-approval FAIL сохранён
+  без regrade; generic comparator/path proofs не ослаблены. Никакой post-hoc версии grader.
+- Решение: сохранить положительный flat pilot, не включать общий пакет в production. Не выбирать
+  каталоговую глубину по benchmark и не считать шесть повторов статистической эквивалентностью.
+- Cleanup: 24 fixtures/stores, 48 SDK sessions, свой сервер и 10 private dirs удалены; journal modes
+  восстановлены, node_modules общий. [Результаты](../../results/authoring-campaigns/contractcue1-oct24/REPORT.md).

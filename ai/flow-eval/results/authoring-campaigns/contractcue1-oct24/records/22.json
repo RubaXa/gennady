@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 22,
+  "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r6",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:57:17.325Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/22",
+  "sessions": [
+    {
+      "id": "ses_e91cc5fd0ffeJdd2Dvu5W7da86",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/22/sdd-flow-eval-wPOwmL",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91cb4584ffejp8dNYt2HAqQy2",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/22/sdd-flow-eval-wPOwmL",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6",
+    "summarySha256": "bbc1b366a5e88bbe64e9a8e4042e3013824c6776c19a282784ddebcde52462be",
+    "trajectorySha256": "c78080b315ecd3a69791911fa2f1c025f7aeba35f37ace7d35515b436c97bbb4",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 16,
+    "nonCacheTokens": 39233,
+    "messages": 12
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:59:58.313Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91cc5fd0ffeJdd2Dvu5W7da86",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/22/sdd-flow-eval-wPOwmL"
+    },
+    {
+      "id": "ses_e91cb4584ffejp8dNYt2HAqQy2",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/22/sdd-flow-eval-wPOwmL"
+    }
+  ]
+}

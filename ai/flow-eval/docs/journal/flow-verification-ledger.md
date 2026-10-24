@@ -185,3 +185,16 @@ negatives; the 48-fixture replay changes only pending-approval and no semantic r
 Bash path evidence stays unknown. No approval, receipt, execution, validator scope or production
 flow contract is relaxed. Evidence, all failed documents and source diff are retained in
 [the bounded campaign archive](../../results/authoring-campaigns/toolfact1-oct24/REPORT.md).
+
+## H. CONTRACTCUE1 — partial net-resource signal, no production selection (2026-10-24)
+
+All five prior failures are bound to artifact/trace hashes and concrete witnesses; each read its
+parent before writing. A fresh 24-attempt frozen-v6 Flash trial tested a revised computed packet
+with a bounded source-contract consistency cue. Directives/templates/fixtures were unchanged.
+Flat: tokens/tools/time −18.3%/−31.0%/−9.9%, semantic 4/6→6/6; nested −7.7%/−10.0%/−18.9%,
+semantic 5/6→5/6. The two-case ≥10% token criterion is missed, complete path evidence remains
+unknown, and one candidate DbC contradiction persists. No default CLI change or automatic adoption.
+One baseline lexical pending dispute stays raw; no new grader or retroactive semantic repainting.
+All primary evidence and five portable analysis CLI replays are retained; 24 fixtures/stores,
+48 sessions and all private server roots are cleaned. Shared dependencies remain shared.
+[Measured report](../../results/authoring-campaigns/contractcue1-oct24/REPORT.md).

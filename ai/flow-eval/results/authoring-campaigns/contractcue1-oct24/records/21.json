@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 21,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r6",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:55:15.885Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/21",
+  "sessions": [
+    {
+      "id": "ses_e91ce3b8fffeakoCtYshObU8U0",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/21/sdd-flow-eval-4u0Usg",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91cce68bffe2q2BB1ML9fO7O4",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/21/sdd-flow-eval-4u0Usg",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6",
+    "summarySha256": "f7fb2c043065121f3cfc454f29c6e1e3c7bc7a4de9a5ed0fdcceb1a2e67b8a86",
+    "trajectorySha256": "ab26468b0d8968fa046b8bb0f3867cadb34a11091b88bf96f1770785c9dd39c4",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 18,
+    "nonCacheTokens": 49739,
+    "messages": 15
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:57:16.331Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91ce3b8fffeakoCtYshObU8U0",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/21/sdd-flow-eval-4u0Usg"
+    },
+    {
+      "id": "ses_e91cce68bffe2q2BB1ML9fO7O4",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/21/sdd-flow-eval-4u0Usg"
+    }
+  ]
+}

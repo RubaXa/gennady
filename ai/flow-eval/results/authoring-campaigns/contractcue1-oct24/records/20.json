@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 20,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r6",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "startedAt": "2026-10-24T13:53:24.576Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/20",
+  "sessions": [
+    {
+      "id": "ses_e91cfecbdffeJqJyUqSsIlo65d",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/20/sdd-flow-eval-R24FDu",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91ce813dffeSCza2Pc5xAohOF",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/20/sdd-flow-eval-R24FDu",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6",
+    "summarySha256": "e5486f4235988a16174c1dc94b8825d33f4baa07917e3a0f2b7c489221c0c0d9",
+    "trajectorySha256": "97a0ff9690f85947c40fc9cd7f0a91efb1ef432e9f7a9c9ec74dc1e6f57164ba",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": false,
+    "pathPass": false,
+    "actions": 28,
+    "nonCacheTokens": 49734,
+    "messages": 18
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:55:15.319Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91cfecbdffeJqJyUqSsIlo65d",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/20/sdd-flow-eval-R24FDu"
+    },
+    {
+      "id": "ses_e91ce813dffeSCza2Pc5xAohOF",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/20/sdd-flow-eval-R24FDu"
+    }
+  ]
+}
