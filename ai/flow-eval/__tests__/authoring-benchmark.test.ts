@@ -716,7 +716,7 @@ it('calibrated-v3: rejects incomplete, questioned or negated not-issued wording'
 });
 
 it('calibrated-v4: accepts bounded not-received families while explicit v3 remains unchanged', () => {
-  assert.equal(CURRENT_AUTHORING_BENCHMARK_REVISION, 'calibrated-v4');
+  assert.equal(CURRENT_AUTHORING_BENCHMARK_REVISION, 'calibrated-v5');
   // Exact HANDOFF line from FORMAT2 prose-r2, raw SHA-256:
   // de5dfad52f82682c510298576d0d4024c611467970cd050653f275a70a866cb4.
   // This is a fixture-level lexical regression, not a regrade or live replay of that attempt.
@@ -846,6 +846,58 @@ it('calibrated-v4: a valid pending clause never excuses malformed relative links
     assert.equal(result.pass, false);
   } finally {
     env.cleanup();
+  }
+});
+
+it('calibrated-v5: accepts actual balanced SECTION references while historical v4 remains reproducible', () => {
+  for (const id of ['module-flat', 'module-nested'] as const) {
+    const env = fixture(id);
+    try {
+      const parent = posix.relative(posix.dirname(env.item.target), 'specs/token/token.spec.md');
+      put(
+        env.root,
+        env.item.target,
+        positive(id).replace(
+          '<!--/SECTION:HANDOFF-->',
+          `[Parent requirements](${parent}#REQUIREMENTS_AND_CONSTRAINTS)\n[Own vision](#MODULE_VISION)\n<!--/SECTION:HANDOFF-->`
+        )
+      );
+      const old = checkAuthoringBenchmark(env.root, id, 'calibrated-v4');
+      const revised = checkAuthoringBenchmark(env.root, id, 'calibrated-v5');
+      assert.equal(old.checks.find((c) => c.id === 'relative-links')?.pass, false);
+      assert.equal(revised.pass, true, revised.detail);
+      assert.deepEqual(
+        revised.checks.filter((c) => c.id !== 'relative-links'),
+        old.checks.filter((c) => c.id !== 'relative-links')
+      );
+    } finally {
+      env.cleanup();
+    }
+  }
+});
+
+it('calibrated-v5: missing or duplicate SECTION targets do not pass by fragment spelling', () => {
+  for (const duplicate of [false, true]) {
+    const env = fixture('module-flat');
+    try {
+      const fragment = duplicate ? 'MODULE_VISION' : 'MISSING_SECTION';
+      const extra = duplicate
+        ? '\n<!--SECTION:MODULE_VISION-->\nDuplicate\n<!--/SECTION:MODULE_VISION-->\n'
+        : '';
+      put(
+        env.root,
+        env.item.target,
+        positive(env.item.id).replace(
+          '<!--/SECTION:HANDOFF-->',
+          `[Bad](#${fragment})\n<!--/SECTION:HANDOFF-->`
+        ) + extra
+      );
+      const revised = checkAuthoringBenchmark(env.root, env.item.id, 'calibrated-v5');
+      assert.equal(revised.pass, false);
+      assert.equal(revised.checks.find((c) => c.id === 'relative-links')?.pass, false);
+    } finally {
+      env.cleanup();
+    }
   }
 });
 

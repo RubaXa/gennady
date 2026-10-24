@@ -1,0 +1,2319 @@
+{
+  "schema": "gennady.factlink1-observed-mechanism.1",
+  "authority": "lexical observed-call categories only; not necessity or private-reasoning inference",
+  "limitations": [
+    "opaque Bash remains unknown",
+    "a source lookup can be justified",
+    "absence of these searches is not proof no archaeology occurred"
+  ],
+  "groups": [
+    {
+      "arm": "baseline",
+      "caseId": "module-flat",
+      "recorded": 6,
+      "totalCalls": 148,
+      "counts": {
+        "acronymSourceSearch": 6,
+        "decisionSourceSearch": 4,
+        "repositoryDiscovery": 23,
+        "fullRootRead": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      }
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-nested",
+      "recorded": 6,
+      "totalCalls": 145,
+      "counts": {
+        "acronymSourceSearch": 5,
+        "decisionSourceSearch": 4,
+        "repositoryDiscovery": 24,
+        "fullRootRead": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      }
+    },
+    {
+      "arm": "facts",
+      "caseId": "module-flat",
+      "recorded": 6,
+      "totalCalls": 110,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 17,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      }
+    },
+    {
+      "arm": "facts",
+      "caseId": "module-nested",
+      "recorded": 6,
+      "totalCalls": 130,
+      "counts": {
+        "acronymSourceSearch": 6,
+        "decisionSourceSearch": 6,
+        "repositoryDiscovery": 20,
+        "fullRootRead": 3,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      }
+    }
+  ],
+  "rows": [
+    {
+      "index": 0,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r1",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 1,
+      "traceSha256": "4459d60e9e914316c43f085dc6cfbd0737e95193a3a2efbe4d531a5b96e05544",
+      "totalCalls": 27,
+      "counts": {
+        "acronymSourceSearch": 4,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_APtpf9G7xhY8VIF5YrZr7005",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs ai/directives/sdd-v2/formats 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_wQljiJwZ85CvqZxnxTgs9086",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"SPEC_ID|acronym|ACR\" ai/directives/sdd-v2 | head -60",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_N11KyohkOHkRycyAggwy3619",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"NORM|TOKEN-NORMALIZE|--acronym|acronym\" . --glob '!node_modules/**' --glob '!ai/directives/sdd-v2/**' | head -50; ls -la; find . -maxdepth 2 -type f | sort | head -60",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_CrRvgL1vPZDVbUK2aaTI0923",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_SAAGR8kLE65nslVGf9Zn6745",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 | head -20",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_UOMLIarx7jIoRyKeZLmn5497",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short && rg -n \"УДАЛИ|TODO|TBD|<ModuleName>|<ACR>|\\[One-line|<!-- (?!SECTION:)\" specs/token/normalize/normalize.spec.md",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_j5TZEnlh8iDXcteOkytx7343",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"УДАЛИ|TODO|TBD|<ModuleName>|<ACR>|\\[One-line|\\[Per |\\[<\" specs/token/normalize/normalize.spec.md; rg -n \"<!--\" specs/token/normalize/normalize.spec.md",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r1",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 1,
+      "traceSha256": "3a1cc053ab4677885ae9df6257896d766e3d4259a0bd80ff10d017e0db6281c5",
+      "totalCalls": 15,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_6zqnXYgSKBtPHndD1voN3046",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs/token",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Mrt3TcBQ9Z3ZFbBHPAvO2735",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; printf '\\n--- ai/directives dirs ---\\n'; ls ai/directives/coding 2>/dev/null; ls ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_xhzC0SgJfnmdInwKPnMk8644",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n 'УДАЛИ|\\[One-line|\\[Опционально|\\[<ACR>|<ModuleName>|<this-module>|<module>|<path>|\\[Per `DBC' specs/token/normalize/normalize.spec.md || true; printf '\\n--- non-section comments ---\\n'; rg -n '<!--(?!SECTION|/SECTION)' -P specs/token/normalize/normalize.spec.md || true; printf '\\n--- git status ---\\n'; git status --short",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r1",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 1,
+      "traceSha256": "7bdb07008a25b9857f89599feae8e3973e85c8e40fd6c7b931c58395abe59c19",
+      "totalCalls": 23,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_FV0eqpMaXIN7j67sqhhf5267",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -maxdepth 5 -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_CjMZdbviSUaMbmbUcF2H5647",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json'",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_aNzHal2nSVXK3d4G9FQ62890",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -R \"module spec's own acronym\\|own acronym\\|ACR\" -n ai/directives/sdd-v2 | head -40",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_mCFh8uQPZwubMgvnLbET1946",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -R \"DECISION_LOG_ENTRY_FORMAT\" -n ai/directives/sdd-v2 | head -20",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Cv9ylWa0PyKe6gaU8sQd4159",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 3 -type f | sed -n '1,120p'",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r1",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 1,
+      "traceSha256": "4b34e275e4ef3809c7c43810f8465dc0372f37ba33ddbed80f7c3dcc9f282964",
+      "totalCalls": 25,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_uCCPsb2yt0zZPBwv6zB56187",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_m8HbdOskd7SeodVn75pJ5347",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_rSTqWfAo25Y4KfA44TAS5070",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"DECISION_LOG\\|Decision Log\\|AX_SPEC_PROGRESSIVE\\|FOLD_REQUIRED\\|SDD_SECTION_NOT_FOLDED\\|SPEC_ID\" ai/directives/sdd-v2/root.directive.xml | head -60",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_8xXYP0wcoCmq5SDOV6uL7300",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_oau55XtEDiac443WrDNV1411",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; find . -maxdepth 2 -name 'package.json' -o -name 'tsconfig.json' | head",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_fuzWy7UodmMdNJJ1UrHb2392",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives; ls ai/directives/testing 2>/dev/null; ls ai/directives/coding 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r2",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 2,
+      "traceSha256": "95156ce5a8a9a802326dd677a09124726207b985c156fc7b244b43f966bcb6d0",
+      "totalCalls": 17,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_1OHYngJwGbobQ7TKR9Ny0777",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls specs specs/token 2>/dev/null; echo ---; ls ai/directives/sdd-v2/formats",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_gJUYmgJQG8PKKYjtXc5d8603",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; echo ---; ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_7uVT1GwSjvSAzL3gR6EO6077",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -maxdepth 4 -type f | sort; echo ---; cat specs/README.md",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r2",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 2,
+      "traceSha256": "0708137bdae1d98c127e698a9be1ed85c911cb11186017d4f4cd413b5b388443",
+      "totalCalls": 26,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 5,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_o8WHg7lCDs7XAyhW4cg71602",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls specs/token && ls ai/directives/sdd-v2/formats",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_gx8HjifXfCx9aq6PuHg42103",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "wc -l specs/token/token.spec.md ai/directives/sdd-v2/formats/diagram-vocabulary.xml && find specs/token -maxdepth 3 -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_HBs8mn2e5SXA92O5PWgL5051",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find . -maxdepth 3 -type f \\( -name 'package.json' -o -name 'tsconfig.json' -o -name '*.md' \\) -not -path './node_modules/*' | sort | head -80",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_MNr4UilZ8xERsMwR71iL7862",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find . -maxdepth 3 -not -path './.git*' -not -path './node_modules*' -print | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_E8vQSPIOewoycd5Jgirf8121",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r2",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 2,
+      "traceSha256": "455673be9be23b3fd18dfd483bab53dba3f3cebf11bdabeb141f3b3582c7b886",
+      "totalCalls": 21,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_yAMx5mcyQtAsgqDd1y4J1669",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -maxdepth 5 -type f | sort && echo '---' && ls ai/directives/sdd-v2/formats",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_bnQa1Gfzow4RGq4a8ra29042",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && find . -maxdepth 3 -type f \\( -name 'package.json' -o -name 'tsconfig*.json' -o -name '*.json' -o -name 'README.md' \\) -not -path './node_modules/*' -not -path './.git/*' | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_UgnSHT8Zw2rfgB73i2wn2995",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives/coding ai/directives/testing -maxdepth 2 -type f 2>/dev/null | sort | head -80",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_EmPLksMOoNduTEShGmB40814",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT|DECISION_LOG_REQUIRED|HANDOFF|Approval #1|Approval #2\" ai/directives/sdd-v2/root.directive.xml ai/directives/sdd-v2/*.xml | head -80",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_k9zDTlndco7P3UNCce8E8291",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short && echo '---' && git diff --stat && echo '--- placeholders/guidance ---' && rg -n 'УДАЛИ ПОСЛЕ|<ModuleName>|<module>|<ACR>|<scope>|TODO|<!-- Содержимое|\\[One-line|\\[Опционально|\\[Per |\\[All |\\[Full |\\[<ACR>|\\[<yyyy|<list|<path>|<rule|<framework|<lang>|<name>|<component>|<not-closed|<platform>|<ext>' specs/token/pipeline/normalize/normalize.spec.md || true",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r2",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 2,
+      "traceSha256": "5ffd87a9e68fc147c663cf06d2fe3397661e4834d25dd88b66b892126b2ec6ad",
+      "totalCalls": 27,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 2,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_0eu3pqRz4YEbNF4VG7Pl6352",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la specs/token && printf '\\n--- tree ---\\n' && find specs/token -maxdepth 4 -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_02_iLmqGgFu2WRujbwOMpgZ5034",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && printf '\\n--- package ---\\n' && (cat package.json 2>/dev/null || true) && printf '\\n--- tsconfig ---\\n' && (cat tsconfig.json 2>/dev/null || true)",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_aq7M0t1PuwnHlsxo5u6E3434",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 3 -type f | sort && printf '\\n--- other dirs ---\\n' && find docs .claude -maxdepth 3 -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_2Q8jnTDDGYhxZxv8dl7G1679",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -l \"DECISION_LOG_ENTRY_FORMAT|AX_SPEC_MANDATORY_DIAGRAM|SDD_SECTION_NOT_FOLDED\" ai/directives | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_SjLGGqMvT2FgSkykpTSp6325",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n -C 4 \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2/root.directive.xml ai/directives/sdd-v2/scope.directive.xml ai/directives/sdd-v2/interview-protocol.directive.xml ai/directives/sdd-v2/formats/*.xml",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_CABq7y4c2hXA2AJBX7Zu4264",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_olWQ2peKXNkxRqBI2yxp1129",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short && printf '\\n--- guidance scan ---\\n' && rg -n \"УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ|\\[Per |<ModuleName>|<ACR>|TBD|TODO|PLACEHOLDER\" specs/token/pipeline/normalize/normalize.spec.md || true",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r3",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 3,
+      "traceSha256": "8bce0dd6d3236aa081ca4e1a3eec523c25edfeab7f2fb028c3c2774c1901691d",
+      "totalCalls": 27,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 5,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_dA8bolue3yj4q3pYbg8F8676",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && git status --short && ls specs 2>/dev/null && ls specs/token 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_yQs8qPyh7afkR2cvoxuu0201",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/ && ls specs/token && ls specs/token/normalize",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_fOibRFPcdZRXfz2Cf4Bm2134",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 | head -20",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_6uXhXsNwzjojCkgqia5l0753",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json && find . -maxdepth 3 -not -path './.git/*' -not -path './node_modules/*' -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_h8AfIaq0KTiKZ5Yb3Wlv5717",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type f | sort | sed -n '1,120p'",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_UZVcUFbWdlE8fiqSpkT41345",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short && grep -n \"УДАЛИ\\|<ModuleName>\\|\\[Per\\|\\[One-line\\|<ACR>\\|<scope>\\|<module>\" specs/token/normalize/normalize.spec.md || true",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_hsBxiFtD9XU2OSvgAJXD9284",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs/token/normalize -type f -maxdepth 1 && wc -l specs/token/normalize/normalize.spec.md",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r3",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 3,
+      "traceSha256": "005e07f7801b4ff35ba0963825f5517f5f8ee6f7dc4b8081509a23f3313a7cb9",
+      "totalCalls": 19,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_AneHZzwROYDkneiilBqV5768",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs 2>/dev/null | head -100; echo \"---\"; ls",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_kWwLmkM1phjnnOqAGR5P4820",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives; echo ---; ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r3",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 3,
+      "traceSha256": "ab6057118bab5c02d818c98c07ab0d1f0122671c220c471b03e40b8d07b30a80",
+      "totalCalls": 19,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_RxNxoyKMx2K5inNA0YVF5535",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs 2>/dev/null; echo '---'; ls ai/directives/sdd-v2/formats 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_02_OXS0CEuZyjKkx7BPxcg38671",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding 2>/dev/null; echo '---'; ls ai/directives/testing 2>/dev/null; echo '---'; ls specs/token; find specs/token -maxdepth 3 -type d",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_F0swrXisuttfTEdQcXDE5599",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -a; echo '---'; test -f package.json && cat package.json || echo 'no package.json'; echo '---'; ls ai/directives/testing; echo '---'; sed -n '1,40p' ai/directives/testing/node-test.xml",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r3",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 3,
+      "traceSha256": "29c9d4d52501176419e484ee8f7026057d7de38d739f252ed27ef30ebc45b4ba",
+      "totalCalls": 23,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_1vs13iIiZprzkWeNKMCq6919",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && find specs -maxdepth 4 -type f 2>/dev/null | head -50 && ls ai/directives/sdd-v2",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_vzNUy8maZ7hMhBNk7F0s1275",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats && ls specs/token/pipeline/normalize && git status --porcelain",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_yPmLqdLXL0364Q3A2rhh2172",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json; find specs -type f; find ai/directives -maxdepth 2 -type d",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_EIptIKDl8HCACqUWYztl0675",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_IASm2yzQM4c9kK6Ydsyl2287",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives/coding ai/directives/testing -maxdepth 2 -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r4",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 4,
+      "traceSha256": "cde6e06bae3abc9e62e11a7aa1c5bbb1aefbcaaaa96d8a34a97c46d5bec7ba09",
+      "totalCalls": 20,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_GAwFR3TT5QbavwdnNQNd1261",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives && ls ai/directives/coding 2>/dev/null; ls ai/directives/testing 2>/dev/null; ls specs",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_BeuoMRNPgstbq1fMwyo91133",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -a && find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json' | head",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_Cx9blLnqpnqrYk6fcfEY7852",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls docs && find docs -maxdepth 2 -type f | head -20",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r4",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 4,
+      "traceSha256": "be3bd967df3e11f3b3f6703c01146fda88d76bd1ae6733bcde121c205e658cf8",
+      "totalCalls": 22,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 2,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_HK8OJImT38O8Zw8VTXfx6309",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la specs/token && ls -la ai/directives/sdd-v2/formats",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_FaQijvSeC289SPSiE4ac0064",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R specs | head -100; echo ---; grep -rln \"<!--SECTION:MODULE_REQUIREMENTS-->\" specs | head -20; echo ---; ls ai/directives/coding ai/directives/testing 2>/dev/null; echo ---; ls ai/directives/sdd-v2",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_bXpmBVBvh6om15GS1Gqo7925",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; echo ---; find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json' | head",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_iXNghlkXWyd9CpPVZuEw0023",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"DECISION_LOG_ENTRY_FORMAT\" -A 40 ai/directives/sdd-v2/formats/*.xml | head -80",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_smWHZrxoNG816LFgXn9c8950",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"Contract id=\\\"DECISION_LOG_ENTRY_FORMAT\\\"\" ai | head; echo ---; cat package.json; echo ---; grep -rn \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2/*.xml | head",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r4",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 4,
+      "traceSha256": "db620532b314a6386372cfd4514b7b7147e64b664b9f60e5c7367783c2ce38e4",
+      "totalCalls": 18,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_y1tVCw3hfhkgSDW6W7zf5198",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls specs specs/token 2>/dev/null; echo '---'; ls ai/directives/sdd-v2/formats",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_p0bKfxyDUKXtyPireOha4995",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"DECISION_LOG_ENTRY_FORMAT\" -A 40 ai/directives/sdd-v2/root.directive.xml | head -80",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ZINcEfxHPr4dewqo8jpk6092",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls; echo '---'; cat package.json 2>/dev/null; echo '---'; ls specs/token/pipeline; echo '---'; ls specs/infra-base",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_r0WBOd2GQMoMica0a11j1166",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r4",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 4,
+      "traceSha256": "e7ecc36d58d8101c702570667b81d9f46500c5103dfb8146a9db6d5316f04040",
+      "totalCalls": 24,
+      "counts": {
+        "acronymSourceSearch": 2,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_4H1YTj7cDHCxf5KeKP8t4705",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && echo \"---\" && find specs -maxdepth 5 -type f 2>/dev/null | head -50 && echo \"---\" && ls ai/directives/sdd-v2/formats 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_LQYAJ6XAX9q97N6dFVhi6034",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -R docs inputs ai | head -80; echo \"---\"; cat specs/README.md; echo \"---\"; cat package.json",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_05dyCHGqB71ANvrpgXl10854",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives/sdd-v2/guides docs -type f | head -50; echo \"---\"; grep -rn \"module.*acronym\\|ACR.*module\\|pipeline\" ai/directives/sdd-v2 docs 2>/dev/null | head -30",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_2uK2eTewWcXasQgBm2YQ8509",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"REQ-\\|SPEC_ID\\|acronym\\|prefix\" ai/directives/sdd-v2/audit ai/directives/sdd-v2/audit.directive.xml ai/directives/sdd-v2/readiness.directive.xml 2>/dev/null | head -60",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_joD0hSnXukOEFEWIsWXW6983",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short && echo \"---\" && find specs/token/pipeline -type f",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r5",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 5,
+      "traceSha256": "c5a29edc50e67580cd380d542651eaa67a2d0a304a8eb9f17890005b7cc5b787",
+      "totalCalls": 18,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_KMue05phUEqRBcttEe0n2964",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/ && ls specs/token/ && cat specs/token/token.spec.md 2>/dev/null | head -80",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_XpBMOSVTJ1G2oziWk9c57012",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"FILE_STRUCTURE\\|src/\\|typescript\\|vitest\\|jest\\|node\" specs/token/token.spec.md; ls; cat package.json 2>/dev/null; ls src 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_pCHyHfhnPA2Nn4y6Wqdc1303",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null; grep -rn \"Language\\|Test framework\\|typescript\\|vitest\" specs/ | head -30",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r5",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 5,
+      "traceSha256": "6dc7a5b032e223553cc05d9101c23914c5c39f16ac2bbbe0161632af27446011",
+      "totalCalls": 18,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 3,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_kEPbmeW8M86vd3Q4Ekxq7727",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls specs/token && ls specs",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_jce4ebzXj6fgoG9hFgEE2092",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT|Decision Log\" ai/directives/sdd-v2/root.directive.xml | head -40",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_xbAan7B80efpkMpzZrWm8277",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_xJmKs7tVUekPYfmsjU5X3064",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -a && (test -f package.json && sed -n '1,120p' package.json || true)",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r5",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 5,
+      "traceSha256": "37d6d4d1854b219bb20651d6f899f435d95cc05dbe25fae68f715657a021ba95",
+      "totalCalls": 20,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 5,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_ET_xFxv5DteCEaB3lxio3Ue0966",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls specs/token; find specs/token -maxdepth 3 -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_9Rky81tVj6OHHt1ClCkD7439",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_vtiJv51zkri8GYt6jXM85411",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; find . -maxdepth 2 -name 'package.json' -o -name 'tsconfig.json' -o -name 'AGENTS.md'",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_gX0UIhEBc8qT3Nuc47DA5743",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives -maxdepth 2 -type d | sort; find ai/directives/coding ai/directives/testing -maxdepth 1 -type f 2>/dev/null | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_uUCyifGak4aKZigHWfRy6955",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json; cat specs/pipeline.spec.md 2>/dev/null || true; find specs -maxdepth 2 -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_96gbjLMJTNaJ4atEm8fV2178",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short; git diff --stat; grep -n 'УДАЛИ\\|<ModuleName>\\|<module>\\|<ACR>\\|\\[Per\\|\\[One-line\\|\\[Опционально\\|TODO\\|placeholder' specs/token/pipeline/normalize/normalize.spec.md || true",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r5",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 5,
+      "traceSha256": "20caf7b997cba9c0992d6a8857a96a9b6aaee9f895bb8eb9b994162de869fc52",
+      "totalCalls": 22,
+      "counts": {
+        "acronymSourceSearch": 2,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 2,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_6CrZ3Z6HBMgWpB9LrzeT6772",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs/token -maxdepth 3 -type f",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_UHRsU19hcWxGoUvrHOaj6338",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; find ai -maxdepth 3 -type f | sort | sed -n '1,120p'",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_3GycQFo2cOlIixgpcTke4997",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"DECISION_LOG_ENTRY_FORMAT|AX_SPEC_PROGRESSIVE_DISCLOSURE|FOLD_REQUIRED|MODULE_REQUIREMENTS|No module-specific requirements\" ai/directives/sdd-v2/root.directive.xml ai/directives/sdd-v2/*.xml | sed -n '1,160p'",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_iffXY7GdnSFjUeU4PZ2V7600",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "sed -n '490,550p' ai/directives/sdd-v2/root.directive.xml; rg -n \"MODULE_REQUIREMENTS|Input \\| Outcome|Input.*Outcome|ACR-REQ|SDD_SECTION_NOT_FOLDED|SDD_NO_DIAGRAM\" ai/directives/sdd-v2 -g '*.xml' | sed -n '1,200p'",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_zYVaCnaHAimJ72veDH7P0363",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"УДАЛИ|\\[One-line|\\[MANDATORY|<ModuleName>|\\[Per |\\[All |\\[<ACR>|Not applicable|None\" specs/token/pipeline/normalize/normalize.spec.md",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r6",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "facts",
+      "repetition": 6,
+      "traceSha256": "c735be563dfdf1b6b6c3dda4eee39f97fdab3b47f340907cbacbd5c691cc1976",
+      "totalCalls": 21,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_rDRoD5485N3v3AKH2KUL2209",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la . && ls -la ./ai/directives/sdd-v2 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ET_oxajQYqlnsxzL71VPCGb7634",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cd . && find specs -type f | head -50 && cat package.json",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_e70OrBYVfkWltfCCt7U72197",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cd . && ls ai/directives/sdd-v2/formats",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ZKkp2MVyw04u9pVMmtka4216",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cd . && ls ai/directives && ls ai/directives/coding 2>/dev/null; ls ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r6",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 6,
+      "traceSha256": "474d872d2558dea40e0e0397359a1a2f9c9e10ac9193bfcbf011870c7071f3bd",
+      "totalCalls": 28,
+      "counts": {
+        "acronymSourceSearch": 1,
+        "decisionSourceSearch": 0,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_TvadZSpVmoJLIpO0r5qH0482",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la && ls -R specs 2>/dev/null && git status --short",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_V1ra2ucOVmqQ7W5Bt68U5970",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/ && ls ai/directives/sdd-v2/",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_4k2xHtbYHOa8A25dAKvi8218",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_02_ET_OR0wpLoIRpY5infBsZHY0936",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat package.json && ls docs && find docs inputs -type f",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_SvYLhw4l5j4K7mwX6zWD6728",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai/directives/coding ai/directives/testing -maxdepth 1 -type f 2>/dev/null; ls ai/directives",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_TZj9v2rbUKTOtY7p4ibn4922",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "rg -n \"module acronym|ACR|acronym\" ai/directives/sdd-v2/module.directive.xml ai/directives/sdd-v2/formats/module-spec-structure.xml ai/directives/sdd-v2/scope.directive.xml | head -60",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r6",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "facts",
+      "repetition": 6,
+      "traceSha256": "13a881088df9e5c7c3d34f707c097ac88a1f4197a5d137e103635051658a3a66",
+      "totalCalls": 21,
+      "counts": {
+        "acronymSourceSearch": 2,
+        "decisionSourceSearch": 2,
+        "repositoryDiscovery": 4,
+        "fullRootRead": 1,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_01_JIiwxAxu5FKBZhuUPuYl1020",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short && ls -R specs 2>/dev/null | head -60",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_w9HTVt2WykhxIIizBUH11047",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_NccJVJ71C8WdVpGvRr6Y0817",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -n \"DECISION_LOG_ENTRY_FORMAT\\|DECISION_LOG\" ai/directives/sdd-v2/root.directive.xml | head -40",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_cQOYh3tUuB1sKFiL2YxL9218",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"MODULE_DECISION_LOG\\|SPEC_ID\\|V2 REQUIRED\" ai/directives/sdd-v2/ | head -40",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ET_DT42NPfGwEEF3vUPKscK1605",
+          "tool": "read",
+          "status": "completed",
+          "path": "./ai/directives/sdd-v2/root.directive.xml",
+          "command": null,
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": true,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_ikbHwDkrKIPsD7ZqmCVY0517",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "cat README.md; printf '\\n---\\n'; ls -la; printf '\\n--- package ---\\n'; cat package.json 2>/dev/null; printf '\\n--- ai dirs ---\\n'; ls ai/directives/coding ai/directives/testing 2>/dev/null",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_DV9imi0zNfJgZN4BTIqu9918",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git log --oneline -10; printf '\\n---files---\\n'; git ls-files | head -60",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_B5QmUDEFd1k2WqWVkedD4641",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git status --short; printf '\\n--- placeholders ---\\n'; grep -n \"УДАЛИ\\|<ModuleName>\\|<ACR>\\|\\[<\\|TODO\\|TBD\" specs/token/pipeline/normalize/normalize.spec.md || true",
+          "flags": {
+            "acronymSourceSearch": true,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r6",
+      "campaign": "factlink1-oct24",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 6,
+      "traceSha256": "0989dfa7229d02f838f164474a5ddb48a0cfa80d64f28b9d7dd79be87586a329",
+      "totalCalls": 32,
+      "counts": {
+        "acronymSourceSearch": 0,
+        "decisionSourceSearch": 1,
+        "repositoryDiscovery": 6,
+        "fullRootRead": 0,
+        "failedDecisionFormatRead": 0,
+        "opaqueBash": 0
+      },
+      "flaggedCalls": [
+        {
+          "callId": "call_00_g32oH9rCOUHFZvepsVIl8639",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find specs -type f | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_ukrOib06rFwS2Knyruur4317",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/sdd-v2/formats/",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_GGWReQUNiE1KH04ciMr41946",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls -la; find . -maxdepth 2 -type f -not -path './.git/*' -not -path './node_modules/*' | sort",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_VBkahms6jSbnYCfJafbX6604",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "grep -rn \"DECISION_LOG_ENTRY_FORMAT\" ai | head -20",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": true,
+            "repositoryDiscovery": false,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_01_PQXQw4pBAEkj5za799TQ1358",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "find ai -type f | sort | head -80",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_00_hKvoknE89ZSwOllPPJE79852",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "ls ai/directives/testing 2>/dev/null; ls ai/directives | sed -n '1,50p'",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        },
+        {
+          "callId": "call_02_wRqQoEgT0wGPcSvQDBVu6323",
+          "tool": "bash",
+          "status": "completed",
+          "path": null,
+          "command": "git diff -- specs/token/token.spec.md specs/README.md specs/infra-base/infra-base.spec.md; ls -l specs/token/pipeline/normalize/normalize.spec.md",
+          "flags": {
+            "acronymSourceSearch": false,
+            "decisionSourceSearch": false,
+            "repositoryDiscovery": true,
+            "fullRootRead": false,
+            "failedDecisionFormatRead": false,
+            "opaqueBash": false
+          }
+        }
+      ]
+    }
+  ]
+}

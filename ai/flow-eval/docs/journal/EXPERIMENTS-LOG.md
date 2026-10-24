@@ -1335,3 +1335,25 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
 - **Cleanup:** 48 SDK deletion acknowledgements; 24 fixtures removed; свой server остановлен,
   десять private roots удалены, source journal modes восстановлены. Shared dependencies не тронуты.
 - **Доказательства/решения:** [полный отчёт](../../results/authoring-campaigns/format2-oct23/REPORT.md).
+
+## 2026-10-24 — FACTLINK1: факты/ссылки вместо части поиска, пакет отклонён
+
+- **Матрица:** 24 свежих live попытки, flat/nested × baseline/facts × шесть повторов;
+  Flash-only AI Proxy, concurrency=1, три AB и три BA позиции на сценарий.
+  Clean source `09c2329b`; candidate `67326bc5` меняет только два module owner-файла.
+- **Гипотеза:** недостающая механика ACR/ID, relative links и Decision Log подана сразу
+  в читаемой директиве. Это не реализация динамического факта в ответе tool/manifest.
+- **Эффект:** flat tokens −22,3%, tools −30,2%, time −24,5%; nested −4,6% / −8,5% / −1,7%.
+  Наблюдаемые ACR/DL-поиски flat 6→1 / 4→1, nested 5→6 / 4→6. Принятой общей оптимизации нет:
+  не достигнут ≥10% token target обоих кейсов, качество не доказано неухудшающимся.
+- **Качество:** raw structural 18/24; semantic 13 PASS / 11 FAIL; path 0/24 proven.
+  Четыре SECTION false-negative отдельно исправлены v5: 96/96 cleaned replay fixtures,
+  ровно relative-links changes, structural 22/24 в replay. Semantic grades не заменялись.
+  Остальные FAIL содержат реальные domain/reference/metadata finding, не только ошибки стенда.
+- **Расход:** 533 tools; worker 1 106 633, judge 355 683, reflection 852 812 non-cache tokens.
+  Денежная цена неизвестна. Серия 55m43s; время описательное, не dedicated-host causal benchmark.
+- **Очистка:** 24 fixtures, 48 SDK sessions удалены; owned server остановлен, десять private
+  roots удалены, два journal mode восстановлены. Shared dependency owner сохранён.
+  Ошибка метки порта cleanup-summary явно связана erratum, raw proof не переписан.
+- **Решение:** исходные production prompts сохраняем; candidate branch и bounded archive — evidence
+  отрицательного/частичного результата. [Полный отчёт](../../results/authoring-campaigns/factlink1-oct24/REPORT.md).

@@ -91,3 +91,14 @@ ai/flow-eval/results/authoring-campaigns/format2-oct23/report-*/**
 ai/flow-eval/results/authoring-campaigns/format2-oct23/recalibration/**
 ai/flow-eval/results/authoring-campaigns/format2-oct23/variants/**
 ai/flow-eval/results/authoring-campaigns/format2-oct23/code/**
+
+# FACTLINK1: byte-preserved live evidence and generated projections; recorded tests own hashes.
+# The authored REPORT.md is deliberately not excluded.
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/*.json
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/protocol/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/records/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/controller-output/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/report-*/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/recalibration/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/variants/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/code/**

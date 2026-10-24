@@ -1,0 +1,42 @@
+// Post-series only: preserve primary grades; compare versioned v4/v5 on saved artifact bytes.
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { dirname,join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildAuthoringFixture,checkAuthoringBenchmark,getAuthoringCase } from '/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/authoring-benchmark.ts';
+const own=dirname(fileURLToPath(import.meta.url)), repo='/private/tmp/gennady-format-oct23.xNC5Zx/plan';
+const old=join(repo,'ai/flow-eval/results/authoring-campaigns/format2-oct23');
+const sha=(b:string|Buffer)=>createHash('sha256').update(b).digest('hex');
+const bytes=(p:string)=>{const s=fs.lstatSync(p);if(!s.isFile()||s.isSymbolicLink()||s.size>8*1024*1024)throw Error('UNSAFE_REPLAY_INPUT');return fs.readFileSync(p)};
+const json=(p:string)=>JSON.parse(bytes(p).toString());
+const batch=json(join(own,'batch.json'));if(batch.recorded!==24||!batch.complete||batch.errors)throw Error('FINAL24_REQUIRED');
+const sources=[...Array.from({length:24},(_,i)=>({campaign:'format2-oct23',recordPath:join(old,'records',i+'.json'),permanent:join(old,'report-v1/permanent'),rawRevision:'calibrated-v3' as const})),...Array.from({length:24},(_,i)=>({campaign:'factlink1-oct24',recordPath:join(own,'records',i+'.json'),permanent:join(own,'permanent'),rawRevision:'calibrated-v4' as const}))];
+const scratch=fs.mkdtempSync(join(own,'oracle-v5-replay-')),rows:any[]=[];
+let created=0,removed=0;
+try{
+  for(const source of sources){
+    const r=json(source.recordPath), result=join(source.permanent,r.primary.directory),summaryBytes=bytes(join(result,'summary.json'));
+    if(sha(summaryBytes)!==r.primary.summarySha256)throw Error('PRIMARY_HASH_DRIFT');
+    const summary=JSON.parse(summaryBytes.toString()),caseId=summary.authoringBenchmark.caseId,item=getAuthoringCase(caseId);
+    const artifact=bytes(join(result,item.target));
+    for(const mode of ['current-reference-fixture','available-saved-references']){
+      const fixture=fs.mkdtempSync(join(scratch,'fixture-'));created++;
+      try{
+        const put=(p:string,b:string|Buffer)=>{const f=join(fixture,p);fs.mkdirSync(dirname(f),{recursive:true});fs.writeFileSync(f,b)};
+        const seeded=buildAuthoringFixture(caseId),saved:any[]=[];
+        for(const [p,b]of Object.entries(seeded)){const savedPath=join(result,p);if(mode==='available-saved-references'&&fs.existsSync(savedPath)){const data=bytes(savedPath);put(p,data);saved.push({path:p,sha256:sha(data)})}else put(p,b)}
+        put(item.target,artifact);
+        const original=checkAuthoringBenchmark(fixture,caseId,source.rawRevision),v4=checkAuthoringBenchmark(fixture,caseId,'calibrated-v4'),v5=checkAuthoringBenchmark(fixture,caseId,'calibrated-v5');
+        const differences=v4.checks.flatMap((before,i)=>JSON.stringify(before)===JSON.stringify(v5.checks[i])?[]:[{id:before.id,before,after:v5.checks[i]}]);
+        if(differences.some(d=>d.id!=='relative-links'))throw Error('UNRELATED_CHECK_DELTA');
+        rows.push({campaign:source.campaign,scenarioId:summary.scenarioId,caseId,variant:summary.authoringBenchmark.variant,index:r.index,mode,artifactSha256:sha(artifact),summarySha256:sha(summaryBytes),rawRevision:source.rawRevision,rawQualityMatches:JSON.stringify(original)===JSON.stringify(summary.quality),original,v4,v5,differences,savedReferences:saved});
+        if(sha(bytes(join(result,item.target)))!==sha(artifact)||sha(bytes(join(result,'summary.json')))!==r.primary.summarySha256)throw Error('SOURCE_MUTATED');
+      }finally{if(fs.realpathSync(fixture)!==fixture||!fixture.startsWith(scratch+'/fixture-'))throw Error('UNSAFE_FIXTURE_CLEANUP');fs.rmSync(fixture,{recursive:true});removed++}
+    }
+  }
+}finally{if(fs.realpathSync(scratch)!==scratch)throw Error('UNSAFE_SCRATCH_CLEANUP');fs.rmSync(scratch,{recursive:true})}
+const oraclePath=join(repo,'ai/flow-eval/authoring-benchmark.ts');
+const report={schema:'gennady.authoring-section-reference-calibration.1',primaryGradesReplaced:false,semanticGradesReplaced:false,modelCalls:0,oraclePath,oracleSha256:sha(bytes(oraclePath)),scriptSha256:sha(bytes(fileURLToPath(import.meta.url))),sourceNote:'Actual PR working-tree v5 file; frozen worker sources remained v4 throughout all 24 live attempts.',cleanup:{fixturesCreated:created,fixturesRemoved:removed,scratchRemoved:!fs.existsSync(scratch)},records:rows};
+if(created!==96||removed!==96||rows.some(r=>!r.rawQualityMatches))throw Error('REPLAY_NOT_EXACT');
+fs.writeFileSync(join(own,'calibrated-v5-replay.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify({records:rows.length,changed:rows.filter(r=>r.differences.length).map(r=>({id:r.scenarioId,mode:r.mode,changes:r.differences})),cleanup:report.cleanup}));

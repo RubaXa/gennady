@@ -1,0 +1,36 @@
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const own=dirname(fileURLToPath(import.meta.url));
+const json=p=>JSON.parse(fs.readFileSync(p,'utf8'));
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const config=json(join(own,'config.json')), pre=json(join(own,'preregistered-protocol.json'));
+if(pre.mechanism?.sha256!==sha(fs.readFileSync(fileURLToPath(import.meta.url))))throw Error('MECHANISM_NOT_FROZEN');
+const rows=config.attempts.map((a,index)=>{
+  const record=json(join(own,'records',`${index}.json`));
+  const dir=join(own,'permanent',record.primary.directory), traceBytes=fs.readFileSync(join(dir,'trajectory.json'));
+  if(sha(traceBytes)!==record.primary.trajectorySha256)throw Error('PRIMARY_TRACE_DRIFT');
+  const trace=JSON.parse(traceBytes), calls=trace.events.filter(e=>e.type==='tool');
+  const projected=calls.map(e=>{
+    let args;try{args=JSON.parse(e.arg??'{}')}catch{args={}}
+    const command=typeof args.command==='string'?args.command:null;
+    const path=typeof args.filePath==='string'?args.filePath:null;
+    return {callId:e.callId,tool:e.tool,status:e.status,path,command,flags:{
+      acronymSourceSearch:e.tool==='bash'&&command!==null&&/\b(rg|grep|find)\b/.test(command)&&/acronym|\bACR\b|SPEC_ID|REQ.?ID/i.test(command),
+      decisionSourceSearch:e.tool==='bash'&&command!==null&&/\b(rg|grep|find)\b/.test(command)&&/DECISION_LOG|decision.log/i.test(command),
+      repositoryDiscovery:e.tool==='bash'&&command!==null&&/\b(ls|find)\b/.test(command),
+      fullRootRead:e.tool==='read'&&path!==null&&path.endsWith('/ai/directives/sdd-v2/root.directive.xml'),
+      failedDecisionFormatRead:e.tool==='read'&&path!==null&&/decision.log.format\.xml$/.test(path)&&e.status!=='completed',
+      opaqueBash:e.tool==='bash'&&command===null,
+    }};
+  });
+  return {index,scenarioId:a.scenario.id,...a.scenario.authoringBenchmark,traceSha256:record.primary.trajectorySha256,totalCalls:calls.length,counts:Object.fromEntries(Object.keys(projected[0]?.flags??{}).map(key=>[key,projected.filter(c=>c.flags[key]).length])),flaggedCalls:projected.filter(c=>Object.values(c.flags).some(Boolean))};
+});
+const groups=['baseline','facts'].flatMap(arm=>['module-flat','module-nested'].map(caseId=>{
+  const selected=rows.filter(r=>r.variant===arm&&r.caseId===caseId);
+  return {arm,caseId,recorded:selected.length,totalCalls:selected.reduce((n,r)=>n+r.totalCalls,0),counts:Object.fromEntries(Object.keys(rows[0]?.counts??{}).map(key=>[key,selected.reduce((n,r)=>n+r.counts[key],0)]))};
+}));
+const result={schema:'gennady.factlink1-observed-mechanism.1',authority:'lexical observed-call categories only; not necessity or private-reasoning inference',limitations:['opaque Bash remains unknown','a source lookup can be justified','absence of these searches is not proof no archaeology occurred'],groups,rows};
+fs.writeFileSync(join(own,'mechanism.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify(groups));

@@ -1,0 +1,203 @@
+{
+  "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r5",
+  "date": "2026-10-24",
+  "timestamp": "2026-10-24T09:13:47.511Z",
+  "sha": "09c2329bdeafa34209b58d0c0470b05d2c2ca721",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "b7161053c262d4f676c5262131273224465486c38b0ea4605a69bcedb84bb6e5",
+    "configSha256": "3b97971fde7bee817b6ca40493af7c749c129be0fcd4553f34e6614acac94cc8"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 100,
+    "observeEveryMs": 2500,
+    "stuckAfter": 80,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 18,
+  "durationMs": 77046,
+  "usage": {
+    "messages": 17,
+    "input": 30299,
+    "output": 6372,
+    "reasoning": 5044,
+    "cacheRead": 452864,
+    "cacheWrite": 0,
+    "total": 41715,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 74572
+  },
+  "judgeUsage": {
+    "sessionId": "ses_e92d16981ffeGF4zVz8vkWhSMe",
+    "usage": {
+      "messages": 1,
+      "input": 6911,
+      "output": 92,
+      "reasoning": 16624,
+      "cacheRead": 2048,
+      "cacheWrite": 0,
+      "total": 23627,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 1,
+      "wallClockMs": 95302
+    }
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": true,
+    "detail": "module-flat: bounded artifact checks passed; independent semantic review not claimed",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "no-skeleton",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "pending-approval",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "relative-links",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "required-facts",
+        "pass": true,
+        "detail": "passed"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "specs/infra-base/infra-base.spec.md",
+    "specs/token/normalize/normalize.spec.md",
+    "specs/token/token.spec.md"
+  ],
+  "authoringBenchmark": {
+    "prompt": {
+      "schema": "gennady.authoring-instruction-envelope.1",
+      "bytes": 43574,
+      "approximateTokens": 8742,
+      "digest": "ba3a99b0fd6fae2b58e38594dfcbc616c83960c449789930095d66d4b432ed73",
+      "parts": [
+        {
+          "name": "module.skeleton",
+          "bytes": 7986,
+          "approximateTokens": 1944,
+          "sha256": "386ee407fbee99006d36ac9de430ce25a3fba4342555cf7ea76199053b3960bd"
+        },
+        {
+          "name": "module.manifest",
+          "bytes": 8356,
+          "approximateTokens": 993,
+          "sha256": "27558bbff34c7673528183312a7ab205cdf26774c2c432ee49310fd9731ed867"
+        },
+        {
+          "name": "module.directive.xml",
+          "bytes": 10397,
+          "approximateTokens": 2060,
+          "sha256": "d86b9cdd6b07cf4e56dbe388945d68bb2b67106800efafe286b61e2c438a1748"
+        },
+        {
+          "name": "formats/entity-inventory-format.xml",
+          "bytes": 3297,
+          "approximateTokens": 674,
+          "sha256": "1576369d3ea8f304133847b724c0ce46de68bf5ab2bbf20be4415feb88b45ecf"
+        },
+        {
+          "name": "formats/entity-surface-format.xml",
+          "bytes": 3346,
+          "approximateTokens": 778,
+          "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074"
+        },
+        {
+          "name": "formats/dbc-contracts.xml",
+          "bytes": 10192,
+          "approximateTokens": 2293,
+          "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4"
+        }
+      ]
+    },
+    "taskDigest": "b5fb5074c2c6a56c0a51bab5dd5bbbb1ee58529479e5fbb77be827b00dc490e4",
+    "oracleDigest": "a1b3892bdae43664a084e1814b2d29c58454ea90bb1a1ba4c8b1823924bce2cf",
+    "harnessDigest": "b90bcdfe3edf67366124c6de7c4d6b5a86f5779a6c3de6435d4b9bd87de466c1",
+    "environmentDigest": "0722937da9aa414dea0d6f62b69061c8b0e23dfdaed55efdd75a4b7c15cdb39f",
+    "environmentVerified": true,
+    "campaign": "factlink1-oct24",
+    "caseId": "module-flat",
+    "variant": "baseline",
+    "repetition": 5,
+    "sourceCommit": "09c2329bdeafa34209b58d0c0470b05d2c2ca721",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": true,
+    "semanticVerdict": "pass",
+    "trajectoryPass": false,
+    "durationMs": 74572,
+    "nonCacheTokens": 41715,
+    "metrics": {
+      "tools": 18,
+      "targetReads": 2,
+      "repeatedTargetReads": 1,
+      "wholeWrites": 2,
+      "partialWrites": 0,
+      "failedTools": 1,
+      "checks": 2,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 70341
+    }
+  },
+  "artifactFiles": [
+    "specs/token/normalize/normalize.spec.md"
+  ]
+}

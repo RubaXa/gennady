@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 20,
+  "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r6",
+  "sourceSha": "67326bc51786cd548b2334e4e5fbcb4a9bc66c53",
+  "startedAt": "2026-10-24T09:20:40.916Z",
+  "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/20",
+  "sessions": [
+    {
+      "id": "ses_e92c99f22ffeEynMwOqgCKx5rq",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/20/sdd-flow-eval-wsL1SH",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e92c86791ffe2AiRu2ZjtK1wSl",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/20/sdd-flow-eval-wsL1SH",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6",
+    "summarySha256": "caa62dad1b1542901a8626c8d1bce9b4675457a4fe8f33ffb48accd5e9784236",
+    "trajectorySha256": "c735be563dfdf1b6b6c3dda4eee39f97fdab3b47f340907cbacbd5c691cc1976",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 21,
+    "nonCacheTokens": 48054,
+    "messages": 13
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T09:22:25.063Z",
+  "knownSessions": [
+    {
+      "id": "ses_e92c99f22ffeEynMwOqgCKx5rq",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/20/sdd-flow-eval-wsL1SH"
+    },
+    {
+      "id": "ses_e92c86791ffe2AiRu2ZjtK1wSl",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/20/sdd-flow-eval-wsL1SH"
+    }
+  ]
+}
