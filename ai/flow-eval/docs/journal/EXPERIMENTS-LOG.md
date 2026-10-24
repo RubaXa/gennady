@@ -1357,3 +1357,24 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
   Ошибка метки порта cleanup-summary явно связана erratum, raw proof не переписан.
 - **Решение:** исходные production prompts сохраняем; candidate branch и bounded archive — evidence
   отрицательного/частичного результата. [Полный отчёт](../../results/authoring-campaigns/factlink1-oct24/REPORT.md).
+
+## 2026-10-24 — TOOLFACT1: факты в ответе инструмента, экономия есть, пакет отклонён
+
+- **Матрица:** 24 новых live-попытки, два module cases × baseline/facts × шесть повторов;
+  clean `b30093dc`/`8bf28d29`, frozen calibrated-v5, только Flash через AI Proxy, sequential AB/BA.
+- **Переменная:** `sdd-new module` выдаёт вычисленные ID/ACR/REQ-DL syntax и точные parent links.
+  Скелеты одинаковы; директивы/шаблоны не расширялись. Dynamic output +923/+944 байта.
+- **Расход:** flat tokens −13.0%, tools −20.7%, worker time −20.3%; nested −12.9%/−8.9%/−17.5%.
+  Всего tools 305→260, worker non-cache 641 633→571 973; parent native Read 11→12, не пропускался.
+- **Качество:** semantic 12/12→7/12. Три positive ASCII/precondition overlap, одно недопустимое
+  сужение parent domain, одно выдуманное исключение крайних hyphen. Не принимаем этот пакет.
+- **Стенд:** два false-negative pending (1 и 7, обе стороны) отдельно исправлены v6;
+  48/48 replay fixtures воспроизвели raw v5, только pending-approval изменён, все удалены.
+  Semantic verdict/rationale и исходные summary не переписаны. Path proof по-прежнему 0/24 unknown.
+- **Роли:** worker 1 213 606, judge 356 853, reflection 920 421 non-cache; все 72 usage complete/Flash.
+  Всего cache-read 11 800 064; денежная цена и точный HTTP/retry count неизвестны.
+  Live-серия 58m46.5s; prep/post проверки отдельно. Время descriptive на общем хосте.
+- **Cleanup:** 24 fixtures и inactive stores + 48 SDK deletion acknowledgements; сервер остановлен,
+  десять private roots удалены, journal modes восстановлены. Shared dependencies сохранены.
+- **Решение:** рабочие prompts/CLI не меняем, вариант остаётся в экспериментальной ветке/архиве.
+  [Отчёт и каждый call](../../results/authoring-campaigns/toolfact1-oct24/REPORT.md).

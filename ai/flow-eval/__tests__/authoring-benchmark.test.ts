@@ -716,7 +716,7 @@ it('calibrated-v3: rejects incomplete, questioned or negated not-issued wording'
 });
 
 it('calibrated-v4: accepts bounded not-received families while explicit v3 remains unchanged', () => {
-  assert.equal(CURRENT_AUTHORING_BENCHMARK_REVISION, 'calibrated-v5');
+  assert.equal(CURRENT_AUTHORING_BENCHMARK_REVISION, 'calibrated-v6');
   // Exact HANDOFF line from FORMAT2 prose-r2, raw SHA-256:
   // de5dfad52f82682c510298576d0d4024c611467970cd050653f275a70a866cb4.
   // This is a fixture-level lexical regression, not a regrade or live replay of that attempt.
@@ -1041,6 +1041,61 @@ it('rejects seeded-file mutation, unexpected sidecars, symlink/hardlink targets 
     } finally {
       env.cleanup();
     }
+  }
+});
+
+it('calibrated-v6: accepts observed no-confirmation/comma clauses without rewriting historical v5', () => {
+  for (const id of ['module-flat', 'module-nested'] as const) {
+    for (const clause of [
+      'Реализация не создана и не проверена; операторское подтверждение отсутствует; поведение будет проверено после реализации.',
+      'Реализации нет; операторское одобрение не получено, тикеты не создавались.',
+    ]) {
+      const env = fixture(id);
+      try {
+        put(
+          env.root,
+          env.item.target,
+          positive(id).replace(
+            /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+            `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${clause}\n<!--/SECTION:HANDOFF-->`
+          )
+        );
+        const old = checkAuthoringBenchmark(env.root, id, 'calibrated-v5');
+        const revised = checkAuthoringBenchmark(env.root, id, 'calibrated-v6');
+        assert.equal(old.checks.find((c) => c.id === 'pending-approval')?.pass, false);
+        assert.equal(revised.pass, true, revised.detail);
+        assert.deepEqual(
+          revised.checks.filter((c) => c.id !== 'pending-approval'),
+          old.checks.filter((c) => c.id !== 'pending-approval')
+        );
+        assert.deepEqual(checkAuthoringBenchmark(env.root, id), revised);
+      } finally {
+        env.cleanup();
+      }
+    }
+  }
+});
+
+it('calibrated-v6: new pending spellings do not accept questions, conditionals, or contradictory approval', () => {
+  for (const clause of [
+    'Операторское подтверждение присутствует.',
+    'Операторское подтверждение отсутствует ли?',
+    'Неверно, что операторское подтверждение отсутствует.',
+    'Если операторское подтверждение отсутствует, нужно спросить оператора.',
+    'Операторское подтверждение отсутствует; оператор одобрил спецификацию.',
+    'Операторское одобрение не получено, оператор одобрил спецификацию.',
+    'Операторское подтверждение отсутствует. Operator approval has been granted.',
+  ]) {
+    expectRejected(
+      'module-flat',
+      (text) =>
+        text.replace(
+          /<!--SECTION:HANDOFF-->[\s\S]*?<!--\/SECTION:HANDOFF-->/,
+          `<!--SECTION:HANDOFF-->\n## Handoff to Tasks\n${clause}\n<!--/SECTION:HANDOFF-->`
+        ),
+      'pending-approval',
+      'calibrated-v6'
+    );
   }
 });
 

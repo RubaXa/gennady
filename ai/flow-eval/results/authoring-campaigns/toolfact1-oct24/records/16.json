@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 16,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-baseline-r5",
+  "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+  "startedAt": "2026-10-24T11:47:14.443Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/16",
+  "sessions": [
+    {
+      "id": "ses_e9243700bffeBhDGWYjTn42awD",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/16/sdd-flow-eval-ebKTIT",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e9241a1daffeWsg17sA7dI74OS",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/16/sdd-flow-eval-ebKTIT",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r5",
+    "summarySha256": "9b44e6ce9312a572f5b63843a3134de45a614a8ba56d3306fc33f4e21c2af0e4",
+    "trajectorySha256": "644ea63c62c21fdc4ee443e9e843bea04bfe495ca681948c2978dd15069abe5f",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 29,
+    "nonCacheTokens": 57280,
+    "messages": 20
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:49:39.072Z",
+  "knownSessions": [
+    {
+      "id": "ses_e9243700bffeBhDGWYjTn42awD",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/16/sdd-flow-eval-ebKTIT"
+    },
+    {
+      "id": "ses_e9241a1daffeWsg17sA7dI74OS",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/16/sdd-flow-eval-ebKTIT"
+    }
+  ]
+}

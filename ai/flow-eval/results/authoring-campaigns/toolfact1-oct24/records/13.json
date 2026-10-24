@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 13,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-baseline-r4",
+  "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+  "startedAt": "2026-10-24T11:40:35.679Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/13",
+  "sessions": [
+    {
+      "id": "ses_e924986e4ffeH76NPQPPaF3eil",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/13/sdd-flow-eval-U62XxB",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e9247fec4ffedmktW7f7U3N1LS",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/13/sdd-flow-eval-U62XxB",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r4",
+    "summarySha256": "55752a67714f16a6e828fb255a54809a46d9e6a525e83c3641f6c99c111d7364",
+    "trajectorySha256": "b00d59508dea92c1b117196a048fcbdac369f0014fb05f8ab0aa94a3c10f2263",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 30,
+    "nonCacheTokens": 52998,
+    "messages": 20
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:42:48.459Z",
+  "knownSessions": [
+    {
+      "id": "ses_e924986e4ffeH76NPQPPaF3eil",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/13/sdd-flow-eval-U62XxB"
+    },
+    {
+      "id": "ses_e9247fec4ffedmktW7f7U3N1LS",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/13/sdd-flow-eval-U62XxB"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 0,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-baseline-r1",
+  "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+  "startedAt": "2026-10-24T11:09:19.914Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/0",
+  "sessions": [
+    {
+      "id": "ses_e9266262cffealtqtFXw4BWTS5",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/0/sdd-flow-eval-5bnKb8",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e92648b90ffe8M9eNWRtB71sHA",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/0/sdd-flow-eval-5bnKb8",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r1",
+    "summarySha256": "5e837039481215bfccfdc553a47d424635d7638c99a85a67d23dff1816477604",
+    "trajectorySha256": "60284ab3db905c428f61fdfa8e583e9e88861959c6a488b80d15a3ab344e789b",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 31,
+    "nonCacheTokens": 65158,
+    "messages": 20
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:12:55.683Z",
+  "knownSessions": [
+    {
+      "id": "ses_e9266262cffealtqtFXw4BWTS5",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/0/sdd-flow-eval-5bnKb8"
+    },
+    {
+      "id": "ses_e92648b90ffe8M9eNWRtB71sHA",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/0/sdd-flow-eval-5bnKb8"
+    }
+  ]
+}

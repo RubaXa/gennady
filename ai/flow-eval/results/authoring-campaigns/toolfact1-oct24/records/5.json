@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 5,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-baseline-r2",
+  "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+  "startedAt": "2026-10-24T11:21:42.199Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/5",
+  "sessions": [
+    {
+      "id": "ses_e925ad2ebffeFbAKBqE89HD0o5",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/5/sdd-flow-eval-P7lR5f",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e92592444ffercP399z1CfIr6z",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/5/sdd-flow-eval-P7lR5f",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r2",
+    "summarySha256": "507026efdec7f19f4ec4ebbf9a094fe699384740f2567a0096bd738223024d5f",
+    "trajectorySha256": "052ea42a627675f4aa41b881da6fea399c43c683d3e1aef438c4b555bff4abf9",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 29,
+    "nonCacheTokens": 57350,
+    "messages": 17
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:24:12.268Z",
+  "knownSessions": [
+    {
+      "id": "ses_e925ad2ebffeFbAKBqE89HD0o5",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/5/sdd-flow-eval-P7lR5f"
+    },
+    {
+      "id": "ses_e92592444ffercP399z1CfIr6z",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/5/sdd-flow-eval-P7lR5f"
+    }
+  ]
+}

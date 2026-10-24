@@ -172,3 +172,16 @@ done
   is not relabelled as the exact cloud-ios E-18 round-trip, and 23A makes no live-LLM/eval claim.
 - **Batch 23 as a whole remains OPEN** until 23C is discharged; 23A also does not perform E-14
   self-migration, remove `tasks/`, regrade warnings as errors, or alter the V1 corpus.
+
+## G. TOOLFACT1 authoring pilot — rejected (2026-10-24)
+
+The fresh 2×2×6 Flash-only trial measured computed identifiers/links in `sdd-new` output,
+not a directive rewrite or a combined tool. Worker tokens decreased about 13% in both cases,
+but semantic PASS was 12/12 for controls and 7/12 for candidates. Do not enable the experimental
+output by default or call its resource signal a quality-preserving optimization.
+
+Primary grades remain frozen v5. Separately versioned v6 corrects two pending-clause false
+negatives; the 48-fixture replay changes only pending-approval and no semantic result. Opaque
+Bash path evidence stays unknown. No approval, receipt, execution, validator scope or production
+flow contract is relaxed. Evidence, all failed documents and source diff are retained in
+[the bounded campaign archive](../../results/authoring-campaigns/toolfact1-oct24/REPORT.md).

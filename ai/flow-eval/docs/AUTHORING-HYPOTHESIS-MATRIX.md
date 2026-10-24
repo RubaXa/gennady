@@ -1,5 +1,12 @@
 # Authoring: source map and one-variable hypotheses
 
+Latest controlled result (2026-10-24): **TOOLFACT1 rejected**. A fresh 24-attempt comparison
+of computed facts/links in `sdd-new` output reduced worker tokens by about 13% in both module
+cases, but semantic PASS dropped from 12/12 to 7/12. Production directives and CLI output remain
+unchanged. See [the measured result](../results/authoring-campaigns/toolfact1-oct24/REPORT.md).
+The offline status statements below describe their historical snapshot and named mutations,
+not permission to relabel later pilots as untested or successful.
+
 Status: offline source inspection at main `056870393ea2138a9470b7ef6188a01dc7885f81`.
 Every optimization hypothesis below is **NOT TESTED**. This document changes neither production
 instructions nor the recorded baseline. Follow the [analysis checklist](./11-ANALYSIS-CHECKLIST.md):
@@ -235,3 +242,20 @@ validators, not an invented successful command or project-wide ticket-completion
 No changes here to approval/refine/pivot/history, actual validators, frozen source, model/server,
 collector or permanent evidence. Any later test/probe uses owned temporary fixtures and removes
 them on both success and failure. No live model call or heavy test was run for this source map.
+
+## TOOLFACT1 — completed, rejected; not a batching trial
+
+- Variable: derived Spec ID/ACR, REQ/DL syntax and actual parent links/anchors in `sdd-new module`
+  output only. Directives, templates, tasks, frozen v5 oracle/harness/config identical; separately
+  built source commits `b30093dc` and `8bf28d29`. Two cases × two arms × six fresh repetitions.
+- Both cases meet the descriptive resource target: tokens −13.0%/−12.9%, tools −20.7%/−8.9%,
+  worker time −20.3%/−17.5%. Static instruction bytes unchanged; dynamic output +923/+944 bytes.
+- Selection fails on quality: semantic 6→3 and 6→4 of six; five concrete contract counterexamples.
+  Neither fewer calls nor fewer native rewrite observations authorizes adoption.
+- Two pending-clause false negatives separately fixed in versioned v6; 48 model-free fixtures
+  reproduce raw v5 and change only that check. Primary/semantic grades unchanged; all fixtures cleaned.
+- M3 remains unproven for opaque Bash; no workflow-success/S2 claim. This is NOT B1/B2: no combined
+  tool or removal of a required native Read was tested. Role costs/HTTP unknowns stay separate.
+- Keep the experimental branch and bounded evidence; do not enable its output in the shipped CLI.
+  Do not repeat this same bundled packet as a new “improvement”. A future trial must identify a
+  different variable and a mechanism preserving the exact parent domain contract, not just ID syntax.

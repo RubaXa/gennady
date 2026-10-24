@@ -1,0 +1,246 @@
+{
+  "schema": "gennady.format-pilot-descriptive-effects.1",
+  "authority": "Derived pilot interpretation only; primary grades and standard comparator unchanged. keep is further-review only.",
+  "collectionComplete": true,
+  "qualifiedMatrix": true,
+  "pairs": [
+    {
+      "baseline": "baseline",
+      "candidate": "facts",
+      "contrast": "Computed identifiers, syntax and exact scope links added by sdd-new module output only; directives/templates unchanged. Does not isolate each field.",
+      "qualified": true,
+      "effect": "mixed",
+      "action": "reject",
+      "tokenTargetBothCases": true,
+      "furtherReviewOnly": true,
+      "reasons": [
+        "module-flat: Existing standard comparator flags this case; its unchanged pass-count comparison may include unknown semantic/path outcomes and is not alone proof of a quality failure.",
+        "module-flat: Observed known failures increased with a fully known reference: artifactPass, semanticPass. Inconclusive/opaque unknown outcomes were not counted as failure.",
+        "module-flat: Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+        "module-flat: Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+        "module-flat: Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible.",
+        "module-nested: Existing standard comparator flags this case; its unchanged pass-count comparison may include unknown semantic/path outcomes and is not alone proof of a quality failure.",
+        "module-nested: Observed known failures increased with a fully known reference: semanticPass. Inconclusive/opaque unknown outcomes were not counted as failure.",
+        "module-nested: Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+        "module-nested: Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+        "module-nested: Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible."
+      ],
+      "cases": [
+        {
+          "caseId": "module-flat",
+          "qualified": true,
+          "globalComparable": true,
+          "effect": "mixed",
+          "effectMeaning": "Descriptive resource contrast plus known-quality changes only; unknown quality is not parity, and no causal/statistical guarantee is made.",
+          "qualityAssessment": "known-failure-regression",
+          "workerTokenDirection": "better",
+          "trajectoryDirection": "better",
+          "elapsedDirection": "better",
+          "metricDeltas": {
+            "tools": {
+              "baseline": 29,
+              "candidate": 23,
+              "absolute": -6,
+              "percent": -20.689655172413794
+            },
+            "workerNonCacheTokens": {
+              "baseline": 57315,
+              "candidate": 49887.5,
+              "absolute": -7427.5,
+              "percent": -12.959085754165576
+            },
+            "workerMessages": {
+              "baseline": 20,
+              "candidate": 16,
+              "absolute": -4,
+              "percent": -20
+            },
+            "workerMs": {
+              "baseline": 106789.5,
+              "candidate": 85154,
+              "absolute": -21635.5,
+              "percent": -20.259950650578944
+            }
+          },
+          "promptBytes": {
+            "baseline": 43574,
+            "candidate": 43574,
+            "absolute": 0,
+            "percent": 0
+          },
+          "quality": {
+            "artifactPass": {
+              "baseline": 6,
+              "candidate": 5,
+              "baselineFailed": 0,
+              "candidateFailed": 1,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "semanticPass": {
+              "baseline": 6,
+              "candidate": 3,
+              "baselineFailed": 0,
+              "candidateFailed": 3,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "pathPass": {
+              "baseline": 0,
+              "candidate": 0,
+              "baselineFailed": 0,
+              "candidateFailed": 0,
+              "baselineKnown": 0,
+              "candidateKnown": 0,
+              "baselineUnknown": 6,
+              "candidateUnknown": 6,
+              "expected": 6
+            }
+          },
+          "better": [
+            "tools",
+            "workerNonCacheTokens",
+            "workerMessages",
+            "workerMs"
+          ],
+          "worse": [
+            "artifactPass",
+            "semanticPass"
+          ],
+          "knownWriteViolation": false,
+          "candidateObservedViolationAttempts": 0,
+          "candidatePathProven": false,
+          "acceptance": {
+            "qualityEvidenceComplete": false,
+            "noQualityLoss": null,
+            "noToolMessageGrowth": true,
+            "tokenTargetAtLeastTenPercent": true,
+            "standardComparatorRecommendation": "reject"
+          },
+          "action": "reject",
+          "actionMeaning": "Do not select this treatment under the frozen campaign acceptance.",
+          "reasons": [
+            "Existing standard comparator flags this case; its unchanged pass-count comparison may include unknown semantic/path outcomes and is not alone proof of a quality failure.",
+            "Observed known failures increased with a fully known reference: artifactPass, semanticPass. Inconclusive/opaque unknown outcomes were not counted as failure.",
+            "Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+            "Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+            "Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible."
+          ]
+        },
+        {
+          "caseId": "module-nested",
+          "qualified": true,
+          "globalComparable": true,
+          "effect": "mixed",
+          "effectMeaning": "Descriptive resource contrast plus known-quality changes only; unknown quality is not parity, and no causal/statistical guarantee is made.",
+          "qualityAssessment": "known-failure-regression",
+          "workerTokenDirection": "better",
+          "trajectoryDirection": "better",
+          "elapsedDirection": "better",
+          "metricDeltas": {
+            "tools": {
+              "baseline": 22.5,
+              "candidate": 20.5,
+              "absolute": -2,
+              "percent": -8.88888888888889
+            },
+            "workerNonCacheTokens": {
+              "baseline": 50581,
+              "candidate": 44079.5,
+              "absolute": -6501.5,
+              "percent": -12.853640695122674
+            },
+            "workerMessages": {
+              "baseline": 16,
+              "candidate": 12.5,
+              "absolute": -3.5,
+              "percent": -21.875
+            },
+            "workerMs": {
+              "baseline": 82217.5,
+              "candidate": 67848,
+              "absolute": -14369.5,
+              "percent": -17.477422689816645
+            }
+          },
+          "promptBytes": {
+            "baseline": 43574,
+            "candidate": 43574,
+            "absolute": 0,
+            "percent": 0
+          },
+          "quality": {
+            "artifactPass": {
+              "baseline": 5,
+              "candidate": 6,
+              "baselineFailed": 1,
+              "candidateFailed": 0,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "semanticPass": {
+              "baseline": 6,
+              "candidate": 4,
+              "baselineFailed": 0,
+              "candidateFailed": 2,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "pathPass": {
+              "baseline": 0,
+              "candidate": 0,
+              "baselineFailed": 0,
+              "candidateFailed": 0,
+              "baselineKnown": 0,
+              "candidateKnown": 0,
+              "baselineUnknown": 6,
+              "candidateUnknown": 6,
+              "expected": 6
+            }
+          },
+          "better": [
+            "tools",
+            "workerNonCacheTokens",
+            "workerMessages",
+            "workerMs",
+            "artifactPass"
+          ],
+          "worse": [
+            "semanticPass"
+          ],
+          "knownWriteViolation": false,
+          "candidateObservedViolationAttempts": 0,
+          "candidatePathProven": false,
+          "acceptance": {
+            "qualityEvidenceComplete": false,
+            "noQualityLoss": null,
+            "noToolMessageGrowth": true,
+            "tokenTargetAtLeastTenPercent": true,
+            "standardComparatorRecommendation": "reject"
+          },
+          "action": "reject",
+          "actionMeaning": "Do not select this treatment under the frozen campaign acceptance.",
+          "reasons": [
+            "Existing standard comparator flags this case; its unchanged pass-count comparison may include unknown semantic/path outcomes and is not alone proof of a quality failure.",
+            "Observed known failures increased with a fully known reference: semanticPass. Inconclusive/opaque unknown outcomes were not counted as failure.",
+            "Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+            "Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+            "Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible."
+          ]
+        }
+      ]
+    }
+  ]
+}

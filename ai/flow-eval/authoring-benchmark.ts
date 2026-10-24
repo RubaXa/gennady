@@ -49,8 +49,9 @@ export type AuthoringBenchmarkRevision =
   | 'calibrated-v2'
   | 'calibrated-v3'
   | 'calibrated-v4'
-  | 'calibrated-v5';
-export const CURRENT_AUTHORING_BENCHMARK_REVISION: AuthoringBenchmarkRevision = 'calibrated-v5';
+  | 'calibrated-v5'
+  | 'calibrated-v6';
+export const CURRENT_AUTHORING_BENCHMARK_REVISION: AuthoringBenchmarkRevision = 'calibrated-v6';
 export type AuthoringFact = { id: string; section: string; description: string };
 export type AuthoringCase = {
   id: AuthoringCaseId;
@@ -296,7 +297,8 @@ export function checkAuthoringBenchmark(
     revision === 'calibrated-v2' ||
       revision === 'calibrated-v3' ||
       revision === 'calibrated-v4' ||
-      revision === 'calibrated-v5'
+      revision === 'calibrated-v5' ||
+      revision === 'calibrated-v6'
       ? 'calibrated'
       : revision
   );
@@ -466,7 +468,8 @@ export function checkAuthoringBenchmark(
       if (
         revision === 'calibrated-v3' ||
         revision === 'calibrated-v4' ||
-        revision === 'calibrated-v5'
+        revision === 'calibrated-v5' ||
+        revision === 'calibrated-v6'
       ) {
         // A negative clause must not hide a later explicit grant, including after a semicolon.
         // Keep this closed vocabulary separate so historical v2 outcomes remain reproducible.
@@ -483,7 +486,8 @@ export function checkAuthoringBenchmark(
           revision === 'calibrated-v2' ||
           revision === 'calibrated-v3' ||
           revision === 'calibrated-v4' ||
-          revision === 'calibrated-v5'
+          revision === 'calibrated-v5' ||
+          revision === 'calibrated-v6'
         )
           need(
             !/не\s+ожидает\s+(?:операторского\s+approval|operator\s+approval|решения\s+оператора)|\bnot\s+awaiting\s+operator\s+approval\b/iu.test(
@@ -499,18 +503,26 @@ export function checkAuthoringBenchmark(
             ((revision === 'calibrated-v2' ||
               revision === 'calibrated-v3' ||
               revision === 'calibrated-v4' ||
-              revision === 'calibrated-v5') &&
+              revision === 'calibrated-v5' ||
+              revision === 'calibrated-v6') &&
               /(?<![\p{L}\p{N}_])ожидает\s+операторского\s+approval(?=$|[^\p{L}\p{N}_])/iu.test(
                 handoff
               )) ||
             ((revision === 'calibrated-v3' ||
               revision === 'calibrated-v4' ||
-              revision === 'calibrated-v5') &&
+              revision === 'calibrated-v5' ||
+              revision === 'calibrated-v6') &&
               /(?:^|[\n.!?;:])\s*(?:[-+>]|\d+[.)])?\s*операторское\s+одобрение\s+не\s+выдано(?=\s*(?:[.;\n]|$))/iu.test(
                 handoff.replace(/[*`]/g, '')
               )) ||
-            ((revision === 'calibrated-v4' || revision === 'calibrated-v5') &&
+            ((revision === 'calibrated-v4' ||
+              revision === 'calibrated-v5' ||
+              revision === 'calibrated-v6') &&
               /(?:^|[\n.!?;:])\s*(?:[-+>]|\d+[.)])?\s*(?:операторское\s+одобрение|одобрение\s+оператора)\s+(?:(?:ещ[ёе]|пока)\s+)?не\s+(?:выдано|получено)(?=\s*(?:[.;\n]|$))/iu.test(
+                handoff.replace(/[*`]/g, '')
+              )) ||
+            (revision === 'calibrated-v6' &&
+              /(?:^|[\n.!?;:])\s*(?:[-+>]|\d+[.)])?\s*(?:(?:операторское\s+одобрение|одобрение\s+оператора)\s+(?:(?:ещ[ёе]|пока)\s+)?не\s+(?:выдано|получено)|операторское\s+подтверждение\s+отсутствует)(?=\s*(?:[,.;\n]|$))/iu.test(
                 handoff.replace(/[*`]/g, '')
               )),
           'Handoff must remain pending'
@@ -528,7 +540,8 @@ export function checkAuthoringBenchmark(
         const linked = safeRead(root, target);
         if (fragment)
           need(
-            (revision === 'calibrated-v5' && extractSection(linked, fragment).status === 'ok') ||
+            ((revision === 'calibrated-v5' || revision === 'calibrated-v6') &&
+              extractSection(linked, fragment).status === 'ok') ||
               collectHeadings(linked).some(
                 (h) =>
                   h.text

@@ -1,0 +1,160 @@
+// Private owned OpenCode launcher. Preparation never starts a server or calls a model.
+// Local binary 1.17.15 supports XDG paths, OPENCODE_TEST_HOME, inline config and the disable flags below.
+// Official config precedence: https://opencode.ai/docs/config/#precedence-order
+import { spawn, execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, lstatSync, realpathSync, mkdirSync, readFileSync, writeFileSync, openSync, closeSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { homedir, userInfo } from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+const ownRoot = '/private/tmp/gennady-format-tool-facts-oct24.wQd4ur';
+const sourceConfig = join(homedir(), '.config/opencode/opencode.json');
+const binary = '/opt/homebrew/bin/opencode';
+const port = 4200;
+const flash = 'llm-proxy/deepseek-v4-flash';
+const mode = process.argv[2];
+const fail = code => { throw new Error(code); };
+if (process.argv.length !== 3 || !['--prepare-only', '--launch'].includes(mode)) fail('USAGE_PREPARE_ONLY_OR_LAUNCH');
+if (Number(process.versions.node.split('.')[0]) !== 22) fail('NODE_22_REQUIRED');
+if (dirname(fileURLToPath(import.meta.url)) !== ownRoot || realpathSync(ownRoot) !== ownRoot || lstatSync(ownRoot).isSymbolicLink()) fail('UNSAFE_OWN_ROOT');
+for (const name of ['LLM_PROXY_BASE_URL', 'LLM_PROXY_API_KEY']) if (!process.env[name]) fail('PROXY_ENV_MISSING');
+for (const path of [
+  '/Library/Application Support/opencode/opencode.json',
+  '/Library/Application Support/opencode/opencode.jsonc',
+  '/Library/Managed Preferences/ai.opencode.managed.plist',
+  join('/Library/Managed Preferences', userInfo().username, 'ai.opencode.managed.plist'),
+]) if (existsSync(path)) fail('MANAGED_CONFIG_REQUIRES_SEPARATE_REVIEW');
+try {
+  const listeners = execFileSync('/usr/sbin/lsof', ['-nP', '-t', `-iTCP:${port}`, '-sTCP:LISTEN'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000 }).trim();
+  if (listeners) fail('PORT_4200_BUSY');
+} catch (error) { if (error?.status !== 1) throw error; }
+const info = lstatSync(sourceConfig);
+if (!info.isFile() || info.isSymbolicLink() || info.size > 1024 * 1024) fail('UNSAFE_SOURCE_CONFIG');
+const original = JSON.parse(readFileSync(sourceConfig, 'utf8'));
+const provider = original.provider?.['llm-proxy'];
+if (!provider || typeof provider !== 'object' || !provider.options || !provider.models?.['deepseek-v4-flash']) fail('FLASH_PROVIDER_NOT_CONFIGURED');
+const projectedProvider = Object.fromEntries(['npm', 'name', 'options'].filter(key => provider[key] !== undefined).map(key => [key, provider[key]]));
+projectedProvider.models = { 'deepseek-v4-flash': provider.models['deepseek-v4-flash'] };
+if (/\{file:/.test(JSON.stringify(projectedProvider))) fail('PROVIDER_FILE_INTERPOLATION_NOT_SUPPORTED');
+const envReferences = [...new Set([...JSON.stringify(projectedProvider).matchAll(/\{env:([^}]+)\}/g)].map(match => match[1]))];
+if (envReferences.some(key => !process.env[key])) fail('PROVIDER_ENV_REFERENCE_MISSING');
+const actors = ['build', 'plan', 'general', 'explore', 'compaction', 'title', 'summary'];
+const pins = {
+  model: flash,
+  small_model: flash,
+  enabled_providers: ['llm-proxy'],
+  agent: Object.fromEntries(actors.map(name => [name, { model: flash }])),
+  mcp: {},
+  plugin: [],
+  instructions: [],
+  permission: 'allow',
+  share: 'disabled',
+  snapshot: false,
+  autoupdate: false,
+};
+const projected = { $schema: 'https://opencode.ai/config.json', ...pins, provider: { 'llm-proxy': projectedProvider } };
+const paths = {
+  cwd: join(ownRoot, 'server-home'),
+  config: join(ownRoot, 'server-config'),
+  data: join(ownRoot, 'server-data'),
+  cache: join(ownRoot, 'server-cache'),
+  state: join(ownRoot, 'server-state'),
+  runtime: join(ownRoot, 'server-runtime'),
+  temporary: join(ownRoot, 'server-tmp'),
+  bun: join(ownRoot, 'server-bun'),
+  bunCache: join(ownRoot, 'server-bun-cache'),
+  npmCache: join(ownRoot, 'server-npm-cache'),
+};
+for (const path of [...Object.values(paths), join(paths.config, 'opencode')]) {
+  if (existsSync(path)) { if (lstatSync(path).isSymbolicLink() || !lstatSync(path).isDirectory() || realpathSync(path) !== path) fail('OWNED_STATE_PATH_ALIAS'); }
+  else mkdirSync(path, { mode: 0o700 });
+}
+const configPath = join(paths.config, 'opencode/opencode.json');
+const serialized = JSON.stringify(projected, null, 2) + '\n';
+if (existsSync(configPath)) {
+  if (lstatSync(configPath).isSymbolicLink() || (lstatSync(configPath).mode & 0o777) !== 0o600 || readFileSync(configPath, 'utf8') !== serialized) fail('EXISTING_PRIVATE_CONFIG_MISMATCH');
+} else writeFileSync(configPath, serialized, { mode: 0o600, flag: 'wx' });
+const childEnv = {};
+for (const key of ['PATH', 'SHELL', 'HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TZ', 'TERM', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY', 'http_proxy', 'https_proxy', 'all_proxy', 'no_proxy', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE', 'SSL_CERT_DIR', 'LLM_PROXY_BASE_URL', 'LLM_PROXY_API_KEY', 'OPENCODE_SERVER_PASSWORD', 'OPENCODE_SERVER_USERNAME', ...envReferences]) if (process.env[key] !== undefined) childEnv[key] = process.env[key];
+Object.assign(childEnv, {
+  PATH: dirname(process.execPath) + ':' + (process.env.PATH || ''),
+  XDG_CONFIG_HOME: paths.config,
+  XDG_DATA_HOME: paths.data,
+  XDG_CACHE_HOME: paths.cache,
+  XDG_STATE_HOME: paths.state,
+  XDG_RUNTIME_DIR: paths.runtime,
+  OPENCODE_TEST_HOME: paths.cwd,
+  TMPDIR: paths.temporary,
+  BUN_INSTALL: paths.bun,
+  BUN_INSTALL_CACHE_DIR: paths.bunCache,
+  npm_config_cache: paths.npmCache,
+  OPENCODE_CONFIG_CONTENT: JSON.stringify(pins),
+  OPENCODE_DISABLE_AUTOUPDATE: '1',
+  OPENCODE_DISABLE_DEFAULT_PLUGINS: '1',
+  OPENCODE_DISABLE_EXTERNAL_SKILLS: '1',
+  OPENCODE_DISABLE_CLAUDE_CODE: '1',
+  OPENCODE_DISABLE_MODELS_FETCH: '1',
+  OPENCODE_ENABLE_EXA: '0',
+});
+// Project config/AGENTS remain available inside the owned fixture. Home config/skills are isolated.
+// No OPENCODE_CONFIG or OPENCODE_CONFIG_DIR inherited from the operator is retained.
+const manifest = {
+  schema: 'gennady.authoring-owned-server.1',
+  ownRoot,
+  baseUrl: `http://127.0.0.1:${port}`,
+  binary,
+  node: process.version,
+  configPath,
+  configSha256: createHash('sha256').update(serialized).digest('hex'),
+  paths,
+  providers: ['llm-proxy'],
+  models: [flash],
+  actors,
+  disabled: ['MCP', 'external-plugins', 'default-plugins', 'external-skills', 'personal-Claude-instructions', 'autoupdate', 'models.dev-fetch', 'snapshots', 'sharing'],
+  precedence: 'Isolated XDG global provider + final nonsecret inline runtime pins; absent managed settings checked before launch.',
+  globalConfigModified: false,
+  parentHomeUnchanged: true,
+  serverStarted: false,
+  modelCalls: 0,
+};
+const manifestPath = join(ownRoot, 'server-preparation.json');
+if (!existsSync(manifestPath)) writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+if (mode === '--prepare-only') {
+  console.log(JSON.stringify({ prepared: true, ownRoot, configMode: '0600', configSha256: manifest.configSha256, baseUrl: manifest.baseUrl, serverStarted: false, modelCalls: 0 }));
+} else {
+  const logPath = join(ownRoot, 'server.log');
+  const log = openSync(logPath, 'wx', 0o600);
+  const stringLeaves = value => typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(stringLeaves) : [];
+  const privateValues = [process.env.LLM_PROXY_API_KEY, process.env.OPENCODE_SERVER_PASSWORD, ...stringLeaves(projectedProvider.options)].filter(value => typeof value === 'string' && value.length > 3);
+  const secrets = [...new Set(privateValues.flatMap(value => [value, JSON.stringify(value).slice(1, -1), encodeURIComponent(value)]))];
+  let pending = '', written = 0, discardOversizedLine = false;
+  const append = (chunk, ending = false) => {
+    if (discardOversizedLine) {
+      const newline = chunk.indexOf('\n');
+      if (newline < 0) return;
+      chunk = '[oversized log line withheld]\n' + chunk.slice(newline + 1);
+      discardOversizedLine = false;
+    }
+    pending += chunk;
+    const cut = ending ? pending.length : pending.lastIndexOf('\n') + 1;
+    if (!cut) { if (pending.length > 65536) { pending = ''; discardOversizedLine = true; } return; }
+    let text = pending.slice(0, cut); pending = pending.slice(cut);
+    for (const secret of secrets.sort((a, b) => b.length - a.length)) text = text.split(secret).join('[redacted]');
+    text = text.replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]');
+    if (written + Buffer.byteLength(text) <= 1024 * 1024) { writeFileSync(log, text); written += Buffer.byteLength(text); }
+  };
+  const child = spawn(binary, ['serve', '--hostname', '127.0.0.1', '--port', String(port), '--log-level', 'WARN'], { cwd: paths.cwd, env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+  child.stdout.on('data', bytes => append(String(bytes)));
+  child.stderr.on('data', bytes => append(String(bytes)));
+  const onInt = () => child.kill('SIGINT'), onTerm = () => child.kill('SIGTERM');
+  process.on('SIGINT', onInt); process.on('SIGTERM', onTerm);
+  if (child.pid) writeFileSync(join(ownRoot, 'server-pid.json'), JSON.stringify({ launcherPid: process.pid, serverPid: child.pid, baseUrl: manifest.baseUrl, paths }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+  console.log(JSON.stringify({ launcherPid: process.pid, serverPid: child.pid || null, baseUrl: manifest.baseUrl, ownedRoot: ownRoot }));
+  await new Promise(resolveChild => {
+    child.once('error', () => { process.exitCode = 2; resolveChild(); });
+    child.once('close', code => { process.exitCode = Number.isInteger(code) ? code : 2; resolveChild(); });
+  });
+  append('', true); closeSync(log);
+  process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm);
+}
