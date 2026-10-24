@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 6,
+  "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r2",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:18:38.249Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/6",
+  "sessions": [
+    {
+      "id": "ses_e91efc4a3ffenj47BJHiLCEe3N",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/6/sdd-flow-eval-0bqq34",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91eebfb4ffe0RN62T9NoImPAH",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/6/sdd-flow-eval-0bqq34",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2",
+    "summarySha256": "e268ac04f9274d2bc90986d2263dac328bf492cdab084d6406f2ab20e0617a4c",
+    "trajectorySha256": "5a384579d853ad93246ce54e7cac23d0eb7fad6ab0c8c775547a3a0760ea320d",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 18,
+    "nonCacheTokens": 42966,
+    "messages": 12
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:20:52.922Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91efc4a3ffenj47BJHiLCEe3N",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/6/sdd-flow-eval-0bqq34"
+    },
+    {
+      "id": "ses_e91eebfb4ffe0RN62T9NoImPAH",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/6/sdd-flow-eval-0bqq34"
+    }
+  ]
+}

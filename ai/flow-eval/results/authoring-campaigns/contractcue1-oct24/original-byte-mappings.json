@@ -1,0 +1,1760 @@
+[
+  {
+    "path": "report-v1/README.md",
+    "bytes": 11250,
+    "sha256": "2e116487f55f1f13b956daa5df37777943ad871a54ac4a789172c6b10258ef45",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/README.md"
+  },
+  {
+    "path": "report-v1/baseline.calls.md",
+    "bytes": 87370,
+    "sha256": "831e2952f7404e355cf25cfc9be4a6d0799e7236d3de3984f9d6c48f076307e6",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/baseline.calls.md"
+  },
+  {
+    "path": "report-v1/baseline.input.json",
+    "bytes": 516331,
+    "sha256": "2c8da2bc6eba0ae63fd606368c111ee79eaff49bac418402ad3f67c6d595f187",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/baseline.input.json"
+  },
+  {
+    "path": "report-v1/baseline.report.json",
+    "bytes": 292231,
+    "sha256": "4537aea875deaa668d8f5a6be7a010064a3f51771bdd2b74153bb6b79ee08726",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/baseline.report.json"
+  },
+  {
+    "path": "report-v1/baseline.trajectory.md",
+    "bytes": 63530,
+    "sha256": "5808ce41f88f63a01e2952ad6b8abe5117915d92dd0b3373e088337a9d321110",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/baseline.trajectory.md"
+  },
+  {
+    "path": "report-v1/bindings.json",
+    "bytes": 18774,
+    "sha256": "32494a7f8e1751b07e6a29efc795b130efabc4f0a87eb3bcbbc3bc4958485897",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/bindings.json"
+  },
+  {
+    "path": "report-v1/comparisons.json",
+    "bytes": 2554,
+    "sha256": "77b045ae861f5c936e8ae9a88a12f72a3eef1ccc42c2a2d24d9f32245bf5d3ba",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/comparisons.json"
+  },
+  {
+    "path": "report-v1/contract-observations.json",
+    "bytes": 36633,
+    "sha256": "4644b43def7294a91d8ea1b7558fc1fc9fecc48987d965aa24e9ef7bfe00c5e9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/contract-observations.json"
+  },
+  {
+    "path": "report-v1/facts.calls.md",
+    "bytes": 74443,
+    "sha256": "e0be405973c3a26721f124686722947f32c197c92fc8f9d4c93672c25df8a98e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/facts.calls.md"
+  },
+  {
+    "path": "report-v1/facts.input.json",
+    "bytes": 457627,
+    "sha256": "9790fe11da02ccf6daff5244ecc47bc2b2053020be8105b8f71675705c02f23a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/facts.input.json"
+  },
+  {
+    "path": "report-v1/facts.report.json",
+    "bytes": 257442,
+    "sha256": "655883746166ffa7c216e2b3b91390910611849049c857c060483542bc9109bc",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/facts.report.json"
+  },
+  {
+    "path": "report-v1/facts.trajectory.md",
+    "bytes": 55617,
+    "sha256": "5904bede4b57d7b105682911d31872a8707e381bb7ff5f3d0c669dfec04d5e2d",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/facts.trajectory.md"
+  },
+  {
+    "path": "report-v1/hypothesis-effects.json",
+    "bytes": 9565,
+    "sha256": "e56e94075802a7924871a11a27ffb59354201acf893ddba08e4d241bdabe0bd7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/hypothesis-effects.json"
+  },
+  {
+    "path": "report-v1/net-effects.json",
+    "bytes": 17218,
+    "sha256": "8263dc59efe3965a8b0a3acf60a99f0199affa7bf3da5ea57ff0722838b68b44",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/net-effects.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/summary.json",
+    "bytes": 5604,
+    "sha256": "e74bd30e3bf0c48866967789b12e58ae304349f953c8f96ae927dc319053fcec",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/summary.json",
+    "bytes": 5604,
+    "sha256": "39fd2b9c7d13b6ca8f51fc215f86db08702f38ea13420e565f5348c51233ccb8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/summary.json",
+    "bytes": 5598,
+    "sha256": "bc3e4eed5e82c4ac50ef7f853d13ad3737b425af949233055eeaa574ca27d699",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/summary.json",
+    "bytes": 5603,
+    "sha256": "715f559cb1f0ca9970f77a338726ade7884138a65ec4d0709c99f1845b15f367",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/summary.json",
+    "bytes": 5599,
+    "sha256": "17b805f49679f5084a87bb5e56abb6cf089e15df2d0104aeff95fca84dfebd9c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/summary.json",
+    "bytes": 5596,
+    "sha256": "e5486f4235988a16174c1dc94b8825d33f4baa07917e3a0f2b7c489221c0c0d9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/summary.json",
+    "bytes": 5598,
+    "sha256": "df0f739f2e6e5dfcf00513685c606195c41bc2ae2925bed2a330796bb0741b96",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/summary.json",
+    "bytes": 5593,
+    "sha256": "7660a88f722e8d0ac4842f3cc73b70e93248c5b4c67fce015a3c46d3463ad640",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/summary.json",
+    "bytes": 5593,
+    "sha256": "58002132117e94056e0d9b19a2c67a910e3fc8d89e42ac124b02e3d4c1eb7d87",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/summary.json",
+    "bytes": 5595,
+    "sha256": "d88c3a22885ac0bdff33cdc5bc313cfb324df08a71d886ee2b432352540301c3",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/summary.json",
+    "bytes": 5594,
+    "sha256": "dc36d95b667a24d56d9e348b91d1f85c4bd2c7e53567ea7cc3035230595ededd",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/summary.json",
+    "bytes": 5653,
+    "sha256": "f7fb2c043065121f3cfc454f29c6e1e3c7bc7a4de9a5ed0fdcceb1a2e67b8a86",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/summary.json",
+    "bytes": 5626,
+    "sha256": "ed6c19ae0ec396b235d55b39d3da91c8068b76cc2560f6015f793a7259126a53",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/summary.json",
+    "bytes": 5686,
+    "sha256": "3fc2ce1f039034a4eba2ffd4616c944dd680222a25a4ca4b1659e93213c40e50",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/summary.json",
+    "bytes": 5622,
+    "sha256": "f9d54b8f78cf45b6efe39e94c4068d5d48a021e5874ef853458f0c5609c47f4d",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/summary.json",
+    "bytes": 5622,
+    "sha256": "f63929427d9e9539225706df5906adc20b5ddba629edcc7245719b6038ef0a67",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/summary.json",
+    "bytes": 5610,
+    "sha256": "455751c1f43be58f6c63f6989a3e38767fff7716df4fcd37376e708aeaa39f5b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/summary.json",
+    "bytes": 5630,
+    "sha256": "0108547a7484f9eae5b2936a8140bcec9cfd86631491db6d5920636065fac7ba",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/summary.json",
+    "bytes": 5617,
+    "sha256": "2a2d4b55b4c30f33365f4b87dda87817a390e807f8c107d622df8945f734528c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/summary.json",
+    "bytes": 5618,
+    "sha256": "e268ac04f9274d2bc90986d2263dac328bf492cdab084d6406f2ab20e0617a4c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/summary.json",
+    "bytes": 5620,
+    "sha256": "8b517cc92bf1cd5caf3b276a81d0413a8e199c77f043b934d45abffdb0073c30",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/summary.json",
+    "bytes": 5622,
+    "sha256": "6b77504a67b8c90b5b952f275f2a166b49ef22dad97a44f3855f4721cea409ee",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/summary.json",
+    "bytes": 5617,
+    "sha256": "9d9a2c4937e404e5f03e43af027d483402c57f14abc7a9bc55e4953cc3962d04",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/summary.json",
+    "bytes": 5617,
+    "sha256": "bbc1b366a5e88bbe64e9a8e4042e3013824c6776c19a282784ddebcde52462be",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/raw-metrics.json",
+    "bytes": 238782,
+    "sha256": "3e9b2f113fc9f10a9e4dc7c5baa26a6833cbbc88074e85016da161ddf5e16600",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/report-v1/raw-metrics.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/judge.md",
+    "bytes": 484,
+    "sha256": "7b29506e953261a5479099615e277a4a568115397944851ef1e120514f3390fb",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/reflection.json",
+    "bytes": 4677,
+    "sha256": "01057667d49157e3eafbf5c1aa1be58bfd6bc1e0a06cc6c68323f4def0605f78",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/specs/token/normalize/normalize.spec.md",
+    "bytes": 9067,
+    "sha256": "d86d6007111749733e0439fc7fb729046f37872dd27b0b7c68969ed0fbbf40da",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/summary.json",
+    "bytes": 5604,
+    "sha256": "e74bd30e3bf0c48866967789b12e58ae304349f953c8f96ae927dc319053fcec",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/trajectory.json",
+    "bytes": 25173,
+    "sha256": "953493b6fcf8108658d9ba115da35611cfe31aa6e8f35093619de9b23144e4ac",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/judge.md",
+    "bytes": 719,
+    "sha256": "cd36526876689794ec4559f59732d21ca7a830cb40f7638a0aacfde7d6312927",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/reflection.json",
+    "bytes": 4773,
+    "sha256": "40b7a98b7bda8a9dec1f8b3f5957d7d8d5146fc98979424cd55db60b3ec97eb9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/specs/token/normalize/normalize.spec.md",
+    "bytes": 9334,
+    "sha256": "3d6adc316c8ab60dab4828303a9ed689140b7a977d012b1eb99afcc2964f9f56",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/summary.json",
+    "bytes": 5604,
+    "sha256": "39fd2b9c7d13b6ca8f51fc215f86db08702f38ea13420e565f5348c51233ccb8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/trajectory.json",
+    "bytes": 26845,
+    "sha256": "30c2c4ece2ec3c630b6992b068e2d7a25dfc9b61496fb984b6006aff15fcff67",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/judge.md",
+    "bytes": 632,
+    "sha256": "f135be33ceb224a77b6662b741ae9182d32774ed0e7edf532c015985bb23df14",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/reflection.json",
+    "bytes": 3811,
+    "sha256": "ac4c88981f1912600eb6fe3895f378a8d5f066bbb2a6a97684203d67e3120195",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/specs/token/normalize/normalize.spec.md",
+    "bytes": 8641,
+    "sha256": "8c4335c8739b188fe3529e2ee1bbcf7d14a6d3ee3aca51b173cbaee987ccf658",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/summary.json",
+    "bytes": 5598,
+    "sha256": "bc3e4eed5e82c4ac50ef7f853d13ad3737b425af949233055eeaa574ca27d699",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/trajectory.json",
+    "bytes": 18995,
+    "sha256": "a1cb53553c2e4c055160f52e5f482d7f419faaf6068dd8da9bfb32f6814e6ecf",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/judge.md",
+    "bytes": 707,
+    "sha256": "d8b6a46eb0f6ffa16b4a94622940e18f13a76ed9b3e7fdf5822283432f020832",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/reflection.json",
+    "bytes": 4490,
+    "sha256": "467b449846db43016f71c926e97e10fe860a0e3b48b653e4665f7293ac7bc9a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/specs/token/normalize/normalize.spec.md",
+    "bytes": 9893,
+    "sha256": "cfcaef61e7a82a92201153e5b3ea12d6c29e38caf74c94fd367ba16d62e73a3e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/summary.json",
+    "bytes": 5603,
+    "sha256": "715f559cb1f0ca9970f77a338726ade7884138a65ec4d0709c99f1845b15f367",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/trajectory.json",
+    "bytes": 26696,
+    "sha256": "a830e41f48e0dfb0211d7d4de22d85528aa8146fc7887fdcab06d747124944fd",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/judge.md",
+    "bytes": 538,
+    "sha256": "3b9dedd6ab7d68e662dad5ad2f577ac8ee5b9e7c758a1a6a72dabe05dd2a0b7e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/reflection.json",
+    "bytes": 4902,
+    "sha256": "de4865c3f2bbf6764f107591060a23401d61e249b6bed0c05a5ad59ea640afdd",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/specs/token/normalize/normalize.spec.md",
+    "bytes": 10291,
+    "sha256": "b022e000b3f09569d30d8bcdd6d9a219fa818e6735b0b420c270606c773655a1",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/summary.json",
+    "bytes": 5599,
+    "sha256": "17b805f49679f5084a87bb5e56abb6cf089e15df2d0104aeff95fca84dfebd9c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/trajectory.json",
+    "bytes": 20733,
+    "sha256": "e3a34e87ea16b5b82ad4d81a20a6c2ceb8da7697698cb738bbbf5f3ce8c7c1a0",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/judge.md",
+    "bytes": 494,
+    "sha256": "4b97e65d374412ffe8d53eb26ca3e446edc8cca0a1e750f0068f4de1ef22b334",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/reflection.json",
+    "bytes": 4262,
+    "sha256": "beede5a4ba94c730ce10e11b0b3abbcbb8c06d49474684930b107fa6774b2b2a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/specs/token/normalize/normalize.spec.md",
+    "bytes": 9496,
+    "sha256": "bf2cafd4db85848a2fa0310247725af08217863f1ae664ef892d024530ec077c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/summary.json",
+    "bytes": 5596,
+    "sha256": "e5486f4235988a16174c1dc94b8825d33f4baa07917e3a0f2b7c489221c0c0d9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/trajectory.json",
+    "bytes": 24135,
+    "sha256": "97a0ff9690f85947c40fc9cd7f0a91efb1ef432e9f7a9c9ec74dc1e6f57164ba",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r6/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/judge.md",
+    "bytes": 515,
+    "sha256": "748a2a21c160fa605317d36aec1ed044e1a70e7a977dd6f6fa7563464bdfba6f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/reflection.json",
+    "bytes": 4957,
+    "sha256": "4229959998aa815062d6ecef663ff40ef7a6b654bb3ade6b9933c6e1c52ae37b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/specs/token/normalize/normalize.spec.md",
+    "bytes": 11405,
+    "sha256": "37a90248a082f7563316bb71701f36026f4b3f5eabd92f8f99f5c6ec96d54f05",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/summary.json",
+    "bytes": 5598,
+    "sha256": "df0f739f2e6e5dfcf00513685c606195c41bc2ae2925bed2a330796bb0741b96",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/trajectory.json",
+    "bytes": 19969,
+    "sha256": "c45868fedd3750af7d1bb87ead4dd36869bace91e2484c511d1cef47a0d1ba04",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/judge.md",
+    "bytes": 589,
+    "sha256": "7aaf4be53044a60fea5d5251ac48377f3a50734bf6050f21e5cb2b8acc1f5b86",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/reflection.json",
+    "bytes": 5904,
+    "sha256": "514743389c5b59a88018aa074f3abb22a7b265ddde6622e411de59db835b43e1",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/specs/token/normalize/normalize.spec.md",
+    "bytes": 8763,
+    "sha256": "44f7a390e1fea5e0b6ea9a42b56d3710972ed051849552369ce4722fa2647540",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/summary.json",
+    "bytes": 5593,
+    "sha256": "7660a88f722e8d0ac4842f3cc73b70e93248c5b4c67fce015a3c46d3463ad640",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/trajectory.json",
+    "bytes": 15785,
+    "sha256": "7a4e96416b62efffc3cc6149c0697959ba0bb4fbe17130cd906472eea36d8d3f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/judge.md",
+    "bytes": 641,
+    "sha256": "c91401eaa759795290e22bbaee4e864580d0cceb23e6679c3d5bf5bc40291510",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/reflection.json",
+    "bytes": 4980,
+    "sha256": "5d291200b4095c6c8f2308c7d8e3c5910c0f3d299d7bbde3e405badc31ec6d84",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/specs/token/normalize/normalize.spec.md",
+    "bytes": 9733,
+    "sha256": "4241f6017dc96a679acaad0bf1c07f58358e858ee28f8833b8a79e896d4360be",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/summary.json",
+    "bytes": 5593,
+    "sha256": "58002132117e94056e0d9b19a2c67a910e3fc8d89e42ac124b02e3d4c1eb7d87",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/trajectory.json",
+    "bytes": 20949,
+    "sha256": "5814c21a8ea67d2d90e66b8f899d39bb2687d0d780875c812f676972c11166f9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/judge.md",
+    "bytes": 682,
+    "sha256": "7ed82260683c5b6cfbb492c55008777d453a94d1f7f25fb0d05dce87e9864344",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/reflection.json",
+    "bytes": 4685,
+    "sha256": "03df6aaca5082ba0fbc008e7733a93b9b5fddbe3b1aabf35b4163aa05e26ffcc",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/specs/token/normalize/normalize.spec.md",
+    "bytes": 11530,
+    "sha256": "fff53fbf579ad223fab41f411f669aa6d0b3278c24e0ca3693a3fcfea0ea2eac",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/summary.json",
+    "bytes": 5595,
+    "sha256": "d88c3a22885ac0bdff33cdc5bc313cfb324df08a71d886ee2b432352540301c3",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/trajectory.json",
+    "bytes": 13455,
+    "sha256": "e0bd98a6234d329f5b67e053a93f2e2ec355e16e91378cf104d4630af8866a63",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/judge.md",
+    "bytes": 545,
+    "sha256": "d3a50c1126b7c2cee990086bae0ee84bd18b506bde3c554cce6433ca987c1423",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/reflection.json",
+    "bytes": 4868,
+    "sha256": "f1ff05c6821cf871c96adb03583e531e7f318a1bdfa2d7b2eaf7cc0a9cdf00f2",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/specs/token/normalize/normalize.spec.md",
+    "bytes": 10613,
+    "sha256": "32b147ca6fffe0e90af01df44aaabc22cf3d194487e54f1f2871733e49e46e6c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/summary.json",
+    "bytes": 5594,
+    "sha256": "dc36d95b667a24d56d9e348b91d1f85c4bd2c7e53567ea7cc3035230595ededd",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/trajectory.json",
+    "bytes": 18730,
+    "sha256": "5cd8de98f90e405af441b8d56998d3fbc0aca9de172640532126fbc5558d7938",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/judge.md",
+    "bytes": 557,
+    "sha256": "b91e364174da11910e5512183bb1ba43d2355484a62f920e10e32c5d0b74abba",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/reflection.json",
+    "bytes": 3942,
+    "sha256": "e0a777822ee05da65d0d0f314daca97078c46a988dfc2af8a9598d46fbe7b3d7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/specs/token/normalize/normalize.spec.md",
+    "bytes": 9870,
+    "sha256": "75208c5da9d1afe5da617c04ed4a59f852c9615039178733842b2b842abee6ef",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/summary.json",
+    "bytes": 5653,
+    "sha256": "f7fb2c043065121f3cfc454f29c6e1e3c7bc7a4de9a5ed0fdcceb1a2e67b8a86",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/trajectory.json",
+    "bytes": 16893,
+    "sha256": "ab26468b0d8968fa046b8bb0f3867cadb34a11091b88bf96f1770785c9dd39c4",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r6/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/judge.md",
+    "bytes": 517,
+    "sha256": "24cb656642a5888f34a4ca755ca4b04775562fca7d523175c5d59a1e7bd0d3e3",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/reflection.json",
+    "bytes": 4701,
+    "sha256": "034514b84cc19e99046d01cdef7a9abe3f2261f5d752af25b0cdc6bf0e3e3069",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10302,
+    "sha256": "2d5f96b452bcdfe2ede4500b5fa752fed50f146db923780f3cd2971801e8c2d5",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/summary.json",
+    "bytes": 5626,
+    "sha256": "ed6c19ae0ec396b235d55b39d3da91c8068b76cc2560f6015f793a7259126a53",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/trajectory.json",
+    "bytes": 25178,
+    "sha256": "8ebb4534255fd6fa0248fcfb144dbf415c04454cc825335662e574f9b7923741",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/judge.md",
+    "bytes": 727,
+    "sha256": "8d19adc4ca8831fd4fe2a3633861ef389dfbe53d1c41f10c6c78eb7f9f1942a7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/reflection.json",
+    "bytes": 3956,
+    "sha256": "ec6d6c3eed65e8e2682bf8d72dcb36fc7387ee1504839ec8335752b7eb2663f7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 11178,
+    "sha256": "685aebdfd018ef57796736c8b1dd4373379c61f3d17f4ab2a33ab122de5f1c05",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/summary.json",
+    "bytes": 5686,
+    "sha256": "3fc2ce1f039034a4eba2ffd4616c944dd680222a25a4ca4b1659e93213c40e50",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/trajectory.json",
+    "bytes": 24576,
+    "sha256": "80de2a7c45f20be41ccb91625a148521fa67ee098b1ad9c2392edd7f65c8f297",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/judge.md",
+    "bytes": 1320,
+    "sha256": "3e3c7c436873ce5e0d7a09cd7ba737d47ecdca398abbeb492dd0f1b5abafa37a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/reflection.json",
+    "bytes": 4229,
+    "sha256": "57c6468e2372ef5910c8a7689d8d4d401a6b4323de3962ded2def90bd353766e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10368,
+    "sha256": "0832c6194758554f61b4a6ca7577c4a52af932d43a604fbbac6c88a737ff6cb5",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/summary.json",
+    "bytes": 5622,
+    "sha256": "f9d54b8f78cf45b6efe39e94c4068d5d48a021e5874ef853458f0c5609c47f4d",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/trajectory.json",
+    "bytes": 19097,
+    "sha256": "b2bad4ae0f560cd2819b6d2baf774cfa3b8b0468134db8587e1d243fd3e30749",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/judge.md",
+    "bytes": 736,
+    "sha256": "30909738adfdf9de23f45d26372a1a485395cd8348df75428f6bace5394d40bf",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/reflection.json",
+    "bytes": 4476,
+    "sha256": "564d6c4f66bbcc803686c126235a477df351fdac867d7030948005ac8fc53c5c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9946,
+    "sha256": "ca5183649d6e450d12a95e93d4634ba30395ee29085ce340433940eca4713e26",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/summary.json",
+    "bytes": 5622,
+    "sha256": "f63929427d9e9539225706df5906adc20b5ddba629edcc7245719b6038ef0a67",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/trajectory.json",
+    "bytes": 19968,
+    "sha256": "9f50a57704da5b48efe4c0aeda5b04e206253428f0e62985e27c97e638311749",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/judge.md",
+    "bytes": 756,
+    "sha256": "f433d75eb3c776c3ce3a4b1e318ac8be80e05c80db7c87262b1d5c43c7347a6c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/reflection.json",
+    "bytes": 4580,
+    "sha256": "0bdb5ed05e89673588aea6c4600b0497d5685cf73c6cb370be9741ab46c584fe",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9857,
+    "sha256": "8b3d7ef54086669c931005335405afcf6d1f38256c4f97cee3fd507339a29849",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/summary.json",
+    "bytes": 5610,
+    "sha256": "455751c1f43be58f6c63f6989a3e38767fff7716df4fcd37376e708aeaa39f5b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/trajectory.json",
+    "bytes": 27480,
+    "sha256": "fd5c569209f97aa65b72f2b278f36fda1a65f1a0f13af09617d185926f52eb6f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/judge.md",
+    "bytes": 748,
+    "sha256": "9a355767b44fdc8afa32d7c34e4b4284fc0b09ea9402cd5e3a428e6ce0f7f55e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/reflection.json",
+    "bytes": 5099,
+    "sha256": "e7f485a8b94a56af84b5b981ef45753f93b1ef55e55a7838dda66407245b87f0",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9396,
+    "sha256": "8fbe337fdadeb007ee33930c7a27b0c78cf7d626911ed5a53549936e6e20ca72",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/summary.json",
+    "bytes": 5630,
+    "sha256": "0108547a7484f9eae5b2936a8140bcec9cfd86631491db6d5920636065fac7ba",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/trajectory.json",
+    "bytes": 23557,
+    "sha256": "8382cf7eb1cc92a2693ed69660968a1dccb96e773674962b869b9c6cdd59eec9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/judge.md",
+    "bytes": 741,
+    "sha256": "a1f6f9055d1800abae32b56a3af0b185961c798590896a9f2dfd92f25bc6cb33",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/reflection.json",
+    "bytes": 4228,
+    "sha256": "c01dd8d423abb5168e91754ee47866e7eae279c1beb3f70655dfe9b83bd39ef1",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 11139,
+    "sha256": "936539db2cd1bf8aa6e01d6ec1e423b04cec4a3267e8bedabc97043d332a483a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/summary.json",
+    "bytes": 5617,
+    "sha256": "2a2d4b55b4c30f33365f4b87dda87817a390e807f8c107d622df8945f734528c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/trajectory.json",
+    "bytes": 23872,
+    "sha256": "14f0f6c8102a088f7f0f9c0d6288a3f285f122500c41a4b291cdd67d3f8d1cf2",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/judge.md",
+    "bytes": 777,
+    "sha256": "afad0c223e8a752b2df72ca7b37bf11099c8c615156f6e3abc6116a9206c8dbc",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/reflection.json",
+    "bytes": 4551,
+    "sha256": "59c2705b901b3629677aaa38a21ff1226a6dacb4044a24d1d6d93e658fecb62c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9719,
+    "sha256": "7b961a3d63c280ccf1b4bbede27332fafcfb637fe88b333312aed4b09e427f5d",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/summary.json",
+    "bytes": 5618,
+    "sha256": "e268ac04f9274d2bc90986d2263dac328bf492cdab084d6406f2ab20e0617a4c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/trajectory.json",
+    "bytes": 16421,
+    "sha256": "5a384579d853ad93246ce54e7cac23d0eb7fad6ab0c8c775547a3a0760ea320d",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/judge.md",
+    "bytes": 424,
+    "sha256": "bf884d0f030dbe97b9408b4446ebd868ab94e515b817609d91a3e7fe68db455a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/reflection.json",
+    "bytes": 4118,
+    "sha256": "de3c5fd9beb1545c684b5a33a85d07f53f468613418c2d065ace9b1ad64832f7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10961,
+    "sha256": "6ba62418456438f05ea0254698d059e12feeb6dfbcb3c20c11ff7b5d542aa98f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/summary.json",
+    "bytes": 5620,
+    "sha256": "8b517cc92bf1cd5caf3b276a81d0413a8e199c77f043b934d45abffdb0073c30",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/trajectory.json",
+    "bytes": 23265,
+    "sha256": "e1d6269f16cf270d7fd8cd24e8df3cbb26b55d7da91d8e0c8cab38a10f93c08b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/judge.md",
+    "bytes": 744,
+    "sha256": "fb95f27dd0b5eefc682c05e01be61563b2502d8371259b31346b53457620e9fa",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/reflection.json",
+    "bytes": 4931,
+    "sha256": "9348a427dc126c273de98d09c560a7d3b0ab8f7d2661d30a248ec29530ce436d",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 8861,
+    "sha256": "eca27e63d1b8314a56737602287f27e78e5f3372e40df5461a924e59a513c2f9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/summary.json",
+    "bytes": 5622,
+    "sha256": "6b77504a67b8c90b5b952f275f2a166b49ef22dad97a44f3855f4721cea409ee",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/trajectory.json",
+    "bytes": 30479,
+    "sha256": "855375ef13c4d636f97b5979b80092cae33674c0ebe119d05010d7a7f6623137",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/judge.md",
+    "bytes": 1006,
+    "sha256": "59791cab427c4586a676f87e8e46cd68ceeca56ddcba183632044238ac606241",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/reflection.json",
+    "bytes": 4755,
+    "sha256": "6bbc1a1d2424e61713b358974ffdf4cd1a17234d82c7e2bde1b3dfd12c1abfb3",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10620,
+    "sha256": "0fbd583a696edb6844861a8b41ce0b4dce60838a8223f3df82e668bceab8d8fe",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/summary.json",
+    "bytes": 5617,
+    "sha256": "9d9a2c4937e404e5f03e43af027d483402c57f14abc7a9bc55e4953cc3962d04",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/trajectory.json",
+    "bytes": 16294,
+    "sha256": "cd000727bd1de2fbd78c9486ab944f7bea68917ef145cbb6d59c77320c9fa527",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/judge.md",
+    "bytes": 465,
+    "sha256": "2c0626092928c7fa9aefa751284733e23b153b9bcd7aef02c4c9bf8aa634ff00",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/reflection.json",
+    "bytes": 4295,
+    "sha256": "22f4a1674f196653b1aae32f52b6b55447603c5bc873217632f64c6a654435da",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 11220,
+    "sha256": "eb3c3535f8b5d46ca0ba2ef0a0b027f05d50a9262a1072d858e492fe030d3262",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/summary.json",
+    "bytes": 5617,
+    "sha256": "bbc1b366a5e88bbe64e9a8e4042e3013824c6776c19a282784ddebcde52462be",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/trajectory.json",
+    "bytes": 13822,
+    "sha256": "c78080b315ecd3a69791911fa2f1c025f7aeba35f37ace7d35515b436c97bbb4",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/permanent/2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r6/trajectory.json"
+  },
+  {
+    "path": "protocol/config.json",
+    "bytes": 80796,
+    "sha256": "6c507c26d23be13d5895e449ddccb79f031af5e9a79e6ccff3db49feca39d056",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/config.json"
+  },
+  {
+    "path": "protocol/controller-protocol.json",
+    "bytes": 9571,
+    "sha256": "5dec1a78e9730b77d7a3e3c4e74e050860cbac710a1b457b7aa08314e20b6fcc",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/controller-protocol.json"
+  },
+  {
+    "path": "protocol/preregistered-protocol.json",
+    "bytes": 70236,
+    "sha256": "79dbc789b6a9a701f67a16ef950013fa8f370dcf9034529bbc12db393573f50a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/preregistered-protocol.json"
+  },
+  {
+    "path": "protocol/variants.json",
+    "bytes": 628,
+    "sha256": "a405730dba532d720299eabc54dc8ec58c52bd00d2d9731b69ba6132af4c5c2e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/variants.json"
+  },
+  {
+    "path": "protocol/batch.json",
+    "bytes": 20877,
+    "sha256": "85013e9c66d9ae7ca7cb551338dab9e12477302f3f562f3087bbf120b4effd0f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/batch.json"
+  },
+  {
+    "path": "protocol/REPEAT-CONTRACT.md",
+    "bytes": 3050,
+    "sha256": "5316b563b4fb1235517d20ba53ee656096776ccd083aa15776760ddd566cce1b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/REPEAT-CONTRACT.md"
+  },
+  {
+    "path": "protocol/journal-permissions.json",
+    "bytes": 200,
+    "sha256": "41a8cb35723f2f334e7f1743e1560f5d19c13e8f8582adfa55a4c33e5686dcfb",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/journal-permissions.json"
+  },
+  {
+    "path": "protocol/lifecycle-smoke.json",
+    "bytes": 124,
+    "sha256": "d231d51eff9b4eb24ac8105ae6e545cdef5ae1840974ecab0c22aca9cf1bf97e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/lifecycle-smoke.json"
+  },
+  {
+    "path": "protocol/OPERATIONAL-NOTES.md",
+    "bytes": 921,
+    "sha256": "e1993115fcf09ea75bf57207c7342fb230339ed1587d3f45944403ceefd39255",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/OPERATIONAL-NOTES.md"
+  },
+  {
+    "path": "code/controller.mjs.txt",
+    "bytes": 29006,
+    "sha256": "6776a8b856af8aea017fb197d4ef7236c7a2cc95d9a575557ee7a29fba9ecae7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/controller.mjs"
+  },
+  {
+    "path": "code/prepare-campaign.mts.txt",
+    "bytes": 8090,
+    "sha256": "44dce17f4600e932d2d67347bcbaa5dd6f1e482dae9427498afe91b3819526f6",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/prepare-campaign.mts"
+  },
+  {
+    "path": "code/offline-report.mts.txt",
+    "bytes": 44827,
+    "sha256": "35d95354dfb7e3d4a95f39d5c5a960c2d0bb1d448936f74ef162425726fc1e50",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/offline-report.mts"
+  },
+  {
+    "path": "code/controller-checks.mjs.txt",
+    "bytes": 8495,
+    "sha256": "abf0884b47b2b233cf24245e85646c48cb7152f21b2a08deb7ea9fa7422493d0",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/controller-checks.mjs"
+  },
+  {
+    "path": "code/tool-output-proof.mts.txt",
+    "bytes": 2571,
+    "sha256": "49b8638c27f7c5987390166e8ce9601aeea57e4e5adba99116a9c491b25c2250",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/tool-output-proof.mts"
+  },
+  {
+    "path": "code/lifecycle-smoke.mjs.txt",
+    "bytes": 2063,
+    "sha256": "4dd5b98d55b3d26eb964a9fe84262fd2b9c4aa694ed8eb7a561093f79b4ea1b9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/lifecycle-smoke.mjs"
+  },
+  {
+    "path": "code/server-launcher.mjs.txt",
+    "bytes": 9811,
+    "sha256": "9d2095fb09eef18031ebf9c65171c7b95ba0cdb9f9847c62ad8fc8f53eadbea1",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-launcher.mjs"
+  },
+  {
+    "path": "code/export-facts.mjs.txt",
+    "bytes": 19006,
+    "sha256": "ed10f2744d36e56bd331b00fa5e2e8e9b0d2d3a3c70e22e6678225351f2f9e07",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/export-facts.mjs"
+  },
+  {
+    "path": "code/finalize-owned-runtime.mjs.txt",
+    "bytes": 9997,
+    "sha256": "8f09552d7b116d96b9fdf0370ddd3f1d2f050b56a2754e5ccf6463078c4f8768",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/finalize-owned-runtime.mjs"
+  },
+  {
+    "path": "code/portable-replay.mjs.txt",
+    "bytes": 11436,
+    "sha256": "e8da1fe2104eef36fbd5c61acb0147b44fcf2e440fb7dcdabac0d6bb6817fc62",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/portable-replay.mjs"
+  },
+  {
+    "path": "code/mechanism.mjs.txt",
+    "bytes": 3768,
+    "sha256": "754698abd87b4fa952450702e56fc5079d268a0549798b97c0070a48c891b70d",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/mechanism.mjs"
+  },
+  {
+    "path": "mechanism.json",
+    "bytes": 152451,
+    "sha256": "b3c028d4bc2d0c649caf86a0cc64c20ef506e42ae901f3a8c495dd0b976f305a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/mechanism.json"
+  },
+  {
+    "path": "code/authoring-benchmark.calibrated-v6.ts.txt",
+    "bytes": 36944,
+    "sha256": "91d174105b29ca93f11d8c5e88c318693e3fa1a4091f58c5893c57ac550d1ba6",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/facts/ai/flow-eval/authoring-benchmark.ts"
+  },
+  {
+    "path": "five-failure-analysis.json",
+    "bytes": 15412,
+    "sha256": "59ffd631bbc1bfc59c3f6383d4923337c519ab8dd2e2c7bed5fdedfd284b90d7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/five-failure-analysis.json"
+  },
+  {
+    "path": "code/analyze-five.mts.txt",
+    "bytes": 5324,
+    "sha256": "8a8a246ee742322b63cf4bce649eed470d6b32356279ad17fccf4e9c855cfd07",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/analyze-five.mts"
+  },
+  {
+    "path": "protocol/tool-output-proof.json",
+    "bytes": 42761,
+    "sha256": "7980178fd7190e5f3de258f4550c40a787fe8b8729f2b1562c5e5d3517599e96",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/tool-output-proof.json"
+  },
+  {
+    "path": "replay-proof.json",
+    "bytes": 15342,
+    "sha256": "d47d5f5274a2633112e31d9ebdf25abc053157dab124de6a010db62f30a616db",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/replay-proof.json"
+  },
+  {
+    "path": "runtime-cleanup-summary.json",
+    "bytes": 1782,
+    "sha256": "e29a3089868e39ec567599404010181aa9940d424ec95a3d2d07d8f74f565009",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runtime-cleanup-summary.json"
+  },
+  {
+    "path": "protocol/server-pid.json",
+    "bytes": 915,
+    "sha256": "1fafb0215a326da960253700f3aa3ed1bc120e12802c69fc4376bc1fe5f8f82f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-pid.json"
+  },
+  {
+    "path": "records/0.json",
+    "bytes": 1993,
+    "sha256": "3d64ca269577a3400c43e014ff55e42277db03270bb56c7852d566e0b90f300e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/0.json"
+  },
+  {
+    "path": "controller-output/0.txt",
+    "bytes": 12481,
+    "sha256": "f1e95a84495239774f7ba8a61e4adefcf44e52dbc9aa2b9877c642b7150d32d7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/0.log"
+  },
+  {
+    "path": "records/1.json",
+    "bytes": 1999,
+    "sha256": "4c4b4bc5b241593288d186ceaf87f11c3b4f46ac27189963a7269ab7525fab9f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/1.json"
+  },
+  {
+    "path": "controller-output/1.txt",
+    "bytes": 12612,
+    "sha256": "d12a4adb931c43535120ae9c5d4defaa126e461ba8baf127a0611a6ae461b21e",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/1.log"
+  },
+  {
+    "path": "records/2.json",
+    "bytes": 2003,
+    "sha256": "f88e84828c23b42517287b5b1547ba53bed43cb30e3e5da93220abbac9bdb2a6",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/2.json"
+  },
+  {
+    "path": "controller-output/2.txt",
+    "bytes": 13285,
+    "sha256": "a807c9c8e4f7a7589195aa44e126cb42ff90b7e9801eda030692022952cf46ac",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/2.log"
+  },
+  {
+    "path": "records/3.json",
+    "bytes": 1997,
+    "sha256": "f208b984269c56456228a02203b39518c23d4cb1d2d339625a66a077560117f7",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/3.json"
+  },
+  {
+    "path": "controller-output/3.txt",
+    "bytes": 10750,
+    "sha256": "9fd50ba047b2331e592f9bbb3a5dcbb3823f480898a23738e47a3ac14e2cccc9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/3.log"
+  },
+  {
+    "path": "records/4.json",
+    "bytes": 1999,
+    "sha256": "559ac5f5fe2f20f7ee15052e28d3535066ecf876e6bffec3277ec5316d5768a5",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/4.json"
+  },
+  {
+    "path": "controller-output/4.txt",
+    "bytes": 14327,
+    "sha256": "aaecb16964a82bb1a0d91f8bb96ba7952a9e320c8e3f9739d13968f68d6fc69b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/4.log"
+  },
+  {
+    "path": "records/5.json",
+    "bytes": 1993,
+    "sha256": "b7d732d23188ace7db6e165f6b6e0a6079fc07554b72da8051993f02ef81793a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/5.json"
+  },
+  {
+    "path": "controller-output/5.txt",
+    "bytes": 10585,
+    "sha256": "acc39155dc2714e2861f9434879140b75b5fe82a462cf4fa85f11140258e328a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/5.log"
+  },
+  {
+    "path": "records/6.json",
+    "bytes": 1997,
+    "sha256": "0951fd44e65f760e2c0ace626bf3d93398a62d74571179faabe8e2cd8b371fc4",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/6.json"
+  },
+  {
+    "path": "controller-output/6.txt",
+    "bytes": 9037,
+    "sha256": "983885001f8f4252eb592d44297eb6cad0fb9fea8c380fad428fa6e650f50956",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/6.log"
+  },
+  {
+    "path": "records/7.json",
+    "bytes": 2003,
+    "sha256": "ce90f8bb50fec739358d1e783c5af656fe389f47a6bdfc33cc98c6fa01873314",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/7.json"
+  },
+  {
+    "path": "controller-output/7.txt",
+    "bytes": 11943,
+    "sha256": "77453aeff43665cad2dbe94c3c87dab3539189f7bde09b7b8e664e4993787844",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/7.log"
+  },
+  {
+    "path": "records/8.json",
+    "bytes": 1993,
+    "sha256": "0751cd052a52afc95ad3f8f5b355bdf95b30ddd9a6c0416ec5e28288900d7fe6",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/8.json"
+  },
+  {
+    "path": "controller-output/8.txt",
+    "bytes": 10559,
+    "sha256": "e0e15934919d9a56f2d4ac3f6bded712c48dd35c089d53c6d7c83a90a9ff9a58",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/8.log"
+  },
+  {
+    "path": "records/9.json",
+    "bytes": 1999,
+    "sha256": "e1980c3eefd9057c9c915bd32dd4d41b9229dcd40729e484cb5510acc6dd573a",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/9.json"
+  },
+  {
+    "path": "controller-output/9.txt",
+    "bytes": 10115,
+    "sha256": "296b1d259330e811b21c91737d825edd930da140f1cb68a79249e15579bd1e52",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/9.log"
+  },
+  {
+    "path": "records/10.json",
+    "bytes": 2009,
+    "sha256": "9dee42936449f2ac183b00946b9948d2faa0fa9a22bc06f11cb3e7f3c8daf014",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/10.json"
+  },
+  {
+    "path": "controller-output/10.txt",
+    "bytes": 9473,
+    "sha256": "15d7d868833e66d03919e3a11ea080dedcd609241b5032dd5e3a655020066c77",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/10.log"
+  },
+  {
+    "path": "records/11.json",
+    "bytes": 2003,
+    "sha256": "31f08fc91a01b92f4f03a9bf7b41ebe9b639174f169c0d6091e3a2d22e31ae9f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/11.json"
+  },
+  {
+    "path": "controller-output/11.txt",
+    "bytes": 13367,
+    "sha256": "73e2995ac5189dff5d7dfb192ac8ab06660ae6e7d4d511d55b7938fb6d87bf69",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/11.log"
+  },
+  {
+    "path": "records/12.json",
+    "bytes": 2005,
+    "sha256": "cd3b048b53fa47374f2ecd27fe251257ed12f49bbae9dcfaba8c8cea38964694",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/12.json"
+  },
+  {
+    "path": "controller-output/12.txt",
+    "bytes": 11723,
+    "sha256": "21eac0afb9d986931a4ea71e234496f254b26b428dff4ee1a2a02d42935e8126",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/12.log"
+  },
+  {
+    "path": "records/13.json",
+    "bytes": 1999,
+    "sha256": "80bb074724b227c1d474b48166d71ca937470d579b1fea8f8b710c7aa4e366fd",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/13.json"
+  },
+  {
+    "path": "controller-output/13.txt",
+    "bytes": 7086,
+    "sha256": "a4abcd666f84884ee5ea56a5af66efe81dec07ef2f7f16dd70eb92d3d24642cc",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/13.log"
+  },
+  {
+    "path": "records/14.json",
+    "bytes": 2003,
+    "sha256": "480a3789bc7c02847d02e0c4056ed4a28175636424198880293e561eef6209b5",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/14.json"
+  },
+  {
+    "path": "controller-output/14.txt",
+    "bytes": 14958,
+    "sha256": "12988367ef80525d902a68631989ada7cb6a13a88b27fa2dd5817969a994f2b5",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/14.log"
+  },
+  {
+    "path": "records/15.json",
+    "bytes": 2009,
+    "sha256": "8b3d90177ec4a2c7c6a39f4f6f64067c89fade41ff09a988c3b61b0ab1c28ceb",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/15.json"
+  },
+  {
+    "path": "controller-output/15.txt",
+    "bytes": 10191,
+    "sha256": "2844395d198ebf6d7575c1ebd81ee0b0fb233257a9893fdb0f1e5f70c934b4b6",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/15.log"
+  },
+  {
+    "path": "records/16.json",
+    "bytes": 1999,
+    "sha256": "45525436ffa97a309e2cfd50f97a726b443febdc71079d419b9847d384062c47",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/16.json"
+  },
+  {
+    "path": "controller-output/16.txt",
+    "bytes": 9541,
+    "sha256": "c9b830e801c079a9666830f4793327e21025286224c339a89996406160cc1e6f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/16.log"
+  },
+  {
+    "path": "records/17.json",
+    "bytes": 2005,
+    "sha256": "4944fa8a86bcd435302d067ce02ec2ecff476364eb0ab95b637febad6e5c41f9",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/17.json"
+  },
+  {
+    "path": "controller-output/17.txt",
+    "bytes": 11355,
+    "sha256": "40cbb1d50b76f080fc3f5330073c84b5ce899e09c09fffa66340f678789a1513",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/17.log"
+  },
+  {
+    "path": "records/18.json",
+    "bytes": 2010,
+    "sha256": "067529d4ce8adb279bad823fe2666f2a2c0627f4b272dda05378c6e3a9ce2f3c",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/18.json"
+  },
+  {
+    "path": "controller-output/18.txt",
+    "bytes": 11957,
+    "sha256": "558789193bd447027351806de3135666a038a355f283eb42489b06b3d87ebafc",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/18.log"
+  },
+  {
+    "path": "records/19.json",
+    "bytes": 2003,
+    "sha256": "567a2f5e7425276978ecada2d11115ebd4634df0917f9d357064820c35bcf78f",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/19.json"
+  },
+  {
+    "path": "controller-output/19.txt",
+    "bytes": 9690,
+    "sha256": "a72a1aca775e04a041f6195c31f44aeb89aabbeca16292f885b6aec511d3ef06",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/19.log"
+  },
+  {
+    "path": "records/20.json",
+    "bytes": 2006,
+    "sha256": "031b9fd117abbee599a3e7ff55647b9e1264e492206f8090579f14339e6251aa",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/20.json"
+  },
+  {
+    "path": "controller-output/20.txt",
+    "bytes": 11033,
+    "sha256": "b6cd260a4a8ff998d28472dd12c6dea134cd9a5e06b83960d60ab7b258b1882b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/20.log"
+  },
+  {
+    "path": "records/21.json",
+    "bytes": 1999,
+    "sha256": "8a14e4ccb7832e146a75adc7605a7b380ec4e43865067a6ef0a3a9c48a85bf01",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/21.json"
+  },
+  {
+    "path": "controller-output/21.txt",
+    "bytes": 11183,
+    "sha256": "2afd7ab552c0414552e3a54fbc94886d3cbfb848f2e1edc12032a7394482ddf5",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/21.log"
+  },
+  {
+    "path": "records/22.json",
+    "bytes": 2003,
+    "sha256": "8c3c1e5586592605990f86796758364c3a7a04517d3105045eb5dee4fba16bad",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/22.json"
+  },
+  {
+    "path": "controller-output/22.txt",
+    "bytes": 8929,
+    "sha256": "477776316e0c6043368b6835686d18a6b4d14a8179a003ae7b1961be4d4abd7b",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/22.log"
+  },
+  {
+    "path": "records/23.json",
+    "bytes": 2009,
+    "sha256": "66cfd5fee6143fd7512a2c9d64f1c8e0436b0e84ac545c3c23057c80b4de97f4",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/records/23.json"
+  },
+  {
+    "path": "controller-output/23.txt",
+    "bytes": 13080,
+    "sha256": "0228b6dfbbfdbb5b37cdf3fcf59824bbece1e84d270f9efc3151e6cb2aab12dc",
+    "original": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/logs/23.log"
+  },
+  {
+    "path": "variants/baseline/source-module-directive.txt",
+    "bytes": 6511,
+    "sha256": "011fb9b12728f4f073425b5952863d944587077ecae1964a558fe5bd250d65e0",
+    "original": "git:ddd26bd88a4b80389faf95e2533766ae44e6f84f:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/baseline/source-step2-action.txt",
+    "bytes": 1650,
+    "sha256": "0ec8890a3d9e72acd17008d2cc695cdd4205e4ff4afb76f61dfc45709f2b5119",
+    "original": "lexical Action slice of git:ddd26bd88a4b80389faf95e2533766ae44e6f84f:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/baseline/generated-module-directive.txt",
+    "bytes": 10397,
+    "sha256": "d86b9cdd6b07cf4e56dbe388945d68bb2b67106800efafe286b61e2c438a1748",
+    "original": "git:ddd26bd88a4b80389faf95e2533766ae44e6f84f:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/baseline/generated-step2-action.txt",
+    "bytes": 1650,
+    "sha256": "0ec8890a3d9e72acd17008d2cc695cdd4205e4ff4afb76f61dfc45709f2b5119",
+    "original": "lexical Action slice of git:ddd26bd88a4b80389faf95e2533766ae44e6f84f:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/baseline/from-frozen-source.diff.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "original": "git-diff:ddd26bd88a4b80389faf95e2533766ae44e6f84f..ddd26bd88a4b80389faf95e2533766ae44e6f84f:all-declared-tool-output-paths"
+  },
+  {
+    "path": "variants/facts/source-module-directive.txt",
+    "bytes": 6511,
+    "sha256": "011fb9b12728f4f073425b5952863d944587077ecae1964a558fe5bd250d65e0",
+    "original": "git:bab3ecc8579bf6a7603fed71df75b3b7922bbe3c:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/facts/source-step2-action.txt",
+    "bytes": 1650,
+    "sha256": "0ec8890a3d9e72acd17008d2cc695cdd4205e4ff4afb76f61dfc45709f2b5119",
+    "original": "lexical Action slice of git:bab3ecc8579bf6a7603fed71df75b3b7922bbe3c:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/facts/generated-module-directive.txt",
+    "bytes": 10397,
+    "sha256": "d86b9cdd6b07cf4e56dbe388945d68bb2b67106800efafe286b61e2c438a1748",
+    "original": "git:bab3ecc8579bf6a7603fed71df75b3b7922bbe3c:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/facts/generated-step2-action.txt",
+    "bytes": 1650,
+    "sha256": "0ec8890a3d9e72acd17008d2cc695cdd4205e4ff4afb76f61dfc45709f2b5119",
+    "original": "lexical Action slice of git:bab3ecc8579bf6a7603fed71df75b3b7922bbe3c:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/facts/from-frozen-source.diff.txt",
+    "bytes": 16117,
+    "sha256": "6b9312713a44fd1882300dbcc241decdf503cea1c9915f5fa4621839203af8d5",
+    "original": "git-diff:ddd26bd88a4b80389faf95e2533766ae44e6f84f..bab3ecc8579bf6a7603fed71df75b3b7922bbe3c:all-declared-tool-output-paths"
+  }
+]

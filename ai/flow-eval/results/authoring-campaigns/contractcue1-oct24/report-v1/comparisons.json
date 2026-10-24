@@ -1,0 +1,93 @@
+[
+  {
+    "baseline": "baseline",
+    "candidate": "facts",
+    "protocol": "gennady.authoring-comparison.2",
+    "comparable": true,
+    "issues": [],
+    "cases": [
+      {
+        "caseId": "module-flat",
+        "baseline": {
+          "runs": 6,
+          "artifactPasses": 5,
+          "semanticPasses": 4,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 165,
+          "maxTools": 32,
+          "medianTools": 29,
+          "medianDurationMs": 100793,
+          "durationRangeMs": [
+            78496,
+            120434
+          ],
+          "medianNonCacheTokens": 57721.5
+        },
+        "candidate": {
+          "runs": 6,
+          "artifactPasses": 6,
+          "semanticPasses": 6,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 122,
+          "maxTools": 24,
+          "medianTools": 20,
+          "medianDurationMs": 90841,
+          "durationRangeMs": [
+            55228,
+            109470
+          ],
+          "medianNonCacheTokens": 47146.5
+        }
+      },
+      {
+        "caseId": "module-nested",
+        "baseline": {
+          "runs": 6,
+          "artifactPasses": 5,
+          "semanticPasses": 5,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 153,
+          "maxTools": 31,
+          "medianTools": 25,
+          "medianDurationMs": 103969,
+          "durationRangeMs": [
+            80297,
+            118555
+          ],
+          "medianNonCacheTokens": 49700.5
+        },
+        "candidate": {
+          "runs": 6,
+          "artifactPasses": 6,
+          "semanticPasses": 5,
+          "trajectoryPasses": 0,
+          "promptBytes": 43574,
+          "approximatePromptTokens": 8742,
+          "totalTools": 139,
+          "maxTools": 33,
+          "medianTools": 22.5,
+          "medianDurationMs": 84276,
+          "durationRangeMs": [
+            65212,
+            125030
+          ],
+          "medianNonCacheTokens": 45868.5
+        }
+      }
+    ],
+    "regressions": [
+      "module-nested"
+    ],
+    "successCriteria": "smaller static instruction envelope; no per-case artifact/semantic/path regression; no tool-call total/median/max growth",
+    "promptShrank": false,
+    "recommendation": "reject",
+    "inference": "descriptive only; no general speed/quality guarantee or statistical significance claim",
+    "monetaryCost": "unknown"
+  }
+]

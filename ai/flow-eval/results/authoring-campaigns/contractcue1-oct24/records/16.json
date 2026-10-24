@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 16,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r5",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:43:14.203Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/16",
+  "sessions": [
+    {
+      "id": "ses_e91d93f20ffeqZt6314hZFBlaF",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/16/sdd-flow-eval-1TFDt8",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91d7f31fffemb9CbXkjfNQzxp",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/16/sdd-flow-eval-1TFDt8",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r5",
+    "summarySha256": "dc36d95b667a24d56d9e348b91d1f85c4bd2c7e53567ea7cc3035230595ededd",
+    "trajectorySha256": "5cd8de98f90e405af441b8d56998d3fbc0aca9de172640532126fbc5558d7938",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 21,
+    "nonCacheTokens": 45775,
+    "messages": 15
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:46:00.086Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91d93f20ffeqZt6314hZFBlaF",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/16/sdd-flow-eval-1TFDt8"
+    },
+    {
+      "id": "ses_e91d7f31fffemb9CbXkjfNQzxp",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/16/sdd-flow-eval-1TFDt8"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 17,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r5",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:49:39.804Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/17",
+  "sessions": [
+    {
+      "id": "ses_e924138adffePIrf6dP0GL0Opy",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/17/sdd-flow-eval-gukJFS",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e923f801effe7kGCiYEoKb5yp3",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/17/sdd-flow-eval-gukJFS",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r5",
+    "summarySha256": "00e95a43627355f970df10afe425a2a2eb5443487118e6c01f507e18a5ad5b64",
+    "trajectorySha256": "314954bd2747fed2e6a1c08804f0338796f1b50714547451b5e0c849d7e16091",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 23,
+    "nonCacheTokens": 52349,
+    "messages": 17
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:52:51.918Z",
+  "knownSessions": [
+    {
+      "id": "ses_e924138adffePIrf6dP0GL0Opy",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/17/sdd-flow-eval-gukJFS"
+    },
+    {
+      "id": "ses_e923f801effe7kGCiYEoKb5yp3",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/17/sdd-flow-eval-gukJFS"
+    }
+  ]
+}

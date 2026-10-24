@@ -1,0 +1,666 @@
+{
+  "schema": "gennady.authoring-portable-replay.2",
+  "performedAt": "2026-10-23T22:12:29.861Z",
+  "stagingDirectory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/portable-replay-format2-DrbyTr",
+  "cwd": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/portable-replay-format2-DrbyTr/report-v1",
+  "sourceModuleRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+  "node": "22.19.0",
+  "analysisProgram": {
+    "path": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/offline-report.mts",
+    "sha256": "df5c6fd252f751ab4f68018ebd06c7204930a75cab6463b9de5cf3a21e955d73"
+  },
+  "analysisIdentities": [
+    {
+      "path": "ai/flow-eval/authoring-baseline-report.ts",
+      "reportedSHA256": "a68f9948569799d38ef71272ad77741dbfe420115e6b071940dc1bb99ffddb27",
+      "actualSHA256": "a68f9948569799d38ef71272ad77741dbfe420115e6b071940dc1bb99ffddb27",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-benchmark.ts",
+      "reportedSHA256": "2c6e0d5d3142c4151c8df6058084d58b984b27a33e3bc12aaf745bfe469ecfc2",
+      "actualSHA256": "0ceb13f2e59a630615181fe7171e55a41beb4fc39f6d1d9171007db150ac9e09",
+      "same": false,
+      "expectedOracleDrift": true,
+      "reason": "Root independently reviewed the versioned v3→v4 synonym-only oracle patch. These replay CLIs do not invoke the artifact oracle or regrade quality; every produced byte must still match."
+    },
+    {
+      "path": "ai/flow-eval/authoring-metrics.ts",
+      "reportedSHA256": "e33e3dfee2c2add746f082291abe901aeb5697c98b81e3003fed9fddb750b6d2",
+      "actualSHA256": "e33e3dfee2c2add746f082291abe901aeb5697c98b81e3003fed9fddb750b6d2",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-trajectory-profile.ts",
+      "reportedSHA256": "4372f5012e89c7f0fb1e5ebc7369672fd406bf7e312b312075e1e0cc2d3eb7cf",
+      "actualSHA256": "4372f5012e89c7f0fb1e5ebc7369672fd406bf7e312b312075e1e0cc2d3eb7cf",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-call-audit.ts",
+      "reportedSHA256": "3a49cb933693914abbabc5e2b7253007568e7e4035b4d1ed7356ab665c63a12d",
+      "actualSHA256": "3a49cb933693914abbabc5e2b7253007568e7e4035b4d1ed7356ab665c63a12d",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-baseline-report.ts",
+      "reportedSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "actualSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-call-audit.ts",
+      "reportedSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "actualSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-experiment.ts",
+      "reportedSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "actualSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    }
+  ],
+  "replayProgram": {
+    "path": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/portable-replay-format2.mjs",
+    "sha256": "383b8507cc48a55aa77af8f2c9909ed77206dc3d5b13d287ce5496c7efedf439"
+  },
+  "sourceHEADObservedOnly": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+  "sourceWorkingTreeStatus": "M ai/flow-eval/__tests__/authoring-benchmark.test.ts\n M ai/flow-eval/authoring-benchmark.ts",
+  "serializedPaths": "Preserved as evidence strings, never used as data-source paths. Only copied inputs and copied summary files are CLI data arguments. Analysis code/dependencies come from the explicit EVAL_REPO above; this is not a syscall audit.",
+  "modelCalls": 0,
+  "expectedCommands": 13,
+  "commands": [
+    {
+      "name": "baseline-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./baseline.input.json",
+        "--out",
+        "baseline.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline.replayed-report.json",
+        "sha256": "1ac7d9a3f8584211ae5f1a7fe3f5a36ed057a677c7f052349135d31d6af9c471",
+        "bytes": 154212
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./baseline.input.json",
+        "baseline.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline.replayed-calls.md",
+        "sha256": "ed71dd67b907dfe85e1040d910b85fd614e987c7c1ce67fbd914deca2f673624",
+        "bytes": 45369
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "prose-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./prose.input.json",
+        "--out",
+        "prose.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "prose.replayed-report.json",
+        "sha256": "f7f09c5865a59960ddb3ca7f3d168c9af0c9caeafe28cad39f53b3b07762d7fb",
+        "bytes": 156627
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "prose-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./prose.input.json",
+        "prose.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "prose.replayed-calls.md",
+        "sha256": "1825d6807a0c8b6e5bd78476b73adf877dbfae22ef7de01c1e7bb056db0eff4d",
+        "bytes": 47495
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "pseudocode-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./pseudocode.input.json",
+        "--out",
+        "pseudocode.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "pseudocode.replayed-report.json",
+        "sha256": "91a03df290ca28fc40437173aa432dcf407bcbffacba9c1f62e907f06464e031",
+        "bytes": 147542
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "pseudocode-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./pseudocode.input.json",
+        "pseudocode.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "pseudocode.replayed-calls.md",
+        "sha256": "aa8bafd4dcdae705eebb263d31d3092ecf1db34d773be217f647970ee4453ca4",
+        "bytes": 44951
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "observation-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./observation.input.json",
+        "--out",
+        "observation.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "observation.replayed-report.json",
+        "sha256": "eda86d124192936c6b51d0c6db629d9299d29c78feef9533abe1a061c72917cd",
+        "bytes": 151116
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "observation-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./observation.input.json",
+        "observation.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "observation.replayed-calls.md",
+        "sha256": "b4fa204bf1cd6fcba0c06c70a1401925e5fa7b1047cd4652f865aecf48896743",
+        "bytes": 44549
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-vs-prose",
+      "script": "authoring-experiment.ts",
+      "scriptSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "args": [
+        "compare",
+        "--campaign",
+        "format2-oct23",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "prose",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-prose.replayed-compare.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline-vs-prose.replayed-compare.json",
+        "sha256": "c95a49a6a01c3a7e8a07900d30b3b6718c1370005d8abe66bd7bca5481f5cb07",
+        "bytes": 2302
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-vs-pseudocode",
+      "script": "authoring-experiment.ts",
+      "scriptSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "args": [
+        "compare",
+        "--campaign",
+        "format2-oct23",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "pseudocode",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-pseudocode.replayed-compare.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline-vs-pseudocode.replayed-compare.json",
+        "sha256": "c4f73d4c9bc50f33d6ae4a621fcb9c83c3e44717422093974362c7f79632f3b5",
+        "bytes": 2319
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-vs-observation",
+      "script": "authoring-experiment.ts",
+      "scriptSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "args": [
+        "compare",
+        "--campaign",
+        "format2-oct23",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "observation",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-observation.replayed-compare.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline-vs-observation.replayed-compare.json",
+        "sha256": "5f90729f7c7c94fce9aaa0668f62923766f80f893f38096209addf1e992c207e",
+        "bytes": 2320
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "prose-vs-pseudocode",
+      "script": "authoring-experiment.ts",
+      "scriptSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "args": [
+        "compare",
+        "--campaign",
+        "format2-oct23",
+        "--baseline",
+        "prose",
+        "--candidate",
+        "pseudocode",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "prose-vs-pseudocode.replayed-compare.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "prose-vs-pseudocode.replayed-compare.json",
+        "sha256": "f13fcc3464b1a4012658a8ffd68da5208fe2a934b9056e35da89c151c2805085",
+        "bytes": 2322
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "prose-vs-observation",
+      "script": "authoring-experiment.ts",
+      "scriptSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "args": [
+        "compare",
+        "--campaign",
+        "format2-oct23",
+        "--baseline",
+        "prose",
+        "--candidate",
+        "observation",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "prose-vs-observation.replayed-compare.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "prose-vs-observation.replayed-compare.json",
+        "sha256": "01fdec5b88952d414cde647ce537713fd0f92e01250f33e5113e9b44a25d4f6c",
+        "bytes": 2323
+      },
+      "equalsArchivedResult": true
+    }
+  ],
+  "status": "passed",
+  "allExpectedExits": true,
+  "allProducedResultsByteEqual": true,
+  "comparisonAggregateByteEqual": true,
+  "primaryInputBytesUnchanged": true,
+  "copiedInputBytesUnchanged": true,
+  "temporaryReplayDirectoryRemoved": true,
+  "errors": [],
+  "inputBindings": [
+    {
+      "path": "bindings.json",
+      "bytes": 18922,
+      "sha256": "332a48e4e399a62b6b4cc4f77e637a1c64540537f6b7d671adcec455ce8d3108"
+    },
+    {
+      "path": "raw-metrics.json",
+      "bytes": 263417,
+      "sha256": "8a1915872a73acee89ec373d2fc943f5781b469ebb1a05b66ee89853930a32c3"
+    },
+    {
+      "path": "baseline.input.json",
+      "bytes": 256932,
+      "sha256": "af16c6c2cb74fb5f00db26908f426d36aaed38bdf4d9b296b1e4d785395cee82"
+    },
+    {
+      "path": "baseline.report.json",
+      "bytes": 154212,
+      "sha256": "1ac7d9a3f8584211ae5f1a7fe3f5a36ed057a677c7f052349135d31d6af9c471"
+    },
+    {
+      "path": "baseline.calls.md",
+      "bytes": 45369,
+      "sha256": "ed71dd67b907dfe85e1040d910b85fd614e987c7c1ce67fbd914deca2f673624"
+    },
+    {
+      "path": "prose.input.json",
+      "bytes": 260432,
+      "sha256": "db8e690038df47983196d9b2ffa2d4aea9a1596f791acc0ca4541f48ee535d1a"
+    },
+    {
+      "path": "prose.report.json",
+      "bytes": 156627,
+      "sha256": "f7f09c5865a59960ddb3ca7f3d168c9af0c9caeafe28cad39f53b3b07762d7fb"
+    },
+    {
+      "path": "prose.calls.md",
+      "bytes": 47495,
+      "sha256": "1825d6807a0c8b6e5bd78476b73adf877dbfae22ef7de01c1e7bb056db0eff4d"
+    },
+    {
+      "path": "pseudocode.input.json",
+      "bytes": 250991,
+      "sha256": "024f6bbe5643ace979e8efd16fe5d500fdd5c6cb198e60fd5e98a1d7265b0ff1"
+    },
+    {
+      "path": "pseudocode.report.json",
+      "bytes": 147542,
+      "sha256": "91a03df290ca28fc40437173aa432dcf407bcbffacba9c1f62e907f06464e031"
+    },
+    {
+      "path": "pseudocode.calls.md",
+      "bytes": 44951,
+      "sha256": "aa8bafd4dcdae705eebb263d31d3092ecf1db34d773be217f647970ee4453ca4"
+    },
+    {
+      "path": "observation.input.json",
+      "bytes": 252331,
+      "sha256": "21bf2bffa82adac657d41712d1ce2a6c755191469cd2890cc839527fe07eb8ff"
+    },
+    {
+      "path": "observation.report.json",
+      "bytes": 151116,
+      "sha256": "eda86d124192936c6b51d0c6db629d9299d29c78feef9533abe1a061c72917cd"
+    },
+    {
+      "path": "observation.calls.md",
+      "bytes": 44549,
+      "sha256": "b4fa204bf1cd6fcba0c06c70a1401925e5fa7b1047cd4652f865aecf48896743"
+    },
+    {
+      "path": "comparisons.json",
+      "bytes": 12778,
+      "sha256": "f0457becd4b038d13095ee1529ec5fa99a6a2c7efbea858b58726a8d23cffb98"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-baseline-r1/summary.json",
+      "bytes": 5589,
+      "sha256": "073cf9856f7df32f6b27959b760725ae8006913432b06f0339a4d5fa21496037"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-baseline-r1/summary.json",
+      "bytes": 5617,
+      "sha256": "6662e2fe3747c7ffeddd055b7f582e0e1c08f5becea7619af0369be823611102"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-baseline-r2/summary.json",
+      "bytes": 5634,
+      "sha256": "f64aabbf2010ea3676068f8e1dd8027cdbcf0a117d80bc27920f8bfc33632f27"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-baseline-r2/summary.json",
+      "bytes": 5613,
+      "sha256": "751d9b3be03d76097f50a5a1acf1e894ab78fb114212b337d7ba4246b9c860f0"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-baseline-r3/summary.json",
+      "bytes": 5589,
+      "sha256": "0b7a9077b9a2d3b61f331004376f5f50dfe53abe44d305f5360ac455a8adc995"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-baseline-r3/summary.json",
+      "bytes": 5615,
+      "sha256": "99fdf7f72ab1c1cfc982da416a0ac40818df39991e94620b8281e4cd133c53fd"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-prose-r1/summary.json",
+      "bytes": 5642,
+      "sha256": "924fffc94b6baecb52278b750c070ef8085321f36971dfa6c41a581d2fd596d8"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-prose-r1/summary.json",
+      "bytes": 5608,
+      "sha256": "1698b6198993e038035875aef79c6edbd5e93182eceb6e68b4e25bc32b39c973"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-prose-r2/summary.json",
+      "bytes": 5629,
+      "sha256": "98193cd718adeac9f8489d24a7e2b862d7ae2555eb8e17c972fd4c91231b0e80"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-prose-r2/summary.json",
+      "bytes": 5608,
+      "sha256": "993aab295c8ef3b7717d9dc697967ccce5270fcb551f21c2396bead385bc266f"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-prose-r3/summary.json",
+      "bytes": 5589,
+      "sha256": "d5e6103259ce1fd539e7a9b5b1a7d929258262cb5225e27f5e79f7ad0d92bec8"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-prose-r3/summary.json",
+      "bytes": 5625,
+      "sha256": "5b3e19d07d929d4b422bc954a8de365ff8c22393b50229f4b0293727224f64c5"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-pseudocode-r1/summary.json",
+      "bytes": 5592,
+      "sha256": "b365ff27a64e9470c1d127045350128d0aed9478816264308e2441fb0b0ea367"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-pseudocode-r1/summary.json",
+      "bytes": 5617,
+      "sha256": "86d2d4b059632eee46e807043304ad2819dc7023c610c94a564d72ab325aa52e"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-pseudocode-r2/summary.json",
+      "bytes": 5708,
+      "sha256": "2e95778805cce95ceda5878c3ae04cda5dff4aa20111fefeb006d8941f2a74cf"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-pseudocode-r2/summary.json",
+      "bytes": 5623,
+      "sha256": "39bbcf0320403907b8a379ed99f05b6ddefb95113336440cd201e6b7a1f86f7c"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-pseudocode-r3/summary.json",
+      "bytes": 5593,
+      "sha256": "e124cd89160979f137ef0b69551502a9dce08024040e089b4d0097d05abda85f"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-pseudocode-r3/summary.json",
+      "bytes": 5617,
+      "sha256": "ed7137ee20e99a90f2e3a2a41de0dc14921199ec6295ae497ec2858bed4b363c"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-observation-r1/summary.json",
+      "bytes": 5594,
+      "sha256": "3286e39bfda16326c9a8234a0114035a8d67a282f85977ad801d729306fd916d"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-observation-r1/summary.json",
+      "bytes": 5623,
+      "sha256": "d1b7213bcc7db6714e5c089bfb387ed598d93aa44e9d014cd66827d2ddc92600"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-observation-r2/summary.json",
+      "bytes": 5596,
+      "sha256": "e68e5fe776da763f78006399b570c8e39df98811638b6d0f9b9552d2101df5c6"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-observation-r2/summary.json",
+      "bytes": 5624,
+      "sha256": "46e2be3396181bf96429a74cf0a312b29e79fcd7f6cbbe6ec71dc2c85b254de6"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-flat-observation-r3/summary.json",
+      "bytes": 5612,
+      "sha256": "3c099602c834a058a6b17df081443067117414fa56cc858c867842c153739265"
+    },
+    {
+      "path": "permanent/2026-10-23-authoring-format2-oct23-module-nested-observation-r3/summary.json",
+      "bytes": 5619,
+      "sha256": "2491425ff233567d98fe3be62f2e685d505f409195be1ed484a806cfce38f342"
+    }
+  ]
+}

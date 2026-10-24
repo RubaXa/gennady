@@ -1,0 +1,200 @@
+{
+  "schema": "gennady.authoring-format-controller.1",
+  "preregistrationSha256": "63eeced7e1ce07525d14d03141e926792135267f4e7391e0fb238aa24baa6c48",
+  "controllerSha256": "6776a8b856af8aea017fb197d4ef7236c7a2cc95d9a575557ee7a29fba9ecae7",
+  "configSha256": "f6b29e0b381beac96c2299e2b110499d68396b96317f92da9c73de559395e47e",
+  "node": "v22.19.0",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "runtime": {
+    "version": "1.17.15",
+    "configurationSha256": "8b81f88ada2f31c909aae728861dea2289e57cc77084c76df04102a9dd383fcd",
+    "routing": {
+      "origin": "https://ai-proxy.vk.team",
+      "path": "/v1",
+      "npm": "@ai-sdk/openai-compatible",
+      "modelIDs": [
+        "deepseek-v4-flash"
+      ],
+      "optionKeys": [
+        "apiKey",
+        "baseURL",
+        "headers"
+      ],
+      "headerNames": [
+        "Authorization",
+        "Plugin-Type"
+      ]
+    }
+  },
+  "concurrency": 1,
+  "planned": 24,
+  "sources": [
+    {
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    }
+  ],
+  "attempts": [
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-baseline-r1",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "5342d3891cf3158d31774dfa9550324a451c9a8d570a3caf30c0e7f488f89215"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-facts-r1",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "0dd7bb7fbaab3c23df5a9f2f50a9c3396ef6694980d4cf1c253203069c2afe41"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-baseline-r1",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "6916427849b2ce72bb9f2207a59bc97640dca0dabe521b4cba24a40c65de5115"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-facts-r1",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "47d4ff38fc5b2421791383e5bf7f2ef3a5a372b6eb13d4cc0afd9883136a9994"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-facts-r2",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "c8e475ada64ffd5cc8ee10ca09acfe6fa8ee3b903ca4b4d4b6f5f91a9ec2eda8"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-baseline-r2",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "ce74e036c303c65fe76ac7119e5e7fe3664e78e88ffe68ad20e10304ddb2fac3"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-facts-r2",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "e146fac15f5aab015937fc9073476a8bb880ba6c46ef1fae3854d95b09151d57"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-baseline-r2",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "71631c8b9b217d1e5fcddbcd2ee2901c82cb68ea247fdfddd96e04ee9cd971eb"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-baseline-r3",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "01629ec5648dfc9b30490783098e5edbc8fee0d0baab156c3d8673819e6b5f7c"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-facts-r3",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "e5c62e2006f9e63080ed32820b8884bbe2656d789239c0cf793eb387bfc5aa3e"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-baseline-r3",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "146bcba021b5f5391005a3121775de22187c1d41c989cc4a6c32a89c426b8f1a"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-facts-r3",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "02a6a7a21a375ff900428e484b917039acc10fd1e41216586432a79dda3e89f6"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-facts-r4",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "3e185446c05a7b5963d536a2bae67206849f06c67ef34670d23c6c654e978237"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-baseline-r4",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "689e4bd2f55144f9a321aac73bc3470211153898fb452cdff6bb9351a6868cca"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-facts-r4",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "e14ed550a246cfe726d7b38d832ba8a6eabf04b18a1fee340393acb6a2bf31ca"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-baseline-r4",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "be8bf004ff58711869985afad21c6a21533c2043ec79ef76a65aeccaf79bb84d"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-baseline-r5",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "66bd3b03110bad0c69bd1e17537b5b93ff0f0c7d0dfc14f1d33294ade533d100"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-facts-r5",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "fa52a7252b2d1bcdd43c94378e212403b3508b353920d23404f7ddb4299ce8b4"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-baseline-r5",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "509e1c74f7b71e2546c2f11462861eb9beb0a2e04d6283c99e3d5b729219b18d"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-facts-r5",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "db8670d2e1f98fe9d642cc43c606dab565ae32cc46b8465b2a495b8576cc24ae"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-facts-r6",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "64ee6757ca94e5ae08687265aa9e76c72b501c4601559ed7613b63492b09381b"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-flat-baseline-r6",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "1be3dfc83cef7c71cfe75c8f35b0cb8b055515e1609d025d0867a896bb10bb2a"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-facts-r6",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/facts",
+      "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+      "scenarioSha256": "352e2de6934b358f5a30c3e185b607558c047afc3870ae65726410a21526a44e"
+    },
+    {
+      "id": "authoring-toolfact1-oct24-module-nested-baseline-r6",
+      "sourceRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+      "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+      "scenarioSha256": "34fe654b0d5b8a554a862f86d3692584ef90de6ac4087551e7a740fcc1047583"
+    }
+  ],
+  "limits": {
+    "workerMs": 180000,
+    "childGraceMs": 60000,
+    "childDeadlineMs": 540000,
+    "maximumAttempts": 24
+  },
+  "frozenAt": "2026-10-24T11:09:19.427Z"
+}

@@ -1,0 +1,303 @@
+{
+  "schema": "gennady.module-fill-format-variants.1",
+  "source": {
+    "commit": "0e8dacf08966f847fd87e32414415c8b2318932a",
+    "sourcePath": "ai/kit/templates/sdd-v2/module.directive.hbs",
+    "sourceSHA256": "011fb9b12728f4f073425b5952863d944587077ecae1964a558fe5bd250d65e0",
+    "originalAction": "\n        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before\n        writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace\n        the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section\n        writes are forbidden in authoring. Retain every SECTION marker and replace every\n        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a\n        closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,\n        file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats\n        only from the comments inside their owning sections, at the moment each section is filled.\n        Remove every instructional comment. The scope owns its requirement IDs. With no narrower\n        obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`\n        A disputed autonomous boundary choice is one module Decision Log line per\n        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.\n        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a\n        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed\n        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings\n        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target —\n        `READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")` for the list\n        format.\n      ",
+    "actionSha256": "0ec8890a3d9e72acd17008d2cc695cdd4205e4ff4afb76f61dfc45709f2b5119"
+  },
+  "commonInvariants": "\n        Retain every SECTION marker. Replace every guidance/instructional comment with authored\n        content; remove all such comments before Write. Keep a closed inventory, one owner for\n        shared files/errors, public surfaces, per-operation DbC, file structure, and negative behavior.\n        The scope owns its requirement IDs. With no narrower obligation write\n        `No module-specific requirements. Implements parent requirements: <IDs>.`\n        A disputed autonomous boundary choice is one module Decision Log line per\n        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.\n        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a\n        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed\n        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings\n        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target.\n        `READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")` gives the list format.\n        `Edit`, `Patch`, and per-section writes are forbidden in authoring.",
+  "originalAction": "\n        Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before\n        writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace\n        the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section\n        writes are forbidden in authoring. Retain every SECTION marker and replace every\n        `<!-- ... -->` guidance comment with authored content; none may survive the Write. Keep a\n        closed inventory, one owner for shared files/errors, public surfaces, per-operation DbC,\n        file structure, and negative behavior. Read entity-inventory, entity-surface, and DbC formats\n        only from the comments inside their owning sections, at the moment each section is filled.\n        Remove every instructional comment. The scope owns its requirement IDs. With no narrower\n        obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`\n        A disputed autonomous boundary choice is one module Decision Log line per\n        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.\n        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a\n        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed\n        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings\n        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target —\n        `READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")` for the list\n        format.\n      ",
+  "proseAction": "\n        Retain every SECTION marker. Replace every guidance/instructional comment with authored\n        content; remove all such comments before Write. Keep a closed inventory, one owner for\n        shared files/errors, public surfaces, per-operation DbC, file structure, and negative behavior.\n        The scope owns its requirement IDs. With no narrower obligation write\n        `No module-specific requirements. Implements parent requirements: <IDs>.`\n        A disputed autonomous boundary choice is one module Decision Log line per\n        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.\n        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a\n        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed\n        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings\n        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target.\n        `READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")` gives the list format.\n        `Edit`, `Patch`, and per-section writes are forbidden in authoring.\n\n        Read the on-disk skeleton once. Compose the COMPLETE module document in memory.\n        When filling an entity-inventory, entity-surface, or DbC section, read its format only\n        from the comments inside that owning section, at that moment.\n        Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`.\n        Replace the skeleton with exactly ONE whole-file `Write`.\n      ",
+  "pseudocodeAction": "\n        Retain every SECTION marker. Replace every guidance/instructional comment with authored\n        content; remove all such comments before Write. Keep a closed inventory, one owner for\n        shared files/errors, public surfaces, per-operation DbC, file structure, and negative behavior.\n        The scope owns its requirement IDs. With no narrower obligation write\n        `No module-specific requirements. Implements parent requirements: <IDs>.`\n        A disputed autonomous boundary choice is one module Decision Log line per\n        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.\n        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a\n        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed\n        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings\n        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target.\n        `READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")` gives the list format.\n        `Edit`, `Patch`, and per-section writes are forbidden in authoring.\n\n        Procedure (pseudocode, not a shell script):\n          skeleton := Read(on-disk skeleton) once\n          document := compose COMPLETE module in memory\n            when filling entity-inventory, entity-surface, or DbC:\n              read its format only from that owning section's comments, at that moment\n          before writing: run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`\n          Write(whole file, document) exactly ONE time, replacing skeleton\n      ",
+  "observationAction": "\n        Retain every SECTION marker. Replace every guidance/instructional comment with authored\n        content; remove all such comments before Write. Keep a closed inventory, one owner for\n        shared files/errors, public surfaces, per-operation DbC, file structure, and negative behavior.\n        The scope owns its requirement IDs. With no narrower obligation write\n        `No module-specific requirements. Implements parent requirements: <IDs>.`\n        A disputed autonomous boundary choice is one module Decision Log line per\n        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.\n        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a\n        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed\n        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings\n        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target.\n        `READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")` gives the list format.\n        `Edit`, `Patch`, and per-section writes are forbidden in authoring.\n\n        Action → expected observation (notation, not shell):\n          Read on-disk skeleton once → skeleton.\n          Compose COMPLETE module in memory → full draft:\n            while filling entity-inventory, entity-surface, or DbC:\n              read format only from that owning section's comments, at that moment → section format.\n          Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK` → pre-write check done.\n          exactly ONE whole-file Write → skeleton replaced with the composed document.\n      ",
+  "facts": [
+    {
+      "id": "F01",
+      "obligation": "Read on-disk skeleton once",
+      "sourceQuote": "Read the on-disk skeleton once",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "P": "Read the on-disk skeleton once.",
+        "C": "skeleton := Read(on-disk skeleton) once",
+        "B": "Read on-disk skeleton once"
+      }
+    },
+    {
+      "id": "F02",
+      "obligation": "Compose COMPLETE module document in memory",
+      "sourceQuote": "compose the COMPLETE module document in memory",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "P": "Compose the COMPLETE module document in memory.",
+        "C": "document := compose COMPLETE module in memory",
+        "B": "Compose COMPLETE module in memory"
+      }
+    },
+    {
+      "id": "F03",
+      "obligation": "Perform self-check before writing per existing axiom",
+      "sourceQuote": "Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`.",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "P": "Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`.",
+        "C": "before writing: run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`",
+        "B": "Before writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`"
+      }
+    },
+    {
+      "id": "F04",
+      "obligation": "Replace skeleton with exactly ONE whole-file Write",
+      "sourceQuote": "Replace the skeleton with exactly ONE `Write` of the whole file.",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "P": "Replace the skeleton with exactly ONE whole-file `Write`.",
+        "C": "Write(whole file, document) exactly ONE time, replacing skeleton",
+        "B": "exactly ONE whole-file Write → skeleton replaced with the composed document."
+      }
+    },
+    {
+      "id": "F05",
+      "obligation": "Forbid Edit/Patch/per-section writes during authoring",
+      "sourceQuote": "`Edit`, `Patch`, and per-section writes are forbidden in authoring.",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "`Edit`, `Patch`, and per-section writes are forbidden in authoring.",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F06",
+      "obligation": "Preserve every SECTION marker",
+      "sourceQuote": "Retain every SECTION marker",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "Retain every SECTION marker.",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F07",
+      "obligation": "Replace guidance with authored content; remove every instructional comment",
+      "sourceQuote": "replace every `<!-- ... -->` guidance comment with authored content; none may survive the Write.",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "Replace every guidance/instructional comment with authored content; remove all such comments before Write.",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F08",
+      "obligation": "Closed inventory",
+      "sourceQuote": "Keep a closed inventory",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "Keep a closed inventory",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F09",
+      "obligation": "Single owner for shared files/errors",
+      "sourceQuote": "one owner for shared files/errors",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "one owner for shared files/errors",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F10",
+      "obligation": "Public surfaces",
+      "sourceQuote": "public surfaces",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "public surfaces",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F11",
+      "obligation": "Per-operation DbC",
+      "sourceQuote": "per-operation DbC",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "per-operation DbC",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F12",
+      "obligation": "File structure",
+      "sourceQuote": "file structure",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "file structure",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F13",
+      "obligation": "Negative behavior",
+      "sourceQuote": "negative behavior",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "negative behavior",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F14",
+      "obligation": "Lazy format loading only via comments of the owning section when filled",
+      "sourceQuote": "Read entity-inventory, entity-surface, and DbC formats only from the comments inside their owning sections, at the moment each section is filled.",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "P": "When filling an entity-inventory, entity-surface, or DbC section, read its format only from the comments inside that owning section, at that moment.",
+        "C": "when filling entity-inventory, entity-surface, or DbC: read its format only from that owning section's comments, at that moment",
+        "B": "while filling entity-inventory, entity-surface, or DbC: read format only from that owning section's comments, at that moment"
+      }
+    },
+    {
+      "id": "F15",
+      "obligation": "Requirement IDs remain scope-owned",
+      "sourceQuote": "The scope owns its requirement IDs.",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "The scope owns its requirement IDs.",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F16",
+      "obligation": "Exact delegation line if no narrower obligation",
+      "sourceQuote": "With no narrower obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "With no narrower obligation write `No module-specific requirements. Implements parent requirements: <IDs>.`",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F17",
+      "obligation": "Disputed boundary choice is one module DL line per canonical format",
+      "sourceQuote": "A disputed autonomous boundary choice is one module Decision Log line per `DEVIATION_RECORD_FORMAT`",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "A disputed autonomous boundary choice is one module Decision Log line per `DEVIATION_RECORD_FORMAT`",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F18",
+      "obligation": "Zero-information decision continues without dialogue stop",
+      "sourceQuote": "a zero-new-information decision continues without a dialogue stop.",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "a zero-new-information decision continues without a dialogue stop.",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F19",
+      "obligation": "Existing refine axiom activated; entity removal/postcondition weakening are breaking",
+      "sourceQuote": "Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a postcondition is a breaking change",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a postcondition is a breaking change",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F20",
+      "obligation": "Breaking requires DL and operator-confirmed Risk accepted",
+      "sourceQuote": "it needs a Decision Log entry with operator-confirmed `Risk accepted`",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "it needs a Decision Log entry with operator-confirmed `Risk accepted`",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F21",
+      "obligation": "Pivot Invalidation List covers every consumer as refine-module target",
+      "sourceQuote": "plus a Pivot Invalidation List naming every consumer module (the siblings whose Inter-Module Dependencies edge points at this one) as a `refine-module` target",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "plus a Pivot Invalidation List naming every consumer module (the siblings whose Inter-Module Dependencies edge points at this one) as a `refine-module` target",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    },
+    {
+      "id": "F22",
+      "obligation": "Same canonical pivot format pointer",
+      "sourceQuote": "`READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")`",
+      "sourceQuoteMatch": "whitespace-normalized substring",
+      "coverage": {
+        "common": "`READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/formats/pivot-formats.xml\")`",
+        "P": "commonInvariants",
+        "C": "commonInvariants",
+        "B": "commonInvariants"
+      }
+    }
+  ],
+  "oneFactorProof": {
+    "mechanicallyCheckable": [
+      "Each candidate Action starts with byte-identical commonInvariants.",
+      "All 22 source quotes and coverage snippets match after whitespace normalization.",
+      "Only the Action body inside STEP_2_FILL may differ in ai/kit/templates/sdd-v2/module.directive.hbs and its generated ai/directives/sdd-v2/module.directive.xml.",
+      "STEP_0_CREATE, STEP_1_ORIENT, STEP_3_RECONCILE_MAP, STEP_4_CHECK, STEP_5_CLOSE, STEP_6_HANDOFF, BeliefState and Contracts remain outside the allowed edit span.",
+      "briefs, prompts.ts, fixtures, CLI/tool outputs and validators remain unchanged.",
+      "Existing AX_ARTIFACT_STYLE_SELF_CHECK, AX_REFINE_MODULE_PRESERVES_CONTRACTS, DEVIATION_RECORD_FORMAT and exact pivot directive pointer remain literal references."
+    ],
+    "semanticReviewBoundary": "Quote coverage is a presence check, not a mechanical proof of semantic equivalence; independent BEFORE-RUN review must accept scope/timing/conditional parity.",
+    "notChanged": [
+      "acronym/ID facts",
+      "orientation commands",
+      "batching",
+      "stop/check/close policy",
+      "approval boundary",
+      "tool protocol",
+      "completed answers"
+    ],
+    "procedureRepresentation": {
+      "P": "prose",
+      "C": "pseudocode (not an executable shell script)",
+      "B": "action → expected observation (not an executable shell script)"
+    },
+    "sampleLimit": "The module-flat/module-nested pilot measures this STEP_2 representation only; it cannot establish a universal workflow result.",
+    "lengthPolicy": "No padding. Record exact Action/assembled-owner bytes and measured usage separately; smaller text is accepted only with preserved obligations."
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "gennady.owned-runtime-cleanup.1",
+  "ownRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ",
+  "status": "complete",
+  "attemptsFinalized": 24,
+  "deletedSessionFacts": 48,
+  "server": {
+    "launcherPid": 41372,
+    "serverPid": 41384,
+    "port": 4198,
+    "signal": "SIGTERM",
+    "stopped": true
+  },
+  "removedPaths": [
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-home",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-config",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-data",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-cache",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-state",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-runtime",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-tmp",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-bun",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-bun-cache",
+    "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/server-npm-cache"
+  ],
+  "journalModesRestored": [
+    {
+      "path": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "from": "444",
+      "to": "644",
+      "sha256": "d0e46a010749f60169852edbddc5454988fac4c8c48a491e58e05367752a67f1"
+    },
+    {
+      "path": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "from": "444",
+      "to": "644",
+      "sha256": "d0e46a010749f60169852edbddc5454988fac4c8c48a491e58e05367752a67f1"
+    },
+    {
+      "path": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "from": "444",
+      "to": "644",
+      "sha256": "d0e46a010749f60169852edbddc5454988fac4c8c48a491e58e05367752a67f1"
+    },
+    {
+      "path": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "from": "444",
+      "to": "644",
+      "sha256": "d0e46a010749f60169852edbddc5454988fac4c8c48a491e58e05367752a67f1"
+    }
+  ],
+  "errors": [],
+  "preserved": [
+    "source worktrees",
+    "shared dependencies",
+    "dist",
+    "permanent results",
+    "records",
+    "logs",
+    "public metadata"
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 5,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r2",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:16:30.932Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/5",
+  "sessions": [
+    {
+      "id": "ses_e91f1b5baffeOVHCkXmAgk4xZt",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/5/sdd-flow-eval-Ov1QPf",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91f02fa3ffeRru6Yk5rpLnf2U",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/5/sdd-flow-eval-Ov1QPf",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r2",
+    "summarySha256": "7660a88f722e8d0ac4842f3cc73b70e93248c5b4c67fce015a3c46d3463ad640",
+    "trajectorySha256": "7a4e96416b62efffc3cc6149c0697959ba0bb4fbe17130cd906472eea36d8d3f",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 19,
+    "nonCacheTokens": 46374,
+    "messages": 12
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:18:37.720Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91f1b5baffeOVHCkXmAgk4xZt",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/5/sdd-flow-eval-Ov1QPf"
+    },
+    {
+      "id": "ses_e91f02fa3ffeRru6Yk5rpLnf2U",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/5/sdd-flow-eval-Ov1QPf"
+    }
+  ]
+}

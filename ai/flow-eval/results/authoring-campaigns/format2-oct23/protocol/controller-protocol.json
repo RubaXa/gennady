@@ -1,0 +1,214 @@
+{
+  "schema": "gennady.authoring-format-controller.1",
+  "preregistrationSha256": "f09a020b36f0a979c64c63bd9f148bcfc827b40d2468bb14f3ece80478a9c794",
+  "controllerSha256": "6776a8b856af8aea017fb197d4ef7236c7a2cc95d9a575557ee7a29fba9ecae7",
+  "configSha256": "04740296c62ba2f247969670a02017fe4864ce3e41568e17d0b14c666ddfd3b2",
+  "node": "v22.19.0",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "runtime": {
+    "version": "1.17.15",
+    "configurationSha256": "8b81f88ada2f31c909aae728861dea2289e57cc77084c76df04102a9dd383fcd",
+    "routing": {
+      "origin": "https://ai-proxy.vk.team",
+      "path": "/v1",
+      "npm": "@ai-sdk/openai-compatible",
+      "modelIDs": [
+        "deepseek-v4-flash"
+      ],
+      "optionKeys": [
+        "apiKey",
+        "baseURL",
+        "headers"
+      ],
+      "headerNames": [
+        "Authorization",
+        "Plugin-Type"
+      ]
+    }
+  },
+  "concurrency": 1,
+  "planned": 24,
+  "sources": [
+    {
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation",
+      "sha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan",
+      "sha": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose",
+      "sha": "d7435fac581043d29a493e45d5539a3fb0bf20e9",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode",
+      "sha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    }
+  ],
+  "attempts": [
+    {
+      "id": "authoring-format2-oct23-module-flat-observation-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation",
+      "sourceSha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+      "scenarioSha256": "2d468349ef7ab7c56716a3c39e9c43c52d6706d65c256a35e21669764f06af2d"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-baseline-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan",
+      "sourceSha": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+      "scenarioSha256": "0a174052c0a288f4bcd9c63a839db435c8f2b1669f8c9e956c75443244958cb3"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-prose-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose",
+      "sourceSha": "d7435fac581043d29a493e45d5539a3fb0bf20e9",
+      "scenarioSha256": "28adf8547585b1456cb0453bc589d1bf05735c51dc2998fa979adf03ec90b79a"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-pseudocode-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode",
+      "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+      "scenarioSha256": "fbc81d4923407ed435fa88b06aa26587adbcf71c6844c37a31aa79603d2bde10"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-prose-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose",
+      "sourceSha": "d7435fac581043d29a493e45d5539a3fb0bf20e9",
+      "scenarioSha256": "8f1406a0f56add6d5b829f8b06287d9f568d285a617000ffab63a4bb842867aa"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-pseudocode-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode",
+      "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+      "scenarioSha256": "6f091d74d85ee02062385a6602343aebb317ba614aa3acc90c535c8eca527a81"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-baseline-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan",
+      "sourceSha": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+      "scenarioSha256": "6fdc271adff8d96c321b9be161d0adab6370702c96f1dd4b8b133638fe7093c0"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-observation-r1",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation",
+      "sourceSha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+      "scenarioSha256": "6b75a6f0854fbb829839040592c73557a63deb65f66e7671fcad8fc49531e5a2"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-baseline-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan",
+      "sourceSha": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+      "scenarioSha256": "2052283f2b71cddb75235a81a4cdbc58a08f59994834d22ee33d7c83ec36cffe"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-prose-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose",
+      "sourceSha": "d7435fac581043d29a493e45d5539a3fb0bf20e9",
+      "scenarioSha256": "c59b45f0dff3fd6e372d304478c632a3ea88b4749481f3c2fedf49986b4bbf88"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-pseudocode-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode",
+      "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+      "scenarioSha256": "a647f24549b2edf43e4f55e1bd8e58100d2dd956dda8c2593f7b80c420354cd3"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-observation-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation",
+      "sourceSha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+      "scenarioSha256": "1f47ad52acc3d5e7bd0c429da8fa956342d48e1343cf66998103c3af2924a94e"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-pseudocode-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode",
+      "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+      "scenarioSha256": "380c42491d17a1d4d01fbab1c13e249b82a76c3bd61a43899bcee4e761bcd084"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-baseline-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan",
+      "sourceSha": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+      "scenarioSha256": "7650c9bc5fc3bd53aa763eaca52815fb177c6426e7d70cf9cebeb8b44ecb5547"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-observation-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation",
+      "sourceSha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+      "scenarioSha256": "36fb6634ab793e8f86a06ae79bdda1b868695f193e597ff526735ebd032a6c3e"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-prose-r2",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose",
+      "sourceSha": "d7435fac581043d29a493e45d5539a3fb0bf20e9",
+      "scenarioSha256": "217ee05029be000b1c9eaefcd4928c05c0c7bb62fcd7dc36c1be4cef37b20f8c"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-prose-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose",
+      "sourceSha": "d7435fac581043d29a493e45d5539a3fb0bf20e9",
+      "scenarioSha256": "2bf2514ac52cb413f8f9ce7fb82162692ae456511d602081f2b0440924c5ec4d"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-pseudocode-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode",
+      "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+      "scenarioSha256": "04546392a61079b2fce677a3c4d34d2c292f8717cc0216605901bad850d9f053"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-observation-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation",
+      "sourceSha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+      "scenarioSha256": "58d410d6b0ae5f1778d3c73c4288711df4c754cbd2a66942c1e4bb7a31d0c3da"
+    },
+    {
+      "id": "authoring-format2-oct23-module-flat-baseline-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan",
+      "sourceSha": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+      "scenarioSha256": "93e95d0fc63437a51000ba4c60466b9ec04f4aa4a30fae76f9b3fca329465b42"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-baseline-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/plan",
+      "sourceSha": "c676bb090e6f4f93a199c9a46f9726be9260c865",
+      "scenarioSha256": "dd20141286f21eedfc0ca59c851a93daa5e3e275bc9e7bb759bb8b8a9290ac2a"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-observation-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/observation",
+      "sourceSha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+      "scenarioSha256": "6386cf8ee978243b12ef3d7aa33f25e70d7a54d020cf98a67db575e2059686d7"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-prose-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/prose",
+      "sourceSha": "d7435fac581043d29a493e45d5539a3fb0bf20e9",
+      "scenarioSha256": "21b49a197b0b2f60ac2172dd8666b46a71f4b62ad9fa81bb493711a2d3828da0"
+    },
+    {
+      "id": "authoring-format2-oct23-module-nested-pseudocode-r3",
+      "sourceRoot": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/pseudocode",
+      "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+      "scenarioSha256": "5b71bdf8b303b972e3d9df7988edd225553b585b60180f01adf7db40b08e24af"
+    }
+  ],
+  "limits": {
+    "workerMs": 180000,
+    "childGraceMs": 60000,
+    "childDeadlineMs": 540000,
+    "maximumAttempts": 24
+  },
+  "frozenAt": "2026-10-23T21:15:34.690Z"
+}

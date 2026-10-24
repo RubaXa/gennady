@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 1,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r1",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:12:56.351Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/1",
+  "sessions": [
+    {
+      "id": "ses_e9262d869ffe3zimBcuLpCjiBY",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/1/sdd-flow-eval-I2pl3S",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e926218f6ffeo2bzeidE6zdXtk",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/1/sdd-flow-eval-I2pl3S",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r1",
+    "summarySha256": "582e0b2384b1292733b1ea263eab2ecee124ee8209199ff4888fc74e1dd0539f",
+    "trajectorySha256": "a2fbf902b75c0cafc8fef41292767590e3d7744b7eee6e329e9c05b464de873d",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": false,
+    "pathPass": false,
+    "actions": 16,
+    "nonCacheTokens": 36136,
+    "messages": 9
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:14:16.697Z",
+  "knownSessions": [
+    {
+      "id": "ses_e9262d869ffe3zimBcuLpCjiBY",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/1/sdd-flow-eval-I2pl3S"
+    },
+    {
+      "id": "ses_e926218f6ffeo2bzeidE6zdXtk",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/1/sdd-flow-eval-I2pl3S"
+    }
+  ]
+}

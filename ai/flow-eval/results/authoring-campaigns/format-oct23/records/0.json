@@ -1,0 +1,63 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 0,
+  "scenarioId": "authoring-format-oct23-module-flat-prose-r1",
+  "sourceSha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+  "startedAt": "2026-10-23T20:04:09.310Z",
+  "directory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/0",
+  "sessions": [
+    {
+      "id": "ses_e95a2dbd6ffehCxq2VNgaAzr2x",
+      "directory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/0/sdd-flow-eval-RsnqB2",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e95a0936dffefNr6nWXVYpWw1h",
+      "directory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/0/sdd-flow-eval-RsnqB2",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-23-authoring-format-oct23-module-flat-prose-r1",
+    "summarySha256": "c28a8f93622289831710313f8c836a65e28dac36696ede9fd6a8c74a377455a0",
+    "trajectorySha256": "eddad2e2165de10cec83afacd8e289505c6bd8b91e49baff308f404ec67542fb",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 34,
+    "nonCacheTokens": 70203,
+    "messages": 27
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-23T20:07:18.521Z",
+  "knownSessions": [
+    {
+      "id": "ses_e95a2dbd6ffehCxq2VNgaAzr2x",
+      "directory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/0/sdd-flow-eval-RsnqB2"
+    },
+    {
+      "id": "ses_e95a0936dffefNr6nWXVYpWw1h",
+      "directory": "/private/tmp/gennady-format-oct23.xNC5Zx/runs/0/sdd-flow-eval-RsnqB2"
+    }
+  ]
+}

@@ -1,0 +1,239 @@
+{
+  "schema": "gennady.format-pilot-descriptive-effects.1",
+  "authority": "Derived pilot interpretation only; primary grades and standard comparator unchanged. keep is further-review only.",
+  "collectionComplete": true,
+  "qualifiedMatrix": true,
+  "pairs": [
+    {
+      "baseline": "baseline",
+      "candidate": "facts",
+      "contrast": "Computed identifiers, syntax and exact scope links added by sdd-new module output only; directives/templates unchanged. Does not isolate each field.",
+      "qualified": true,
+      "effect": "better",
+      "action": "reject",
+      "tokenTargetBothCases": false,
+      "furtherReviewOnly": true,
+      "reasons": [
+        "module-flat: Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+        "module-flat: Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+        "module-flat: Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible.",
+        "module-nested: Existing standard comparator flags this case; its unchanged pass-count comparison may include unknown semantic/path outcomes and is not alone proof of a quality failure.",
+        "module-nested: Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+        "module-nested: Median worker non-cache token reduction did not reach 10%.",
+        "module-nested: Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+        "module-nested: Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible."
+      ],
+      "cases": [
+        {
+          "caseId": "module-flat",
+          "qualified": true,
+          "globalComparable": true,
+          "effect": "better",
+          "effectMeaning": "Descriptive resource contrast plus known-quality changes only; unknown quality is not parity, and no causal/statistical guarantee is made.",
+          "qualityAssessment": "known-failure-reduction",
+          "workerTokenDirection": "better",
+          "trajectoryDirection": "better",
+          "elapsedDirection": "better",
+          "metricDeltas": {
+            "tools": {
+              "baseline": 29,
+              "candidate": 20,
+              "absolute": -9,
+              "percent": -31.03448275862069
+            },
+            "workerNonCacheTokens": {
+              "baseline": 57721.5,
+              "candidate": 47146.5,
+              "absolute": -10575,
+              "percent": -18.32072971076635
+            },
+            "workerMessages": {
+              "baseline": 17.5,
+              "candidate": 15,
+              "absolute": -2.5,
+              "percent": -14.285714285714286
+            },
+            "workerMs": {
+              "baseline": 100793,
+              "candidate": 90841,
+              "absolute": -9952,
+              "percent": -9.873701546734397
+            }
+          },
+          "promptBytes": {
+            "baseline": 43574,
+            "candidate": 43574,
+            "absolute": 0,
+            "percent": 0
+          },
+          "quality": {
+            "artifactPass": {
+              "baseline": 5,
+              "candidate": 6,
+              "baselineFailed": 1,
+              "candidateFailed": 0,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "semanticPass": {
+              "baseline": 4,
+              "candidate": 6,
+              "baselineFailed": 2,
+              "candidateFailed": 0,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "pathPass": {
+              "baseline": 0,
+              "candidate": 0,
+              "baselineFailed": 0,
+              "candidateFailed": 0,
+              "baselineKnown": 0,
+              "candidateKnown": 0,
+              "baselineUnknown": 6,
+              "candidateUnknown": 6,
+              "expected": 6
+            }
+          },
+          "better": [
+            "tools",
+            "workerNonCacheTokens",
+            "workerMessages",
+            "workerMs",
+            "artifactPass",
+            "semanticPass"
+          ],
+          "worse": [],
+          "knownWriteViolation": false,
+          "candidateObservedViolationAttempts": 0,
+          "candidatePathProven": false,
+          "acceptance": {
+            "qualityEvidenceComplete": false,
+            "noQualityLoss": null,
+            "noToolMessageGrowth": true,
+            "tokenTargetAtLeastTenPercent": true,
+            "standardComparatorRecommendation": "reject"
+          },
+          "action": "keep-original",
+          "actionMeaning": "No experimental prompt selected; not a claim that the baseline is perfect.",
+          "reasons": [
+            "Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+            "Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+            "Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible."
+          ]
+        },
+        {
+          "caseId": "module-nested",
+          "qualified": true,
+          "globalComparable": true,
+          "effect": "better",
+          "effectMeaning": "Descriptive resource contrast plus known-quality changes only; unknown quality is not parity, and no causal/statistical guarantee is made.",
+          "qualityAssessment": "known-failure-reduction",
+          "workerTokenDirection": "better",
+          "trajectoryDirection": "better",
+          "elapsedDirection": "better",
+          "metricDeltas": {
+            "tools": {
+              "baseline": 25,
+              "candidate": 22.5,
+              "absolute": -2.5,
+              "percent": -10
+            },
+            "workerNonCacheTokens": {
+              "baseline": 49700.5,
+              "candidate": 45868.5,
+              "absolute": -3832,
+              "percent": -7.710184002173016
+            },
+            "workerMessages": {
+              "baseline": 19.5,
+              "candidate": 16.5,
+              "absolute": -3,
+              "percent": -15.384615384615385
+            },
+            "workerMs": {
+              "baseline": 103969,
+              "candidate": 84276,
+              "absolute": -19693,
+              "percent": -18.94122286450769
+            }
+          },
+          "promptBytes": {
+            "baseline": 43574,
+            "candidate": 43574,
+            "absolute": 0,
+            "percent": 0
+          },
+          "quality": {
+            "artifactPass": {
+              "baseline": 5,
+              "candidate": 6,
+              "baselineFailed": 1,
+              "candidateFailed": 0,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "semanticPass": {
+              "baseline": 5,
+              "candidate": 5,
+              "baselineFailed": 1,
+              "candidateFailed": 1,
+              "baselineKnown": 6,
+              "candidateKnown": 6,
+              "baselineUnknown": 0,
+              "candidateUnknown": 0,
+              "expected": 6
+            },
+            "pathPass": {
+              "baseline": 0,
+              "candidate": 0,
+              "baselineFailed": 0,
+              "candidateFailed": 0,
+              "baselineKnown": 0,
+              "candidateKnown": 0,
+              "baselineUnknown": 6,
+              "candidateUnknown": 6,
+              "expected": 6
+            }
+          },
+          "better": [
+            "tools",
+            "workerNonCacheTokens",
+            "workerMessages",
+            "workerMs",
+            "artifactPass"
+          ],
+          "worse": [],
+          "knownWriteViolation": false,
+          "candidateObservedViolationAttempts": 0,
+          "candidatePathProven": false,
+          "acceptance": {
+            "qualityEvidenceComplete": false,
+            "noQualityLoss": null,
+            "noToolMessageGrowth": true,
+            "tokenTargetAtLeastTenPercent": false,
+            "standardComparatorRecommendation": "reject"
+          },
+          "action": "reject",
+          "actionMeaning": "Do not select this treatment under the frozen campaign acceptance.",
+          "reasons": [
+            "Existing standard comparator flags this case; its unchanged pass-count comparison may include unknown semantic/path outcomes and is not alone proof of a quality failure.",
+            "Semantic/artifact/path evidence contains unknown outcomes; neither a drop in confirmation count nor zero PASS counts establish a quality regression, improvement or parity.",
+            "Median worker non-cache token reduction did not reach 10%.",
+            "Candidate path is not proven 6/6; unknown is not converted to failure or PASS.",
+            "Existing global comparator/static-envelope selection criterion is not met; local resource metrics remain separately visible."
+          ]
+        }
+      ]
+    }
+  ]
+}

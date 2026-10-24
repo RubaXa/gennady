@@ -1,0 +1,47 @@
+// Post-series only: frozen v5 raw results are retained; v6 changes only pending-clause recognition.
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { buildAuthoringFixture, checkAuthoringBenchmark, getAuthoringCase } from '/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/authoring-benchmark.ts';
+const own=dirname(fileURLToPath(import.meta.url));
+const repo='/private/tmp/gennady-format-oct23.xNC5Zx/plan';
+const sha=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
+const bytes=(p:string)=>{const s=fs.lstatSync(p);if(!s.isFile()||s.isSymbolicLink()||s.size>8*1024*1024)throw Error('UNSAFE_REPLAY_INPUT');return fs.readFileSync(p)};
+const json=(p:string)=>JSON.parse(bytes(p).toString());
+const batch=json(join(own,'batch.json'));
+if(batch.recorded!==24||batch.complete!==true||batch.errors!==0)throw Error('FINAL24_REQUIRED');
+const scratch=fs.mkdtempSync(join(own,'oracle-v6-replay-')), rows:any[]=[];
+let created=0, removed=0;
+try {
+  for(let index=0;index<24;index++) {
+    const record=json(join(own,'records',`${index}.json`)),result=join(own,'permanent',record.primary.directory);
+    const summaryBytes=bytes(join(result,'summary.json'));
+    if(sha(summaryBytes)!==record.primary.summarySha256)throw Error('PRIMARY_HASH_DRIFT');
+    const summary=JSON.parse(summaryBytes.toString()),caseId=summary.authoringBenchmark.caseId,item=getAuthoringCase(caseId);
+    const artifact=bytes(join(result,item.target));
+    for(const mode of ['current-reference-fixture','available-saved-references']) {
+      const fixture=fs.mkdtempSync(join(scratch,'fixture-'));created++;
+      try {
+        const put=(p:string,b:Buffer|string)=>{const target=join(fixture,p);fs.mkdirSync(dirname(target),{recursive:true});fs.writeFileSync(target,b)};
+        const saved:any[]=[];
+        for(const [path,text] of Object.entries(buildAuthoringFixture(caseId))) {
+          const p=join(result,path);
+          if(mode==='available-saved-references'&&fs.existsSync(p)){const b=bytes(p);put(path,b);saved.push({path,sha256:sha(b)})}
+          else put(path,text);
+        }
+        put(item.target,artifact);
+        const v5=checkAuthoringBenchmark(fixture,caseId,'calibrated-v5'),v6=checkAuthoringBenchmark(fixture,caseId,'calibrated-v6');
+        const differences=v5.checks.flatMap((before,i)=>JSON.stringify(before)===JSON.stringify(v6.checks[i])?[]:[{id:before.id,before,after:v6.checks[i]}]);
+        if(JSON.stringify(v5)!==JSON.stringify(summary.quality)||differences.some(d=>d.id!=='pending-approval'))throw Error('REPLAY_NOT_EXACT_OR_UNRELATED_CHECK_DELTA');
+        rows.push({index,scenarioId:summary.scenarioId,caseId,variant:summary.authoringBenchmark.variant,mode,artifactSha256:sha(artifact),summarySha256:sha(summaryBytes),rawQualityMatches:true,originalSemanticVerdict:summary.verdict,v5,v6,differences,savedReferences:saved});
+        if(sha(bytes(join(result,item.target)))!==sha(artifact)||sha(bytes(join(result,'summary.json')))!==record.primary.summarySha256)throw Error('SOURCE_MUTATED');
+      } finally {if(fs.realpathSync(fixture)!==fixture||!fixture.startsWith(scratch+'/fixture-'))throw Error('UNSAFE_FIXTURE_CLEANUP');fs.rmSync(fixture,{recursive:true});removed++}
+    }
+  }
+} finally {if(fs.realpathSync(scratch)!==scratch)throw Error('UNSAFE_SCRATCH_CLEANUP');fs.rmSync(scratch,{recursive:true})}
+if(created!==48||removed!==48)throw Error('REPLAY_INCOMPLETE');
+const oraclePath=join(repo,'ai/flow-eval/authoring-benchmark.ts');
+const report={schema:'gennady.authoring-pending-calibration.1',primaryGradesReplaced:false,semanticGradesReplaced:false,modelCalls:0,oraclePath,oracleSha256:sha(bytes(oraclePath)),scriptSha256:sha(bytes(fileURLToPath(import.meta.url))),sourceNote:'Post-series v6 alias/terminator calibration; both frozen live arms remain v5. This is artifact-only replay, not new model runs or semantic regrading.',cleanup:{fixturesCreated:created,fixturesRemoved:removed,scratchRemoved:!fs.existsSync(scratch)},records:rows};
+fs.writeFileSync(join(own,'calibrated-v6-replay.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify({records:rows.length,changed:rows.filter(r=>r.differences.length).map(r=>({index:r.index,mode:r.mode,checks:r.differences.map(d=>d.id)})),cleanup:report.cleanup,modelCalls:0}));

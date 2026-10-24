@@ -1,0 +1,50 @@
+{
+  "schema": "gennady.owned-runtime-cleanup.1",
+  "ownRoot": "/private/tmp/gennady-format-invariant-oct24.bMnrNz",
+  "status": "complete",
+  "attemptsFinalized": 24,
+  "deletedSessionFacts": 48,
+  "server": {
+    "launcherPid": 8893,
+    "serverPid": 8988,
+    "port": 4201,
+    "signal": "SIGTERM",
+    "stopped": true
+  },
+  "removedPaths": [
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-home",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-config",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-data",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-cache",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-state",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-runtime",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-tmp",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-bun",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-bun-cache",
+    "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-npm-cache"
+  ],
+  "journalModesRestored": [
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/plan/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "from": "444",
+      "to": "644",
+      "sha256": "ac09ccefd9d07a9ab17055bf5f0c7f30de86d22fce7ff8334f4a0ad2a910bf71"
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/facts/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "from": "444",
+      "to": "644",
+      "sha256": "ac09ccefd9d07a9ab17055bf5f0c7f30de86d22fce7ff8334f4a0ad2a910bf71"
+    }
+  ],
+  "errors": [],
+  "preserved": [
+    "source worktrees",
+    "shared dependencies",
+    "dist",
+    "permanent results",
+    "records",
+    "logs",
+    "public metadata"
+  ]
+}

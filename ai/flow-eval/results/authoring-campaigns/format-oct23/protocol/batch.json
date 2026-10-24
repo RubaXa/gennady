@@ -1,0 +1,113 @@
+{
+  "planned": 24,
+  "dispatched": 4,
+  "recorded": 4,
+  "interrupted": "SIGINT",
+  "errors": 1,
+  "complete": false,
+  "rows": [
+    {
+      "index": 0,
+      "scenarioId": "authoring-format-oct23-module-flat-prose-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-23-authoring-format-oct23-module-flat-prose-r1",
+        "summarySha256": "c28a8f93622289831710313f8c836a65e28dac36696ede9fd6a8c74a377455a0",
+        "trajectorySha256": "eddad2e2165de10cec83afacd8e289505c6bd8b91e49baff308f404ec67542fb",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 34,
+        "nonCacheTokens": 70203,
+        "messages": 27
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 1,
+      "scenarioId": "authoring-format-oct23-module-flat-baseline-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-23-authoring-format-oct23-module-flat-baseline-r1",
+        "summarySha256": "0b1fa000f60cda15a693873a88f58481ecfca57f01e8585bdf4563463a51cdd6",
+        "trajectorySha256": "59065f9ad13a9a456b8822d9aa606a3326e2a12c6536abb9f5b7faa902ee5eb3",
+        "status": "completed",
+        "verdict": "inconclusive",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 23,
+        "nonCacheTokens": 49336,
+        "messages": 16
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 2,
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-23-authoring-format-oct23-module-flat-pseudocode-r1",
+        "summarySha256": "b327f367312b57ae5a6f4f1d02c738d64fcd5995a15027adabfcdf431a9aee2e",
+        "trajectorySha256": "6be9722f9b4e296d07bb1088439a0469a200d3f3ecc95007813e778671060b30",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 25,
+        "nonCacheTokens": 50483,
+        "messages": 20
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 3,
+      "scenarioId": "authoring-format-oct23-module-flat-observation-r1",
+      "code": 130,
+      "signal": null,
+      "complete": false,
+      "primary": {
+        "directory": "2026-10-23-authoring-format-oct23-module-flat-observation-r1",
+        "summarySha256": "cdf8c8781733d80db5ed88d3d1beaf9d76272f83031489916c6bcb704407a01e",
+        "trajectorySha256": "7db7d99f36acda22815d23afb4d5407e018d86bb2df18cd2165e47c001e51f69",
+        "status": "interrupted",
+        "verdict": "interrupted",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 29
+      },
+      "qualification": {
+        "dispatchMayContinue": false,
+        "metricsQualified": false,
+        "stopReasons": [
+          "ACTUAL_WORKER_MODEL_UNVERIFIED_OR_WRONG",
+          "USAGE_TRACE_SESSION_MISMATCH",
+          "COMPLETED_ATTEMPT_MODEL_OR_USAGE_UNVERIFIED"
+        ],
+        "warnings": []
+      }
+    }
+  ],
+  "endedAt": "2026-10-23T20:16:21.121Z"
+}

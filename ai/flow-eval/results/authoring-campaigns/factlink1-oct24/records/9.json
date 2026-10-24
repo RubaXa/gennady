@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 9,
+  "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r3",
+  "sourceSha": "67326bc51786cd548b2334e4e5fbcb4a9bc66c53",
+  "startedAt": "2026-10-24T08:54:52.636Z",
+  "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/9",
+  "sessions": [
+    {
+      "id": "ses_e92e13ef5ffeHDyPdRqB4p8aIn",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/9/sdd-flow-eval-CbmBMC",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e92e01178ffeljybRLx9DZRHAR",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/9/sdd-flow-eval-CbmBMC",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3",
+    "summarySha256": "3553ab8bfe49279073001dfeeaa46d48110d6e9bafdb3fbbf0f67aac157b9c45",
+    "trajectorySha256": "005e07f7801b4ff35ba0963825f5517f5f8ee6f7dc4b8081509a23f3313a7cb9",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 19,
+    "nonCacheTokens": 41880,
+    "messages": 13
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T08:56:37.299Z",
+  "knownSessions": [
+    {
+      "id": "ses_e92e13ef5ffeHDyPdRqB4p8aIn",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/9/sdd-flow-eval-CbmBMC"
+    },
+    {
+      "id": "ses_e92e01178ffeljybRLx9DZRHAR",
+      "directory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runs/9/sdd-flow-eval-CbmBMC"
+    }
+  ]
+}

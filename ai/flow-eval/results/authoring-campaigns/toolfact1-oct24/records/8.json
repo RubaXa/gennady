@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 8,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-baseline-r3",
+  "sourceSha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+  "startedAt": "2026-10-24T11:29:44.528Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/8",
+  "sessions": [
+    {
+      "id": "ses_e92537626ffeR11UrX5NmmKTiN",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/8/sdd-flow-eval-w1tyaE",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e925216b3ffe5y0xFNO1nN5722",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/8/sdd-flow-eval-w1tyaE",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r3",
+    "summarySha256": "5d8a0616afae1c9b2108f5ad4d2fdaf0f2edcb3c13fa729019952f5a95c6d150",
+    "trajectorySha256": "172433741fe3094d109e9868c917c2e5daf582702e20eb1957774f1cc4a472cd",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 22,
+    "nonCacheTokens": 50808,
+    "messages": 17
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:32:16.872Z",
+  "knownSessions": [
+    {
+      "id": "ses_e92537626ffeR11UrX5NmmKTiN",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/8/sdd-flow-eval-w1tyaE"
+    },
+    {
+      "id": "ses_e925216b3ffe5y0xFNO1nN5722",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/8/sdd-flow-eval-w1tyaE"
+    }
+  ]
+}

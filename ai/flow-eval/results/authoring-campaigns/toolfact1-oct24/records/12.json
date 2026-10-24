@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 12,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r4",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:38:18.101Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/12",
+  "sessions": [
+    {
+      "id": "ses_e924ba088fferIFqvh7a9SlYL6",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/12/sdd-flow-eval-cImRz6",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e924a4b38ffexA5m4MqYLvtu5g",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/12/sdd-flow-eval-cImRz6",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r4",
+    "summarySha256": "b7f9b0aebe780c127918f1f48c756c2905b58ced48fb3629458a5dc6d2aacd38",
+    "trajectorySha256": "d1362859ef3040d78e37f0a368dcf497fdce9464e05a80a2d8559b2261233a85",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 25,
+    "nonCacheTokens": 59629,
+    "messages": 15
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:40:34.998Z",
+  "knownSessions": [
+    {
+      "id": "ses_e924ba088fferIFqvh7a9SlYL6",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/12/sdd-flow-eval-cImRz6"
+    },
+    {
+      "id": "ses_e924a4b38ffexA5m4MqYLvtu5g",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/12/sdd-flow-eval-cImRz6"
+    }
+  ]
+}

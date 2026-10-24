@@ -1,0 +1,20 @@
+{
+  "source": {
+    "commit": "ddd26bd88a4b80389faf95e2533766ae44e6f84f"
+  },
+  "treatment": "sdd-new computed facts plus bounded source-contract consistency cue",
+  "targetPaths": [
+    "cli/AGENTS.md",
+    "cli/cmd/README.md",
+    "cli/cmd/sdd-new/__tests__/module-authoring-facts.test.ts",
+    "cli/cmd/sdd-new/__tests__/sdd-new.cmd.test.ts",
+    "cli/cmd/sdd-new/help.ts",
+    "cli/cmd/sdd-new/module-authoring-facts.ts",
+    "cli/cmd/sdd-new/sdd-new.cmd.ts",
+    "cli/gennady.ts"
+  ],
+  "factsAreDomainAnswers": false,
+  "instructionsChanged": false,
+  "toolOutputCueChanged": true,
+  "distinctCompiledCliExpected": true
+}

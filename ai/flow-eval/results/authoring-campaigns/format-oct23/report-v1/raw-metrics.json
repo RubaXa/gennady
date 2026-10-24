@@ -1,0 +1,3341 @@
+{
+  "schema": "gennady.format-pilot-offline.1",
+  "planned": 24,
+  "recordedPrimary": 4,
+  "complete": false,
+  "controllerBatch": {
+    "planned": 24,
+    "dispatched": 4,
+    "recorded": 4,
+    "interrupted": "SIGINT",
+    "errors": 1,
+    "complete": false,
+    "rows": [
+      {
+        "index": 0,
+        "scenarioId": "authoring-format-oct23-module-flat-prose-r1",
+        "code": 0,
+        "signal": null,
+        "complete": true,
+        "primary": {
+          "directory": "2026-10-23-authoring-format-oct23-module-flat-prose-r1",
+          "summarySha256": "c28a8f93622289831710313f8c836a65e28dac36696ede9fd6a8c74a377455a0",
+          "trajectorySha256": "eddad2e2165de10cec83afacd8e289505c6bd8b91e49baff308f404ec67542fb",
+          "status": "completed",
+          "verdict": "pass",
+          "artifactPass": true,
+          "pathPass": false,
+          "actions": 34,
+          "nonCacheTokens": 70203,
+          "messages": 27
+        },
+        "qualification": {
+          "dispatchMayContinue": true,
+          "metricsQualified": true,
+          "stopReasons": [],
+          "warnings": []
+        }
+      },
+      {
+        "index": 1,
+        "scenarioId": "authoring-format-oct23-module-flat-baseline-r1",
+        "code": 0,
+        "signal": null,
+        "complete": true,
+        "primary": {
+          "directory": "2026-10-23-authoring-format-oct23-module-flat-baseline-r1",
+          "summarySha256": "0b1fa000f60cda15a693873a88f58481ecfca57f01e8585bdf4563463a51cdd6",
+          "trajectorySha256": "59065f9ad13a9a456b8822d9aa606a3326e2a12c6536abb9f5b7faa902ee5eb3",
+          "status": "completed",
+          "verdict": "inconclusive",
+          "artifactPass": false,
+          "pathPass": false,
+          "actions": 23,
+          "nonCacheTokens": 49336,
+          "messages": 16
+        },
+        "qualification": {
+          "dispatchMayContinue": true,
+          "metricsQualified": true,
+          "stopReasons": [],
+          "warnings": []
+        }
+      },
+      {
+        "index": 2,
+        "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r1",
+        "code": 0,
+        "signal": null,
+        "complete": true,
+        "primary": {
+          "directory": "2026-10-23-authoring-format-oct23-module-flat-pseudocode-r1",
+          "summarySha256": "b327f367312b57ae5a6f4f1d02c738d64fcd5995a15027adabfcdf431a9aee2e",
+          "trajectorySha256": "6be9722f9b4e296d07bb1088439a0469a200d3f3ecc95007813e778671060b30",
+          "status": "completed",
+          "verdict": "pass",
+          "artifactPass": true,
+          "pathPass": false,
+          "actions": 25,
+          "nonCacheTokens": 50483,
+          "messages": 20
+        },
+        "qualification": {
+          "dispatchMayContinue": true,
+          "metricsQualified": true,
+          "stopReasons": [],
+          "warnings": []
+        }
+      },
+      {
+        "index": 3,
+        "scenarioId": "authoring-format-oct23-module-flat-observation-r1",
+        "code": 130,
+        "signal": null,
+        "complete": false,
+        "primary": {
+          "directory": "2026-10-23-authoring-format-oct23-module-flat-observation-r1",
+          "summarySha256": "cdf8c8781733d80db5ed88d3d1beaf9d76272f83031489916c6bcb704407a01e",
+          "trajectorySha256": "7db7d99f36acda22815d23afb4d5407e018d86bb2df18cd2165e47c001e51f69",
+          "status": "interrupted",
+          "verdict": "interrupted",
+          "artifactPass": false,
+          "pathPass": false,
+          "actions": 29
+        },
+        "qualification": {
+          "dispatchMayContinue": false,
+          "metricsQualified": false,
+          "stopReasons": [
+            "ACTUAL_WORKER_MODEL_UNVERIFIED_OR_WRONG",
+            "USAGE_TRACE_SESSION_MISMATCH",
+            "COMPLETED_ATTEMPT_MODEL_OR_USAGE_UNVERIFIED"
+          ],
+          "warnings": []
+        }
+      }
+    ],
+    "endedAt": "2026-10-23T20:16:21.121Z"
+  },
+  "attempts": [
+    {
+      "index": 0,
+      "scenarioId": "authoring-format-oct23-module-flat-prose-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "prose",
+      "repetition": 1,
+      "missing": false,
+      "status": "completed",
+      "outcome": "pass",
+      "verdict": "pass",
+      "artifact": {
+        "rule": "AUTHORING",
+        "pass": true,
+        "detail": "module-flat: bounded artifact checks passed; independent semantic review not claimed",
+        "checks": [
+          {
+            "id": "safe-target",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "seeded-bytes",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "write-zone-artifact",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "canonical-shape",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "no-skeleton",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "pending-approval",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "relative-links",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "required-facts",
+            "pass": true,
+            "detail": "passed"
+          }
+        ]
+      },
+      "path": {
+        "rule": "AUTHORING-PATH",
+        "pass": false,
+        "detail": "opaque Bash command: whole-write-only path unproven"
+      },
+      "observation": {
+        "prompt": {
+          "schema": "gennady.authoring-instruction-envelope.1",
+          "bytes": 43538,
+          "approximateTokens": 8729,
+          "digest": "1a4d7a6411042a456baf8ff43f59d615a76656ef5f0a315f107b94bbe93c72d6",
+          "parts": [
+            {
+              "name": "module.skeleton",
+              "bytes": 7986,
+              "approximateTokens": 1944,
+              "sha256": "386ee407fbee99006d36ac9de430ce25a3fba4342555cf7ea76199053b3960bd"
+            },
+            {
+              "name": "module.manifest",
+              "bytes": 8356,
+              "approximateTokens": 993,
+              "sha256": "27558bbff34c7673528183312a7ab205cdf26774c2c432ee49310fd9731ed867"
+            },
+            {
+              "name": "module.directive.xml",
+              "bytes": 10361,
+              "approximateTokens": 2047,
+              "sha256": "e5db7f0a8120a47ffeadac7793e3a534e975be124ba4b9defab90ca9fb335e77"
+            },
+            {
+              "name": "formats/entity-inventory-format.xml",
+              "bytes": 3297,
+              "approximateTokens": 674,
+              "sha256": "1576369d3ea8f304133847b724c0ce46de68bf5ab2bbf20be4415feb88b45ecf"
+            },
+            {
+              "name": "formats/entity-surface-format.xml",
+              "bytes": 3346,
+              "approximateTokens": 778,
+              "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074"
+            },
+            {
+              "name": "formats/dbc-contracts.xml",
+              "bytes": 10192,
+              "approximateTokens": 2293,
+              "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4"
+            }
+          ]
+        },
+        "taskDigest": "b5fb5074c2c6a56c0a51bab5dd5bbbb1ee58529479e5fbb77be827b00dc490e4",
+        "oracleDigest": "583ea37534b04a60d325d51b6fea6f7c96a928a0c0be5955d84e53be82d64158",
+        "harnessDigest": "ee1f6ac2f7d7bfc9824d08bcd63e7744b52c48a0975a47e0a4da3257aa0413fb",
+        "environmentDigest": "0722937da9aa414dea0d6f62b69061c8b0e23dfdaed55efdd75a4b7c15cdb39f",
+        "environmentVerified": true,
+        "campaign": "format-oct23",
+        "caseId": "module-flat",
+        "variant": "prose",
+        "repetition": 1,
+        "sourceCommit": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+        "dirty": false,
+        "model": "llm-proxy/deepseek-v4-flash",
+        "modelVerified": true,
+        "artifactPass": true,
+        "semanticVerdict": "pass",
+        "trajectoryPass": false,
+        "durationMs": 148248,
+        "nonCacheTokens": 70203,
+        "metrics": {
+          "tools": 34,
+          "targetReads": 1,
+          "repeatedTargetReads": 0,
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "failedTools": 1,
+          "checks": 3,
+          "outsideTargetWrites": 0,
+          "toolSpanMs": 142199
+        }
+      },
+      "contractObservations": {
+        "authority": "derived observation of frozen metrics, not a new primary grade",
+        "counts": {
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "outsideTargetWrites": 0
+        },
+        "flags": {
+          "multipleCompletedNativeTargetWrites": true,
+          "partialWriteToolAttempts": false,
+          "outsideTargetWriteAttempts": false
+        },
+        "observedViolation": true,
+        "metricFieldsKnown": 3,
+        "traceCaptureComplete": true,
+        "targetPathBound": true,
+        "callEvidence": [
+          {
+            "callId": "call_00_XmfdrN3EWzVvKzE5LHve2338",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          },
+          {
+            "callId": "call_00_CKQGeCmSPZE1B3BkKx3j5524",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          }
+        ],
+        "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+      },
+      "usageQualification": {
+        "worker": {
+          "qualified": true,
+          "reason": "complete-positive-observed-usage"
+        },
+        "judge": {
+          "qualified": true,
+          "deadlineExceeded": false,
+          "reason": "complete-positive-observed-usage"
+        },
+        "reflection": {
+          "qualified": true,
+          "reason": "positive-completed-interview; isolation/model independently required"
+        }
+      },
+      "worker": {
+        "messages": 27,
+        "input": 46841,
+        "output": 8255,
+        "reasoning": 15107,
+        "cacheRead": 1175936,
+        "cacheWrite": 0,
+        "total": 70203,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 148248
+      },
+      "judge": {
+        "messages": 1,
+        "input": 7106,
+        "output": 193,
+        "reasoning": 4640,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 11939,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 28017
+      },
+      "reflection": {
+        "status": "completed",
+        "usageDelta": {
+          "input": 50181,
+          "output": 808,
+          "reasoning": 376,
+          "cacheRead": 2048,
+          "cacheWrite": 0,
+          "total": 51365,
+          "messages": 1
+        },
+        "usageComplete": true,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "startedAt": "2026-10-23T20:07:09.157Z",
+        "completedAt": "2026-10-23T20:07:18.333Z",
+        "diffUnchanged": true,
+        "newToolCalls": 0,
+        "monetaryCost": "unknown"
+      },
+      "controller": {
+        "persistence": true,
+        "tempRemoved": true,
+        "cleanupErrors": [],
+        "qualification": {
+          "dispatchMayContinue": true,
+          "metricsQualified": true,
+          "stopReasons": [],
+          "warnings": []
+        },
+        "cliExitCode": 1,
+        "startedAt": "2026-10-23T20:04:09.310Z",
+        "endedAt": "2026-10-23T20:07:18.521Z"
+      }
+    },
+    {
+      "index": 1,
+      "scenarioId": "authoring-format-oct23-module-flat-baseline-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 1,
+      "missing": false,
+      "status": "completed",
+      "outcome": "unknown",
+      "verdict": "inconclusive",
+      "artifact": {
+        "rule": "AUTHORING",
+        "pass": false,
+        "detail": "pending-approval: Handoff must remain pending",
+        "checks": [
+          {
+            "id": "safe-target",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "seeded-bytes",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "write-zone-artifact",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "canonical-shape",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "no-skeleton",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "pending-approval",
+            "pass": false,
+            "detail": "Handoff must remain pending"
+          },
+          {
+            "id": "relative-links",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "required-facts",
+            "pass": true,
+            "detail": "passed"
+          }
+        ]
+      },
+      "path": {
+        "rule": "AUTHORING-PATH",
+        "pass": false,
+        "detail": "opaque Bash command: whole-write-only path unproven"
+      },
+      "observation": {
+        "prompt": {
+          "schema": "gennady.authoring-instruction-envelope.1",
+          "bytes": 43574,
+          "approximateTokens": 8742,
+          "digest": "ba3a99b0fd6fae2b58e38594dfcbc616c83960c449789930095d66d4b432ed73",
+          "parts": [
+            {
+              "name": "module.skeleton",
+              "bytes": 7986,
+              "approximateTokens": 1944,
+              "sha256": "386ee407fbee99006d36ac9de430ce25a3fba4342555cf7ea76199053b3960bd"
+            },
+            {
+              "name": "module.manifest",
+              "bytes": 8356,
+              "approximateTokens": 993,
+              "sha256": "27558bbff34c7673528183312a7ab205cdf26774c2c432ee49310fd9731ed867"
+            },
+            {
+              "name": "module.directive.xml",
+              "bytes": 10397,
+              "approximateTokens": 2060,
+              "sha256": "d86b9cdd6b07cf4e56dbe388945d68bb2b67106800efafe286b61e2c438a1748"
+            },
+            {
+              "name": "formats/entity-inventory-format.xml",
+              "bytes": 3297,
+              "approximateTokens": 674,
+              "sha256": "1576369d3ea8f304133847b724c0ce46de68bf5ab2bbf20be4415feb88b45ecf"
+            },
+            {
+              "name": "formats/entity-surface-format.xml",
+              "bytes": 3346,
+              "approximateTokens": 778,
+              "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074"
+            },
+            {
+              "name": "formats/dbc-contracts.xml",
+              "bytes": 10192,
+              "approximateTokens": 2293,
+              "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4"
+            }
+          ]
+        },
+        "taskDigest": "b5fb5074c2c6a56c0a51bab5dd5bbbb1ee58529479e5fbb77be827b00dc490e4",
+        "oracleDigest": "583ea37534b04a60d325d51b6fea6f7c96a928a0c0be5955d84e53be82d64158",
+        "harnessDigest": "ee1f6ac2f7d7bfc9824d08bcd63e7744b52c48a0975a47e0a4da3257aa0413fb",
+        "environmentDigest": "0722937da9aa414dea0d6f62b69061c8b0e23dfdaed55efdd75a4b7c15cdb39f",
+        "environmentVerified": true,
+        "campaign": "format-oct23",
+        "caseId": "module-flat",
+        "variant": "baseline",
+        "repetition": 1,
+        "sourceCommit": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+        "dirty": false,
+        "model": "llm-proxy/deepseek-v4-flash",
+        "modelVerified": true,
+        "artifactPass": false,
+        "semanticVerdict": "inconclusive",
+        "trajectoryPass": false,
+        "durationMs": 83904,
+        "nonCacheTokens": 49336,
+        "metrics": {
+          "tools": 23,
+          "targetReads": 1,
+          "repeatedTargetReads": 0,
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "failedTools": 0,
+          "checks": 2,
+          "outsideTargetWrites": 0,
+          "toolSpanMs": 78232
+        }
+      },
+      "contractObservations": {
+        "authority": "derived observation of frozen metrics, not a new primary grade",
+        "counts": {
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "outsideTargetWrites": 0
+        },
+        "flags": {
+          "multipleCompletedNativeTargetWrites": true,
+          "partialWriteToolAttempts": false,
+          "outsideTargetWriteAttempts": false
+        },
+        "observedViolation": true,
+        "metricFieldsKnown": 3,
+        "traceCaptureComplete": true,
+        "targetPathBound": true,
+        "callEvidence": [
+          {
+            "callId": "call_00_7C6ILw84doa8ClN1p2tv3353",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          },
+          {
+            "callId": "call_00_lUXpHNwFIIHtTFXarYqa6148",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          }
+        ],
+        "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+      },
+      "usageQualification": {
+        "worker": {
+          "qualified": true,
+          "reason": "complete-positive-observed-usage"
+        },
+        "judge": {
+          "qualified": false,
+          "deadlineExceeded": true,
+          "reason": "host-recorded-judge-deadline: raw zero counters are not known zero cost"
+        },
+        "reflection": {
+          "qualified": true,
+          "reason": "positive-completed-interview; isolation/model independently required"
+        }
+      },
+      "worker": {
+        "messages": 16,
+        "input": 35424,
+        "output": 6866,
+        "reasoning": 7046,
+        "cacheRead": 471424,
+        "cacheWrite": 0,
+        "total": 49336,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 83904
+      },
+      "judge": {
+        "messages": 1,
+        "input": 0,
+        "output": 0,
+        "reasoning": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 180018
+      },
+      "reflection": {
+        "status": "completed",
+        "usageDelta": {
+          "input": 36997,
+          "output": 982,
+          "reasoning": 367,
+          "cacheRead": 2048,
+          "cacheWrite": 0,
+          "total": 38346,
+          "messages": 1
+        },
+        "usageComplete": true,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "startedAt": "2026-10-23T20:11:47.011Z",
+        "completedAt": "2026-10-23T20:11:56.492Z",
+        "diffUnchanged": true,
+        "newToolCalls": 0,
+        "monetaryCost": "unknown"
+      },
+      "controller": {
+        "persistence": true,
+        "tempRemoved": true,
+        "cleanupErrors": [],
+        "qualification": {
+          "dispatchMayContinue": true,
+          "metricsQualified": true,
+          "stopReasons": [],
+          "warnings": []
+        },
+        "cliExitCode": 1,
+        "startedAt": "2026-10-23T20:07:19.659Z",
+        "endedAt": "2026-10-23T20:11:56.681Z"
+      }
+    },
+    {
+      "index": 2,
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "pseudocode",
+      "repetition": 1,
+      "missing": false,
+      "status": "completed",
+      "outcome": "pass",
+      "verdict": "pass",
+      "artifact": {
+        "rule": "AUTHORING",
+        "pass": true,
+        "detail": "module-flat: bounded artifact checks passed; independent semantic review not claimed",
+        "checks": [
+          {
+            "id": "safe-target",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "seeded-bytes",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "write-zone-artifact",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "canonical-shape",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "no-skeleton",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "pending-approval",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "relative-links",
+            "pass": true,
+            "detail": "passed"
+          },
+          {
+            "id": "required-facts",
+            "pass": true,
+            "detail": "passed"
+          }
+        ]
+      },
+      "path": {
+        "rule": "AUTHORING-PATH",
+        "pass": false,
+        "detail": "opaque Bash command: whole-write-only path unproven"
+      },
+      "observation": {
+        "prompt": {
+          "schema": "gennady.authoring-instruction-envelope.1",
+          "bytes": 43607,
+          "approximateTokens": 8738,
+          "digest": "3a932d9b9841946e257eed635a83c71db36d6d15b0cf064de28b94436f8ec9a7",
+          "parts": [
+            {
+              "name": "module.skeleton",
+              "bytes": 7986,
+              "approximateTokens": 1944,
+              "sha256": "386ee407fbee99006d36ac9de430ce25a3fba4342555cf7ea76199053b3960bd"
+            },
+            {
+              "name": "module.manifest",
+              "bytes": 8356,
+              "approximateTokens": 993,
+              "sha256": "27558bbff34c7673528183312a7ab205cdf26774c2c432ee49310fd9731ed867"
+            },
+            {
+              "name": "module.directive.xml",
+              "bytes": 10430,
+              "approximateTokens": 2056,
+              "sha256": "2cc7d5141e96120d6566c1ba963bdbde67c18250575580ce7297b6bd0c185f50"
+            },
+            {
+              "name": "formats/entity-inventory-format.xml",
+              "bytes": 3297,
+              "approximateTokens": 674,
+              "sha256": "1576369d3ea8f304133847b724c0ce46de68bf5ab2bbf20be4415feb88b45ecf"
+            },
+            {
+              "name": "formats/entity-surface-format.xml",
+              "bytes": 3346,
+              "approximateTokens": 778,
+              "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074"
+            },
+            {
+              "name": "formats/dbc-contracts.xml",
+              "bytes": 10192,
+              "approximateTokens": 2293,
+              "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4"
+            }
+          ]
+        },
+        "taskDigest": "b5fb5074c2c6a56c0a51bab5dd5bbbb1ee58529479e5fbb77be827b00dc490e4",
+        "oracleDigest": "583ea37534b04a60d325d51b6fea6f7c96a928a0c0be5955d84e53be82d64158",
+        "harnessDigest": "ee1f6ac2f7d7bfc9824d08bcd63e7744b52c48a0975a47e0a4da3257aa0413fb",
+        "environmentDigest": "0722937da9aa414dea0d6f62b69061c8b0e23dfdaed55efdd75a4b7c15cdb39f",
+        "environmentVerified": true,
+        "campaign": "format-oct23",
+        "caseId": "module-flat",
+        "variant": "pseudocode",
+        "repetition": 1,
+        "sourceCommit": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+        "dirty": false,
+        "model": "llm-proxy/deepseek-v4-flash",
+        "modelVerified": true,
+        "artifactPass": true,
+        "semanticVerdict": "pass",
+        "trajectoryPass": false,
+        "durationMs": 91735,
+        "nonCacheTokens": 50483,
+        "metrics": {
+          "tools": 25,
+          "targetReads": 1,
+          "repeatedTargetReads": 0,
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "failedTools": 0,
+          "checks": 2,
+          "outsideTargetWrites": 0,
+          "toolSpanMs": 85941
+        }
+      },
+      "contractObservations": {
+        "authority": "derived observation of frozen metrics, not a new primary grade",
+        "counts": {
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "outsideTargetWrites": 0
+        },
+        "flags": {
+          "multipleCompletedNativeTargetWrites": true,
+          "partialWriteToolAttempts": false,
+          "outsideTargetWriteAttempts": false
+        },
+        "observedViolation": true,
+        "metricFieldsKnown": 3,
+        "traceCaptureComplete": true,
+        "targetPathBound": true,
+        "callEvidence": [
+          {
+            "callId": "call_00_zuOIQ4AckwWmcbduADao4650",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          },
+          {
+            "callId": "call_00_tPe9vi4IdbMGiSKNTvax1451",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          }
+        ],
+        "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+      },
+      "usageQualification": {
+        "worker": {
+          "qualified": true,
+          "reason": "complete-positive-observed-usage"
+        },
+        "judge": {
+          "qualified": true,
+          "deadlineExceeded": false,
+          "reason": "complete-positive-observed-usage"
+        },
+        "reflection": {
+          "qualified": true,
+          "reason": "positive-completed-interview; isolation/model independently required"
+        }
+      },
+      "worker": {
+        "messages": 20,
+        "input": 35782,
+        "output": 6800,
+        "reasoning": 7901,
+        "cacheRead": 640128,
+        "cacheWrite": 0,
+        "total": 50483,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 91735
+      },
+      "judge": {
+        "messages": 1,
+        "input": 6882,
+        "output": 110,
+        "reasoning": 5573,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 12565,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 32669
+      },
+      "reflection": {
+        "status": "completed",
+        "usageDelta": {
+          "input": 37639,
+          "output": 981,
+          "reasoning": 15,
+          "cacheRead": 2048,
+          "cacheWrite": 0,
+          "total": 38635,
+          "messages": 1
+        },
+        "usageComplete": true,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "startedAt": "2026-10-23T20:14:05.343Z",
+        "completedAt": "2026-10-23T20:14:12.730Z",
+        "diffUnchanged": true,
+        "newToolCalls": 0,
+        "monetaryCost": "unknown"
+      },
+      "controller": {
+        "persistence": true,
+        "tempRemoved": true,
+        "cleanupErrors": [],
+        "qualification": {
+          "dispatchMayContinue": true,
+          "metricsQualified": true,
+          "stopReasons": [],
+          "warnings": []
+        },
+        "cliExitCode": 1,
+        "startedAt": "2026-10-23T20:11:57.864Z",
+        "endedAt": "2026-10-23T20:14:12.905Z"
+      }
+    },
+    {
+      "index": 3,
+      "scenarioId": "authoring-format-oct23-module-flat-observation-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "observation",
+      "repetition": 1,
+      "missing": false,
+      "status": "interrupted",
+      "outcome": "interrupted",
+      "verdict": "interrupted",
+      "artifact": {
+        "rule": "INTERRUPTED",
+        "pass": false,
+        "detail": "run interrupted before reporting completed"
+      },
+      "path": {
+        "rule": "TRAJECTORY",
+        "pass": false,
+        "detail": "interrupted path; retained for diagnosis only"
+      },
+      "observation": {
+        "prompt": {
+          "schema": "gennady.authoring-instruction-envelope.1",
+          "bytes": 43680,
+          "approximateTokens": 8749,
+          "digest": "915fad2eeb85146c1a68914cbdbb4af97acfad777125ecd642480cf029afd729",
+          "parts": [
+            {
+              "name": "module.skeleton",
+              "bytes": 7986,
+              "approximateTokens": 1944,
+              "sha256": "386ee407fbee99006d36ac9de430ce25a3fba4342555cf7ea76199053b3960bd"
+            },
+            {
+              "name": "module.manifest",
+              "bytes": 8356,
+              "approximateTokens": 993,
+              "sha256": "27558bbff34c7673528183312a7ab205cdf26774c2c432ee49310fd9731ed867"
+            },
+            {
+              "name": "module.directive.xml",
+              "bytes": 10503,
+              "approximateTokens": 2067,
+              "sha256": "564c246e734b3573191fbdb6d247e9489ba364e32ce6eefa505930bcd3cc822c"
+            },
+            {
+              "name": "formats/entity-inventory-format.xml",
+              "bytes": 3297,
+              "approximateTokens": 674,
+              "sha256": "1576369d3ea8f304133847b724c0ce46de68bf5ab2bbf20be4415feb88b45ecf"
+            },
+            {
+              "name": "formats/entity-surface-format.xml",
+              "bytes": 3346,
+              "approximateTokens": 778,
+              "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074"
+            },
+            {
+              "name": "formats/dbc-contracts.xml",
+              "bytes": 10192,
+              "approximateTokens": 2293,
+              "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4"
+            }
+          ]
+        },
+        "taskDigest": "b5fb5074c2c6a56c0a51bab5dd5bbbb1ee58529479e5fbb77be827b00dc490e4",
+        "oracleDigest": "583ea37534b04a60d325d51b6fea6f7c96a928a0c0be5955d84e53be82d64158",
+        "harnessDigest": "ee1f6ac2f7d7bfc9824d08bcd63e7744b52c48a0975a47e0a4da3257aa0413fb",
+        "environmentDigest": "0722937da9aa414dea0d6f62b69061c8b0e23dfdaed55efdd75a4b7c15cdb39f",
+        "environmentVerified": true,
+        "campaign": "format-oct23",
+        "caseId": "module-flat",
+        "variant": "observation",
+        "repetition": 1,
+        "sourceCommit": "c80a7e465b348d2b5624740264b927da1a4962d7",
+        "dirty": false,
+        "model": "llm-proxy/deepseek-v4-flash",
+        "modelVerified": false,
+        "artifactPass": false,
+        "semanticVerdict": "interrupted",
+        "trajectoryPass": false,
+        "metrics": {
+          "tools": 29,
+          "targetReads": 2,
+          "repeatedTargetReads": 1,
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "failedTools": 0,
+          "checks": 2,
+          "outsideTargetWrites": 0,
+          "toolSpanMs": 111396
+        }
+      },
+      "contractObservations": {
+        "authority": "derived observation of frozen metrics, not a new primary grade",
+        "counts": {
+          "wholeWrites": 2,
+          "partialWrites": 0,
+          "outsideTargetWrites": 0
+        },
+        "flags": {
+          "multipleCompletedNativeTargetWrites": true,
+          "partialWriteToolAttempts": false,
+          "outsideTargetWriteAttempts": false
+        },
+        "observedViolation": true,
+        "metricFieldsKnown": 3,
+        "traceCaptureComplete": true,
+        "targetPathBound": true,
+        "callEvidence": [
+          {
+            "callId": "call_00_lpWY4cu6CFv7Vxxu8Ebc2717",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          },
+          {
+            "callId": "call_00_hjr0si20PdVtJyUR1zQf2497",
+            "tool": "write",
+            "status": "completed",
+            "flags": [
+              "completed-native-target-write"
+            ]
+          }
+        ],
+        "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+      },
+      "usageQualification": {
+        "worker": {
+          "qualified": false,
+          "reason": "usage-missing-partial-zero-or-model-unverified"
+        },
+        "judge": {
+          "qualified": false,
+          "deadlineExceeded": false,
+          "reason": "usage-missing-partial-zero-or-model-unverified"
+        },
+        "reflection": {
+          "qualified": false,
+          "reason": "missing-incomplete-noncompleted-or-zero-usage-interview"
+        }
+      },
+      "worker": null,
+      "judge": null,
+      "reflection": null,
+      "controller": {
+        "persistence": true,
+        "tempRemoved": true,
+        "cleanupErrors": [],
+        "qualification": {
+          "dispatchMayContinue": false,
+          "metricsQualified": false,
+          "stopReasons": [
+            "ACTUAL_WORKER_MODEL_UNVERIFIED_OR_WRONG",
+            "USAGE_TRACE_SESSION_MISMATCH",
+            "COMPLETED_ATTEMPT_MODEL_OR_USAGE_UNVERIFIED"
+          ],
+          "warnings": []
+        },
+        "cliExitCode": 130,
+        "startedAt": "2026-10-23T20:14:13.905Z",
+        "endedAt": "2026-10-23T20:16:19.822Z"
+      }
+    },
+    {
+      "index": 4,
+      "scenarioId": "authoring-format-oct23-module-nested-baseline-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 1,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 5,
+      "scenarioId": "authoring-format-oct23-module-nested-pseudocode-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "pseudocode",
+      "repetition": 1,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 6,
+      "scenarioId": "authoring-format-oct23-module-nested-observation-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "observation",
+      "repetition": 1,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 7,
+      "scenarioId": "authoring-format-oct23-module-nested-prose-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "prose",
+      "repetition": 1,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 8,
+      "scenarioId": "authoring-format-oct23-module-flat-baseline-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 9,
+      "scenarioId": "authoring-format-oct23-module-flat-observation-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "observation",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 10,
+      "scenarioId": "authoring-format-oct23-module-flat-prose-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "prose",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 11,
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "pseudocode",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 12,
+      "scenarioId": "authoring-format-oct23-module-nested-pseudocode-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "pseudocode",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 13,
+      "scenarioId": "authoring-format-oct23-module-nested-observation-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "observation",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 14,
+      "scenarioId": "authoring-format-oct23-module-nested-prose-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "prose",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 15,
+      "scenarioId": "authoring-format-oct23-module-nested-baseline-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 2,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 16,
+      "scenarioId": "authoring-format-oct23-module-flat-prose-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "prose",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 17,
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "pseudocode",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 18,
+      "scenarioId": "authoring-format-oct23-module-flat-observation-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "observation",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 19,
+      "scenarioId": "authoring-format-oct23-module-flat-baseline-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "baseline",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 20,
+      "scenarioId": "authoring-format-oct23-module-nested-baseline-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "baseline",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 21,
+      "scenarioId": "authoring-format-oct23-module-nested-prose-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "prose",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 22,
+      "scenarioId": "authoring-format-oct23-module-nested-observation-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "observation",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    },
+    {
+      "index": 23,
+      "scenarioId": "authoring-format-oct23-module-nested-pseudocode-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "pseudocode",
+      "repetition": 3,
+      "missing": true,
+      "reason": "controller-record-missing"
+    }
+  ],
+  "roleRows": [
+    {
+      "arm": "baseline",
+      "caseId": "module-flat",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 35424,
+          "min": 35424,
+          "max": 35424
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 6866,
+          "min": 6866,
+          "max": 6866
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 7046,
+          "min": 7046,
+          "max": 7046
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 471424,
+          "min": 471424,
+          "max": 471424
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 49336,
+          "min": 49336,
+          "max": 49336
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 16,
+          "min": 16,
+          "max": 16
+        },
+        "wallClockMs": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 83904,
+          "min": 83904,
+          "max": 83904
+        },
+        "cost": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-flat",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [
+        {
+          "scenarioId": "authoring-format-oct23-module-flat-baseline-r1",
+          "reason": "host-recorded-judge-deadline: raw zero counters are not known zero cost",
+          "observedWallClockMs": 180018
+        }
+      ],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-flat",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 36997,
+          "min": 36997,
+          "max": 36997
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 982,
+          "min": 982,
+          "max": 982
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 367,
+          "min": 367,
+          "max": 367
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 2048,
+          "min": 2048,
+          "max": 2048
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 38346,
+          "min": 38346,
+          "max": 38346
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 1,
+          "min": 1,
+          "max": 1
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 9481,
+        "min": 9481,
+        "max": 9481
+      }
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-nested",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-nested",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-nested",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      }
+    },
+    {
+      "arm": "prose",
+      "caseId": "module-flat",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 46841,
+          "min": 46841,
+          "max": 46841
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 8255,
+          "min": 8255,
+          "max": 8255
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 15107,
+          "min": 15107,
+          "max": 15107
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 1175936,
+          "min": 1175936,
+          "max": 1175936
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 70203,
+          "min": 70203,
+          "max": 70203
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 27,
+          "min": 27,
+          "max": 27
+        },
+        "wallClockMs": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 148248,
+          "min": 148248,
+          "max": 148248
+        },
+        "cost": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "arm": "prose",
+      "caseId": "module-flat",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 7106,
+          "min": 7106,
+          "max": 7106
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 193,
+          "min": 193,
+          "max": 193
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 4640,
+          "min": 4640,
+          "max": 4640
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 2048,
+          "min": 2048,
+          "max": 2048
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 11939,
+          "min": 11939,
+          "max": 11939
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 1,
+          "min": 1,
+          "max": 1
+        },
+        "wallClockMs": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 28017,
+          "min": 28017,
+          "max": 28017
+        },
+        "cost": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "arm": "prose",
+      "caseId": "module-flat",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 50181,
+          "min": 50181,
+          "max": 50181
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 808,
+          "min": 808,
+          "max": 808
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 376,
+          "min": 376,
+          "max": 376
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 2048,
+          "min": 2048,
+          "max": 2048
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 51365,
+          "min": 51365,
+          "max": 51365
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 1,
+          "min": 1,
+          "max": 1
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 9176,
+        "min": 9176,
+        "max": 9176
+      }
+    },
+    {
+      "arm": "prose",
+      "caseId": "module-nested",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "prose",
+      "caseId": "module-nested",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "prose",
+      "caseId": "module-nested",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      }
+    },
+    {
+      "arm": "pseudocode",
+      "caseId": "module-flat",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 35782,
+          "min": 35782,
+          "max": 35782
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 6800,
+          "min": 6800,
+          "max": 6800
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 7901,
+          "min": 7901,
+          "max": 7901
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 640128,
+          "min": 640128,
+          "max": 640128
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 50483,
+          "min": 50483,
+          "max": 50483
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 20,
+          "min": 20,
+          "max": 20
+        },
+        "wallClockMs": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 91735,
+          "min": 91735,
+          "max": 91735
+        },
+        "cost": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "arm": "pseudocode",
+      "caseId": "module-flat",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 6882,
+          "min": 6882,
+          "max": 6882
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 110,
+          "min": 110,
+          "max": 110
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 5573,
+          "min": 5573,
+          "max": 5573
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 2048,
+          "min": 2048,
+          "max": 2048
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 12565,
+          "min": 12565,
+          "max": 12565
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 1,
+          "min": 1,
+          "max": 1
+        },
+        "wallClockMs": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 32669,
+          "min": 32669,
+          "max": 32669
+        },
+        "cost": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        }
+      }
+    },
+    {
+      "arm": "pseudocode",
+      "caseId": "module-flat",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 1,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 37639,
+          "min": 37639,
+          "max": 37639
+        },
+        "output": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 981,
+          "min": 981,
+          "max": 981
+        },
+        "reasoning": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 15,
+          "min": 15,
+          "max": 15
+        },
+        "cacheRead": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 2048,
+          "min": 2048,
+          "max": 2048
+        },
+        "cacheWrite": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "total": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 38635,
+          "min": 38635,
+          "max": 38635
+        },
+        "messages": {
+          "samples": 1,
+          "expected": 3,
+          "complete": false,
+          "median": 1,
+          "min": 1,
+          "max": 1
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 7387,
+        "min": 7387,
+        "max": 7387
+      }
+    },
+    {
+      "arm": "pseudocode",
+      "caseId": "module-nested",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "pseudocode",
+      "caseId": "module-nested",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "pseudocode",
+      "caseId": "module-nested",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      }
+    },
+    {
+      "arm": "observation",
+      "caseId": "module-flat",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [
+        {
+          "scenarioId": "authoring-format-oct23-module-flat-observation-r1",
+          "reason": "usage-missing-partial-zero-or-model-unverified",
+          "observedWallClockMs": null
+        }
+      ],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "observation",
+      "caseId": "module-flat",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [
+        {
+          "scenarioId": "authoring-format-oct23-module-flat-observation-r1",
+          "reason": "usage-missing-partial-zero-or-model-unverified",
+          "observedWallClockMs": null
+        }
+      ],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "observation",
+      "caseId": "module-flat",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 1,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [
+        {
+          "scenarioId": "authoring-format-oct23-module-flat-observation-r1",
+          "reason": "missing-incomplete-noncompleted-or-zero-usage-interview",
+          "observedWallClockMs": null
+        }
+      ],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      }
+    },
+    {
+      "arm": "observation",
+      "caseId": "module-nested",
+      "role": "worker",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "observation",
+      "caseId": "module-nested",
+      "role": "judge",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      }
+    },
+    {
+      "arm": "observation",
+      "caseId": "module-nested",
+      "role": "reflection",
+      "attemptsExpected": 3,
+      "attemptsSaved": 0,
+      "qualifiedUsage": 0,
+      "unqualifiedUsage": [],
+      "metrics": {
+        "input": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "output": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "reasoning": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheRead": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cacheWrite": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "total": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "messages": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "wallClockMs": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        },
+        "cost": {
+          "samples": 0,
+          "expected": 3,
+          "complete": false,
+          "median": null,
+          "min": null,
+          "max": null
+        }
+      },
+      "reflectionElapsedMs": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+// Offline adapter only: existing authoring accounting/auditor/comparator remain authoritative.
+import { readFileSync, writeFileSync, lstatSync, realpathSync, existsSync, mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { dirname, join, resolve, relative, isAbsolute } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const MODEL = 'llm-proxy/deepseek-v4-flash';
+const arms = ['baseline', 'prose', 'pseudocode', 'observation'];
+const own = realpathSync(dirname(fileURLToPath(import.meta.url)));
+const inside = (root: string, path: string) => { const rel = relative(root, path); return rel !== '' && rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel); };
+const fail = (code: string): never => { throw new Error(code); };
+const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
+const bytes = (path: string) => { const stat = lstatSync(path); if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 8 * 1024 * 1024) fail('UNSAFE_OR_OVERSIZE_INPUT'); return readFileSync(path); };
+const json = (path: string): any => JSON.parse(bytes(path).toString());
+const argv = process.argv.slice(2);
+if (argv.length !== 2 || argv[0] !== '--out' || !isAbsolute(argv[1]!)) fail('USAGE_OFFLINE_REPORT_MTS_OUT_NEW_ABSOLUTE_DIRECTORY');
+const out = resolve(argv[1]!);
+if (!inside(own, out) || existsSync(out) || !existsSync(dirname(out)) || realpathSync(dirname(out)) !== dirname(out)) fail('OUTPUT_MUST_BE_NEW_OWNED_DIRECTORY');
+const configBytes = bytes(join(own, 'config.json'));
+const config = JSON.parse(configBytes.toString());
+const protocol = json(join(own, 'controller-protocol.json'));
+const preregisteredBytes = bytes(join(own, 'preregistered-protocol.json'));
+if (config.ownRoot !== own || !inside(own, resolve(config.permanent)) || realpathSync(config.permanent) !== resolve(config.permanent) || config.attempts?.length !== 24 || protocol.planned !== 24 || protocol.configSha256 !== hash(configBytes) || protocol.preregistrationSha256 !== hash(preregisteredBytes) || protocol.model !== MODEL) fail('FROZEN_CAMPAIGN_IDENTITY_MISMATCH');
+const root = config.attempts[0]?.sourceRoot;
+if (!isAbsolute(root || '') || realpathSync(root) !== root) fail('ANALYSIS_MODULE_SOURCE_UNAVAILABLE');
+const load = (name: string) => import(pathToFileURL(join(root, 'ai/flow-eval', name)).href);
+const { summarizeAuthoringBaseline } = await load('authoring-baseline-report.ts');
+const { renderAuthoringBaselineReport } = await load('scripts/authoring-baseline-report.ts');
+const { renderAuthoringCallAudit } = await load('scripts/authoring-call-audit.ts');
+const { compareAuthoringExperiments } = await load('authoring-metrics.ts');
+const { getAuthoringCase } = await load('authoring-benchmark.ts');
+const reports: any = {}, inputs: any = {}, observations: any[] = [], raw: any[] = [], bindings: any[] = [];
+const summarySnapshots: Array<{ directory: string; bytes: Buffer }> = [];
+const metric = (values: any[], expected: number) => {
+  const known = values.filter(v => typeof v === 'number' && Number.isFinite(v) && v >= 0).sort((a, b) => a - b);
+  const n = known.length, middle = Math.floor(n / 2);
+  return { samples: n, expected, complete: n === expected, median: n ? n % 2 ? known[middle] : (known[middle - 1] + known[middle]) / 2 : null, min: n ? known[0] : null, max: n ? known[n - 1] : null };
+};
+// A separate derived observation, never a mutation of the frozen grade or comparator.
+function contractObservations(summary: any, trajectory: any, cleanup: any, caseId: string) {
+  const metrics = summary.authoringBenchmark?.metrics;
+  const count = (key: string) => Number.isSafeInteger(metrics?.[key]) && metrics[key] >= 0 ? metrics[key] : null;
+  const wholeWrites = count('wholeWrites'), partialWrites = count('partialWrites'), outsideTargetWrites = count('outsideTargetWrites');
+  const flags = { multipleCompletedNativeTargetWrites: wholeWrites === null ? null : wholeWrites > 1, partialWriteToolAttempts: partialWrites === null ? null : partialWrites > 0, outsideTargetWriteAttempts: outsideTargetWrites === null ? null : outsideTargetWrites > 0 };
+  const workerSession = trajectory.events?.find((event: any) => event.type === 'tool' && event.sessionId)?.sessionId;
+  const cwd = cleanup.sessions?.find((session: any) => session.id === workerSession)?.directory;
+  const target = cwd ? resolve(cwd, getAuthoringCase(caseId).target) : undefined;
+  const callEvidence = (trajectory.events ?? []).flatMap((event: any) => {
+    if (event.type !== 'tool') return [];
+    let path: string | undefined;
+    try { const args = JSON.parse(event.arg ?? '{}'); if (cwd && typeof args.filePath === 'string') path = resolve(cwd, args.filePath); } catch { /* Unknown paths stay unknown. */ }
+    const related = [];
+    if (target && event.tool === 'write' && event.status === 'completed' && path === target) related.push('completed-native-target-write');
+    if (['edit', 'apply_patch', 'patch'].includes(event.tool)) related.push('partial-write-tool-attempt');
+    if (target && path && ['write', 'edit'].includes(event.tool) && path !== target) related.push('outside-target-write-attempt');
+    return related.length ? [{ callId: event.callId ?? null, tool: event.tool, status: event.status ?? 'unknown', flags: related }] : [];
+  });
+  return { authority: 'derived observation of frozen metrics, not a new primary grade', counts: { wholeWrites, partialWrites, outsideTargetWrites }, flags, observedViolation: Object.values(flags).some(value => value === true), metricFieldsKnown: Object.values(flags).filter(value => value !== null).length, traceCaptureComplete: trajectory.coverage?.complete === true, targetPathBound: Boolean(target), callEvidence, absenceInference: 'No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded.' };
+}
+for (const arm of arms) {
+  const selected = config.attempts.map((a: any, index: number) => ({ ...a, index })).filter((a: any) => a.scenario.authoringBenchmark?.variant === arm);
+  if (selected.length !== 6) fail('EXACT_ARM_MATRIX_REQUIRED');
+  const shas = [...new Set(selected.map((a: any) => protocol.attempts[a.index]?.sourceSha))];
+  if (shas.length !== 1 || !/^[a-f0-9]{40}$/.test(String(shas[0]))) fail('MIXED_OR_MISSING_ARM_SOURCE');
+  const input: any = { identity: { sourceCommit: shas[0], model: MODEL }, plan: selected.map((a: any) => a.scenario), records: [] };
+  for (const a of selected) {
+    const expected = a.scenario.authoringBenchmark;
+    const frozen = protocol.attempts[a.index];
+    if (frozen?.id !== a.scenario.id || frozen.sourceRoot !== a.sourceRoot || frozen.scenarioSha256 !== hash(JSON.stringify(a.scenario))) fail('PLAN_PROTOCOL_MISMATCH');
+    const recordPath = join(own, 'records', `${a.index}.json`);
+    if (!existsSync(recordPath)) { raw.push({ index: a.index, scenarioId: a.scenario.id, ...expected, missing: true, reason: 'controller-record-missing' }); continue; }
+    const r = json(recordPath);
+    if (r.index !== a.index || r.scenarioId !== a.scenario.id || r.sourceSha !== shas[0]) fail('CONTROLLER_RECORD_BINDING_FAILED');
+    if (!r.primary) { raw.push({ index: a.index, scenarioId: a.scenario.id, ...expected, missing: true, controller: r }); continue; }
+    if (typeof r.primary.directory !== 'string' || !/^[A-Za-z0-9_.-]+$/.test(r.primary.directory)) fail('UNSAFE_PRIMARY_DIRECTORY');
+    const dir = join(config.permanent, r.primary.directory);
+    if (realpathSync(dir) !== dir) fail('PRIMARY_DIRECTORY_ALIAS');
+    const summaryBytes = bytes(join(dir, 'summary.json')), trajectoryBytes = bytes(join(dir, 'trajectory.json'));
+    if (hash(summaryBytes) !== r.primary.summarySha256 || hash(trajectoryBytes) !== r.primary.trajectorySha256) fail('PRIMARY_HASH_DRIFT');
+    const summary = JSON.parse(summaryBytes.toString()), trajectory = JSON.parse(trajectoryBytes.toString());
+    if (summary.scenarioId !== a.scenario.id || trajectory.scenario !== a.scenario.id || summary.sha !== shas[0] || summary.authoringBenchmark?.sourceCommit !== shas[0] || ['campaign', 'caseId', 'variant', 'repetition'].some(k => summary.authoringBenchmark?.[k] !== expected[k])) fail('PRIMARY_IDENTITY_MISMATCH');
+    const reflectionPath = join(dir, 'reflection.json');
+    const reflection = existsSync(reflectionPath) ? json(reflectionPath) : undefined;
+    const judgePath = join(dir, 'judge.md');
+    const judgeBytes = existsSync(judgePath) ? bytes(judgePath) : undefined;
+    if (judgeBytes && judgeBytes.length > 256 * 1024) fail('JUDGE_DIAGNOSTIC_EXCEEDS_BOUND');
+    const judgeDeadline = judgeBytes?.toString('utf8').includes('Authoring judge deadline exceeded; no semantic pass inferred.') === true;
+    const validUsage = (usage: any) => usage?.complete === true && Number.isFinite(usage.total) && usage.total > 0 && Array.isArray(usage.models) && usage.models.length === 1 && usage.models[0] === MODEL;
+    const usageQualification = {
+      worker: { qualified: validUsage(summary.usage) && summary.authoringBenchmark?.modelVerified === true, reason: validUsage(summary.usage) && summary.authoringBenchmark?.modelVerified === true ? 'complete-positive-observed-usage' : 'usage-missing-partial-zero-or-model-unverified' },
+      judge: { qualified: validUsage(summary.judgeUsage?.usage) && !judgeDeadline, deadlineExceeded: judgeDeadline, reason: judgeDeadline ? 'host-recorded-judge-deadline: raw zero counters are not known zero cost' : validUsage(summary.judgeUsage?.usage) ? 'complete-positive-observed-usage' : 'usage-missing-partial-zero-or-model-unverified' },
+      reflection: { qualified: reflection?.status === 'completed' && reflection?.usageComplete === true && Number.isFinite(reflection?.usageDelta?.total) && reflection.usageDelta.total > 0 && reflection.diffUnchanged === true && reflection.newToolCalls === 0 && Array.isArray(reflection.models) && reflection.models.length === 1 && reflection.models[0] === MODEL, reason: reflection?.status === 'completed' && reflection?.usageComplete === true && reflection?.usageDelta?.total > 0 ? 'positive-completed-interview; isolation/model independently required' : 'missing-incomplete-noncompleted-or-zero-usage-interview' },
+    };
+    const cleanupIssues = [...(Array.isArray(r.cleanupErrors) ? r.cleanupErrors : ['cleanup-errors-unrecorded']), ...(r.persistence !== true ? ['primary-persistence-unproven'] : []), ...(r.qualification?.dispatchMayContinue !== true ? ['controller-qualification-incomplete'] : [])];
+    const derivedContract = contractObservations(summary, trajectory, r, expected.caseId);
+    input.records.push({ summary, trajectory, ...(reflection ? { reflection } : {}), cleanup: { scenarioId: r.scenarioId, caseId: expected.caseId, repetition: expected.repetition, tempRemoved: r.tempRemoved === true, cleanupErrors: cleanupIssues, sessions: r.sessions ?? [], requests: {} } });
+    observations.push(summary.authoringBenchmark);
+    summarySnapshots.push({ directory: r.primary.directory, bytes: summaryBytes });
+    raw.push({ index: a.index, scenarioId: a.scenario.id, ...expected, missing: false, status: summary.status, outcome: summary.outcome, verdict: summary.verdict, artifact: summary.quality, path: summary.trajectory, observation: summary.authoringBenchmark, contractObservations: derivedContract, usageQualification, worker: summary.usage ?? null, judge: summary.judgeUsage?.usage ?? null, reflection: reflection ? { status: reflection.status, usageDelta: reflection.usageDelta ?? null, usageComplete: reflection.usageComplete ?? false, models: reflection.models ?? null, startedAt: reflection.startedAt ?? null, completedAt: reflection.completedAt ?? null, diffUnchanged: reflection.diffUnchanged ?? null, newToolCalls: reflection.newToolCalls ?? null, monetaryCost: reflection.monetaryCost ?? 'unknown' } : null, controller: { persistence: r.persistence, tempRemoved: r.tempRemoved, cleanupErrors: r.cleanupErrors, qualification: r.qualification ?? null, cliExitCode: r.cliExitCode, startedAt: r.startedAt, endedAt: r.endedAt } });
+    bindings.push({ index: a.index, scenarioId: a.scenario.id, directory: r.primary.directory, controllerRecordSha256: hash(bytes(recordPath)), summarySha256: hash(summaryBytes), trajectorySha256: hash(trajectoryBytes), reflectionSha256: reflection ? hash(bytes(reflectionPath)) : null, judgeDiagnosticSha256: judgeBytes ? hash(judgeBytes) : null, judgeDeadlineObserved: judgeDeadline });
+  }
+  inputs[arm] = input;
+  reports[arm] = summarizeAuthoringBaseline(input.plan, input.records, input.identity);
+}
+const pairs = [['baseline', 'prose'], ['baseline', 'pseudocode'], ['baseline', 'observation'], ['prose', 'pseudocode'], ['prose', 'observation']];
+const comparisons = pairs.map(([left, right]) => ({ baseline: left, candidate: right, ...compareAuthoringExperiments(observations.filter(o => [left, right].includes(o.variant)), left, right, ['module-flat', 'module-nested'], 3) }));
+const contractRows = arms.flatMap(arm => ['module-flat', 'module-nested'].map(caseId => {
+  const entries = raw.filter(r => r.variant === arm && r.caseId === caseId && !r.missing);
+  const flags = ['multipleCompletedNativeTargetWrites', 'partialWriteToolAttempts', 'outsideTargetWriteAttempts'];
+  const violating = entries.filter(r => r.contractObservations.observedViolation);
+  return { arm, caseId, planned: 3, recorded: entries.length, observations: Object.fromEntries(flags.map(key => [key, { observedViolations: entries.filter(r => r.contractObservations.flags[key] === true).length, measured: entries.filter(r => r.contractObservations.flags[key] !== null).length, expected: 3 }])), observedViolationAttempts: violating.length, observedViolationScenarioIds: violating.map(r => r.scenarioId), adoptionBlockedByObservedContract: violating.length > 0, inference: violating.length ? 'Observed contract violation blocks adoption despite unknown path evidence elsewhere; primary grades unchanged.' : 'No positive violation observed in these retained metrics; not proof of compliance or permission to adopt.' };
+}));
+const roleRows: any[] = [];
+for (const arm of arms) for (const caseId of ['module-flat', 'module-nested']) for (const role of ['worker', 'judge', 'reflection']) {
+  const entries = raw.filter(r => r.variant === arm && r.caseId === caseId);
+  const usage = (r: any) => role === 'reflection' ? r.reflection?.usageDelta : r[role];
+  const complete = (r: any) => r.usageQualification?.[role]?.qualified === true;
+  roleRows.push({ arm, caseId, role, attemptsExpected: 3, attemptsSaved: entries.filter(r => !r.missing).length, qualifiedUsage: entries.filter(complete).length, unqualifiedUsage: entries.filter(r => !r.missing && !complete(r)).map(r => ({ scenarioId: r.scenarioId, reason: r.usageQualification?.[role]?.reason ?? 'unknown', observedWallClockMs: usage(r)?.wallClockMs ?? null })), metrics: Object.fromEntries(['input', 'output', 'reasoning', 'cacheRead', 'cacheWrite', 'total', 'messages', 'wallClockMs', 'cost'].map(key => [key, metric(entries.map(r => complete(r) ? usage(r)?.[key] : undefined), 3)])), reflectionElapsedMs: role === 'reflection' ? metric(entries.map(r => { const start = Date.parse(r.reflection?.startedAt), end = Date.parse(r.reflection?.completedAt); return Number.isFinite(start) && Number.isFinite(end) && end >= start ? end - start : undefined; }), 3) : undefined });
+}
+const cell = (value: any) => String(value ?? 'unknown').replace(/[|\r\n`]/g, ' ');
+const shown = (d: any) => `${cell(d?.median)} [${d?.samples ?? 0}/${d?.expected ?? 3}]`;
+const batchBytes = existsSync(join(own, 'batch.json')) ? bytes(join(own, 'batch.json')) : undefined;
+const batch = batchBytes ? JSON.parse(batchBytes.toString()) : undefined;
+const completedAttempts = raw.filter(r => !r.missing && r.status === 'completed').length;
+const interruptedAttempts = raw.filter(r => !r.missing && r.status === 'interrupted').length;
+const lines = ['# Format pilot — observed results', '', `Campaign incomplete: ${raw.filter(r => !r.missing).length}/24 primary records; ${completedAttempts} completed, ${interruptedAttempts} interrupted. Controller stop signal=${cell(batch?.interrupted)}. This is a stopped sanity screen, not an A/B success result; no resampling or dropping failed attempts.`, '', 'Descriptive pilot only. No automatic adoption, causal savings, statistical equivalence or provider-priced dollar estimate. Unknown/partial measurements are not zero and cannot establish improvement.', '', '| Case | Arm | Saved | Artifact / semantic / path | Tools median | Worker tokens | Worker messages | Worker ms | Complete binding |', '|---|---|---:|---|---:|---:|---:|---:|---:|'];
+for (const caseId of ['module-flat', 'module-nested']) for (const arm of arms) {
+  const c = reports[arm].cases.find((c: any) => c.caseId === caseId);
+  lines.push(`| ${caseId} | ${arm} | ${c.recorded}/${c.planned} | ${c.artifactPass}/${c.semanticPass}/${c.pathPass} of ${c.planned} | ${shown(c.tools)} | ${shown(c.workerNonCacheTokens)} | ${shown(c.workerMessages)} | ${shown(c.workerMs)} | ${c.cleanlyBound}/${c.planned} |`);
+}
+lines.push('', 'Each metric is median [known/expected]. Quality columns remain separate. A failed attempt stays in the planned denominator. Worker ms is the recorded SDK worker span, not outer polling, judge or reflection time.', '', '## Derived contract observations — separate from primary grades', '', '| Case | Arm | Saved/planned | >1 native whole-write | Partial-write attempts | Outside-target attempts | Any violating attempt | Adoption blocked by observation |', '|---|---|---:|---:|---:|---:|---:|---|');
+for (const row of contractRows) { const n = (key: string) => `${row.observations[key].observedViolations} [${row.observations[key].measured}/3 measured]`; lines.push(`| ${row.caseId} | ${row.arm} | ${row.recorded}/3 | ${n('multipleCompletedNativeTargetWrites')} | ${n('partialWriteToolAttempts')} | ${n('outsideTargetWriteAttempts')} | ${row.observedViolationAttempts}/3 | ${row.adoptionBlockedByObservedContract ? 'YES — observed violation' : 'not cleared by absence'} |`); }
+lines.push('', 'These are separate observations from frozen wholeWrites/partialWrites/outsideTargetWrites metrics and available native call IDs, not a new primary grade. A positive observation blocks adoption even when the primary path verdict is unknown because of opaque Bash. Missing counts are unknown, never zero or evidence of a missing write. Zero observed violations is not proof of a clean path, even with complete trace capture. Partial/outside counts describe tool attempts, not successful mutations. Primary artifact/semantic/path outcomes and standard comparisons are unchanged; failures and inconclusive outcomes remain in the table.', '', '## Standard comparisons', '');
+for (const c of comparisons) lines.push(`- ${c.baseline} → ${c.candidate}: comparable=${c.comparable}; recommendation=${c.recommendation}; regressions=${c.regressions.join(', ') || 'none observed'}; issues=${c.issues.join('; ') || 'none'}.`);
+lines.push('', 'The existing comparator requires a smaller static instruction envelope and no per-case quality/path/tools regression. It does not evaluate message counts or judge/reflection costs; those are separately retained, not silently added to worker totals.', '', '## Roles accounted separately', '', '| Case | Arm | Role | Usage qualified | Tokens | Messages | Usage wall ms | Reflection elapsed ms |', '|---|---|---|---:|---:|---:|---:|---:|');
+for (const r of roleRows) lines.push(`| ${r.caseId} | ${r.arm} | ${r.role} | ${r.qualifiedUsage}/3 | ${shown(r.metrics.total)} | ${shown(r.metrics.messages)} | ${shown(r.metrics.wallClockMs)} | ${r.role === 'reflection' ? shown(r.reflectionElapsedMs) : 'n/a'} |`);
+lines.push('', 'Reflection is diagnostic self-report, not grading authority or a certified cause. Missing reflection is unknown, not zero overhead. Role usage requires complete, positive observed usage; reflection additionally requires a completed, isolated interview. A host-recorded judge deadline is unqualified even if the SDK reports complete=true and zero counters. Those original raw counters are retained unchanged, but zero tokens/cost must not be claimed as measured consumption. The observed timeout wait remains in raw usage and unqualifiedUsage[].observedWallClockMs. A completed inconclusive judge with positive qualified usage is not excluded for its verdict.', '', '### Unqualified role measurements', '');
+for (const row of roleRows) for (const issue of row.unqualifiedUsage) lines.push(`- ${cell(issue.scenarioId)} / ${row.role}: ${cell(issue.reason)}; observed wall ms=${cell(issue.observedWallClockMs)}. Consumption/cost unknown, not zero.`);
+lines.push('', 'Provider-reported cost values, where present, are raw counters in raw-metrics.json; they are not a trustworthy tariff estimate.', '', '## Call ledgers', '');
+const callLedgers: Array<[string, string]> = [];
+const inputPayloads = Object.fromEntries(arms.map(arm => [arm, JSON.stringify(inputs[arm], null, 2) + '\n']));
+if (arms.some(arm => Buffer.byteLength(inputPayloads[arm]!) > 8 * 1024 * 1024)) fail('ARCHIVED_ARM_INPUT_EXCEEDS_EXISTING_CLI_BOUND');
+for (const arm of arms) {
+  const input = inputs[arm];
+  if (reports[arm].complete) {
+    callLedgers.push([`${arm}.calls.md`, renderAuthoringCallAudit(input, hash(inputPayloads[arm]!))]);
+    lines.push(`- [${arm}: every captured call](${arm}.calls.md) — observable purpose, command status, read ranges, output fingerprints and batching candidates; no inferred private reasoning or automatic unnecessary-call score.`);
+  } else lines.push(`- ${arm}: complete qualified call-audit renderer not run because binding/capture/cleanup is incomplete. [Partial raw trajectory projection](${arm}.trajectory.md) preserves every available attempt and the missing-run list.`);
+}
+const campaignNames = [...new Set(config.attempts.map((a: any) => a.scenario.authoringBenchmark.campaign))];
+if (campaignNames.length !== 1 || !/^[a-z][a-z0-9-]{0,47}$/.test(String(campaignNames[0]))) fail('REPLAY_REQUIRES_ONE_SAFE_CAMPAIGN_LABEL');
+lines.push('', '## Portable offline replay', '', 'Run from this report directory after moving it anywhere. Set EVAL_REPO to an available checkout containing the analysis modules whose hashes are in bindings.json; use Node 22. No old temporary source/sandbox directory is required. Historical source SHA and cwd strings in the four *.input.json files are preserved as evidence, not rewritten or stat-ed by these renderers.', '', '```bash', 'EVAL_REPO=/absolute/path/to/gennady', 'for arm in baseline prose pseudocode observation; do', '  node --import "$EVAL_REPO/node_modules/tsx/dist/loader.mjs" "$EVAL_REPO/ai/flow-eval/scripts/authoring-baseline-report.ts" --input "./$arm.input.json" --out "./$arm.replayed-report.json"', '  node --import "$EVAL_REPO/node_modules/tsx/dist/loader.mjs" "$EVAL_REPO/ai/flow-eval/scripts/authoring-call-audit.ts" "./$arm.input.json" "./$arm.replayed-calls.md"', 'done', '```', '', 'Both CLIs fail closed for incomplete inputs. An expected exit 2 for a partial/error campaign is not permission to drop failed attempts. Each input is bounded to the existing CLI 8 MiB limit. The embedded permanent/ directory below contains exact, hash-bound copies of the real permanent summary.json bytes only; no model or sandbox replay is needed.', '', '```bash');
+for (const [left, right] of pairs) lines.push(`node --import "$EVAL_REPO/node_modules/tsx/dist/loader.mjs" "$EVAL_REPO/ai/flow-eval/scripts/authoring-experiment.ts" compare --campaign ${campaignNames[0]} --baseline ${left} --candidate ${right} --cases module-flat,module-nested --repetitions 3 --results-dir ./permanent --out ./${left}-vs-${right}.replayed-compare.json`);
+lines.push('```', '', 'Replay outputs must be new names because existing CLIs refuse overwrites. The four input snapshots include full retained summary/trajectory/reflection plus observed cleanup proof. Raw permanent summaries keep their original bytes and directory names; no source identity, quality label or cwd normalization is applied. Missing attempts remain absent from permanent/ and explicitly missing in the plan-based report.', '');
+mkdirSync(out, { mode: 0o700 });
+const save = (name: string, value: string | object) => writeFileSync(join(out, name), typeof value === 'string' ? value : JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+save('README.md', lines.join('\n') + '\n');
+save('raw-metrics.json', { schema: 'gennady.format-pilot-offline.1', planned: 24, recordedPrimary: raw.filter(r => !r.missing).length, complete: arms.every(arm => reports[arm].complete), controllerBatch: batch ?? null, attempts: raw.sort((a, b) => a.index - b.index), roleRows });
+save('comparisons.json', comparisons);
+save('contract-observations.json', { schema: 'gennady.format-pilot-contract-observations.1', primaryGradesUnchanged: true, standardComparatorUnchanged: true, cases: contractRows, attempts: raw.filter(r => !r.missing).map(r => ({ scenarioId: r.scenarioId, variant: r.variant, caseId: r.caseId, repetition: r.repetition, ...r.contractObservations })) });
+save('bindings.json', { configSha256: hash(configBytes), protocolSha256: hash(bytes(join(own, 'controller-protocol.json'))), preregistrationSha256: hash(preregisteredBytes), analysisProgramSha256: hash(bytes(fileURLToPath(import.meta.url))), analysisModuleRoot: root, reusedModuleHashes: Object.fromEntries(['authoring-baseline-report.ts', 'authoring-benchmark.ts', 'authoring-metrics.ts', 'authoring-trajectory-profile.ts', 'authoring-call-audit.ts', 'scripts/authoring-baseline-report.ts', 'scripts/authoring-call-audit.ts', 'scripts/authoring-experiment.ts'].map(name => [name, hash(bytes(join(root, 'ai/flow-eval', name)))])), replayInputs: Object.fromEntries(arms.map(arm => [`${arm}.input.json`, { sha256: hash(inputPayloads[arm]!), bytes: Buffer.byteLength(inputPayloads[arm]!) }])), bindings, sdkRequests: 'unknown: controller did not retain per-request counters', monetaryCost: 'unknown: provider-priced monetary estimate not established' });
+for (const arm of arms) { save(`${arm}.input.json`, inputPayloads[arm]!); save(`${arm}.report.json`, reports[arm]); save(`${arm}.trajectory.md`, renderAuthoringBaselineReport(reports[arm])); }
+mkdirSync(join(out, 'permanent'), { mode: 0o700 });
+for (const snapshot of summarySnapshots) { const directory = join(out, 'permanent', snapshot.directory); mkdirSync(directory, { mode: 0o700 }); writeFileSync(join(directory, 'summary.json'), snapshot.bytes, { flag: 'wx', mode: 0o600 }); }
+for (const [name, content] of callLedgers) save(name, content);
+console.log(JSON.stringify({ out, planned: 24, recorded: raw.filter(r => !r.missing).length, complete: arms.every(arm => reports[arm].complete), comparablePairs: comparisons.filter(c => c.comparable).length, modelCalls: 0, sourceWrites: 0 }));
+if (!arms.every(arm => reports[arm].complete)) process.exitCode = 2;

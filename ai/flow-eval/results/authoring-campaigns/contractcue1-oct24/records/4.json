@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 4,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r2",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "startedAt": "2026-10-24T13:13:25.235Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/4",
+  "sessions": [
+    {
+      "id": "ses_e91f48b38ffenv2Iz5GYpRkem9",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/4/sdd-flow-eval-vMzndt",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91f2bd8affegnkXj1wGm59B2B",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/4/sdd-flow-eval-vMzndt",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r2",
+    "summarySha256": "39fd2b9c7d13b6ca8f51fc215f86db08702f38ea13420e565f5348c51233ccb8",
+    "trajectorySha256": "30c2c4ece2ec3c630b6992b068e2d7a25dfc9b61496fb984b6006aff15fcff67",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 30,
+    "nonCacheTokens": 60080,
+    "messages": 21
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:16:30.194Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91f48b38ffenv2Iz5GYpRkem9",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/4/sdd-flow-eval-vMzndt"
+    },
+    {
+      "id": "ses_e91f2bd8affegnkXj1wGm59B2B",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/4/sdd-flow-eval-vMzndt"
+    }
+  ]
+}

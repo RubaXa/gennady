@@ -1,0 +1,666 @@
+{
+  "schema": "gennady.factlink1-net-effects.1",
+  "criteria": "preregistered net-cost context hypothesis; NOT the standard static-envelope comparator",
+  "cases": [
+    {
+      "caseId": "module-flat",
+      "valid": true,
+      "medians": {
+        "tokens": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 50868.5,
+            "min": 41715,
+            "max": 53639
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 39535.5,
+            "min": 35551,
+            "max": 48054
+          },
+          "percent": -22.27901353489881
+        },
+        "tools": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 26.5,
+            "min": 18,
+            "max": 28
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 18.5,
+            "min": 15,
+            "max": 21
+          },
+          "percent": -30.18867924528302
+        },
+        "messages": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 18,
+            "min": 15,
+            "max": 20
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 13,
+            "min": 11,
+            "max": 13
+          },
+          "percent": -27.77777777777778
+        },
+        "timeMs": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 94671.5,
+            "min": 74572,
+            "max": 104543
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 71435.5,
+            "min": 59959,
+            "max": 81682
+          },
+          "percent": -24.54381730510238
+        }
+      },
+      "paired": [
+        {
+          "repetition": 1,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 53639,
+              "candidate": 35551,
+              "absolute": -18088,
+              "percent": -33.72173232163165
+            },
+            "tools": {
+              "baseline": 27,
+              "candidate": 15,
+              "absolute": -12,
+              "percent": -44.44444444444444
+            },
+            "messages": {
+              "baseline": 20,
+              "candidate": 11,
+              "absolute": -9,
+              "percent": -45
+            },
+            "timeMs": {
+              "baseline": 104543,
+              "candidate": 59959,
+              "absolute": -44584,
+              "percent": -42.64656648460442
+            }
+          }
+        },
+        {
+          "repetition": 2,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 44634,
+              "candidate": 39470,
+              "absolute": -5164,
+              "percent": -11.569655419635255
+            },
+            "tools": {
+              "baseline": 26,
+              "candidate": 17,
+              "absolute": -9,
+              "percent": -34.61538461538461
+            },
+            "messages": {
+              "baseline": 18,
+              "candidate": 12,
+              "absolute": -6,
+              "percent": -33.333333333333336
+            },
+            "timeMs": {
+              "baseline": 77622,
+              "candidate": 64165,
+              "absolute": -13457,
+              "percent": -17.336579835613616
+            }
+          }
+        },
+        {
+          "repetition": 3,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 50846,
+              "candidate": 41880,
+              "absolute": -8966,
+              "percent": -17.633638830979823
+            },
+            "tools": {
+              "baseline": 27,
+              "candidate": 19,
+              "absolute": -8,
+              "percent": -29.62962962962963
+            },
+            "messages": {
+              "baseline": 18,
+              "candidate": 13,
+              "absolute": -5,
+              "percent": -27.77777777777778
+            },
+            "timeMs": {
+              "baseline": 93558,
+              "candidate": 75115,
+              "absolute": -18443,
+              "percent": -19.71290536351782
+            }
+          }
+        },
+        {
+          "repetition": 4,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 50891,
+              "candidate": 39601,
+              "absolute": -11290,
+              "percent": -22.18466919494606
+            },
+            "tools": {
+              "baseline": 22,
+              "candidate": 20,
+              "absolute": -2,
+              "percent": -9.090909090909092
+            },
+            "messages": {
+              "baseline": 15,
+              "candidate": 13,
+              "absolute": -2,
+              "percent": -13.333333333333334
+            },
+            "timeMs": {
+              "baseline": 104105,
+              "candidate": 81682,
+              "absolute": -22423,
+              "percent": -21.538830987944863
+            }
+          }
+        },
+        {
+          "repetition": 5,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 41715,
+              "candidate": 37848,
+              "absolute": -3867,
+              "percent": -9.2700467457749
+            },
+            "tools": {
+              "baseline": 18,
+              "candidate": 18,
+              "absolute": 0,
+              "percent": 0
+            },
+            "messages": {
+              "baseline": 17,
+              "candidate": 13,
+              "absolute": -4,
+              "percent": -23.529411764705884
+            },
+            "timeMs": {
+              "baseline": 74572,
+              "candidate": 67756,
+              "absolute": -6816,
+              "percent": -9.140159845518426
+            }
+          }
+        },
+        {
+          "repetition": 6,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 53481,
+              "candidate": 48054,
+              "absolute": -5427,
+              "percent": -10.147529029000953
+            },
+            "tools": {
+              "baseline": 28,
+              "candidate": 21,
+              "absolute": -7,
+              "percent": -25
+            },
+            "messages": {
+              "baseline": 20,
+              "candidate": 13,
+              "absolute": -7,
+              "percent": -35
+            },
+            "timeMs": {
+              "baseline": 95785,
+              "candidate": 78888,
+              "absolute": -16897,
+              "percent": -17.640549146526073
+            }
+          }
+        }
+      ],
+      "quality": {
+        "artifact": {
+          "baseline": {
+            "passed": 5,
+            "failed": 1,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          },
+          "candidate": {
+            "passed": 4,
+            "failed": 2,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          }
+        },
+        "semantic": {
+          "baseline": {
+            "passed": 4,
+            "failed": 2,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          },
+          "candidate": {
+            "passed": 2,
+            "failed": 4,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          }
+        },
+        "path": {
+          "baseline": {
+            "passed": 0,
+            "failed": 0,
+            "known": 0,
+            "unknown": 6,
+            "recorded": 6,
+            "expected": 6
+          },
+          "candidate": {
+            "passed": 0,
+            "failed": 0,
+            "known": 0,
+            "unknown": 6,
+            "recorded": 6,
+            "expected": 6
+          }
+        }
+      },
+      "noObservedQualityLoss": false,
+      "resourceSignal": true,
+      "positiveNetPilotSignal": false,
+      "pathProven": false,
+      "knownViolations": 0,
+      "adoptionAuthorized": false
+    },
+    {
+      "caseId": "module-nested",
+      "valid": true,
+      "medians": {
+        "tokens": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 48547.5,
+            "min": 38742,
+            "max": 53881
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 46307.5,
+            "min": 41693,
+            "max": 53452
+          },
+          "percent": -4.614037798032855
+        },
+        "tools": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 23.5,
+            "min": 19,
+            "max": 32
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 21.5,
+            "min": 18,
+            "max": 25
+          },
+          "percent": -8.51063829787234
+        },
+        "messages": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 17,
+            "min": 12,
+            "max": 18
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 15,
+            "min": 12,
+            "max": 17
+          },
+          "percent": -11.764705882352942
+        },
+        "timeMs": {
+          "baseline": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 80342,
+            "min": 65699,
+            "max": 97783
+          },
+          "candidate": {
+            "samples": 6,
+            "expected": 6,
+            "complete": true,
+            "median": 78969.5,
+            "min": 57134,
+            "max": 104423
+          },
+          "percent": -1.7083219237758582
+        }
+      },
+      "paired": [
+        {
+          "repetition": 1,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 47254,
+              "candidate": 47060,
+              "absolute": -194,
+              "percent": -0.4105472552588141
+            },
+            "tools": {
+              "baseline": 23,
+              "candidate": 25,
+              "absolute": 2,
+              "percent": 8.695652173913043
+            },
+            "messages": {
+              "baseline": 18,
+              "candidate": 17,
+              "absolute": -1,
+              "percent": -5.555555555555555
+            },
+            "timeMs": {
+              "baseline": 82167,
+              "candidate": 84209,
+              "absolute": 2042,
+              "percent": 2.485182615892025
+            }
+          }
+        },
+        {
+          "repetition": 2,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 52725,
+              "candidate": 53452,
+              "absolute": 727,
+              "percent": 1.3788525367472735
+            },
+            "tools": {
+              "baseline": 27,
+              "candidate": 21,
+              "absolute": -6,
+              "percent": -22.22222222222222
+            },
+            "messages": {
+              "baseline": 18,
+              "candidate": 15,
+              "absolute": -3,
+              "percent": -16.666666666666668
+            },
+            "timeMs": {
+              "baseline": 90949,
+              "candidate": 104423,
+              "absolute": 13474,
+              "percent": 14.814896260541623
+            }
+          }
+        },
+        {
+          "repetition": 3,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 44126,
+              "candidate": 51271,
+              "absolute": 7145,
+              "percent": 16.192267597334904
+            },
+            "tools": {
+              "baseline": 19,
+              "candidate": 23,
+              "absolute": 4,
+              "percent": 21.05263157894737
+            },
+            "messages": {
+              "baseline": 12,
+              "candidate": 16,
+              "absolute": 4,
+              "percent": 33.333333333333336
+            },
+            "timeMs": {
+              "baseline": 72183,
+              "candidate": 78283,
+              "absolute": 6100,
+              "percent": 8.450743249795659
+            }
+          }
+        },
+        {
+          "repetition": 4,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 49841,
+              "candidate": 41693,
+              "absolute": -8148,
+              "percent": -16.347986597379666
+            },
+            "tools": {
+              "baseline": 24,
+              "candidate": 18,
+              "absolute": -6,
+              "percent": -25
+            },
+            "messages": {
+              "baseline": 16,
+              "candidate": 12,
+              "absolute": -4,
+              "percent": -25
+            },
+            "timeMs": {
+              "baseline": 78517,
+              "candidate": 57134,
+              "absolute": -21383,
+              "percent": -27.233592725142326
+            }
+          }
+        },
+        {
+          "repetition": 5,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 38742,
+              "candidate": 43423,
+              "absolute": 4681,
+              "percent": 12.082494450467193
+            },
+            "tools": {
+              "baseline": 20,
+              "candidate": 22,
+              "absolute": 2,
+              "percent": 10
+            },
+            "messages": {
+              "baseline": 12,
+              "candidate": 15,
+              "absolute": 3,
+              "percent": 25
+            },
+            "timeMs": {
+              "baseline": 65699,
+              "candidate": 79656,
+              "absolute": 13957,
+              "percent": 21.243854548775477
+            }
+          }
+        },
+        {
+          "repetition": 6,
+          "complete": true,
+          "deltas": {
+            "tokens": {
+              "baseline": 53881,
+              "candidate": 45555,
+              "absolute": -8326,
+              "percent": -15.452571407360665
+            },
+            "tools": {
+              "baseline": 32,
+              "candidate": 21,
+              "absolute": -11,
+              "percent": -34.375
+            },
+            "messages": {
+              "baseline": 18,
+              "candidate": 12,
+              "absolute": -6,
+              "percent": -33.333333333333336
+            },
+            "timeMs": {
+              "baseline": 97783,
+              "candidate": 73983,
+              "absolute": -23800,
+              "percent": -24.339609134512134
+            }
+          }
+        }
+      ],
+      "quality": {
+        "artifact": {
+          "baseline": {
+            "passed": 6,
+            "failed": 0,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          },
+          "candidate": {
+            "passed": 3,
+            "failed": 3,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          }
+        },
+        "semantic": {
+          "baseline": {
+            "passed": 5,
+            "failed": 1,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          },
+          "candidate": {
+            "passed": 2,
+            "failed": 4,
+            "known": 6,
+            "unknown": 0,
+            "recorded": 6,
+            "expected": 6
+          }
+        },
+        "path": {
+          "baseline": {
+            "passed": 0,
+            "failed": 0,
+            "known": 0,
+            "unknown": 6,
+            "recorded": 6,
+            "expected": 6
+          },
+          "candidate": {
+            "passed": 0,
+            "failed": 0,
+            "known": 0,
+            "unknown": 6,
+            "recorded": 6,
+            "expected": 6
+          }
+        }
+      },
+      "noObservedQualityLoss": false,
+      "resourceSignal": false,
+      "positiveNetPilotSignal": false,
+      "pathProven": false,
+      "knownViolations": 0,
+      "adoptionAuthorized": false
+    }
+  ],
+  "positiveBothCases": false,
+  "adoptionAuthorized": false,
+  "limitations": [
+    "six repeats are a pilot",
+    "quality counts do not prove statistical equivalence",
+    "unknown path is not PASS",
+    "static instruction envelope grows and standard comparison remains separate"
+  ]
+}

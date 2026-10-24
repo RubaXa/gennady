@@ -1,0 +1,203 @@
+{
+  "scenarioId": "authoring-toolfact1-oct24-module-nested-baseline-r1",
+  "date": "2026-10-24",
+  "timestamp": "2026-10-24T11:16:30.385Z",
+  "sha": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "b769cdfb62756feedb87667871dca7d5b6b15a1e54b58e0cb690b5597cb3bbec",
+    "configSha256": "eb32a860110851b74e60a2dc137782a280c72830836ba1b50c791a7046080d01"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 100,
+    "observeEveryMs": 2500,
+    "stuckAfter": 80,
+    "tailLimit": 20
+  },
+  "verdict": "pass",
+  "status": "completed",
+  "outcome": "pass",
+  "actions": 21,
+  "durationMs": 79274,
+  "usage": {
+    "messages": 14,
+    "input": 37133,
+    "output": 6705,
+    "reasoning": 6362,
+    "cacheRead": 413184,
+    "cacheWrite": 0,
+    "total": 50200,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 78079
+  },
+  "judgeUsage": {
+    "sessionId": "ses_e92606650ffev2p2YFe9HOmkiA",
+    "usage": {
+      "messages": 1,
+      "input": 7044,
+      "output": 125,
+      "reasoning": 9142,
+      "cacheRead": 2048,
+      "cacheWrite": 0,
+      "total": 16311,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 1,
+      "wallClockMs": 51788
+    }
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": true,
+    "detail": "module-nested: bounded artifact checks passed; independent semantic review not claimed",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "no-skeleton",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "pending-approval",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "relative-links",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "required-facts",
+        "pass": true,
+        "detail": "passed"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven"
+  },
+  "hasJudge": true,
+  "specFiles": [
+    "specs/infra-base/infra-base.spec.md",
+    "specs/token/pipeline/normalize/normalize.spec.md",
+    "specs/token/token.spec.md"
+  ],
+  "authoringBenchmark": {
+    "prompt": {
+      "schema": "gennady.authoring-instruction-envelope.1",
+      "bytes": 43574,
+      "approximateTokens": 8742,
+      "digest": "ba3a99b0fd6fae2b58e38594dfcbc616c83960c449789930095d66d4b432ed73",
+      "parts": [
+        {
+          "name": "module.skeleton",
+          "bytes": 7986,
+          "approximateTokens": 1944,
+          "sha256": "386ee407fbee99006d36ac9de430ce25a3fba4342555cf7ea76199053b3960bd"
+        },
+        {
+          "name": "module.manifest",
+          "bytes": 8356,
+          "approximateTokens": 993,
+          "sha256": "27558bbff34c7673528183312a7ab205cdf26774c2c432ee49310fd9731ed867"
+        },
+        {
+          "name": "module.directive.xml",
+          "bytes": 10397,
+          "approximateTokens": 2060,
+          "sha256": "d86b9cdd6b07cf4e56dbe388945d68bb2b67106800efafe286b61e2c438a1748"
+        },
+        {
+          "name": "formats/entity-inventory-format.xml",
+          "bytes": 3297,
+          "approximateTokens": 674,
+          "sha256": "1576369d3ea8f304133847b724c0ce46de68bf5ab2bbf20be4415feb88b45ecf"
+        },
+        {
+          "name": "formats/entity-surface-format.xml",
+          "bytes": 3346,
+          "approximateTokens": 778,
+          "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074"
+        },
+        {
+          "name": "formats/dbc-contracts.xml",
+          "bytes": 10192,
+          "approximateTokens": 2293,
+          "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4"
+        }
+      ]
+    },
+    "taskDigest": "e2fd78d5382f071e4b7a9d1504a61236e274e8b9a22ab339ebbd4937f001593f",
+    "oracleDigest": "5472c0dd28f4c67b567848ff067b7eb930e13bfc8444b57689b93a7e6ea3fb2f",
+    "harnessDigest": "7576144d7f9cb243c3eab094d5311ffe4364877e2445ed7316f64a82a41655a4",
+    "environmentDigest": "0722937da9aa414dea0d6f62b69061c8b0e23dfdaed55efdd75a4b7c15cdb39f",
+    "environmentVerified": true,
+    "campaign": "toolfact1-oct24",
+    "caseId": "module-nested",
+    "variant": "baseline",
+    "repetition": 1,
+    "sourceCommit": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": true,
+    "semanticVerdict": "pass",
+    "trajectoryPass": false,
+    "durationMs": 78079,
+    "nonCacheTokens": 50200,
+    "metrics": {
+      "tools": 21,
+      "targetReads": 1,
+      "repeatedTargetReads": 0,
+      "wholeWrites": 2,
+      "partialWrites": 0,
+      "failedTools": 0,
+      "checks": 2,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 70372
+    }
+  },
+  "artifactFiles": [
+    "specs/token/pipeline/normalize/normalize.spec.md"
+  ]
+}

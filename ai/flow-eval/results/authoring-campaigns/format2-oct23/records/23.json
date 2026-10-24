@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 23,
+  "scenarioId": "authoring-format2-oct23-module-nested-pseudocode-r3",
+  "sourceSha": "7f3656672f18463044a9d84706b5d3c4de4d031c",
+  "startedAt": "2026-10-23T22:09:30.711Z",
+  "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/23",
+  "sessions": [
+    {
+      "id": "ses_e953018d9ffedO06ow2qL5ufmK",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/23/sdd-flow-eval-Qi2COr",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e952ed898ffezfl94fMNzP7Afj",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/23/sdd-flow-eval-Qi2COr",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-23-authoring-format2-oct23-module-nested-pseudocode-r3",
+    "summarySha256": "ed7137ee20e99a90f2e3a2a41de0dc14921199ec6295ae497ec2858bed4b363c",
+    "trajectorySha256": "e750962e829fb5d5d7a19e911ce670cea7e7136aa69ff2161b2b3ff1d2e5c7e3",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 28,
+    "nonCacheTokens": 49902,
+    "messages": 19
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-23T22:11:24.764Z",
+  "knownSessions": [
+    {
+      "id": "ses_e953018d9ffedO06ow2qL5ufmK",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/23/sdd-flow-eval-Qi2COr"
+    },
+    {
+      "id": "ses_e952ed898ffezfl94fMNzP7Afj",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/23/sdd-flow-eval-Qi2COr"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 0,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r1",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:01:52.405Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/0",
+  "sessions": [
+    {
+      "id": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/0/sdd-flow-eval-gjooZy",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91fd699dffe2cJ1aobhaRkV9m",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/0/sdd-flow-eval-gjooZy",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-facts-r1",
+    "summarySha256": "df0f739f2e6e5dfcf00513685c606195c41bc2ae2925bed2a330796bb0741b96",
+    "trajectorySha256": "c45868fedd3750af7d1bb87ead4dd36869bace91e2484c511d1cef47a0d1ba04",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 24,
+    "nonCacheTokens": 51889,
+    "messages": 15
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:04:57.439Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/0/sdd-flow-eval-gjooZy"
+    },
+    {
+      "id": "ses_e91fd699dffe2cJ1aobhaRkV9m",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/0/sdd-flow-eval-gjooZy"
+    }
+  ]
+}

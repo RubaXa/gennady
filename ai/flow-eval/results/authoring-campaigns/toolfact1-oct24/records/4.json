@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 4,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r2",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:18:46.714Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/4",
+  "sessions": [
+    {
+      "id": "ses_e925d8046ffe2dazA3AsXG0HC9",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/4/sdd-flow-eval-OGsb4L",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e925c5cc3ffewxzZuiz7JPdyVV",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/4/sdd-flow-eval-OGsb4L",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r2",
+    "summarySha256": "c89a114b50cba83e6220541d06651fe8ced89d21b894ab256f5d0541b18c6292",
+    "trajectorySha256": "97258e1f030c1a730f8845c1bb7269fc4788f70a0f75908fef7616dda6d37b4b",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 21,
+    "nonCacheTokens": 43852,
+    "messages": 15
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:21:41.495Z",
+  "knownSessions": [
+    {
+      "id": "ses_e925d8046ffe2dazA3AsXG0HC9",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/4/sdd-flow-eval-OGsb4L"
+    },
+    {
+      "id": "ses_e925c5cc3ffewxzZuiz7JPdyVV",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/4/sdd-flow-eval-OGsb4L"
+    }
+  ]
+}

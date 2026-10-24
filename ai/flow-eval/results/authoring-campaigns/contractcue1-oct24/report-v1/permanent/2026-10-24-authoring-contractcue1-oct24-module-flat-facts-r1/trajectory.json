@@ -1,0 +1,577 @@
+{
+  "scenario": "authoring-contractcue1-oct24-module-flat-facts-r1",
+  "events": [
+    {
+      "type": "tool",
+      "i": 0,
+      "t": 1792846916961,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./inputs/brief.md\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e00e35d001JyaDleRnL9n4TL",
+      "callId": "call_00_Givvai6lNTbtqkMRL3kw3174",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846916961,
+      "finishedAt": 1792846916977,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 2018,
+          "redactedPrefixBytes": 1941,
+          "redactedPrefixSha256": "a6eaa8cb8dea1d7f1ba1b6f4415698d31780ed41b602f214978e0aceb25b81c6",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 1,
+      "t": 1792846917147,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/module.directive.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e00e35d001JyaDleRnL9n4TL",
+      "callId": "call_01_SthFbSjcigi8lltnV8C94605",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846917147,
+      "finishedAt": 1792846917150,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11284,
+          "redactedPrefixBytes": 11198,
+          "redactedPrefixSha256": "b451eecd511642378bca60ff4ab0ac562d6fcbccb6424cc0dd8d8b7476a6a856",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 2,
+      "t": 1792846921463,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module normalize\",\"workdir\":\".\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e00ee3b001ZxnYDUcBVjGQz1",
+      "callId": "call_00_olbbgAqigENyxnWlKJ4w9787",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+      "startedAt": 1792846921463,
+      "finishedAt": 1792846921551,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11139,
+          "redactedPrefixBytes": 10985,
+          "redactedPrefixSha256": "e7deff9b22678f8d67e6cd184bbaaedf16718cbfaa3c089447db17c26c873a1e",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 3,
+      "t": 1792846923060,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/token/normalize/normalize.spec.md\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e00ff55001JlG2IETAWI3eAN",
+      "callId": "call_00_zJcct6DKGCSKMSGivxyZ3214",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846923060,
+      "finishedAt": 1792846923063,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 8932,
+          "redactedPrefixBytes": 8855,
+          "redactedPrefixSha256": "79e9bc6e2eee00dd185ca6cea84557c28ac26d395cf856cf15e5dcc59ea3fa68",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 4,
+      "t": 1792846923247,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e00ff55001JlG2IETAWI3eAN",
+      "callId": "call_01_Jbmlc2ct5fYvpgF4Qg4S8126",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846923247,
+      "finishedAt": 1792846923249,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 4684,
+          "redactedPrefixBytes": 4609,
+          "redactedPrefixSha256": "afcce32a141680885630ad6f0edfe163380767beba660189cc73bf4a367cee8b",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 5,
+      "t": 1792846925158,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls ai/directives/sdd-v2/formats/\",\"workdir\":\".\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0106210010BSwBQG9O3KDxd",
+      "callId": "call_00_CovGVoh9062QTeFPBnFD4149",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "command": "ls ai/directives/sdd-v2/formats/",
+      "startedAt": 1792846925158,
+      "finishedAt": 1792846925160,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 598,
+          "redactedPrefixBytes": 598,
+          "redactedPrefixSha256": "d9caf8093f7cd473f50e1b59caf25a0104447bca84cfa73d89d2239f029a6879",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 6,
+      "t": 1792846925353,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-inventory-format.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0106210010BSwBQG9O3KDxd",
+      "callId": "call_01_V8HzZoGFcMnpBWxGMgWn3762",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846925353,
+      "finishedAt": 1792846925356,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3723,
+          "redactedPrefixBytes": 3646,
+          "redactedPrefixSha256": "c6f5cb661a21a262fbddf350bd196c4b373dc98196a25d8c90e33a1405e4cc36",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 7,
+      "t": 1792846925563,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-surface-format.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0106210010BSwBQG9O3KDxd",
+      "callId": "call_02_XARnWdH2tT9Y9Hoxpq1L3239",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846925563,
+      "finishedAt": 1792846925566,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3762,
+          "redactedPrefixBytes": 3685,
+          "redactedPrefixSha256": "71b59927830de42f932b132503804fe7d41940bef473a8fed4ea250d4aff380c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 8,
+      "t": 1792846925761,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/dbc-contracts.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0106210010BSwBQG9O3KDxd",
+      "callId": "call_03_of7p7qzD5FK3GJT1Z2E97619",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846925761,
+      "finishedAt": 1792846925764,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11224,
+          "redactedPrefixBytes": 11147,
+          "redactedPrefixSha256": "195bbc3c842dba6198ffff666328df278ac7cfe3d3a9623569df696dd8a88e78",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 9,
+      "t": 1792846925967,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/diagram-vocabulary.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0106210010BSwBQG9O3KDxd",
+      "callId": "call_04_glx0r2ERjxDi71JLwYfm5137",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846925967,
+      "finishedAt": 1792846925970,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 14295,
+          "redactedPrefixBytes": 14218,
+          "redactedPrefixSha256": "0db4542e55ea5b97cdfff969dcbb30cc4f9cd4144da6905e90350ca1ce139f0a",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 10,
+      "t": 1792846927949,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/requirement-entry-format.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0110aa001adzYu30MRjXn14",
+      "callId": "call_00_dMrmEqyg8u6uEKJhYl3l7494",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846927949,
+      "finishedAt": 1792846927952,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 7848,
+          "redactedPrefixBytes": 7771,
+          "redactedPrefixSha256": "db4ba842a97111a1c56a28261b7600a1225e17e801d6ba2b7930a5444d454598",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 11,
+      "t": 1792846928156,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/module-spec-structure.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0110aa001adzYu30MRjXn14",
+      "callId": "call_01_6Hb945vBY10SaZ3vla9x2829",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846928156,
+      "finishedAt": 1792846928163,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 10317,
+          "redactedPrefixBytes": 10240,
+          "redactedPrefixSha256": "fe5680eba503932b455f88bd25e80463e2f7790d26eadacf64ff557b55c0bae6",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 12,
+      "t": 1792846929953,
+      "tool": "grep",
+      "arg": "{\"path\":\"./ai/directives/sdd-v2\",\"pattern\":\"DECISION_LOG_ENTRY_FORMAT\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e01193c001XClY8fixwNZjJu",
+      "callId": "call_00_a2O7XfGYyINqMJJ4vss43644",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846929953,
+      "finishedAt": 1792846929977,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 4862,
+          "redactedPrefixBytes": 3630,
+          "redactedPrefixSha256": "cab3d9f506b48bfba0150198f71054e478e42889a58a3ee9a300ec7f16c02ad0",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 13,
+      "t": 1792846931828,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/root.directive.xml\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e01204d001adCyrkcjJYm5tq",
+      "callId": "call_00_ET_Suz19kZmf8axtYQAfQJF9367",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846931828,
+      "finishedAt": 1792846931831,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 2235,
+          "redactedPrefixBytes": 2158,
+          "redactedPrefixSha256": "4184c33a131693d714fee948d6b4947aa6a8c0eb00f7f78cc7d1187a8b53ad87",
+          "prefixComplete": true
+        },
+        "requestedReadWindow": {
+          "offset": 507,
+          "limit": 50
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 14,
+      "t": 1792846939978,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls -la && find . -maxdepth 2 -type f -not -path './node_modules/*' | sort | sed -n '1,120p'\",\"workdir\":\".\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0127ae0016QySjyb2FMaHzS",
+      "callId": "call_00_9frDLpIZhEVbGAX88glG2201",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "command": "ls -la && find . -maxdepth 2 -type f -not -path './node_modules/*' | sort | sed -n '1,120p'",
+      "startedAt": 1792846939978,
+      "finishedAt": 1792846939980,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 818,
+          "redactedPrefixBytes": 818,
+          "redactedPrefixSha256": "8aeb06efa8fb022f2263ec36647035b97adf28d9af9c1a3adafb1febe22c153d",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 15,
+      "t": 1792846941931,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./docs/token-contract.md\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e01475c001N6Ls1GcCexDZef",
+      "callId": "call_00_zqkeXFxjaeac4J0n28FJ2933",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846941931,
+      "finishedAt": 1792846941934,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 412,
+          "redactedPrefixBytes": 335,
+          "redactedPrefixSha256": "3486c020fb6e8e60e2d7615248afd310fb8c50b4b701a56c490ae288a51f0ccc",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 16,
+      "t": 1792846942098,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./package.json\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e01475c001N6Ls1GcCexDZef",
+      "callId": "call_01_3QZmg5YeClVbmVvi79gQ3069",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846942098,
+      "finishedAt": 1792846942101,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 245,
+          "redactedPrefixBytes": 168,
+          "redactedPrefixSha256": "f3c3ca9ae4951a6374fba226dacf5f3502b564f3c3b5eb9a488b484e127e2ac0",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 17,
+      "t": 1792846942272,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/README.md\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e01475c001N6Ls1GcCexDZef",
+      "callId": "call_02_8R0wBcTpcBfLb57Fhcfe7856",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792846942272,
+      "finishedAt": 1792846942274,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 1078,
+          "redactedPrefixBytes": 1001,
+          "redactedPrefixSha256": "2c32a7121f51b86cded465bc031dc2cd8534d7ff1b94f018fc8cc9bded4f1c37",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 18,
+      "t": 1792846956679,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls ai/directives && ls ai/directives/coding 2>/dev/null; ls ai/directives/testing 2>/dev/null\",\"workdir\":\".\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e015066001SARsDFvTOcDrHH",
+      "callId": "call_00_nxBvbhRZXkIMn1DDxLUq2565",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "command": "ls ai/directives && ls ai/directives/coding 2>/dev/null; ls ai/directives/testing 2>/dev/null",
+      "startedAt": 1792846956679,
+      "finishedAt": 1792846956680,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 402,
+          "redactedPrefixBytes": 402,
+          "redactedPrefixSha256": "b0e08419130dfe031a8b60e8d8937153cc4b982899c9cc8aa2c8cf200fc56d9b",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 19,
+      "t": 1792847006075,
+      "tool": "write",
+      "arg": "{\"filePath\":\"./specs/token/normalize/normalize.spec.md\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e01889e001hEj6OpdEuF0pxr",
+      "callId": "call_00_TGvzuKwKis1GatngvPUO2399",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792847006075,
+      "finishedAt": 1792847006088,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 24,
+          "redactedPrefixBytes": 24,
+          "redactedPrefixSha256": "e3e06ec0f8c958669ed3682941ab88218ff9ee42a7ab9b48fd78126336aa968c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 20,
+      "t": 1792847008462,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0249c7001m5YdlJ8zPlim6d",
+      "callId": "call_00_anb72TMS74EB6Ex6tsqe5294",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "command": "npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring",
+      "startedAt": 1792847008462,
+      "finishedAt": 1792847008469,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 130,
+          "redactedPrefixBytes": 130,
+          "redactedPrefixSha256": "3c42030406ef0780876370107dda07584351052f393ef47aa3c648802aa8abf3",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 21,
+      "t": 1792847014740,
+      "tool": "bash",
+      "arg": "{\"command\":\"git status --porcelain && git diff --stat\",\"workdir\":\".\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0252d9001AfvVCJqK9kxq7Z",
+      "callId": "call_00_MX3DIppdbUdofz0tiWGI8005",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "command": "git status --porcelain && git diff --stat",
+      "startedAt": 1792847014740,
+      "finishedAt": 1792847014752,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 26,
+          "redactedPrefixBytes": 26,
+          "redactedPrefixSha256": "59846f3f6c5f481c93860e1a4a00db553cb505f7999a2183dba026bd802c46fc",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 22,
+      "t": 1792847014931,
+      "tool": "grep",
+      "arg": "{\"path\":\"./specs/token/normalize/normalize.spec.md\",\"pattern\":\"<!--(?!SECTION|/SECTION)\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e0252d9001AfvVCJqK9kxq7Z",
+      "callId": "call_01_gTyfBTaeaxeseZw5cZVU5691",
+      "status": "error",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "startedAt": 1792847014931,
+      "finishedAt": 1792847014947,
+      "error": "rg: regex parse error:\n    (?:<!--(?!SECTION|/SECTION))\n           ^^^\nerror: look-around, including look-ahead and look-behind, is not supported\n\nConsider enabling PCRE2 with the --pcre2 flag, which can handle backreferences\nand look-around.",
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": false
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 23,
+      "t": 1792847017584,
+      "tool": "bash",
+      "arg": "{\"command\":\"rg -n '<!--' specs/token/normalize/normalize.spec.md\",\"workdir\":\".\"}",
+      "messageId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM:msg_16e026c2e0012aWOpE9WZFze2U",
+      "callId": "call_00_IKRFdgwi52fiDOm0KEmE9482",
+      "status": "completed",
+      "sessionId": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+      "command": "rg -n '<!--' specs/token/normalize/normalize.spec.md",
+      "startedAt": 1792847017584,
+      "finishedAt": 1792847017586,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 1045,
+          "redactedPrefixBytes": 1045,
+          "redactedPrefixSha256": "0d8970e555d63a3f8935ce5ae602175b470831ba501fcc493001f980e0fa65b4",
+          "prefixComplete": true
+        }
+      }
+    }
+  ],
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  }
+}

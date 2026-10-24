@@ -1,0 +1,214 @@
+{
+  "schema": "gennady.authoring-format-controller.1",
+  "preregistrationSha256": "ca9562c4822216e8f233109f45c01f2dd6253cca705ad58286a41be71f7911da",
+  "controllerSha256": "fadddcf0355b1be4817c0ecf5915f9803d69a027a141603c2a3c4711b1fa1125",
+  "configSha256": "08f17bbd5b3b25b04436655609ca3720af9a4879c56c5dae69293987f5078730",
+  "node": "v22.19.0",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "runtime": {
+    "version": "1.17.15",
+    "configurationSha256": "8b81f88ada2f31c909aae728861dea2289e57cc77084c76df04102a9dd383fcd",
+    "routing": {
+      "origin": "https://ai-proxy.vk.team",
+      "path": "/v1",
+      "npm": "@ai-sdk/openai-compatible",
+      "modelIDs": [
+        "deepseek-v4-flash"
+      ],
+      "optionKeys": [
+        "apiKey",
+        "baseURL",
+        "headers"
+      ],
+      "headerNames": [
+        "Authorization",
+        "Plugin-Type"
+      ]
+    }
+  },
+  "concurrency": 1,
+  "planned": 24,
+  "sources": [
+    {
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+      "sha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+      "sha": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode",
+      "sha": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/observation",
+      "sha": "c80a7e465b348d2b5624740264b927da1a4962d7",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    }
+  ],
+  "attempts": [
+    {
+      "id": "authoring-format-oct23-module-flat-prose-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+      "sourceSha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+      "scenarioSha256": "00f6bf2809d1b27708bac84b152dad79d05ddc0ebc6b386e0ddc90cb11111882"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-baseline-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+      "sourceSha": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+      "scenarioSha256": "91f53d0bae9d606f816ca956c8bc9ebbf27e1ace7185defeb00b2b6625685d5e"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-pseudocode-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode",
+      "sourceSha": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+      "scenarioSha256": "a25c120a62f880a5f58d62ee9b1d86273940a55941d48d1c22d22a0284f82b64"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-observation-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/observation",
+      "sourceSha": "c80a7e465b348d2b5624740264b927da1a4962d7",
+      "scenarioSha256": "22cdd8c26a10367da8d07f4dd5c57d0e45253a9618dc553119b05da2e95e31d0"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-baseline-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+      "sourceSha": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+      "scenarioSha256": "f1da718c183bb5cdb5f30ec05961e6f988946b679377f417414b2c7a883f329f"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-pseudocode-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode",
+      "sourceSha": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+      "scenarioSha256": "d49cfd61630cd0a3539d588b25a3e65876c7d8c19231169f4c222b0b61c27420"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-observation-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/observation",
+      "sourceSha": "c80a7e465b348d2b5624740264b927da1a4962d7",
+      "scenarioSha256": "b906ea8c462df64f4505fcc733ed78752990ab634da4706f5f1c968fa884ccd5"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-prose-r1",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+      "sourceSha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+      "scenarioSha256": "71cd87976a27720f49127d94ffb2d570b58d6b20b245fb52d437e390be43cb68"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-baseline-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+      "sourceSha": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+      "scenarioSha256": "7f59a389c3c95ba5244713f6f24290fef6498f0d6996bd952a601b93be92b645"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-observation-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/observation",
+      "sourceSha": "c80a7e465b348d2b5624740264b927da1a4962d7",
+      "scenarioSha256": "80c72f6c3f27e2a05b9f267a003c1cb589cac7a6515c9a95e61a17a4b733df2e"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-prose-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+      "sourceSha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+      "scenarioSha256": "bea68d1e3355fb1f09782dcd62268e49cdfc6befcc7cb0c98c4254417a314f44"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-pseudocode-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode",
+      "sourceSha": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+      "scenarioSha256": "cb80bdc7e9932700b4b5195fddd0a16a28585d5d39e5ef55bdcd2d518d4c8a56"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-pseudocode-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode",
+      "sourceSha": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+      "scenarioSha256": "0c70312df38c6e32793115f523a7a989810adc9acbc94197550277bc32c6c2ad"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-observation-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/observation",
+      "sourceSha": "c80a7e465b348d2b5624740264b927da1a4962d7",
+      "scenarioSha256": "77aac0c3ac0e02ded968f7c91fcbfa10b799de4559932632adc85945e2d7f3b6"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-prose-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+      "sourceSha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+      "scenarioSha256": "eae42106dd3f50bddb67f04f326374dad819b1ebf78aa327607db6c4fa05ca91"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-baseline-r2",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+      "sourceSha": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+      "scenarioSha256": "dfcf02936f7134876c4099c1ce5096d74f8b43113867cb2effbf8b0b6a52cc08"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-prose-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+      "sourceSha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+      "scenarioSha256": "a84c026a1b9b34bfce0bc2160f9bf77f060708cb8f25e5099e554225d860dcf4"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-pseudocode-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode",
+      "sourceSha": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+      "scenarioSha256": "fc2eb4433aad9b1766416748e9717621898deb707be530110390d6893566a48f"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-observation-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/observation",
+      "sourceSha": "c80a7e465b348d2b5624740264b927da1a4962d7",
+      "scenarioSha256": "35e0af30535d38a184c6e198e346fb7b56576ad5836389084d9a9b9a28c447b3"
+    },
+    {
+      "id": "authoring-format-oct23-module-flat-baseline-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+      "sourceSha": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+      "scenarioSha256": "5c672eb799f92f201feb69bcb10c229991c298bf85e5a2f8842a2489270d65dd"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-baseline-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+      "sourceSha": "9adf5e6617fa7a7e7fa0dd083640b310245d2340",
+      "scenarioSha256": "4e46cfa3982ea0186e3a784f91f1ee52095052d3e149036f8b8c3d86a651db9f"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-prose-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/prose",
+      "sourceSha": "5a30ee51ab9e360e9c025e9cf3af89e4b690106a",
+      "scenarioSha256": "9dc3ddeef89ded640a56ab8a02fb6d7977c1e77bd0ae7ece58d4aa83cd974274"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-observation-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/observation",
+      "sourceSha": "c80a7e465b348d2b5624740264b927da1a4962d7",
+      "scenarioSha256": "85d04968b73feae0758849e3bd5f21844cd97ffced50525b98c6d402e0c904a1"
+    },
+    {
+      "id": "authoring-format-oct23-module-nested-pseudocode-r3",
+      "sourceRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/pseudocode",
+      "sourceSha": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+      "scenarioSha256": "96a5597ab8dbfaa8bc0cf7d2ac5918d2ccf2a61fe2e78712139964e5e4afed21"
+    }
+  ],
+  "limits": {
+    "workerMs": 180000,
+    "childGraceMs": 60000,
+    "childDeadlineMs": 540000,
+    "maximumAttempts": 24
+  },
+  "frozenAt": "2026-10-23T20:04:08.542Z"
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "gennady.cleanup-report-erratum.1",
+  "field": "server.port",
+  "rawRecordedValue": 4198,
+  "guardedActualPort": 4199,
+  "baseUrl": "http://127.0.0.1:4199",
+  "reason": "Copied reporter field kept prior campaign port; operational guards, listener query and exact PIDs all used 4199. Original summary bytes are preserved.",
+  "rawSummarySha256": "979634bbc808f31c92d53c45472c6314e1529db3c33f217247d861d5cd24b051",
+  "executedScriptSha256": "d17a8159b41aba8cc6ded25b257331a939a6556a0462d5c04f77fda8d8892f29",
+  "cleanupRepeated": false,
+  "primaryRecordRewritten": false
+}

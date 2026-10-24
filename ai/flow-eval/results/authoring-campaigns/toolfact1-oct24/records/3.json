@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 3,
+  "scenarioId": "authoring-toolfact1-oct24-module-nested-facts-r1",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:16:37.212Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/3",
+  "sessions": [
+    {
+      "id": "ses_e925f7998ffe2RfZq0zFqySMLe",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/3/sdd-flow-eval-04JOjW",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e925e245fffeFuy33IE7d0GSSL",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/3/sdd-flow-eval-04JOjW",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r1",
+    "summarySha256": "cb2c2484d0ce60ac6de01fcf1b44d5feba1019faf5ca5394efd1a9db0a5f5e78",
+    "trajectorySha256": "67351bc06d1a0209362ac0a2763fb9a53a91686c6fe5c6d5313a5ce9d1fe0e5c",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 22,
+    "nonCacheTokens": 51105,
+    "messages": 14
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:18:46.060Z",
+  "knownSessions": [
+    {
+      "id": "ses_e925f7998ffe2RfZq0zFqySMLe",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/3/sdd-flow-eval-04JOjW"
+    },
+    {
+      "id": "ses_e925e245fffeFuy33IE7d0GSSL",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/3/sdd-flow-eval-04JOjW"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { posix } from 'node:path';
+import { deriveSpecAcronym } from './plan/shared/sdd/requirement-id.ts';
+import { getAuthoringCase } from './plan/ai/flow-eval/authoring-benchmark.ts';
+
+test('supplied acronym examples match the actual pure derivation, independent of directory',()=>{
+  for(const path of ['specs/catalog/normalize/normalize.spec.md','specs/catalog/pipeline/normalize/normalize.spec.md']) assert.equal(deriveSpecAcronym(path),'NOR');
+  assert.equal(deriveSpecAcronym('specs/cache-policy.spec.md'),'CP');
+  assert.notEqual(deriveSpecAcronym('specs/catalog/normalize/normalize.spec.md'),'CAT');
+});
+test('flat/nested relative-link examples reach the owning scope, not a fictitious file',()=>{
+  for(const [caseId,href] of [['module-flat','../token.spec.md'],['module-nested','../../token.spec.md']] as const){
+    const c=getAuthoringCase(caseId), target=posix.normalize(posix.join(posix.dirname(c.target),href));
+    assert.equal(target,'specs/token/token.spec.md');
+    assert.match(c.files[target]!,/<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->/);
+    assert.equal(c.files[posix.join(posix.dirname(c.target),'token.spec.md')],undefined);
+  }
+});
+test('named Decision Log owner exists; hypothetical separate format is not instructed',()=>{
+  const owner=readFileSync(new URL('./plan/ai/directives/sdd-v2/root.directive.xml',import.meta.url),'utf8');
+  assert.match(owner,/<Contract id="DECISION_LOG_ENTRY_FORMAT">/);
+  const original=readFileSync(new URL('./plan/ai/directives/sdd-v2/module.directive.xml',import.meta.url),'utf8');
+  const candidate=readFileSync(new URL('./facts/ai/directives/sdd-v2/module.directive.xml',import.meta.url),'utf8');
+  const block=candidate.slice(candidate.indexOf('Known authoring facts and reference examples'),candidate.indexOf('</Action>',candidate.indexOf('Known authoring facts and reference examples')));
+  assert.ok(block.length>500&&block.length<2500);
+  assert.match(block,/no separate\s+decision-log-format\.xml exists/);
+  assert.ok(!block.includes('foo-bar')&&!block.includes('TypeError')&&!block.includes('Input | Outcome'));
+  assert.ok(candidate.length>original.length,'fact context is openly longer, not compression');
+});

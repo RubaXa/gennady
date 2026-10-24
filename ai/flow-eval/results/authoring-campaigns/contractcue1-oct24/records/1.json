@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 1,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r1",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "startedAt": "2026-10-24T13:04:58.136Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/1",
+  "sessions": [
+    {
+      "id": "ses_e91fc4812ffeIelGjllKxWeQvq",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/1/sdd-flow-eval-JEm3np",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91fa67d6ffeJtLo67PXSI2dpe",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/1/sdd-flow-eval-JEm3np",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r1",
+    "summarySha256": "e74bd30e3bf0c48866967789b12e58ae304349f953c8f96ae927dc319053fcec",
+    "trajectorySha256": "953493b6fcf8108658d9ba115da35611cfe31aa6e8f35093619de9b23144e4ac",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 30,
+    "nonCacheTokens": 61369,
+    "messages": 18
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:08:51.844Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91fc4812ffeIelGjllKxWeQvq",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/1/sdd-flow-eval-JEm3np"
+    },
+    {
+      "id": "ses_e91fa67d6ffeJtLo67PXSI2dpe",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/1/sdd-flow-eval-JEm3np"
+    }
+  ]
+}

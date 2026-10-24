@@ -1,0 +1,160 @@
+// Root executes only after all 24 attempts and report-v1 exist. Existing CLIs only; no model replay.
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = '/private/tmp/gennady-format-invariant-oct24.bMnrNz';
+const REPO = '/private/tmp/gennady-format-invariant-oct24.bMnrNz/plan';
+const NODE = '/Users/k.lebedev/.nvm/versions/node/v22.19.0/bin/node';
+const reportRoot = join(ROOT, 'report-v1'), output = join(ROOT, 'replay-proof.json');
+const arms = ['baseline', 'facts'];
+const pairs = [['baseline', 'facts']];
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const fail = code => { throw new Error(code); };
+function bytes(path) {
+  const stat = fs.lstatSync(path);
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || fs.realpathSync(path) !== path || stat.size > 8 * 1024 * 1024)
+    fail('UNSAFE_OR_OVERSIZED_REPLAY_SOURCE');
+  return fs.readFileSync(path);
+}
+const json = path => JSON.parse(bytes(path).toString('utf8'));
+if (process.versions.node !== '22.19.0' || fs.realpathSync(dirname(fileURLToPath(import.meta.url))) !== ROOT ||
+    fs.realpathSync(reportRoot) !== reportRoot || fs.existsSync(output)) fail('NODE22_OWNED_NEW_REPLAY_REQUIRED');
+const batch = json(join(ROOT, 'batch.json'));
+if (batch.planned !== 24 || batch.dispatched !== 24 || batch.recorded !== 24 || batch.rows?.length !== 24 ||
+    batch.complete !== true || batch.errors !== 0 || batch.interrupted !== null || !batch.endedAt ||
+    batch.rows.some((row, index) => row.index !== index || row.complete !== true || row.code !== 0 || row.signal !== null))
+  fail('FINAL_COMPLETE_24_REQUIRED');
+const binding = json(join(reportRoot, 'bindings.json')), raw = json(join(reportRoot, 'raw-metrics.json'));
+if (raw.planned !== 24 || raw.recordedPrimary !== 24 || raw.collectionComplete !== true || binding.bindings?.length !== 24)
+  fail('COMPLETE_REPORT_COLLECTION_REQUIRED');
+const analysisNames = ['authoring-baseline-report.ts', 'authoring-benchmark.ts', 'authoring-metrics.ts',
+  'authoring-trajectory-profile.ts', 'authoring-call-audit.ts', 'scripts/authoring-baseline-report.ts',
+  'scripts/authoring-call-audit.ts', 'scripts/authoring-experiment.ts'];
+const analysisIdentities = analysisNames.map(name => {
+  const expected = binding.reusedModuleHashes?.[name], actual = hash(bytes(join(REPO, 'ai/flow-eval', name)));
+  if (!/^[a-f0-9]{64}$/.test(expected ?? '')) fail('ANALYSIS_BINDING_MISSING');
+  const same = actual === expected, expectedOracleDrift = false;
+  if (!same && !expectedOracleDrift) fail('ANALYSIS_PROGRAM_DRIFT');
+  return { path: `ai/flow-eval/${name}`, reportedSHA256: expected, actualSHA256: actual, same,
+    expectedOracleDrift, reason: expectedOracleDrift
+      ? 'Root independently reviewed the versioned v3→v4 synonym-only oracle patch. These replay CLIs do not invoke the artifact oracle or regrade quality; every produced byte must still match.' : null };
+});
+const analysisProgram = join(ROOT, 'offline-report.mts');
+if (hash(bytes(analysisProgram)) !== binding.analysisProgramSha256) fail('OFFLINE_REPORT_PROGRAM_DRIFT');
+const helperPath = fileURLToPath(import.meta.url), helperSHA256 = hash(bytes(helperPath));
+const sourceInputs = new Map();
+let sourceBytes = 0;
+function retain(relative) {
+  if (sourceInputs.has(relative)) return sourceInputs.get(relative);
+  const data = bytes(join(reportRoot, relative));
+  sourceBytes += data.length;
+  if (sourceInputs.size >= 80 || sourceBytes > 64 * 1024 * 1024) fail('BOUNDED_REPLAY_SOURCE_LIMIT');
+  sourceInputs.set(relative, data);
+  return data;
+}
+retain('bindings.json'); retain('raw-metrics.json');
+for (const arm of arms) {
+  const input = retain(`${arm}.input.json`);
+  if (hash(input) !== binding.replayInputs?.[`${arm}.input.json`]?.sha256) fail('ARCHIVED_INPUT_HASH_DRIFT');
+  retain(`${arm}.report.json`); retain(`${arm}.calls.md`);
+}
+const comparisons = JSON.parse(retain('comparisons.json').toString('utf8'));
+if (comparisons.length !== 1 || comparisons.some((value, index) => value.baseline !== pairs[index][0] || value.candidate !== pairs[index][1]))
+  fail('EXACT_FIVE_COMPARISONS_REQUIRED');
+const directories = binding.bindings.map(value => value.directory).sort();
+if (new Set(directories).size !== 24 || directories.some(name => !/^[A-Za-z0-9_.-]+$/.test(name)) ||
+    JSON.stringify(fs.readdirSync(join(reportRoot, 'permanent')).sort()) !== JSON.stringify(directories))
+  fail('EXACT_24_SUMMARY_DIRECTORIES_REQUIRED');
+for (const value of binding.bindings) {
+  const relative = `permanent/${value.directory}/summary.json`;
+  if (hash(retain(relative)) !== value.summarySha256) fail('PERMANENT_SUMMARY_HASH_DRIFT');
+}
+
+const scratch = fs.mkdtempSync(join(ROOT, 'portable-replay-format2-'));
+const cwd = join(scratch, 'report-v1'), temporary = join(scratch, 'tmp');
+const proof = {
+  schema: 'gennady.authoring-portable-replay.2', performedAt: new Date().toISOString(),
+  stagingDirectory: scratch, cwd, sourceModuleRoot: REPO, node: process.versions.node,
+  analysisProgram: { path: analysisProgram, sha256: binding.analysisProgramSha256 }, analysisIdentities,
+  replayProgram: { path: helperPath, sha256: helperSHA256 },
+  sourceHEADObservedOnly: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO, encoding: 'utf8' }).trim(),
+  sourceWorkingTreeStatus: execFileSync('git', ['status', '--porcelain'], { cwd: REPO, encoding: 'utf8' }).trim(),
+  serializedPaths: 'Preserved as evidence strings, never used as data-source paths. Only copied inputs and copied summary files are CLI data arguments. Analysis code/dependencies come from the explicit EVAL_REPO above; this is not a syscall audit.',
+  modelCalls: 0, expectedCommands: 5, commands: [], status: 'blocked',
+  allExpectedExits: false, allProducedResultsByteEqual: false, comparisonAggregateByteEqual: false,
+  primaryInputBytesUnchanged: false, copiedInputBytesUnchanged: false, temporaryReplayDirectoryRemoved: false, errors: [],
+};
+const rebuiltComparisons = [];
+try {
+  fs.mkdirSync(cwd); fs.mkdirSync(temporary);
+  for (const [relative, data] of sourceInputs) {
+    if (!/^(baseline|facts)\.input\.json$/.test(relative) && !relative.startsWith('permanent/')) continue;
+    const path = join(cwd, relative); fs.mkdirSync(dirname(path), { recursive: true }); fs.writeFileSync(path, data, { flag: 'wx' });
+  }
+  function run(name, script, args, expectedBytes, outputName) {
+    const scriptPath = join(REPO, 'ai/flow-eval/scripts', script);
+    const argv = ['--import', join(REPO, 'node_modules/tsx/dist/loader.mjs'), scriptPath, ...args];
+    const result = spawnSync(NODE, argv, {
+      cwd, encoding: 'utf8', timeout: 30000, maxBuffer: 1024 * 1024,
+      env: { PATH: '/Users/k.lebedev/.nvm/versions/node/v22.19.0/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+        TMPDIR: temporary, TSX_DISABLE_CACHE: '1', LC_ALL: 'C', LANG: 'C', GENNADY_NO_UPDATE_CHECK: '1' },
+    });
+    const entry = { name, script, scriptSHA256: hash(bytes(scriptPath)), args, status: result.status,
+      signal: result.signal, errorCode: result.error?.code ?? null, expectedStatus: 0,
+      expectedExitMatches: result.status === 0 && !result.signal && !result.error,
+      stdoutSHA256: hash(result.stdout ?? ''), stderrSHA256: hash(result.stderr ?? ''), modelCalls: 0,
+      output: null, equalsArchivedResult: false };
+    proof.commands.push(entry);
+    if (!entry.expectedExitMatches) fail('UNEXPECTED_CLI_STATUS');
+    const produced = bytes(join(cwd, outputName));
+    entry.output = { path: outputName, sha256: hash(produced), bytes: produced.length };
+    entry.equalsArchivedResult = produced.equals(expectedBytes);
+    if (!entry.equalsArchivedResult) fail('REPLAY_BYTES_DIFFER');
+    return produced;
+  }
+  for (const arm of arms) {
+    run(`${arm}-baseline`, 'authoring-baseline-report.ts',
+      ['--input', `./${arm}.input.json`, '--out', `${arm}.replayed-report.json`], sourceInputs.get(`${arm}.report.json`), `${arm}.replayed-report.json`);
+    run(`${arm}-audit`, 'authoring-call-audit.ts',
+      [`./${arm}.input.json`, `${arm}.replayed-calls.md`], sourceInputs.get(`${arm}.calls.md`), `${arm}.replayed-calls.md`);
+  }
+  for (const [index, [left, right]] of pairs.entries()) {
+    const { baseline, candidate, ...standardResult } = comparisons[index];
+    const outputName = `${left}-vs-${right}.replayed-compare.json`;
+    const data = run(`${left}-vs-${right}`, 'authoring-experiment.ts',
+      ['compare', '--campaign', 'contractcue1-oct24', '--baseline', left, '--candidate', right,
+        '--cases', 'module-flat,module-nested', '--repetitions', '6', '--results-dir', './permanent', '--out', outputName],
+      Buffer.from(JSON.stringify(standardResult, null, 2) + '\n'), outputName);
+    rebuiltComparisons.push({ baseline, candidate, ...JSON.parse(data.toString('utf8')) });
+  }
+  proof.comparisonAggregateByteEqual = Buffer.from(JSON.stringify(rebuiltComparisons, null, 2) + '\n').equals(sourceInputs.get('comparisons.json'));
+  if (!proof.comparisonAggregateByteEqual) fail('COMPARISON_AGGREGATE_BYTES_DIFFER');
+  proof.primaryInputBytesUnchanged = [...sourceInputs].every(([relative, original]) => bytes(join(reportRoot, relative)).equals(original));
+  proof.copiedInputBytesUnchanged = [...sourceInputs].filter(([relative]) => /\.input\.json$/.test(relative) || relative.startsWith('permanent/'))
+    .every(([relative, original]) => bytes(join(cwd, relative)).equals(original));
+  if (!proof.primaryInputBytesUnchanged || !proof.copiedInputBytesUnchanged) fail('READ_ONLY_INPUT_DRIFT');
+  for (const identity of analysisIdentities)
+    if (hash(bytes(join(REPO, identity.path))) !== identity.actualSHA256) fail('ANALYSIS_SOURCE_CHANGED_DURING_REPLAY');
+  if (hash(bytes(analysisProgram)) !== binding.analysisProgramSha256) fail('OFFLINE_REPORTER_CHANGED_DURING_REPLAY');
+  if (hash(bytes(helperPath)) !== helperSHA256) fail('REPLAY_PROGRAM_CHANGED_DURING_REPLAY');
+  proof.allExpectedExits = proof.commands.length === 5 && proof.commands.every(command => command.expectedExitMatches);
+  proof.allProducedResultsByteEqual = proof.commands.length === 5 && proof.commands.every(command => command.equalsArchivedResult);
+  if (!proof.allExpectedExits || !proof.allProducedResultsByteEqual) fail('INCOMPLETE_5_COMMAND_REPLAY');
+  proof.status = 'passed';
+} catch (error) {
+  proof.errors.push(/^[A-Z][A-Z0-9_]+$/.test(error.message) ? error.message : 'PORTABLE_REPLAY_FAILED');
+  process.exitCode = 2;
+} finally {
+  if (fs.realpathSync(scratch) !== scratch || !scratch.startsWith(ROOT + '/portable-replay-format2-')) fail('UNSAFE_REPLAY_CLEANUP');
+  fs.rmSync(scratch, { recursive: true });
+  proof.temporaryReplayDirectoryRemoved = !fs.existsSync(scratch);
+}
+proof.inputBindings = [...sourceInputs].map(([path, data]) => ({ path, bytes: data.length, sha256: hash(data) }));
+fs.writeFileSync(output, JSON.stringify(proof, null, 2) + '\n', { flag: 'wx' });
+console.log(JSON.stringify({ output, status: proof.status, commands: proof.commands.length,
+  allExpectedExits: proof.allExpectedExits, allProducedResultsByteEqual: proof.allProducedResultsByteEqual,
+  comparisonAggregateByteEqual: proof.comparisonAggregateByteEqual, primaryInputBytesUnchanged: proof.primaryInputBytesUnchanged,
+  temporaryReplayDirectoryRemoved: proof.temporaryReplayDirectoryRemoved, modelCalls: 0 }));

@@ -1,0 +1,1019 @@
+{
+  "schema": "gennady.format-pilot-contract-observations.1",
+  "primaryGradesUnchanged": true,
+  "standardComparatorUnchanged": true,
+  "cases": [
+    {
+      "arm": "baseline",
+      "caseId": "module-flat",
+      "planned": 6,
+      "recorded": 6,
+      "observations": {
+        "multipleCompletedNativeTargetWrites": {
+          "observedViolations": 6,
+          "measured": 6,
+          "expected": 6
+        },
+        "partialWriteToolAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        },
+        "outsideTargetWriteAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        }
+      },
+      "observedViolationAttempts": 6,
+      "observedViolationScenarioIds": [
+        "authoring-contractcue1-oct24-module-flat-baseline-r1",
+        "authoring-contractcue1-oct24-module-flat-baseline-r2",
+        "authoring-contractcue1-oct24-module-flat-baseline-r3",
+        "authoring-contractcue1-oct24-module-flat-baseline-r4",
+        "authoring-contractcue1-oct24-module-flat-baseline-r5",
+        "authoring-contractcue1-oct24-module-flat-baseline-r6"
+      ],
+      "adoptionBlockedByObservedContract": true,
+      "inference": "Observed contract violation blocks adoption despite unknown path evidence elsewhere; primary grades unchanged."
+    },
+    {
+      "arm": "baseline",
+      "caseId": "module-nested",
+      "planned": 6,
+      "recorded": 6,
+      "observations": {
+        "multipleCompletedNativeTargetWrites": {
+          "observedViolations": 6,
+          "measured": 6,
+          "expected": 6
+        },
+        "partialWriteToolAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        },
+        "outsideTargetWriteAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        }
+      },
+      "observedViolationAttempts": 6,
+      "observedViolationScenarioIds": [
+        "authoring-contractcue1-oct24-module-nested-baseline-r1",
+        "authoring-contractcue1-oct24-module-nested-baseline-r2",
+        "authoring-contractcue1-oct24-module-nested-baseline-r3",
+        "authoring-contractcue1-oct24-module-nested-baseline-r4",
+        "authoring-contractcue1-oct24-module-nested-baseline-r5",
+        "authoring-contractcue1-oct24-module-nested-baseline-r6"
+      ],
+      "adoptionBlockedByObservedContract": true,
+      "inference": "Observed contract violation blocks adoption despite unknown path evidence elsewhere; primary grades unchanged."
+    },
+    {
+      "arm": "facts",
+      "caseId": "module-flat",
+      "planned": 6,
+      "recorded": 6,
+      "observations": {
+        "multipleCompletedNativeTargetWrites": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        },
+        "partialWriteToolAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        },
+        "outsideTargetWriteAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        }
+      },
+      "observedViolationAttempts": 0,
+      "observedViolationScenarioIds": [],
+      "adoptionBlockedByObservedContract": false,
+      "inference": "No positive violation observed in these retained metrics; not proof of compliance or permission to adopt."
+    },
+    {
+      "arm": "facts",
+      "caseId": "module-nested",
+      "planned": 6,
+      "recorded": 6,
+      "observations": {
+        "multipleCompletedNativeTargetWrites": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        },
+        "partialWriteToolAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        },
+        "outsideTargetWriteAttempts": {
+          "observedViolations": 0,
+          "measured": 6,
+          "expected": 6
+        }
+      },
+      "observedViolationAttempts": 0,
+      "observedViolationScenarioIds": [],
+      "adoptionBlockedByObservedContract": false,
+      "inference": "No positive violation observed in these retained metrics; not proof of compliance or permission to adopt."
+    }
+  ],
+  "attempts": [
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r1",
+      "variant": "facts",
+      "caseId": "module-flat",
+      "repetition": 1,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_TGvzuKwKis1GatngvPUO2399",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r1",
+      "variant": "baseline",
+      "caseId": "module-flat",
+      "repetition": 1,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 3,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_b1JiVAkvakQOaF9OAHiK4902",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_F6e1d3IRx8t3hNHSaVHg6120",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_sofwywGF3vNvJo7wlNbV1843",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r1",
+      "variant": "baseline",
+      "caseId": "module-nested",
+      "repetition": 1,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 3,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_bYPoyiRinyF87xTqYf3D8229",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_h32PaeCaMPiWYGzKN7842798",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_n34lqKGV6SwwL04KoJb42649",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r1",
+      "variant": "facts",
+      "caseId": "module-nested",
+      "repetition": 1,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_DzYjH4gqNUr3SjzUif9u2521",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r2",
+      "variant": "baseline",
+      "caseId": "module-flat",
+      "repetition": 2,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_0HMLSSnHVeOKsYU6ZX4K4903",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_2O2MXc0OHSgfRjM6v8q89517",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r2",
+      "variant": "facts",
+      "caseId": "module-flat",
+      "repetition": 2,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_xb9ZWzfQLvgqPEcJz9RU9299",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r2",
+      "variant": "facts",
+      "caseId": "module-nested",
+      "repetition": 2,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_gwYD8EITpsSillMKzRv81899",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r2",
+      "variant": "baseline",
+      "caseId": "module-nested",
+      "repetition": 2,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 3,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_K2lNKO1KO67GPziF0vld4398",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_NJjh4ZUO4OkGk7zDukS20938",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_XUN8qHqOkid5mIphRZBz4587",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r3",
+      "variant": "facts",
+      "caseId": "module-flat",
+      "repetition": 3,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_wrvL3tjE5rhlWNq8N1FS1002",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r3",
+      "variant": "baseline",
+      "caseId": "module-flat",
+      "repetition": 3,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_fYCMRjihEwR8zjTfy5E08015",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_NiqqhKT6K1kn49LJOQtf5589",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r3",
+      "variant": "baseline",
+      "caseId": "module-nested",
+      "repetition": 3,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_qxgYZrn00Inbqd6uPDUt3177",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_z86qqDomMWvw5XDHOvxW4464",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r3",
+      "variant": "facts",
+      "caseId": "module-nested",
+      "repetition": 3,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_jz4Zd1mQPbtyv2YWRISA6227",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r4",
+      "variant": "baseline",
+      "caseId": "module-flat",
+      "repetition": 4,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_1zswrjam5uQQ8ix8M1599271",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_kJDZtxSFeaDd5O5VVPn67730",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r4",
+      "variant": "facts",
+      "caseId": "module-flat",
+      "repetition": 4,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_1u8UQ9dufGIIXuVMiCxt5383",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r4",
+      "variant": "facts",
+      "caseId": "module-nested",
+      "repetition": 4,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_ELXVHkgz5gIDkgoQQRZw5730",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r4",
+      "variant": "baseline",
+      "caseId": "module-nested",
+      "repetition": 4,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_zSiGvNT0cHF2Cshpaf5I2765",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_UtYzCa7bah3ARYdOAyNt6463",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r5",
+      "variant": "facts",
+      "caseId": "module-flat",
+      "repetition": 5,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_tgS4uPbxz3QoGYnKCQK15603",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r5",
+      "variant": "baseline",
+      "caseId": "module-flat",
+      "repetition": 5,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_oODTN47tkmDqRjmmQypC5563",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_7bbDZ8JAKcrmTaj2QxBR5726",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r5",
+      "variant": "baseline",
+      "caseId": "module-nested",
+      "repetition": 5,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_X9qmwIuV43nNvaUn5CLz9662",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_2bghgfRSZV3DB4D4NNAd4785",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r5",
+      "variant": "facts",
+      "caseId": "module-nested",
+      "repetition": 5,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_2Et1q93LlseoV8lkZnIs7604",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r6",
+      "variant": "baseline",
+      "caseId": "module-flat",
+      "repetition": 6,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_xCbEdZFP2PA3Zftwn5Uv7780",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_1NiFUnCTbOKg3uUjdwpB3626",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-flat-facts-r6",
+      "variant": "facts",
+      "caseId": "module-flat",
+      "repetition": 6,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_HK1UR1Xj4341lmf9bBsb6156",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r6",
+      "variant": "facts",
+      "caseId": "module-nested",
+      "repetition": 6,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 1,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": false,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": false,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_4J5ZCIMxbppszNEckeUG6368",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    },
+    {
+      "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r6",
+      "variant": "baseline",
+      "caseId": "module-nested",
+      "repetition": 6,
+      "authority": "derived observation of frozen metrics, not a new primary grade",
+      "counts": {
+        "wholeWrites": 2,
+        "partialWrites": 0,
+        "outsideTargetWrites": 0
+      },
+      "flags": {
+        "multipleCompletedNativeTargetWrites": true,
+        "partialWriteToolAttempts": false,
+        "outsideTargetWriteAttempts": false
+      },
+      "observedViolation": true,
+      "metricFieldsKnown": 3,
+      "traceCaptureComplete": true,
+      "targetPathBound": true,
+      "callEvidence": [
+        {
+          "callId": "call_00_JYpuYi7Rhy9hS0PMkdfc6697",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        },
+        {
+          "callId": "call_00_Aal3EJ6Gimm3fPnTwiq57719",
+          "tool": "write",
+          "status": "completed",
+          "flags": [
+            "completed-native-target-write"
+          ]
+        }
+      ],
+      "absenceInference": "No absent/zero metric proves a clean path; opaque Bash, incomplete capture and unknown identity remain unknown. An observed native violation is not erased by an unrelated unknown path verdict. Partial/outside counts are attempts, not proof every attempted mutation succeeded."
+    }
+  ]
+}

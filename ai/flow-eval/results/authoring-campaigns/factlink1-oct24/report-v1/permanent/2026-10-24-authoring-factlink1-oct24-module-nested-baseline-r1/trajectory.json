@@ -1,0 +1,559 @@
+{
+  "scenario": "authoring-factlink1-oct24-module-nested-baseline-r1",
+  "events": [
+    {
+      "type": "tool",
+      "i": 0,
+      "t": 1792831147211,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./inputs/brief.md\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d104774001jnA8XiKYT9HNAG",
+      "callId": "call_00_ET_0Ne1Jz8TUilSb9jlRXuI7386",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831147211,
+      "finishedAt": 1792831147218,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 2052,
+          "redactedPrefixBytes": 1979,
+          "redactedPrefixSha256": "cf52a27570e7f7acac04ac2f3e1c477677140b042bcf4120291708d4698092b3",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 1,
+      "t": 1792831147412,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/module.directive.xml\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d104774001jnA8XiKYT9HNAG",
+      "callId": "call_01_ET_p0lhurWOyD3IT8ebdHDh9971",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831147412,
+      "finishedAt": 1792831147415,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11280,
+          "redactedPrefixBytes": 11198,
+          "redactedPrefixSha256": "b451eecd511642378bca60ff4ab0ac562d6fcbccb6424cc0dd8d8b7476a6a856",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 2,
+      "t": 1792831150861,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module pipeline/normalize\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d104db7001JNgpf6vxGe7HLz",
+      "callId": "call_00_N0TTSIgh4GkU0E3J9xaQ6338",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+      "startedAt": 1792831150861,
+      "finishedAt": 1792831150866,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 9770,
+          "redactedPrefixBytes": 9624,
+          "redactedPrefixSha256": "f7ad6a255871f1fcb3349073d38014f248440fc54acc211dc67b906dcbe2e739",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 3,
+      "t": 1792831152342,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/token/pipeline/normalize/normalize.spec.md\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d105b19001T9GENsFxFD3oiJ",
+      "callId": "call_00_rumCzfzWcB0kNlJBntA92974",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831152342,
+      "finishedAt": 1792831152346,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 8946,
+          "redactedPrefixBytes": 8873,
+          "redactedPrefixSha256": "058ed66b1c9c8460e1f3f338b1f2eba4807e9b13da99f5b0e623481931458866",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 4,
+      "t": 1792831154049,
+      "tool": "bash",
+      "arg": "{\"command\":\"find specs -maxdepth 5 -type f | sort\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d1060ea001dxdjEhx7IT3oOl",
+      "callId": "call_00_FV0eqpMaXIN7j67sqhhf5267",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "find specs -maxdepth 5 -type f | sort",
+      "startedAt": 1792831154049,
+      "finishedAt": 1792831154051,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 127,
+          "redactedPrefixBytes": 127,
+          "redactedPrefixSha256": "c26fcdb8a857b6987496b1fd89a50b265b176202fb305919cbe21a4f4fd13287",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 5,
+      "t": 1792831154233,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-inventory-format.xml\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d1060ea001dxdjEhx7IT3oOl",
+      "callId": "call_01_IV5xVmGAep4Y4DhqPh0d2236",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831154233,
+      "finishedAt": 1792831154242,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3719,
+          "redactedPrefixBytes": 3646,
+          "redactedPrefixSha256": "c6f5cb661a21a262fbddf350bd196c4b373dc98196a25d8c90e33a1405e4cc36",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 6,
+      "t": 1792831154470,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-surface-format.xml\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d1060ea001dxdjEhx7IT3oOl",
+      "callId": "call_02_iYyGSAbRZUDJPqgMreBY4971",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831154470,
+      "finishedAt": 1792831154473,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3758,
+          "redactedPrefixBytes": 3685,
+          "redactedPrefixSha256": "71b59927830de42f932b132503804fe7d41940bef473a8fed4ea250d4aff380c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 7,
+      "t": 1792831154629,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/dbc-contracts.xml\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d1060ea001dxdjEhx7IT3oOl",
+      "callId": "call_03_MOsqTS0eed7zWKxltOBN5873",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831154629,
+      "finishedAt": 1792831154632,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11220,
+          "redactedPrefixBytes": 11147,
+          "redactedPrefixSha256": "195bbc3c842dba6198ffff666328df278ac7cfe3d3a9623569df696dd8a88e78",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 8,
+      "t": 1792831156524,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d106a13001B2DkF1g7kcVBJ5",
+      "callId": "call_00_WxPos4Za92z6tikse8J65877",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831156524,
+      "finishedAt": 1792831156527,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 4689,
+          "redactedPrefixBytes": 4618,
+          "redactedPrefixSha256": "b93add3ac0f69db40fab7bd93d0440543b5852dc94a5c0e45deef393ac62cc70",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 9,
+      "t": 1792831156730,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/diagram-vocabulary.xml\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d106a13001B2DkF1g7kcVBJ5",
+      "callId": "call_01_i9P1ltWrRdZnD85hGGAa4534",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831156730,
+      "finishedAt": 1792831156733,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 14291,
+          "redactedPrefixBytes": 14218,
+          "redactedPrefixSha256": "0db4542e55ea5b97cdfff969dcbb30cc4f9cd4144da6905e90350ca1ce139f0a",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 10,
+      "t": 1792831167718,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/README.md\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d107210001WHkTZrFUFGxFuK",
+      "callId": "call_00_SLT2WQje5vTU8uhyVt5R4843",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831167718,
+      "finishedAt": 1792831167728,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 1074,
+          "redactedPrefixBytes": 1001,
+          "redactedPrefixSha256": "2c32a7121f51b86cded465bc031dc2cd8534d7ff1b94f018fc8cc9bded4f1c37",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 11,
+      "t": 1792831168013,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls -la; find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json'\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d107210001WHkTZrFUFGxFuK",
+      "callId": "call_01_CjMZdbviSUaMbmbUcF2H5647",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "ls -la; find . -maxdepth 2 -name 'package.json' -o -maxdepth 2 -name 'tsconfig.json'",
+      "startedAt": 1792831168013,
+      "finishedAt": 1792831168015,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 649,
+          "redactedPrefixBytes": 649,
+          "redactedPrefixSha256": "39b1468852ba29696a6d9edb0a88c94eca4ed419b25560b0597e699dc0ee99e5",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 12,
+      "t": 1792831169819,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./package.json\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d109e2a0014kMQcyhA6pK8SU",
+      "callId": "call_00_ET_I4RLFFsLwNwJjYy1stmU4230",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831169819,
+      "finishedAt": 1792831169822,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 241,
+          "redactedPrefixBytes": 168,
+          "redactedPrefixSha256": "f3c3ca9ae4951a6374fba226dacf5f3502b564f3c3b5eb9a488b484e127e2ac0",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 13,
+      "t": 1792831173208,
+      "tool": "bash",
+      "arg": "{\"command\":\"grep -R \\\"module spec's own acronym\\\\|own acronym\\\\|ACR\\\" -n ai/directives/sdd-v2 | head -40\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d10a53e001cwEgVhz9tr8I8l",
+      "callId": "call_00_aNzHal2nSVXK3d4G9FQ62890",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "grep -R \"module spec's own acronym\\|own acronym\\|ACR\" -n ai/directives/sdd-v2 | head -40",
+      "startedAt": 1792831173208,
+      "finishedAt": 1792831173216,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 8315,
+          "redactedPrefixBytes": 8315,
+          "redactedPrefixSha256": "020b57b013638a4bea482991ddf357eb4088015b648b1839b54f248a01570040",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 14,
+      "t": 1792831174855,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/module-spec-structure.xml\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d10b2650010zRB3kYekgelyt",
+      "callId": "call_00_ZqrxtWALSRzV2DTM3F725996",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831174855,
+      "finishedAt": 1792831174860,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 10313,
+          "redactedPrefixBytes": 10240,
+          "redactedPrefixSha256": "fe5680eba503932b455f88bd25e80463e2f7790d26eadacf64ff557b55c0bae6",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 15,
+      "t": 1792831188662,
+      "tool": "bash",
+      "arg": "{\"command\":\"grep -R \\\"DECISION_LOG_ENTRY_FORMAT\\\" -n ai/directives/sdd-v2 | head -20\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d10b8e3001GFZhy0eGkhy600",
+      "callId": "call_00_mCFh8uQPZwubMgvnLbET1946",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "grep -R \"DECISION_LOG_ENTRY_FORMAT\" -n ai/directives/sdd-v2 | head -20",
+      "startedAt": 1792831188662,
+      "finishedAt": 1792831188664,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 2829,
+          "redactedPrefixBytes": 2829,
+          "redactedPrefixSha256": "6d9471f568ad7f214683340b0c429f074b2b38f9a961754f0bf8f2e0bd7b21d7",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 16,
+      "t": 1792831190661,
+      "tool": "bash",
+      "arg": "{\"command\":\"sed -n '600,625p' ai/directives/sdd-v2/infra.directive.xml\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d10eec00013F2IEy9T6LT17i",
+      "callId": "call_00_ET_6GiCwsAC9Cdx57uLCFgR5777",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "sed -n '600,625p' ai/directives/sdd-v2/infra.directive.xml",
+      "startedAt": 1792831190661,
+      "finishedAt": 1792831190663,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 1593,
+          "redactedPrefixBytes": 1593,
+          "redactedPrefixSha256": "204c1db3eba3fb643e6bf76e8981ee4725fe8ba11e4aa52b65e266c6f30f2fd1",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 17,
+      "t": 1792831193095,
+      "tool": "bash",
+      "arg": "{\"command\":\"find ai/directives -maxdepth 3 -type f | sed -n '1,120p'\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d10f68c0013usha0gvJOrfDk",
+      "callId": "call_00_Cv9ylWa0PyKe6gaU8sQd4159",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "find ai/directives -maxdepth 3 -type f | sed -n '1,120p'",
+      "startedAt": 1792831193095,
+      "finishedAt": 1792831193097,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 4630,
+          "redactedPrefixBytes": 4630,
+          "redactedPrefixSha256": "bf535b7c712fac5c97f0aed9ade31f1df94f6dc27c76479a401b05473037b479",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 18,
+      "t": 1792831206750,
+      "tool": "write",
+      "arg": "{\"filePath\":\"./specs/token/pipeline/normalize/normalize.spec.md\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d11000f00143ZyhGoyv2slf0",
+      "callId": "call_00_uUc3wWs428w2FefECJps7613",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831206750,
+      "finishedAt": 1792831206759,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 24,
+          "redactedPrefixBytes": 24,
+          "redactedPrefixSha256": "e3e06ec0f8c958669ed3682941ab88218ff9ee42a7ab9b48fd78126336aa968c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 19,
+      "t": 1792831208829,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d11358a001dlLic2Lzgv0b74",
+      "callId": "call_00_X2XWiLShvlTbFWqwmRNy0009",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring",
+      "startedAt": 1792831208829,
+      "finishedAt": 1792831208838,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 963,
+          "redactedPrefixBytes": 963,
+          "redactedPrefixSha256": "a24455f5c5770201ca3e4a9ba78331464057408bc49550a4a32ee9a965539bbc",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 20,
+      "t": 1792831218812,
+      "tool": "write",
+      "arg": "{\"filePath\":\"./specs/token/pipeline/normalize/normalize.spec.md\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d113d90001jLE6OwczZxmxpi",
+      "callId": "call_00_JFeTuQEgwAcey8MkHmFJ6968",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "startedAt": 1792831218812,
+      "finishedAt": 1792831218816,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 24,
+          "redactedPrefixBytes": 24,
+          "redactedPrefixSha256": "e3e06ec0f8c958669ed3682941ab88218ff9ee42a7ab9b48fd78126336aa968c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 21,
+      "t": 1792831220934,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d11648e001aapNf6zFQe1i6h",
+      "callId": "call_00_PXUTjxx27NJRCPZmsurG4889",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring",
+      "startedAt": 1792831220934,
+      "finishedAt": 1792831220942,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 130,
+          "redactedPrefixBytes": 130,
+          "redactedPrefixSha256": "3c42030406ef0780876370107dda07584351052f393ef47aa3c648802aa8abf3",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 22,
+      "t": 1792831224865,
+      "tool": "bash",
+      "arg": "{\"command\":\"git status --short && git diff --stat\",\"workdir\":\".\"}",
+      "messageId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg:msg_16d116cd6001ufMjqX2iDb01Ef",
+      "callId": "call_00_eotmm2YCZeiNZDmngSar8893",
+      "status": "completed",
+      "sessionId": "ses_e92efb8e6ffe8sAYh7qQPy6NXg",
+      "command": "git status --short && git diff --stat",
+      "startedAt": 1792831224865,
+      "finishedAt": 1792831224878,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 25,
+          "redactedPrefixBytes": 25,
+          "redactedPrefixSha256": "a6d03960e2db10257cea2da9c463c8f106ab3d518708a3a598669d2f330b8e7a",
+          "prefixComplete": true
+        }
+      }
+    }
+  ],
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  }
+}

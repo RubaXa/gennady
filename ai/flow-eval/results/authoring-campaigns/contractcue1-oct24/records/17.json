@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 17,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r5",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "startedAt": "2026-10-24T13:46:00.922Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/17",
+  "sessions": [
+    {
+      "id": "ses_e91d6b3a2ffeRt786Qee3FtsNM",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/17/sdd-flow-eval-IJNeTM",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91d549d9ffeDa4aBPWf9W4l2B",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/17/sdd-flow-eval-IJNeTM",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r5",
+    "summarySha256": "17b805f49679f5084a87bb5e56abb6cf089e15df2d0104aeff95fca84dfebd9c",
+    "trajectorySha256": "e3a34e87ea16b5b82ad4d81a20a6c2ceb8da7697698cb738bbbf5f3ce8c7c1a0",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 23,
+    "nonCacheTokens": 55363,
+    "messages": 17
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:48:10.177Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91d6b3a2ffeRt786Qee3FtsNM",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/17/sdd-flow-eval-IJNeTM"
+    },
+    {
+      "id": "ses_e91d549d9ffeDa4aBPWf9W4l2B",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/17/sdd-flow-eval-IJNeTM"
+    }
+  ]
+}
