@@ -33,6 +33,7 @@ import {
   ticketRelativeHref,
 } from '../../../shared/sdd/task-authoring-literals.ts';
 import { collectSpecIdEntries, deriveInitialSpecId } from '../../../shared/sdd/spec-id.ts';
+import { renderModuleAuthoringFacts } from './module-authoring-facts.ts';
 import {
   badInvocation,
   unknownKind,
@@ -573,6 +574,9 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
     text: [
       renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps, authoringLiterals),
       moduleConcept,
+      kind === 'module' && opts.scope && specId
+        ? renderModuleAuthoringFacts(path, opts.scope, specId)
+        : '',
     ]
       .filter(Boolean)
       .join('\n\n'),

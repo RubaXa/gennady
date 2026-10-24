@@ -224,7 +224,7 @@ npx gennady yagni /path/to/repo
 | `sdd-state`         | Детерминированный снимок SDD-состояния проекта                            |
 | `sdd-check`         | V2 checks; legacy diagnostics grandfathered, no append-only header gate   |
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                            |
-| `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
+| `sdd-new`           | Scaffold + computed module IDs and existing scope-section links           |
 | `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine               |
 | `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
 | `rules`             | Embedded rules: inventory/detail/explicit-scope resolve                   |

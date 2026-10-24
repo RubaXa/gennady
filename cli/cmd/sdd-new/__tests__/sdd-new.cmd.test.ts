@@ -317,6 +317,10 @@ describe('SddNewCommand', () => {
       );
       assert.match(outcome.text, /examples for scope "fibonacci": nth, sequence/);
       assert.match(outcome.text, /canonical-path: specs\/fibonacci\/nth\/nth\.spec\.md/);
+      assert.match(outcome.text, /authoring-facts \(computed/);
+      assert.match(outcome.text, /spec-id: FIBONACCI-NTH/);
+      assert.match(outcome.text, /acronym: NTH /);
+      assert.match(outcome.text, /scope-spec unavailable\/unsafe/);
     } finally {
       process.chdir(prevCwd);
       rmSync(cwd, { recursive: true, force: true });
