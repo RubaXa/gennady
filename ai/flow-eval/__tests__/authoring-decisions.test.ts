@@ -163,7 +163,7 @@ it('closed TRANSFER1 execution follows its raw archive, not only the resource im
   const result = JSON.parse(read(new URL('analysis.json', transfer)).toString());
   const extra = JSON.parse(read(new URL('supplemental.json', transfer)).toString());
   const execution = ledger.transferExecution;
-  assert.equal(ledger.currentDecision, 'AUTH-20261025-TRANSFER');
+  assert.equal(ledger.currentDecision, 'AUTH-20261025-FINAL');
   assert.equal(execution.status, 'closed');
   assert.equal(execution.recommendation, result.recommendation);
   assert.equal(execution.recommendation, 'retain-current-default');
@@ -195,4 +195,65 @@ it('closed TRANSFER1 execution follows its raw archive, not only the resource im
   assert.equal(execution.replacementAttempts, 0);
   assert.equal(execution.automaticReruns, false);
   assert.equal(execution.productionDefault, 'unchanged');
+});
+
+it('final adjudication closes research without rewriting experiments or counting censored work as a logic defect', () => {
+  assert.equal(
+    sha(Buffer.from(JSON.stringify(ledger.campaigns))),
+    'd33371950cb935842099af0f836c4c57d1d04ff4e9c39b7e676ef929309ca607'
+  );
+  assert.equal(
+    sha(Buffer.from(JSON.stringify(ledger.decisions.slice(0, 3)))),
+    '595ca090965f60fe6097c1b118a0ab8d203db8dfecf9ffb5af9714852338a486'
+  );
+  const final = ledger.finalAdjudication;
+  assert.equal(final.newLiveExecutions, 0);
+  assert.equal(final.rawGradesChanged, false);
+  assert.equal(final.productionDefault, 'unchanged');
+  assert.equal(final.researchCycle, 'closed');
+  assert.equal(final.automaticNextCampaign, false);
+  assert.equal(final.mergeAuthorized, false);
+  const decision = ledger.decisions.find((d: any) => d.id === ledger.currentDecision);
+  assert.equal(decision.status, 'closed-current-default');
+  assert.equal(decision.supersedesDecision, 'AUTH-20261025-TRANSFER');
+  assert.equal(final.delay.candidateLogicDefectEstablished, false);
+  assert.equal(final.delay.completionWithoutObserverAbort, 'unknown');
+  assert.equal(final.dedupe.coreBehaviorContradictionEstablished, false);
+  assert.equal(final.dedupe.adjudicatedSemanticStatus, 'inconclusive-not-proven-regression');
+});
+
+it('final two-case findings cite actual completed actions, unfilled output and referenced parent guarantees', () => {
+  const transfer = new URL('transfer1-oct25/', archives);
+  const load = (name: string) => JSON.parse(read(new URL(name, transfer)).toString());
+  const text = (name: string) => read(new URL(name, transfer)).toString();
+  const prefix = (index: number) => 'permanent/' + load(`records/${index}.json`).primary.directory;
+  const delay = ledger.finalAdjudication.delay;
+  const trace = load(prefix(7) + '/trajectory.json');
+  const action = trace.events.find((e: any) => e.callId === delay.callId);
+  assert.equal(action.status, 'completed');
+  assert.equal(action.exitCode, 0);
+  assert.ok(action.command.includes(delay.observedAction));
+  assert.equal(load(prefix(7) + '/summary.json').authoringBenchmark.metrics.wholeWrites, 0);
+  assert.equal(load('records/7.json').primary.verdict, 'worker-error');
+  assert.match(text('controller-output/7.txt'), /forbidden implementation archaeology/);
+  assert.ok(
+    text(prefix(7) + '/specs/delivery/policies/delay/delay.spec.md').includes(
+      'УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю'
+    )
+  );
+  const child = text(prefix(10) + '/specs/delivery/policies/dedupe/dedupe.spec.md');
+  const parent = text(prefix(10) + '/specs/delivery/delivery.spec.md');
+  assert.ok(child.includes('seenAtMs <= nowMs'));
+  assert.ok(child.includes('0 <= nowMs - seenAtMs < ttlMs'));
+  assert.ok(child.includes('Уточняет `DEL-REQ-1`'));
+  assert.ok(parent.includes('never perform network I/O, wait, read a clock or mutate state'));
+  assert.equal(
+    child.includes('isDuplicate(seenAtMs: number | null, nowMs: number, ttlMs: number): boolean'),
+    false
+  );
+  assert.equal(load('records/10.json').primary.verdict, 'fail');
+  assert.equal(
+    load('manual-review.json').rows.find((r: any) => r.index === 10).semantic,
+    'inconclusive'
+  );
 });

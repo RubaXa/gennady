@@ -1,7 +1,48 @@
 {
   "schema": "gennady.authoring-decisions.1",
   "date": "2026-10-25",
-  "currentDecision": "AUTH-20261025-TRANSFER",
+  "currentDecision": "AUTH-20261025-FINAL",
+  "finalAdjudication": {
+    "campaign": "transfer1-oct25",
+    "newLiveExecutions": 0,
+    "rawGradesChanged": false,
+    "productionDefault": "unchanged",
+    "researchCycle": "closed",
+    "automaticNextCampaign": false,
+    "mergeAuthorized": false,
+    "delay": {
+      "index": 7,
+      "classification": "instruction-violation-and-policy-censored-completion",
+      "callId": "call_01_J2dzmnhhUl8JmsWftev34410",
+      "observedAction": "cat node_modules/gennady/package.json",
+      "wholeWrites": 0,
+      "documentComplete": false,
+      "candidateLogicDefectEstablished": false,
+      "completionWithoutObserverAbort": "unknown"
+    },
+    "dedupe": {
+      "index": 10,
+      "classification": "correct-core-behavior-with-contested-contract-completeness-grade",
+      "coreBehaviorContradictionEstablished": false,
+      "noWaitExplicitInChild": false,
+      "noWaitPresentInReferencedParent": true,
+      "verbatimTypedSignatureInChild": false,
+      "verbatimTypedDbcSignatureRequiredByFormat": false,
+      "adjudicatedSemanticStatus": "inconclusive-not-proven-regression"
+    },
+    "retained": [
+      "current production authoring behavior",
+      "tested fixture/grader repairs, bounded trajectory capture, cleanup and byte-authenticated evidence",
+      "all prior positive, negative and uncertain observations",
+      "candidate source refs as an unshipped prototype only"
+    ],
+    "notActivated": [
+      "the full facts/links/consistency-cue packet",
+      "unmeasured isolated packet components",
+      "post-hoc range-only routing",
+      "another live experiment or npm publication"
+    ]
+  },
   "transferExecution": {
     "status": "closed",
     "campaign": "transfer1-oct25",
@@ -212,6 +253,17 @@
       "rawGradesChanged": false,
       "mergeAuthorized": false,
       "reopenWhen": "Only an explicitly authorized materially different mechanism or reproducible new counterexample; no resampling, automatic campaign or post-hoc range-only activation."
+    },
+    {
+      "id": "AUTH-20261025-FINAL",
+      "status": "closed-current-default",
+      "campaign": "transfer1-oct25",
+      "supersedesDecision": "AUTH-20261025-TRANSFER",
+      "scope": "Final operator-requested adjudication and closure, not another experiment or a change to raw grades.",
+      "reason": "The two negative outcomes are not two proven candidate logic bugs: delay violates the explicit run boundary and is aborted by a coarse observer; dedupe has correct core behavior and a disputed completeness grade. Neither proves causal quality degradation, but preservation of quality and reliable completion are not established either. Keep the existing production behavior and tested measurement improvements; no isolated or post-hoc packet deployment.",
+      "rawGradesChanged": false,
+      "mergeAuthorized": false,
+      "reopenWhen": "No automatic reopening; only a new explicit operator task. This request ends the research cycle."
     }
   ],
   "latestEffects": [
