@@ -1,0 +1,211 @@
+{
+  "schema": "gennady.task-quality-report.1",
+  "source": {
+    "baseline": "63d2d95832bfaf5bc44854333cdfab389fe0b8dd",
+    "head": "63d2d95832bfaf5bc44854333cdfab389fe0b8dd",
+    "dirtyDiffSha256": "4e98db5a98fe33dd4d09f54d7d49162ab93707fd88b1dc21e0a7e6aa71203821",
+    "cleanBefore": false
+  },
+  "planned": 6,
+  "recorded": 6,
+  "records": [
+    {
+      "id": "decomposition",
+      "arm": "baseline",
+      "sessionId": "ses_e8aff1a6dffe3Pjsdjgvi3dNXq",
+      "facets": [],
+      "wallMs": 5834,
+      "usage": {
+        "messages": 1,
+        "input": 2190,
+        "output": 187,
+        "reasoning": 469,
+        "cacheRead": 1664,
+        "cacheWrite": 0,
+        "total": 2846,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 5647
+      },
+      "toolCalls": 0,
+      "seedUnchanged": true,
+      "sandboxEntries": [],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "decomposition",
+      "arm": "candidate",
+      "sessionId": "ses_e8aff03a9ffe8Y3M17psKS3F7T",
+      "facets": [],
+      "wallMs": 3129,
+      "usage": {
+        "messages": 1,
+        "input": 2247,
+        "output": 125,
+        "reasoning": 216,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "total": 2588,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 3106
+      },
+      "toolCalls": 0,
+      "seedUnchanged": true,
+      "sandboxEntries": [],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "scenario-review",
+      "arm": "baseline",
+      "sessionId": "ses_e8afef75fffesssxBCohjAFvA8",
+      "facets": [
+        "missing-risk-evidence:MAIL-REQ-1",
+        "missing-risk-evidence:MAIL-REQ-2",
+        "missing-risk-evidence:MAIL-REQ-3",
+        "missing-risk-evidence:MAIL-REQ-4",
+        "missing-risk-evidence:MAIL-REQ-6",
+        "missing-performance-risk"
+      ],
+      "wallMs": 47426,
+      "usage": {
+        "messages": 1,
+        "input": 941,
+        "output": 719,
+        "reasoning": 7201,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "total": 8861,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 47406
+      },
+      "toolCalls": 0,
+      "seedUnchanged": true,
+      "sandboxEntries": [],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "scenario-review",
+      "arm": "candidate",
+      "sessionId": "ses_e8afe3e04ffeSpqd52x3eWBLrV",
+      "facets": [],
+      "wallMs": 47374,
+      "usage": {
+        "messages": 1,
+        "input": 1234,
+        "output": 1177,
+        "reasoning": 6950,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "total": 9361,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 47350
+      },
+      "toolCalls": 0,
+      "seedUnchanged": true,
+      "sandboxEntries": [],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "related-read",
+      "arm": "baseline",
+      "sessionId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL",
+      "facets": [
+        "context-gap-unresolved"
+      ],
+      "wallMs": 8877,
+      "usage": {
+        "messages": 2,
+        "input": 1332,
+        "output": 185,
+        "reasoning": 992,
+        "cacheRead": 4864,
+        "cacheWrite": 0,
+        "total": 2509,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 8849
+      },
+      "toolCalls": 1,
+      "pathIssues": [
+        "required-target-to-helper-path-missing",
+        "unrelated-read"
+      ],
+      "relatedReadObserved": false,
+      "unexpectedTool": false,
+      "unrelatedRead": false,
+      "seedUnchanged": true,
+      "sandboxEntries": [
+        "src",
+        "unrelated"
+      ],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "related-read",
+      "arm": "candidate",
+      "sessionId": "ses_e8afd6215ffeO2c4zAYT3899oT",
+      "facets": [],
+      "wallMs": 3478,
+      "usage": {
+        "messages": 3,
+        "input": 1664,
+        "output": 240,
+        "reasoning": 32,
+        "cacheRead": 8192,
+        "cacheWrite": 0,
+        "total": 1936,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 3458
+      },
+      "toolCalls": 2,
+      "pathIssues": [
+        "required-target-to-helper-path-missing",
+        "unrelated-read"
+      ],
+      "relatedReadObserved": true,
+      "unexpectedTool": false,
+      "unrelatedRead": false,
+      "seedUnchanged": true,
+      "sandboxEntries": [
+        "src",
+        "unrelated"
+      ],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    }
+  ],
+  "monetaryCost": "unknown; provider-reported zero is not a bill"
+}

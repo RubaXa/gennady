@@ -119,6 +119,10 @@ worker-checkpoint JSON и обязательное переиспользова�
   Git evidence
 - Output: typed `HandoffPayload`
 - Boundary: worker does not change ticket meaning, dependencies, phases or approved test plan
+- Read context starts at the tool manifest; a concrete unresolved import/caller/assertion/diagnostic
+  or spec reference permits an exact related project read, reported with path and reason in Handoff
+  decisions. This is not permission to change targets, activate rules, widen verification, inspect
+  secrets/tool internals, or follow paths outside the checkout.
 
 ### `HandoffPayload`
 
@@ -183,6 +187,11 @@ worker-checkpoint JSON и обязательное переиспользова�
 - model judges semantic proof; mechanics judge presence, shape and traceability;
 - batch parallelism requires disjoint Target Files and no dependency relation;
 - lost worker identity never blocks resume; a fresh worker receives durable bounded context.
+- uncertain dependencies favor keeping related work together; a split explains exact inputs/outputs,
+  shared writers, independent verification and its concrete benefit over one ticket with phases;
+- ticket review starts from role → user outcome → relevant risks → cheapest sufficient tests and
+  diagnostic/performance evidence, reusing existing infrastructure rather than defaulting to e2e;
+- semantic findings identify consequences and evidence; stylistic preferences do not replace coverage.
 
 </details>
 <!--/SECTION:MODULE_CONTRACTS-->
@@ -257,6 +266,30 @@ ai/skills/
   - approval абстрактного DAG до tickets — не доказывает фактические artifacts;
   - только mechanical gates — не оценивают смысл и доказательность теста;
   - только model review — не гарантирует ID/section/traceability presence.
+
+AI-SKILLS-SDD-SKILLS-DL-1 2026-10-26 — Осторожная декомпозиция, review пользовательских сценариев и evidence-directed чтение (почему: меньше предположительных зависимостей и ложных блокировок без ослабления проверок; отвергнуто: свободная запись вне Target Files и автономное изменение DAG — обсуждаются отдельно).
+
+### План реализации и приёмки — 2026-10-26
+
+1. Уточнить существующий инвариант дробления; процедура derivation объясняет каждую границу и
+   сравнивает с объединённым вариантом. Смысловую достаточность оценивает reviewer, не счётчик тикетов.
+2. Усилить actual-ticket review: роли/цели, негативные и временные сценарии, уровни тестов,
+   переиспользование harness, диагностика и применимые performance-проверки без выдуманных SLA.
+3. Согласовать `sdd-task` и phase protocol: manifest — начало чтения, конкретный пробел допускает
+   связанный read с объяснением в Handoff; запись/удаление, approval, правила и гейты неизменны.
+4. RED→GREEN contract/CLI tests; bounded live Flash evals для дробления, review и related-read,
+   с сохранением исходных результатов, контрольных отрицательных примеров и cleanup после прогона.
+5. Независимое ревью PR → merge только ревьюером. No npm publication. Автономное перепланирование,
+   исправление deviation persistence и изменение границ записи не входят в этот пакет.
+
+Реализация и bounded проверки выполнены; независимое PR review ещё требуется.
+[Сводка 12 Flash-прогонов](../../../ai/flow-eval/results/2026-10-26-task-quality-final/README.md):
+декомпозиция/review проходят на обоих вариантах, related-read устраняет наблюдавшуюся остановку.
+Полный execute flow и статистическое неухудшение этими микропрогонами не установлены.
+Независимое code review обнаружило неограниченные lifecycle HTTP-вызовы запускателя. Добавлены
+deadline/cancellation и обязательный local cleanup при ошибке удаления сессии, покрытые тестами
+зависших запросов. Выполненный runner сохранён отдельным hash-bound snapshot; live результаты не
+переписаны и не выдаются за прогон последующего hardening.
 
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->

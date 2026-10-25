@@ -98,7 +98,8 @@ Per-phase read-manifest (AX_READ_PER_MANIFEST):
   READ files:  src/foo.ts
   gates:       npm run type-check
   inputs:      none
-  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above
+  RELATED READS: exact project files/sections only for a concrete unresolved import, caller, assertion, diagnostic or spec reference; report path + gap in Handoff decisions; no operator approval needed.
+  DO NOT READ: unrelated repository areas · secrets · paths resolving outside checkout · protected tool internals; related reads never expand WRITE/DELETE, selected rules or Verify scope.
 
 Gates (all):
   npm run type-check  ← typescript-rules

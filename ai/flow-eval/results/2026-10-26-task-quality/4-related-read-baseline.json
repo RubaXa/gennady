@@ -1,0 +1,96 @@
+{
+  "id": "related-read",
+  "arm": "baseline",
+  "sessionId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL",
+  "response": "{\"answer\":null,\"status\":\"needs-orchestrator\",\"relatedReads\":[{\"path\":\"src/view.ts\",\"reason\":\"Read per manifest. visibleCount(12) delegates to windowEnd(12) - 2, so its result cannot be evaluated without windowEnd.\"},{\"path\":\"src/window.ts\",\"reason\":\"Not read: outside the read-manifest. Discovery: windowEnd implementation is missing/supplied indirectly and is required to answer.\"}]}",
+  "facets": [
+    "context-gap-unresolved"
+  ],
+  "wallMs": 8877,
+  "trajectory": {
+    "entries": [
+      {
+        "messageId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL:msg_175027b2f001GhNNO3IHm1JhlH",
+        "sessionId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL",
+        "role": "user",
+        "createdAt": 1792964459311,
+        "text": "Task:\nApply the supplied read-manifest policy. This is only the orientation step, not implementation, Verify or completion. Return JSON only:\n{\"answer\":number|null,\"status\":\"answered\"|\"needs-orchestrator\",\"relatedReads\":[{\"path\":string,\"reason\":string}]}.\nManifest: READ files: src/view.ts. Target Files for writing: src/view.ts. Start there and determine what visibleCount(12) returns. No writes are requested or permitted. The helper implementation was not supplied. Follow the policy for any missing context. Never inspect unrelated files, bundled tools or secrets. Stop when the question is answered.\n\nSupplied policy (apply as instructions):\n<!-- new for sdd-v2 tooling lens: bound worker context to the tool's read-manifest -->\n<Axiom id=\"AX_READ_PER_MANIFEST\">\n  When a tool hands a read-manifest for the current step — the exact rule anchors, spec anchors,\n  ticket sections, and Target Files to read — read EXACTLY that, nothing beyond it. The manifest's\n  \"do not read\" list and line budget are binding.\n\n  - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file\n    end-to-end for one section clogs context and degrades a cheaper model on long input.\n  - Need something the manifest does not list? That signals the ticket or manifest is wrong — log a\n    `discovery` line and surface it; never silently widen the read.\n</Axiom>",
+        "toolCalls": [],
+        "fingerprint": ""
+      },
+      {
+        "messageId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL:msg_175027b6f0013hoA9iIg236BPX",
+        "sessionId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL",
+        "role": "assistant",
+        "createdAt": 1792964459375,
+        "text": "",
+        "toolCalls": [
+          {
+            "callId": "call_00_OSWXK66a0zo7adKTYEZj8787",
+            "tool": "read",
+            "status": "completed",
+            "inputSummary": "{\"filePath\":\"/private./src/view.ts\"}",
+            "startedAt": 1792964461132,
+            "finishedAt": 1792964461143,
+            "observation": {
+              "version": 1,
+              "output": {
+                "available": true,
+                "bytes": 315,
+                "redactedPrefixBytes": 228,
+                "redactedPrefixSha256": "8109112aadadd09089ca722abb98d6a4da62e149ec27cf8457aa209bc588ba3d",
+                "prefixComplete": true
+              }
+            }
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "messageId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL:msg_175028264001r6w1s7pyol1VuW",
+        "sessionId": "ses_e8afd84d6ffeVlqGQUtGk6nPhL",
+        "role": "assistant",
+        "createdAt": 1792964461156,
+        "text": "{\"answer\":null,\"status\":\"needs-orchestrator\",\"relatedReads\":[{\"path\":\"src/view.ts\",\"reason\":\"Read per manifest. visibleCount(12) delegates to windowEnd(12) - 2, so its result cannot be evaluated without windowEnd.\"},{\"path\":\"src/window.ts\",\"reason\":\"Not read: outside the read-manifest. Discovery: windowEnd implementation is missing/supplied indirectly and is required to answer.\"}]}",
+        "toolCalls": [],
+        "fingerprint": ""
+      }
+    ],
+    "coverage": {
+      "complete": true,
+      "sessions": 1,
+      "reasons": []
+    }
+  },
+  "usage": {
+    "messages": 2,
+    "input": 1332,
+    "output": 185,
+    "reasoning": 992,
+    "cacheRead": 4864,
+    "cacheWrite": 0,
+    "total": 2509,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 8849
+  },
+  "toolCalls": 1,
+  "pathIssues": [
+    "required-target-to-helper-path-missing",
+    "unrelated-read"
+  ],
+  "relatedReadObserved": false,
+  "unexpectedTool": false,
+  "unrelatedRead": false,
+  "seedUnchanged": true,
+  "sandboxEntries": [
+    "src",
+    "unrelated"
+  ],
+  "sessionDeleted": true,
+  "sandboxRemoved": true
+}

@@ -349,6 +349,9 @@ describe('SddTaskCommand', () => {
     assert.match(t, /READ files:  src\/foo\.ts/);
     assert.match(t, /exit:        foo\.ts compiles and exports Foo/);
     assert.match(t, /DO NOT READ/);
+    assert.match(t, /RELATED READS: exact project files\/sections/);
+    assert.match(t, /never expand WRITE\/DELETE, selected rules or Verify scope/);
+    assert.doesNotMatch(t, /code outside READ files/);
   });
 
   it('gives three typical failures the common object/reason/next/example schema', async () => {
@@ -1266,6 +1269,12 @@ describe('SddTaskCommand', () => {
       assert.match(outcome.text, /worker contract \(copy verbatim into dispatch\)/);
       assert.match(outcome.text, /NEVER READ: node_modules\/gennady\/\*\* · dist\/\*\*/);
       assert.match(outcome.text, /at most one target-local hypothesis/);
+      assert.match(outcome.text, /RELATED READS: exact project files\/sections/);
+      assert.match(outcome.text, /report path \+ gap in Handoff decisions/);
+      assert.match(outcome.text, /no operator approval needed/);
+      assert.match(outcome.text, /never expand WRITE\/DELETE, selected rules or Verify scope/);
+      assert.match(outcome.text, /paths resolving outside checkout/);
+      assert.doesNotMatch(outcome.text, /DO NOT READ: other phase bodies/);
       assert.match(
         outcome.text,
         /only the exact unified Verify invocation above may own evidence\/receipt/

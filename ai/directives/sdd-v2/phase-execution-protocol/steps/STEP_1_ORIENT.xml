@@ -2,9 +2,12 @@
 
 <Step id="STEP_1_ORIENT">
       <Action>
-        Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution
-        Log facts, and Git evidence. Verify targets still match the ticket. Ask the orchestrator for a
-        missing required excerpt; do not explore unrelated repository areas or inspect CLI source.
+        Start with the supplied phase block, referenced spec/rule excerpts, target files, Execution
+        Log facts, and Git evidence. Per `AX_READ_PER_MANIFEST`, close a concrete context gap by reading
+        the smallest exact related project file/section and return its path and reason in Handoff
+        decisions. A related read needs no operator approval; it grants no additional write, rule or
+        verification authority. Verify targets still match the ticket. Unavailable protected context
+        returns to the orchestrator; do not explore unrelated areas or inspect bundled CLI internals.
         Reconstruct state from these durable inputs per `AX_STATELESS_FLOW` and enforce the declared
         phase boundary per `AX_PHASE_SCOPE_LOCK`: a phase worker owns failures only inside its own
         Target Files — a repo-wide gate failing inside ANOTHER phase's Target Files is not this
@@ -47,4 +50,21 @@
       or recover maintenance work; `planned`, `blocked`, and `history` may inform that selection but are
       never direct routing authority. Unresolved/ambiguous ownership fails closed. Legacy `@tasks` is
       migration evidence only and never routing authority for V2.
+    </Axiom>
+
+<Axiom id="AX_READ_PER_MANIFEST">
+      A tool's read-manifest is starting context, not a read allowlist. Read its selected rules, spec
+      anchors, ticket sections and target files first; reuse supplied facts rather than rediscovering them.
+
+      - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file
+        end-to-end for one section clogs context and degrades a cheaper model on long input.
+      - A concrete unresolved import, caller, assertion, diagnostic or spec reference permits reading the
+        exact related project file or section needed to close that gap, without operator approval. Use
+        the file-read tool or the already permitted `sdd-extract`, stop when the gap is answered, and
+        report the path and the gap in the returned result (Handoff decisions for a phase worker,
+        evidence for a reviewer). No new journal or log command.
+      - This never expands write authority, selected rules, verification scope or permitted Bash commands.
+        Stay inside the checkout, including resolved symlinks. Unrelated scans, secrets, bundled tool
+        internals and explicit protected paths remain closed. An unrelated file is not context merely
+        because it exists; reading another rule does not activate or override it.
     </Axiom>

@@ -159,7 +159,8 @@ export function formatPlan(
     lines.push(`  inputs:      ${d.inputs ?? 'none'}`);
     lines.push(`  exit:        ${d.exit ?? '—'}`);
     lines.push(
-      '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
+      '  RELATED READS: exact project files/sections only for a concrete unresolved import, caller, assertion, diagnostic or spec reference; report path + gap in Handoff decisions; no operator approval needed.',
+      '  DO NOT READ: unrelated repository areas · secrets · paths resolving outside checkout · protected tool internals; related reads never expand WRITE/DELETE, selected rules or Verify scope.'
     );
   }
 
@@ -304,14 +305,15 @@ export function formatPhase(
   lines.push(`  READ files:  ${readFiles.length ? readFiles.join(', ') : '—'}`);
   lines.push(`  CREATE files: ${createFiles.length ? createFiles.join(', ') : '—'}`);
   lines.push(
-    '  DO NOT READ: other phase bodies · code outside READ files · specs beyond the anchors above'
+    '  RELATED READS: exact project files/sections only for a concrete unresolved import, caller, assertion, diagnostic or spec reference; report path + gap in Handoff decisions; no operator approval needed.',
+    '  DO NOT READ: unrelated repository areas · secrets · paths resolving outside checkout · protected tool internals; related reads never expand WRITE/DELETE, selected rules or Verify scope.'
   );
   lines.push(
     '',
     'worker contract (copy verbatim into dispatch):',
     '  READ protocol: ai/directives/sdd-v2/phase-execution-protocol.directive.xml and its four step files',
     '  NEVER READ: node_modules/gennady/** · dist/** · CLI source or bundles',
-    '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis, then return a typed blocker; no implementation archaeology',
+    '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis using RELATED READS when needed, then return a typed blocker; no implementation archaeology',
     '  TICKET: only the exact unified Verify invocation above may own evidence/receipt; never edit status/DONE/Handoff and never call sdd-log'
   );
 
