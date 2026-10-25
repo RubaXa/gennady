@@ -20,6 +20,11 @@ import { parseGraphEdges, parseScopes } from '../../shared/sdd/portal.ts';
 import { parseTrackerRows } from '../../shared/sdd/tracker.ts';
 import { deriveInitialSpecId, parseSpecId } from '../../shared/sdd/spec-id.ts';
 import { extractMermaidBlocks } from '../../shared/mermaid/mermaid.ts';
+import {
+  selectedAuthoringTransfer,
+  getAuthoringTransferCase,
+  checkAuthoringTransferFacts,
+} from './authoring-transfer.ts';
 import { TEMPLATES, type ArtifactKind } from '../../shared/sdd/templates.ts';
 import {
   REFERENCE_PORTAL,
@@ -84,6 +89,8 @@ export function getAuthoringCase(
   id: AuthoringCaseId,
   revision: AuthoringRevision = 'calibrated'
 ): AuthoringCase {
+  const transfer = selectedAuthoringTransfer();
+  if (transfer) return getAuthoringTransferCase(id, transfer);
   if (!AUTHORING_CASE_IDS.includes(id)) throw new Error(`Unknown authoring case: ${id}`);
   const scopeKind = id.startsWith('scope-')
     ? (id.slice(6) as 'product' | 'library' | 'infrastructure' | 'interface')
@@ -554,6 +561,10 @@ export function checkAuthoringBenchmark(
       }
     });
     run('required-facts', () => {
+      if (selectedAuthoringTransfer()) {
+        checkAuthoringTransferFacts(item, observed, need);
+        return;
+      }
       if (item.target.endsWith('.spec.md')) {
         const section = item.requiredFacts[0]!.section;
         const body = sectionBody(observed, item.kind, section) ?? '';

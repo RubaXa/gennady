@@ -31,6 +31,7 @@ import {
 } from './authoring-metrics.ts';
 import { authoringProtocolIdentity, readAuthoringRuntimeVersion } from './authoring-protocol.ts';
 import { collectAuthoringReflection } from './authoring-reflection.ts';
+import { selectedAuthoringTransfer } from './authoring-transfer.ts';
 import { resolveBasePrompt } from './prompts.ts';
 import {
   checkR1Structure,
@@ -803,7 +804,8 @@ export async function runAndReportBody(
         trajectoryFile &&
         result.worker.status === 'completed' &&
         !interrupted &&
-        !budgetExhausted
+        !budgetExhausted &&
+        !selectedAuthoringTransfer()
       ) {
         try {
           const reflection = await collectAuthoringReflection(runtime, evidence, {
