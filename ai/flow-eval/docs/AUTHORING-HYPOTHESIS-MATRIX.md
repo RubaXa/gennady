@@ -1,12 +1,14 @@
 # Authoring: source map and one-variable hypotheses
 
-Latest controlled result (2026-10-24): **CONTRACTCUE1 partially positive, not selected for production**.
-After examining all five TOOLFACT1 failures, 24 fresh Flash attempts tested the computed packet
-plus a bounded source-contract consistency cue. Flat: tokens −18.3%, tools −31.0%, time −9.9%,
-semantic 4/6→6/6. Nested: −7.7%/−10.0%/−18.9%, semantic 5/6→5/6. The ≥10% token target in BOTH
-cases is not met; one candidate semantic error remains and complete path proof is unknown.
-Production directives and CLI output remain unchanged. See
-[the measured result and five-case analysis](../results/authoring-campaigns/contractcue1-oct24/REPORT.md).
+Current decision (2026-10-25): **cycle closed; CONTRACTCUE1 accepted-bounded as a retained prototype,
+not shipped or universally activated**. See [finite closure and source research](./AUTHORING-CLOSURE.md)
+and the [evidence-bound register](./AUTHORING-DECISIONS.json). There is no minimum product savings
+percentage. The historical ≥10% pilot result remains unchanged, but does not automatically veto
+bounded use. Flat total tokens fell 18.85%; nested total tokens rose 1.07% despite a 7.7% median
+reduction. Both have fewer total calls. Semantic PASS is 4/6→6/6 and 5/6→5/6 respectively.
+One candidate error remains; path unknown is not a demonstrated violation or a fabricated PASS.
+Production directives and CLI output remain unchanged. The old measured report and grades are
+[preserved](../results/authoring-campaigns/contractcue1-oct24/REPORT.md), not rewritten.
 The offline status statements below describe their historical snapshot and named mutations,
 not permission to relabel later pilots as untested or successful.
 

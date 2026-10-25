@@ -1,5 +1,10 @@
 # Authoring efficiency: primary-source check, not an effect-size promise
 
+2026-10-25 update: [finite closure and framework research](./AUTHORING-CLOSURE.md) is the current
+decision. The original source check below remains historical; its "next gate" does not reopen
+the completed cycle. [The register](./AUTHORING-DECISIONS.json) records what was actually tested,
+what failed qualification, what is retained and which future slots have no automatic live budget.
+
 Checked 2026-10-23. This review motivates the additional E1/STOP1/T2/S2 arms in the
 [hypothesis matrix](./AUTHORING-HYPOTHESIS-MATRIX.md). No new model run was made for this document.
 Our route remains Flash through the authorized AI Proxy, not the models in these papers.

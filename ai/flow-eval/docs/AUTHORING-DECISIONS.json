@@ -1,0 +1,231 @@
+{
+  "schema": "gennady.authoring-decisions.1",
+  "date": "2026-10-25",
+  "cycle": {
+    "status": "closed",
+    "newLiveAuthoringAttempts": 0,
+    "newLiveJudgeCalls": 0,
+    "newLiveReflectionCalls": 0,
+    "automaticReruns": false,
+    "productionDefault": "unchanged",
+    "candidateDelivery": "prototype-only-not-shipped",
+    "model": "llm-proxy/deepseek-v4-flash",
+    "qualityGuarantee": false,
+    "minimumProductSavingsPercent": null
+  },
+  "campaigns": [
+    {
+      "id": "template-authoring-oct22",
+      "status": "invalid",
+      "workerAttempts": 3,
+      "scope": "Comparative performance claim only; diagnostic evidence retained.",
+      "tested": "Initial authoring setup.",
+      "result": "PATH and fixture/oracle defects; interrupted cohort is not an optimization result.",
+      "notTested": "Quality-preserving efficiency improvement.",
+      "evidenceFile": "REPORT.md",
+      "evidenceSha256": "30ed1582ed543035d529ebda88e7be56e35378097f316f60e9460eca376ea891"
+    },
+    {
+      "id": "template-authoring-repaired-oct22",
+      "status": "invalid",
+      "workerAttempts": 5,
+      "scope": "Comparative performance claim only; censored attempts retained.",
+      "tested": "Repaired fixtures under the old observer.",
+      "result": "Observer aborted normal long-form work before the worker deadline.",
+      "notTested": "Uncensored candidate efficiency.",
+      "evidenceFile": "REPORT.md",
+      "evidenceSha256": "acb4ee0fb28956c47b7c89c2587067e237de221e20ec2e0984330ce6bd81e59a"
+    },
+    {
+      "id": "template-authoring-wall180-oct22",
+      "status": "observed",
+      "workerAttempts": 10,
+      "scope": "One diagnostic attempt per artifact kind, no intervention.",
+      "tested": "Ten-case coverage after observer repair.",
+      "result": "Found oracle false negatives and a real broken nested link.",
+      "notTested": "Repeated matched A/B or semantic equivalence.",
+      "evidenceFile": "REPORT.md",
+      "evidenceSha256": "9f97836df5d261ffe7920e269bfd8d99bdf4e8f1fde7eb695ae039e2b8ca04ce"
+    },
+    {
+      "id": "template-placement-oct22",
+      "status": "rejected-mixed",
+      "workerAttempts": 30,
+      "scope": "Whole placement rewrite, not a ban on local guidance.",
+      "tested": "Template-rich, owner-rich, concise placement and adaptive acronym cue.",
+      "result": "Local flat gains; nested resource regressions; older fixture and arm-order confounding.",
+      "notTested": "Isolated acronym effect or general benefit across domains.",
+      "evidenceFile": "REPORT.md",
+      "evidenceSha256": "900280c68c0687151497e47b0180f1e3e4180341dceeb28dad12882e6522b73e"
+    },
+    {
+      "id": "template-calibration-oct23",
+      "status": "observed",
+      "workerAttempts": 0,
+      "scope": "Six known-label judge inputs, not authoring attempts.",
+      "tested": "Artifact-only judge boundaries on the retained controls.",
+      "result": "Six correct decisions on these inputs, including malicious artifact instructions.",
+      "notTested": "General judge independence or authoring improvement.",
+      "evidenceFile": "calibration.json",
+      "evidenceSha256": "1eda714d761bb013bce4f7942c95af202d9a0950c0fe348dd868222f3cd809d2"
+    },
+    {
+      "id": "spec-trajectory-oct23",
+      "status": "observed",
+      "workerAttempts": 30,
+      "scope": "Ten artifact kinds, three attempts each, no optimization arm.",
+      "tested": "Repeated observational baseline and tool trajectories.",
+      "result": "626 calls; artifact 26/30, semantic 21/30, joint 20/30; full path unproven.",
+      "notTested": "Effect of a candidate; baseline is not reusable across changed grader identities.",
+      "evidenceFile": "REPORT.md",
+      "evidenceSha256": "6003016de083879b7f2be7d42a4881af7d0a7dcbf404ee22570a728e08e3e606"
+    },
+    {
+      "id": "semantic-qualification-oct23",
+      "status": "observed",
+      "workerAttempts": 0,
+      "scope": "Repeated reviews of existing known-label documents.",
+      "tested": "Judge calibration including dependency versus containment.",
+      "result": "13/14 matches and one empty inconclusive, plus a separately retained diagnostic repeat.",
+      "notTested": "Seven independent authoring domains or tool-output treatment effect.",
+      "evidenceFile": "manifest.json",
+      "evidenceSha256": "7d45656d4d04b1e1f62f2713addb629ad5064fbec2404fec29db5aeeb1f7d112"
+    },
+    {
+      "id": "format-oct23",
+      "status": "invalid",
+      "workerAttempts": 4,
+      "scope": "Format-effect claim only; sanity-screen outcomes remain unchanged.",
+      "tested": "Initial prose/pseudocode/observation screen.",
+      "result": "Stopped for a pending-status oracle false negative; three completed, one interrupted.",
+      "notTested": "Complete matched format comparison.",
+      "evidenceFile": "manifest.json",
+      "evidenceSha256": "1a2934495765814a8ecf88cb246437863fe708ae427accd02186ef8ca27c4d99"
+    },
+    {
+      "id": "format2-oct23",
+      "status": "rejected-mixed",
+      "workerAttempts": 24,
+      "scope": "Broad format replacement; local gains are retained as observations.",
+      "tested": "Fresh baseline/prose/pseudocode/observation, two layouts, three repetitions.",
+      "result": "No consistent winner; pseudocode had local savings and nested tools/time growth; grading errata retained.",
+      "notTested": "Universal superiority of pseudocode or snippets.",
+      "evidenceFile": "manifest.json",
+      "evidenceSha256": "9c54f5228424bb9fa6084603c67eb45851fb291e85a10acef0a6946fd05f12a3"
+    },
+    {
+      "id": "factlink1-oct24",
+      "status": "rejected-mixed",
+      "workerAttempts": 24,
+      "scope": "General static-primer default; not a claim that facts are harmful.",
+      "tested": "Static computed-fact instructions and link examples versus fresh control.",
+      "result": "Strong flat savings, weak nested savings; four false link FAILs also contaminated judge results.",
+      "notTested": "Uncontaminated quality equivalence or dynamic tool output.",
+      "evidenceFile": "manifest.json",
+      "evidenceSha256": "0dd4b4922f3b9f169b2b19a1c23b5209edf25919e365b3260e18e8f28c0b51f0"
+    },
+    {
+      "id": "toolfact1-oct24",
+      "status": "rejected-mixed",
+      "workerAttempts": 24,
+      "scope": "Facts-only packet as implemented in that candidate.",
+      "tested": "Computed IDs/links/syntax in tool output without directive expansion.",
+      "result": "Resource savings in both layouts but five real candidate semantic failures versus zero in that control.",
+      "notTested": "Causal harm of facts in general or the later full consistency-cue packet.",
+      "evidenceFile": "manifest.json",
+      "evidenceSha256": "da490fd53999f700fbe6068b274061b4e625726f9892cf7ba2f23f1110e1ff85"
+    },
+    {
+      "id": "contractcue1-oct24",
+      "status": "observed",
+      "workerAttempts": 24,
+      "scope": "Full revised packet on the same normalizeToken domain in two layouts.",
+      "tested": "Computed facts plus generic source/local/DbC consistency cue versus fresh original control.",
+      "result": "Flat savings and 6/6 semantic PASS; nested calls/time improve but total non-cache grows 1.07%; semantic remains 5/6.",
+      "notTested": "Isolated cue effect, general transfer, statistical non-inferiority or full path compliance.",
+      "evidenceFile": "manifest.json",
+      "evidenceSha256": "15597bfd9160c3b0be0f949641338a43dad2dbd6e04e8d8dfb06d999aff40922"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "AUTH-20261025-BOUNDED",
+      "status": "accepted-bounded",
+      "campaign": "contractcue1-oct24",
+      "baselineSHA": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "candidateSHA": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "preregistrationSha256": "79dbc789b6a9a701f67a16ef950013fa8f370dcf9034529bbc12db393573f50a",
+      "scope": "Retain the full prototype for explicit bounded module-draft integration, subject to implementation review and ordinary review of each draft.",
+      "supersedesInterpretationOf": "contractcue1-oct24/REPORT.md: treating the missed 10 percent pilot threshold or one residual error as an automatic ban on any bounded use.",
+      "rawGradesChanged": false,
+      "mergeAuthorized": false,
+      "reopenWhen": "A reproducible new defect or an explicit proposal to expand scope with new held-out tasks."
+    },
+    {
+      "id": "AUTH-20261025-DEFAULT",
+      "status": "rejected-mixed",
+      "campaign": "contractcue1-oct24",
+      "scope": "Universal default activation and a guaranteed quality-preserving savings claim.",
+      "reason": "No independent-domain holdout; nested total tokens grow; six repeats do not establish semantic equivalence.",
+      "reopenWhen": "A separately opened finite transfer check, not another repetition of normalizeToken."
+    }
+  ],
+  "latestEffects": [
+    {
+      "caseId": "module-flat",
+      "attemptsPerArm": 6,
+      "workerNonCacheTotal": [339951, 275872],
+      "toolCallsTotal": [165, 122],
+      "workerWallMsTotal": [609211, 526954],
+      "semanticPasses": [4, 6]
+    },
+    {
+      "caseId": "module-nested",
+      "attemptsPerArm": 6,
+      "workerNonCacheTotal": [305365, 308647],
+      "toolCallsTotal": [153, 139],
+      "workerWallMsTotal": [598724, 542445],
+      "semanticPasses": [5, 5]
+    }
+  ],
+  "futureSlots": [
+    {
+      "id": "CONTRACTCUE-TRANSFER",
+      "status": "untested",
+      "automaticStart": false,
+      "maxAuthoringAttempts": 12,
+      "maxJudgeExecutions": 12,
+      "maxReflectionExecutions": 2,
+      "maxRoleExecutions": 26,
+      "tasks": 6,
+      "arms": 2,
+      "repetitionsPerTaskArm": 1,
+      "newDomains": 2,
+      "maxLiveCampaigns": 1,
+      "scope": "New semantic tasks frozen before adaptation; three AB and three BA pairs; same full candidate, no flat-only routing.",
+      "stop": "Stop on capture/proxy/cleanup failure; no automatic replacement campaign or resampling. Conclude expand, bounded or unchanged even for a mixed/null result."
+    },
+    {
+      "id": "EXCERPT1",
+      "status": "untested",
+      "automaticStart": false,
+      "maxAuthoringAttempts": 0,
+      "scope": "Offline-only exact related-section selection, preserving conditions/exclusions/IDs/ownership and access to originals.",
+      "stop": "Reject before model calls if normative closure is incomplete or the selected text is nearly the full source. No live budget is allocated."
+    }
+  ],
+  "reopenPolicy": {
+    "allowed": [
+      "new reproducible counterexample",
+      "material identity change with stated invalidated conclusion",
+      "explicit scope expansion"
+    ],
+    "insufficient": [
+      "new seed or day",
+      "different reviewer",
+      "wanting a green result",
+      "paraphrasing the same hypothesis"
+    ],
+    "history": "Append a new dated decision with supersedes references; do not rewrite raw grades, criteria or prior observations."
+  }
+}

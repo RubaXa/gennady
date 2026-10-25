@@ -1,5 +1,11 @@
 # Template-owned authoring: baseline and controlled evolution
 
+Current decision (2026-10-25): [the research cycle is closed](./AUTHORING-CLOSURE.md),
+with zero additional live attempts. CONTRACTCUE is retained as an accepted-bounded prototype,
+not a shipped opt-in; production default is unchanged. The evidence-bound
+[decision register](./AUTHORING-DECISIONS.json) distinguishes tested, invalid and untested work.
+The baseline setup and commands below are historical methodology, not an automatic next-run queue.
+
 Status: corrected-main repeated observational baseline recorded (ten cases × three attempts):
 [results and limitations](../results/authoring-campaigns/spec-trajectory-oct23/REPORT.md).
 No production optimization is accepted. The next experiments are declared individually
