@@ -4,6 +4,13 @@
 оценок, критериев или архивов. Машиночитаемая база:
 [AUTHORING-DECISIONS.json](./AUTHORING-DECISIONS.json).
 
+Reviewer follow-up on main `052308f9`: research PR #128 is merged after independent review.
+Historical `mergeAuthorized: false` is not a veto on that separate research merge; it grants no
+automatic activation authority to the candidate package. Production default and npm prohibition
+remain unchanged. The disputed dedupe case is now a source-bound
+[offline M2 regression input](./AUTHORING-MEASUREMENT-QUALIFICATION.md), with actual contradiction
+counterexamples; this is not live judge qualification and does not reopen the study.
+
 ## Финальная трактовка двух отказов — исследование закрыто
 
 Это дополнительное решение после запроса оператора разобрать две неудачи; **0 новых live
@@ -154,8 +161,9 @@ Worker non-cache здесь включает input без cache + output + reaso
   предметных домена и не holdout после адаптивных изменений.
 - Полный path остаётся unknown у всех 24. Это предел измерения, не найденная мутация candidate.
   Условия соблюдения workflow не отменяются и неизвестность не превращается в PASS.
-- Существующий semantic judge видит oracle result; отдельная сессия не делает оценку слепой.
-  Первичные оценки сохраняются, спорные случаи требуют чтения самого документа.
+- В CONTRACTCUE1 и ранних сериях semantic judge видел oracle result; отдельная сессия не делала
+  оценку слепой. В TRANSFER1 oracle и arm скрыты; шесть новых задач относятся к двум другим
+  доменам. Первичные оценки сохраняются, спорные случаи требуют чтения самого документа.
 
 Оставшаяся ошибка: в candidate nested r1 нормативное требование сохраняет ASCII-only,
 а DbC Pre допускает строку с хотя бы одним ASCII-символом. `fooé` удовлетворяет Pre,

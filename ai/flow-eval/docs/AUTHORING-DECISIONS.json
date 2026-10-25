@@ -2,6 +2,15 @@
   "schema": "gennady.authoring-decisions.1",
   "date": "2026-10-25",
   "currentDecision": "AUTH-20261025-FINAL",
+  "authorizationScope": {
+    "researchPR": 128,
+    "researchStatus": "merged-after-independent-review",
+    "researchMergeCommit": "052308f91fc396c6b7a00a0f63dd1523e2933d9f",
+    "historicalMergeFlags": "mergeAuthorized:false records no automatic authority granted by the experiment. It is not a veto on the separately reviewed and operator-authorized research PR merge.",
+    "candidatePackageActivationAuthorized": false,
+    "npmPublicationAuthorized": false,
+    "m2FollowUp": "Offline regression input only; no new live qualification or experiment is authorized."
+  },
   "finalAdjudication": {
     "campaign": "transfer1-oct25",
     "newLiveExecutions": 0,

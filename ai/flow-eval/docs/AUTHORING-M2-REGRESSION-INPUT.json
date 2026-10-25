@@ -1,0 +1,66 @@
+{
+  "schema": "gennady.authoring-m2-regression-input.1",
+  "status": "offline-input-not-model-qualified",
+  "origin": "PR #128 reviewer follow-up on merged main 052308f91fc396c6b7a00a0f63dd1523e2933d9f",
+  "newLiveExecutions": 0,
+  "automaticLiveBudget": 0,
+  "historicalGradesChanged": false,
+  "scope": "Facet-level qualification input, not a whole-artifact PASS label or proof that the existing judge has been repaired.",
+  "artifact": {
+    "path": "ai/flow-eval/results/authoring-campaigns/transfer1-oct25/permanent/2026-10-25-authoring-transfer-oct25-c6-x/specs/delivery/policies/dedupe/dedupe.spec.md",
+    "sha256": "3d162c7f365322ee51e07634685aca3f6b86c26401338d6a088e10b9f52e0104"
+  },
+  "references": [
+    {
+      "role": "parent",
+      "path": "ai/flow-eval/results/authoring-campaigns/transfer1-oct25/permanent/2026-10-25-authoring-transfer-oct25-c6-x/specs/delivery/delivery.spec.md",
+      "sha256": "f27160797f38c56ef6d8b525d7278ea86fc8e01c19e68aa09cf8be908f2fac41",
+      "requiredClauses": [
+        "### DEL-REQ-1",
+        "never perform network I/O, wait, read a clock or mutate state"
+      ]
+    },
+    {
+      "role": "owner-format",
+      "path": "ai/directives/sdd-v2/formats/entity-surface-format.xml",
+      "sourceCommit": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074",
+      "requiredClauses": ["Public Operations:** <intent-level list, no language signatures>"]
+    },
+    {
+      "role": "owner-format",
+      "path": "ai/directives/sdd-v2/formats/dbc-contracts.xml",
+      "sourceCommit": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4",
+      "requiredClauses": ["Conditions are plain-language", "<Contract id=\"DBC_SERVICE_FORMAT\">"]
+    }
+  ],
+  "positiveControl": {
+    "id": "dedupe-referenced-parent-language-agnostic-contract",
+    "mutation": null,
+    "facetExpectation": "Do not fail solely because an unchanged referenced parent guarantee is not repeated, or because a language-agnostic DbC lacks a verbatim TypeScript signature.",
+    "overallSemanticLabel": "inconclusive",
+    "labelEvidence": "The child refines DEL-REQ-1, states validation-first, strict TTL and TypeError, and does not permit waiting. The parent explicitly forbids waiting; the owner formats use intent-level operations and textual DbC. These facts rebut the two sole failure rationales, not every possible issue in the artifact."
+  },
+  "negativeControls": [
+    {
+      "id": "dedupe-explicit-parent-wait-override",
+      "expected": "fail",
+      "replaceOnce": {
+        "before": "**Invariants:** результат детерминирован для одинаковых входов; модуль не читает часы, не выполняет I/O и не изменяет состояние.",
+        "after": "**Invariants:** результат детерминирован для одинаковых входов; модуль не читает часы, не выполняет I/O и не изменяет состояние. Вопреки DEL-REQ-1 операция выполняет ожидание перед возвратом результата."
+      },
+      "witness": "The child now explicitly requires waiting while its unchanged owning DEL-REQ-1 forbids it. This is an actual contradiction, unlike an omitted repetition."
+    },
+    {
+      "id": "dedupe-inclusive-ttl-contradiction",
+      "expected": "fail",
+      "replaceOnce": {
+        "before": "иначе возвращает `true` ровно тогда, когда `0 <= nowMs - seenAtMs < ttlMs`;",
+        "after": "иначе возвращает `true` ровно тогда, когда `0 <= nowMs - seenAtMs <= ttlMs`;"
+      },
+      "witness": "isDuplicate(100,110,10): the mutated positive Post requires true, while the unchanged example, requirement and expiry clause require false."
+    }
+  ],
+  "qualificationBoundary": "Future qualification must supply the complete brief, child, exact parent and applicable owner formats; expected labels and this rationale remain host-only. Keep original raw FAIL and manual inconclusive unchanged. No claim of judge improvement follows from these offline integrity tests."
+}

@@ -4,6 +4,31 @@ This is measurement repair, not an author-prompt optimization. The frozen30 obse
 their artifact/judge/path outcomes are unchanged. New source identities require fresh paired
 controls; they cannot turn the old cohort into a new-version A/B control.
 
+## Reviewer #128 follow-up: additional M2 input, not a qualified judge repair
+
+On merged main `052308f9`, the source-bound
+[M2 regression input](./AUTHORING-M2-REGRESSION-INPUT.json) records the disputed TRANSFER1
+dedupe outcome. It provides one unchanged facet-level positive and two one-clause negative
+mutations. These are **offline qualification inputs**, not new live calibration or revised labels
+for historical outcomes. The original seven-control corpus and its recorded 13/14 remain unchanged.
+
+| Input                                     | Expected distinction                                                                                                                                                                                                                                       |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unchanged dedupe + parent + owner formats | Missing repetition does not cancel the referenced parent's no-wait guarantee. Textual DbC does not require a verbatim TypeScript signature. This rebuts those sole failure reasons, not every possible defect: whole-artifact status remains inconclusive. |
+| Explicit child requirement to wait        | Genuine conflict with unchanged DEL-REQ-1; FAIL.                                                                                                                                                                                                           |
+| Inclusive TTL in positive Post            | `isDuplicate(100,110,10)` now requires both true and false; FAIL.                                                                                                                                                                                          |
+
+Integrity tests authenticate the child, parent and applicable format bytes, materialize negative
+variants in memory only, and retain all other source text. Any later qualification must include
+the owner formats as well as the task and references; labels/rationales stay outside model input.
+No grader prompt or production behavior changes here; **0 live executions and 0 automatic budget**.
+The study remains closed. A model's actual discrimination on these inputs is still unqualified.
+
+Reviewer scope clarification: CONTRACTCUE1 used `normalizeToken` in two layouts and its judge
+received oracle context. TRANSFER1 used six new tasks in two domains; its judge was arm/oracle
+blind, but did not receive the complete owner formats. Do not conflate the two cohorts or infer
+that separate sessions alone make a judge independent.
+
 ## Status and scope
 
 | Prerequisite                          | State                                                                                                                                                                                                                                                                  |
