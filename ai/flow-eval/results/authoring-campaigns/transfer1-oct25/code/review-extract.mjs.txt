@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+const own=path.dirname(new URL(import.meta.url).pathname),config=JSON.parse(fs.readFileSync(path.join(own,'config.json'),'utf8')),pre=JSON.parse(fs.readFileSync(path.join(own,'preregistered-protocol.json'),'utf8'));
+const indices=process.argv.slice(2).map(Number);
+if(!indices.length||indices.some(i=>!Number.isInteger(i)||i<0||i>=12))throw Error('INDICES');
+for(const i of indices){
+ const a=config.attempts[i],task=pre.taskCorpus.find(t=>t.id===a.taskId),r=JSON.parse(fs.readFileSync(path.join(own,'records',i+'.json'),'utf8'));
+ const target=`specs/${task.domain}/${task.module}/${path.posix.basename(task.module)}.spec.md`;
+ const p=path.join(own,'permanent',r.primary.directory,target),text=fs.readFileSync(p,'utf8');
+ console.log(JSON.stringify({index:i,taskId:task.id,artifactSha256:createHash('sha256').update(text).digest('hex'),expected:{signature:task.signature,domain:task.domainRule,behavior:task.behavior,errors:task.errors}}));
+ for(const name of ['MODULE_VISION','MODULE_USAGE_EXAMPLE','MODULE_REQUIREMENTS','ENTITY_SURFACES','MODULE_CONTRACTS','PUBLIC_OPTIONS','MODULE_DECISION_LOG','HANDOFF']){
+   const start=text.indexOf('<!--SECTION:'+name+'-->'),end=text.indexOf('<!--/SECTION:'+name+'-->');
+   console.log(name+'\n'+(start>=0&&end>start?text.slice(start,end):'[MISSING]'));
+ }
+}

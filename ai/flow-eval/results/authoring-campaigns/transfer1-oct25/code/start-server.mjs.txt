@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawn,execFileSync } from 'node:child_process';
+const own=path.dirname(new URL(import.meta.url).pathname),priv=path.join(own,'private');
+if(fs.realpathSync(own)!==own||!own.startsWith('/private/tmp/gennady-format-transfer-oct25.'))throw Error('OWN_ROOT');
+try{const occupied=execFileSync('lsof',['-nP','-iTCP:4202','-sTCP:LISTEN'],{encoding:'utf8',stdio:['ignore','pipe','ignore']});if(occupied.trim())throw Error('PORT_BUSY');}catch(e){if(e.message==='PORT_BUSY')throw e;if(e.status!==1)throw e;}
+const fd=fs.openSync(path.join(priv,'server.log'),'wx',0o600);
+const env={...process.env,OPENCODE_CONFIG:path.join(priv,'opencode.json'),XDG_CONFIG_HOME:path.join(priv,'xdg-config'),XDG_DATA_HOME:path.join(priv,'xdg-data'),XDG_CACHE_HOME:path.join(priv,'xdg-cache'),XDG_STATE_HOME:path.join(priv,'xdg-state'),OPENCODE_DISABLE_SHARE:'true'};
+delete env.GENNADY_AUTHORING_TRANSFER_CASE;
+const child=spawn('/opt/homebrew/bin/opencode',['serve','--hostname','127.0.0.1','--port','4202','--log-level','WARN'],{cwd:own,env,detached:true,stdio:['ignore',fd,fd]});
+fs.closeSync(fd);child.unref();
+fs.writeFileSync(path.join(own,'server-pid.json'),JSON.stringify({pid:child.pid,baseUrl:'http://127.0.0.1:4202',createdAt:new Date().toISOString(),ownerRoot:own}),{flag:'wx',mode:0o600});
+console.log(JSON.stringify({started:true,pid:child.pid,port:4202,isolatedState:true}));

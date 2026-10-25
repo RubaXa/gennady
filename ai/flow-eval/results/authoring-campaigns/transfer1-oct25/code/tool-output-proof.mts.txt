@@ -1,0 +1,35 @@
+import fs from 'node:fs';
+import { join,dirname,posix } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { AUTHORING_TRANSFER_TASKS,getAuthoringTransferCase,transferReference } from '/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/authoring-transfer.ts';
+const own=dirname(fileURLToPath(import.meta.url));
+const hash=(value:string|Buffer)=>createHash('sha256').update(value).digest('hex');
+const outputs:any[]=[];
+const preflightRoot=join(own,'tool-preflight');fs.mkdirSync(preflightRoot);
+for(const task of AUTHORING_TRANSFER_TASKS){
+  const definition=getAuthoringTransferCase(task.layout,task);
+  for(const arm of ['plan','facts']){
+    const root=join(preflightRoot,task.id+'-'+arm);fs.mkdirSync(root);
+    try{
+      for(const [name,text] of Object.entries(definition.files)){fs.mkdirSync(dirname(join(root,name)),{recursive:true});fs.writeFileSync(join(root,name),text);}
+      const stdout=execFileSync(process.execPath,[join(own,arm,'dist/gennady.js'),'sdd-new',...definition.createArgs],{cwd:root,encoding:'utf8',timeout:20000,maxBuffer:256*1024});
+      const skeleton=fs.readFileSync(join(root,definition.target));
+      if(arm==='facts'){
+        const parent=`specs/${task.domain}/${task.domain}.spec.md`;
+        const href=posix.relative(posix.dirname(definition.target),parent);
+        if(!stdout.includes(`(${href})`)||!stdout.includes('retain every input-domain qualifier'))throw Error('COMPUTED_FACTS_MISSING');
+      }
+      fs.writeFileSync(join(root,definition.target),transferReference(task,'module'));
+      let checkExit=0,checkOutput='';
+      try{checkOutput=execFileSync(process.execPath,[join(own,arm,'dist/gennady.js'),'sdd-check','--spec',definition.target,'--authoring'],{cwd:root,encoding:'utf8',timeout:20000,maxBuffer:256*1024});}catch(e:any){checkExit=e.status;checkOutput=String(e.stdout||'')+'\n'+String(e.stderr||'');}
+      outputs.push({taskId:task.id,arm,skeletonSha256:hash(skeleton),stdout,stdoutSha256:hash(stdout),stdoutBytes:Buffer.byteLength(stdout),referenceCheckExit:checkExit,referenceCheckOutput:checkOutput});
+      if(checkExit!==0)throw Error('REFERENCE_ACTUAL_CLI_CHECK_FAILED:'+task.id+':'+checkOutput);
+    }finally{fs.rmSync(root,{recursive:true,force:true});}
+  }
+}
+fs.rmdirSync(preflightRoot);
+for(const task of AUTHORING_TRANSFER_TASKS){const rows=outputs.filter(o=>o.taskId===task.id);if(rows[0].skeletonSha256!==rows[1].skeletonSha256)throw Error('SKELETON_DRIFT');}
+fs.writeFileSync(join(own,'tool-output-proof.json'),JSON.stringify({modelCalls:0,fixturesRemoved:true,skeletonsIdentical:true,outputs},null,2)+'\n',{flag:'wx',mode:0o600});
+console.log(JSON.stringify({modelCalls:0,taskPairs:6,realCliCreates:12,realCliChecks:12,skeletonsIdentical:true,fixturesRemoved:true}));

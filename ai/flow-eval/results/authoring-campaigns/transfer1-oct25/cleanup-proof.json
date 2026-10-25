@@ -1,0 +1,205 @@
+{
+  "schema": "gennady.authoring-transfer-cleanup.1",
+  "checkedAt": "2026-10-25T11:03:17.537Z",
+  "attempts": [
+    {
+      "index": 0,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d620c83ffeglQDRJEmRmiN54",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d60b712ffe0oMCCJdx8A9xJc",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d5fd04cffe4J2VzgFNGQX1My",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d5ead85ffe7uAzo9caw9BLo3",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d5d7cb3ffex0mkdzqwMgVWb1",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d5ba51effe6dQ9rJxC3HxMHp",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d5b25ffffee2ngBqcPzTD6HA",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d5a0d31ffen8G8QBZoTshFER",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d597c8effefq0euhVK7fcT2y",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d5863b9ffeLqBf0aL0gij92D",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d581aa8ffey6WDbDfUN7Pa2H",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d56883effeH3eQDCfsk5ntVw",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d561367ffe5xNHiCaFLBaQON",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d53cad6ffeAYaH0EYDTKd9uy",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d5286eaffeAEMjkVPSgjSxDf",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d5234aeffeVZ7CTignhLc4Wu",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d5078eaffeCMbBh05zOOw46z",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d4fac55ffeJ3A1GVVcDejVlk",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d4e22a8ffe8GQS1d3Amyo2TY",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d4bafedffeGMVO5oVtwhtheu",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "persisted": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "sessions": [
+        {
+          "id": "ses_e8d48fa88ffecbDstT4yeGQrII",
+          "deleted": true
+        },
+        {
+          "id": "ses_e8d46a9f4ffewrVgA6TjpWzZS1",
+          "deleted": true
+        }
+      ]
+    }
+  ],
+  "ownedSessionsRemaining": 0,
+  "serverPid": 8846,
+  "ownedServerStopped": true,
+  "journalModesRestored": true,
+  "temporarySourceWorktreesRemoved": true,
+  "privateStateRemoved": false,
+  "sharedDependenciesPreserved": true,
+  "worktreeAllocatedKiBBeforeRemoval": {
+    "baseline": 72516,
+    "candidate": 72532
+  }
+}

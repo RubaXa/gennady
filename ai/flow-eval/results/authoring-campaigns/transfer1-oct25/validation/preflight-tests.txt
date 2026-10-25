@@ -1,0 +1,3912 @@
+
+> gennady@2.0.0-draft.1 test:sdd-flow-eval
+> node --import tsx --test ai/flow-eval/__tests__/*.test.ts ai/flow-eval/scripts/__tests__/*.test.ts && bash ai/flow-eval/scripts/require-developer-repo.test.sh
+
+TAP version 13
+# Subtest: Batch 23A acceptance corpora
+    # Subtest: E-22: frozen golden-v1 records the clean-sheet rule-registry error and warning movement explicitly
+    ok 1 - E-22: frozen golden-v1 records the clean-sheet rule-registry error and warning movement explicitly
+      ---
+      duration_ms: 12822.3465
+      type: 'test'
+      ...
+    # Subtest: E-23/V14-3: one Task-ID injection flips exactly one named outcome and exit
+    ok 2 - E-23/V14-3: one Task-ID injection flips exactly one named outcome and exit
+      ---
+      duration_ms: 599.530458
+      type: 'test'
+      ...
+    # Subtest: E-23: an ambiguous legacy Task-ID is explicit; the unique counterpart resolves
+    ok 3 - E-23: an ambiguous legacy Task-ID is explicit; the unique counterpart resolves
+      ---
+      duration_ms: 586.342
+      type: 'test'
+      ...
+    # Subtest: E-23: malformed coverage is fail-closed on V2, valid is clean, equivalent V1 stays warn-only
+    ok 4 - E-23: malformed coverage is fail-closed on V2, valid is clean, equivalent V1 stays warn-only
+      ---
+      duration_ms: 852.3155
+      type: 'test'
+      ...
+    # Subtest: E-23: skipped/todo tests cannot close V2 coverage; active counterpart closes; V1 stays warn-only
+    ok 5 - E-23: skipped/todo tests cannot close V2 coverage; active counterpart closes; V1 stays warn-only
+      ---
+      duration_ms: 943.911792
+      type: 'test'
+      ...
+    # Subtest: E-23: stale phase receipt fails closed; current receipt and unmarked V1 counterpart stay clean
+    ok 6 - E-23: stale phase receipt fails closed; current receipt and unmarked V1 counterpart stay clean
+      ---
+      duration_ms: 929.615375
+      type: 'test'
+      ...
+    # Subtest: E-23: stale group receipt fails closed; current and legacy-named V1 counterparts stay clean
+    ok 7 - E-23: stale group receipt fails closed; current and legacy-named V1 counterparts stay clean
+      ---
+      duration_ms: 1272.034167
+      type: 'test'
+      ...
+    # Subtest: V14-2c/E-17: pending survives a budget boundary and blocks group close until resolved
+    ok 8 - V14-2c/E-17: pending survives a budget boundary and blocks group close until resolved
+      ---
+      duration_ms: 2085.538709
+      type: 'test'
+      ...
+    # Subtest: 23A contract remains frozen while current traceability closes E-17 and keeps E-18 deferred
+    ok 9 - 23A contract remains frozen while current traceability closes E-17 and keeps E-18 deferred
+      ---
+      duration_ms: 0.230042
+      type: 'test'
+      ...
+    1..9
+ok 1 - Batch 23A acceptance corpora
+  ---
+  duration_ms: 20093.338459
+  type: 'suite'
+  ...
+# Subtest: requires both frozen manifests in the Git index, not merely the local ignored tree
+ok 2 - requires both frozen manifests in the Git index, not merely the local ignored tree
+  ---
+  duration_ms: 287.90475
+  type: 'test'
+  ...
+# Subtest: detects an omitted log from either frozen campaign when all other evidence is tracked
+ok 3 - detects an omitted log from either frozen campaign when all other evidence is tracked
+  ---
+  duration_ms: 0.202208
+  type: 'test'
+  ...
+# Subtest: hash-binds all primary records, frozen protocol, plan and collector without following external paths
+ok 4 - hash-binds all primary records, frozen protocol, plan and collector without following external paths
+  ---
+  duration_ms: 93.914959
+  type: 'test'
+  ...
+# Subtest: reproduces both reports over the exact30 attempts and refuses to promote their raw quality/path outcomes
+ok 5 - reproduces both reports over the exact30 attempts and refuses to promote their raw quality/path outcomes
+  ---
+  duration_ms: 1601.616667
+  type: 'test'
+  ...
+# Subtest: retains failed quality runs and separates model messages, tool attempts and SDK polling
+ok 6 - retains failed quality runs and separates model messages, tool attempts and SDK polling
+  ---
+  duration_ms: 29.1665
+  type: 'test'
+  ...
+# Subtest: does not drop missing runs or claim complete metric distributions
+ok 7 - does not drop missing runs or claim complete metric distributions
+  ---
+  duration_ms: 3.108125
+  type: 'test'
+  ...
+# Subtest: rejects duplicate and foreign records, rather than replacing or silently selecting passes
+ok 8 - rejects duplicate and foreign records, rather than replacing or silently selecting passes
+  ---
+  duration_ms: 0.47425
+  type: 'test'
+  ...
+# Subtest: identity drift and unproven cleanup remain blockers to a complete report
+ok 9 - identity drift and unproven cleanup remain blockers to a complete report
+  ---
+  duration_ms: 4.453416
+  type: 'test'
+  ...
+# Subtest: missing/partial usage is unknown, never zero or a complete average
+ok 10 - missing/partial usage is unknown, never zero or a complete average
+  ---
+  duration_ms: 9.5
+  type: 'test'
+  ...
+# Subtest: captures roles separately without treating reflection usage as primary worker cost
+ok 11 - captures roles separately without treating reflection usage as primary worker cost
+  ---
+  duration_ms: 4.339667
+  type: 'test'
+  ...
+# Subtest: does not infer zero SDK requests from absent measurement coverage
+ok 12 - does not infer zero SDK requests from absent measurement coverage
+  ---
+  duration_ms: 6.189959
+  type: 'test'
+  ...
+# Subtest: reconciles observed model provenance rather than trusting only the requested-model label
+ok 13 - reconciles observed model provenance rather than trusting only the requested-model label
+  ---
+  duration_ms: 8.499125
+  type: 'test'
+  ...
+# Subtest: renders each ordered attempt and negative verdict, with incomplete observations explicit
+ok 14 - renders each ordered attempt and negative verdict, with incomplete observations explicit
+  ---
+  duration_ms: 5.059667
+  type: 'test'
+  ...
+# Subtest: portal: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 15 - portal: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 344.095916
+  type: 'test'
+  ...
+# Subtest: scope-product: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 16 - scope-product: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 997.444875
+  type: 'test'
+  ...
+# Subtest: scope-library: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 17 - scope-library: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 1060.185458
+  type: 'test'
+  ...
+# Subtest: scope-infrastructure: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 18 - scope-infrastructure: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 1125.318917
+  type: 'test'
+  ...
+# Subtest: scope-interface: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 19 - scope-interface: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 837.980166
+  type: 'test'
+  ...
+# Subtest: module-flat: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 20 - module-flat: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 1266.172375
+  type: 'test'
+  ...
+# Subtest: module-nested: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 21 - module-nested: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 1126.933083
+  type: 'test'
+  ...
+# Subtest: index-module: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 22 - index-module: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 418.554917
+  type: 'test'
+  ...
+# Subtest: index-scope: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 23 - index-scope: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 315.371459
+  type: 'test'
+  ...
+# Subtest: index-project: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+ok 24 - index-project: actual sdd-new skeleton is RED; complete artifact is GREEN without changing seed bytes
+  ---
+  duration_ms: 358.982625
+  type: 'test'
+  ...
+# Subtest: reference spec seeds also pass the actual draft checker and resolve all non-future local links
+ok 25 - reference spec seeds also pass the actual draft checker and resolve all non-future local links
+  ---
+  duration_ms: 22.532667
+  type: 'test'
+  ...
+# Subtest: every brief resolves its installed CLI without relying on a global gennady executable
+ok 26 - every brief resolves its installed CLI without relying on a global gennady executable
+  ---
+  duration_ms: 930.64675
+  type: 'test'
+  ...
+# Subtest: infra-base is a read-only authoring-tooling owner, not a second product-domain specification
+ok 27 - infra-base is a read-only authoring-tooling owner, not a second product-domain specification
+  ---
+  duration_ms: 28.3455
+  type: 'test'
+  ...
+# Subtest: accepts semantically identical linked/backticked tracker IDs instead of demanding exact cell spelling
+ok 28 - accepts semantically identical linked/backticked tracker IDs instead of demanding exact cell spelling
+  ---
+  duration_ms: 9.69025
+  type: 'test'
+  ...
+# Subtest: rejects wrong positive and negative facts even when the expected words remain elsewhere
+ok 29 - rejects wrong positive and negative facts even when the expected words remain elsewhere
+  ---
+  duration_ms: 409.850916
+  type: 'test'
+  ...
+# Subtest: accepts unique Input/Outcome header columns with labels, reordered columns and optional outer pipes
+ok 30 - accepts unique Input/Outcome header columns with labels, reordered columns and optional outer pipes
+  ---
+  duration_ms: 201.8145
+  type: 'test'
+  ...
+# Subtest: rejects ambiguous example tables/headers, malformed rows and facts outside the owning section
+ok 31 - rejects ambiguous example tables/headers, malformed rows and facts outside the owning section
+  ---
+  duration_ms: 871.196959
+  type: 'test'
+  ...
+# Subtest: accepts canonical module delegation to the complete source-owned parent requirement set
+ok 32 - accepts canonical module delegation to the complete source-owned parent requirement set
+  ---
+  duration_ms: 70.642083
+  type: 'test'
+  ...
+# Subtest: rejects duplicate anchors, missing required sections, duplicate IDs and conflicting kind
+ok 33 - rejects duplicate anchors, missing required sections, duplicate IDs and conflicting kind
+  ---
+  duration_ms: 114.16375
+  type: 'test'
+  ...
+# Subtest: rejects forged approval in owner handoff, owner decisions and portal statuses
+ok 34 - rejects forged approval in owner handoff, owner decisions and portal statuses
+  ---
+  duration_ms: 50.606458
+  type: 'test'
+  ...
+# Subtest: accepts explicit unapproved handoffs in English and Russian, not only the word pending
+ok 35 - accepts explicit unapproved handoffs in English and Russian, not only the word pending
+  ---
+  duration_ms: 95.783125
+  type: 'test'
+  ...
+# Subtest: rejects missing or contradictory approval even if a pending disclaimer is also present
+ok 36 - rejects missing or contradictory approval even if a pending disclaimer is also present
+  ---
+  duration_ms: 156.1735
+  type: 'test'
+  ...
+# Subtest: calibrated-v2: accepts recorded awaiting-approval wording without changing explicit calibrated
+ok 37 - calibrated-v2: accepts recorded awaiting-approval wording without changing explicit calibrated
+  ---
+  duration_ms: 10.812708
+  type: 'test'
+  ...
+# Subtest: calibrated-v2: rejects negated awaiting forms and contradictory granted claims
+ok 38 - calibrated-v2: rejects negated awaiting forms and contradictory granted claims
+  ---
+  duration_ms: 90.308875
+  type: 'test'
+  ...
+# Subtest: calibrated-v2: actual raw15 artifact is separately calibrated, never rewritten or historically regraded
+ok 39 - calibrated-v2: actual raw15 artifact is separately calibrated, never rewritten or historically regraded
+  ---
+  duration_ms: 19.218875
+  type: 'test'
+  ...
+# Subtest: calibrated-v3: accepts the recorded not-issued clause without regrading historical revisions
+ok 40 - calibrated-v3: accepts the recorded not-issued clause without regrading historical revisions
+  ---
+  duration_ms: 49.276
+  type: 'test'
+  ...
+# Subtest: calibrated-v3: a not-issued disclaimer does not override explicit subsequent approval
+ok 41 - calibrated-v3: a not-issued disclaimer does not override explicit subsequent approval
+  ---
+  duration_ms: 300.3815
+  type: 'test'
+  ...
+# Subtest: calibrated-v3: replays the unchanged actual FORMAT1 baseline artifact with its field-prefix clause
+ok 42 - calibrated-v3: replays the unchanged actual FORMAT1 baseline artifact with its field-prefix clause
+  ---
+  duration_ms: 12.750209
+  type: 'test'
+  ...
+# Subtest: calibrated-v3: rejects incomplete, questioned or negated not-issued wording
+ok 43 - calibrated-v3: rejects incomplete, questioned or negated not-issued wording
+  ---
+  duration_ms: 90.452459
+  type: 'test'
+  ...
+# Subtest: calibrated-v4: accepts bounded not-received families while explicit v3 remains unchanged
+ok 44 - calibrated-v4: accepts bounded not-received families while explicit v3 remains unchanged
+  ---
+  duration_ms: 167.86225
+  type: 'test'
+  ...
+# Subtest: calibrated-v4: not-received wording retains the existing granted/approved-claim protections
+ok 45 - calibrated-v4: not-received wording retains the existing granted/approved-claim protections
+  ---
+  duration_ms: 160.109833
+  type: 'test'
+  ...
+# Subtest: calibrated-v4: a rejected domain status outside HANDOFF is not a new operator-decision claim
+ok 46 - calibrated-v4: a rejected domain status outside HANDOFF is not a new operator-decision claim
+  ---
+  duration_ms: 11.902667
+  type: 'test'
+  ...
+# Subtest: calibrated-v4: rejects missing, questioned and negated not-received clauses
+ok 47 - calibrated-v4: rejects missing, questioned and negated not-received clauses
+  ---
+  duration_ms: 79.655041
+  type: 'test'
+  ...
+# Subtest: calibrated-v4: a valid pending clause never excuses malformed relative links
+ok 48 - calibrated-v4: a valid pending clause never excuses malformed relative links
+  ---
+  duration_ms: 10.839875
+  type: 'test'
+  ...
+# Subtest: calibrated-v5: accepts actual balanced SECTION references while historical v4 remains reproducible
+ok 49 - calibrated-v5: accepts actual balanced SECTION references while historical v4 remains reproducible
+  ---
+  duration_ms: 24.212167
+  type: 'test'
+  ...
+# Subtest: calibrated-v5: missing or duplicate SECTION targets do not pass by fragment spelling
+ok 50 - calibrated-v5: missing or duplicate SECTION targets do not pass by fragment spelling
+  ---
+  duration_ms: 14.786667
+  type: 'test'
+  ...
+# Subtest: the current reference positive domain excludes the invalid inputs owned by the negative requirement
+ok 51 - the current reference positive domain excludes the invalid inputs owned by the negative requirement
+  ---
+  duration_ms: 0.881166
+  type: 'test'
+  ...
+# Subtest: current approval calibration accepts the three actual Russian handoffs without regrading frozen outcomes
+ok 52 - current approval calibration accepts the three actual Russian handoffs without regrading frozen outcomes
+  ---
+  duration_ms: 37.394375
+  type: 'test'
+  ...
+# Subtest: rejects tracker status/dependency/slug/DAG and project rollup distortions
+ok 53 - rejects tracker status/dependency/slug/DAG and project rollup distortions
+  ---
+  duration_ms: 158.069167
+  type: 'test'
+  ...
+# Subtest: rejects remaining guidance, broken/escaping links and altered canonical project vocabulary
+ok 54 - rejects remaining guidance, broken/escaping links and altered canonical project vocabulary
+  ---
+  duration_ms: 74.805875
+  type: 'test'
+  ...
+# Subtest: rejects seeded-file mutation, unexpected sidecars, symlink/hardlink targets and oversized input
+ok 55 - rejects seeded-file mutation, unexpected sidecars, symlink/hardlink targets and oversized input
+  ---
+  duration_ms: 51.646625
+  type: 'test'
+  ...
+# Subtest: calibrated-v6: accepts observed no-confirmation/comma clauses without rewriting historical v5
+ok 56 - calibrated-v6: accepts observed no-confirmation/comma clauses without rewriting historical v5
+  ---
+  duration_ms: 53.959083
+  type: 'test'
+  ...
+# Subtest: calibrated-v6: new pending spellings do not accept questions, conditionals, or contradictory approval
+ok 57 - calibrated-v6: new pending spellings do not accept questions, conditionals, or contradictory approval
+  ---
+  duration_ms: 72.225584
+  type: 'test'
+  ...
+# Subtest: does not permit caller mutation of required facts/seed truth to alter the independent oracle
+ok 58 - does not permit caller mutation of required facts/seed truth to alter the independent oracle
+  ---
+  duration_ms: 1.970792
+  type: 'test'
+  ...
+# Subtest: attempts every owned cleanup operation when nothing fails
+ok 59 - attempts every owned cleanup operation when nothing fails
+  ---
+  duration_ms: 0.938459
+  type: 'test'
+  ...
+# Subtest: attempts every owned cleanup operation when persist fails
+ok 60 - attempts every owned cleanup operation when persist fails
+  ---
+  duration_ms: 0.185792
+  type: 'test'
+  ...
+# Subtest: attempts every owned cleanup operation when abort:one fails
+ok 61 - attempts every owned cleanup operation when abort:one fails
+  ---
+  duration_ms: 0.086042
+  type: 'test'
+  ...
+# Subtest: attempts every owned cleanup operation when delete:one fails
+ok 62 - attempts every owned cleanup operation when delete:one fails
+  ---
+  duration_ms: 0.1345
+  type: 'test'
+  ...
+# Subtest: attempts every owned cleanup operation when directory fails
+ok 63 - attempts every owned cleanup operation when directory fails
+  ---
+  duration_ms: 0.153833
+  type: 'test'
+  ...
+# Subtest: live grader calibration preserves six known labels, exact evidence, Flash identity and cleanup
+ok 64 - live grader calibration preserves six known labels, exact evidence, Flash identity and cleanup
+  ---
+  duration_ms: 6.049125
+  type: 'test'
+  ...
+# Subtest: keeps only public terminal identity, never error bodies or private reasoning
+ok 65 - keeps only public terminal identity, never error bodies or private reasoning
+  ---
+  duration_ms: 0.930542
+  type: 'test'
+  ...
+# Subtest: distinguishes empty text from a public verdict and bounds unknown errors
+ok 66 - distinguishes empty text from a public verdict and bounds unknown errors
+  ---
+  duration_ms: 0.253
+  type: 'test'
+  ...
+# Subtest: missing, malformed and oversized terminal capture is unavailable, not fabricated
+ok 67 - missing, malformed and oversized terminal capture is unavailable, not fabricated
+  ---
+  duration_ms: 0.326459
+  type: 'test'
+  ...
+# Subtest: keeps all calls, treats useful class as contract-related not proven necessity, and preserves unknown results
+ok 68 - keeps all calls, treats useful class as contract-related not proven necessity, and preserves unknown results
+  ---
+  duration_ms: 9.3405
+  type: 'test'
+  ...
+# Subtest: does not confuse cross-message candidates, failed reads or overlapping intervals with saved requests
+ok 69 - does not confuse cross-message candidates, failed reads or overlapping intervals with saved requests
+  ---
+  duration_ms: 7.781583
+  type: 'test'
+  ...
+# Subtest: allows mixed shell roles but never assumes subcommand exits or reconstructs withheld payloads
+ok 70 - allows mixed shell roles but never assumes subcommand exits or reconstructs withheld payloads
+  ---
+  duration_ms: 3.809625
+  type: 'test'
+  ...
+# Subtest: replays the full frozen626-call ledger and its actual missing-result boundaries
+ok 71 - replays the full frozen626-call ledger and its actual missing-result boundaries
+  ---
+  duration_ms: 3205.836375
+  type: 'test'
+  ...
+# Subtest: CONTRACTCUE1 retains every bounded primary byte and Git-index blob, including all 24 logs
+ok 72 - CONTRACTCUE1 retains every bounded primary byte and Git-index blob, including all 24 logs
+  ---
+  duration_ms: 188.231166
+  type: 'test'
+  ...
+# Subtest: CONTRACTCUE1 binds a fresh balanced 2×2×6 matrix to exactly two clean Flash-only sources
+ok 73 - CONTRACTCUE1 binds a fresh balanced 2×2×6 matrix to exactly two clean Flash-only sources
+  ---
+  duration_ms: 10.996875
+  type: 'test'
+  ...
+# Subtest: CONTRACTCUE1 independently recomputes per-case medians and paired differences without changing grades
+ok 74 - CONTRACTCUE1 independently recomputes per-case medians and paired differences without changing grades
+  ---
+  duration_ms: 2.372125
+  type: 'test'
+  ...
+# Subtest: CONTRACTCUE1 portable existing-CLI replays are byte-identical and cleanup preserves the full denominator
+ok 75 - CONTRACTCUE1 portable existing-CLI replays are byte-identical and cleanup preserves the full denominator
+  ---
+  duration_ms: 0.407
+  type: 'test'
+  ...
+# Subtest: CONTRACTCUE1 delivers bounded exact links with identical skeletons, not expanded directives
+ok 76 - CONTRACTCUE1 delivers bounded exact links with identical skeletons, not expanded directives
+  ---
+  duration_ms: 0.577625
+  type: 'test'
+  ...
+# Subtest: CONTRACTCUE1 binds all five prior failures to exact artifact/trace facts, not reflection guesses
+ok 77 - CONTRACTCUE1 binds all five prior failures to exact artifact/trace facts, not reflection guesses
+  ---
+  duration_ms: 9.297834
+  type: 'test'
+  ...
+# Subtest: authoring decisions cover every archived campaign without relabelling calibration as authoring
+ok 78 - authoring decisions cover every archived campaign without relabelling calibration as authoring
+  ---
+  duration_ms: 8.796833
+  type: 'test'
+  ...
+# Subtest: bounded acceptance pins the full tested packet without inventing a shipped opt-in or rewriting grades
+ok 79 - bounded acceptance pins the full tested packet without inventing a shipped opt-in or rewriting grades
+  ---
+  duration_ms: 2.327334
+  type: 'test'
+  ...
+# Subtest: decision summaries recompute total resources and semantic counts, including the nested token regression
+ok 80 - decision summaries recompute total resources and semantic counts, including the nested token regression
+  ---
+  duration_ms: 1.574667
+  type: 'test'
+  ...
+# Subtest: future slots have a hard ceiling and do not reopen the completed cycle automatically
+ok 81 - future slots have a hard ceiling and do not reopen the completed cycle automatically
+  ---
+  duration_ms: 1.749583
+  type: 'test'
+  ...
+# Subtest: FACTLINK1 retains every bounded primary byte and Git-index blob, including all 24 logs
+ok 82 - FACTLINK1 retains every bounded primary byte and Git-index blob, including all 24 logs
+  ---
+  duration_ms: 159.7265
+  type: 'test'
+  ...
+# Subtest: FACTLINK1 binds a fresh balanced 2×2×6 matrix to exactly two clean Flash-only sources
+ok 83 - FACTLINK1 binds a fresh balanced 2×2×6 matrix to exactly two clean Flash-only sources
+  ---
+  duration_ms: 10.022292
+  type: 'test'
+  ...
+# Subtest: FACTLINK1 independently recomputes per-case medians and paired differences without changing grades
+ok 84 - FACTLINK1 independently recomputes per-case medians and paired differences without changing grades
+  ---
+  duration_ms: 3.338167
+  type: 'test'
+  ...
+# Subtest: FACTLINK1 portable existing-CLI replays are byte-identical and cleanup preserves the full denominator
+ok 85 - FACTLINK1 portable existing-CLI replays are byte-identical and cleanup preserves the full denominator
+  ---
+  duration_ms: 0.696083
+  type: 'test'
+  ...
+# Subtest: FACTLINK1 separately calibrates SECTION references without rewriting primary or semantic grades
+ok 86 - FACTLINK1 separately calibrates SECTION references without rewriting primary or semantic grades
+  ---
+  duration_ms: 4.655958
+  type: 'test'
+  ...
+# Subtest: FORMAT1 keeps every exported file hash-bound and in the Git index, including bounded logs
+ok 87 - FORMAT1 keeps every exported file hash-bound and in the Git index, including bounded logs
+  ---
+  duration_ms: 71.831334
+  type: 'test'
+  ...
+# Subtest: FORMAT1 preserves the interrupted denominator, raw failures, and all owned cleanup acknowledgements
+ok 88 - FORMAT1 preserves the interrupted denominator, raw failures, and all owned cleanup acknowledgements
+  ---
+  duration_ms: 0.996916
+  type: 'test'
+  ...
+# Subtest: FORMAT1 portable replays reject partial data instead of manufacturing a winning experiment
+ok 89 - FORMAT1 portable replays reject partial data instead of manufacturing a winning experiment
+  ---
+  duration_ms: 0.717958
+  type: 'test'
+  ...
+# Subtest: FORMAT1 versioned recalibration changes only the known false-negative and leaves primary grades intact
+ok 90 - FORMAT1 versioned recalibration changes only the known false-negative and leaves primary grades intact
+  ---
+  duration_ms: 0.780417
+  type: 'test'
+  ...
+# Subtest: FORMAT2 exhaustively binds bounded archive bytes and every Git index blob, including all 24 logs
+ok 91 - FORMAT2 exhaustively binds bounded archive bytes and every Git index blob, including all 24 logs
+  ---
+  duration_ms: 255.590458
+  type: 'test'
+  ...
+# Subtest: FORMAT2 preserves the exact 24-attempt matrix, four frozen source SHAs and Flash-only identities
+ok 92 - FORMAT2 preserves the exact 24-attempt matrix, four frozen source SHAs and Flash-only identities
+  ---
+  duration_ms: 8.024209
+  type: 'test'
+  ...
+# Subtest: FORMAT2 records persistence, 48 deleted sessions, all fixtures removed and restored private-runtime boundaries
+ok 93 - FORMAT2 records persistence, 48 deleted sessions, all fixtures removed and restored private-runtime boundaries
+  ---
+  duration_ms: 0.504833
+  type: 'test'
+  ...
+# Subtest: FORMAT2 portable replay retains all 13 successful outputs and unchanged input bytes
+ok 94 - FORMAT2 portable replay retains all 13 successful outputs and unchanged input bytes
+  ---
+  duration_ms: 5.25875
+  type: 'test'
+  ...
+# Subtest: FORMAT2 separately replays v4 without rewriting v3 outcomes or either semantic erratum
+ok 95 - FORMAT2 separately replays v4 without rewriting v3 outcomes or either semantic erratum
+  ---
+  duration_ms: 10.1075
+  type: 'test'
+  ...
+# Subtest: preserves actual Bash workdir for exact-target gate attribution
+ok 96 - preserves actual Bash workdir for exact-target gate attribution
+  ---
+  duration_ms: 23.197875
+  type: 'test'
+  ...
+# Subtest: matrix is ten cases × three repetitions; labels do not rewrite task facts
+ok 97 - matrix is ten cases × three repetitions; labels do not rewrite task facts
+  ---
+  duration_ms: 89.008
+  type: 'test'
+  ...
+# Subtest: records actual SDK models and completed-message duration, not polling interval or requested model
+ok 98 - records actual SDK models and completed-message duration, not polling interval or requested model
+  ---
+  duration_ms: 0.504833
+  type: 'test'
+  ...
+# Subtest: does not qualify truncated SDK usage as a faster completed run
+ok 99 - does not qualify truncated SDK usage as a faster completed run
+  ---
+  duration_ms: 0.119042
+  type: 'test'
+  ...
+# Subtest: refuses incomplete or negative token counters as a comparable cheap run
+ok 100 - refuses incomplete or negative token counters as a comparable cheap run
+  ---
+  duration_ms: 0.266417
+  type: 'test'
+  ...
+# Subtest: persists exact portal/index markdown separately; unsafe snapshot cannot publish a summary
+ok 101 - persists exact portal/index markdown separately; unsafe snapshot cannot publish a summary
+  ---
+  duration_ms: 9.489125
+  type: 'test'
+  ...
+# Subtest: empty public response "" stays inconclusive with actionable diagnostics
+ok 102 - empty public response "" stays inconclusive with actionable diagnostics
+  ---
+  duration_ms: 0.7215
+  type: 'test'
+  ...
+# Subtest: empty public response "   \\n" stays inconclusive with actionable diagnostics
+ok 103 - empty public response "   \\n" stays inconclusive with actionable diagnostics
+  ---
+  duration_ms: 0.138
+  type: 'test'
+  ...
+# Subtest: captures the complete artifact and source-owned oracle, not a truncated diff or narration
+ok 104 - captures the complete artifact and source-owned oracle, not a truncated diff or narration
+  ---
+  duration_ms: 30.37525
+  type: 'test'
+  ...
+# Subtest: tampered source reference makes semantic evidence unavailable instead of exporting worker-authored truth
+ok 105 - tampered source reference makes semantic evidence unavailable instead of exporting worker-authored truth
+  ---
+  duration_ms: 4.916875
+  type: 'test'
+  ...
+# Subtest: refuses a modified portal rather than inventing source-owned dependency evidence
+ok 106 - refuses a modified portal rather than inventing source-owned dependency evidence
+  ---
+  duration_ms: 9.570958
+  type: 'test'
+  ...
+# Subtest: the actual judge prompt is text-only and contains the validated parent and contract
+ok 107 - the actual judge prompt is text-only and contains the validated parent and contract
+  ---
+  duration_ms: 13.66075
+  type: 'test'
+  ...
+# Subtest: runner supplies source-owned authoring evidence before judging, independently of its diff
+ok 108 - runner supplies source-owned authoring evidence before judging, independently of its diff
+  ---
+  duration_ms: 16.927
+  type: 'test'
+  ...
+# Subtest: missing, symlinked, hardlinked and oversized artifacts cannot become complete judge evidence
+ok 109 - missing, symlinked, hardlinked and oversized artifacts cannot become complete judge evidence
+  ---
+  duration_ms: 6.770584
+  type: 'test'
+  ...
+# Subtest: authoring semantic review excludes worker claims and cannot override deterministic path gates
+ok 110 - authoring semantic review excludes worker claims and cannot override deterministic path gates
+  ---
+  duration_ms: 0.39625
+  type: 'test'
+  ...
+# Subtest: proves actual create/read/whole-write/check, not final checkpoint order
+ok 111 - proves actual create/read/whole-write/check, not final checkpoint order
+  ---
+  duration_ms: 3.74125
+  type: 'test'
+  ...
+# Subtest: rejects echoed/help/failed commands, overlapping operations and stale checks
+ok 112 - rejects echoed/help/failed commands, overlapping operations and stale checks
+  ---
+  duration_ms: 1.389916
+  type: 'test'
+  ...
+# Subtest: rejects foreign executables, noncreating manifest/list calls and invalid/overlapping Write intervals
+ok 113 - rejects foreign executables, noncreating manifest/list calls and invalid/overlapping Write intervals
+  ---
+  duration_ms: 0.81125
+  type: 'test'
+  ...
+# Subtest: rejects partial traces, missing identities, wrong-path suffixes and partial/outside writes
+ok 114 - rejects partial traces, missing identities, wrong-path suffixes and partial/outside writes
+  ---
+  duration_ms: 0.496125
+  type: 'test'
+  ...
+# Subtest: does not invent an exact portal/index authoring CLI that the product does not provide
+ok 115 - does not invent an exact portal/index authoring CLI that the product does not provide
+  ---
+  duration_ms: 0.186125
+  type: 'test'
+  ...
+# Subtest: compares all repeated observations and labels small-sample inference honestly
+ok 116 - compares all repeated observations and labels small-sample inference honestly
+  ---
+  duration_ms: 1.174667
+  type: 'test'
+  ...
+# Subtest: refuses missing repetitions, duplicate IDs, dirty/mixed source, changed oracle and model fallback
+ok 117 - refuses missing repetitions, duplicate IDs, dirty/mixed source, changed oracle and model fallback
+  ---
+  duration_ms: 1.896959
+  type: 'test'
+  ...
+# Subtest: does not discard failed candidate observations to manufacture a speed win
+ok 118 - does not discard failed candidate observations to manufacture a speed win
+  ---
+  duration_ms: 0.203542
+  type: 'test'
+  ...
+# Subtest: rejects prompt reduction bought with more tools or lower semantic quality
+ok 119 - rejects prompt reduction bought with more tools or lower semantic quality
+  ---
+  duration_ms: 1.036292
+  type: 'test'
+  ...
+# Subtest: counts owner, local skeleton, actual manifest and all three unchanged external contracts
+ok 120 - counts owner, local skeleton, actual manifest and all three unchanged external contracts
+  ---
+  duration_ms: 8.408084
+  type: 'test'
+  ...
+# Subtest: moving text into the skeleton does not hide its cost behind a smaller owner
+ok 121 - moving text into the skeleton does not hide its cost behind a smaller owner
+  ---
+  duration_ms: 6.805625
+  type: 'test'
+  ...
+# Subtest: binds recursive provision, re-export, dynamic-literal, package-alias and type-only local dependencies
+ok 122 - binds recursive provision, re-export, dynamic-literal, package-alias and type-only local dependencies
+  ---
+  duration_ms: 131.487542
+  type: 'test'
+  ...
+# Subtest: heading-criteria mutation changes oracle/harness identity even when task and section flags are unchanged
+ok 123 - heading-criteria mutation changes oracle/harness identity even when task and section flags are unchanged
+  ---
+  duration_ms: 924.445416
+  type: 'test'
+  ...
+# Subtest: pure template fill/guidance evolution leaves task/oracle/harness criteria comparable
+ok 124 - pure template fill/guidance evolution leaves task/oracle/harness criteria comparable
+  ---
+  duration_ms: 546.075166
+  type: 'test'
+  ...
+# Subtest: table criteria and byte-exact inherited conventions are not hidden as experimental fill prose
+ok 125 - table criteria and byte-exact inherited conventions are not hidden as experimental fill prose
+  ---
+  duration_ms: 1016.127458
+  type: 'test'
+  ...
+# Subtest: qualifies only healthy Flash/default-small/explicit-agent config and rejects active MCP
+ok 126 - qualifies only healthy Flash/default-small/explicit-agent config and rejects active MCP
+  ---
+  duration_ms: 14.177042
+  type: 'test'
+  ...
+# Subtest: grades real completed scope/module artifacts, not nonexistent implementation tickets
+ok 127 - grades real completed scope/module artifacts, not nonexistent implementation tickets
+  ---
+  duration_ms: 56.88575
+  type: 'test'
+  ...
+# Subtest: recovers truthful ownership for fixture runners instead of opting them out of checks
+ok 128 - recovers truthful ownership for fixture runners instead of opting them out of checks
+  ---
+  duration_ms: 1.167125
+  type: 'test'
+  ...
+# Subtest: the real CLI resolves both recovered owners and still refuses ticket completion before decomposition
+ok 129 - the real CLI resolves both recovered owners and still refuses ticket completion before decomposition
+  ---
+  duration_ms: 5749.251042
+  type: 'test'
+  ...
+# Subtest: recorded portal: deterministic replay preserves counts and refuses invented whole-write proof
+ok 130 - recorded portal: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 5.942416
+  type: 'test'
+  ...
+# Subtest: recorded scope-product: deterministic replay preserves counts and refuses invented whole-write proof
+ok 131 - recorded scope-product: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 3.675875
+  type: 'test'
+  ...
+# Subtest: recorded scope-library: deterministic replay preserves counts and refuses invented whole-write proof
+ok 132 - recorded scope-library: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 1.56525
+  type: 'test'
+  ...
+# Subtest: recorded scope-infrastructure: deterministic replay preserves counts and refuses invented whole-write proof
+ok 133 - recorded scope-infrastructure: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 1.898917
+  type: 'test'
+  ...
+# Subtest: recorded scope-interface: deterministic replay preserves counts and refuses invented whole-write proof
+ok 134 - recorded scope-interface: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 1.050959
+  type: 'test'
+  ...
+# Subtest: recorded module-flat: deterministic replay preserves counts and refuses invented whole-write proof
+ok 135 - recorded module-flat: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 1.50975
+  type: 'test'
+  ...
+# Subtest: recorded module-nested: deterministic replay preserves counts and refuses invented whole-write proof
+ok 136 - recorded module-nested: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 0.961834
+  type: 'test'
+  ...
+# Subtest: recorded index-module: deterministic replay preserves counts and refuses invented whole-write proof
+ok 137 - recorded index-module: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 2.150333
+  type: 'test'
+  ...
+# Subtest: recorded index-scope: deterministic replay preserves counts and refuses invented whole-write proof
+ok 138 - recorded index-scope: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 2.190916
+  type: 'test'
+  ...
+# Subtest: recorded index-project: deterministic replay preserves counts and refuses invented whole-write proof
+ok 139 - recorded index-project: deterministic replay preserves counts and refuses invented whole-write proof
+  ---
+  duration_ms: 1.669958
+  type: 'test'
+  ...
+# Subtest: deadline covers passive metadata and SDK creation before the model call
+ok 140 - deadline covers passive metadata and SDK creation before the model call
+  ---
+  duration_ms: 43.671917
+  type: 'test'
+  ...
+# Subtest: same-worker reflection uses no tools, sees factual IDs, and records only separate usage deltas
+ok 141 - same-worker reflection uses no tools, sees factual IDs, and records only separate usage deltas
+  ---
+  duration_ms: 6.935375
+  type: 'test'
+  ...
+# Subtest: SDK denies the verified tool inventory on same-session reflection and excludes private output
+ok 142 - SDK denies the verified tool inventory on same-session reflection and excludes private output
+  ---
+  duration_ms: 0.302875
+  type: 'test'
+  ...
+# Subtest: artifact judge timeout is inconclusive and preserves its session identity
+ok 143 - artifact judge timeout is inconclusive and preserves its session identity
+  ---
+  duration_ms: 5.628125
+  type: 'test'
+  ...
+# Subtest: returns seven distinct hash-bound controls without sharing mutable truth with callers
+ok 144 - returns seven distinct hash-bound controls without sharing mutable truth with callers
+  ---
+  duration_ms: 26.421334
+  type: 'test'
+  ...
+# Subtest: positive controls satisfy the real source-owned oracle and all controls have complete bounded evidence
+ok 145 - positive controls satisfy the real source-owned oracle and all controls have complete bounded evidence
+  ---
+  duration_ms: 165.656625
+  type: 'test'
+  ...
+# Subtest: domain controls change only the positive precondition and keep the original rejection clause
+ok 146 - domain controls change only the positive precondition and keep the original rejection clause
+  ---
+  duration_ms: 1.430625
+  type: 'test'
+  ...
+# Subtest: authenticates every calibration primary file in Git and retains the inconclusive attempt
+ok 147 - authenticates every calibration primary file in Git and retains the inconclusive attempt
+  ---
+  duration_ms: 25.648417
+  type: 'test'
+  ...
+# Subtest: TOOLFACT1 retains every bounded primary byte and Git-index blob, including all 24 logs
+ok 148 - TOOLFACT1 retains every bounded primary byte and Git-index blob, including all 24 logs
+  ---
+  duration_ms: 126.308666
+  type: 'test'
+  ...
+# Subtest: TOOLFACT1 binds a fresh balanced 2×2×6 matrix to exactly two clean Flash-only sources
+ok 149 - TOOLFACT1 binds a fresh balanced 2×2×6 matrix to exactly two clean Flash-only sources
+  ---
+  duration_ms: 4.164125
+  type: 'test'
+  ...
+# Subtest: TOOLFACT1 independently recomputes per-case medians and paired differences without changing grades
+ok 150 - TOOLFACT1 independently recomputes per-case medians and paired differences without changing grades
+  ---
+  duration_ms: 2.192167
+  type: 'test'
+  ...
+# Subtest: TOOLFACT1 portable existing-CLI replays are byte-identical and cleanup preserves the full denominator
+ok 151 - TOOLFACT1 portable existing-CLI replays are byte-identical and cleanup preserves the full denominator
+  ---
+  duration_ms: 0.407541
+  type: 'test'
+  ...
+# Subtest: TOOLFACT1 delivers bounded exact links with identical skeletons, not expanded directives
+ok 152 - TOOLFACT1 delivers bounded exact links with identical skeletons, not expanded directives
+  ---
+  duration_ms: 8.432292
+  type: 'test'
+  ...
+# Subtest: TOOLFACT1 corrects two pending-clause false negatives without repainting semantic outcomes
+ok 153 - TOOLFACT1 corrects two pending-clause false negatives without repainting semantic outcomes
+  ---
+  duration_ms: 2.964959
+  type: 'test'
+  ...
+# Subtest: profiles ordered calls, exact safe Bash, categories, paths and IDs without exporting tool bodies
+ok 154 - profiles ordered calls, exact safe Bash, categories, paths and IDs without exporting tool bodies
+  ---
+  duration_ms: 31.540375
+  type: 'test'
+  ...
+# Subtest: reports repeats and adjacent temporal batching only as observations, not intent or proven waste
+ok 155 - reports repeats and adjacent temporal batching only as observations, not intent or proven waste
+  ---
+  duration_ms: 31.917417
+  type: 'test'
+  ...
+# Subtest: overlap, foreign sessions, writes, checkpoints, opaque calls and incomplete capture are barriers
+ok 156 - overlap, foreign sessions, writes, checkpoints, opaque calls and incomplete capture are barriers
+  ---
+  duration_ms: 77.774083
+  type: 'test'
+  ...
+# Subtest: malformed/truncated/missing arguments and unsafe paths remain unknown, never guessed from suffixes
+ok 157 - malformed/truncated/missing arguments and unsafe paths remain unknown, never guessed from suffixes
+  ---
+  duration_ms: 9.093666
+  type: 'test'
+  ...
+# Subtest: duplicate identities remain counted and flagged, and cannot create temporal opportunities
+ok 158 - duplicate identities remain counted and flagged, and cannot create temporal opportunities
+  ---
+  duration_ms: 14.013875
+  type: 'test'
+  ...
+# Subtest: does not infer direct CLI verbs from opaque shell, prose, foreign cwd or interpreter payloads
+ok 159 - does not infer direct CLI verbs from opaque shell, prose, foreign cwd or interpreter payloads
+  ---
+  duration_ms: 50.601792
+  type: 'test'
+  ...
+# Subtest: help/list/manifest are not creation/check work, and failed CLI attempts retain their actual exit
+ok 160 - help/list/manifest are not creation/check work, and failed CLI attempts retain their actual exit
+  ---
+  duration_ms: 32.892792
+  type: 'test'
+  ...
+# Subtest: redacts secret flags and withholds env, heredoc and inline source bodies rather than leaking them
+ok 161 - redacts secret flags and withholds env, heredoc and inline source bodies rather than leaking them
+  ---
+  duration_ms: 13.60325
+  type: 'test'
+  ...
+# Subtest: caps output and does not interpret a truncated command as a direct invocation
+ok 162 - caps output and does not interpret a truncated command as a direct invocation
+  ---
+  duration_ms: 2260.583583
+  type: 'test'
+  ...
+# Subtest: keeps observed assistant-message and token counters separated by role, never claiming HTTP calls
+ok 163 - keeps observed assistant-message and token counters separated by role, never claiming HTTP calls
+  ---
+  duration_ms: 0.961084
+  type: 'test'
+  ...
+# Subtest: histogram keys cannot access inherited object properties
+ok 164 - histogram keys cannot access inherited object properties
+  ---
+  duration_ms: 2.349334
+  type: 'test'
+  ...
+# Subtest: conflicting path aliases and nonterminal calls do not qualify as known reads
+ok 165 - conflicting path aliases and nonterminal calls do not qualify as known reads
+  ---
+  duration_ms: 8.899917
+  type: 'test'
+  ...
+# Subtest: opaque classification does not relabel complete capture as missing evidence
+ok 166 - opaque classification does not relabel complete capture as missing evidence
+  ---
+  duration_ms: 3.699625
+  type: 'test'
+  ...
+# Subtest: transfer ranges-intersection: valid control passes, broken facts/links/ownership remain red, judge is blind
+ok 167 - transfer ranges-intersection: valid control passes, broken facts/links/ownership remain red, judge is blind
+  ---
+  duration_ms: 56.49675
+  type: 'test'
+  ...
+# Subtest: transfer ranges-contains: valid control passes, broken facts/links/ownership remain red, judge is blind
+ok 168 - transfer ranges-contains: valid control passes, broken facts/links/ownership remain red, judge is blind
+  ---
+  duration_ms: 36.504625
+  type: 'test'
+  ...
+# Subtest: transfer ranges-merge: valid control passes, broken facts/links/ownership remain red, judge is blind
+ok 169 - transfer ranges-merge: valid control passes, broken facts/links/ownership remain red, judge is blind
+  ---
+  duration_ms: 33.288125
+  type: 'test'
+  ...
+# Subtest: transfer delivery-retry: valid control passes, broken facts/links/ownership remain red, judge is blind
+ok 170 - transfer delivery-retry: valid control passes, broken facts/links/ownership remain red, judge is blind
+  ---
+  duration_ms: 33.992459
+  type: 'test'
+  ...
+# Subtest: transfer delivery-delay: valid control passes, broken facts/links/ownership remain red, judge is blind
+ok 171 - transfer delivery-delay: valid control passes, broken facts/links/ownership remain red, judge is blind
+  ---
+  duration_ms: 44.757584
+  type: 'test'
+  ...
+# Subtest: transfer delivery-dedupe: valid control passes, broken facts/links/ownership remain red, judge is blind
+ok 172 - transfer delivery-dedupe: valid control passes, broken facts/links/ownership remain red, judge is blind
+  ---
+  duration_ms: 49.629166
+  type: 'test'
+  ...
+# Subtest: transfer corpus is exactly six new tasks, two domains, three flat and three nested; default is unchanged
+ok 173 - transfer corpus is exactly six new tasks, two domains, three flat and three nested; default is unchanged
+  ---
+  duration_ms: 0.908416
+  type: 'test'
+  ...
+# Subtest: brownfield code-delta golden gate (both outcomes reproducible)
+    # Subtest: ACCEPTS a delta that adds new behaviour and preserves the old (positive)
+    ok 1 - ACCEPTS a delta that adds new behaviour and preserves the old (positive)
+      ---
+      duration_ms: 270.203416
+      type: 'test'
+      ...
+    # Subtest: REJECTS a no-op that never applied the change (negative)
+    ok 2 - REJECTS a no-op that never applied the change (negative)
+      ---
+      duration_ms: 72.51375
+      type: 'test'
+      ...
+    # Subtest: REJECTS a delta that breaks existing behaviour (negative)
+    ok 3 - REJECTS a delta that breaks existing behaviour (negative)
+      ---
+      duration_ms: 68.457
+      type: 'test'
+      ...
+    1..3
+ok 174 - brownfield code-delta golden gate (both outcomes reproducible)
+  ---
+  duration_ms: 411.817917
+  type: 'suite'
+  ...
+# Subtest: brownfield bug-fix golden gate (both outcomes reproducible)
+    # Subtest: ACCEPTS a fix that restores first-appearance order (positive)
+    ok 1 - ACCEPTS a fix that restores first-appearance order (positive)
+      ---
+      duration_ms: 129.867166
+      type: 'test'
+      ...
+    # Subtest: REJECTS the still-buggy original that sorts (negative)
+    ok 2 - REJECTS the still-buggy original that sorts (negative)
+      ---
+      duration_ms: 47.842209
+      type: 'test'
+      ...
+    # Subtest: REJECTS a fix that drops the error contract (negative)
+    ok 3 - REJECTS a fix that drops the error contract (negative)
+      ---
+      duration_ms: 60.45875
+      type: 'test'
+      ...
+    1..3
+ok 175 - brownfield bug-fix golden gate (both outcomes reproducible)
+  ---
+  duration_ms: 238.424375
+  type: 'suite'
+  ...
+# Subtest: source-owned checkpoint is green only with real commands, exact links and unchanged build files
+ok 176 - source-owned checkpoint is green only with real commands, exact links and unchanged build files
+  ---
+  duration_ms: 5263.314417
+  type: 'test'
+  ...
+# Subtest: brownfield recover-spec golden gate (both outcomes reproducible)
+    # Subtest: ACCEPTS a recovered spec that covers the behaviour (positive)
+    ok 1 - ACCEPTS a recovered spec that covers the behaviour (positive)
+      ---
+      duration_ms: 42.016542
+      type: 'test'
+      ...
+    # Subtest: REJECTS a missing spec (negative)
+    ok 2 - REJECTS a missing spec (negative)
+      ---
+      duration_ms: 20.606041
+      type: 'test'
+      ...
+    # Subtest: REJECTS a spec that names the tool but covers no behaviour (negative)
+    ok 3 - REJECTS a spec that names the tool but covers no behaviour (negative)
+      ---
+      duration_ms: 56.213209
+      type: 'test'
+      ...
+    # Subtest: REJECTS prose that mentions behaviours but enumerates no requirements (adequacy)
+    ok 4 - REJECTS prose that mentions behaviours but enumerates no requirements (adequacy)
+      ---
+      duration_ms: 88.280166
+      type: 'test'
+      ...
+    # Subtest: REJECTS a requirements list that omits the error/edge behaviour (adequacy)
+    ok 5 - REJECTS a requirements list that omits the error/edge behaviour (adequacy)
+      ---
+      duration_ms: 59.318333
+      type: 'test'
+      ...
+    1..5
+ok 177 - brownfield recover-spec golden gate (both outcomes reproducible)
+  ---
+  duration_ms: 267.38975
+  type: 'suite'
+  ...
+# Subtest: brownfield delta-to-spec golden gate (both outcomes reproducible)
+    # Subtest: ACCEPTS a spec that names the added behaviour (positive)
+    ok 1 - ACCEPTS a spec that names the added behaviour (positive)
+      ---
+      duration_ms: 47.415459
+      type: 'test'
+      ...
+    # Subtest: REJECTS a spec that omits the added chars behaviour (negative)
+    ok 2 - REJECTS a spec that omits the added chars behaviour (negative)
+      ---
+      duration_ms: 48.947375
+      type: 'test'
+      ...
+    # Subtest: REJECTS a missing spec (negative)
+    ok 3 - REJECTS a missing spec (negative)
+      ---
+      duration_ms: 35.841667
+      type: 'test'
+      ...
+    # Subtest: REJECTS prose naming chars but enumerating no requirements (adequacy)
+    ok 4 - REJECTS prose naming chars but enumerating no requirements (adequacy)
+      ---
+      duration_ms: 40.078
+      type: 'test'
+      ...
+    1..4
+ok 178 - brownfield delta-to-spec golden gate (both outcomes reproducible)
+  ---
+  duration_ms: 172.870958
+  type: 'suite'
+  ...
+# Subtest: brownfield modify-via-spec golden gate (both outcomes reproducible)
+    # Subtest: ACCEPTS updated code AND updated spec (positive)
+    ok 1 - ACCEPTS updated code AND updated spec (positive)
+      ---
+      duration_ms: 82.919791
+      type: 'test'
+      ...
+    # Subtest: REJECTS when code was not changed (negative)
+    ok 2 - REJECTS when code was not changed (negative)
+      ---
+      duration_ms: 47.874417
+      type: 'test'
+      ...
+    # Subtest: REJECTS when the spec was not updated (negative)
+    ok 3 - REJECTS when the spec was not updated (negative)
+      ---
+      duration_ms: 80.70175
+      type: 'test'
+      ...
+    # Subtest: REJECTS updated code + chars-prose spec with no enumerated requirements (adequacy)
+    ok 4 - REJECTS updated code + chars-prose spec with no enumerated requirements (adequacy)
+      ---
+      duration_ms: 76.117792
+      type: 'test'
+      ...
+    1..4
+ok 179 - brownfield modify-via-spec golden gate (both outcomes reproducible)
+  ---
+  duration_ms: 287.785208
+  type: 'suite'
+  ...
+# Subtest: recover matrix S1 — scope exists, module absent (both outcomes)
+    # Subtest: ACCEPTS a module spec added under the scope, scope left intact (positive)
+    ok 1 - ACCEPTS a module spec added under the scope, scope left intact (positive)
+      ---
+      duration_ms: 52.464167
+      type: 'test'
+      ...
+    # Subtest: REJECTS when no module spec was added (negative)
+    ok 2 - REJECTS when no module spec was added (negative)
+      ---
+      duration_ms: 29.425417
+      type: 'test'
+      ...
+    # Subtest: REJECTS when the scope spec was clobbered (negative)
+    ok 3 - REJECTS when the scope spec was clobbered (negative)
+      ---
+      duration_ms: 24.767375
+      type: 'test'
+      ...
+    1..3
+ok 180 - recover matrix S1 — scope exists, module absent (both outcomes)
+  ---
+  duration_ms: 107.088625
+  type: 'suite'
+  ...
+# Subtest: recover matrix S2 — partial module spec, extend it (both outcomes)
+    # Subtest: ACCEPTS a spec extended to cover chars, keeping lines/words (positive)
+    ok 1 - ACCEPTS a spec extended to cover chars, keeping lines/words (positive)
+      ---
+      duration_ms: 32.697584
+      type: 'test'
+      ...
+    # Subtest: REJECTS the still-partial spec that never gained chars (negative)
+    ok 2 - REJECTS the still-partial spec that never gained chars (negative)
+      ---
+      duration_ms: 37.761584
+      type: 'test'
+      ...
+    # Subtest: REJECTS an extension that dropped the existing lines behaviour (negative)
+    ok 3 - REJECTS an extension that dropped the existing lines behaviour (negative)
+      ---
+      duration_ms: 21.373333
+      type: 'test'
+      ...
+    1..3
+ok 181 - recover matrix S2 — partial module spec, extend it (both outcomes)
+  ---
+  duration_ms: 92.405458
+  type: 'suite'
+  ...
+# Subtest: E-21: the default model config fixes the llm-proxy family (L-14)
+    # Subtest: the default runner model is in the llm-proxy family
+    ok 1 - the default runner model is in the llm-proxy family
+      ---
+      duration_ms: 0.608917
+      type: 'test'
+      ...
+    # Subtest: the default judge model is in the llm-proxy family
+    ok 2 - the default judge model is in the llm-proxy family
+      ---
+      duration_ms: 0.119541
+      type: 'test'
+      ...
+    1..2
+ok 182 - E-21: the default model config fixes the llm-proxy family (L-14)
+  ---
+  duration_ms: 2.104333
+  type: 'suite'
+  ...
+# Subtest: flow-eval dependency-store retention
+    # Subtest: never removes an active lease even after the age boundary
+    ok 1 - never removes an active lease even after the age boundary
+      ---
+      duration_ms: 53.980083
+      type: 'test'
+      ...
+    # Subtest: keeps only the bounded number of newest inactive contracts
+    ok 2 - keeps only the bounded number of newest inactive contracts
+      ---
+      duration_ms: 16.947792
+      type: 'test'
+      ...
+    # Subtest: refuses a lease for an existing inactive third contract when two others are active
+    ok 3 - refuses a lease for an existing inactive third contract when two others are active
+      ---
+      duration_ms: 37.174166
+      type: 'test'
+      ...
+    # Subtest: reclaims two expired orphan leases before active-cap and retention decisions
+    ok 4 - reclaims two expired orphan leases before active-cap and retention decisions
+      ---
+      duration_ms: 39.956083
+      type: 'test'
+      ...
+    # Subtest: reclaims the legacy lease schema left by the original lifecycle implementation
+    ok 5 - reclaims the legacy lease schema left by the original lifecycle implementation
+      ---
+      duration_ms: 5.898
+      type: 'test'
+      ...
+    # Subtest: releases only an intact lease owned by the current process
+    ok 6 - releases only an intact lease owned by the current process
+      ---
+      duration_ms: 68.768334
+      type: 'test'
+      ...
+    # Subtest: retains corrupted lease evidence instead of deleting it during release
+    ok 7 - retains corrupted lease evidence instead of deleting it during release
+      ---
+      duration_ms: 56.08325
+      type: 'test'
+      ...
+    # Subtest: does not refresh or release a valid replacement lease through the old capability
+    ok 8 - does not refresh or release a valid replacement lease through the old capability
+      ---
+      duration_ms: 52.376416
+      type: 'test'
+      ...
+    # Subtest: removes its exact heartbeat temp and preserves original lease bytes after atomic write failure
+    ok 9 - removes its exact heartbeat temp and preserves original lease bytes after atomic write failure
+      ---
+      duration_ms: 43.611833
+      type: 'test'
+      ...
+    # Subtest: scheduled heartbeat refreshes a lifecycle-owned lease during a long run
+    ok 10 - scheduled heartbeat refreshes a lifecycle-owned lease during a long run
+      ---
+      duration_ms: 61.468916
+      type: 'test'
+      ...
+    # Subtest: reclaims a fresh same-host lease immediately when its owner pid is dead
+    ok 11 - reclaims a fresh same-host lease immediately when its owner pid is dead
+      ---
+      duration_ms: 8.746083
+      type: 'test'
+      ...
+    # Subtest: reclaims a stale heartbeat even when the pid number is currently live
+    ok 12 - reclaims a stale heartbeat even when the pid number is currently live
+      ---
+      duration_ms: 6.533084
+      type: 'test'
+      ...
+    # Subtest: rechecks under the store lock and preserves a lease updated between scan and delete
+    ok 13 - rechecks under the store lock and preserves a lease updated between scan and delete
+      ---
+      duration_ms: 11.41775
+      type: 'test'
+      ...
+    # Subtest: protects the whole store when a stale lease identity changes but remains stale
+    ok 14 - protects the whole store when a stale lease identity changes but remains stale
+      ---
+      duration_ms: 6.605291
+      type: 'test'
+      ...
+    # Subtest: quarantines corrupted lease evidence and refuses automatic reuse or deletion
+    ok 15 - quarantines corrupted lease evidence and refuses automatic reuse or deletion
+      ---
+      duration_ms: 15.717125
+      type: 'test'
+      ...
+    # Subtest: dry-run reports stale cleanup without deleting and explicit clean keeps active leases
+    ok 16 - dry-run reports stale cleanup without deleting and explicit clean keeps active leases
+      ---
+      duration_ms: 17.465583
+      type: 'test'
+      ...
+    # Subtest: dry-run report does not create a missing dependency-store root
+    ok 17 - dry-run report does not create a missing dependency-store root
+      ---
+      duration_ms: 0.373917
+      type: 'test'
+      ...
+    # Subtest: keeps fresh incomplete locks fail-closed and reclaims them only after the lock TTL
+    ok 18 - keeps fresh incomplete locks fail-closed and reclaims them only after the lock TTL
+      ---
+      duration_ms: 14.396083
+      type: 'test'
+      ...
+    # Subtest: never age-reclaims a valid foreign-host lock
+    ok 19 - never age-reclaims a valid foreign-host lock
+      ---
+      duration_ms: 3.43225
+      type: 'test'
+      ...
+    # Subtest: does not delete an active replacement lock when stale recovery identity changes
+    ok 20 - does not delete an active replacement lock when stale recovery identity changes
+      ---
+      duration_ms: 3.702792
+      type: 'test'
+      ...
+    # Subtest: reclaims a fresh valid same-host lock when its owner pid is dead
+    ok 21 - reclaims a fresh valid same-host lock when its owner pid is dead
+      ---
+      duration_ms: 5.37925
+      type: 'test'
+      ...
+    # Subtest: removes its newly-created lock when owner persistence fails
+    ok 22 - removes its newly-created lock when owner persistence fails
+      ---
+      duration_ms: 1.992125
+      type: 'test'
+      ...
+    1..22
+ok 183 - flow-eval dependency-store retention
+  ---
+  duration_ms: 534.036625
+  type: 'suite'
+  ...
+# Subtest: GAP-E-1b: SddEvalOpenCodeEvidenceSource.readEvents (both-way, local node:http SSE — no live LLM)
+    # Subtest: a stream with permission.asked + session.waiting yields readEvents(S) non-empty with EXACTLY those types
+    ok 1 - a stream with permission.asked + session.waiting yields readEvents(S) non-empty with EXACTLY those types
+      ---
+      duration_ms: 46.481625
+      type: 'test'
+      ...
+    # Subtest: an empty stream yields readEvents(S) === [] (never throws, never fabricates an event)
+    ok 2 - an empty stream yields readEvents(S) === [] (never throws, never fabricates an event)
+      ---
+      duration_ms: 156.832917
+      type: 'test'
+      ...
+    # Subtest: events for a DIFFERENT session never leak into this session’s buffer
+    ok 3 - events for a DIFFERENT session never leak into this session’s buffer
+      ---
+      duration_ms: 24.434417
+      type: 'test'
+      ...
+    1..3
+ok 184 - GAP-E-1b: SddEvalOpenCodeEvidenceSource.readEvents (both-way, local node:http SSE — no live LLM)
+  ---
+  duration_ms: 229.103958
+  type: 'suite'
+  ...
+# Subtest: GAP-E-1b: SddEvalObserver.observe() waiting flag driven by the live reader
+    # Subtest: a session with a live permission/waiting event observes waiting=true
+    ok 1 - a session with a live permission/waiting event observes waiting=true
+      ---
+      duration_ms: 74.587417
+      type: 'test'
+      ...
+    # Subtest: a session with no live events observes waiting=false
+    ok 2 - a session with no live events observes waiting=false
+      ---
+      duration_ms: 176.751875
+      type: 'test'
+      ...
+    1..2
+ok 185 - GAP-E-1b: SddEvalObserver.observe() waiting flag driven by the live reader
+  ---
+  duration_ms: 251.584583
+  type: 'suite'
+  ...
+# Subtest: shows actual sdd-log CLI mutations even with empty SDK diff and after worker commits
+ok 186 - shows actual sdd-log CLI mutations even with empty SDK diff and after worker commits
+  ---
+  duration_ms: 1058.848792
+  type: 'test'
+  ...
+# Subtest: never executes external diff, textconv, clean/process filters or fsmonitor commands
+ok 187 - never executes external diff, textconv, clean/process filters or fsmonitor commands
+  ---
+  duration_ms: 429.546291
+  type: 'test'
+  ...
+# Subtest: retains untracked Write artifacts and marks bounded diff truncation explicitly
+ok 188 - retains untracked Write artifacts and marks bounded diff truncation explicitly
+  ---
+  duration_ms: 679.317584
+  type: 'test'
+  ...
+# Subtest: rejects identified fixture history corruption without returning a misleading empty diff
+ok 189 - rejects identified fixture history corruption without returning a misleading empty diff
+  ---
+  duration_ms: 337.146208
+  type: 'test'
+  ...
+# Subtest: preserves SDK evidence for existing non-fixture directory contracts
+ok 190 - preserves SDK evidence for existing non-fixture directory contracts
+  ---
+  duration_ms: 28.333666
+  type: 'test'
+  ...
+# Subtest: does not fall back to false-empty SDK evidence after a proven fixture repository disappears
+ok 191 - does not fall back to false-empty SDK evidence after a proven fixture repository disappears
+  ---
+  duration_ms: 351.14125
+  type: 'test'
+  ...
+# Subtest: does not follow untracked symlinks or inherited Git repository redirection
+ok 192 - does not follow untracked symlinks or inherited Git repository redirection
+  ---
+  duration_ms: 388.471375
+  type: 'test'
+  ...
+# Subtest: redacts a nonvacuous dummy argv secret before observer activity renders the tail
+ok 193 - redacts a nonvacuous dummy argv secret before observer activity renders the tail
+  ---
+  duration_ms: 4.374917
+  type: 'test'
+  ...
+# Subtest: projects root and child arguments without Write body, env, headers or private reasoning
+ok 194 - projects root and child arguments without Write body, env, headers or private reasoning
+  ---
+  duration_ms: 1.878125
+  type: 'test'
+  ...
+# Subtest: retains the same safe public tool identities and metadata as the durable capture
+ok 195 - retains the same safe public tool identities and metadata as the durable capture
+  ---
+  duration_ms: 5.928625
+  type: 'test'
+  ...
+# Subtest: E-00: the batch exit code is a mechanical fold over durable outcomes, suitable for a gate
+    # Subtest: exit 0 when every scenario is a durable success
+    ok 1 - exit 0 when every scenario is a durable success
+      ---
+      duration_ms: 2.720084
+      type: 'test'
+      ...
+    # Subtest: exit 1 when ANY scenario is a worker-error, even if the rest passed
+    ok 2 - exit 1 when ANY scenario is a worker-error, even if the rest passed
+      ---
+      duration_ms: 0.083375
+      type: 'test'
+      ...
+    # Subtest: exit 1 when ANY scenario fails its deterministic quality gate, even if the rest passed
+    ok 3 - exit 1 when ANY scenario fails its deterministic quality gate, even if the rest passed
+      ---
+      duration_ms: 0.050875
+      type: 'test'
+      ...
+    # Subtest: E-17: budget-exhausted stays separate and does not fail CI or pass/fail statistics
+    ok 4 - E-17: budget-exhausted stays separate and does not fail CI or pass/fail statistics
+      ---
+      duration_ms: 0.366292
+      type: 'test'
+      ...
+    # Subtest: E-17 counts unresolved pending records at the budget boundary without fabricating proof
+    ok 5 - E-17 counts unresolved pending records at the budget boundary without fabricating proof
+      ---
+      duration_ms: 7.197916
+      type: 'test'
+      ...
+    # Subtest: exit 0 for an EMPTY batch (nothing ran, nothing failed)
+    ok 6 - exit 0 for an EMPTY batch (nothing ran, nothing failed)
+      ---
+      duration_ms: 0.090291
+      type: 'test'
+      ...
+    1..6
+ok 196 - E-00: the batch exit code is a mechanical fold over durable outcomes, suitable for a gate
+  ---
+  duration_ms: 11.134417
+  type: 'suite'
+  ...
+# Subtest: SDD eval fixtures can satisfy the required coverage gate
+    # Subtest: fibonacci-library declares c8 and a fingerprint-safe coverage runner
+    ok 1 - fibonacci-library declares c8 and a fingerprint-safe coverage runner
+      ---
+      duration_ms: 0.3955
+      type: 'test'
+      ...
+    # Subtest: tic-tac-toe declares c8 and a fingerprint-safe coverage runner
+    ok 2 - tic-tac-toe declares c8 and a fingerprint-safe coverage runner
+      ---
+      duration_ms: 0.077958
+      type: 'test'
+      ...
+    # Subtest: slugify-toolchain declares c8 and a fingerprint-safe coverage runner
+    ok 3 - slugify-toolchain declares c8 and a fingerprint-safe coverage runner
+      ---
+      duration_ms: 0.098333
+      type: 'test'
+      ...
+    # Subtest: broken-specs declares c8 and a fingerprint-safe coverage runner
+    ok 4 - broken-specs declares c8 and a fingerprint-safe coverage runner
+      ---
+      duration_ms: 0.034709
+      type: 'test'
+      ...
+    1..4
+ok 197 - SDD eval fixtures can satisfy the required coverage gate
+  ---
+  duration_ms: 1.049833
+  type: 'suite'
+  ...
+# [sdd-check] ERR_CLI_SDD_CHECK_BAD_INVOCATION
+#   object: sdd-check invocation
+#   reason: problem: choose exactly one mode | usage: gennady sdd-check (--task <ticket> [--authoring [--phase P<N>]] | --spec <path> --authoring | --all [project-root] | --changed [project-root])
+#   action: select one check mode and supply its exact path argument
+#   example: npx gennady sdd-check --spec specs/fibonacci/fibonacci.spec.md --authoring --format json
+# [sdd-migrate] ERR_CLI_SDD_MIGRATE_BAD_INVOCATION: unknown mode "" — supported: bootstrap, anchors, plan, ids, move
+#   expected: gennady sdd-migrate bootstrap [root] [--write]
+#         or: gennady sdd-migrate anchors (<ticket> | --all [root]) [--write]
+#         or: gennady sdd-migrate plan [root] [--write | --verify]
+#         or: gennady sdd-migrate ids [root] (--map <tsv> | --from-plan) [--write]
+#         or: gennady sdd-migrate move [root] --scope <scope> [--write]
+#   Without --write it is a dry-run (reports what it would change).
+# \# sdd-state v1
+# ROOT=/private/tmp/gennady-format-oct23.xNC5Zx/plan
+# FLOW_VERSION=v2
+# PORTAL=present\\tspecs/README.md
+# [READINESS]
+# STACK=node
+# STACK_SOURCE=marker:package.json
+# package.json\\t✔
+# \# required-script\\tdeclared
+# type-check\\t✔
+# test\\t✔
+# test:coverage\\t✔
+# format\\t✔
+# format:fix\\t✔
+# lint\\t✔
+# lint:fix\\t✔
+# fix\\t✔
+# lint→gennady\\t✔
+# check→verify-full\\t✔
+# gennady-installed\\t✔
+# READINESS=ready
+# AUTHORING_READY=no
+# EXECUTION_READY=yes
+# AUTHORING_SCOPE=infra-base\\tREADY=no
+# AUTHORING_SCOPE_DIAG=infra-base\\tscope 'infra-base': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=infra-base\\tscope 'infra-base': specs/infra-base/infra-base.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=infra-base\\tscope 'infra-base': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=infra-base\\trepair only scope 'infra-base' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=shared\\tREADY=no
+# AUTHORING_SCOPE_DIAG=shared\\tscope 'shared': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=shared\\tscope 'shared': specs/shared/shared.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=shared\\tscope 'shared': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=shared\\trepair only scope 'shared' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=cli\\tREADY=no
+# AUTHORING_SCOPE_DIAG=cli\\tscope 'cli': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=cli\\tscope 'cli': specs/cli/cli.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=cli\\tscope 'cli': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=cli\\trepair only scope 'cli' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=vcs\\tREADY=no
+# AUTHORING_SCOPE_DIAG=vcs\\tscope 'vcs': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=vcs\\tscope 'vcs': specs/vcs/vcs.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=vcs\\tscope 'vcs': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=vcs\\trepair only scope 'vcs' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=dbc\\tREADY=no
+# AUTHORING_SCOPE_DIAG=dbc\\tscope 'dbc': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=dbc\\tscope 'dbc': specs/dbc/dbc.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=dbc\\tscope 'dbc': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=dbc\\trepair only scope 'dbc' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=agent-mon\\tREADY=no
+# AUTHORING_SCOPE_DIAG=agent-mon\\tscope 'agent-mon': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=agent-mon\\tscope 'agent-mon': specs/agent-mon/agent-mon.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=agent-mon\\tscope 'agent-mon': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=agent-mon\\trepair only scope 'agent-mon' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=agent-mon-cli\\tREADY=no
+# AUTHORING_SCOPE_DIAG=agent-mon-cli\\tscope 'agent-mon-cli': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=agent-mon-cli\\tscope 'agent-mon-cli': specs/agent-mon-cli/agent-mon-cli.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=agent-mon-cli\\tscope 'agent-mon-cli': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=agent-mon-cli\\trepair only scope 'agent-mon-cli' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=infra-npm-publish\\tREADY=no
+# AUTHORING_SCOPE_DIAG=infra-npm-publish\\tscope 'infra-npm-publish': SCOPE_TYPE is not found
+# AUTHORING_SCOPE_DIAG=infra-npm-publish\\tscope 'infra-npm-publish': specs/infra-npm-publish/infra-npm-publish.spec.md schema is invalid (artifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0)
+# AUTHORING_SCOPE_DIAG=infra-npm-publish\\tscope 'infra-npm-publish': BOOTSTRAP_REQUIREMENTS is not found
+# AUTHORING_SCOPE_NEXT=infra-npm-publish\\trepair only scope 'infra-npm-publish' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=ai-skills\\tREADY=no
+# AUTHORING_SCOPE_DIAG=ai-skills\\tscope 'ai-skills': specs/ai-skills/ai-skills.spec.md schema is invalid (BOOTSTRAP_REQUIREMENTS columns are ambiguous: [\#, Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts])
+# AUTHORING_SCOPE_DIAG=ai-skills\\tscope 'ai-skills': BOOTSTRAP_REQUIREMENTS needs Readiness Gates and Gate Artifacts columns
+# AUTHORING_SCOPE_NEXT=ai-skills\\trepair only scope 'ai-skills' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=agent-run\\tREADY=no
+# AUTHORING_SCOPE_DIAG=agent-run\\tscope 'agent-run': specs/agent-run/agent-run.spec.md schema is invalid (BOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts])
+# AUTHORING_SCOPE_DIAG=agent-run\\tscope 'agent-run': BOOTSTRAP_REQUIREMENTS needs Readiness Gates and Gate Artifacts columns
+# AUTHORING_SCOPE_NEXT=agent-run\\trepair only scope 'agent-run' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=agent-inbox\\tREADY=no
+# AUTHORING_SCOPE_DIAG=agent-inbox\\tscope 'agent-inbox' is not approved in the portal
+# AUTHORING_SCOPE_NEXT=agent-inbox\\trepair only scope 'agent-inbox' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=mr-stats\\tREADY=no
+# AUTHORING_SCOPE_DIAG=mr-stats\\tscope 'mr-stats' is not approved in the portal
+# AUTHORING_SCOPE_NEXT=mr-stats\\trepair only scope 'mr-stats' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=peer\\tREADY=no
+# AUTHORING_SCOPE_DIAG=peer\\tscope 'peer': MODULE_MAP declares zero module specs
+# AUTHORING_SCOPE_DIAG=peer\\tscope 'peer': specs/peer/peer.spec.md schema is invalid (BOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts])
+# AUTHORING_SCOPE_DIAG=peer\\tscope 'peer': BOOTSTRAP_REQUIREMENTS needs Readiness Gates and Gate Artifacts columns
+# AUTHORING_SCOPE_NEXT=peer\\trepair only scope 'peer' through its owning spec flow, then rerun the same sdd-state command
+# AUTHORING_SCOPE=vcs-mr-view\\tREADY=no
+# AUTHORING_SCOPE_DIAG=vcs-mr-view\\tscope 'vcs-mr-view': MODULE_MAP declares zero module specs
+# AUTHORING_SCOPE_DIAG=vcs-mr-view\\tscope 'vcs-mr-view': specs/vcs-mr-view/vcs-mr-view.spec.md schema is invalid (BOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts])
+# AUTHORING_SCOPE_DIAG=vcs-mr-view\\tscope 'vcs-mr-view': BOOTSTRAP_REQUIREMENTS needs Readiness Gates and Gate Artifacts columns
+# AUTHORING_SCOPE_NEXT=vcs-mr-view\\trepair only scope 'vcs-mr-view' through its owning spec flow, then rerun the same sdd-state command
+# GATE_QUEUE=none
+# [SPEC_SCHEMA]
+# VERSION=sdd-v2
+# STATUS=invalid
+# invalid\\tspecs/agent-inbox/agent-inbox.spec.md\\tBOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts]
+# invalid\\tspecs/agent-mon-cli/agent-mon-cli.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon-cli/cmd/cmd.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon-cli/state/state.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon-cli/ui/ui.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon/agent-mon.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon/diff/diff.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon/model/model.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon/monitor/monitor.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon/observe/observe.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon/providers/claude/claude.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-mon/providers/opencode/opencode.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/agent-run/agent-run.spec.md\\tBOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts]
+# invalid\\tspecs/ai-skills/ai-skills.spec.md\\tBOOTSTRAP_REQUIREMENTS columns are ambiguous: [\#, Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts]
+# invalid\\tspecs/cli/agents-rules/agents-rules.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/cat/cat.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/cli.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/e2e/e2e.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=1, MODULE_VISION=1
+# invalid\\tspecs/cli/help/help.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/lint/lint.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/orient/orient.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/review/review.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/run/run.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/sdd-orient/sdd-orient.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/sync-skills/sync-skills.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/sync/sync.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/cli/update-check/update-check.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/dbc/dbc-linter/dbc-linter.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/dbc/dbc-parser/dbc-parser.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/dbc/dbc.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/infra-base/infra-base.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/infra-npm-publish/infra-npm-publish.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/mr-stats/mr-stats.spec.md\\tBOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts]
+# invalid\\tspecs/peer/peer.spec.md\\tBOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts]
+# invalid\\tspecs/shared/shared.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/vcs-mr-view/vcs-mr-view.spec.md\\tBOOTSTRAP_REQUIREMENTS columns are ambiguous: [Requirement, Kind, Owner, Resolution]; expected [Requirement, Kind, Owner, Resolution, Readiness Gates, Gate Artifacts]
+# invalid\\tspecs/vcs/vcs-cli/vcs-cli.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/vcs/vcs-client/vcs-client.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/vcs/vcs-github-cli/vcs-github-cli.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/vcs/vcs-mr-management/vcs-mr-management.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/vcs/vcs-reactions/vcs-reactions.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# invalid\\tspecs/vcs/vcs.spec.md\\tartifact kind is ambiguous: SCOPE_TYPE=0, MODULE_VISION=0
+# NEXT=repair each listed spec through its owning authoring flow; do not scaffold from ambiguous structural evidence
+# [SCOPES]
+# \# name\\ttype\\tstatus\\tdescription\\tspec
+# infra-base\\tinfrastructure\\tdone\\tNode.js 22+, npm, tsc, prettier, git-hooks (pre-commit), node:test, vite\\tspecs/infra-base/infra-base.spec.md
+# shared\\tinfrastructure\\tdone\\tФундаментальный слой: logger, parse-args, exec, files, style, xml, tokens, think, git-core\\tspecs/shared/shared.spec.md
+# cli\\tproduct\\tdone\\tCLI-модуль: lint, cat, review, run, help, orient, sync, e2e, agents-rules\\tspecs/cli/cli.spec.md
+# vcs\\tproduct\\tdone\\tVCS-клиент (GitLab + GitHub): Merge Requests, Discussions, Repository Files, Inbox (GraphQL). CLI: vcs-approve, vcs-diff, vcs-draft-note, vcs-job, vcs-job-log, vcs-pipeline, vcs-reply, vcs-todo, vcs-worktree\\tspecs/vcs/vcs.spec.md
+# dbc\\tlibrary\\tdone\\tDBC-фреймворк: парсинг и валидация текстовых контрактов\\tspecs/dbc/dbc.spec.md
+# agent-mon\\tlibrary\\tdone\\tПассивный мониторинг активных сессий AI-агентов через провайдеры\\tspecs/agent-mon/agent-mon.spec.md
+# agent-mon-cli\\tproduct\\tdone\\tTUI-дашборд для мониторинга сессий агентов (ink + React)\\tspecs/agent-mon-cli/agent-mon-cli.spec.md
+# infra-npm-publish\\tinfrastructure\\tdone\\tАвтоматизированная публикация npm-пакета через release-it\\tspecs/infra-npm-publish/infra-npm-publish.spec.md
+# ai-skills\\tlibrary\\tdone\\tAI-навыки для агентов: SDD-воркфлоу\\tspecs/ai-skills/ai-skills.spec.md
+# agent-run\\tlibrary\\tdone\\tЗапуск внешнего AI-движка (opencode первым) с заданием и директориями, readonly\\tspecs/agent-run/agent-run.spec.md
+# agent-inbox\\tproduct\\twip\\tЛокальный reviewer-assistant: полный review/cross-review, детерминированный coverage control loop, решения и реальные GitLab effects\\tspecs/agent-inbox/agent-inbox.spec.md
+# mr-stats\\tproduct\\twip\\tСтатистика по одному GitLab MR: классификация изменений, строки кода, сущности, дубликаты (awaiting setup sync)\\tspecs/mr-stats/mr-stats.spec.md
+# peer\\tproduct\\tdone\\tАгент-to-агент messaging между Claude Code / Codex / OpenCode через runtime-agnostic transport\\tspecs/peer/peer.spec.md
+# vcs-mr-view\\tproduct\\tdone\\tRead-only метаданные MR/PR по URL (title, description, reviewers, approvers, labels)\\tspecs/vcs-mr-view/vcs-mr-view.spec.md
+# [GRAPH]
+# уровень 0 (фундамент): infra-base
+# уровень 1: agent-mon, agent-run, dbc, infra-npm-publish, shared, vcs
+# уровень 2: agent-mon-cli, cli
+# уровень 3: ai-skills, mr-stats, peer, vcs-mr-view
+# уровень 4: agent-inbox
+# рёбра: agent-inbox → ai-skills, cli, infra-base, vcs · ai-skills → cli, infra-base · mr-stats → cli, dbc, infra-base, vcs · peer → cli, infra-base · vcs-mr-view → cli, vcs · agent-mon-cli → agent-mon, infra-base · cli → agent-run, dbc, infra-base, shared, vcs · agent-mon → infra-base · agent-run → infra-base · dbc → infra-base · infra-npm-publish → infra-base · shared → infra-base · vcs → infra-base
+# [PROBE]
+# CODE=present\\t1797 file(s)
+# code-dirs\\t., ai, cli, e2e, plugins, scripts, services, shared, test, utils
+# INFRA=present
+# configs\\ttsconfig.json, .prettierrc.json, vite.config.ts
+# [SUMMARY]
+# flow=v2
+# portal=present
+# readiness=ready
+# authoring-ready=no
+# execution-ready=yes
+# spec-schema=invalid
+# gate-queue=none
+# scopes=14
+# code=present
+# infra=present
+# 🏗 SDD v2.0.0-draft.1 · Gennady
+#   ✅ 1. Портал           specs/README.md — скоупов в графе: 14
+#   ⬜ 2. Скоупы           approved: 12 из 14
+#   ✅ 3. Модули           модульных спек: 32
+#   ✅ 4. Инфраструктура   гейты: type-check ✅ · test ✅ · lint ✅
+#   ⬜ 5. Задачи           тикетов: 1 · done: 0
+#   👉 Следующий шаг: написать и approve скоуп-спеку — /sdd
+# [!!! SESSION BOUNDARY — MUST REMEMBER !!!]
+# WORKING_DIR=/private/tmp/gennady-format-oct23.xNC5Zx/plan
+# TMP_DIR=/private/tmp/gennady-format-oct23.xNC5Zx/plan/.tmp
+# обязательные к запоминанию поля: WORKING_DIR, TMP_DIR
+# ЗАПОМНИ НА ВСЮ СЕССИЮ: работаешь только в WORKING_DIR; читать/писать вне WORKING_DIR и TMP_DIR запрещено; искать примеры вне них запрещено.
+# Subtest: E-06/E-07 (batch 22): fixture-detmig — migrator turns the red-first bar green
+    # Subtest: RED — the un-migrated fixture fails sdd-check on SDD_VERIFICATION_TABLE_INVALID (E-07 bar, before E-06)
+    ok 1 - RED — the un-migrated fixture fails sdd-check on SDD_VERIFICATION_TABLE_INVALID (E-07 bar, before E-06)
+      ---
+      duration_ms: 6.979791
+      type: 'test'
+      ...
+    # Subtest: the real migrator upgrades the table + marker + Round-1 shape (sdd-migrate anchors --write)
+    ok 2 - the real migrator upgrades the table + marker + Round-1 shape (sdd-migrate anchors --write)
+      ---
+      duration_ms: 1.593083
+      type: 'test'
+      ...
+    # Subtest: GREEN — the migrated ticket is accepted by sdd-check, and the migration bar itself flips to PASS (E-06 closes the loop L-15 opened)
+    ok 3 - GREEN — the migrated ticket is accepted by sdd-check, and the migration bar itself flips to PASS (E-06 closes the loop L-15 opened)
+      ---
+      duration_ms: 3.356916
+      type: 'test'
+      ...
+    1..3
+ok 198 - E-06/E-07 (batch 22): fixture-detmig — migrator turns the red-first bar green
+  ---
+  duration_ms: 698.270792
+  type: 'suite'
+  ...
+# Subtest: E-06 (batch 22): sdd-state prints the migrated project scope type ([SCOPES] column)
+    # Subtest: [SCOPES] carries the concrete type (library) for the migrated scope, per D-4/D-49 scope-type routing
+    ok 1 - [SCOPES] carries the concrete type (library) for the migrated scope, per D-4/D-49 scope-type routing
+      ---
+      duration_ms: 6.257875
+      type: 'test'
+      ...
+    1..1
+ok 199 - E-06 (batch 22): sdd-state prints the migrated project scope type ([SCOPES] column)
+  ---
+  duration_ms: 15.064083
+  type: 'suite'
+  ...
+# Subtest: GAP-E-1: a typo in `phase` or `mode` fails the load, never a silently different branch
+    # Subtest: an unknown `phase` value rejects loadScenarios, naming the field and scenario id
+    ok 1 - an unknown `phase` value rejects loadScenarios, naming the field and scenario id
+      ---
+      duration_ms: 17.6995
+      type: 'test'
+      ...
+    # Subtest: an unknown `mode` value rejects loadScenarios, naming the field and scenario id
+    ok 2 - an unknown `mode` value rejects loadScenarios, naming the field and scenario id
+      ---
+      duration_ms: 7.40125
+      type: 'test'
+      ...
+    # Subtest: a valid mode from a DIFFERENT phase, misapplied to brownfield, rejects at load time
+    ok 3 - a valid mode from a DIFFERENT phase, misapplied to brownfield, rejects at load time
+      ---
+      duration_ms: 7.009458
+      type: 'test'
+      ...
+    # Subtest: loadScenarios fails BEFORE any sandbox would be provisioned for later scenarios in the same batch
+    ok 4 - loadScenarios fails BEFORE any sandbox would be provisioned for later scenarios in the same batch
+      ---
+      duration_ms: 10.403584
+      type: 'test'
+      ...
+    # Subtest: all three spec-facing brownfield modes resolve to their OWN distinct prompt (no accidental sharing)
+    ok 5 - all three spec-facing brownfield modes resolve to their OWN distinct prompt (no accidental sharing)
+      ---
+      duration_ms: 0.717292
+      type: 'test'
+      ...
+    # Subtest: the two generic delta modes both resolve to the shared generic brownfield prompt, by design
+    ok 6 - the two generic delta modes both resolve to the shared generic brownfield prompt, by design
+      ---
+      duration_ms: 0.220791
+      type: 'test'
+      ...
+    # Subtest: composeSddPhasePrompt (the actual worker-facing entry point) throws for the same bad combination
+    ok 7 - composeSddPhasePrompt (the actual worker-facing entry point) throws for the same bad combination
+      ---
+      duration_ms: 0.470042
+      type: 'test'
+      ...
+    1..7
+ok 200 - GAP-E-1: a typo in `phase` or `mode` fails the load, never a silently different branch
+  ---
+  duration_ms: 46.889625
+  type: 'suite'
+  ...
+# Subtest: golang-slugify golden gate (both outcomes reproducible, E-11)
+    # Subtest: ACCEPTS a correct reference implementation (positive)
+    ok 1 - ACCEPTS a correct reference implementation (positive)
+      ---
+      duration_ms: 1880.9905
+      type: 'test'
+      ...
+    # Subtest: REJECTS a wrong implementation (negative)
+    ok 2 - REJECTS a wrong implementation (negative)
+      ---
+      duration_ms: 578.916583
+      type: 'test'
+      ...
+    # Subtest: REJECTS a missing slugify.go (negative)
+    ok 3 - REJECTS a missing slugify.go (negative)
+      ---
+      duration_ms: 31.330167
+      type: 'test'
+      ...
+    # Subtest: the fixture root itself stays a clean, buildable Go module (golden/*.tmpl never collides)
+    ok 4 - the fixture root itself stays a clean, buildable Go module (golden/*.tmpl never collides)
+      ---
+      duration_ms: 198.804166
+      type: 'test'
+      ...
+    1..4
+ok 201 - golang-slugify golden gate (both outcomes reproducible, E-11)
+  ---
+  duration_ms: 2861.649333
+  type: 'suite'
+  ...
+# Subtest: observer includes tool calls in its fingerprint so repeated bash loops are visible
+ok 202 - observer includes tool calls in its fingerprint so repeated bash loops are visible
+  ---
+  duration_ms: 1.5215
+  type: 'test'
+  ...
+# Subtest: observer does not sleep after the final bounded observation
+ok 203 - observer does not sleep after the final bounded observation
+  ---
+  duration_ms: 1.099583
+  type: 'test'
+  ...
+# Subtest: runner aborts a worker through the runtime after the first unchanged slice
+ok 204 - runner aborts a worker through the runtime after the first unchanged slice
+  ---
+  duration_ms: 1.149583
+  type: 'test'
+  ...
+# Subtest: runner aborts changing activity when the hard observation budget is exhausted
+ok 205 - runner aborts changing activity when the hard observation budget is exhausted
+  ---
+  duration_ms: 0.245292
+  type: 'test'
+  ...
+# Subtest: CLI rejects invalid observation controls before provisioning or SDK access
+ok 206 - CLI rejects invalid observation controls before provisioning or SDK access
+  ---
+  duration_ms: 3461.800292
+  type: 'test'
+  ...
+# Subtest: provisioner gives fixture scenarios unique isolated directories
+ok 207 - provisioner gives fixture scenarios unique isolated directories
+  ---
+  duration_ms: 23602.3175
+  type: 'test'
+  ...
+# Subtest: observer marks repeated bounded tails as stuck and records errors/waiting
+ok 208 - observer marks repeated bounded tails as stuck and records errors/waiting
+  ---
+  duration_ms: 1.233958
+  type: 'test'
+  ...
+# Subtest: observer aborts immediately when a worker reads installed Gennady bundles
+ok 209 - observer aborts immediately when a worker reads installed Gennady bundles
+  ---
+  duration_ms: 0.513917
+  type: 'test'
+  ...
+# Subtest: observer aborts an SDD CLI probe wrapped in stderr redirection
+ok 210 - observer aborts an SDD CLI probe wrapped in stderr redirection
+  ---
+  duration_ms: 0.359125
+  type: 'test'
+  ...
+# Subtest: one checker output filter does not make an otherwise progressing worker terminally stuck
+ok 211 - one checker output filter does not make an otherwise progressing worker terminally stuck
+  ---
+  duration_ms: 1.326375
+  type: 'test'
+  ...
+# Subtest: records the nine repeated full spec writes as a calibration metric
+ok 212 - records the nine repeated full spec writes as a calibration metric
+  ---
+  duration_ms: 0.661792
+  type: 'test'
+  ...
+# Subtest: maps every bounded P9 misunderstanding to an explicit tool signifier
+ok 213 - maps every bounded P9 misunderstanding to an explicit tool signifier
+  ---
+  duration_ms: 0.306208
+  type: 'test'
+  ...
+# Subtest: records the single P9.6 run as bounded calibration evidence
+ok 214 - records the single P9.6 run as bounded calibration evidence
+  ---
+  duration_ms: 0.493875
+  type: 'test'
+  ...
+# Subtest: judge receives bounded intent, state, diff, events and tail evidence
+ok 215 - judge receives bounded intent, state, diff, events and tail evidence
+  ---
+  duration_ms: 0.733625
+  type: 'test'
+  ...
+# Subtest: phase prompt selects the installed SDD flow and approval boundary
+ok 216 - phase prompt selects the installed SDD flow and approval boundary
+  ---
+  duration_ms: 0.606708
+  type: 'test'
+  ...
+# Subtest: runner runs small scenarios in bounded parallel batches and sends isolated judge evidence
+ok 217 - runner runs small scenarios in bounded parallel batches and sends isolated judge evidence
+  ---
+  duration_ms: 1.716916
+  type: 'test'
+  ...
+# Subtest: judge adapter produces typed result with configured model
+ok 218 - judge adapter produces typed result with configured model
+  ---
+  duration_ms: 0.120083
+  type: 'test'
+  ...
+# Subtest: judge parser does not turn an explicit FAIL rationale containing pass into success
+ok 219 - judge parser does not turn an explicit FAIL rationale containing pass into success
+  ---
+  duration_ms: 0.045
+  type: 'test'
+  ...
+# Subtest: judge parser accepts a labelled bold PASS even when rationale mentions an earlier FAIL
+ok 220 - judge parser accepts a labelled bold PASS even when rationale mentions an earlier FAIL
+  ---
+  duration_ms: 0.100875
+  type: 'test'
+  ...
+# Subtest: every SDK session call preserves its sandbox cwd and rejects a cross-sandbox prompt
+ok 221 - every SDK session call preserves its sandbox cwd and rejects a cross-sandbox prompt
+  ---
+  duration_ms: 7.2675
+  type: 'test'
+  ...
+# Subtest: SDK evidence includes bounded untracked artifacts omitted by OpenCode session.diff
+ok 222 - SDK evidence includes bounded untracked artifacts omitted by OpenCode session.diff
+  ---
+  duration_ms: 83.388
+  type: 'test'
+  ...
+# Subtest: SDK evidence includes bounded child-worker progress in the parent fingerprint
+ok 223 - SDK evidence includes bounded child-worker progress in the parent fingerprint
+  ---
+  duration_ms: 1.789042
+  type: 'test'
+  ...
+# Subtest: runner physically kills a worker that blows the wall-clock budget
+ok 224 - runner physically kills a worker that blows the wall-clock budget
+  ---
+  duration_ms: 22.047166
+  type: 'test'
+  ...
+# Subtest: infra task golden gates (both outcomes reproducible)
+    # Subtest: log-summary: ACCEPTS a correct reference (positive)
+    ok 1 - log-summary: ACCEPTS a correct reference (positive)
+      ---
+      duration_ms: 380.967125
+      type: 'test'
+      ...
+    # Subtest: log-summary: REJECTS a wrong implementation (negative)
+    ok 2 - log-summary: REJECTS a wrong implementation (negative)
+      ---
+      duration_ms: 236.792917
+      type: 'test'
+      ...
+    # Subtest: log-summary: REJECTS a missing artifact (negative)
+    ok 3 - log-summary: REJECTS a missing artifact (negative)
+      ---
+      duration_ms: 36.577708
+      type: 'test'
+      ...
+    # Subtest: rotate-logs: ACCEPTS a correct reference (positive)
+    ok 4 - rotate-logs: ACCEPTS a correct reference (positive)
+      ---
+      duration_ms: 340.054125
+      type: 'test'
+      ...
+    # Subtest: rotate-logs: REJECTS a wrong implementation (negative)
+    ok 5 - rotate-logs: REJECTS a wrong implementation (negative)
+      ---
+      duration_ms: 194.413792
+      type: 'test'
+      ...
+    # Subtest: rotate-logs: REJECTS a missing artifact (negative)
+    ok 6 - rotate-logs: REJECTS a missing artifact (negative)
+      ---
+      duration_ms: 23.601166
+      type: 'test'
+      ...
+    # Subtest: makefile: ACCEPTS a correct reference (positive)
+    ok 7 - makefile: ACCEPTS a correct reference (positive)
+      ---
+      duration_ms: 122.213833
+      type: 'test'
+      ...
+    # Subtest: makefile: REJECTS a wrong implementation (negative)
+    ok 8 - makefile: REJECTS a wrong implementation (negative)
+      ---
+      duration_ms: 25.023791
+      type: 'test'
+      ...
+    # Subtest: makefile: REJECTS a missing artifact (negative)
+    ok 9 - makefile: REJECTS a missing artifact (negative)
+      ---
+      duration_ms: 16.5835
+      type: 'test'
+      ...
+    1..9
+ok 225 - infra task golden gates (both outcomes reproducible)
+  ---
+  duration_ms: 1377.746459
+  type: 'suite'
+  ...
+# Subtest: V14-2d deterministic deviation injection golden
+    # Subtest: one retry-cap hole changes exactly one named outcome: one pending record, zero questions
+    ok 1 - one retry-cap hole changes exactly one named outcome: one pending record, zero questions
+      ---
+      duration_ms: 1.151459
+      type: 'test'
+      ...
+    # Subtest: rejects both an interactive question and a missing/duplicate pending record
+    ok 2 - rejects both an interactive question and a missing/duplicate pending record
+      ---
+      duration_ms: 0.487583
+      type: 'test'
+      ...
+    # Subtest: headless execute prompt distinguishes an agent-owned pending record from operator acceptance
+    ok 3 - headless execute prompt distinguishes an agent-owned pending record from operator acceptance
+      ---
+      duration_ms: 0.208583
+      type: 'test'
+      ...
+    1..3
+ok 226 - V14-2d deterministic deviation injection golden
+  ---
+  duration_ms: 2.41525
+  type: 'suite'
+  ...
+# abort-worker: interrupted (error)
+#   [diag] worker.error: operator signal
+#   trajectory → /var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-interrupted-result-pVA4Wg/sdd-flow-eval-owned-1qPEgS/.sdd-eval-trajectory.abort-worker.json (2 tools · 0/0 checkpoints green)
+#   trajectory gate: FAIL — interrupted path; retained for diagnosis only
+#   gate: FAIL
+#   results → /var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-interrupted-result-pVA4Wg/permanent/2026-10-25-abort-worker
+# Subtest: archives root and child trajectory on abort during worker before deleting its sandbox
+ok 227 - archives root and child trajectory on abort during worker before deleting its sandbox
+  ---
+  duration_ms: 303.642583
+  type: 'test'
+  ...
+# abort-judge: interrupted (error)
+#   [diag] worker.error: operator signal
+#   usage: total=0 (in=0 out=0 reason=0 cache r/w=0/0) cost=0.0000 msgs=0
+#   trajectory → /var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-interrupted-result-IBFW4a/sdd-flow-eval-owned-b1fwg8/.sdd-eval-trajectory.abort-judge.json (2 tools · 0/0 checkpoints green)
+#   trajectory gate: FAIL — interrupted path; retained for diagnosis only
+#   gate: FAIL
+#   results → /var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-interrupted-result-IBFW4a/permanent/2026-10-25-abort-judge
+# Subtest: archives root and child trajectory on abort during judge before deleting its sandbox
+ok 228 - archives root and child trajectory on abort during judge before deleting its sandbox
+  ---
+  duration_ms: 193.176708
+  type: 'test'
+  ...
+# abort-judge-error: worker-error (error)
+#   [diag] worker.error: judge unavailable
+#   usage: total=0 (in=0 out=0 reason=0 cache r/w=0/0) cost=0.0000 msgs=0
+#   trajectory → /var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-interrupted-result-PcMraw/sdd-flow-eval-owned-N0tCek/.sdd-eval-trajectory.abort-judge-error.json (2 tools · 0/0 checkpoints green)
+#   trajectory gate: pass — 2 tools; complete capture
+#   gate: FAIL
+#   results → /var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-interrupted-result-PcMraw/permanent/2026-10-25-abort-judge-error
+# Subtest: archives root and child trajectory on non-abort judge failure before deleting its sandbox
+ok 229 - archives root and child trajectory on non-abort judge failure before deleting its sandbox
+  ---
+  duration_ms: 153.375333
+  type: 'test'
+  ...
+# Subtest: policy observer abort fails even with green quality and no trajectory rules
+ok 230 - policy observer abort fails even with green quality and no trajectory rules
+  ---
+  duration_ms: 0.741375
+  type: 'test'
+  ...
+# Subtest: no-progress observer abort fails even with green quality and no trajectory rules
+ok 231 - no-progress observer abort fails even with green quality and no trajectory rules
+  ---
+  duration_ms: 0.176833
+  type: 'test'
+  ...
+# Subtest: cancels the exact owned server judge and awaits acknowledgment even when its prompt never settles
+ok 232 - cancels the exact owned server judge and awaits acknowledgment even when its prompt never settles
+  ---
+  duration_ms: 0.946083
+  type: 'test'
+  ...
+# Subtest: propagates an owned judge cancellation failure instead of accepting a verdict
+ok 233 - propagates an owned judge cancellation failure instead of accepting a verdict
+  ---
+  duration_ms: 0.279209
+  type: 'test'
+  ...
+# Subtest: aborts a judge created during the stop race without sending its prompt
+ok 234 - aborts a judge created during the stop race without sending its prompt
+  ---
+  duration_ms: 0.210375
+  type: 'test'
+  ...
+# Subtest: awaits result persistence before launching the next batch
+ok 235 - awaits result persistence before launching the next batch
+  ---
+  duration_ms: 1.578792
+  type: 'test'
+  ...
+# Subtest: propagates a result persistence failure only after pending sibling finalization
+ok 236 - propagates a result persistence failure only after pending sibling finalization
+  ---
+  duration_ms: 1.513583
+  type: 'test'
+  ...
+# Subtest: only the SDK public text channel can supply a judge verdict or rationale
+ok 237 - only the SDK public text channel can supply a judge verdict or rationale
+  ---
+  duration_ms: 0.822209
+  type: 'test'
+  ...
+# Subtest: E-21: the judge verdict is diagnostic only and never participates in the exit code
+    # Subtest: a judge `fail` verdict alone does NOT fail the batch when the deterministic gate passed
+    ok 1 - a judge `fail` verdict alone does NOT fail the batch when the deterministic gate passed
+      ---
+      duration_ms: 0.923708
+      type: 'test'
+      ...
+    # Subtest: a judge `inconclusive` verdict alone does NOT fail the batch either
+    ok 2 - a judge `inconclusive` verdict alone does NOT fail the batch either
+      ---
+      duration_ms: 0.212458
+      type: 'test'
+      ...
+    # Subtest: conversely, a judge `pass` verdict does NOT rescue a failed deterministic gate
+    ok 3 - conversely, a judge `pass` verdict does NOT rescue a failed deterministic gate
+      ---
+      duration_ms: 0.169375
+      type: 'test'
+      ...
+    # Subtest: E-13: the Go execute scenario obeys the same diagnostic-only judge boundary
+    ok 4 - E-13: the Go execute scenario obeys the same diagnostic-only judge boundary
+      ---
+      duration_ms: 0.135667
+      type: 'test'
+      ...
+    1..4
+ok 238 - E-21: the judge verdict is diagnostic only and never participates in the exit code
+  ---
+  duration_ms: 2.514042
+  type: 'suite'
+  ...
+# Subtest: parseVerdict
+    # Subtest: reads an explicit first-line VERDICT in either language and common decorations
+    ok 1 - reads an explicit first-line VERDICT in either language and common decorations
+      ---
+      duration_ms: 1.38475
+      type: 'test'
+      ...
+    # Subtest: never reads a described error as a failed run when no explicit verdict is given
+    ok 2 - never reads a described error as a failed run when no explicit verdict is given
+      ---
+      duration_ms: 0.0905
+      type: 'test'
+      ...
+    # Subtest: still fails when the judge explicitly says so, even amid success words
+    ok 3 - still fails when the judge explicitly says so, even amid success words
+      ---
+      duration_ms: 0.212458
+      type: 'test'
+      ...
+    # Subtest: does not promote quoted later verdicts or a prose prefix to a verdict
+    ok 4 - does not promote quoted later verdicts or a prose prefix to a verdict
+      ---
+      duration_ms: 0.424125
+      type: 'test'
+      ...
+    1..4
+ok 239 - parseVerdict
+  ---
+  duration_ms: 3.185417
+  type: 'suite'
+  ...
+# Subtest: migration trajectory
+    # Subtest: a correct migration run satisfies every path rule
+    ok 1 - a correct migration run satisfies every path rule
+      ---
+      duration_ms: 2.038
+      type: 'test'
+      ...
+    # Subtest: rejects a run that left a Critic Rounds section (specs-clean checkpoint red)
+    ok 2 - rejects a run that left a Critic Rounds section (specs-clean checkpoint red)
+      ---
+      duration_ms: 0.4495
+      type: 'test'
+      ...
+    # Subtest: rejects a run that touched the golden reference
+    ok 3 - rejects a run that touched the golden reference
+      ---
+      duration_ms: 0.107875
+      type: 'test'
+      ...
+    # Subtest: rejects a run that generated files wholesale between plan-verified and specs-clean
+    ok 4 - rejects a run that generated files wholesale between plan-verified and specs-clean
+      ---
+      duration_ms: 0.087042
+      type: 'test'
+      ...
+    1..4
+ok 240 - migration trajectory
+  ---
+  duration_ms: 4.048084
+  type: 'suite'
+  ...
+# Subtest: migration-grade (literal A1 identity comparator)
+    # Subtest: parseFindingHistogram counts each code across errors and warnings
+    ok 1 - parseFindingHistogram counts each code across errors and warnings
+      ---
+      duration_ms: 1.067708
+      type: 'test'
+      ...
+    # Subtest: v2 + only pre-existing findings (unchanged vs baseline) → PASS, nothing introduced
+    ok 2 - v2 + only pre-existing findings (unchanged vs baseline) → PASS, nothing introduced
+      ---
+      duration_ms: 0.521042
+      type: 'test'
+      ...
+    # Subtest: a NEW critical structural finding (broken spec ref) fails the migration
+    ok 3 - a NEW critical structural finding (broken spec ref) fails the migration
+      ---
+      duration_ms: 0.108583
+      type: 'test'
+      ...
+    # Subtest: a NEW content-debt error fails literal A1 by code+file identity
+    ok 4 - a NEW content-debt error fails literal A1 by code+file identity
+      ---
+      duration_ms: 0.099458
+      type: 'test'
+      ...
+    # Subtest: a NEW warning + v2 → PASS — warnings are backlog
+    ok 5 - a NEW warning + v2 → PASS — warnings are backlog
+      ---
+      duration_ms: 0.056167
+      type: 'test'
+      ...
+    # Subtest: not v2 → FAIL even with zero new findings
+    ok 6 - not v2 → FAIL even with zero new findings
+      ---
+      duration_ms: 0.042
+      type: 'test'
+      ...
+    # Subtest: identity comparison permits a smaller occurrence count only at already-known files
+    ok 7 - identity comparison permits a smaller occurrence count only at already-known files
+      ---
+      duration_ms: 0.052792
+      type: 'test'
+      ...
+    # Subtest: same code and count at a different file is a NEW error identity
+    ok 8 - same code and count at a different file is a NEW error identity
+      ---
+      duration_ms: 0.097791
+      type: 'test'
+      ...
+    1..8
+ok 241 - migration-grade (literal A1 identity comparator)
+  ---
+  duration_ms: 2.731584
+  type: 'suite'
+  ...
+# Subtest: E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / SDD_COVERAGE_POLICY_INVALID are migration-critical
+    # Subtest: RED — on the un-migrated (anchors-only) corpus, the bar fails BEFORE the migrator gains table-upgrade capability (E-06)
+    ok 1 - RED — on the un-migrated (anchors-only) corpus, the bar fails BEFORE the migrator gains table-upgrade capability (E-06)
+      ---
+      duration_ms: 0.287458
+      type: 'test'
+      ...
+    # Subtest: RED — a migrator that half-applies the coverage schema (marker present, fields wrong) also fails the bar
+    ok 2 - RED — a migrator that half-applies the coverage schema (marker present, fields wrong) also fails the bar
+      ---
+      duration_ms: 0.204375
+      type: 'test'
+      ...
+    # Subtest: GREEN would follow once the migrator upgrades the table (not this task — proves the bar is not a tautology)
+    ok 3 - GREEN would follow once the migrator upgrades the table (not this task — proves the bar is not a tautology)
+      ---
+      duration_ms: 0.05525
+      type: 'test'
+      ...
+    # Subtest: RED (fixed by B-2) — pre-existing (baseline) occurrences of either code are NOT backlog: unfixed means unusable
+    ok 4 - RED (fixed by B-2) — pre-existing (baseline) occurrences of either code are NOT backlog: unfixed means unusable
+      ---
+      duration_ms: 0.145083
+      type: 'test'
+      ...
+    # Subtest: GREEN counterpart — the same baseline, but `after` is truly clean of both codes → PASS
+    ok 5 - GREEN counterpart — the same baseline, but `after` is truly clean of both codes → PASS
+      ---
+      duration_ms: 0.048875
+      type: 'test'
+      ...
+    # Subtest: a SHRUNK-but-nonzero executability count still fails — partial fixes are not fixes
+    ok 6 - a SHRUNK-but-nonzero executability count still fails — partial fixes are not fixes
+      ---
+      duration_ms: 0.041459
+      type: 'test'
+      ...
+    1..6
+ok 242 - E-07 (batch 22, red-first per L-15): SDD_VERIFICATION_TABLE_INVALID / SDD_COVERAGE_POLICY_INVALID are migration-critical
+  ---
+  duration_ms: 0.898875
+  type: 'suite'
+  ...
+# Subtest: migration ladder — locked trajectory rules
+    # Subtest: portal: flips to v2, bounded, no archaeology
+    ok 1 - portal: flips to v2, bounded, no archaeology
+      ---
+      duration_ms: 0.841667
+      type: 'test'
+      ...
+    # Subtest: portal + scope: flips to v2 (Critic Rounds dropped), bounded, no archaeology
+    ok 2 - portal + scope: flips to v2 (Critic Rounds dropped), bounded, no archaeology
+      ---
+      duration_ms: 0.414792
+      type: 'test'
+      ...
+    # Subtest: portal + scope + module: flips to v2, bounded, no archaeology
+    ok 3 - portal + scope + module: flips to v2, bounded, no archaeology
+      ---
+      duration_ms: 0.346667
+      type: 'test'
+      ...
+    1..3
+ok 243 - migration ladder — locked trajectory rules
+  ---
+  duration_ms: 2.161583
+  type: 'suite'
+  ...
+# Subtest: authoring workers cannot read benchmark reference answers/oracles from the installed package
+ok 244 - authoring workers cannot read benchmark reference answers/oracles from the installed package
+  ---
+  duration_ms: 240.964584
+  type: 'test'
+  ...
+# Subtest: provisioned sandbox uses the fresh local dist (not a package, not stale)
+    # Subtest: materializes the local built dist and a bin shim that execs it
+    ok 1 - materializes the local built dist and a bin shim that execs it
+      ---
+      duration_ms: 50.116042
+      type: 'test'
+      ...
+    # Subtest: REFRESHES a stale sandbox dist on re-provision (no blanket skip)
+    ok 2 - REFRESHES a stale sandbox dist on re-provision (no blanket skip)
+      ---
+      duration_ms: 161.656416
+      type: 'test'
+      ...
+    # Subtest: shares one physical dependency store across generated scenarios through verified symlinks
+    ok 3 - shares one physical dependency store across generated scenarios through verified symlinks
+      ---
+      duration_ms: 426.426125
+      type: 'test'
+      ...
+    # Subtest: fails closed on installed-lock mismatch before creating a scenario directory
+    ok 4 - fails closed on installed-lock mismatch before creating a scenario directory
+      ---
+      duration_ms: 4.734917
+      type: 'test'
+      ...
+    # Subtest: rejects an unowned dependency lease before creating a store or sandbox
+    ok 5 - rejects an unowned dependency lease before creating a store or sandbox
+      ---
+      duration_ms: 3.421
+      type: 'test'
+      ...
+    # Subtest: fails closed when an existing content-addressed store has mismatched metadata
+    ok 6 - fails closed when an existing content-addressed store has mismatched metadata
+      ---
+      duration_ms: 52.714792
+      type: 'test'
+      ...
+    # Subtest: removes every owned directory when a later scenario fails during setup
+    ok 7 - removes every owned directory when a later scenario fails during setup
+      ---
+      duration_ms: 252.475125
+      type: 'test'
+      ...
+    # Subtest: cleans a just-created sandbox when ownership callback rejects the transfer
+    ok 8 - cleans a just-created sandbox when ownership callback rejects the transfer
+      ---
+      duration_ms: 17.141958
+      type: 'test'
+      ...
+    # Subtest: defers setup-failure cleanup so the outer lifecycle compacts partial evidence first
+    ok 9 - defers setup-failure cleanup so the outer lifecycle compacts partial evidence first
+      ---
+      duration_ms: 291.744625
+      type: 'test'
+      ...
+    1..9
+ok 245 - provisioned sandbox uses the fresh local dist (not a package, not stale)
+  ---
+  duration_ms: 1261.162167
+  type: 'suite'
+  ...
+# Subtest: parseSddCheckResult (R1, both outcomes)
+    # Subtest: declared task checkpoints are a mechanical quality bar, not the judge or trace presence
+    ok 1 - declared task checkpoints are a mechanical quality bar, not the judge or trace presence
+      ---
+      duration_ms: 1.464083
+      type: 'test'
+      ...
+# fatal: not a git repository (or any of the parent directories): .git
+# fatal: not a git repository (or any of the parent directories): .git
+# fatal: not a git repository (or any of the parent directories): .git
+# fatal: not a git repository (or any of the parent directories): .git
+# fatal: not a git repository (or any of the parent directories): .git
+# fatal: not a git repository (or any of the parent directories): .git
+# fatal: not a git repository (or any of the parent directories): .git
+    # Subtest: a real nonzero checker exit wins over a zero-error stdout summary
+    ok 2 - a real nonzero checker exit wins over a zero-error stdout summary
+      ---
+      duration_ms: 246.635625
+      type: 'test'
+      ...
+    # Subtest: PASS on a clean summary
+    ok 3 - PASS on a clean summary
+      ---
+      duration_ms: 0.7045
+      type: 'test'
+      ...
+    # Subtest: FAIL on an error summary, carrying the count
+    ok 4 - FAIL on an error summary, carrying the count
+      ---
+      duration_ms: 0.174666
+      type: 'test'
+      ...
+    # Subtest: PASS on the real-repo "0 error(s), N warning(s)" summary (sdd-check calls this clean)
+    ok 5 - PASS on the real-repo "0 error(s), N warning(s)" summary (sdd-check calls this clean)
+      ---
+      duration_ms: 0.113583
+      type: 'test'
+      ...
+    # Subtest: PASS on "0 error(s), 0 warning(s)" too (same real-repo line shape, zero of both)
+    ok 6 - PASS on "0 error(s), 0 warning(s)" too (same real-repo line shape, zero of both)
+      ---
+      duration_ms: 0.064083
+      type: 'test'
+      ...
+    # Subtest: FAIL when "✅ clean" co-occurs with a real error count (clean must not mask errors)
+    ok 7 - FAIL when "✅ clean" co-occurs with a real error count (clean must not mask errors)
+      ---
+      duration_ms: 0.112041
+      type: 'test'
+      ...
+    # Subtest: FAIL when "clean — N file(s)" co-occurs with a real error count (clean must not mask errors)
+    ok 8 - FAIL when "clean — N file(s)" co-occurs with a real error count (clean must not mask errors)
+      ---
+      duration_ms: 0.101417
+      type: 'test'
+      ...
+    # Subtest: FAIL (not a silent pass) when no verdict is present
+    ok 9 - FAIL (not a silent pass) when no verdict is present
+      ---
+      duration_ms: 0.169
+      type: 'test'
+      ...
+    1..9
+ok 246 - parseSddCheckResult (R1, both outcomes)
+  ---
+  duration_ms: 251.223209
+  type: 'suite'
+  ...
+# Subtest: checkCompletion (R-COMPLETE, both outcomes, from disk)
+    # Subtest: PASS when artifact + DONE + closed round + both receipts (valid verdict + signature)
+    ok 1 - PASS when artifact + DONE + closed round + both receipts (valid verdict + signature)
+      ---
+      duration_ms: 20.067584
+      type: 'test'
+      ...
+    # Subtest: FAIL (abandoned) when artifact built but ticket TODO + open round
+    ok 2 - FAIL (abandoned) when artifact built but ticket TODO + open round
+      ---
+      duration_ms: 45.8945
+      type: 'test'
+      ...
+    # Subtest: FAIL when the group audit receipt is missing (skipped audit)
+    ok 3 - FAIL when the group audit receipt is missing (skipped audit)
+      ---
+      duration_ms: 41.63725
+      type: 'test'
+      ...
+    # Subtest: FAIL when the declared artifact was never produced
+    ok 4 - FAIL when the declared artifact was never produced
+      ---
+      duration_ms: 1.355166
+      type: 'test'
+      ...
+    # Subtest: B-3: receipts require an explicit verdict and distinguishable, current provenance
+        # Subtest: FAIL when the audit receipt carries a non-PASS verdict (a self-attested "FAIL" must not pass R-COMPLETE)
+        ok 1 - FAIL when the audit receipt carries a non-PASS verdict (a self-attested "FAIL" must not pass R-COMPLETE)
+          ---
+          duration_ms: 52.238167
+          type: 'test'
+          ...
+        # Subtest: FAIL when a receipt is pasted under the wrong marker (kind mismatch — indistinguishable provenance)
+        ok 2 - FAIL when a receipt is pasted under the wrong marker (kind mismatch — indistinguishable provenance)
+          ---
+          duration_ms: 20.928875
+          type: 'test'
+          ...
+        # Subtest: FAIL when the receipt is stale — signed against a ticket state that has since changed (new Round)
+        ok 3 - FAIL when the receipt is stale — signed against a ticket state that has since changed (new Round)
+          ---
+          duration_ms: 21.259083
+          type: 'test'
+          ...
+        # Subtest: FAIL when the receipt block is not valid JSON (a hand-pasted placeholder, not a CLI-written fact)
+        ok 4 - FAIL when the receipt block is not valid JSON (a hand-pasted placeholder, not a CLI-written fact)
+          ---
+          duration_ms: 17.332292
+          type: 'test'
+          ...
+        1..4
+    ok 5 - B-3: receipts require an explicit verdict and distinguishable, current provenance
+      ---
+      duration_ms: 111.917791
+      type: 'suite'
+      ...
+    # Subtest: B-3: the declared artifact must actually change vs. the sandbox root commit (git-aware)
+        # Subtest: FAIL when the artifact is untouched since the root commit (the provisioned stub, not real work)
+        ok 1 - FAIL when the artifact is untouched since the root commit (the provisioned stub, not real work)
+          ---
+          duration_ms: 130.7425
+          type: 'test'
+          ...
+        # Subtest: artifact IS counted as produced once it differs from the root commit (uncommitted change)
+        ok 2 - artifact IS counted as produced once it differs from the root commit (uncommitted change)
+          ---
+          duration_ms: 98.732417
+          type: 'test'
+          ...
+        # Subtest: artifact IS counted as produced when the change was committed on top of the root commit
+        ok 3 - artifact IS counted as produced when the change was committed on top of the root commit
+          ---
+          duration_ms: 190.960584
+          type: 'test'
+          ...
+        1..3
+    ok 6 - B-3: the declared artifact must actually change vs. the sandbox root commit (git-aware)
+      ---
+      duration_ms: 420.994041
+      type: 'suite'
+      ...
+    1..6
+ok 247 - checkCompletion (R-COMPLETE, both outcomes, from disk)
+  ---
+  duration_ms: 642.141541
+  type: 'suite'
+  ...
+# Subtest: binds experiments to tracked, untracked, scenario and configuration inputs without following aliases
+ok 248 - binds experiments to tracked, untracked, scenario and configuration inputs without following aliases
+  ---
+  duration_ms: 402.673625
+  type: 'test'
+  ...
+# Subtest: GAP-E-6: persistDurableResult writes a real, permanent per-scenario directory
+    # Subtest: atomically reserves eight concurrent same-scenario results without mixing or overwriting evidence
+    ok 1 - atomically reserves eight concurrent same-scenario results without mixing or overwriting evidence
+      ---
+      duration_ms: 79.820625
+      type: 'test'
+      ...
+    # Subtest: preserves incomplete reservations and propagates filesystem errors instead of retrying them
+    ok 2 - preserves incomplete reservations and propagates filesystem errors instead of retrying them
+      ---
+      duration_ms: 10.04275
+      type: 'test'
+      ...
+    # Subtest: keeps exact authored specs after sandbox deletion and refuses alias snapshots
+    ok 3 - keeps exact authored specs after sandbox deletion and refuses alias snapshots
+      ---
+      duration_ms: 17.930458
+      type: 'test'
+      ...
+    # Subtest: persists trajectory outside the disposable source and rejects missing required evidence
+    ok 4 - persists trajectory outside the disposable source and rejects missing required evidence
+      ---
+      duration_ms: 10.785291
+      type: 'test'
+      ...
+    # Subtest: writes summary.json (pretty JSON) and judge.md into <date>-<scenarioId>/
+    ok 5 - writes summary.json (pretty JSON) and judge.md into <date>-<scenarioId>/
+      ---
+      duration_ms: 10.878792
+      type: 'test'
+      ...
+    # Subtest: a same-day same-scenario re-run gets a -2 suffix, never overwrites the first
+    ok 6 - a same-day same-scenario re-run gets a -2 suffix, never overwrites the first
+      ---
+      duration_ms: 16.510125
+      type: 'test'
+      ...
+    # Subtest: works without a judgeFile (task-phase scenarios have no judge)
+    ok 7 - works without a judgeFile (task-phase scenarios have no judge)
+      ---
+      duration_ms: 3.083416
+      type: 'test'
+      ...
+    1..7
+ok 249 - GAP-E-6: persistDurableResult writes a real, permanent per-scenario directory
+  ---
+  duration_ms: 149.771834
+  type: 'suite'
+  ...
+# Subtest: GAP-E-6: readAllDurableSummaries
+    # Subtest: reads every summary.json under the results root, sorted by directory name
+    ok 1 - reads every summary.json under the results root, sorted by directory name
+      ---
+      duration_ms: 5.584291
+      type: 'test'
+      ...
+    # Subtest: returns [] for a missing results root (no throw)
+    ok 2 - returns [] for a missing results root (no throw)
+      ---
+      duration_ms: 0.598666
+      type: 'test'
+      ...
+    # Subtest: skips a malformed summary.json instead of failing the whole read
+    ok 3 - skips a malformed summary.json instead of failing the whole read
+      ---
+      duration_ms: 3.555833
+      type: 'test'
+      ...
+    1..3
+ok 250 - GAP-E-6: readAllDurableSummaries
+  ---
+  duration_ms: 9.955208
+  type: 'suite'
+  ...
+# Subtest: GAP-E-6: resolveGitSha
+    # Subtest: resolves the real HEAD sha for this checkout
+    ok 1 - resolves the real HEAD sha for this checkout
+      ---
+      duration_ms: 49.428042
+      type: 'test'
+      ...
+    # Subtest: returns undefined (never throws) outside a git checkout
+    ok 2 - returns undefined (never throws) outside a git checkout
+      ---
+      duration_ms: 22.837166
+      type: 'test'
+      ...
+    1..2
+ok 251 - GAP-E-6: resolveGitSha
+  ---
+  duration_ms: 73.034541
+  type: 'suite'
+  ...
+# Subtest: GAP-E-6: appendExperimentLogStub (one append-only stub per run)
+    # Subtest: does not present judge pass as mechanical pass when a required checkpoint failed
+    ok 1 - does not present judge pass as mechanical pass when a required checkpoint failed
+      ---
+      duration_ms: 1.713959
+      type: 'test'
+      ...
+    # Subtest: appends a stub block with mechanical numbers filled in and prose placeholders left blank
+    ok 2 - appends a stub block with mechanical numbers filled in and prose placeholders left blank
+      ---
+      duration_ms: 1.413917
+      type: 'test'
+      ...
+    # Subtest: two runs append two separate blocks, in order, never overwriting the first
+    ok 3 - two runs append two separate blocks, in order, never overwriting the first
+      ---
+      duration_ms: 4.582208
+      type: 'test'
+      ...
+    # Subtest: returns undefined (never throws) when the log file does not exist
+    ok 4 - returns undefined (never throws) when the log file does not exist
+      ---
+      duration_ms: 0.558917
+      type: 'test'
+      ...
+    1..4
+ok 252 - GAP-E-6: appendExperimentLogStub (one append-only stub per run)
+  ---
+  duration_ms: 9.471083
+  type: 'suite'
+  ...
+# Subtest: GAP-E-6/SO-5: relativeResultDir (never leak the operator home-directory path)
+    # Subtest: turns an absolute result dir into a path relative to gennadyRoot
+    ok 1 - turns an absolute result dir into a path relative to gennadyRoot
+      ---
+      duration_ms: 0.247375
+      type: 'test'
+      ...
+    # Subtest: matches what cli.ts actually does end to end: persistDurableResult + relativize
+    ok 2 - matches what cli.ts actually does end to end: persistDurableResult + relativize
+      ---
+      duration_ms: 4.378042
+      type: 'test'
+      ...
+    1..2
+ok 253 - GAP-E-6/SO-5: relativeResultDir (never leak the operator home-directory path)
+  ---
+  duration_ms: 5.501792
+  type: 'suite'
+  ...
+# Subtest: E-15: v1-layout routing lock (ai/inspector/core parser, both-way)
+    # Subtest: router.directive.xml routes a v1 flow-version into migration-v1-v2.directive.xml
+    ok 1 - router.directive.xml routes a v1 flow-version into migration-v1-v2.directive.xml
+      ---
+      duration_ms: 3.844167
+      type: 'test'
+      ...
+    # Subtest: both-way: removing the READ_AND_USE_DIRECTIVE call from that one branch makes the lock fail
+    ok 2 - both-way: removing the READ_AND_USE_DIRECTIVE call from that one branch makes the lock fail
+      ---
+      duration_ms: 2.792041
+      type: 'test'
+      ...
+    1..2
+ok 254 - E-15: v1-layout routing lock (ai/inspector/core parser, both-way)
+  ---
+  duration_ms: 7.245916
+  type: 'suite'
+  ...
+# Subtest: E-15: go.mod → golang-stack routing lock (plugins/golang, both-way)
+    # Subtest: a repo with go.mod is detected as the golang stack
+    ok 1 - a repo with go.mod is detected as the golang stack
+      ---
+      duration_ms: 3.701333
+      type: 'test'
+      ...
+    # Subtest: both-way: a repo WITHOUT go.mod is never detected as the golang stack
+    ok 2 - both-way: a repo WITHOUT go.mod is never detected as the golang stack
+      ---
+      duration_ms: 1.266209
+      type: 'test'
+      ...
+    1..2
+ok 255 - E-15: go.mod → golang-stack routing lock (plugins/golang, both-way)
+  ---
+  duration_ms: 5.177
+  type: 'suite'
+  ...
+# Subtest: cooperative abort stops the active worker and returns without waiting for observation cadence
+ok 256 - cooperative abort stops the active worker and returns without waiting for observation cadence
+  ---
+  duration_ms: 1.337792
+  type: 'test'
+  ...
+# Subtest: a pre-aborted signal creates no session and sends no prompt
+ok 257 - a pre-aborted signal creates no session and sends no prompt
+  ---
+  duration_ms: 0.122583
+  type: 'test'
+  ...
+# Subtest: an abort in one batch prevents the next batch from creating a session
+ok 258 - an abort in one batch prevents the next batch from creating a session
+  ---
+  duration_ms: 0.23075
+  type: 'test'
+  ...
+# Subtest: sandbox lifecycle (extract artifacts, then tear down)
+    # Subtest: collectSpecFiles finds worker specs and skips provisioned scaffolding
+    ok 1 - collectSpecFiles finds worker specs and skips provisioned scaffolding
+      ---
+      duration_ms: 6.145916
+      type: 'test'
+      ...
+    # Subtest: collectSpecFiles returns [] for a missing directory (no throw)
+    ok 2 - collectSpecFiles returns [] for a missing directory (no throw)
+      ---
+      duration_ms: 0.384167
+      type: 'test'
+      ...
+    # Subtest: persistRunArtifacts copies specs + judge and writes summary.json (outside the sandbox)
+    ok 3 - persistRunArtifacts copies specs + judge and writes summary.json (outside the sandbox)
+      ---
+      duration_ms: 12.123208
+      type: 'test'
+      ...
+    # Subtest: teardownSandboxDirectories removes dirs and tolerates missing ones
+    ok 4 - teardownSandboxDirectories removes dirs and tolerates missing ones
+      ---
+      duration_ms: 2.339959
+      type: 'test'
+      ...
+    # Subtest: compacts evidence before cleanup on success
+    ok 5 - compacts evidence before cleanup on success
+      ---
+      duration_ms: 11.144875
+      type: 'test'
+      ...
+    # Subtest: compacts evidence before cleanup on failure
+    ok 6 - compacts evidence before cleanup on failure
+      ---
+      duration_ms: 11.47625
+      type: 'test'
+      ...
+    # Subtest: keeps a failed cleanup pending and retries it without duplicating evidence
+    ok 7 - keeps a failed cleanup pending and retries it without duplicating evidence
+      ---
+      duration_ms: 12.138291
+      type: 'test'
+      ...
+    # Subtest: never cleans or retains before failed evidence compaction (keep=false)
+    ok 8 - never cleans or retains before failed evidence compaction (keep=false)
+      ---
+      duration_ms: 22.976125
+      type: 'test'
+      ...
+    # Subtest: never cleans or retains before failed evidence compaction (keep=true)
+    ok 9 - never cleans or retains before failed evidence compaction (keep=true)
+      ---
+      duration_ms: 24.961792
+      type: 'test'
+      ...
+    # Subtest: bounds debug retention and removes overflow sandboxes
+    ok 10 - bounds debug retention and removes overflow sandboxes
+      ---
+      duration_ms: 36.86575
+      type: 'test'
+      ...
+    # Subtest: expires marker-owned debug sandboxes by age
+    ok 11 - expires marker-owned debug sandboxes by age
+      ---
+      duration_ms: 3.305792
+      type: 'test'
+      ...
+    # Subtest: bounds transient evidence by age and count without touching a protected run
+    ok 12 - bounds transient evidence by age and count without touching a protected run
+      ---
+      duration_ms: 3.593042
+      type: 'test'
+      ...
+    # Subtest: expires transient evidence by age even below the count boundary
+    ok 13 - expires transient evidence by age even below the count boundary
+      ---
+      duration_ms: 1.757417
+      type: 'test'
+      ...
+    # Subtest: rejects paths outside the exact owned sandbox boundary
+    ok 14 - rejects paths outside the exact owned sandbox boundary
+      ---
+      duration_ms: 1.003625
+      type: 'test'
+      ...
+    # Subtest: refuses to place transient retention inside permanent results
+    ok 15 - refuses to place transient retention inside permanent results
+      ---
+      duration_ms: 1.746291
+      type: 'test'
+      ...
+    1..15
+ok 259 - sandbox lifecycle (extract artifacts, then tear down)
+  ---
+  duration_ms: 153.269917
+  type: 'suite'
+  ...
+# Subtest: eval sandbox script (deterministic prepare/clean)
+    # Subtest: prepare creates a fresh sandbox root under TMPDIR
+    ok 1 - prepare creates a fresh sandbox root under TMPDIR
+      ---
+      duration_ms: 287.838292
+      type: 'test'
+      ...
+    # Subtest: clean --dry lists sandbox roots but removes nothing
+    ok 2 - clean --dry lists sandbox roots but removes nothing
+      ---
+      duration_ms: 184.2405
+      type: 'test'
+      ...
+    # Subtest: clean removes sandbox roots (recursive)
+    ok 3 - clean removes sandbox roots (recursive)
+      ---
+      duration_ms: 218.442208
+      type: 'test'
+      ...
+    # Subtest: clean removes hand-created gen-* roots (the prefix that once leaked to /private/tmp)
+    ok 4 - clean removes hand-created gen-* roots (the prefix that once leaked to /private/tmp)
+      ---
+      duration_ms: 227.786791
+      type: 'test'
+      ...
+    # Subtest: clean sweeps multiple --root directories in one pass
+    ok 5 - clean sweeps multiple --root directories in one pass
+      ---
+      duration_ms: 170.605583
+      type: 'test'
+      ...
+    # Subtest: clean never touches non-sandbox directories
+    ok 6 - clean never touches non-sandbox directories
+      ---
+      duration_ms: 210.157292
+      type: 'test'
+      ...
+    # Subtest: dependencies requires an explicit root and creates nothing on rejection
+    ok 7 - dependencies requires an explicit root and creates nothing on rejection
+      ---
+      duration_ms: 176.46525
+      type: 'test'
+      ...
+    # Subtest: dependencies with a root is a read-only report by default
+    ok 8 - dependencies with a root is a read-only report by default
+      ---
+      duration_ms: 203.604583
+      type: 'test'
+      ...
+    # Subtest: dependencies --clean removes inactive stores but preserves active and quarantined stores
+    ok 9 - dependencies --clean removes inactive stores but preserves active and quarantined stores
+      ---
+      duration_ms: 207.603042
+      type: 'test'
+      ...
+    # Subtest: rejects an unknown command with a nonzero exit
+    ok 10 - rejects an unknown command with a nonzero exit
+      ---
+      duration_ms: 182.799083
+      type: 'test'
+      ...
+    1..10
+ok 260 - eval sandbox script (deterministic prepare/clean)
+  ---
+  duration_ms: 2070.774708
+  type: 'suite'
+  ...
+# Subtest: scenarios.json declares completion/acceptance for every scenario (E-02)
+    # Subtest: the canonical suite is non-empty
+    ok 1 - the canonical suite is non-empty
+      ---
+      duration_ms: 0.643667
+      type: 'test'
+      ...
+    # Subtest: fibonacci-library: declares acceptance or R-COMPLETE completion
+    ok 2 - fibonacci-library: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.064167
+      type: 'test'
+      ...
+    # Subtest: tic-tac-toe: declares acceptance or R-COMPLETE completion
+    ok 3 - tic-tac-toe: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.032334
+      type: 'test'
+      ...
+    # Subtest: slugify-toolchain: declares acceptance or R-COMPLETE completion
+    ok 4 - slugify-toolchain: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.0395
+      type: 'test'
+      ...
+    # Subtest: broken-specs-repair: declares acceptance or R-COMPLETE completion
+    ok 5 - broken-specs-repair: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.099208
+      type: 'test'
+      ...
+    # Subtest: infra-log-summary: declares acceptance or R-COMPLETE completion
+    ok 6 - infra-log-summary: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.028958
+      type: 'test'
+      ...
+    # Subtest: infra-rotate-logs: declares acceptance or R-COMPLETE completion
+    ok 7 - infra-rotate-logs: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.079292
+      type: 'test'
+      ...
+    # Subtest: infra-makefile: declares acceptance or R-COMPLETE completion
+    ok 8 - infra-makefile: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.088209
+      type: 'test'
+      ...
+    # Subtest: golang-slugify: declares acceptance or R-COMPLETE completion
+    ok 9 - golang-slugify: declares acceptance or R-COMPLETE completion
+      ---
+      duration_ms: 0.140625
+      type: 'test'
+      ...
+    # Subtest: a declared `completion` always names all three targets (never a partial R-COMPLETE)
+    ok 10 - a declared `completion` always names all three targets (never a partial R-COMPLETE)
+      ---
+      duration_ms: 0.247917
+      type: 'test'
+      ...
+    # Subtest: the execute-phase scenario(s) declare R-COMPLETE completion targets, not just acceptance
+    ok 11 - the execute-phase scenario(s) declare R-COMPLETE completion targets, not just acceptance
+      ---
+      duration_ms: 0.057792
+      type: 'test'
+      ...
+    # Subtest: slugify-toolchain names the exact fixture paths R-COMPLETE reads from disk
+    ok 12 - slugify-toolchain names the exact fixture paths R-COMPLETE reads from disk
+      ---
+      duration_ms: 0.317708
+      type: 'test'
+      ...
+    1..12
+ok 261 - scenarios.json declares completion/acceptance for every scenario (E-02)
+  ---
+  duration_ms: 2.731833
+  type: 'suite'
+  ...
+# Subtest: flow-eval process signal lifecycle
+    # Subtest: SIGINT compacts partial evidence, cleans the sandbox, and exits 130
+    ok 1 - SIGINT compacts partial evidence, cleans the sandbox, and exits 130
+      ---
+      duration_ms: 302.005125
+      type: 'test'
+      ...
+    # Subtest: SIGTERM compacts partial evidence, cleans the sandbox, and exits 143
+    ok 2 - SIGTERM compacts partial evidence, cleans the sandbox, and exits 143
+      ---
+      duration_ms: 297.442791
+      type: 'test'
+      ...
+    1..2
+ok 262 - flow-eval process signal lifecycle
+  ---
+  duration_ms: 599.983291
+  type: 'suite'
+  ...
+# Subtest: E-10 immutable legacy anystack compatibility
+    # Subtest: keeps all three real gate literals and reaches readiness without a package shim
+    ok 1 - keeps all three real gate literals and reaches readiness without a package shim
+      ---
+      duration_ms: 20.890833
+      type: 'test'
+      ...
+    # Subtest: keeps a frozen when-scoped gate visible in compatibility planning and rejects unknown config keys
+    ok 2 - keeps a frozen when-scoped gate visible in compatibility planning and rejects unknown config keys
+      ---
+      duration_ms: 779.237125
+      type: 'test'
+      ...
+    1..2
+ok 263 - E-10 immutable legacy anystack compatibility
+  ---
+  duration_ms: 801.367667
+  type: 'suite'
+  ...
+# Subtest: E-18 isolated Swift-primary preparation
+    # Subtest: moves exact gate specs, is byte-idempotent, and never mutates the source copy
+    ok 1 - moves exact gate specs, is byte-idempotent, and never mutates the source copy
+      ---
+      duration_ms: 540.647
+      type: 'test'
+      ...
+    # Subtest: fails closed when the immutable legacy contract no longer supplies all three gates
+    ok 2 - fails closed when the immutable legacy contract no longer supplies all three gates
+      ---
+      duration_ms: 1.381125
+      type: 'test'
+      ...
+    # Subtest: fails closed instead of replacing a conflicting Swift override
+    ok 3 - fails closed instead of replacing a conflicting Swift override
+      ---
+      duration_ms: 3.05625
+      type: 'test'
+      ...
+    1..3
+ok 264 - E-18 isolated Swift-primary preparation
+  ---
+  duration_ms: 545.261792
+  type: 'suite'
+  ...
+# Subtest: recorded placement24: exact hashes, independent seeds, raw counters and separate supplementary authority
+ok 265 - recorded placement24: exact hashes, independent seeds, raw counters and separate supplementary authority
+  ---
+  duration_ms: 489.584084
+  type: 'test'
+  ...
+# Subtest: recorded concise-acronym six: identical secondary rubric/seeds, local correction fact, unchanged rejection
+ok 266 - recorded concise-acronym six: identical secondary rubric/seeds, local correction fact, unchanged rejection
+  ---
+  duration_ms: 148.509583
+  type: 'test'
+  ...
+# Subtest: withholds oversized declared purpose before truncation can expose a known-secret prefix
+ok 267 - withholds oversized declared purpose before truncation can expose a known-secret prefix
+  ---
+  duration_ms: 4.423792
+  type: 'test'
+  ...
+# Subtest: fingerprints a redacted bounded result without exporting its text or authored input
+ok 268 - fingerprints a redacted bounded result without exporting its text or authored input
+  ---
+  duration_ms: 13.6575
+  type: 'test'
+  ...
+# Subtest: distinguishes missing, empty and truncated output; rejects invalid requested ranges
+ok 269 - distinguishes missing, empty and truncated output; rejects invalid requested ranges
+  ---
+  duration_ms: 2.779292
+  type: 'test'
+  ...
+# Subtest: carries public observation through the actual evidence source into durable tool events
+ok 270 - carries public observation through the actual evidence source into durable tool events
+  ---
+  duration_ms: 0.993334
+  type: 'test'
+  ...
+# Subtest: captures descendant actions beyond the observer child-tail limit and rejects the bad path
+ok 271 - captures descendant actions beyond the observer child-tail limit and rejects the bad path
+  ---
+  duration_ms: 3.076
+  type: 'test'
+  ...
+# Subtest: never proves a forbidden action absent from a legacy or truncated trace
+ok 272 - never proves a forbidden action absent from a legacy or truncated trace
+  ---
+  duration_ms: 1.852667
+  type: 'test'
+  ...
+# Subtest: refuses a descendant outside the bound sandbox
+ok 273 - refuses a descendant outside the bound sandbox
+  ---
+  duration_ms: 2.272625
+  type: 'test'
+  ...
+# Subtest: does not count echoed commands as observed CLI invocations
+ok 274 - does not count echoed commands as observed CLI invocations
+  ---
+  duration_ms: 2.5315
+  type: 'test'
+  ...
+# Subtest: recognizes direct Node TypeScript loader commands as actual attempts
+ok 275 - recognizes direct Node TypeScript loader commands as actual attempts
+  ---
+  duration_ms: 1.132875
+  type: 'test'
+  ...
+# Subtest: does not use CLI help as verification or ordering evidence
+ok 276 - does not use CLI help as verification or ordering evidence
+  ---
+  duration_ms: 0.790291
+  type: 'test'
+  ...
+# Subtest: proves command order from completed tool timings, not terminal checkpoints or prose
+ok 277 - proves command order from completed tool timings, not terminal checkpoints or prose
+  ---
+  duration_ms: 0.2445
+  type: 'test'
+  ...
+# Subtest: projects actions without authored bodies and redacts command secrets before persistence
+ok 278 - projects actions without authored bodies and redacts command secrets before persistence
+  ---
+  duration_ms: 1.024333
+  type: 'test'
+  ...
+# Subtest: retains a failed process exit and sanitized diagnostic, not an unbounded output stream
+ok 279 - retains a failed process exit and sanitized diagnostic, not an unbounded output stream
+  ---
+  duration_ms: 2.379834
+  type: 'test'
+  ...
+# Subtest: a failed trajectory dominates a positive judge but does not relabel budget exhaustion
+ok 280 - a failed trajectory dominates a positive judge but does not relabel budget exhaustion
+  ---
+  duration_ms: 1.057834
+  type: 'test'
+  ...
+# Subtest: trajectory — a clean run passes every matcher
+    # Subtest: order + allGreen + between budgets/allow/deny + never
+    ok 1 - order + allGreen + between budgets/allow/deny + never
+      ---
+      duration_ms: 1.1535
+      type: 'test'
+      ...
+    1..1
+ok 281 - trajectory — a clean run passes every matcher
+  ---
+  duration_ms: 2.084834
+  type: 'suite'
+  ...
+# Subtest: trajectory — each rule fails on a bad path
+    # Subtest: order: a missing/extra checkpoint throws
+    ok 1 - order: a missing/extra checkpoint throws
+      ---
+      duration_ms: 0.763
+      type: 'test'
+      ...
+    # Subtest: allGreen: a red checkpoint (agent left Critic Rounds → sdd-check exit 1) throws
+    ok 2 - allGreen: a red checkpoint (agent left Critic Rounds → sdd-check exit 1) throws
+      ---
+      duration_ms: 0.11
+      type: 'test'
+      ...
+    # Subtest: maxTools: too many tool calls between checkpoints throws
+    ok 3 - maxTools: too many tool calls between checkpoints throws
+      ---
+      duration_ms: 0.08825
+      type: 'test'
+      ...
+    # Subtest: denyTools: a forbidden tool in the window throws
+    ok 4 - denyTools: a forbidden tool in the window throws
+      ---
+      duration_ms: 0.0695
+      type: 'test'
+      ...
+    # Subtest: onlyTools: a tool outside the allowlist throws
+    ok 5 - onlyTools: a tool outside the allowlist throws
+      ---
+      duration_ms: 0.344958
+      type: 'test'
+      ...
+    # Subtest: never: a forbidden action anywhere throws
+    ok 6 - never: a forbidden action anywhere throws
+      ---
+      duration_ms: 1.013042
+      type: 'test'
+      ...
+    1..6
+ok 282 - trajectory — each rule fails on a bad path
+  ---
+  duration_ms: 4.023
+  type: 'suite'
+  ...
+# Subtest: trajectory — emission glue (harness → trajectory.json)
+    # Subtest: toolEventsFrom flattens tail entries into ordered tool events
+    ok 1 - toolEventsFrom flattens tail entries into ordered tool events
+      ---
+      duration_ms: 0.975333
+      type: 'test'
+      ...
+    # Subtest: runCheckpoints uses the injected exec (no shelling out) and marks green by exit 0
+    ok 2 - runCheckpoints uses the injected exec (no shelling out) and marks green by exit 0
+      ---
+      duration_ms: 0.367375
+      type: 'test'
+      ...
+    # Subtest: buildTrajectory merges by time, and the built trajectory passes the matchers end-to-end
+    ok 3 - buildTrajectory merges by time, and the built trajectory passes the matchers end-to-end
+      ---
+      duration_ms: 0.956333
+      type: 'test'
+      ...
+    1..3
+ok 283 - trajectory — emission glue (harness → trajectory.json)
+  ---
+  duration_ms: 2.871875
+  type: 'suite'
+  ...
+# Subtest: E-16: check-fixture-hygiene.sh (both-way, hermetic — never touches an external fixture)
+    # Subtest: a clean, secret-free worktree passes (exit 0, silent)
+    ok 1 - a clean, secret-free worktree passes (exit 0, silent)
+      ---
+      duration_ms: 205.393417
+      type: 'test'
+      ...
+    # Subtest: uncommitted drift is reported and fails the check
+    ok 2 - uncommitted drift is reported and fails the check
+      ---
+      duration_ms: 231.026084
+      type: 'test'
+      ...
+    # Subtest: a secret-class file (.netrc) is detected and fails the check even on a clean tree
+    ok 3 - a secret-class file (.netrc) is detected and fails the check even on a clean tree
+      ---
+      duration_ms: 243.879875
+      type: 'test'
+      ...
+    # Subtest: a nested secret-class file (sub/credentials.json) is detected below the root
+    ok 4 - a nested secret-class file (sub/credentials.json) is detected below the root
+      ---
+      duration_ms: 294.25075
+      type: 'test'
+      ...
+    # Subtest: a source file that merely contains the word "credentials" is NOT a false positive
+    ok 5 - a source file that merely contains the word "credentials" is NOT a false positive
+      ---
+      duration_ms: 277.177375
+      type: 'test'
+      ...
+    # Subtest: a non-existent directory is a usage error (exit 2), not a false pass
+    ok 6 - a non-existent directory is a usage error (exit 2), not a false pass
+      ---
+      duration_ms: 14.871042
+      type: 'test'
+      ...
+    1..6
+ok 284 - E-16: check-fixture-hygiene.sh (both-way, hermetic — never touches an external fixture)
+  ---
+  duration_ms: 1267.346417
+  type: 'suite'
+  ...
+# Subtest: GAP-E-2: RUNBOOK budget table reconciled with the real runner + scenarios.json
+    # Subtest: every recommended number is a runner-legal maxObservations (integer >= 1, per runner.ts)
+    ok 1 - every recommended number is a runner-legal maxObservations (integer >= 1, per runner.ts)
+      ---
+      duration_ms: 1.215125
+      type: 'test'
+      ...
+    # Subtest: every phase scenarios.json actually exercises is named in some budget row
+    ok 2 - every phase scenarios.json actually exercises is named in some budget row
+      ---
+      duration_ms: 0.499792
+      type: 'test'
+      ...
+    # Subtest: the migration phase (external-repo only, no fixture in scenarios.json) still has its own row
+    ok 3 - the migration phase (external-repo only, no fixture in scenarios.json) still has its own row
+      ---
+      duration_ms: 0.160625
+      type: 'test'
+      ...
+    1..3
+ok 285 - GAP-E-2: RUNBOOK budget table reconciled with the real runner + scenarios.json
+  ---
+  duration_ms: 2.552042
+  type: 'suite'
+  ...
+# Subtest: REL-18 release evidence plan
+    # Subtest: contains the six literal release gates and two deterministic migration rounds
+    ok 1 - contains the six literal release gates and two deterministic migration rounds
+      ---
+      duration_ms: 2.198542
+      type: 'test'
+      ...
+    # Subtest: maps UV-25 acceptance to deterministic fixtures and raw-output assertions
+    ok 2 - maps UV-25 acceptance to deterministic fixtures and raw-output assertions
+      ---
+      duration_ms: 0.196292
+      type: 'test'
+      ...
+    # Subtest: fails closed on nonzero gates and migration output that is not exact no-op
+    ok 3 - fails closed on nonzero gates and migration output that is not exact no-op
+      ---
+      duration_ms: 0.195583
+      type: 'test'
+      ...
+    # Subtest: fails closed when manifest omits a scope from the immutable source tree
+    ok 4 - fails closed when manifest omits a scope from the immutable source tree
+      ---
+      duration_ms: 0.085125
+      type: 'test'
+      ...
+    # Subtest: renders README deterministically in repository Prettier form
+    ok 5 - renders README deterministically in repository Prettier form
+      ---
+      duration_ms: 192.170708
+      type: 'test'
+      ...
+    1..5
+ok 286 - REL-18 release evidence plan
+  ---
+  duration_ms: 195.617209
+  type: 'suite'
+  ...
+# Subtest: preserves pre-archive evidence contracts independently of uncommitted filesystem drift
+ok 287 - preserves pre-archive evidence contracts independently of uncommitted filesystem drift
+  ---
+  duration_ms: 461.731833
+  type: 'test'
+  ...
+# Subtest: rejects shallow ancestry instead of silently selecting the pre-cutover contract
+ok 288 - rejects shallow ancestry instead of silently selecting the pre-cutover contract
+  ---
+  duration_ms: 133.527958
+  type: 'test'
+  ...
+# Subtest: rejects missing parent objects instead of silently selecting the pre-cutover contract
+ok 289 - rejects missing parent objects instead of silently selecting the pre-cutover contract
+  ---
+  duration_ms: 159.144208
+  type: 'test'
+  ...
+# Subtest: rejects literal backslash in a Git ledger path in the actual committed source
+ok 290 - rejects literal backslash in a Git ledger path in the actual committed source
+  ---
+  duration_ms: 306.309083
+  type: 'test'
+  ...
+# Subtest: rejects whole archive omitted after canonical checker introduction in the actual committed source
+ok 291 - rejects whole archive omitted after canonical checker introduction in the actual committed source
+  ---
+  duration_ms: 330.296833
+  type: 'test'
+  ...
+# Subtest: rejects archive disguised as a genuine unit in the actual committed source
+ok 292 - rejects archive disguised as a genuine unit in the actual committed source
+  ---
+  duration_ms: 344.057125
+  type: 'test'
+  ...
+# Subtest: rejects pre-archive source spec scope omitted from migration units in the actual committed source
+ok 293 - rejects pre-archive source spec scope omitted from migration units in the actual committed source
+  ---
+  duration_ms: 328.491166
+  type: 'test'
+  ...
+# Subtest: rejects unknown directory in the actual committed source
+ok 294 - rejects unknown directory in the actual committed source
+  ---
+  duration_ms: 315.76425
+  type: 'test'
+  ...
+# Subtest: rejects missing plan in the actual committed source
+ok 295 - rejects missing plan in the actual committed source
+  ---
+  duration_ms: 249.652958
+  type: 'test'
+  ...
+# Subtest: rejects empty plan in the actual committed source
+ok 296 - rejects empty plan in the actual committed source
+  ---
+  duration_ms: 258.781042
+  type: 'test'
+  ...
+# Subtest: rejects missing ledger row in the actual committed source
+ok 297 - rejects missing ledger row in the actual committed source
+  ---
+  duration_ms: 178.710375
+  type: 'test'
+  ...
+# Subtest: rejects duplicate row in the actual committed source
+ok 298 - rejects duplicate row in the actual committed source
+  ---
+  duration_ms: 217.087416
+  type: 'test'
+  ...
+# Subtest: rejects unlisted extra plan in the actual committed source
+ok 299 - rejects unlisted extra plan in the actual committed source
+  ---
+  duration_ms: 236.644625
+  type: 'test'
+  ...
+# Subtest: rejects false scope in the actual committed source
+ok 300 - rejects false scope in the actual committed source
+  ---
+  duration_ms: 214.216709
+  type: 'test'
+  ...
+# Subtest: rejects missing section in the actual committed source
+ok 301 - rejects missing section in the actual committed source
+  ---
+  duration_ms: 209.961291
+  type: 'test'
+  ...
+# Subtest: rejects empty section in the actual committed source
+ok 302 - rejects empty section in the actual committed source
+  ---
+  duration_ms: 218.210042
+  type: 'test'
+  ...
+# Subtest: rejects path escape in the actual committed source
+ok 303 - rejects path escape in the actual committed source
+  ---
+  duration_ms: 180.938833
+  type: 'test'
+  ...
+# Subtest: rejects symlink plan in the actual committed source
+ok 304 - rejects symlink plan in the actual committed source
+  ---
+  duration_ms: 194.939834
+  type: 'test'
+  ...
+# Subtest: rejects symlink directory in the actual committed source
+ok 305 - rejects symlink directory in the actual committed source
+  ---
+  duration_ms: 212.651959
+  type: 'test'
+  ...
+# Subtest: rejects spec without a scope directory in the actual committed source
+ok 306 - rejects spec without a scope directory in the actual committed source
+  ---
+  duration_ms: 176.273375
+  type: 'test'
+  ...
+# Subtest: adapts the actual existing unit path function through POSIX and Windows native bindings
+ok 307 - adapts the actual existing unit path function through POSIX and Windows native bindings
+  ---
+  duration_ms: 42.134541
+  type: 'test'
+  ...
+# Subtest: verifies the real inert archive, excludes no genuine scope and rejects corrupted raw bytes
+ok 308 - verifies the real inert archive, excludes no genuine scope and rejects corrupted raw bytes
+  ---
+  duration_ms: 27713.545875
+  type: 'test'
+  ...
+# Subtest: GAP-E-6: results-table.ts generator (both-way, frozen fixtures, no live run, real subprocess)
+    # Subtest: a single scenario with one run renders its exact numbers
+    ok 1 - a single scenario with one run renders its exact numbers
+      ---
+      duration_ms: 258.102458
+      type: 'test'
+      ...
+    # Subtest: changing a number in the frozen summary.json changes the rendered table (both-way)
+    ok 2 - changing a number in the frozen summary.json changes the rendered table (both-way)
+      ---
+      duration_ms: 512.1305
+      type: 'test'
+      ...
+    # Subtest: two runs of the same scenario report count=2 and the median of the two
+    ok 3 - two runs of the same scenario report count=2 and the median of the two
+      ---
+      duration_ms: 299.290875
+      type: 'test'
+      ...
+    # Subtest: E-17 excludes budget-exhausted runs from counts, medians, and pass/fail denominators
+    ok 4 - E-17 excludes budget-exhausted runs from counts, medians, and pass/fail denominators
+      ---
+      duration_ms: 272.928667
+      type: 'test'
+      ...
+    # Subtest: a JUDGE split with an UNCHANGED mechanical gate reports "Проходит" mechanically, "Смешанно" only in the judge column (V-BATCH-22 B-6)
+    ok 5 - a JUDGE split with an UNCHANGED mechanical gate reports "Проходит" mechanically, "Смешанно" only in the judge column (V-BATCH-22 B-6)
+      ---
+      duration_ms: 236.981666
+      type: 'test'
+      ...
+    # Subtest: a mechanical gate FAIL (quality.pass: false) reports "Не проходит" regardless of the judge
+    ok 6 - a mechanical gate FAIL (quality.pass: false) reports "Не проходит" regardless of the judge
+      ---
+      duration_ms: 218.953917
+      type: 'test'
+      ...
+    # Subtest: a golden-fixture run with no recorded `quality` reports "нет мех. гейта", never a fabricated pass/fail
+    ok 7 - a golden-fixture run with no recorded `quality` reports "нет мех. гейта", never a fabricated pass/fail
+      ---
+      duration_ms: 246.005125
+      type: 'test'
+      ...
+    # Subtest: an empty results directory renders the "no results yet" placeholder, not a broken table
+    ok 8 - an empty results directory renders the "no results yet" placeholder, not a broken table
+      ---
+      duration_ms: 246.546417
+      type: 'test'
+      ...
+    # Subtest: replaces ONLY the marked region, leaving surrounding hand-written text untouched
+    ok 9 - replaces ONLY the marked region, leaving surrounding hand-written text untouched
+      ---
+      duration_ms: 213.027375
+      type: 'test'
+      ...
+    # Subtest: fails loud (non-zero exit, no write) when the markers are missing, never silently no-ops
+    ok 10 - fails loud (non-zero exit, no write) when the markers are missing, never silently no-ops
+      ---
+      duration_ms: 202.837917
+      type: 'test'
+      ...
+    1..10
+ok 309 - GAP-E-6: results-table.ts generator (both-way, frozen fixtures, no live run, real subprocess)
+  ---
+  duration_ms: 2708.302458
+  type: 'suite'
+  ...
+# Subtest: GAP-E-6: docs/journal/RESULTS.md freshness (the real committed file, real committed results/)
+    # Subtest: `--check` against the real results/ and RESULTS.md reports up to date (no diff, no write)
+    ok 1 - `--check` against the real results/ and RESULTS.md reports up to date (no diff, no write)
+      ---
+      duration_ms: 244.25875
+      type: 'test'
+      ...
+    1..1
+ok 310 - GAP-E-6: docs/journal/RESULTS.md freshness (the real committed file, real committed results/)
+  ---
+  duration_ms: 244.400959
+  type: 'suite'
+  ...
+# Subtest: zeroNewErrorVerdict
+    # Subtest: identical findings against the baseline pass (ok: true)
+    ok 1 - identical findings against the baseline pass (ok: true)
+      ---
+      duration_ms: 0.70475
+      type: 'test'
+      ...
+    # Subtest: one new error not in the baseline fails and names it
+    ok 2 - one new error not in the baseline fails and names it
+      ---
+      duration_ms: 0.086834
+      type: 'test'
+      ...
+    # Subtest: one new warning not in the baseline never fails the gate
+    ok 3 - one new warning not in the baseline never fails the gate
+      ---
+      duration_ms: 0.1035
+      type: 'test'
+      ...
+    # Subtest: a baseline error missing from the fresh run (fixed) still passes — the gate only flags NEW errors
+    ok 4 - a baseline error missing from the fresh run (fixed) still passes — the gate only flags NEW errors
+      ---
+      duration_ms: 0.090292
+      type: 'test'
+      ...
+    # Subtest: the same (code, file) pair repeated at different lines is one baseline entry, not several
+    ok 5 - the same (code, file) pair repeated at different lines is one baseline entry, not several
+      ---
+      duration_ms: 0.044708
+      type: 'test'
+      ...
+    # Subtest: multiple distinct new errors are all named, sorted by code then file
+    ok 6 - multiple distinct new errors are all named, sorted by code then file
+      ---
+      duration_ms: 0.168417
+      type: 'test'
+      ...
+    1..6
+ok 311 - zeroNewErrorVerdict
+  ---
+  duration_ms: 1.6175
+  type: 'suite'
+  ...
+# Subtest: toBaselineFindings
+    # Subtest: maps raw sdd-check severities to the two-value SddCheckSeverity ("warn", not "warning")
+    ok 1 - maps raw sdd-check severities to the two-value SddCheckSeverity ("warn", not "warning")
+      ---
+      duration_ms: 0.152875
+      type: 'test'
+      ...
+    1..1
+ok 312 - toBaselineFindings
+  ---
+  duration_ms: 0.327833
+  type: 'suite'
+  ...
+# Subtest: dedupeSortFindings
+    # Subtest: deduplicates by (code, file, severity) and sorts deterministically
+    ok 1 - deduplicates by (code, file, severity) and sorts deterministically
+      ---
+      duration_ms: 0.097042
+      type: 'test'
+      ...
+    1..1
+ok 313 - dedupeSortFindings
+  ---
+  duration_ms: 0.199834
+  type: 'suite'
+  ...
+# Subtest: countsByCode
+    # Subtest: counts error/warn per code from the RAW findings, not the deduplicated set
+    ok 1 - counts error/warn per code from the RAW findings, not the deduplicated set
+      ---
+      duration_ms: 0.123542
+      type: 'test'
+      ...
+    1..1
+ok 314 - countsByCode
+  ---
+  duration_ms: 0.238834
+  type: 'suite'
+  ...
+# Subtest: GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)
+    # Subtest: fails when an [UNVERIFIED] marker remains
+    ok 1 - fails when an [UNVERIFIED] marker remains
+      ---
+      duration_ms: 238.8495
+      type: 'test'
+      ...
+    # Subtest: fails when an inline-code path does not exist in the checkout
+    ok 2 - fails when an inline-code path does not exist in the checkout
+      ---
+      duration_ms: 230.57625
+      type: 'test'
+      ...
+    # Subtest: fails when `npm run <script>` names a script missing from package.json
+    ok 3 - fails when `npm run <script>` names a script missing from package.json
+      ---
+      duration_ms: 288.081333
+      type: 'test'
+      ...
+    # Subtest: passes on a real path + a real npm command + zero markers
+    ok 4 - passes on a real path + a real npm command + zero markers
+      ---
+      duration_ms: 252.580583
+      type: 'test'
+      ...
+    # Subtest: passes absent generated outputs only when package.json declares them and a build script
+    ok 5 - passes absent generated outputs only when package.json declares them and a build script
+      ---
+      duration_ms: 217.90025
+      type: 'test'
+      ...
+    # Subtest: still fails an absent sibling under a declared generated directory
+    ok 6 - still fails an absent sibling under a declared generated directory
+      ---
+      duration_ms: 205.910208
+      type: 'test'
+      ...
+    # Subtest: does not trust package output declarations without a build script
+    ok 7 - does not trust package output declarations without a build script
+      ---
+      duration_ms: 208.326791
+      type: 'test'
+      ...
+    # Subtest: fails when a markdown link target does not exist in the checkout (C-2 regression)
+    ok 8 - fails when a markdown link target does not exist in the checkout (C-2 regression)
+      ---
+      duration_ms: 227.131125
+      type: 'test'
+      ...
+    # Subtest: passes a markdown link that resolves relative to the doc, anchor and all
+    ok 9 - passes a markdown link that resolves relative to the doc, anchor and all
+      ---
+      duration_ms: 214.246834
+      type: 'test'
+      ...
+    # Subtest: never flags a link that is a same-page anchor or an external/mailto URL
+    ok 10 - never flags a link that is a same-page anchor or an external/mailto URL
+      ---
+      duration_ms: 199.281125
+      type: 'test'
+      ...
+    # Subtest: never false-flags placeholder/live-only spans: sandbox paths, shell vars, ~, URLs
+    ok 11 - never false-flags placeholder/live-only spans: sandbox paths, shell vars, ~, URLs
+      ---
+      duration_ms: 195.236416
+      type: 'test'
+      ...
+    # Subtest: strips a trailing `:line` reference before checking a backtick path exists
+    ok 12 - strips a trailing `:line` reference before checking a backtick path exists
+      ---
+      duration_ms: 210.164458
+      type: 'test'
+      ...
+    # Subtest: still fails a `:line` reference whose underlying file does not exist
+    ok 13 - still fails a `:line` reference whose underlying file does not exist
+      ---
+      duration_ms: 184.177791
+      type: 'test'
+      ...
+    # Subtest: with no FILE args, discovers every .md under ai/flow-eval/docs/ recursively (not just two names)
+    ok 14 - with no FILE args, discovers every .md under ai/flow-eval/docs/ recursively (not just two names)
+      ---
+      duration_ms: 181.42725
+      type: 'test'
+      ...
+    # Subtest: the real docs under ai/flow-eval/docs/ (all of them, not just EVAL-SPEC/RUNBOOK) pass right now
+    ok 15 - the real docs under ai/flow-eval/docs/ (all of them, not just EVAL-SPEC/RUNBOOK) pass right now
+      ---
+      duration_ms: 183.03525
+      type: 'test'
+      ...
+    1..15
+ok 315 - GAP-E-5: verify-eval-docs.ts (both-way, real subprocess)
+  ---
+  duration_ms: 3238.443417
+  type: 'suite'
+  ...
+1..315
+# tests 543
+# suites 57
+# pass 543
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 43080.481625
+bash: warning: setlocale: LC_ALL: cannot change locale (C.UTF-8): No such file or directory
+== Case 1: path under $HOME/Developer/ → exit 0, silent ==
+PASS: existing subdir under ~/Developer (exit 0, silent)
+PASS: not-yet-existing subdir under ~/Developer (exit 0, silent)
+PASS: $HOME/Developer itself (exit 0, silent)
+
+== Case 2: path outside $HOME/Developer/ → non-zero exit, message mentions ~/Developer ==
+PASS: absolute path outside ~/Developer (exit 1, message mentions ~/Developer)
+PASS: home dir but not under Developer (exit 1, message mentions ~/Developer)
+PASS: root-level path (exit 1, message mentions ~/Developer)
+
+== Case 3: usage error (no argument) → non-zero exit ==
+PASS: missing argument (non-zero exit)
+
+──────────────────────────────
+pass=7 fail=0
+SELF-TEST: PASS

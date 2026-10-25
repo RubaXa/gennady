@@ -1,0 +1,169 @@
+# Module: <ModuleName>
+
+<!--SECTION:SPEC_ID-->
+DELIVERY-POLICIES-DELAY
+<!--/SECTION:SPEC_ID-->
+
+<!--SECTION:MODULE_VISION-->
+## Module Vision
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: что принадлежит модулю; ссылка на спеку скоупа ../<scope>.spec.md (плоский модуль = один ../ ; на каждый лишний сегмент пути --module добавь ещё один ../) и на parent/child modules, если есть. -->
+<!--/SECTION:MODULE_VISION-->
+
+<!--SECTION:OVERVIEW-->
+## Overview
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: ≥1 fenced mermaid или ASCII diagram главного потока модуля. Inter-Module Dependencies не заменяет Overview. Подпись: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ Единственный образец: -->
+
+```mermaid
+flowchart LR
+  caller -->|request| Port
+  Port --> Service
+  Service -->|result| caller
+```
+_Что здесь главное, одной фразой._
+<!--/SECTION:OVERVIEW-->
+
+<!--SECTION:MODULE_USAGE_EXAMPLE-->
+## Module Usage Example
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: self-sufficient snippet на target language — init, happy path, минимальный error path. Не дублируй composition соседних модулей. -->
+<!--/SECTION:MODULE_USAGE_EXAMPLE-->
+
+<!--SECTION:MODULE_REQUIREMENTS-->
+## Requirements
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ. This section owns only observable obligations introduced or narrowed by THIS module. Do not copy
+the parent scope requirements and do not reuse their IDs. A genuinely module-specific requirement
+uses this module spec's own acronym and the `### <ACR>-REQ-N [должен | должен · нештатная]` grammar; its
+explanation names the parent requirement ID(s) it refines. If this module adds no narrower
+obligation, write exactly: `No module-specific requirements. Implements parent requirements:
+<SCOPE-REQ-N[, SCOPE-REQ-M]>.` Tasks and tests then trace to those parent IDs directly. -->
+<!--/SECTION:MODULE_REQUIREMENTS-->
+
+<!--SECTION:INTER_MODULE_DEPENDENCIES-->
+## Inter-Module Dependencies
+- **Depends on:** <list of modules within this scope with links>
+- **Scope Reference (cross-scope):** <interface-type scope with link if any>
+- **Provides to:** <list of modules within this scope>
+
+```mermaid
+graph TD
+  this-module["<this-module>"] --> sibling-1["<sibling-1>"]
+  this-module["<this-module>"] --> sibling-2["<sibling-2>"]
+  this-module["<this-module>"] -. Scope Reference .-> contracts-scope["<contracts-scope>"]
+  consumer["<consumer>"] --> this-module["<this-module>"]
+```
+<!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+<!--SECTION:ENTITY_INVENTORY-->
+## Entity Inventory
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-inventory-format.xml только сейчас, при заполнении этой секции; создай закрытый Name/Type/Purpose inventory и владельца ошибок. -->
+<!--/SECTION:ENTITY_INVENTORY-->
+
+<!--SECTION:ENTITY_SURFACES-->
+## Entity Surfaces
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/entity-surface-format.xml только сейчас; оставь one-line summary, а per-entity detail помести в details. -->
+
+<details>
+<summary>Полные поверхности сущностей</summary>
+
+<!-- Содержимое по прочитанному entity-surface-format.xml; эту подсказку тоже удали. -->
+
+</details>
+<!--/SECTION:ENTITY_SURFACES-->
+
+<!--SECTION:MODULE_CONTRACTS-->
+## Module Contracts
+<!-- УДАЛИ ПОСЛЕ ЗАПОЛНЕНИЯ: прочитай ai/directives/sdd-v2/formats/dbc-contracts.xml только сейчас. Напиши one-line summary; dependency graph и Call Chain (при ≥2 абстракциях) поставь над details; DbC per operation — внутри. Подпись diagram: _<одна фраза>[ — <ACR>-REQ-N[, <ACR>-REQ-M]]._ -->
+
+<!-- Subsections: any subset of Ports / Adapters / Services / Patterns / Utilities / Module-level invariants.
+     Unnumbered `###` headers (e.g. `### Ports`, `### OperationDef Pattern`). -->
+
+<details>
+<summary>Контракты DbC</summary>
+
+### Ports
+[Per `DBC_PORT_FORMAT`. Omit if this module has no Ports.]
+
+### Adapters
+[Per `DBC_ADAPTER_FORMAT`. Omit if this module has no Adapters.]
+
+</details>
+<!--/SECTION:MODULE_CONTRACTS-->
+
+<!--SECTION:PUBLIC_OPTIONS-->
+## Public Options & Policies
+[One-line human summary — what is configurable. Full enumeration folds (reference detail).]
+
+<details>
+<summary>Опции и политики</summary>
+
+[All publicly observable flags/options/policies, either bound to contracts above OR explicitly `deferred / not consumed in v1` with link to ticket/version that activates them.]
+
+</details>
+<!--/SECTION:PUBLIC_OPTIONS-->
+
+<!--SECTION:FILE_STRUCTURE-->
+## File Structure
+```
+<module>/
+├── ports/
+│   └── <name>-<port>.<ext>
+├── adapters/
+│   └── <platform>-<name>-<adapter>.<ext>
+└── ...
+```
+
+**File Mapping:**
+- `<path>`: <component>
+<!--/SECTION:FILE_STRUCTURE-->
+
+<!--SECTION:RESEARCH-->
+## Research
+[Опционально. Реестр ресёрчей, на которые опирается этот модуль — по одной строке на документ.
+Документ без строки здесь считается незарегистрированным (`SDD_RESEARCH_UNREGISTERED`). `research/`
+лежит рядом со спекой скоупа (`specs/<scope>/research/`) — посчитай `../` честно по глубине
+`--module` (один сегмент пути `--module` = один `../`; ниже — пример для модуля без вложенности).]
+
+| Документ | Что ресёрчили | Что дал для спеки |
+|---|---|---|
+| [<yyyy-mm-dd>-<slug>](../research/<yyyy-mm-dd>-<slug>.research.md) | <тема одной строкой> | <какое решение/секцию спеки питает> |
+<!--/SECTION:RESEARCH-->
+
+<!--SECTION:MODULE_DECISION_LOG-->
+## Module Decision Log
+[One-line human summary — which decisions are recorded, at a glance. Full entries fold per `AX_SPEC_PROGRESSIVE_DISCLOSURE` (checked by `SDD_SECTION_NOT_FOLDED`) — a decision log only grows, it is never needed to grasp the module NOW.]
+
+<details>
+<summary>Полные записи Decision Log</summary>
+
+[<ACR>-DL-N entries at module level per `DECISION_LOG_ENTRY_FORMAT`. Cross-module or cross-scope → scope spec or contracts spec.]
+
+</details>
+<!--/SECTION:MODULE_DECISION_LOG-->
+
+<!--SECTION:HANDOFF-->
+## Handoff to Tasks
+- **Implementation files to be created:** <list from File Structure>
+- **Test files to be created:** <list>
+- **Stack dependencies:**
+  - Language: `<lang>` (resolves to `ai/directives/coding/<lang>-rules.xml`)
+  - Test framework: `<framework>` (resolves to `ai/directives/testing/<framework>.xml`)
+- **Module Rules Additions:** (additions on top of scope-wide baseline; `None` if no module-specific rules)
+
+  | Rule | Category | Source |
+  |------|----------|--------|
+  | <rule-name> | coding \| testing \| architecture \| quality | `ai/directives/<category>/<rule>.xml` |
+
+- **Open risks & validation needs:** <not-closed items>
+<!--/SECTION:HANDOFF-->
+
+<!-- Optional appendix — include only when the module has non-trivial post-impl learnings worth preserving. -->
+<!--SECTION:IMPLEMENTATION_INSIGHTS-->
+## Implementation Insights
+[One-line human summary — what a future reader must know. Detail folds (appendix).]
+
+<details>
+<summary>Заметки по реализации</summary>
+
+[Library wrap patterns, transaction subtleties, fake-runtime pitfalls, etc. Authored after audit-cycle compaction; immutable contract for future readers.]
+
+</details>
+<!--/SECTION:IMPLEMENTATION_INSIGHTS-->

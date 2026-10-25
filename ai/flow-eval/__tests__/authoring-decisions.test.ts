@@ -39,7 +39,15 @@ it('authoring decisions cover every archived campaign without relabelling calibr
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
   assert.deepEqual([...ids].sort(), archived.sort());
-  assert.equal(ids.length, 12);
+  assert.equal(ids.length, 13);
+  assert.equal(
+    sha(Buffer.from(JSON.stringify(ledger.campaigns.slice(0, 12)))),
+    '23e5af878dd25385899b040a6a8d2c445034862bf4225416c11cfe2f2c7d0a20'
+  );
+  assert.equal(
+    sha(Buffer.from(JSON.stringify(ledger.decisions.slice(0, 2)))),
+    'c0a6f99b4f56a334050d0f3e243e70095d6846c7dbd54613b2bc9221f589349f'
+  );
   const statuses = new Set(['observed', 'invalid', 'rejected-mixed']);
   for (const row of ledger.campaigns) {
     assert.match(row.id, /^[a-z0-9-]+$/);
@@ -52,7 +60,7 @@ it('authoring decisions cover every archived campaign without relabelling calibr
   }
   assert.equal(
     ledger.campaigns.reduce((n: number, r: any) => n + r.workerAttempts, 0),
-    178
+    190
   );
   for (const id of ['template-calibration-oct23', 'semantic-qualification-oct23'])
     assert.equal(ledger.campaigns.find((c: any) => c.id === id).workerAttempts, 0);
@@ -120,8 +128,11 @@ it('decision summaries recompute total resources and semantic counts, including 
 
 it('future slots have a hard ceiling and do not reopen the completed cycle automatically', () => {
   assert.equal(ledger.futureSlots.length, 2);
-  assert.ok(ledger.futureSlots.every((s: any) => s.status === 'untested' && !s.automaticStart));
+  assert.ok(ledger.futureSlots.every((s: any) => !s.automaticStart));
   const transfer = ledger.futureSlots.find((s: any) => s.id === 'CONTRACTCUE-TRANSFER');
+  assert.equal(transfer.status, 'completed');
+  assert.equal(transfer.originalStatus, 'untested');
+  assert.equal(transfer.executionRef, 'transfer1-oct25');
   assert.equal(transfer.maxLiveCampaigns, 1);
   assert.equal(transfer.maxAuthoringAttempts, 12);
   assert.equal(transfer.maxJudgeExecutions, 12);
@@ -136,6 +147,7 @@ it('future slots have a hard ceiling and do not reopen the completed cycle autom
   );
   assert.equal(transfer.newDomains, 2);
   assert.equal(ledger.futureSlots.find((s: any) => s.id === 'EXCERPT1').maxAuthoringAttempts, 0);
+  assert.equal(ledger.futureSlots.find((s: any) => s.id === 'EXCERPT1').status, 'untested');
   assert.ok(ledger.reopenPolicy.insufficient.includes('wanting a green result'));
   for (const name of [
     'AUTHORING-EXPERIMENTS.md',
@@ -144,4 +156,43 @@ it('future slots have a hard ceiling and do not reopen the completed cycle autom
     'AUTHORING-RESEARCH-NOTES.md',
   ])
     assert.ok(readFileSync(new URL(name, docs), 'utf8').includes('AUTHORING-CLOSURE.md'), name);
+});
+
+it('closed TRANSFER1 execution follows its raw archive, not only the resource improvement', () => {
+  const transfer = new URL('transfer1-oct25/', archives);
+  const result = JSON.parse(read(new URL('analysis.json', transfer)).toString());
+  const extra = JSON.parse(read(new URL('supplemental.json', transfer)).toString());
+  const execution = ledger.transferExecution;
+  assert.equal(ledger.currentDecision, 'AUTH-20261025-TRANSFER');
+  assert.equal(execution.status, 'closed');
+  assert.equal(execution.recommendation, result.recommendation);
+  assert.equal(execution.recommendation, 'retain-current-default');
+  assert.deepEqual(execution.allPairNonCacheTotal, [
+    result.totals.tokens.baseline,
+    result.totals.tokens.candidate,
+  ]);
+  assert.deepEqual(execution.allPairToolCalls, [
+    result.totals.tools.baseline,
+    result.totals.tools.candidate,
+  ]);
+  assert.deepEqual(execution.rawQualifiedDocuments, [
+    extra.qualityByArm.baseline.rawCompleteArtifactAndJudgePass,
+    extra.qualityByArm.facts.rawCompleteArtifactAndJudgePass,
+  ]);
+  assert.equal(execution.fullyQualifiedPairCount, extra.successfulPairTaskIds.length);
+  for (const [field, metric] of [
+    ['fullyQualifiedPairNonCacheTotal', 'tokens'],
+    ['fullyQualifiedPairToolCalls', 'tools'],
+    ['fullyQualifiedPairWallMs', 'timeMs'],
+  ])
+    assert.deepEqual(execution[field], [
+      extra.successfulPairTotals[metric].baseline,
+      extra.successfulPairTotals[metric].candidate,
+    ]);
+  assert.equal(execution.authoringAttempts, result.roleExecutions.authoring);
+  assert.equal(execution.judgeExecutions, result.roleExecutions.judge);
+  assert.equal(execution.reflectionExecutions, 0);
+  assert.equal(execution.replacementAttempts, 0);
+  assert.equal(execution.automaticReruns, false);
+  assert.equal(execution.productionDefault, 'unchanged');
 });

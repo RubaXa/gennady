@@ -1,0 +1,29 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+const own=path.dirname(new URL(import.meta.url).pathname);
+if(own!=='/private/tmp/gennady-format-transfer-oct25.S5ZVqC'||fs.realpathSync(own)!==own)throw Error('OWN_ROOT');
+const read=name=>JSON.parse(fs.readFileSync(path.join(own,name),'utf8'));
+const batch=read('batch.json'),server=read('server-pid.json');
+const records=Array.from({length:12},(_,i)=>read(`records/${i}.json`));
+if(!batch.complete||batch.recorded!==12||records.some(r=>!r.persistence||!r.tempRemoved||r.cleanupErrors.length||r.sessions.some(s=>!s.deleted)))throw Error('ATTEMPT_CLEANUP_INCOMPLETE');
+if(server.pid!==8846||server.ownerRoot!==own||server.baseUrl!=='http://127.0.0.1:4202')throw Error('SERVER_IDENTITY');
+const response=await fetch(server.baseUrl+'/session',{signal:AbortSignal.timeout(10000)});
+if(!response.ok)throw Error('SESSION_LIST_FAILED');
+const sessions=await response.json();
+if(!Array.isArray(sessions))throw Error('SESSION_LIST_SHAPE');
+const owned=sessions.filter(s=>s.directory===own||s.directory?.startsWith(own+'/'));
+if(owned.length)throw Error('OWNED_SESSIONS_REMAIN');
+const args=execFileSync('ps',['-p',String(server.pid),'-o','command='],{encoding:'utf8'}).trim();
+if(!args.includes('opencode serve')||!args.includes('--port 4202'))throw Error('LIVE_PID_IDENTITY');
+process.kill(server.pid,'SIGTERM');
+let stopped=false;
+for(let i=0;i<50;i++){
+  try{process.kill(server.pid,0);}catch(e){if(e.code==='ESRCH'){stopped=true;break;}throw e;}
+  await new Promise(r=>setTimeout(r,100));
+}
+if(!stopped)throw Error('OWN_SERVER_NOT_STOPPED');
+execFileSync(process.execPath,[path.join(own,'journal-modes.mjs'),'restore']);
+const proof={schema:'gennady.authoring-transfer-cleanup.1',checkedAt:new Date().toISOString(),attempts:records.map(r=>({index:r.index,persisted:r.persistence,tempRemoved:r.tempRemoved,cleanupErrors:r.cleanupErrors,sessions:r.sessions.map(s=>({id:s.id,deleted:s.deleted}))})),ownedSessionsRemaining:owned.length,serverPid:server.pid,ownedServerStopped:stopped,journalModesRestored:true,temporarySourceWorktreesRemoved:false,privateStateRemoved:false,sharedDependenciesPreserved:true};
+fs.writeFileSync(path.join(own,'cleanup-proof.json'),JSON.stringify(proof,null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify({attempts:records.length,ownedSessionsRemaining:0,serverStopped:stopped,journalModesRestored:true}));

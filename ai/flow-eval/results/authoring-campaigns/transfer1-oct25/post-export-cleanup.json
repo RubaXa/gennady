@@ -1,0 +1,19 @@
+{
+  "schema": "gennady.authoring-transfer-final-cleanup.1",
+  "checkedAt": "2026-10-25T11:06:47.287Z",
+  "ownedRuntimeRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC",
+  "ownedRuntimeRemoved": true,
+  "privateConfigStateCacheRemoved": true,
+  "ownedServerStopped": true,
+  "ownedSDKSessionCountAfterCleanup": 0,
+  "temporarySourceWorktreesRemoved": true,
+  "sharedDependenciesPreserved": true,
+  "sharedDependencyRealPath": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules",
+  "runtimeAllocatedKiBBeforeRemoval": 80912,
+  "sourceWorktreeAllocatedKiBBeforeRemoval": {
+    "baseline": 72516,
+    "candidate": 72532
+  },
+  "attemptCleanupErrors": [],
+  "retained": "Only bounded archive and Git source refs; unrelated worktrees and shared dependencies untouched."
+}

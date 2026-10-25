@@ -1,0 +1,621 @@
+🔍 Pre-commit: check (verify --phase full — staged candidate, repair nodes omitted) + directive gates
+
+> gennady@2.0.0-draft.1 check
+> tsx cli/gennady.ts verify --phase full
+
+VERIFY phase=full
+scope=all files=<all>
+plugins=node
+trust=local-runner source=builtin:node.phases.full
+head=1c08b30ab6f40eda5bd2370a1d036114761dedbe
+rules=pre-resolver sha256:1074b0e025469d43e2eca314371291b6fe56dcbc3f3c7d72f9f9562958d9502d
+readiness=READY
+  READY: every selected capability is available
+plan:
+  node:type-check [observe/local] needs=-
+  node:lint-fix [repair/local] needs=node:type-check
+  node:lint [observe/local] needs=node:lint-fix
+  node:format-fix [repair/local] needs=node:lint
+  node:format [observe/local] needs=node:format-fix
+  node:unit [observe/local] needs=node:format
+  node:coverage [observe/local] needs=node:unit
+results:
+  PASS node:type-check exit=0 durationMs=8667
+  SKIPPED node:lint-fix exit=- durationMs=0
+    pre-commit staged-candidate policy does not spawn mutating repair step node:lint-fix; downstream read-only convergence proof: node:lint, node:format, node:unit, node:coverage
+  PASS node:lint exit=0 durationMs=32358
+  SKIPPED node:format-fix exit=- durationMs=0
+    pre-commit staged-candidate policy does not spawn mutating repair step node:format-fix; downstream read-only convergence proof: node:format, node:unit, node:coverage
+  PASS node:format exit=0 durationMs=6003
+  PASS node:unit exit=0 durationMs=188916
+    tests=4919/4911/0/8 protocol=gennady-test-topology-v1 runner=gennady-test-topology
+  PASS node:coverage exit=0 durationMs=196382
+mutations:
+  <none>
+evidence:
+  command local:node:type-check:command:48d8d0e730506521ebd86a45179a9ead5acc2404fa9884973fd33740916638dd:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass
+  log local:node:lint-fix:staged-candidate-read-only: pre-commit staged-candidate policy does not spawn mutating repair step node:lint-fix; downstream read-only convergence proof: node:lint, node:format, node:unit, node:coverage
+  command local:node:lint:command:f5dfd7d52211c4753a587362c715a6ba44f8367b7936d2afbbaeedb47af8df47:attempt-2: direct command with 2 argument(s); cwd bound to workspace; status pass
+  log local:node:format-fix:staged-candidate-read-only: pre-commit staged-candidate policy does not spawn mutating repair step node:format-fix; downstream read-only convergence proof: node:format, node:unit, node:coverage
+  command local:node:format:command:6bcb88cd6afc600a5436142555fb675961aab661084aa9c15980e8251037ce0a:attempt-3: direct command with 2 argument(s); cwd bound to workspace; status pass
+  command local:node:unit:command:45f86be13db4a0eaa72508724fc2c56603d32c2b54dcf9427110ab440c2e063f:attempt-4: direct command with 2 argument(s); cwd bound to workspace; status pass
+  command local:node:coverage:command:a86be5057796e9a226ed9e84d70c6b75560b8554c9db7e24480c21417e7bceb0:attempt-5: direct command with 2 argument(s); cwd bound to workspace; status pass
+VERDICT PASS
+
+> gennady@2.0.0-draft.1 check:directives-fresh
+> node --experimental-strip-types ai/kit/check-directives-fresh.ts
+
+✓ ai/directives/** matches a fresh rebuild.
+
+> gennady@2.0.0-draft.1 audit:axioms
+> node ai/kit/audit-axiom-activation.mjs
+
+✓ axiom-activation audit clean — 28 template(s) checked.
+
+> gennady@2.0.0-draft.1 audit:contracts
+> node ai/kit/audit-contract-activation.mjs
+
+✓ contract-activation audit clean — 28 template(s) + 33 assembled directive(s) + 54 contract file(s), against 55 template file(s) (recursive), checked.
+
+> gennady@2.0.0-draft.1 audit:halts
+> node ai/kit/audit-halt-activation.mjs
+
+✓ halt-activation audit clean — 33 template(s) + 33 assembled directive(s) checked.
+
+> gennady@2.0.0-draft.1 audit:v1-eradication
+> node --import tsx scripts/check-v1-eradication.ts
+
+PASS v1-eradication bfcc289b1b589e72a46eed1c4dc9cfcb8c9ec9397a64d5ebf2348fbaabbc5ad9
+canonical-v2=234 required-v1-to-v2-migration-boundary=15 historical-test-evidence=508 unrelated-product-version=70
+
+> gennady@2.0.0-draft.1 audit:main-carry
+> node --import tsx scripts/main-carry-disposition.ts
+
+{
+  "rows": 520,
+  "commits": 117,
+  "objects": 542,
+  "counts": {
+    "retain": 170,
+    "adapt": 69,
+    "archive": 34,
+    "exclude": 247
+  },
+  "manifestDigest": "9245986466ee0eb2ad87e163d9671e6e88b8bf1e2ffb96010b465b14bc94fbc6"
+}
+
+> gennady@2.0.0-draft.1 audit:e18
+> node --import tsx --test scripts/__tests__/e18-exact-evidence.test.ts
+
+TAP version 13
+# Subtest: UV-26 exact E-18 evidence
+    # Subtest: rejects an arbitrary cloud-ios base even when all other evidence is valid
+    ok 1 - rejects an arbitrary cloud-ios base even when all other evidence is valid
+      ---
+      duration_ms: 1.6315
+      type: 'test'
+      ...
+    # Subtest: fails closed for historical/malformed identities and non-reviewed cwd/env/timeout after rehash
+    ok 2 - fails closed for historical/malformed identities and non-reviewed cwd/env/timeout after rehash
+      ---
+      duration_ms: 2.6575
+      type: 'test'
+      ...
+    # Subtest: accepts one frozen real-shape terminal projection and derives PASS
+    ok 3 - accepts one frozen real-shape terminal projection and derives PASS
+      ---
+      duration_ms: 0.839416
+      type: 'test'
+      ...
+    # Subtest: rejects a fabricated authored PASS without terminal facts
+    ok 4 - rejects a fabricated authored PASS without terminal facts
+      ---
+      duration_ms: 0.103417
+      type: 'test'
+      ...
+    # Subtest: rejects wrong Gennady source tree identity
+    ok 5 - rejects wrong Gennady source tree identity
+      ---
+      duration_ms: 0.283875
+      type: 'test'
+      ...
+    # Subtest: rejects dirty/wrong cloud-ios identity and wrong remote exact SHA
+    ok 6 - rejects dirty/wrong cloud-ios identity and wrong remote exact SHA
+      ---
+      duration_ms: 0.279083
+      type: 'test'
+      ...
+    # Subtest: rejects nonterminal or unpinned pipeline evidence
+    ok 7 - rejects nonterminal or unpinned pipeline evidence
+      ---
+      duration_ms: 0.357542
+      type: 'test'
+      ...
+    # Subtest: rejects stale xcresult and wrong xccov command identity
+    ok 8 - rejects stale xcresult and wrong xccov command identity
+      ---
+      duration_ms: 0.431417
+      type: 'test'
+      ...
+    # Subtest: binds xcodebuild evidence to reviewed config and the runner-owned process
+    ok 9 - binds xcodebuild evidence to reviewed config and the runner-owned process
+      ---
+      duration_ms: 0.412917
+      type: 'test'
+      ...
+    # Subtest: rejects duplicate coverage paths, malformed totals and threshold failure
+    ok 10 - rejects duplicate coverage paths, malformed totals and threshold failure
+      ---
+      duration_ms: 0.847
+      type: 'test'
+      ...
+    # Subtest: rejects missing R-COMPLETE/group receipt and failed process facts
+    ok 11 - rejects missing R-COMPLETE/group receipt and failed process facts
+      ---
+      duration_ms: 0.347375
+      type: 'test'
+      ...
+    # Subtest: bounds logs and rejects secret-like/absolute developer projections
+    ok 12 - bounds logs and rejects secret-like/absolute developer projections
+      ---
+      duration_ms: 0.479042
+      type: 'test'
+      ...
+    # Subtest: rejects authored argv substitution and normalized/raw remote disagreement
+    ok 13 - rejects authored argv substitution and normalized/raw remote disagreement
+      ---
+      duration_ms: 0.448625
+      type: 'test'
+      ...
+    # Subtest: rejects a self-consistent PASS attempt whose executed xcode command was different
+    ok 14 - rejects a self-consistent PASS attempt whose executed xcode command was different
+      ---
+      duration_ms: 0.247625
+      type: 'test'
+      ...
+    1..14
+ok 1 - UV-26 exact E-18 evidence
+  ---
+  duration_ms: 10.119916
+  type: 'suite'
+  ...
+# Subtest: UV-26 host-first collector preflight
+    # Subtest: rejects macOS 14 before Xcode, Tuist, project, network or write observations
+    ok 1 - rejects macOS 14 before Xcode, Tuist, project, network or write observations
+      ---
+      duration_ms: 0.333125
+      type: 'test'
+      ...
+    # Subtest: rejects absent Tuist after proving macOS and Xcode identities
+    ok 2 - rejects absent Tuist after proving macOS and Xcode identities
+      ---
+      duration_ms: 0.112125
+      type: 'test'
+      ...
+    1..2
+ok 2 - UV-26 host-first collector preflight
+  ---
+  duration_ms: 0.492542
+  type: 'suite'
+  ...
+# Subtest: UV-26 durable journal collector lifecycle
+    # Subtest: runs a real local process, journals it, commits the journal and collects current exact-SHA evidence
+    ok 1 - runs a real local process, journals it, commits the journal and collects current exact-SHA evidence
+      ---
+      duration_ms: 529.269167
+      type: 'test'
+      ...
+    # Subtest: rejects product drift after the durable-journal commit
+    ok 2 - rejects product drift after the durable-journal commit
+      ---
+      duration_ms: 365.277166
+      type: 'test'
+      ...
+    # Subtest: rejects PASS with the correct stepId from a different actual argv command
+    ok 3 - rejects PASS with the correct stepId from a different actual argv command
+      ---
+      duration_ms: 375.667958
+      type: 'test'
+      ...
+    # Subtest: rejects a committed HEAD/product change during the watcher without persisting evidence
+    ok 4 - rejects a committed HEAD/product change during the watcher without persisting evidence
+      ---
+      duration_ms: 403.9095
+      type: 'test'
+      ...
+    # Subtest: rejects config changes during the watcher without persisting evidence
+    ok 5 - rejects config changes during the watcher without persisting evidence
+      ---
+      duration_ms: 409.460291
+      type: 'test'
+      ...
+    # Subtest: rejects ignored xcresult changes during the watcher without persisting evidence
+    ok 6 - rejects ignored xcresult changes during the watcher without persisting evidence
+      ---
+      duration_ms: 413.989916
+      type: 'test'
+      ...
+    1..6
+ok 3 - UV-26 durable journal collector lifecycle
+  ---
+  duration_ms: 2497.894792
+  type: 'suite'
+  ...
+1..3
+# tests 22
+# suites 3
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2824.637958
+
+> gennady@2.0.0-draft.1 audit:release-boundary
+> node --import tsx --test scripts/__tests__/release-boundary.test.ts scripts/__tests__/publish-contract.test.ts
+
+TAP version 13
+# Subtest: publish contract
+    # Subtest: publish artifact preparation copies the complete ai tree
+    ok 1 - publish artifact preparation copies the complete ai tree
+      ---
+      duration_ms: 0.580708
+      type: 'test'
+      ...
+    # Subtest: missing ai copy pair is rejected by the publish contract
+    ok 2 - missing ai copy pair is rejected by the publish contract
+      ---
+      duration_ms: 0.059958
+      type: 'test'
+      ...
+    # Subtest: package publication includes ai artifacts
+    ok 3 - package publication includes ai artifacts
+      ---
+      duration_ms: 0.062083
+      type: 'test'
+      ...
+    # Subtest: every supported package publication path invokes the shared denial first
+    ok 4 - every supported package publication path invokes the shared denial first
+      ---
+      duration_ms: 0.079208
+      type: 'test'
+      ...
+    # Subtest: missing release script is rejected by the package contract
+    ok 5 - missing release script is rejected by the package contract
+      ---
+      duration_ms: 1.342791
+      type: 'test'
+      ...
+    # Subtest: direct release-it denies before historical lint/test hooks
+    ok 6 - direct release-it denies before historical lint/test hooks
+      ---
+      duration_ms: 0.323875
+      type: 'test'
+      ...
+    # Subtest: invalid release config without before-init checks is rejected
+    ok 7 - invalid release config without before-init checks is rejected
+      ---
+      duration_ms: 0.4355
+      type: 'test'
+      ...
+    # Subtest: pack-draft remains a local pack/install tool rather than a registry publication path
+    ok 8 - pack-draft remains a local pack/install tool rather than a registry publication path
+      ---
+      duration_ms: 0.10025
+      type: 'test'
+      ...
+    # Subtest: release-it is pinned as a development dependency
+    ok 9 - release-it is pinned as a development dependency
+      ---
+      duration_ms: 0.10675
+      type: 'test'
+      ...
+    # Subtest: missing release-it dependency is rejected by the package contract
+    ok 10 - missing release-it dependency is rejected by the package contract
+      ---
+      duration_ms: 0.292458
+      type: 'test'
+      ...
+    1..10
+ok 1 - publish contract
+  ---
+  duration_ms: 4.131542
+  type: 'suite'
+  ...
+# Subtest: UV-27B cutover candidate
+    # Subtest: accepts one exact evidence-only descendant and binds both full SHAs
+    ok 1 - accepts one exact evidence-only descendant and binds both full SHAs
+      ---
+      duration_ms: 422.395292
+      type: 'test'
+      ...
+    # Subtest: rejects an arbitrary ancestor whose delta includes product bytes
+    ok 2 - rejects an arbitrary ancestor whose delta includes product bytes
+      ---
+      duration_ms: 300.34025
+      type: 'test'
+      ...
+    # Subtest: rejects one product byte committed after evidence source
+    ok 3 - rejects one product byte committed after evidence source
+      ---
+      duration_ms: 305.740041
+      type: 'test'
+      ...
+    # Subtest: rejects an extra file in the evidence root
+    ok 4 - rejects an extra file in the evidence root
+      ---
+      duration_ms: 285.657708
+      type: 'test'
+      ...
+    # Subtest: rejects a source commit that is not an ancestor
+    ok 5 - rejects a source commit that is not an ancestor
+      ---
+      duration_ms: 314.859083
+      type: 'test'
+      ...
+    # Subtest: fails closed for branch/upstream divergence, dirty tree and stale main ancestry
+    ok 6 - fails closed for branch/upstream divergence, dirty tree and stale main ancestry
+      ---
+      duration_ms: 245.891375
+      type: 'test'
+      ...
+    # Subtest: rejects local HEAD that is not the exact upstream HEAD
+    ok 7 - rejects local HEAD that is not the exact upstream HEAD
+      ---
+      duration_ms: 257.183958
+      type: 'test'
+      ...
+    # Subtest: rejects a stale local main remote-tracking ref
+    ok 8 - rejects a stale local main remote-tracking ref
+      ---
+      duration_ms: 266.249875
+      type: 'test'
+      ...
+    # Subtest: rejects strict frozen-MAIN drift before candidate and ACK even when archive integrity passed
+    ok 9 - rejects strict frozen-MAIN drift before candidate and ACK even when archive integrity passed
+      ---
+      duration_ms: 310.5935
+      type: 'test'
+      ...
+    # Subtest: binds the independently checked frozen manifest identity into the exact challenge
+    ok 10 - binds the independently checked frozen manifest identity into the exact challenge
+      ---
+      duration_ms: 403.769292
+      type: 'test'
+      ...
+    # Subtest: rejects malformed, false-count and invalid-digest frozen MAIN observations
+    ok 11 - rejects malformed, false-count and invalid-digest frozen MAIN observations
+      ---
+      duration_ms: 563.985041
+      type: 'test'
+      ...
+    # Subtest: the production observer always invokes strict pre-reconciliation, not integrity-only mode
+    ok 12 - the production observer always invokes strict pre-reconciliation, not integrity-only mode
+      ---
+      duration_ms: 497.858
+      type: 'test'
+      ...
+    # Subtest: rejects missing/malformed evidence and a non-PASS UV-27A report
+    ok 13 - rejects missing/malformed evidence and a non-PASS UV-27A report
+      ---
+      duration_ms: 235.363375
+      type: 'test'
+      ...
+    # Subtest: defers genuinely absent optional E18 without executing its checker or disabling consumer gates
+    ok 14 - defers genuinely absent optional E18 without executing its checker or disabling consumer gates
+      ---
+      duration_ms: 285.173584
+      type: 'test'
+      ...
+    # Subtest: binds the unverified policy scope and optional evidence status into the exact ACK
+    ok 15 - binds the unverified policy scope and optional evidence status into the exact ACK
+      ---
+      duration_ms: 438.293625
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe optional E18 (symlink) without checker execution or secret output
+    ok 16 - rejects unsafe optional E18 (symlink) without checker execution or secret output
+      ---
+      duration_ms: 236.163292
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe optional E18 (dangling) without checker execution or secret output
+    ok 17 - rejects unsafe optional E18 (dangling) without checker execution or secret output
+      ---
+      duration_ms: 232.060917
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe optional E18 (directory) without checker execution or secret output
+    ok 18 - rejects unsafe optional E18 (directory) without checker execution or secret output
+      ---
+      duration_ms: 233.867875
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe optional E18 (oversize) without checker execution or secret output
+    ok 19 - rejects unsafe optional E18 (oversize) without checker execution or secret output
+      ---
+      duration_ms: 248.920417
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe optional E18 (unreadable) without checker execution or secret output
+    ok 20 - rejects unsafe optional E18 (unreadable) without checker execution or secret output
+      ---
+      duration_ms: 240.867083
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe optional E18 (ancestor-symlink) without checker execution or secret output
+    ok 21 - rejects unsafe optional E18 (ancestor-symlink) without checker execution or secret output
+      ---
+      duration_ms: 236.792333
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe optional E18 (ancestor-file) without checker execution or secret output
+    ok 22 - rejects unsafe optional E18 (ancestor-file) without checker execution or secret output
+      ---
+      duration_ms: 237.965125
+      type: 'test'
+      ...
+    # Subtest: does not expose secret checker diagnostics for invalid optional evidence
+    ok 23 - does not expose secret checker diagnostics for invalid optional evidence
+      ---
+      duration_ms: 307.31775
+      type: 'test'
+      ...
+    # Subtest: rejects missing optional checker when proof is present, but never reads it for absent proof
+    ok 24 - rejects missing optional checker when proof is present, but never reads it for absent proof
+      ---
+      duration_ms: 308.976542
+      type: 'test'
+      ...
+    # Subtest: rejects symlink optional checker when proof is present, but never reads it for absent proof
+    ok 25 - rejects symlink optional checker when proof is present, but never reads it for absent proof
+      ---
+      duration_ms: 303.848667
+      type: 'test'
+      ...
+    # Subtest: rejects unreadable optional checker when proof is present, but never reads it for absent proof
+    ok 26 - rejects unreadable optional checker when proof is present, but never reads it for absent proof
+      ---
+      duration_ms: 308.347208
+      type: 'test'
+      ...
+    # Subtest: rejects optional proof replacement race leaf-before-open with nonblocking open
+    ok 27 - rejects optional proof replacement race leaf-before-open with nonblocking open
+      ---
+      duration_ms: 229.302917
+      type: 'test'
+      ...
+    # Subtest: rejects optional proof replacement race ancestor-after-open with nonblocking open
+    ok 28 - rejects optional proof replacement race ancestor-after-open with nonblocking open
+      ---
+      duration_ms: 232.213792
+      type: 'test'
+      ...
+    # Subtest: rejects optional proof replacement race ancestor-after-read with nonblocking open
+    ok 29 - rejects optional proof replacement race ancestor-after-read with nonblocking open
+      ---
+      duration_ms: 232.283625
+      type: 'test'
+      ...
+    # Subtest: never defers ENOENT caused by an observed ancestor becoming a dangling symlink
+    ok 30 - never defers ENOENT caused by an observed ancestor becoming a dangling symlink
+      ---
+      duration_ms: 231.277917
+      type: 'test'
+      ...
+    # Subtest: still requires UV25 raw logs and manifest despite optional E18 absence
+    ok 31 - still requires UV25 raw logs and manifest despite optional E18 absence
+      ---
+      duration_ms: 235.408625
+      type: 'test'
+      ...
+    # Subtest: rejects evidence bytes or checker identity changed during optional strict checking
+    ok 32 - rejects evidence bytes or checker identity changed during optional strict checking
+      ---
+      duration_ms: 497.4175
+      type: 'test'
+      ...
+    # Subtest: rejects authored UV-26 PASS when the independent checker cannot derive it
+    ok 33 - rejects authored UV-26 PASS when the independent checker cannot derive it
+      ---
+      duration_ms: 258.984875
+      type: 'test'
+      ...
+    # Subtest: requires an external exact non-reusable ACK and rechecks candidate drift
+    ok 34 - requires an external exact non-reusable ACK and rechecks candidate drift
+      ---
+      duration_ms: 544.888542
+      type: 'test'
+      ...
+    # Subtest: rejects npm auth environment without exposing values
+    ok 35 - rejects npm auth environment without exposing values
+      ---
+      duration_ms: 238.905291
+      type: 'test'
+      ...
+    # Subtest: rejects embedded workflow publication authority
+    ok 36 - rejects embedded workflow publication authority
+      ---
+      duration_ms: 286.223667
+      type: 'test'
+      ...
+    # Subtest: rejects malformed runtime policy before candidate inspection
+    ok 37 - rejects malformed runtime policy before candidate inspection
+      ---
+      duration_ms: 157.423
+      type: 'test'
+      ...
+    # Subtest: rejects unsafe and option-like Git refs before remote observation
+    ok 38 - rejects unsafe and option-like Git refs before remote observation
+      ---
+      duration_ms: 157.25475
+      type: 'test'
+      ...
+    1..38
+ok 2 - UV-27B cutover candidate
+  ---
+  duration_ms: 11331.910084
+  type: 'suite'
+  ...
+# Subtest: UV-27B npm publication denial
+    # Subtest: uses one stable exported denial
+    ok 1 - uses one stable exported denial
+      ---
+      duration_ms: 0.118709
+      type: 'test'
+      ...
+    # Subtest: scripts/publish-next.ts denies before child or manifest mutation
+    ok 2 - scripts/publish-next.ts denies before child or manifest mutation
+      ---
+      duration_ms: 165.207791
+      type: 'test'
+      ...
+    # Subtest: scripts/publish-draft.ts denies before child or manifest mutation
+    ok 3 - scripts/publish-draft.ts denies before child or manifest mutation
+      ---
+      duration_ms: 162.016834
+      type: 'test'
+      ...
+    # Subtest: package prepublishOnly denies before its next command
+    ok 4 - package prepublishOnly denies before its next command
+      ---
+      duration_ms: 163.590125
+      type: 'test'
+      ...
+    # Subtest: package release denies before its next command
+    ok 5 - package release denies before its next command
+      ---
+      duration_ms: 162.510792
+      type: 'test'
+      ...
+    1..5
+ok 3 - UV-27B npm publication denial
+  ---
+  duration_ms: 653.593417
+  type: 'suite'
+  ...
+1..3
+# tests 53
+# suites 3
+# pass 53
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12228.508625
+
+> gennady@2.0.0-draft.1 check:directive-budgets
+> node --experimental-strip-types ai/kit/step-budget-gate.ts
+
+⚠ execute (skeleton): skeleton tokens (soft target) = 7036 exceeds 6000 by 1036 — soft target, build still succeeds
+⚠ infra (skeleton): skeleton tokens (hard limit) = 9642 exceeds 8000 by 1642 — allowlisted monolith pending lazy-split (owner: T-B6-10a); warns instead of failing until split, build still succeeds
+⚠ migration-v1-v2 (skeleton): skeleton tokens (soft target) = 6949 exceeds 6000 by 949 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds
+⚠ reconcile (skeleton): skeleton tokens (soft target) = 6776 exceeds 6000 by 776 — soft target, build still succeeds
+⚠ root (skeleton): skeleton tokens (soft target) = 7751 exceeds 6000 by 1751 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds
+⚠ router (skeleton): skeleton tokens (soft target) = 6341 exceeds 6000 by 341 — allowlisted monolith pending lazy-split (owner: T-B6-10a), soft target, build still succeeds
+✓ every measured directive under ai/directives/sdd-v2/** is within its hard limit (see soft-target warning(s) above).
+✅ Pre-commit passed
+[codex/authoring-format-findings 423cd831] test(eval): freeze six-domain-task transfer harness
+ 6 files changed, 490 insertions(+), 9 deletions(-)
+ create mode 100644 ai/flow-eval/__tests__/authoring-transfer.test.ts
+ create mode 100644 ai/flow-eval/authoring-transfer.ts

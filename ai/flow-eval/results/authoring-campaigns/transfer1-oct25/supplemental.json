@@ -1,0 +1,69 @@
+{
+  "schema": "gennady.authoring-transfer-supplement.1",
+  "selection": "Descriptive paired subset only: both completed artifacts pass raw gates and the additional manual audit. Not the preregistered adoption gate; excludes both members of any failed pair, not only the failed candidate.",
+  "successfulPairTaskIds": [
+    "ranges-intersection",
+    "delivery-retry",
+    "ranges-contains",
+    "ranges-merge"
+  ],
+  "successfulPairTotals": {
+    "tokens": {
+      "baseline": 217538,
+      "candidate": 200762,
+      "percent": -7.711756106979011
+    },
+    "tools": {
+      "baseline": 91,
+      "candidate": 85,
+      "percent": -6.593406593406593
+    },
+    "timeMs": {
+      "baseline": 368256,
+      "candidate": 360915,
+      "percent": -1.9934502085505734
+    }
+  },
+  "successfulPairMedianPercent": {
+    "tokens": -11.725046621120917,
+    "tools": -12.771739130434781,
+    "timeMs": -12.761859443438624
+  },
+  "allPairMedianPercent": {
+    "tokens": -11.725046621120917,
+    "tools": -13.664596273291925,
+    "timeMs": -22.34417007322547
+  },
+  "qualityByArm": {
+    "baseline": {
+      "attempts": 6,
+      "rawCompleteArtifactAndJudgePass": 6,
+      "additionalManualPass": 5,
+      "qualified": 5
+    },
+    "facts": {
+      "attempts": 6,
+      "rawCompleteArtifactAndJudgePass": 4,
+      "additionalManualPass": 4,
+      "qualified": 4
+    }
+  },
+  "observedRoleTokens": {
+    "worker": {
+      "executions": 12,
+      "nonCache": 659345,
+      "cacheRead": 6088960,
+      "cacheWrite": 0
+    },
+    "judge": {
+      "executions": 11,
+      "nonCache": 186606,
+      "cacheRead": 38016,
+      "cacheWrite": 0
+    }
+  },
+  "money": null,
+  "httpRequests": null,
+  "replacements": 0,
+  "reflections": 0
+}

@@ -1,0 +1,66 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 5,
+  "taskId": "ranges-contains",
+  "scenarioId": "authoring-transfer-oct25-c3-y",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "hostHarnessSHA": "423cd831e95dbe727e037103195a15e313816c7a",
+  "startedAt": "2026-10-25T10:42:45.733Z",
+  "directory": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/runs/5",
+  "sessions": [
+    {
+      "id": "ses_e8d581aa8ffey6WDbDfUN7Pa2H",
+      "directory": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/runs/5/sdd-flow-eval-SymY2H",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e8d56883effeH3eQDCfsk5ntVw",
+      "directory": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/runs/5/sdd-flow-eval-SymY2H",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-25-authoring-transfer-oct25-c3-y",
+    "summarySha256": "8d67fc1d7bef3b60b33e642cc3c11ade08a8ec837f64a834a12c71d0131c3cfe",
+    "trajectorySha256": "fe267fe5d109d15adbf522604bc6e5cb84e94ceb1f977a1756515c54f64cd0e8",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 24,
+    "nonCacheTokens": 59138,
+    "messages": 19
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-25T10:44:58.182Z",
+  "knownSessions": [
+    {
+      "id": "ses_e8d581aa8ffey6WDbDfUN7Pa2H",
+      "directory": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/runs/5/sdd-flow-eval-SymY2H"
+    },
+    {
+      "id": "ses_e8d56883effeH3eQDCfsk5ntVw",
+      "directory": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/runs/5/sdd-flow-eval-SymY2H"
+    }
+  ]
+}

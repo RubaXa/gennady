@@ -1,0 +1,561 @@
+{
+  "scenario": "authoring-transfer-oct25-c6-x",
+  "events": [
+    {
+      "type": "tool",
+      "i": 0,
+      "t": 1792925686258,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./inputs/brief.md\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2d140001OabIbj0LArvAkX",
+      "callId": "call_00_UEZr92zz0tZWye1updZi1864",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925686258,
+      "finishedAt": 1792925686262,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 2298,
+          "redactedPrefixBytes": 2221,
+          "redactedPrefixSha256": "d491b09dddbd6fd3d42ec14f6bd88701ed32aa45dc61b83b2a59341fe89463d1",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 1,
+      "t": 1792925686442,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/module.directive.xml\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2d140001OabIbj0LArvAkX",
+      "callId": "call_01_d0QLqdmQyNznJFNQ3IUX5055",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925686442,
+      "finishedAt": 1792925686446,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11284,
+          "redactedPrefixBytes": 11198,
+          "redactedPrefixSha256": "b451eecd511642378bca60ff4ab0ac562d6fcbccb6424cc0dd8d8b7476a6a856",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 2,
+      "t": 1792925689000,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope delivery --module policies/dedupe\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2db06001bOIB5IqIaxPESn",
+      "callId": "call_00_OkHF17lIk8bhqLgUjMk12955",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "npx --no-install gennady sdd-new module --scope delivery --module policies/dedupe",
+      "startedAt": 1792925689000,
+      "finishedAt": 1792925689007,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11196,
+          "redactedPrefixBytes": 11042,
+          "redactedPrefixSha256": "4ae8b46613df34e3165e8717879dc0bb47da518482467cabe0b44e70fce5a3e9",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 3,
+      "t": 1792925690441,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/delivery/policies/dedupe/dedupe.spec.md\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2e537001kGQnS09jqLvTQK",
+      "callId": "call_00_dcc1vc5NMQTjTptCj9aP6700",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925690441,
+      "finishedAt": 1792925690449,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 8947,
+          "redactedPrefixBytes": 8870,
+          "redactedPrefixSha256": "4e9d28ba7888699c98c25dd2217db020a161a0de6ad329ac43b92e82a5b4e754",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 4,
+      "t": 1792925690601,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/delivery/delivery.spec.md\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2e537001kGQnS09jqLvTQK",
+      "callId": "call_01_NzNKLqjCCVpip0zoyy1c8265",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925690601,
+      "finishedAt": 1792925690604,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 4106,
+          "redactedPrefixBytes": 4029,
+          "redactedPrefixSha256": "9915876651e5d116375c4f785d502483f709f5348480f4a818eb485d4af28f37",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 5,
+      "t": 1792925692510,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls ai/directives/sdd-v2/formats/\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2eb5d001GuKAHvHB5YRGdI",
+      "callId": "call_00_Sm2ETEFWg9whluGQugtp4127",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "ls ai/directives/sdd-v2/formats/",
+      "startedAt": 1792925692510,
+      "finishedAt": 1792925692512,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 598,
+          "redactedPrefixBytes": 598,
+          "redactedPrefixSha256": "d9caf8093f7cd473f50e1b59caf25a0104447bca84cfa73d89d2239f029a6879",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 6,
+      "t": 1792925692680,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-inventory-format.xml\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2eb5d001GuKAHvHB5YRGdI",
+      "callId": "call_01_spFIddXCWfPwCP86RSmM4242",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925692680,
+      "finishedAt": 1792925692683,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3723,
+          "redactedPrefixBytes": 3646,
+          "redactedPrefixSha256": "c6f5cb661a21a262fbddf350bd196c4b373dc98196a25d8c90e33a1405e4cc36",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 7,
+      "t": 1792925692886,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-surface-format.xml\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2eb5d001GuKAHvHB5YRGdI",
+      "callId": "call_02_EFjJhSqgwsr321LUYC905943",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925692886,
+      "finishedAt": 1792925692891,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3762,
+          "redactedPrefixBytes": 3685,
+          "redactedPrefixSha256": "71b59927830de42f932b132503804fe7d41940bef473a8fed4ea250d4aff380c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 8,
+      "t": 1792925693107,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/dbc-contracts.xml\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2eb5d001GuKAHvHB5YRGdI",
+      "callId": "call_03_DBjSeQepplbwmZcyniyy7279",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925693107,
+      "finishedAt": 1792925693116,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11224,
+          "redactedPrefixBytes": 11147,
+          "redactedPrefixSha256": "195bbc3c842dba6198ffff666328df278ac7cfe3d3a9623569df696dd8a88e78",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 9,
+      "t": 1792925693251,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/diagram-vocabulary.xml\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2eb5d001GuKAHvHB5YRGdI",
+      "callId": "call_04_pQX9jGV62sBR3f6UrkIE6175",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925693251,
+      "finishedAt": 1792925693255,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 14295,
+          "redactedPrefixBytes": 14218,
+          "redactedPrefixSha256": "0db4542e55ea5b97cdfff969dcbb30cc4f9cd4144da6905e90350ca1ce139f0a",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 10,
+      "t": 1792925695431,
+      "tool": "bash",
+      "arg": "{\"command\":\"find specs -type f | sort; echo \\\"---\\\"; git status --porcelain\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2f598001RUogSGliQJ7j0f",
+      "callId": "call_00_wah2bWLnorf1dq9jOIY46260",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "find specs -type f | sort; echo \"---\"; git status --porcelain",
+      "startedAt": 1792925695431,
+      "finishedAt": 1792925695433,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 162,
+          "redactedPrefixBytes": 162,
+          "redactedPrefixSha256": "36f9ee928acdb75ae8cd5dc01d149cd955663671c98bb46cf46f60b50e1b211c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 11,
+      "t": 1792925695586,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/module-spec-structure.xml\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2f598001RUogSGliQJ7j0f",
+      "callId": "call_01_rHGdTissPfdcBwI8zGbH2039",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925695586,
+      "finishedAt": 1792925695595,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 10317,
+          "redactedPrefixBytes": 10240,
+          "redactedPrefixSha256": "fe5680eba503932b455f88bd25e80463e2f7790d26eadacf64ff557b55c0bae6",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 12,
+      "t": 1792925697533,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/infra-base/infra-base.spec.md\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2fee700192nPd0dImkG6yT",
+      "callId": "call_00_g3uudykVtWSL9fdVWa449720",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925697533,
+      "finishedAt": 1792925697536,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3917,
+          "redactedPrefixBytes": 3840,
+          "redactedPrefixSha256": "5ce2853f41bf24c10535eae54817b3d0454544f9f72b11ac2afaa75487edd937",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 13,
+      "t": 1792925697842,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls -la; echo ---; cat package.json 2>/dev/null; echo ---; find . -path ./node_modules -prune -o -name '*.ts' -print | head -50\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b2fee700192nPd0dImkG6yT",
+      "callId": "call_01_EuPWEo6DbRZFLoqSBwm55845",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "ls -la; echo ---; cat package.json 2>/dev/null; echo ---; find . -path ./node_modules -prune -o -name '*.ts' -print | head -50",
+      "startedAt": 1792925697842,
+      "finishedAt": 1792925697861,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 703,
+          "redactedPrefixBytes": 703,
+          "redactedPrefixSha256": "369f74a45533cd65b0a41bed005b6b929c713d73ea0706e34a681b715ff9c4a6",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 14,
+      "t": 1792925700068,
+      "tool": "bash",
+      "arg": "{\"command\":\"cat AGENTS.md; echo ---; cat specs/README.md\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b3079d001DyRviB4h3joj60",
+      "callId": "call_00_YVu91jmcM4PpCxt15GVg2452",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "cat AGENTS.md; echo ---; cat specs/README.md",
+      "startedAt": 1792925700068,
+      "finishedAt": 1792925700069,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 815,
+          "redactedPrefixBytes": 815,
+          "redactedPrefixSha256": "e228ce144b65c93cfc2782273922f36c4f8826bcaf2ba2582c6d1bbb01b3c54b",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 15,
+      "t": 1792925700308,
+      "tool": "bash",
+      "arg": "{\"command\":\"git log --oneline -5; echo ---; git ls-files\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b3079d001DyRviB4h3joj60",
+      "callId": "call_01_HsMxLSAYct8KV1hrBnHh6837",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "git log --oneline -5; echo ---; git ls-files",
+      "startedAt": 1792925700308,
+      "finishedAt": 1792925700322,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 51319,
+          "redactedPrefixBytes": 51099,
+          "redactedPrefixSha256": "bfe1ec064e085172d64b16f8d3fba407fd94b909da852c24fdc0c7bdfa04f6d6",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 16,
+      "t": 1792925722538,
+      "tool": "bash",
+      "arg": "{\"command\":\"find ai/directives/sdd-v2 -maxdepth 2 -type f | sort\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b31139001gjgxGCekfU2De9",
+      "callId": "call_00_4cNFk90eKb8MBsHyFXcO6629",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "find ai/directives/sdd-v2 -maxdepth 2 -type f | sort",
+      "startedAt": 1792925722538,
+      "finishedAt": 1792925722545,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3029,
+          "redactedPrefixBytes": 3029,
+          "redactedPrefixSha256": "86de02130e57669639f01fa035ad805d02f92abf3421cdbd8f9af39a3bb542b9",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 17,
+      "t": 1792925722757,
+      "tool": "bash",
+      "arg": "{\"command\":\"cat .claude/skills/sdd-check/SKILL.md\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b31139001gjgxGCekfU2De9",
+      "callId": "call_01_66t9IknuRavSWKCZFtJh2480",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "cat .claude/skills/sdd-check/SKILL.md",
+      "startedAt": 1792925722757,
+      "finishedAt": 1792925722774,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 1698,
+          "redactedPrefixBytes": 1698,
+          "redactedPrefixSha256": "06c62d692ec128506771fc81d029e0c76301d2d077ea98d203bdee4480454547",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 18,
+      "t": 1792925726608,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/module-diagram-ladder.example.md\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b369b5001B57U6QZ62rm9BH",
+      "callId": "call_00_Se4Qr5PdHm48I9RB42T95027",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925726608,
+      "finishedAt": 1792925726622,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 13613,
+          "redactedPrefixBytes": 13536,
+          "redactedPrefixSha256": "4ddd05a5c3894fba3ea47ae7069a9e0586e2c0a8d95740cdaef05af6b66ba820",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 19,
+      "t": 1792925742727,
+      "tool": "bash",
+      "arg": "{\"command\":\"find ai/directives -maxdepth 2 -type d | sort; echo ---; find ai/directives/coding ai/directives/testing -maxdepth 1 -type f 2>/dev/null | sort | head -40\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b3781e001vc4ZrqXMtDfr2U",
+      "callId": "call_00_RFexbUdi3hDW7NoTaim59539",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "find ai/directives -maxdepth 2 -type d | sort; echo ---; find ai/directives/coding ai/directives/testing -maxdepth 1 -type f 2>/dev/null | sort | head -40",
+      "startedAt": 1792925742727,
+      "finishedAt": 1792925742730,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 1105,
+          "redactedPrefixBytes": 1105,
+          "redactedPrefixSha256": "9fda4deeab82ca526b6a12451c3453dcf223297ab9af12a743054936c4a6be7a",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 20,
+      "t": 1792925767922,
+      "tool": "write",
+      "arg": "{\"filePath\":\"./specs/delivery/policies/dedupe/dedupe.spec.md\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b3b6f1001zHbBFuMfi8s4oA",
+      "callId": "call_00_WgP4aIlMsN7xH0bm4jwX3893",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "startedAt": 1792925767922,
+      "finishedAt": 1792925767936,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 24,
+          "redactedPrefixBytes": 24,
+          "redactedPrefixSha256": "e3e06ec0f8c958669ed3682941ab88218ff9ee42a7ab9b48fd78126336aa968c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 21,
+      "t": 1792925771672,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/delivery/policies/dedupe/dedupe.spec.md --authoring\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b4199e0011GHnLYrknbbE7e",
+      "callId": "call_00_5HyJU2lu6B9H6VphYuLy3275",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "npx --no-install gennady sdd-check --spec specs/delivery/policies/dedupe/dedupe.spec.md --authoring",
+      "startedAt": 1792925771672,
+      "finishedAt": 1792925771683,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 130,
+          "redactedPrefixBytes": 130,
+          "redactedPrefixSha256": "3c42030406ef0780876370107dda07584351052f393ef47aa3c648802aa8abf3",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 22,
+      "t": 1792925777384,
+      "tool": "bash",
+      "arg": "{\"command\":\"git status --porcelain\",\"workdir\":\".\"}",
+      "messageId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu:msg_172b427f1001r8AmmMZuXy2TWI",
+      "callId": "call_00_qPENJeBpVqmwL5ihYgh31989",
+      "status": "completed",
+      "sessionId": "ses_e8d4d2f68ffeDPbEcGkjbEH9Iu",
+      "command": "git status --porcelain",
+      "startedAt": 1792925777384,
+      "finishedAt": 1792925777387,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 28,
+          "redactedPrefixBytes": 28,
+          "redactedPrefixSha256": "cf0534a2fc7b720693e1219e184fb1f8995fa4a1d6c47323b27a443ab8352cf4",
+          "prefixComplete": true
+        }
+      }
+    }
+  ],
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  }
+}

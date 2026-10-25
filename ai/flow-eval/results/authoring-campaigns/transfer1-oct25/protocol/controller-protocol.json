@@ -1,0 +1,128 @@
+{
+  "schema": "gennady.authoring-format-controller.1",
+  "preregistrationSha256": "4d38ecab37d411753b3fbecd60a4e1509587b2b955043e48d82cbbfb71114312",
+  "controllerSha256": "27d1aee71ef9407b0c5fc6ee7347c75ea701c833b3395996b21ab59ecb7f7c71",
+  "configSha256": "4ab472c1f056cce3fa864485616985e5a1231e0e983bdd913fcade98d2c47531",
+  "node": "v22.19.0",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "runtime": {
+    "version": "1.17.15",
+    "configurationSha256": "06bc375650c7ac2fdc5a767bf51dc10aff0069e02eb36346039e4da366832a12",
+    "routing": {
+      "origin": "https://ai-proxy.vk.team",
+      "path": "/v1",
+      "npm": "@ai-sdk/openai-compatible",
+      "modelIDs": [
+        "deepseek-v4-flash"
+      ],
+      "optionKeys": [
+        "apiKey",
+        "baseURL",
+        "headers"
+      ],
+      "headerNames": [
+        "Authorization",
+        "Plugin-Type"
+      ]
+    }
+  },
+  "concurrency": 1,
+  "planned": 12,
+  "sources": [
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "sha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "sha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "packageLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+      "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+      "physicalDependencies": "/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules"
+    }
+  ],
+  "attempts": [
+    {
+      "id": "authoring-transfer-oct25-c1-x",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "scenarioSha256": "9dec6b9b600e2dd7c15613f35b7a0dd0ac83ae71f1c351c4c21189d3afe853df"
+    },
+    {
+      "id": "authoring-transfer-oct25-c1-y",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "scenarioSha256": "c7a9d2604f393923c27228e838179d8a4175b2cfab52097a8c9863f1a9eaa185"
+    },
+    {
+      "id": "authoring-transfer-oct25-c2-x",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "scenarioSha256": "08c02c8d7e7fa4f09217def7d5cca4b37e3a80bf0b497c2c2b612eeb98985ad0"
+    },
+    {
+      "id": "authoring-transfer-oct25-c2-y",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "scenarioSha256": "6eb866c8b493871b612a17ac6a6324b244a02ba2c40d260219572994f4e67def"
+    },
+    {
+      "id": "authoring-transfer-oct25-c3-x",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "scenarioSha256": "8fbe257b81243f7278ad2c89311b4eaec35062ebb3234f070c956f01f8d2b12f"
+    },
+    {
+      "id": "authoring-transfer-oct25-c3-y",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "scenarioSha256": "c52ff994f4943ed84471c2eeac8f64154da8bcaa488c5d4a8676ad0330685cf5"
+    },
+    {
+      "id": "authoring-transfer-oct25-c4-x",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "scenarioSha256": "efe5bfb460482a4839d99774616de4ede8da44dc637de13b7d0026def0394151"
+    },
+    {
+      "id": "authoring-transfer-oct25-c4-y",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "scenarioSha256": "956a3e9c0e1c15497274bd830291e7c6617a58121f23f43d86db584a98fca659"
+    },
+    {
+      "id": "authoring-transfer-oct25-c5-x",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "scenarioSha256": "69453abf309e6c2c6c9e1daf5169cfdad2656d1a2ff9986be46fa21f03ef16e8"
+    },
+    {
+      "id": "authoring-transfer-oct25-c5-y",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "scenarioSha256": "7c8083eed8a34da53372fe3abec3ba33de88f99bf3d32c11f9e801eefe9d6971"
+    },
+    {
+      "id": "authoring-transfer-oct25-c6-x",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+      "scenarioSha256": "985d3ab50f428f58f7d825449e751c45481696894f138c34201a69268d207574"
+    },
+    {
+      "id": "authoring-transfer-oct25-c6-y",
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+      "scenarioSha256": "32e05db9425958a83753621ab4aac64f936bba63b31fe672a464c89082f5c9e9"
+    }
+  ],
+  "limits": {
+    "workerMs": 180000,
+    "childGraceMs": 60000,
+    "childDeadlineMs": 540000,
+    "maximumAttempts": 12
+  },
+  "frozenAt": "2026-10-25T10:31:53.809Z"
+}

@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const own=path.dirname(new URL(import.meta.url).pathname),mode=process.argv[2];
+const manifest=path.join(own,'journal-modes.json');
+if(mode==='freeze'){
+  const entries=['plan','facts'].map(arm=>{const p=path.join(own,arm,'ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md');const stat=fs.lstatSync(p);if(!stat.isFile()||stat.isSymbolicLink())throw Error('JOURNAL_IDENTITY');return {path:p,mode:stat.mode&0o777};});
+  fs.writeFileSync(manifest,JSON.stringify(entries,null,2)+'\n',{flag:'wx',mode:0o600});
+  for(const item of entries)fs.chmodSync(item.path,0o444);
+  console.log(JSON.stringify({frozen:entries.length,reason:'optional result log cannot dirty the exact installed source'}));
+}else if(mode==='restore'){
+  const entries=JSON.parse(fs.readFileSync(manifest,'utf8'));
+  for(const item of entries){if(!item.path.startsWith(own+'/')||fs.lstatSync(item.path).isSymbolicLink())throw Error('RESTORE_IDENTITY');fs.chmodSync(item.path,item.mode);}
+  console.log(JSON.stringify({restored:entries.length}));
+}else throw Error('MODE');

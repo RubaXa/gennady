@@ -1,7 +1,9 @@
 # Template-owned authoring: baseline and controlled evolution
 
-Current decision (2026-10-25): [the research cycle is closed](./AUTHORING-CLOSURE.md),
-with zero additional live attempts. CONTRACTCUE is retained as an accepted-bounded prototype,
+Current decision (2026-10-25): [the finite transfer slot is complete](./AUTHORING-CLOSURE.md).
+[TRANSFER1](../results/authoring-campaigns/transfer1-oct25/REPORT.md) records all twelve new-task
+attempts: keep the current default; local savings did not establish preserved quality.
+No automatic replacement campaign. CONTRACTCUE is retained as an accepted-bounded prototype,
 not a shipped opt-in; production default is unchanged. The evidence-bound
 [decision register](./AUTHORING-DECISIONS.json) distinguishes tested, invalid and untested work.
 The baseline setup and commands below are historical methodology, not an automatic next-run queue.

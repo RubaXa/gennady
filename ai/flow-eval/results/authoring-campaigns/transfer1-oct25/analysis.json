@@ -1,0 +1,377 @@
+{
+  "schema": "gennady.authoring-transfer-result.1",
+  "planned": 12,
+  "recorded": 12,
+  "complete": true,
+  "pairs": [
+    {
+      "taskId": "ranges-intersection",
+      "metrics": {
+        "tokens": {
+          "baseline": 54561,
+          "candidate": 43076,
+          "delta": -11485,
+          "percent": -21.04983413060611
+        },
+        "cacheRead": {
+          "baseline": 410112,
+          "candidate": 368896,
+          "delta": -41216,
+          "percent": -10.049937578027466
+        },
+        "tools": {
+          "baseline": 23,
+          "candidate": 20,
+          "delta": -3,
+          "percent": -13.043478260869565
+        },
+        "timeMs": {
+          "baseline": 84795,
+          "candidate": 73036,
+          "delta": -11759,
+          "percent": -13.867562945928416
+        },
+        "messages": {
+          "baseline": 13,
+          "candidate": 13,
+          "delta": 0,
+          "percent": 0
+        }
+      },
+      "baseline": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      },
+      "candidate": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      }
+    },
+    {
+      "taskId": "delivery-retry",
+      "metrics": {
+        "tokens": {
+          "baseline": 51465,
+          "candidate": 59200,
+          "delta": 7735,
+          "percent": 15.029631788594191
+        },
+        "cacheRead": {
+          "baseline": 404864,
+          "candidate": 516480,
+          "delta": 111616,
+          "percent": 27.56876383180525
+        },
+        "tools": {
+          "baseline": 23,
+          "candidate": 26,
+          "delta": 3,
+          "percent": 13.043478260869565
+        },
+        "timeMs": {
+          "baseline": 71546,
+          "candidate": 119884,
+          "delta": 48338,
+          "percent": 67.5621278617952
+        },
+        "messages": {
+          "baseline": 14,
+          "candidate": 15,
+          "delta": 1,
+          "percent": 7.142857142857143
+        }
+      },
+      "baseline": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      },
+      "candidate": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      }
+    },
+    {
+      "taskId": "ranges-contains",
+      "metrics": {
+        "tokens": {
+          "baseline": 59138,
+          "candidate": 52631,
+          "delta": -6507,
+          "percent": -11.003077547431431
+        },
+        "cacheRead": {
+          "baseline": 605824,
+          "candidate": 416128,
+          "delta": -189696,
+          "percent": -31.312064229875343
+        },
+        "tools": {
+          "baseline": 24,
+          "candidate": 21,
+          "delta": -3,
+          "percent": -12.5
+        },
+        "timeMs": {
+          "baseline": 100283,
+          "candidate": 69375,
+          "delta": -30908,
+          "percent": -30.82077720052252
+        },
+        "messages": {
+          "baseline": 19,
+          "candidate": 13,
+          "delta": -6,
+          "percent": -31.57894736842105
+        }
+      },
+      "baseline": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      },
+      "candidate": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      }
+    },
+    {
+      "taskId": "delivery-delay",
+      "metrics": {
+        "tokens": {
+          "baseline": 73998,
+          "candidate": 27015,
+          "delta": -46983,
+          "percent": -63.492256547474256
+        },
+        "cacheRead": {
+          "baseline": 986368,
+          "candidate": 127232,
+          "delta": -859136,
+          "percent": -87.10096029068258
+        },
+        "tools": {
+          "baseline": 28,
+          "candidate": 13,
+          "delta": -15,
+          "percent": -53.57142857142857
+        },
+        "timeMs": {
+          "baseline": 149294,
+          "candidate": 18054,
+          "delta": -131240,
+          "percent": -87.90708266909587
+        },
+        "messages": {
+          "baseline": 24,
+          "candidate": 9,
+          "delta": -15,
+          "percent": -62.5
+        }
+      },
+      "baseline": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      },
+      "candidate": {
+        "artifact": false,
+        "semantic": "worker-error",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven; actual create→target read→whole Write order not proven; successful target check after final Write not proven"
+        }
+      }
+    },
+    {
+      "taskId": "ranges-merge",
+      "metrics": {
+        "tokens": {
+          "baseline": 52374,
+          "candidate": 45855,
+          "delta": -6519,
+          "percent": -12.447015694810402
+        },
+        "cacheRead": {
+          "baseline": 646016,
+          "candidate": 397696,
+          "delta": -248320,
+          "percent": -38.43867644145037
+        },
+        "tools": {
+          "baseline": 21,
+          "candidate": 18,
+          "delta": -3,
+          "percent": -14.285714285714286
+        },
+        "timeMs": {
+          "baseline": 111632,
+          "candidate": 98620,
+          "delta": -13012,
+          "percent": -11.656155940948832
+        },
+        "messages": {
+          "baseline": 22,
+          "candidate": 14,
+          "delta": -8,
+          "percent": -36.36363636363637
+        }
+      },
+      "baseline": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      },
+      "candidate": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      }
+    },
+    {
+      "taskId": "delivery-dedupe",
+      "metrics": {
+        "tokens": {
+          "baseline": 69050,
+          "candidate": 70982,
+          "delta": 1932,
+          "percent": 2.797972483707458
+        },
+        "cacheRead": {
+          "baseline": 659328,
+          "candidate": 550016,
+          "delta": -109312,
+          "percent": -16.579304989322463
+        },
+        "tools": {
+          "baseline": 27,
+          "candidate": 23,
+          "delta": -4,
+          "percent": -14.814814814814815
+        },
+        "timeMs": {
+          "baseline": 151294,
+          "candidate": 96213,
+          "delta": -55081,
+          "percent": -36.4065990720055
+        },
+        "messages": {
+          "baseline": 17,
+          "candidate": 14,
+          "delta": -3,
+          "percent": -17.647058823529413
+        }
+      },
+      "baseline": {
+        "artifact": true,
+        "semantic": "pass",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      },
+      "candidate": {
+        "artifact": true,
+        "semantic": "fail",
+        "path": {
+          "rule": "AUTHORING-PATH",
+          "pass": false,
+          "detail": "opaque Bash command: whole-write-only path unproven"
+        }
+      }
+    }
+  ],
+  "totals": {
+    "tokens": {
+      "baseline": 360586,
+      "candidate": 298759,
+      "percent": -17.14625637157294
+    },
+    "cacheRead": {
+      "baseline": 3712512,
+      "candidate": 2376448,
+      "percent": -35.988139566956285
+    },
+    "tools": {
+      "baseline": 146,
+      "candidate": 121,
+      "percent": -17.123287671232877
+    },
+    "timeMs": {
+      "baseline": 668844,
+      "candidate": 475182,
+      "percent": -28.95473383928091
+    },
+    "messages": {
+      "baseline": 109,
+      "candidate": 78,
+      "percent": -28.440366972477065
+    },
+    "judgeTokens": {
+      "baseline": 91857,
+      "candidate": null,
+      "percent": null
+    }
+  },
+  "rawQualityGate": false,
+  "positiveUnsafeMutation": false,
+  "resourceGate": true,
+  "manualReviewComplete": true,
+  "manualQualityGate": false,
+  "recommendation": "retain-current-default",
+  "adoptionAuthorized": false,
+  "roleExecutions": {
+    "authoring": 12,
+    "judge": 11,
+    "reflection": 0
+  },
+  "limits": [
+    "one pair per new task does not prove statistical equivalence",
+    "no universal guarantee",
+    "path unknown is not pass or observed mutation",
+    "money and HTTP retries unknown",
+    "manual review may add findings but never overwrites raw grades"
+  ]
+}

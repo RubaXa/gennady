@@ -1,10 +1,12 @@
 # Authoring: source map and one-variable hypotheses
 
-Current decision (2026-10-25): **cycle closed; CONTRACTCUE1 accepted-bounded as a retained prototype,
-not shipped or universally activated**. See [finite closure and source research](./AUTHORING-CLOSURE.md)
+Current decision (2026-10-25): **TRANSFER1 complete, default unchanged**. All twelve new-task
+attempts are [archived](../results/authoring-campaigns/transfer1-oct25/REPORT.md); no automatic
+replacement series. CONTRACTCUE1 remains accepted-bounded as a retained prototype,
+not shipped or universally activated. See [finite closure and source research](./AUTHORING-CLOSURE.md)
 and the [evidence-bound register](./AUTHORING-DECISIONS.json). There is no minimum product savings
 percentage. The historical ≥10% pilot result remains unchanged, but does not automatically veto
-bounded use. Flat total tokens fell 18.85%; nested total tokens rose 1.07% despite a 7.7% median
+bounded use. In the earlier CONTRACTCUE1 series, flat total tokens fell 18.85%; nested total tokens rose 1.07% despite a 7.7% median
 reduction. Both have fewer total calls. Semantic PASS is 4/6→6/6 and 5/6→5/6 respectively.
 One candidate error remains; path unknown is not a demonstrated violation or a fabricated PASS.
 Production directives and CLI output remain unchanged. The old measured report and grades are

@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const own=path.dirname(new URL(import.meta.url).pathname);
+const host='/private/tmp/gennady-format-oct23.xNC5Zx/plan';
+const source=path.join(host,'ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/code/controller.mjs.txt');
+let text=fs.readFileSync(source,'utf8');
+function replace(before,after){if(text.split(before).length!==2)throw Error('NON_UNIQUE_CONTROLLER_PATCH');text=text.replace(before,after)}
+replace('const MAX_ATTEMPTS = 24;','const MAX_ATTEMPTS = 12;');
+replace("['ownRoot', 'baseUrl', 'permanent', 'attempts', 'concurrency']","['ownRoot', 'baseUrl', 'permanent', 'attempts', 'concurrency', 'hostRoot']");
+replace("['scenario', 'sourceRoot']","['scenario', 'sourceRoot', 'taskId']");
+replace("const load = (source, name) => import(pathToFileURL(join(source, 'ai/flow-eval', name)).href);","const load = (_source, name) => import(pathToFileURL(join(config.hostRoot, 'ai/flow-eval', name)).href);");
+replace("const child = spawn(process.execPath, ['--import', join(attempt.sourceRoot, 'node_modules/tsx/dist/loader.mjs'), ownFile, '--config', configPath, '--case', String(index)], { cwd: attempt.sourceRoot, env: gitEnvironment, stdio: ['ignore', 'pipe', 'pipe'] });","const child = spawn(process.execPath, ['--import', join(attempt.sourceRoot, 'node_modules/tsx/dist/loader.mjs'), ownFile, '--config', configPath, '--case', String(index)], { cwd: attempt.sourceRoot, env: { ...gitEnvironment, GENNADY_AUTHORING_TRANSFER_CASE: attempt.taskId }, stdio: ['ignore', 'pipe', 'pipe'] });");
+replace("function verifyPreregistration() {","function verifyPreregistration() {\n  if (git(config.hostRoot, 'status', '--porcelain') || git(config.hostRoot, 'rev-parse', 'HEAD') !== preregistration.hostHarness.sourceSHA) fail('COMMON_HOST_HARNESS_DRIFT');\n  for (const item of preregistration.hostHarness.files) if (shaFile(join(config.hostRoot,item.path)) !== item.sha256) fail('COMMON_HOST_FILE_DRIFT');\n  for (const item of preregistration.taskCorpus) if (!config.attempts.some(a => a.taskId === item.id)) fail('TASK_CORPUS_MISMATCH');");
+replace("const source = attempt.sourceRoot;\n  if (frozen.attempts[index].sourceSha", "const source = attempt.sourceRoot;\n  if (process.env.GENNADY_AUTHORING_TRANSFER_CASE !== attempt.taskId) fail('TRANSFER_TASK_SELECTION_MISMATCH');\n  if (frozen.attempts[index].sourceSha");
+replace("index, scenarioId: attempt.scenario.id, sourceSha: sourceMetadata.get(source).sha, startedAt", "index, taskId: attempt.taskId, scenarioId: attempt.scenario.id, sourceSha: sourceMetadata.get(source).sha, hostHarnessSHA: preregistration.hostHarness.sourceSHA, startedAt");
+replace("if (trajectory.scenario !== attempt.scenario.id) fail('PRIMARY_TRAJECTORY_IDENTITY_MISMATCH');", "if (trajectory.scenario !== attempt.scenario.id) fail('PRIMARY_TRAJECTORY_IDENTITY_MISMATCH');\n      if (summary.authoringBenchmark.transferTask?.id !== attempt.taskId || summary.authoringBenchmark.transferTask.revision !== 'transfer-oct25.1') fail('PRIMARY_TRANSFER_TASK_MISMATCH');\n      if (existsSync(join(resultDir,'reflection.json'))) fail('UNEXPECTED_REFLECTION_EXECUTION');");
+fs.writeFileSync(path.join(own,'controller.mjs'),text,{flag:'wx',mode:0o600});
+console.log(JSON.stringify({controllerCreated:true,maximumAttempts:12,hostHarnessSeparate:true,reflectionExecutions:0}));

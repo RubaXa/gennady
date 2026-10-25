@@ -1,7 +1,9 @@
 # Authoring efficiency: primary-source check, not an effect-size promise
 
-2026-10-25 update: [finite closure and framework research](./AUTHORING-CLOSURE.md) is the current
-decision. The original source check below remains historical; its "next gate" does not reopen
+2026-10-25 update: [TRANSFER1 completed, current default retained](./AUTHORING-CLOSURE.md).
+[Twelve fresh-task attempts](../results/authoring-campaigns/transfer1-oct25/REPORT.md) show local
+savings without confirmed preserved quality; the finite slot is exhausted, not another queue.
+The original source check below remains historical; its "next gate" does not reopen
 the completed cycle. [The register](./AUTHORING-DECISIONS.json) records what was actually tested,
 what failed qualification, what is retained and which future slots have no automatic live budget.
 

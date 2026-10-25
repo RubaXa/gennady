@@ -1,0 +1,188 @@
+{
+  "scenarioId": "authoring-transfer-oct25-c4-y",
+  "date": "2026-10-25",
+  "timestamp": "2026-10-25T10:49:11.953Z",
+  "sha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "7b8bcc1cf2e3d224959d182b0f452dc667440ad9a99a0a5f42ddce0220f7f2d3",
+    "configSha256": "5ce8132c0fcfe46eff6f5f6f5bbd9922852b2dd6cef95a2664655ed1f761a608"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 100,
+    "observeEveryMs": 2500,
+    "stuckAfter": 80,
+    "tailLimit": 20
+  },
+  "verdict": "worker-error",
+  "status": "error",
+  "outcome": "worker-error",
+  "actions": 13,
+  "durationMs": 17910,
+  "usage": {
+    "messages": 9,
+    "input": 25757,
+    "output": 936,
+    "reasoning": 322,
+    "cacheRead": 127232,
+    "cacheWrite": 0,
+    "total": 27015,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 18054
+  },
+  "quality": {
+    "rule": "AUTHORING",
+    "pass": false,
+    "detail": "canonical-shape: SDD_SPEC_SECTION_MISSING: Section MODULE_VISION is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section MODULE_USAGE_EXAMPLE is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section MODULE_REQUIREMENTS is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section INTER_MODULE_DEPENDENCIES is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section ENTITY_INVENTORY is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section FILE_STRUCTURE is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section HANDOFF is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; no-skeleton: Unreplaced skeleton guidance or placeholder; pending-approval: Handoff must remain pending; relative-links: specs/delivery/policies/research/<yyyy-mm-dd>-<slug>.research.md: path is missing; required-facts: Expected one unambiguous Input/Outcome table",
+    "checks": [
+      {
+        "id": "safe-target",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "seeded-bytes",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "write-zone-artifact",
+        "pass": true,
+        "detail": "passed"
+      },
+      {
+        "id": "canonical-shape",
+        "pass": false,
+        "detail": "SDD_SPEC_SECTION_MISSING: Section MODULE_VISION is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section MODULE_USAGE_EXAMPLE is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section MODULE_REQUIREMENTS is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section INTER_MODULE_DEPENDENCIES is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section ENTITY_INVENTORY is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section FILE_STRUCTURE is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_SPEC_SECTION_MISSING: Section HANDOFF is not filled yet; replace its local skeleton comment with the draft content it requests.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec.; SDD_AUTHORING_PLACEHOLDER: Skeleton guidance remains; follow this local comment, then remove it from the filled spec."
+      },
+      {
+        "id": "no-skeleton",
+        "pass": false,
+        "detail": "Unreplaced skeleton guidance or placeholder"
+      },
+      {
+        "id": "pending-approval",
+        "pass": false,
+        "detail": "Handoff must remain pending"
+      },
+      {
+        "id": "relative-links",
+        "pass": false,
+        "detail": "specs/delivery/policies/research/<yyyy-mm-dd>-<slug>.research.md: path is missing"
+      },
+      {
+        "id": "required-facts",
+        "pass": false,
+        "detail": "Expected one unambiguous Input/Outcome table"
+      }
+    ]
+  },
+  "trajectory": {
+    "rule": "AUTHORING-PATH",
+    "pass": false,
+    "detail": "opaque Bash command: whole-write-only path unproven; actual create→target read→whole Write order not proven; successful target check after final Write not proven"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delivery/delivery.spec.md",
+    "specs/delivery/policies/delay/delay.spec.md",
+    "specs/infra-base/infra-base.spec.md"
+  ],
+  "authoringBenchmark": {
+    "transferTask": {
+      "id": "delivery-delay",
+      "revision": "transfer-oct25.1"
+    },
+    "prompt": {
+      "schema": "gennady.authoring-instruction-envelope.1",
+      "bytes": 43574,
+      "approximateTokens": 8742,
+      "digest": "ba3a99b0fd6fae2b58e38594dfcbc616c83960c449789930095d66d4b432ed73",
+      "parts": [
+        {
+          "name": "module.skeleton",
+          "bytes": 7986,
+          "approximateTokens": 1944,
+          "sha256": "386ee407fbee99006d36ac9de430ce25a3fba4342555cf7ea76199053b3960bd"
+        },
+        {
+          "name": "module.manifest",
+          "bytes": 8356,
+          "approximateTokens": 993,
+          "sha256": "27558bbff34c7673528183312a7ab205cdf26774c2c432ee49310fd9731ed867"
+        },
+        {
+          "name": "module.directive.xml",
+          "bytes": 10397,
+          "approximateTokens": 2060,
+          "sha256": "d86b9cdd6b07cf4e56dbe388945d68bb2b67106800efafe286b61e2c438a1748"
+        },
+        {
+          "name": "formats/entity-inventory-format.xml",
+          "bytes": 3297,
+          "approximateTokens": 674,
+          "sha256": "1576369d3ea8f304133847b724c0ce46de68bf5ab2bbf20be4415feb88b45ecf"
+        },
+        {
+          "name": "formats/entity-surface-format.xml",
+          "bytes": 3346,
+          "approximateTokens": 778,
+          "sha256": "be5a3a0ec63781df530b4a6c2664be2e140fa04f0cacc99ed92f4b7513767074"
+        },
+        {
+          "name": "formats/dbc-contracts.xml",
+          "bytes": 10192,
+          "approximateTokens": 2293,
+          "sha256": "754ff683b2b1bb2e7a01dba7ea67457a2e36579933f7ca82ea328094731a1fd4"
+        }
+      ]
+    },
+    "taskDigest": "a845dbcbbaf2b766b53fcc943c67d2a1ce229fb78f40a797ac7ff0d382b71f56",
+    "oracleDigest": "6aa1fa430ee8cd36904a317c757924705a70b360d8fee3ee816a480b2fd0fe89",
+    "harnessDigest": "285ba624cde67af919c2a2b3ecf811df6253062c9251d59f5c636f11c150235f",
+    "environmentDigest": "e800f41561b4354febfd0108f1dba7d075f433bf991a9c524444cb508f4256b4",
+    "environmentVerified": true,
+    "campaign": "transfer1-oct25",
+    "caseId": "module-nested",
+    "variant": "facts",
+    "repetition": 1,
+    "sourceCommit": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+    "dirty": false,
+    "model": "llm-proxy/deepseek-v4-flash",
+    "modelVerified": true,
+    "artifactPass": false,
+    "semanticVerdict": "worker-error",
+    "trajectoryPass": false,
+    "durationMs": 18054,
+    "nonCacheTokens": 27015,
+    "metrics": {
+      "tools": 13,
+      "targetReads": 1,
+      "repeatedTargetReads": 0,
+      "wholeWrites": 0,
+      "partialWrites": 0,
+      "failedTools": 0,
+      "checks": 0,
+      "outsideTargetWrites": 0,
+      "toolSpanMs": 14768
+    }
+  },
+  "artifactFiles": [
+    "specs/delivery/policies/delay/delay.spec.md"
+  ]
+}

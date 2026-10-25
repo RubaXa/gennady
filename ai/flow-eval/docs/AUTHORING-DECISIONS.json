@@ -1,6 +1,28 @@
 {
   "schema": "gennady.authoring-decisions.1",
   "date": "2026-10-25",
+  "currentDecision": "AUTH-20261025-TRANSFER",
+  "transferExecution": {
+    "status": "closed",
+    "campaign": "transfer1-oct25",
+    "model": "llm-proxy/deepseek-v4-flash",
+    "authoringAttempts": 12,
+    "judgeExecutions": 11,
+    "reflectionExecutions": 0,
+    "replacementAttempts": 0,
+    "automaticReruns": false,
+    "productionDefault": "unchanged",
+    "recommendation": "retain-current-default",
+    "allPairNonCacheTotal": [360586, 298759],
+    "allPairToolCalls": [146, 121],
+    "rawQualifiedDocuments": [6, 4],
+    "fullyQualifiedPairCount": 4,
+    "fullyQualifiedPairNonCacheTotal": [217538, 200762],
+    "fullyQualifiedPairToolCalls": [91, 85],
+    "fullyQualifiedPairWallMs": [368256, 360915],
+    "cleanupErrors": 0,
+    "temporaryRuntimeRemoved": true
+  },
   "cycle": {
     "status": "closed",
     "newLiveAuthoringAttempts": 0,
@@ -145,6 +167,17 @@
       "notTested": "Isolated cue effect, general transfer, statistical non-inferiority or full path compliance.",
       "evidenceFile": "manifest.json",
       "evidenceSha256": "15597bfd9160c3b0be0f949641338a43dad2dbd6e04e8d8dfb06d999aff40922"
+    },
+    {
+      "id": "transfer1-oct25",
+      "status": "rejected-mixed",
+      "workerAttempts": 12,
+      "scope": "Six previously unused tasks in ranges/delivery, three flat and three nested; one matched pair each.",
+      "tested": "The unchanged full CONTRACTCUE packet versus fresh original CLI with one common frozen host harness; three AB and three BA pairs.",
+      "result": "Keep default: raw completed artifact/judge PASS 6/6 to 4/6; four fully qualified pairs save 7.71% non-cache and 6.59% calls. All-pair 17.15% token savings include an incomplete candidate and are not a clean successful-task gain.",
+      "notTested": "Statistical non-inferiority, isolated cue effect, range-only routing, guaranteed quality or money savings; no replacement series authorized.",
+      "evidenceFile": "manifest.json",
+      "evidenceSha256": "9d553cedc438119c32ec74f3c745e8217c7974d1278af9e3c85cea1d48eda773"
     }
   ],
   "decisions": [
@@ -168,6 +201,17 @@
       "scope": "Universal default activation and a guaranteed quality-preserving savings claim.",
       "reason": "No independent-domain holdout; nested total tokens grow; six repeats do not establish semantic equivalence.",
       "reopenWhen": "A separately opened finite transfer check, not another repetition of normalizeToken."
+    },
+    {
+      "id": "AUTH-20261025-TRANSFER",
+      "status": "rejected-mixed",
+      "campaign": "transfer1-oct25",
+      "supersedesDecision": "AUTH-20261025-DEFAULT",
+      "scope": "Default remains unchanged after the separately operator-authorized, now exhausted twelve-attempt transfer slot. Retained bounded prototype is not shipped or universally activated.",
+      "reason": "Three range tasks improve, retry grows, delay stops before writing, and dedupe lacks confirmed contract completeness. Manual audit also finds a parent/local ID collision in control delay; raw grades are unchanged. Quality-preserving general transfer is not established.",
+      "rawGradesChanged": false,
+      "mergeAuthorized": false,
+      "reopenWhen": "Only an explicitly authorized materially different mechanism or reproducible new counterexample; no resampling, automatic campaign or post-hoc range-only activation."
     }
   ],
   "latestEffects": [
@@ -191,7 +235,9 @@
   "futureSlots": [
     {
       "id": "CONTRACTCUE-TRANSFER",
-      "status": "untested",
+      "status": "completed",
+      "originalStatus": "untested",
+      "executionRef": "transfer1-oct25",
       "automaticStart": false,
       "maxAuthoringAttempts": 12,
       "maxJudgeExecutions": 12,

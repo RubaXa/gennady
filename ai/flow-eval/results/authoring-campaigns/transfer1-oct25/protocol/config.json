@@ -1,0 +1,357 @@
+{
+  "ownRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC",
+  "hostRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+  "baseUrl": "http://127.0.0.1:4202/",
+  "permanent": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/permanent",
+  "attempts": [
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "taskId": "ranges-intersection",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c1-x",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-flat",
+          "variant": "baseline",
+          "repetition": 1
+        },
+        "intent": "Author only specs/ranges/intersection/intersection.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/ranges/intersection/intersection.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope ranges --module intersection. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: intersectRanges(left: [number,number], right: [number,number]): [number,number] | null.\nInherited domain: Every range is an ordered pair [start,end] of finite safe integers with start <= end. Ranges are half-open: start is included and end excluded. Empty ranges start=end are valid. Validate all inputs before returning any result. No I/O or mutation.\nBehavior: Return [max(left.start,right.start), min(left.end,right.end)] only when its start is strictly less than its end; otherwise return null. Touching or empty intersections are null. This entire behavior is already owned by the parent; the child introduces no new requirement.\nInvalid inputs: Any non-safe-integer bound or reversed range throws TypeError, including when the other range is empty or the ranges are disjoint. Do not reorder or silently repair a reversed range.\nOwnership: No new module-specific behavior: use canonical delegation to the genuine parent requirement IDs, rather than inventing local requirements.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `intersectRanges([0,3],[3,6])` | `null` |\n| `intersectRanges([-4,2],[-1,5])` | `[-1,2]` |\n| `intersectRanges([2,2],[0,9])` | `null` |\n| `intersectRanges([5,1],[0,9])` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/ranges/intersection/intersection.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "taskId": "ranges-intersection",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c1-y",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-flat",
+          "variant": "facts",
+          "repetition": 1
+        },
+        "intent": "Author only specs/ranges/intersection/intersection.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/ranges/intersection/intersection.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope ranges --module intersection. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: intersectRanges(left: [number,number], right: [number,number]): [number,number] | null.\nInherited domain: Every range is an ordered pair [start,end] of finite safe integers with start <= end. Ranges are half-open: start is included and end excluded. Empty ranges start=end are valid. Validate all inputs before returning any result. No I/O or mutation.\nBehavior: Return [max(left.start,right.start), min(left.end,right.end)] only when its start is strictly less than its end; otherwise return null. Touching or empty intersections are null. This entire behavior is already owned by the parent; the child introduces no new requirement.\nInvalid inputs: Any non-safe-integer bound or reversed range throws TypeError, including when the other range is empty or the ranges are disjoint. Do not reorder or silently repair a reversed range.\nOwnership: No new module-specific behavior: use canonical delegation to the genuine parent requirement IDs, rather than inventing local requirements.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `intersectRanges([0,3],[3,6])` | `null` |\n| `intersectRanges([-4,2],[-1,5])` | `[-1,2]` |\n| `intersectRanges([2,2],[0,9])` | `null` |\n| `intersectRanges([5,1],[0,9])` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/ranges/intersection/intersection.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "taskId": "delivery-retry",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c2-x",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-flat",
+          "variant": "facts",
+          "repetition": 1
+        },
+        "intent": "Author only specs/delivery/retry/retry.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/delivery/retry/retry.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope delivery --module retry. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: shouldRetry(attempt: number, maxAttempts: number, status: number): boolean.\nInherited domain: All numeric inputs are finite safe integers. Attempts and maximum-attempt counts are positive. Times and delays are nonnegative. Validate all inputs before returning any result; never perform network I/O, wait, read a clock or mutate state.\nBehavior: Return true iff (status is 429 OR status is from 500 through 599 inclusive) AND attempt < maxAttempts. Other valid statuses return false; in particular 408 is not retryable. This entire rule is already parent-owned; introduce no new child requirement.\nInvalid inputs: A nonpositive/non-safe-integer attempt or maxAttempts, or a status outside the integer range 100..599, throws TypeError before deciding eligibility. attempt >= maxAttempts is valid and returns false, not an input error.\nOwnership: No new module-specific behavior: use canonical delegation to the genuine parent requirement IDs, rather than inventing local requirements.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `shouldRetry(1,3,503)` | `true` |\n| `shouldRetry(3,3,429)` | `false` |\n| `shouldRetry(1,3,408)` | `false` |\n| `shouldRetry(0,3,200)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/delivery/retry/retry.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "taskId": "delivery-retry",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c2-y",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-flat",
+          "variant": "baseline",
+          "repetition": 1
+        },
+        "intent": "Author only specs/delivery/retry/retry.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/delivery/retry/retry.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope delivery --module retry. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: shouldRetry(attempt: number, maxAttempts: number, status: number): boolean.\nInherited domain: All numeric inputs are finite safe integers. Attempts and maximum-attempt counts are positive. Times and delays are nonnegative. Validate all inputs before returning any result; never perform network I/O, wait, read a clock or mutate state.\nBehavior: Return true iff (status is 429 OR status is from 500 through 599 inclusive) AND attempt < maxAttempts. Other valid statuses return false; in particular 408 is not retryable. This entire rule is already parent-owned; introduce no new child requirement.\nInvalid inputs: A nonpositive/non-safe-integer attempt or maxAttempts, or a status outside the integer range 100..599, throws TypeError before deciding eligibility. attempt >= maxAttempts is valid and returns false, not an input error.\nOwnership: No new module-specific behavior: use canonical delegation to the genuine parent requirement IDs, rather than inventing local requirements.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `shouldRetry(1,3,503)` | `true` |\n| `shouldRetry(3,3,429)` | `false` |\n| `shouldRetry(1,3,408)` | `false` |\n| `shouldRetry(0,3,200)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/delivery/retry/retry.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "taskId": "ranges-contains",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c3-x",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-nested",
+          "variant": "facts",
+          "repetition": 1
+        },
+        "intent": "Author only specs/ranges/queries/contains/contains.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/ranges/queries/contains/contains.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope ranges --module queries/contains. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: containsPoint(range: [number,number], point: number): boolean.\nInherited domain: Every range is an ordered pair [start,end] of finite safe integers with start <= end. Ranges are half-open: start is included and end excluded. Empty ranges start=end are valid. Validate all inputs before returning any result. No I/O or mutation.\nBehavior: New module-owned behavior: return true exactly when start <= point AND point < end. An empty range contains no point. A valid point outside the range returns false, not an exception.\nInvalid inputs: An invalid range or a point that is not a finite safe integer throws TypeError, even if membership would otherwise be false.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `containsPoint([2,5],2)` | `true` |\n| `containsPoint([2,5],5)` | `false` |\n| `containsPoint([2,2],2)` | `false` |\n| `containsPoint([2,5],2.5)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/ranges/queries/contains/contains.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "taskId": "ranges-contains",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c3-y",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-nested",
+          "variant": "baseline",
+          "repetition": 1
+        },
+        "intent": "Author only specs/ranges/queries/contains/contains.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/ranges/queries/contains/contains.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope ranges --module queries/contains. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: containsPoint(range: [number,number], point: number): boolean.\nInherited domain: Every range is an ordered pair [start,end] of finite safe integers with start <= end. Ranges are half-open: start is included and end excluded. Empty ranges start=end are valid. Validate all inputs before returning any result. No I/O or mutation.\nBehavior: New module-owned behavior: return true exactly when start <= point AND point < end. An empty range contains no point. A valid point outside the range returns false, not an exception.\nInvalid inputs: An invalid range or a point that is not a finite safe integer throws TypeError, even if membership would otherwise be false.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `containsPoint([2,5],2)` | `true` |\n| `containsPoint([2,5],5)` | `false` |\n| `containsPoint([2,2],2)` | `false` |\n| `containsPoint([2,5],2.5)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/ranges/queries/contains/contains.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "taskId": "delivery-delay",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c4-x",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-nested",
+          "variant": "baseline",
+          "repetition": 1
+        },
+        "intent": "Author only specs/delivery/policies/delay/delay.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/delivery/policies/delay/delay.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope delivery --module policies/delay. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: retryDelay(attempt: number, retryAfterMs: number | null): number.\nInherited domain: All numeric inputs are finite safe integers. Attempts and maximum-attempt counts are positive. Times and delays are nonnegative. Validate all inputs before returning any result; never perform network I/O, wait, read a clock or mutate state.\nBehavior: New module-owned behavior: base=min(30000,1000*2^(attempt-1)). With null hint return base; with a valid hint return max(base,retryAfterMs). Only exponential base is capped: a server hint above 30000 MUST NOT be capped. No random jitter and no sleeping.\nInvalid inputs: A nonpositive/non-safe-integer attempt or a non-null hint that is negative or not a finite safe integer throws TypeError. Zero is a valid hint, not a request for zero delay.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `retryDelay(1,null)` | `1000` |\n| `retryDelay(6,0)` | `30000` |\n| `retryDelay(1,60000)` | `60000` |\n| `retryDelay(1,-1)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/delivery/policies/delay/delay.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "taskId": "delivery-delay",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c4-y",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-nested",
+          "variant": "facts",
+          "repetition": 1
+        },
+        "intent": "Author only specs/delivery/policies/delay/delay.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/delivery/policies/delay/delay.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope delivery --module policies/delay. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: retryDelay(attempt: number, retryAfterMs: number | null): number.\nInherited domain: All numeric inputs are finite safe integers. Attempts and maximum-attempt counts are positive. Times and delays are nonnegative. Validate all inputs before returning any result; never perform network I/O, wait, read a clock or mutate state.\nBehavior: New module-owned behavior: base=min(30000,1000*2^(attempt-1)). With null hint return base; with a valid hint return max(base,retryAfterMs). Only exponential base is capped: a server hint above 30000 MUST NOT be capped. No random jitter and no sleeping.\nInvalid inputs: A nonpositive/non-safe-integer attempt or a non-null hint that is negative or not a finite safe integer throws TypeError. Zero is a valid hint, not a request for zero delay.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `retryDelay(1,null)` | `1000` |\n| `retryDelay(6,0)` | `30000` |\n| `retryDelay(1,60000)` | `60000` |\n| `retryDelay(1,-1)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/delivery/policies/delay/delay.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "taskId": "ranges-merge",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c5-x",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-flat",
+          "variant": "baseline",
+          "repetition": 1
+        },
+        "intent": "Author only specs/ranges/merge/merge.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/ranges/merge/merge.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope ranges --module merge. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: mergeRanges(left: [number,number], right: [number,number]): [number,number] | null.\nInherited domain: Every range is an ordered pair [start,end] of finite safe integers with start <= end. Ranges are half-open: start is included and end excluded. Empty ranges start=end are valid. Validate all inputs before returning any result. No I/O or mutation.\nBehavior: New module-owned behavior: if both ranges are nonempty and overlap or touch, return their smallest covering range. If either range is empty OR there is a positive gap, return null. A touching boundary is mergeable, unlike intersection. Do not return a covering range across a gap.\nInvalid inputs: Invalid bounds or reversed ranges throw TypeError before checking emptiness or a gap; never mutate either input.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `mergeRanges([0,3],[3,6])` | `[0,6]` |\n| `mergeRanges([0,2],[3,6])` | `null` |\n| `mergeRanges([2,2],[0,9])` | `null` |\n| `mergeRanges([5,1],[0,9])` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/ranges/merge/merge.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "taskId": "ranges-merge",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c5-y",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-flat",
+          "variant": "facts",
+          "repetition": 1
+        },
+        "intent": "Author only specs/ranges/merge/merge.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/ranges/merge/merge.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope ranges --module merge. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: mergeRanges(left: [number,number], right: [number,number]): [number,number] | null.\nInherited domain: Every range is an ordered pair [start,end] of finite safe integers with start <= end. Ranges are half-open: start is included and end excluded. Empty ranges start=end are valid. Validate all inputs before returning any result. No I/O or mutation.\nBehavior: New module-owned behavior: if both ranges are nonempty and overlap or touch, return their smallest covering range. If either range is empty OR there is a positive gap, return null. A touching boundary is mergeable, unlike intersection. Do not return a covering range across a gap.\nInvalid inputs: Invalid bounds or reversed ranges throw TypeError before checking emptiness or a gap; never mutate either input.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `mergeRanges([0,3],[3,6])` | `[0,6]` |\n| `mergeRanges([0,2],[3,6])` | `null` |\n| `mergeRanges([2,2],[0,9])` | `null` |\n| `mergeRanges([5,1],[0,9])` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/ranges/merge/merge.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/facts",
+      "taskId": "delivery-dedupe",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c6-x",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-nested",
+          "variant": "facts",
+          "repetition": 1
+        },
+        "intent": "Author only specs/delivery/policies/dedupe/dedupe.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/delivery/policies/dedupe/dedupe.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope delivery --module policies/dedupe. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: isDuplicate(seenAtMs: number | null, nowMs: number, ttlMs: number): boolean.\nInherited domain: All numeric inputs are finite safe integers. Attempts and maximum-attempt counts are positive. Times and delays are nonnegative. Validate all inputs before returning any result; never perform network I/O, wait, read a clock or mutate state.\nBehavior: New module-owned behavior: after validation, null seenAtMs returns false. Otherwise return true exactly when 0 <= nowMs-seenAtMs < ttlMs. Equality at ttl is expired; ttl=0 always yields false for valid inputs. No persistent store or clock reads.\nInvalid inputs: Negative or non-safe-integer times/ttl throw TypeError. A non-null seenAtMs greater than nowMs throws TypeError, including when ttl=0. Validate nowMs and ttlMs even when seenAtMs is null.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `isDuplicate(100,110,10)` | `false` |\n| `isDuplicate(100,109,10)` | `true` |\n| `isDuplicate(null,100,0)` | `false` |\n| `isDuplicate(101,100,0)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/delivery/policies/dedupe/dedupe.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    },
+    {
+      "sourceRoot": "/private/tmp/gennady-format-transfer-oct25.S5ZVqC/plan",
+      "taskId": "delivery-dedupe",
+      "scenario": {
+        "id": "authoring-transfer-oct25-c6-y",
+        "fixture": "authoring-benchmark",
+        "phase": "artifact-authoring",
+        "mode": "template-to-artifact",
+        "authoringBenchmark": {
+          "campaign": "transfer1-oct25",
+          "caseId": "module-nested",
+          "variant": "baseline",
+          "repetition": 1
+        },
+        "intent": "Author only specs/delivery/policies/dedupe/dedupe.spec.md from inputs/brief.md; no implementation or approval.",
+        "acceptance": "# Bounded module authoring\nRead owner instructions: ai/directives/sdd-v2/module.directive.xml. Only author specs/delivery/policies/dedupe/dedupe.spec.md; this is not full workflow execution.\nCreate it with actual installed command: npx --no-install gennady sdd-new module --scope delivery --module policies/dedupe. Read the returned manifest and skeleton; fill its sections and remove guidance.\nSignature: isDuplicate(seenAtMs: number | null, nowMs: number, ttlMs: number): boolean.\nInherited domain: All numeric inputs are finite safe integers. Attempts and maximum-attempt counts are positive. Times and delays are nonnegative. Validate all inputs before returning any result; never perform network I/O, wait, read a clock or mutate state.\nBehavior: New module-owned behavior: after validation, null seenAtMs returns false. Otherwise return true exactly when 0 <= nowMs-seenAtMs < ttlMs. Equality at ttl is expired; ttl=0 always yields false for valid inputs. No persistent store or clock reads.\nInvalid inputs: Negative or non-safe-integer times/ttl throw TypeError. A non-null seenAtMs greater than nowMs throws TypeError, including when ttl=0. Validate nowMs and ttlMs even when seenAtMs is null.\nOwnership: The behavior above is an explicit new module-owned delta; preserve parent input constraints and specify the local positive and invalid-input obligations.\nKeep an Input/Outcome Markdown table containing all four supplied examples in MODULE_USAGE_EXAMPLE:\n| Input | Outcome |\n|---|---|\n| `isDuplicate(100,110,10)` | `false` |\n| `isDuplicate(100,109,10)` | `true` |\n| `isDuplicate(null,100,0)` | `false` |\n| `isDuplicate(101,100,0)` | `TypeError` |\nPreserve every seeded file, parent requirement and stable identity. No implementation, new scope, tickets or operator approval. HANDOFF must explicitly remain pending-operator; no approved status or execution claim.\nAfter the final whole-file Write, run actual npx --no-install gennady sdd-check --spec specs/delivery/policies/dedupe/dedupe.spec.md --authoring. Stop after this bounded authoring task.\n",
+        "budgetMs": 180000,
+        "trajectoryRules": {
+          "requiredCommands": [
+            "sdd-new"
+          ],
+          "forbiddenCommands": [
+            "--no-verify",
+            "sdd-migrate"
+          ],
+          "maxTools": 50
+        }
+      }
+    }
+  ],
+  "concurrency": 1
+}

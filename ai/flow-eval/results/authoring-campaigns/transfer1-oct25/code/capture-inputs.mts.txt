@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
+import {AUTHORING_TRANSFER_TASKS,getAuthoringTransferCase} from '/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/authoring-transfer.ts';
+const own=path.dirname(fileURLToPath(import.meta.url));
+const pre=JSON.parse(fs.readFileSync(path.join(own,'preregistered-protocol.json'),'utf8'));
+const cases=pre.taskCorpus.map((entry:any)=>{
+  const task=AUTHORING_TRANSFER_TASKS.find(t=>t.id===entry.id)!;
+  const definition=getAuthoringTransferCase(task.layout,task);
+  const sha=createHash('sha256').update(JSON.stringify(definition,null,2)+'\n').digest('hex');
+  if(sha!==entry.caseSha256)throw Error('PREDECLARED_TASK_BYTES_DRIFT');
+  return {taskId:task.id,caseSha256:sha,definition};
+});
+fs.writeFileSync(path.join(own,'task-inputs.json'),JSON.stringify({authority:'Derived byte-identical rendering of the predeclared task identities, not a new task revision',cases},null,2)+'\n',{flag:'wx',mode:0o600});
+console.log(JSON.stringify({captured:cases.length,allMatchPreregistration:true,modelCalls:0}));

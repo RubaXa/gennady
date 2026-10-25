@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const own=path.dirname(new URL(import.meta.url).pathname);
+const read=n=>JSON.parse(fs.readFileSync(path.join(own,n),'utf8'));
+const analysis=read('analysis.json'),rows=read('raw-rows.json'),manual=read('manual-review.json');
+if(rows.length!==12||manual.rows.length!==12)throw Error('INCOMPLETE');
+const qualified=r=>r.status==='completed'&&r.semanticVerdict==='pass'&&r.artifact.pass&&manual.rows.find(m=>m.index===r.index).semantic==='pass';
+const ids=analysis.pairs.filter(p=>rows.filter(r=>r.taskId===p.taskId).every(qualified)).map(p=>p.taskId);
+const pairs=analysis.pairs.filter(p=>ids.includes(p.taskId));
+const totals={};
+for(const metric of ['tokens','tools','timeMs']){
+ const baseline=pairs.reduce((n,p)=>n+p.metrics[metric].baseline,0),candidate=pairs.reduce((n,p)=>n+p.metrics[metric].candidate,0);
+ totals[metric]={baseline,candidate,percent:100*(candidate-baseline)/baseline};
+}
+const median=a=>{const s=[...a].sort((a,b)=>a-b);return s.length%2?s[(s.length-1)/2]:(s[s.length/2-1]+s[s.length/2])/2;};
+const rawPass=r=>r.status==='completed'&&r.semanticVerdict==='pass'&&r.artifact.pass;
+const role=which=>rows.flatMap(r=>r[which]?[r[which]]:[]);
+const result={schema:'gennady.authoring-transfer-supplement.1',selection:'Descriptive paired subset only: both completed artifacts pass raw gates and the additional manual audit. Not the preregistered adoption gate; excludes both members of any failed pair, not only the failed candidate.',successfulPairTaskIds:ids,successfulPairTotals:totals,successfulPairMedianPercent:Object.fromEntries(['tokens','tools','timeMs'].map(k=>[k,median(pairs.map(p=>p.metrics[k].percent))])),allPairMedianPercent:Object.fromEntries(['tokens','tools','timeMs'].map(k=>[k,median(analysis.pairs.map(p=>p.metrics[k].percent))])),qualityByArm:Object.fromEntries(['baseline','facts'].map(arm=>{const a=rows.filter(r=>r.variant===arm);return [arm,{attempts:a.length,rawCompleteArtifactAndJudgePass:a.filter(rawPass).length,additionalManualPass:a.filter(r=>manual.rows.find(m=>m.index===r.index).semantic==='pass').length,qualified:a.filter(qualified).length}];})),observedRoleTokens:Object.fromEntries(['worker','judge'].map(which=>{const rs=role(which);return [which,{executions:rs.length,nonCache:rs.reduce((n,u)=>n+u.total,0),cacheRead:rs.reduce((n,u)=>n+u.cacheRead,0),cacheWrite:rs.reduce((n,u)=>n+u.cacheWrite,0)}];})),money:null,httpRequests:null,replacements:0,reflections:0};
+fs.writeFileSync(path.join(own,'supplemental.json'),JSON.stringify(result,null,2)+'\n');
+console.log(JSON.stringify(result,null,2));

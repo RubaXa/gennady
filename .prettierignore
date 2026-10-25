@@ -121,3 +121,13 @@ ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/controller-output/**
 ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/report-*/**
 ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/variants/**
 ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/code/**
+
+# TRANSFER1: immutable live evidence and frozen harness; authored REPORT.md stays checked.
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/*.json
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/protocol/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/records/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/controller-output/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/permanent/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/host-code/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/code/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/validation/**
