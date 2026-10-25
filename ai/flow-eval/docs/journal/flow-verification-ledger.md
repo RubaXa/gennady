@@ -172,3 +172,29 @@ done
   is not relabelled as the exact cloud-ios E-18 round-trip, and 23A makes no live-LLM/eval claim.
 - **Batch 23 as a whole remains OPEN** until 23C is discharged; 23A also does not perform E-14
   self-migration, remove `tasks/`, regrade warnings as errors, or alter the V1 corpus.
+
+## G. TOOLFACT1 authoring pilot — rejected (2026-10-24)
+
+The fresh 2×2×6 Flash-only trial measured computed identifiers/links in `sdd-new` output,
+not a directive rewrite or a combined tool. Worker tokens decreased about 13% in both cases,
+but semantic PASS was 12/12 for controls and 7/12 for candidates. Do not enable the experimental
+output by default or call its resource signal a quality-preserving optimization.
+
+Primary grades remain frozen v5. Separately versioned v6 corrects two pending-clause false
+negatives; the 48-fixture replay changes only pending-approval and no semantic result. Opaque
+Bash path evidence stays unknown. No approval, receipt, execution, validator scope or production
+flow contract is relaxed. Evidence, all failed documents and source diff are retained in
+[the bounded campaign archive](../../results/authoring-campaigns/toolfact1-oct24/REPORT.md).
+
+## H. CONTRACTCUE1 — partial net-resource signal, no production selection (2026-10-24)
+
+All five prior failures are bound to artifact/trace hashes and concrete witnesses; each read its
+parent before writing. A fresh 24-attempt frozen-v6 Flash trial tested a revised computed packet
+with a bounded source-contract consistency cue. Directives/templates/fixtures were unchanged.
+Flat: tokens/tools/time −18.3%/−31.0%/−9.9%, semantic 4/6→6/6; nested −7.7%/−10.0%/−18.9%,
+semantic 5/6→5/6. The two-case ≥10% token criterion is missed, complete path evidence remains
+unknown, and one candidate DbC contradiction persists. No default CLI change or automatic adoption.
+One baseline lexical pending dispute stays raw; no new grader or retroactive semantic repainting.
+All primary evidence and five portable analysis CLI replays are retained; 24 fixtures/stores,
+48 sessions and all private server roots are cleaned. Shared dependencies remain shared.
+[Measured report](../../results/authoring-campaigns/contractcue1-oct24/REPORT.md).

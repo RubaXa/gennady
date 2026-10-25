@@ -1,0 +1,327 @@
+diff --git a/cli/AGENTS.md b/cli/AGENTS.md
+index d8af8da6..5026c3c0 100644
+--- a/cli/AGENTS.md
++++ b/cli/AGENTS.md
+@@ -39,7 +39,7 @@
+ | sdd-state         | [cmd/sdd-state/](cmd/sdd-state/)                 | Детерминированный снимок SDD-состояния проекта                                      |
+ | sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | V2 ownership/checks; legacy diagnostics grandfathered, no header append-only gate   |
+ | sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                      |
+-| sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                    |
++| sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold + module ID/link facts; no authored requirements or decisions              |
+ | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Thin SDD task/phase facade over universal Verify                                    |
+ | verify            | [cmd/verify/](cmd/verify/)                       | SDD-agnostic unified phase runner; `--plan` strictly read-only                      |
+ | rules             | [cmd/rules/](cmd/rules/)                         | Read-only embedded rule inventory/detail and explicit-scope resolver                |
+diff --git a/cli/cmd/README.md b/cli/cmd/README.md
+index 4619b0e9..b4f3b167 100644
+--- a/cli/cmd/README.md
++++ b/cli/cmd/README.md
+@@ -224,7 +224,7 @@ npx gennady yagni /path/to/repo
+ | `sdd-state`         | Детерминированный снимок SDD-состояния проекта                            |
+ | `sdd-check`         | V2 checks; legacy diagnostics grandfathered, no append-only header gate   |
+ | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                            |
+-| `sdd-new`           | Scaffold одного SDD v2 артефакта                                          |
++| `sdd-new`           | Scaffold + computed module IDs and existing scope-section links           |
+ | `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine               |
+ | `verify`            | SDD-agnostic unified Verify; no task state/persistence; --plan read-only. |
+ | `rules`             | Embedded rules: inventory/detail/explicit-scope resolve                   |
+diff --git a/cli/cmd/sdd-new/__tests__/module-authoring-facts.test.ts b/cli/cmd/sdd-new/__tests__/module-authoring-facts.test.ts
+new file mode 100644
+index 00000000..8b4e24e8
+--- /dev/null
++++ b/cli/cmd/sdd-new/__tests__/module-authoring-facts.test.ts
+@@ -0,0 +1,132 @@
++// @file: Path-aware module facts, existing section links, and no-invention/unsafe-read boundaries.
++// @spec: CLI-SDD-NEW
++// @consumers: renderModuleAuthoringFacts
++
++import { describe, it } from 'node:test';
++import assert from 'node:assert/strict';
++import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, symlinkSync, rmSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { renderModuleAuthoringFacts } from '../module-authoring-facts.ts';
++
++function fixture(body: (root: string, parent: string) => void): void {
++  const root = mkdtempSync(join(tmpdir(), 'sdd-new-module-facts-'));
++  const parent = join(root, 'specs/catalog/catalog.spec.md');
++  mkdirSync(join(root, 'specs/catalog'), { recursive: true });
++  try {
++    body(root, parent);
++  } finally {
++    rmSync(root, { recursive: true, force: true });
++  }
++}
++
++describe('module authoring facts', () => {
++  for (const [path, href] of [
++    ['specs/catalog/cache-policy/cache-policy.spec.md', '../catalog.spec.md'],
++    ['specs/catalog/data/cache-policy/cache-policy.spec.md', '../../catalog.spec.md'],
++    ['custom/drafts/cache-policy.spec.md', '../../specs/catalog/catalog.spec.md'],
++  ]) {
++    it(`derives exact identifiers and links for ${path}`, () =>
++      fixture((root, parent) => {
++        writeFileSync(
++          parent,
++          '<!--SECTION:REQUIREMENTS-->\nCAT-REQ-7\n<!--/SECTION:REQUIREMENTS-->'
++        );
++        const text = renderModuleAuthoringFacts(path!, 'catalog', 'CATALOG-CACHE-POLICY', root);
++        assert.ok(text.includes(`scope-spec link: [Scope](${href})`));
++        assert.ok(text.includes(`[REQUIREMENTS](${href}#REQUIREMENTS)`));
++        assert.match(text, /spec-id: CATALOG-CACHE-POLICY/);
++        assert.match(text, /acronym: CP /);
++        assert.match(text, /CP-REQ-1/);
++        assert.match(text, /CP-DL-1 YYYY-MM-DD/);
++        assert.match(text, /read-only, not local IDs\): CAT-REQ-7/);
++        assert.match(text, /do not invent history/);
++        assert.match(text, /compare\(scope Trigger\/When, local Trigger\/When, DbC Pre\/Post\)/);
++        assert.match(text, /retain every input-domain qualifier/);
++        assert.match(text, /only when the brief explicitly requires it/);
++        assert.match(text, /one boundary witness for each changed condition/);
++        assert.doesNotMatch(text, /foo|ASCII|TypeError|normalizeToken/);
++      }));
++  }
++  it('never invents links/IDs when the scope spec is absent', () =>
++    fixture((root) => {
++      const text = renderModuleAuthoringFacts(
++        'specs/catalog/search/search.spec.md',
++        'catalog',
++        'CATALOG-SEARCH',
++        root
++      );
++      assert.match(text, /acronym: SEA /);
++      assert.match(text, /unavailable\/unsafe/);
++      assert.doesNotMatch(text, /\]\(|observed scope requirement IDs/);
++    }));
++
++  it('uses real canonical scope section names without rewriting the parent', () =>
++    fixture((root, parent) => {
++      const content =
++        '<!--SECTION:REQUIREMENTS_AND_CONSTRAINTS-->\nCAT-REQ-1\n<!--/SECTION:REQUIREMENTS_AND_CONSTRAINTS-->\n<!--SECTION:PUBLIC_API_SURFACE-->\npublic()\n<!--/SECTION:PUBLIC_API_SURFACE-->';
++      writeFileSync(parent, content);
++      const text = renderModuleAuthoringFacts(
++        'specs/catalog/search/search.spec.md',
++        'catalog',
++        'CATALOG-SEARCH',
++        root
++      );
++      assert.match(text, /catalog\.spec\.md#REQUIREMENTS_AND_CONSTRAINTS/);
++      assert.match(text, /catalog\.spec\.md#PUBLIC_API_SURFACE/);
++      assert.match(text, /read-only, not local IDs\): CAT-REQ-1/);
++      assert.equal(readFileSync(parent, 'utf8'), content);
++    }));
++  it('omits empty, missing and duplicate section anchors', () =>
++    fixture((root, parent) => {
++      const one = '<!--SECTION:REQUIREMENTS-->\nCAT-REQ-1\n<!--/SECTION:REQUIREMENTS-->';
++      writeFileSync(
++        parent,
++        one + '\n' + one + '\n<!--SECTION:MODULE_MAP-->\n<!--/SECTION:MODULE_MAP-->'
++      );
++      const text = renderModuleAuthoringFacts(
++        'specs/catalog/search/search.spec.md',
++        'catalog',
++        'CATALOG-SEARCH',
++        root
++      );
++      assert.match(text, /scope-spec link/);
++      assert.doesNotMatch(text, /#REQUIREMENTS|#MODULE_MAP|#PUBLIC_API|CAT-REQ-1/);
++    }));
++  it('bounds IDs and does not copy normative parent prose into the report', () =>
++    fixture((root, parent) => {
++      writeFileSync(
++        parent,
++        `<!--SECTION:REQUIREMENTS-->\nSECRET_DOMAIN_PROSE ${Array.from({ length: 25 }, (_, n) => `CAT-REQ-${n + 1}`).join(' ')}\n<!--/SECTION:REQUIREMENTS-->`
++      );
++      const text = renderModuleAuthoringFacts(
++        'specs/catalog/search/search.spec.md',
++        'catalog',
++        'CATALOG-SEARCH',
++        root
++      );
++      assert.match(text, /CAT-REQ-12/);
++      assert.doesNotMatch(text, /CAT-REQ-13|SECRET_DOMAIN_PROSE/);
++    }));
++  for (const unsafe of ['symlink-file', 'symlink-dir', 'oversized', 'directory']) {
++    it(`does not read an ${unsafe} parent`, () =>
++      fixture((root, parent) => {
++        if (unsafe === 'symlink-file') symlinkSync(join(root, 'outside'), parent);
++        if (unsafe === 'symlink-dir') {
++          rmSync(join(root, 'specs/catalog'), { recursive: true });
++          symlinkSync(root, join(root, 'specs/catalog'));
++        }
++        if (unsafe === 'oversized') writeFileSync(parent, 'x'.repeat(256 * 1024 + 1));
++        if (unsafe === 'directory') mkdirSync(parent);
++        assert.match(
++          renderModuleAuthoringFacts(
++            'specs/catalog/search/search.spec.md',
++            'catalog',
++            'CATALOG-SEARCH',
++            root
++          ),
++          /unavailable\/unsafe/
++        );
++      }));
++  }
++});
+diff --git a/cli/cmd/sdd-new/__tests__/sdd-new.cmd.test.ts b/cli/cmd/sdd-new/__tests__/sdd-new.cmd.test.ts
+index c1e56fd0..41ce5393 100644
+--- a/cli/cmd/sdd-new/__tests__/sdd-new.cmd.test.ts
++++ b/cli/cmd/sdd-new/__tests__/sdd-new.cmd.test.ts
+@@ -317,6 +317,10 @@ describe('SddNewCommand', () => {
+       );
+       assert.match(outcome.text, /examples for scope "fibonacci": nth, sequence/);
+       assert.match(outcome.text, /canonical-path: specs\/fibonacci\/nth\/nth\.spec\.md/);
++      assert.match(outcome.text, /authoring-facts \(computed/);
++      assert.match(outcome.text, /spec-id: FIBONACCI-NTH/);
++      assert.match(outcome.text, /acronym: NTH /);
++      assert.match(outcome.text, /scope-spec unavailable\/unsafe/);
+     } finally {
+       process.chdir(prevCwd);
+       rmSync(cwd, { recursive: true, force: true });
+diff --git a/cli/cmd/sdd-new/help.ts b/cli/cmd/sdd-new/help.ts
+index a0b1b73a..9c6f0c68 100644
+--- a/cli/cmd/sdd-new/help.ts
++++ b/cli/cmd/sdd-new/help.ts
+@@ -99,6 +99,9 @@ export function printHelp(): void {
+   );
+   console.info('');
+   console.info('Output:');
++  console.info(
++    '  Module success adds computed Spec ID/acronym, REQ/DL syntax, and exact existing scope-section links; no requirements or decision history are invented.'
++  );
+   console.info(
+     '  On success — created-path + section manifest table; task adds path-aware owning spec, bounded typed contract anchors, rule tuples, and deferred-test literals; exit 0.'
+   );
+diff --git a/cli/cmd/sdd-new/module-authoring-facts.ts b/cli/cmd/sdd-new/module-authoring-facts.ts
+new file mode 100644
+index 00000000..ea8927b1
+--- /dev/null
++++ b/cli/cmd/sdd-new/module-authoring-facts.ts
+@@ -0,0 +1,94 @@
++// @file: Bounded path-derived module authoring facts returned by sdd-new, never normative requirements.
++// @spec: CLI-SDD-NEW
++// @consumers: SddNewCommand
++
++import { lstatSync, readFileSync } from 'node:fs';
++import { join, relative, resolve, sep } from 'node:path';
++import { deriveSpecAcronym, REQ_ID_GRAMMAR } from '../../../shared/sdd/requirement-id.ts';
++import { extractSection } from '../../../shared/sdd/section.ts';
++import { ticketRelativeHref } from '../../../shared/sdd/task-authoring-literals.ts';
++
++/**
++ * @purpose Read at most one bounded regular scope spec without following symlink components.
++ * @param root Working directory whose own files may be read.
++ * @param path Scope spec path below root.
++ * @returns Its text, or null when unavailable/unsafe; optional facts never invalidate a created file.
++ */
++function readScope(root: string, path: string): string | null {
++  const rel = relative(resolve(root), resolve(root, path));
++  if (!rel || rel === '..' || rel.startsWith(`..${sep}`)) return null;
++  try {
++    let cursor = resolve(root);
++    for (const part of rel.split(sep)) {
++      cursor = join(cursor, part);
++      const stat = lstatSync(cursor);
++      if (stat.isSymbolicLink()) return null;
++    }
++    const stat = lstatSync(cursor);
++    if (!stat.isFile() || stat.size > 256 * 1024) return null;
++    return readFileSync(cursor, 'utf8');
++  } catch {
++    return null;
++  }
++}
++
++/**
++ * @purpose Return exact identifiers/link literals at creation time instead of requiring source archaeology.
++ * @invariant No new requirement, approval, decision, parent content, or disk mutation is synthesized.
++ * @param path Actual created module path, including an explicit --out.
++ * @param scope Known owning scope; only its conventional spec is read.
++ * @param specId Stable ID already written to the created skeleton.
++ * @param [root] Working directory used to resolve the scope spec.
++ * @returns Bounded copy-ready syntax and only links whose target sections exist unambiguously.
++ */
++export function renderModuleAuthoringFacts(
++  path: string,
++  scope: string,
++  specId: string,
++  root = process.cwd()
++): string {
++  const acronym = deriveSpecAcronym(path);
++  const parentPath = `specs/${scope}/${scope}.spec.md`;
++  const parent = readScope(root, parentPath);
++  const href = ticketRelativeHref(path, parentPath);
++  const lines = [
++    'authoring-facts (computed; syntax examples are not authored requirements/decisions):',
++    `  spec-id: ${specId}`,
++    `  acronym: ${acronym} (from this file basename, not directory depth)`,
++    `  requirement-id syntax: ${acronym}-REQ-1; further local numbers: 2, 3, ...`,
++    `  decision-log syntax: ${acronym}-DL-1 YYYY-MM-DD — <decision> (почему: <criterion>; отвергнуто: <alternative>; риск: <risk>)`,
++    '  Decision Log uses one line per actual decision, not Status/Recorded blocks; do not invent history.',
++  ];
++  if (parent === null) {
++    lines.push(`  scope-spec unavailable/unsafe: ${parentPath}; no parent href or IDs inferred.`);
++  } else {
++    lines.push(`  scope-spec link: [Scope](${href}) (relative to the created file)`);
++    for (const name of [
++      'REQUIREMENTS',
++      'REQUIREMENTS_AND_CONSTRAINTS',
++      'MODULE_REQUIREMENTS',
++      'MODULE_MAP',
++      'PUBLIC_API_SURFACE',
++    ]) {
++      const section = extractSection(parent, name);
++      if (section.status !== 'ok') continue;
++      lines.push(`  scope ${name} link: [${name}](${href}#${name})`);
++      if (name.includes('REQUIREMENTS')) {
++        const ids = [...new Set(section.content.match(/\b[A-Z][A-Z0-9]*-REQ-[0-9]+\b/g) ?? [])]
++          .filter((id) => REQ_ID_GRAMMAR.test(id))
++          .slice(0, 12);
++        if (ids.length)
++          lines.push(
++            `  observed scope requirement IDs (read-only, not local IDs): ${ids.join(', ')}`
++          );
++      }
++    }
++  }
++  lines.push(
++    '  contract check before the final Write (source: brief + linked scope, not these syntax examples):',
++    '    compare(scope Trigger/When, local Trigger/When, DbC Pre/Post); retain every input-domain qualifier.',
++    '    Allow a changed domain or stronger guarantee only when the brief explicitly requires it; otherwise preserve the scope behavior.',
++    '    Try one boundary witness for each changed condition; resolve conflicting outcomes before writing, without editing the parent.'
++  );
++  return lines.join('\n');
++}
+diff --git a/cli/cmd/sdd-new/sdd-new.cmd.ts b/cli/cmd/sdd-new/sdd-new.cmd.ts
+index 26a3182b..e6aa8f13 100644
+--- a/cli/cmd/sdd-new/sdd-new.cmd.ts
++++ b/cli/cmd/sdd-new/sdd-new.cmd.ts
+@@ -33,6 +33,7 @@ import {
+   ticketRelativeHref,
+ } from '../../../shared/sdd/task-authoring-literals.ts';
+ import { collectSpecIdEntries, deriveInitialSpecId } from '../../../shared/sdd/spec-id.ts';
++import { renderModuleAuthoringFacts } from './module-authoring-facts.ts';
+ import {
+   badInvocation,
+   unknownKind,
+@@ -573,6 +574,9 @@ async function runCommand(rawArgs: string[]): Promise<NewOutcome> {
+     text: [
+       renderCreated(kind, path, TEMPLATES[kind].sections, nextSteps, authoringLiterals),
+       moduleConcept,
++      kind === 'module' && opts.scope && specId
++        ? renderModuleAuthoringFacts(path, opts.scope, specId)
++        : '',
+     ]
+       .filter(Boolean)
+       .join('\n\n'),
+diff --git a/cli/gennady.ts b/cli/gennady.ts
+index 0bab9310..43ecc612 100644
+--- a/cli/gennady.ts
++++ b/cli/gennady.ts
+@@ -215,6 +215,7 @@ if (restArgs.some((a) => helpFlags.has(a))) {
+       break;
+ 
+     case 'sdd-new':
++      // The owner help describes path-aware module facts as well as scaffold syntax.
+       await import('./cmd/sdd-new/help.ts').then((m) => m.printHelp());
+       helpLoaded = true;
+       break;

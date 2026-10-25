@@ -1,0 +1,624 @@
+{
+  "schema": "gennady.authoring-public-cleanup-proof.2",
+  "observedAt": "2026-10-24T14:07:58.670Z",
+  "evidenceBasis": "Original recorded API acknowledgements and local read-only absence/permission/PID checks; no post-shutdown SDK query",
+  "attempts": [
+    {
+      "index": 0,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91ff1d40ffeSTp1T1rUd9tjIM",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/0/sdd-flow-eval-gjooZy",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91fd699dffe2cJ1aobhaRkV9m",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/0/sdd-flow-eval-gjooZy",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91fc4812ffeIelGjllKxWeQvq",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/1/sdd-flow-eval-JEm3np",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91fa67d6ffeJtLo67PXSI2dpe",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/1/sdd-flow-eval-JEm3np",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91f8b520ffe0EKFyW0LY2mwJI",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/2/sdd-flow-eval-ef4EVc",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91f6fc5bffe3j0B1aoa6vSP5m",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/2/sdd-flow-eval-ef4EVc",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91f69541ffeVp01wJISMjzsh6",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/3/sdd-flow-eval-OSLiUp",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91f52376ffePxVbFYJPFNhM5Y",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/3/sdd-flow-eval-OSLiUp",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91f48b38ffenv2Iz5GYpRkem9",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/4/sdd-flow-eval-vMzndt",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91f2bd8affegnkXj1wGm59B2B",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/4/sdd-flow-eval-vMzndt",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91f1b5baffeOVHCkXmAgk4xZt",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/5/sdd-flow-eval-Ov1QPf",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91f02fa3ffeRru6Yk5rpLnf2U",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/5/sdd-flow-eval-Ov1QPf",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91efc4a3ffenj47BJHiLCEe3N",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/6/sdd-flow-eval-0bqq34",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91eebfb4ffe0RN62T9NoImPAH",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/6/sdd-flow-eval-0bqq34",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91edb35dffeMFkS4rFAiqLYgl",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/7/sdd-flow-eval-lx7Rpm",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91ec13e3ffeI3jj2Ax0l3EQ3s",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/7/sdd-flow-eval-lx7Rpm",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91eb4de4ffeqMP6YzL95wTAcd",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/8/sdd-flow-eval-5t1ass",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91e9d1a0ffeCB47BjbVr5315N",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/8/sdd-flow-eval-5t1ass",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91e93ddbffeKm27o20DttXfod",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/9/sdd-flow-eval-dyNBWE",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91e807a2ffeUIGNPYNrut4ASz",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/9/sdd-flow-eval-dyNBWE",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91e77d91fferVceIYCtNhmyjk",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/10/sdd-flow-eval-h6afN2",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91e63d85ffeQV5h01GHNmvRo1",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/10/sdd-flow-eval-h6afN2",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 11,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91e5e84bffesTDSfCuVK6eDRb",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/11/sdd-flow-eval-6Lw5gM",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91e42c9dffeAG73kXgmzRlwcl",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/11/sdd-flow-eval-6Lw5gM",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 12,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91e39dc4ffe8SYPico5eo0SkU",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/12/sdd-flow-eval-IqY3dM",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91e1efdaffeGlOtoBFMXpMmWp",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/12/sdd-flow-eval-IqY3dM",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 13,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91e11a7effekpS0tn5he5Yvas",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/13/sdd-flow-eval-vzMH2k",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91e03dfeffePve57AT5sdoEwN",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/13/sdd-flow-eval-vzMH2k",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 14,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91dddb8bffePpmDoqeMD0g1xO",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/14/sdd-flow-eval-svRevo",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91dbf182ffegE55PB8IxchLuO",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/14/sdd-flow-eval-svRevo",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 15,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91daec33ffeKlQRhgo6ViPkI7",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/15/sdd-flow-eval-nEJ11r",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91d9aa23fferjmejnYr9tn2dH",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/15/sdd-flow-eval-nEJ11r",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 16,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91d93f20ffeqZt6314hZFBlaF",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/16/sdd-flow-eval-1TFDt8",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91d7f31fffemb9CbXkjfNQzxp",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/16/sdd-flow-eval-1TFDt8",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 17,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91d6b3a2ffeRt786Qee3FtsNM",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/17/sdd-flow-eval-IJNeTM",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91d549d9ffeDa4aBPWf9W4l2B",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/17/sdd-flow-eval-IJNeTM",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 18,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91d4b771ffe2QGvqoEfMZ2KsH",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/18/sdd-flow-eval-5SlLGQ",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91d31c3bffeiHsXm4XlKgjzQN",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/18/sdd-flow-eval-5SlLGQ",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91d1c23bffe5ATWnKQw4KhsFj",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/19/sdd-flow-eval-HxTZI5",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91d0937bffeAWd3h6QOvae2ij",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/19/sdd-flow-eval-HxTZI5",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 20,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91cfecbdffeJqJyUqSsIlo65d",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/20/sdd-flow-eval-R24FDu",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91ce813dffeSCza2Pc5xAohOF",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/20/sdd-flow-eval-R24FDu",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 21,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91ce3b8fffeakoCtYshObU8U0",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/21/sdd-flow-eval-4u0Usg",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91cce68bffe2q2BB1ML9fO7O4",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/21/sdd-flow-eval-4u0Usg",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 22,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91cc5fd0ffeJdd2Dvu5W7da86",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/22/sdd-flow-eval-wPOwmL",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91cb4584ffejp8dNYt2HAqQy2",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/22/sdd-flow-eval-wPOwmL",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    },
+    {
+      "index": 23,
+      "persistence": true,
+      "tempRemoved": true,
+      "cleanupErrors": [],
+      "caseDirectoryAbsent": true,
+      "sessionDeletionAcknowledgements": [
+        {
+          "id": "ses_e91c9e64cffehR3rJhcaOjAEbw",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/23/sdd-flow-eval-jIwxew",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        },
+        {
+          "id": "ses_e91c80d3fffekZGQrukYpBdFFs",
+          "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/23/sdd-flow-eval-jIwxew",
+          "parent": null,
+          "deleted": true,
+          "directoryAbsent": true
+        }
+      ]
+    }
+  ],
+  "sessionDeletionAcknowledgements": 48,
+  "journals": [
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/facts/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "relativePath": "facts/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "mode": 420,
+      "actualMode": 420,
+      "restored": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/plan/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "relativePath": "plan/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md",
+      "mode": 420,
+      "actualMode": 420,
+      "restored": true
+    }
+  ],
+  "ownedServer": {
+    "launcherPid": 8893,
+    "serverPid": 8988,
+    "launcherPidPresent": false,
+    "serverPidPresent": false
+  },
+  "privateDirectories": [
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-config",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-data",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-cache",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-state",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-home",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-runtime",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-tmp",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-bun",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-bun-cache",
+      "absent": true
+    },
+    {
+      "path": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-npm-cache",
+      "absent": true
+    }
+  ]
+}

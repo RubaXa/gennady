@@ -1,0 +1,17 @@
+{
+  "launcherPid": 8893,
+  "serverPid": 8988,
+  "baseUrl": "http://127.0.0.1:4201",
+  "paths": {
+    "cwd": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-home",
+    "config": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-config",
+    "data": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-data",
+    "cache": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-cache",
+    "state": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-state",
+    "runtime": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-runtime",
+    "temporary": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-tmp",
+    "bun": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-bun",
+    "bunCache": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-bun-cache",
+    "npmCache": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/server-npm-cache"
+  }
+}

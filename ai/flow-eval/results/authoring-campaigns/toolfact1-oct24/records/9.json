@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 9,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r3",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:32:17.616Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/9",
+  "sessions": [
+    {
+      "id": "ses_e92512003ffecrdsG0Ku1Eaov1",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/9/sdd-flow-eval-xPDkc9",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e924f70adffe3fSO9JNso7WK5E",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/9/sdd-flow-eval-xPDkc9",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r3",
+    "summarySha256": "ad275f11f366426f337b5ac25ea3073730617709a96047decde1e5ce7cfd04b8",
+    "trajectorySha256": "aa2cbcf57de73e0018d6a3ce1db964b7f190e14e7f3d9eb05834c63f38de5bef",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 23,
+    "nonCacheTokens": 52115,
+    "messages": 17
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:34:44.617Z",
+  "knownSessions": [
+    {
+      "id": "ses_e92512003ffecrdsG0Ku1Eaov1",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/9/sdd-flow-eval-xPDkc9"
+    },
+    {
+      "id": "ses_e924f70adffe3fSO9JNso7WK5E",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/9/sdd-flow-eval-xPDkc9"
+    }
+  ]
+}

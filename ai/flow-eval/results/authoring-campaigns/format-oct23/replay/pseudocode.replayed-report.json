@@ -1,0 +1,892 @@
+{
+  "schema": "gennady.authoring-baseline-report.1",
+  "sourceCommit": "990131fbc83c07576b0ae70b4f2e10abdd1d658b",
+  "model": "llm-proxy/deepseek-v4-flash",
+  "planned": 6,
+  "recorded": 1,
+  "complete": false,
+  "limitations": [
+    "A baseline only: no optimization or causal speedup has been demonstrated.",
+    "Artifact, semantic and path verdicts are separate; opaque Bash is not proof of a forbidden write.",
+    "Read/write counts are attempts, not bytes read or filesystem changes. An observed repeat is not necessarily waste.",
+    "Token totals exclude cache reads; cache counters and model messages are separate in per-role profiles.",
+    "SDK REST requests include polling and are not provider HTTP calls; proxy retries and monetary cost are unknown.",
+    "Three repetitions describe these synthetic artifact cases, not statistical equivalence or the complete interactive SDD flow."
+  ],
+  "cases": [
+    {
+      "caseId": "module-flat",
+      "planned": 3,
+      "recorded": 1,
+      "artifactPass": 1,
+      "semanticPass": 1,
+      "jointQualityPass": 1,
+      "pathPass": 0,
+      "errored": 0,
+      "cleanlyBound": 1,
+      "tools": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 25,
+        "min": 25,
+        "max": 25
+      },
+      "workerMs": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 91735,
+        "min": 91735,
+        "max": 91735
+      },
+      "workerNonCacheTokens": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 50483,
+        "min": 50483,
+        "max": 50483
+      },
+      "workerMessages": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 20,
+        "min": 20,
+        "max": 20
+      },
+      "readAttempts": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 12,
+        "min": 12,
+        "max": 12
+      },
+      "writeAttempts": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 2,
+        "min": 2,
+        "max": 2
+      },
+      "bashAttempts": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 11,
+        "min": 11,
+        "max": 11
+      },
+      "repeatedReadAttempts": {
+        "samples": 1,
+        "expected": 3,
+        "complete": false,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    {
+      "caseId": "module-nested",
+      "planned": 3,
+      "recorded": 0,
+      "artifactPass": 0,
+      "semanticPass": 0,
+      "jointQualityPass": 0,
+      "pathPass": 0,
+      "errored": 0,
+      "cleanlyBound": 0,
+      "tools": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "workerMs": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "workerNonCacheTokens": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "workerMessages": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "readAttempts": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "writeAttempts": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "bashAttempts": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      },
+      "repeatedReadAttempts": {
+        "samples": 0,
+        "expected": 3,
+        "complete": false,
+        "median": null,
+        "min": null,
+        "max": null
+      }
+    }
+  ],
+  "runs": [
+    {
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "pseudocode",
+      "repetition": 1,
+      "missing": false,
+      "issues": [],
+      "artifactPass": true,
+      "failedArtifactChecks": [],
+      "semanticVerdict": "pass",
+      "status": "completed",
+      "pathPass": false,
+      "pathDetail": "opaque Bash command: whole-write-only path unproven",
+      "workerMs": 91735,
+      "reflectionStatus": "completed",
+      "profile": {
+        "version": 1,
+        "caseId": "module-flat",
+        "target": "specs/token/normalize/normalize.spec.md",
+        "captureComplete": true,
+        "classificationComplete": false,
+        "limitations": [
+          "Lexical sandbox paths only; symlink identity and unsaved filesystem history are not observed.",
+          "Read ranges and contents are not captured; repeats and batching candidates are observational hypotheses, not intent or proven waste.",
+          "Read/write path groups count observed attempts, not successful file accesses; status is retained on each call.",
+          "usage.messages counts observed assistant messages, not HTTP requests, retries or model reasoning text. Roles are never pooled."
+        ],
+        "totalToolEvents": 25,
+        "omittedToolEvents": 0,
+        "toolHistogram": {
+          "read": 12,
+          "bash": 11,
+          "write": 2
+        },
+        "cliVerbHistogram": {
+          "sdd-new": 1,
+          "sdd-check": 2
+        },
+        "categoryHistogram": {
+          "reference": 4,
+          "directive": 1,
+          "create": 1,
+          "target": 3,
+          "unknown": 8,
+          "format": 6,
+          "check": 2
+        },
+        "calls": [
+          {
+            "order": 0,
+            "tool": "read",
+            "category": "reference",
+            "issues": [],
+            "callId": "call_00_XFyNF0Ki3jybboFtAJsn5759",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a644aaf001hkV6BtIWwpxK5q",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786321553,
+            "finishedAt": 1792786321556,
+            "path": "inputs/brief.md"
+          },
+          {
+            "order": 1,
+            "tool": "read",
+            "category": "directive",
+            "issues": [],
+            "callId": "call_01_UMSerEflepSt8d9MxwkK3418",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a644aaf001hkV6BtIWwpxK5q",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786321733,
+            "finishedAt": 1792786321737,
+            "path": "ai/directives/sdd-v2/module.directive.xml"
+          },
+          {
+            "order": 2,
+            "tool": "bash",
+            "category": "create",
+            "issues": [],
+            "callId": "call_00_X0gJ4kbJWQFPzQFfu1Vd3497",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a64515f001lgh3PtJlf7aTfj",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786324066,
+            "finishedAt": 1792786324072,
+            "exitCode": 0,
+            "command": "npx --no-install gennady sdd-new module --scope token --module normalize",
+            "cliVerb": "sdd-new"
+          },
+          {
+            "order": 3,
+            "tool": "read",
+            "category": "target",
+            "issues": [],
+            "callId": "call_00_XXS6pyifZmFtOn5Xxs1W7928",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a645a6d001eckqMd35OQRiRO",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786325747,
+            "finishedAt": 1792786325756,
+            "path": "specs/token/normalize/normalize.spec.md"
+          },
+          {
+            "order": 4,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "embedded-shell-payload-withheld"
+            ],
+            "callId": "call_00_TPbUj5fMorIfW6p9M5dH5869",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a646113001DWN0X81scuz8vB",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786327655,
+            "finishedAt": 1792786327656,
+            "exitCode": 0,
+            "commandWithheld": true
+          },
+          {
+            "order": 5,
+            "tool": "read",
+            "category": "reference",
+            "issues": [],
+            "callId": "call_00_ET_e3KcNky7pCK8bsyTQovP0521",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a646877001bIgduKErcb1N3A",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786329232,
+            "finishedAt": 1792786329275,
+            "path": "specs/token/token.spec.md"
+          },
+          {
+            "order": 6,
+            "tool": "read",
+            "category": "format",
+            "issues": [],
+            "callId": "call_01_ET_2aYclUkoN3yKluDVdBQU4326",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a646877001bIgduKErcb1N3A",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786329464,
+            "finishedAt": 1792786329468,
+            "path": "ai/directives/sdd-v2/formats/entity-inventory-format.xml"
+          },
+          {
+            "order": 7,
+            "tool": "read",
+            "category": "format",
+            "issues": [],
+            "callId": "call_02_ET_uetFB1RKG11woXjRXqDv9197",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a646877001bIgduKErcb1N3A",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786329616,
+            "finishedAt": 1792786329620,
+            "path": "ai/directives/sdd-v2/formats/entity-surface-format.xml"
+          },
+          {
+            "order": 8,
+            "tool": "read",
+            "category": "format",
+            "issues": [],
+            "callId": "call_03_ET_XY1r89dmBYhktjNRhzuq3365",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a646877001bIgduKErcb1N3A",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786329803,
+            "finishedAt": 1792786329810,
+            "path": "ai/directives/sdd-v2/formats/dbc-contracts.xml"
+          },
+          {
+            "order": 9,
+            "tool": "read",
+            "category": "format",
+            "issues": [],
+            "callId": "call_00_FdLf0t1XYHPXnxgvzfBt8421",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a6470df001tN6IJ4jX76TV30",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786331952,
+            "finishedAt": 1792786331957,
+            "path": "ai/directives/sdd-v2/formats/module-spec-structure.xml"
+          },
+          {
+            "order": 10,
+            "tool": "read",
+            "category": "format",
+            "issues": [],
+            "callId": "call_01_pHh7QpzRxYMeyqA3gY4z3105",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a6470df001tN6IJ4jX76TV30",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786332150,
+            "finishedAt": 1792786332162,
+            "path": "ai/directives/sdd-v2/formats/diagram-vocabulary.xml"
+          },
+          {
+            "order": 11,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "embedded-shell-payload-withheld"
+            ],
+            "callId": "call_00_fjR6d4B0MWkjpMpyCcrY0750",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a647a14001Y50RITGA8wJ2By",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786348706,
+            "finishedAt": 1792786348708,
+            "exitCode": 0,
+            "commandWithheld": true
+          },
+          {
+            "order": 12,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "embedded-shell-payload-withheld"
+            ],
+            "callId": "call_00_R8WQDBFPETAxmI9xskii9547",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a64baad001G1K5CEFQygzjdZ",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786350253,
+            "finishedAt": 1792786350255,
+            "exitCode": 0,
+            "commandWithheld": true
+          },
+          {
+            "order": 13,
+            "tool": "read",
+            "category": "reference",
+            "issues": [],
+            "callId": "call_01_eIYiGT8BLoO8xkEMTJCP4367",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a64baad001G1K5CEFQygzjdZ",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786350389,
+            "finishedAt": 1792786350394,
+            "path": "specs/infra-base/infra-base.spec.md"
+          },
+          {
+            "order": 14,
+            "tool": "read",
+            "category": "reference",
+            "issues": [],
+            "callId": "call_00_lWR792KdglzGyU4MNJ0P0512",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a64c15b001q5bhT4p0xIsVBH",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786352028,
+            "finishedAt": 1792786352031,
+            "path": "docs/token-contract.md"
+          },
+          {
+            "order": 15,
+            "tool": "read",
+            "category": "format",
+            "issues": [],
+            "callId": "call_00_QaJOGwYlKVDl0CA2Imfc3508",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a64c7b80018IXQX5fBhC1FEM",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786354145,
+            "finishedAt": 1792786354150,
+            "path": "ai/directives/sdd-v2/formats/requirement-entry-format.xml"
+          },
+          {
+            "order": 16,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "embedded-shell-payload-withheld"
+            ],
+            "callId": "call_00_HbKSoPeHW9yf5GL1pxOh2838",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a64d000001ose8izVOTXladI",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786361548,
+            "finishedAt": 1792786361551,
+            "exitCode": 0,
+            "commandWithheld": true
+          },
+          {
+            "order": 17,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "opaque-shell"
+            ],
+            "callId": "call_00_EmevcUOYU6EU1uizsvZg4501",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a64ecd5001QqHxge4sz3q1vU",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786368663,
+            "finishedAt": 1792786368669,
+            "exitCode": 0,
+            "command": "grep -rn \"DECISION_LOG_ENTRY_FORMAT\" ai/directives/sdd-v2 | head -20"
+          },
+          {
+            "order": 18,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "opaque-shell"
+            ],
+            "callId": "call_00_ET_NhIbcdvcMkqzrm8InMZg1027",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a6508a5001hEpX62sTUvbib9",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786370615,
+            "finishedAt": 1792786370617,
+            "exitCode": 0,
+            "command": "sed -n '600,650p' ai/directives/sdd-v2/infra.directive.xml"
+          },
+          {
+            "order": 19,
+            "tool": "write",
+            "category": "target",
+            "issues": [],
+            "callId": "call_00_zuOIQ4AckwWmcbduADao4650",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a651051001HA9cZGuYovSauK",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786386779,
+            "finishedAt": 1792786386788,
+            "path": "specs/token/normalize/normalize.spec.md"
+          },
+          {
+            "order": 20,
+            "tool": "bash",
+            "category": "check",
+            "issues": [],
+            "callId": "call_00_YN3zWIKX9ANpc8nfvy0P7347",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a654f7e001lU3MbXbsDovhWg",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786389060,
+            "finishedAt": 1792786389068,
+            "exitCode": 0,
+            "command": "npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring",
+            "cliVerb": "sdd-check"
+          },
+          {
+            "order": 21,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "opaque-shell"
+            ],
+            "callId": "call_00_kmS2m2XUXF1AmEy2fy1q5641",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a655853001vbU0jOfoUqMK1U",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786390900,
+            "finishedAt": 1792786390902,
+            "exitCode": 0,
+            "command": "grep -n \"NORM-\" specs/token/normalize/normalize.spec.md"
+          },
+          {
+            "order": 22,
+            "tool": "write",
+            "category": "target",
+            "issues": [],
+            "callId": "call_00_tPe9vi4IdbMGiSKNTvax1451",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a655f7f001OJuv1ufBYJy201",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786400428,
+            "finishedAt": 1792786400433,
+            "path": "specs/token/normalize/normalize.spec.md"
+          },
+          {
+            "order": 23,
+            "tool": "bash",
+            "category": "check",
+            "issues": [],
+            "callId": "call_00_NUia3p6Xut0Uc7rTNURH1934",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a6584c7001emiZYcdVc6aefR",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786402594,
+            "finishedAt": 1792786402602,
+            "exitCode": 0,
+            "command": "npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring",
+            "cliVerb": "sdd-check"
+          },
+          {
+            "order": 24,
+            "tool": "bash",
+            "category": "unknown",
+            "issues": [
+              "embedded-shell-payload-withheld"
+            ],
+            "callId": "call_00_F4CCOy4iPHTbtLGl1KRh7223",
+            "messageId": "ses_e959bb5beffeDjdOnBLKXt61di:msg_16a658d31001u4afCP5WlZdQFn",
+            "sessionId": "ses_e959bb5beffeDjdOnBLKXt61di",
+            "status": "completed",
+            "startedAt": 1792786407492,
+            "finishedAt": 1792786407494,
+            "exitCode": 0,
+            "commandWithheld": true
+          }
+        ],
+        "readTargets": [
+          {
+            "path": "inputs/brief.md",
+            "category": "reference",
+            "orders": [
+              0
+            ]
+          },
+          {
+            "path": "ai/directives/sdd-v2/module.directive.xml",
+            "category": "directive",
+            "orders": [
+              1
+            ]
+          },
+          {
+            "path": "specs/token/normalize/normalize.spec.md",
+            "category": "target",
+            "orders": [
+              3
+            ]
+          },
+          {
+            "path": "specs/token/token.spec.md",
+            "category": "reference",
+            "orders": [
+              5
+            ]
+          },
+          {
+            "path": "ai/directives/sdd-v2/formats/entity-inventory-format.xml",
+            "category": "format",
+            "orders": [
+              6
+            ]
+          },
+          {
+            "path": "ai/directives/sdd-v2/formats/entity-surface-format.xml",
+            "category": "format",
+            "orders": [
+              7
+            ]
+          },
+          {
+            "path": "ai/directives/sdd-v2/formats/dbc-contracts.xml",
+            "category": "format",
+            "orders": [
+              8
+            ]
+          },
+          {
+            "path": "ai/directives/sdd-v2/formats/module-spec-structure.xml",
+            "category": "format",
+            "orders": [
+              9
+            ]
+          },
+          {
+            "path": "ai/directives/sdd-v2/formats/diagram-vocabulary.xml",
+            "category": "format",
+            "orders": [
+              10
+            ]
+          },
+          {
+            "path": "specs/infra-base/infra-base.spec.md",
+            "category": "reference",
+            "orders": [
+              13
+            ]
+          },
+          {
+            "path": "docs/token-contract.md",
+            "category": "reference",
+            "orders": [
+              14
+            ]
+          },
+          {
+            "path": "ai/directives/sdd-v2/formats/requirement-entry-format.xml",
+            "category": "format",
+            "orders": [
+              15
+            ]
+          }
+        ],
+        "repeatReads": [],
+        "writePaths": [
+          {
+            "path": "specs/token/normalize/normalize.spec.md",
+            "orders": [
+              19,
+              22
+            ]
+          }
+        ],
+        "redundantReadOpportunities": [],
+        "possibleBatchingCandidates": [
+          {
+            "orders": [
+              0,
+              1
+            ],
+            "callIds": [
+              "call_00_XFyNF0Ki3jybboFtAJsn5759",
+              "call_01_UMSerEflepSt8d9MxwkK3418"
+            ],
+            "paths": [
+              "inputs/brief.md",
+              "ai/directives/sdd-v2/module.directive.xml"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          },
+          {
+            "orders": [
+              5,
+              6
+            ],
+            "callIds": [
+              "call_00_ET_e3KcNky7pCK8bsyTQovP0521",
+              "call_01_ET_2aYclUkoN3yKluDVdBQU4326"
+            ],
+            "paths": [
+              "specs/token/token.spec.md",
+              "ai/directives/sdd-v2/formats/entity-inventory-format.xml"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          },
+          {
+            "orders": [
+              6,
+              7
+            ],
+            "callIds": [
+              "call_01_ET_2aYclUkoN3yKluDVdBQU4326",
+              "call_02_ET_uetFB1RKG11woXjRXqDv9197"
+            ],
+            "paths": [
+              "ai/directives/sdd-v2/formats/entity-inventory-format.xml",
+              "ai/directives/sdd-v2/formats/entity-surface-format.xml"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          },
+          {
+            "orders": [
+              7,
+              8
+            ],
+            "callIds": [
+              "call_02_ET_uetFB1RKG11woXjRXqDv9197",
+              "call_03_ET_XY1r89dmBYhktjNRhzuq3365"
+            ],
+            "paths": [
+              "ai/directives/sdd-v2/formats/entity-surface-format.xml",
+              "ai/directives/sdd-v2/formats/dbc-contracts.xml"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          },
+          {
+            "orders": [
+              8,
+              9
+            ],
+            "callIds": [
+              "call_03_ET_XY1r89dmBYhktjNRhzuq3365",
+              "call_00_FdLf0t1XYHPXnxgvzfBt8421"
+            ],
+            "paths": [
+              "ai/directives/sdd-v2/formats/dbc-contracts.xml",
+              "ai/directives/sdd-v2/formats/module-spec-structure.xml"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          },
+          {
+            "orders": [
+              9,
+              10
+            ],
+            "callIds": [
+              "call_00_FdLf0t1XYHPXnxgvzfBt8421",
+              "call_01_pHh7QpzRxYMeyqA3gY4z3105"
+            ],
+            "paths": [
+              "ai/directives/sdd-v2/formats/module-spec-structure.xml",
+              "ai/directives/sdd-v2/formats/diagram-vocabulary.xml"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          },
+          {
+            "orders": [
+              13,
+              14
+            ],
+            "callIds": [
+              "call_01_eIYiGT8BLoO8xkEMTJCP4367",
+              "call_00_lWR792KdglzGyU4MNJ0P0512"
+            ],
+            "paths": [
+              "specs/infra-base/infra-base.spec.md",
+              "docs/token-contract.md"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          },
+          {
+            "orders": [
+              14,
+              15
+            ],
+            "callIds": [
+              "call_00_lWR792KdglzGyU4MNJ0P0512",
+              "call_00_QaJOGwYlKVDl0CA2Imfc3508"
+            ],
+            "paths": [
+              "docs/token-contract.md",
+              "ai/directives/sdd-v2/formats/requirement-entry-format.xml"
+            ],
+            "reason": "Adjacent distinct-path reads in one session with non-overlapping intervals; batching is only a candidate because content dependencies/tool batch support are unknown."
+          }
+        ],
+        "usageByRole": {
+          "worker": {
+            "complete": true,
+            "assistantMessagesObserved": 20,
+            "input": 35782,
+            "output": 6800,
+            "reasoning": 7901,
+            "cacheRead": 640128,
+            "cacheWrite": 0,
+            "total": 50483,
+            "models": [
+              "llm-proxy/deepseek-v4-flash"
+            ]
+          },
+          "judge": {
+            "complete": true,
+            "assistantMessagesObserved": 1,
+            "input": 6882,
+            "output": 110,
+            "reasoning": 5573,
+            "cacheRead": 2048,
+            "cacheWrite": 0,
+            "total": 12565,
+            "models": [
+              "llm-proxy/deepseek-v4-flash"
+            ]
+          },
+          "reflection": {
+            "complete": true,
+            "assistantMessagesObserved": 1,
+            "input": 37639,
+            "output": 981,
+            "reasoning": 15,
+            "cacheRead": 2048,
+            "cacheWrite": 0,
+            "total": 38635,
+            "models": [
+              "llm-proxy/deepseek-v4-flash"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "authoring-format-oct23-module-nested-pseudocode-r1",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "pseudocode",
+      "repetition": 1,
+      "missing": true,
+      "issues": [
+        "missing-run"
+      ]
+    },
+    {
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "pseudocode",
+      "repetition": 2,
+      "missing": true,
+      "issues": [
+        "missing-run"
+      ]
+    },
+    {
+      "scenarioId": "authoring-format-oct23-module-nested-pseudocode-r2",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "pseudocode",
+      "repetition": 2,
+      "missing": true,
+      "issues": [
+        "missing-run"
+      ]
+    },
+    {
+      "scenarioId": "authoring-format-oct23-module-flat-pseudocode-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-flat",
+      "variant": "pseudocode",
+      "repetition": 3,
+      "missing": true,
+      "issues": [
+        "missing-run"
+      ]
+    },
+    {
+      "scenarioId": "authoring-format-oct23-module-nested-pseudocode-r3",
+      "campaign": "format-oct23",
+      "caseId": "module-nested",
+      "variant": "pseudocode",
+      "repetition": 3,
+      "missing": true,
+      "issues": [
+        "missing-run"
+      ]
+    }
+  ]
+}

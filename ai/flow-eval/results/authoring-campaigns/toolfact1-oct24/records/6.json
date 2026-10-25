@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 6,
+  "scenarioId": "authoring-toolfact1-oct24-module-nested-facts-r2",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:24:12.916Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/6",
+  "sessions": [
+    {
+      "id": "ses_e92588583ffegWKoHmPYJdVxrN",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/6/sdd-flow-eval-zF0uUY",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e9256873cffe88BaGnNlI7xxiK",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/6/sdd-flow-eval-zF0uUY",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r2",
+    "summarySha256": "ea9ea0f8354c3c14ea6882b7a29ec07dfeb6c45d21f9175cba26effe8eb9d9ca",
+    "trajectorySha256": "4af05e15eb2e10de1f79c954e38d23b7fbdb31f86f12462b8b24c47eb9b2a1db",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 25,
+    "nonCacheTokens": 58436,
+    "messages": 19
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:26:56.081Z",
+  "knownSessions": [
+    {
+      "id": "ses_e92588583ffegWKoHmPYJdVxrN",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/6/sdd-flow-eval-zF0uUY"
+    },
+    {
+      "id": "ses_e9256873cffe88BaGnNlI7xxiK",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/6/sdd-flow-eval-zF0uUY"
+    }
+  ]
+}

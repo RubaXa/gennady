@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 19,
+  "scenarioId": "authoring-toolfact1-oct24-module-nested-facts-r5",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:56:33.354Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/19",
+  "sessions": [
+    {
+      "id": "ses_e923ae9e0ffevbLbRdOxS9woLc",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/19/sdd-flow-eval-ddd8Vm",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e9239db65ffehpoyivQwYXo5OI",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/19/sdd-flow-eval-ddd8Vm",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r5",
+    "summarySha256": "1ca6725ebd913864becae5f4addad7755a03ee7b3b5401d3a5af22f2e0e6430f",
+    "trajectorySha256": "f4871a82734564d36d94423e0cdba8a2e22b5fdca4d9f4b3a54bdc32917f9204",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 19,
+    "nonCacheTokens": 43536,
+    "messages": 11
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:58:07.111Z",
+  "knownSessions": [
+    {
+      "id": "ses_e923ae9e0ffevbLbRdOxS9woLc",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/19/sdd-flow-eval-ddd8Vm"
+    },
+    {
+      "id": "ses_e9239db65ffehpoyivQwYXo5OI",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/19/sdd-flow-eval-ddd8Vm"
+    }
+  ]
+}

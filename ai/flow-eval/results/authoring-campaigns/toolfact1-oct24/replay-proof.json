@@ -1,0 +1,396 @@
+{
+  "schema": "gennady.authoring-portable-replay.2",
+  "performedAt": "2026-10-24T12:10:13.459Z",
+  "stagingDirectory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/portable-replay-format2-YU1x88",
+  "cwd": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/portable-replay-format2-YU1x88/report-v1",
+  "sourceModuleRoot": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/plan",
+  "node": "22.19.0",
+  "analysisProgram": {
+    "path": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/offline-report.mts",
+    "sha256": "da69801d201ebd554e57fe07ebec76c418f8d82abe8da26f920768611070b6b4"
+  },
+  "analysisIdentities": [
+    {
+      "path": "ai/flow-eval/authoring-baseline-report.ts",
+      "reportedSHA256": "a68f9948569799d38ef71272ad77741dbfe420115e6b071940dc1bb99ffddb27",
+      "actualSHA256": "a68f9948569799d38ef71272ad77741dbfe420115e6b071940dc1bb99ffddb27",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-benchmark.ts",
+      "reportedSHA256": "6eec2f78650c412969562beff9bea09571c75b83f983a56ad78ab448af841c83",
+      "actualSHA256": "6eec2f78650c412969562beff9bea09571c75b83f983a56ad78ab448af841c83",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-metrics.ts",
+      "reportedSHA256": "e33e3dfee2c2add746f082291abe901aeb5697c98b81e3003fed9fddb750b6d2",
+      "actualSHA256": "e33e3dfee2c2add746f082291abe901aeb5697c98b81e3003fed9fddb750b6d2",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-trajectory-profile.ts",
+      "reportedSHA256": "4372f5012e89c7f0fb1e5ebc7369672fd406bf7e312b312075e1e0cc2d3eb7cf",
+      "actualSHA256": "4372f5012e89c7f0fb1e5ebc7369672fd406bf7e312b312075e1e0cc2d3eb7cf",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-call-audit.ts",
+      "reportedSHA256": "3a49cb933693914abbabc5e2b7253007568e7e4035b4d1ed7356ab665c63a12d",
+      "actualSHA256": "3a49cb933693914abbabc5e2b7253007568e7e4035b4d1ed7356ab665c63a12d",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-baseline-report.ts",
+      "reportedSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "actualSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-call-audit.ts",
+      "reportedSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "actualSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-experiment.ts",
+      "reportedSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "actualSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    }
+  ],
+  "replayProgram": {
+    "path": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/portable-replay.mjs",
+    "sha256": "b1baa93284a2afa1f32930afa729f6e8e62552a4e63598286280d19b89cb4f58"
+  },
+  "sourceHEADObservedOnly": "b30093dc860591966fe22d7cff3bfc163233fbd0",
+  "sourceWorkingTreeStatus": "",
+  "serializedPaths": "Preserved as evidence strings, never used as data-source paths. Only copied inputs and copied summary files are CLI data arguments. Analysis code/dependencies come from the explicit EVAL_REPO above; this is not a syscall audit.",
+  "modelCalls": 0,
+  "expectedCommands": 5,
+  "commands": [
+    {
+      "name": "baseline-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./baseline.input.json",
+        "--out",
+        "baseline.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline.replayed-report.json",
+        "sha256": "9b0bc15649e6faad15e91ace8481bc0f2e2416227ebd0fa135dafd6240cdda4d",
+        "bytes": 288044
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./baseline.input.json",
+        "baseline.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline.replayed-calls.md",
+        "sha256": "75f5b820ed8d74265023f2fa007c8658b78659c019d97e028a410fc4525b7332",
+        "bytes": 84272
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "facts-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./facts.input.json",
+        "--out",
+        "facts.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "facts.replayed-report.json",
+        "sha256": "aa572a26f8076d9c1549ada3a9396a1e0b4f773039bfde59cf18d912ad2ea5d9",
+        "bytes": 269041
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "facts-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./facts.input.json",
+        "facts.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "facts.replayed-calls.md",
+        "sha256": "1562ce465411558e8fcd86d4f3cfc62a97b70e5b0515e8918099a29851e00730",
+        "bytes": 73102
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-vs-facts",
+      "script": "authoring-experiment.ts",
+      "scriptSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "args": [
+        "compare",
+        "--campaign",
+        "toolfact1-oct24",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "facts",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "6",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-facts.replayed-compare.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline-vs-facts.replayed-compare.json",
+        "sha256": "9074f21db4134d63e8a5849a408d8d72c92ba57080e96a205da0fdf01f45a481",
+        "bytes": 2338
+      },
+      "equalsArchivedResult": true
+    }
+  ],
+  "status": "passed",
+  "allExpectedExits": true,
+  "allProducedResultsByteEqual": true,
+  "comparisonAggregateByteEqual": true,
+  "primaryInputBytesUnchanged": true,
+  "copiedInputBytesUnchanged": true,
+  "temporaryReplayDirectoryRemoved": true,
+  "errors": [],
+  "inputBindings": [
+    {
+      "path": "bindings.json",
+      "bytes": 18630,
+      "sha256": "bae065daf11f9918b65081b6fc924dd149312544ecfa94d1a76aaac291a74a1c"
+    },
+    {
+      "path": "raw-metrics.json",
+      "bytes": 238306,
+      "sha256": "385be1f842adc1c557a8cb8e79c8a1ba9c14306174779f5b6eabc2ebd5314233"
+    },
+    {
+      "path": "baseline.input.json",
+      "bytes": 495982,
+      "sha256": "a2b2a8c061d6d319a15c8a26d9ddbfb2327b217656c3066018ec45483b15665a"
+    },
+    {
+      "path": "baseline.report.json",
+      "bytes": 288044,
+      "sha256": "9b0bc15649e6faad15e91ace8481bc0f2e2416227ebd0fa135dafd6240cdda4d"
+    },
+    {
+      "path": "baseline.calls.md",
+      "bytes": 84272,
+      "sha256": "75f5b820ed8d74265023f2fa007c8658b78659c019d97e028a410fc4525b7332"
+    },
+    {
+      "path": "facts.input.json",
+      "bytes": 450111,
+      "sha256": "bc3e3fc9ad35705e5fbbfb1715bb06fa2cc0a8669a634803435c7c67b9d73c30"
+    },
+    {
+      "path": "facts.report.json",
+      "bytes": 269041,
+      "sha256": "aa572a26f8076d9c1549ada3a9396a1e0b4f773039bfde59cf18d912ad2ea5d9"
+    },
+    {
+      "path": "facts.calls.md",
+      "bytes": 73102,
+      "sha256": "1562ce465411558e8fcd86d4f3cfc62a97b70e5b0515e8918099a29851e00730"
+    },
+    {
+      "path": "comparisons.json",
+      "bytes": 2576,
+      "sha256": "05af0f489d3ff10554ea8646221be55a01b15bc13bdc7693d51b64e64d7f5d85"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r1/summary.json",
+      "bytes": 5597,
+      "sha256": "5e837039481215bfccfdc553a47d424635d7638c99a85a67d23dff1816477604"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-baseline-r1/summary.json",
+      "bytes": 5617,
+      "sha256": "e0f507cda3dfb8974d2c668f221ade59eee07bec8e5ed922812fd7ff5713427f"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r2/summary.json",
+      "bytes": 5597,
+      "sha256": "507026efdec7f19f4ec4ebbf9a094fe699384740f2567a0096bd738223024d5f"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-baseline-r2/summary.json",
+      "bytes": 5636,
+      "sha256": "ac56ae817d79fb5571179e24c07f5bba8f77b3562025e2012f9da0576b5a11c3"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r3/summary.json",
+      "bytes": 5593,
+      "sha256": "5d8a0616afae1c9b2108f5ad4d2fdaf0f2edcb3c13fa729019952f5a95c6d150"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-baseline-r3/summary.json",
+      "bytes": 5616,
+      "sha256": "c283f6f378258910f931761a6673342ebc0156abc0587e55525515e48766e512"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r4/summary.json",
+      "bytes": 5594,
+      "sha256": "55752a67714f16a6e828fb255a54809a46d9e6a525e83c3641f6c99c111d7364"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-baseline-r4/summary.json",
+      "bytes": 5622,
+      "sha256": "bc58b075d0f2c43a211b37be08c35180010bea6c8ab3022f8278a593d9d52b7a"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r5/summary.json",
+      "bytes": 5597,
+      "sha256": "9b44e6ce9312a572f5b63843a3134de45a614a8ba56d3306fc33f4e21c2af0e4"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-baseline-r5/summary.json",
+      "bytes": 5619,
+      "sha256": "29ff26e51d83972f51c68d5b7a2b0f2127d4cfc0042f2656a81b8777ddbd5a87"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-baseline-r6/summary.json",
+      "bytes": 5599,
+      "sha256": "bc24e1ce9ee7b7658ff1492be08b050391c8fc5b8ab4d0a63b4aec33333d9928"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-baseline-r6/summary.json",
+      "bytes": 5617,
+      "sha256": "281409685430f364fa66d65629364478c4879d9ddb162173b3b3d7e16b25666c"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r1/summary.json",
+      "bytes": 5570,
+      "sha256": "582e0b2384b1292733b1ea263eab2ecee124ee8209199ff4888fc74e1dd0539f"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r1/summary.json",
+      "bytes": 5611,
+      "sha256": "cb2c2484d0ce60ac6de01fcf1b44d5feba1019faf5ca5394efd1a9db0a5f5e78"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r2/summary.json",
+      "bytes": 5588,
+      "sha256": "c89a114b50cba83e6220541d06651fe8ced89d21b894ab256f5d0541b18c6292"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r2/summary.json",
+      "bytes": 5616,
+      "sha256": "ea9ea0f8354c3c14ea6882b7a29ec07dfeb6c45d21f9175cba26effe8eb9d9ca"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r3/summary.json",
+      "bytes": 5592,
+      "sha256": "ad275f11f366426f337b5ac25ea3073730617709a96047decde1e5ce7cfd04b8"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r3/summary.json",
+      "bytes": 5611,
+      "sha256": "87abe7f6645e75e633a03fbc73e3c3528e77a8b1f593835db4eed67fd892efe9"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r4/summary.json",
+      "bytes": 5587,
+      "sha256": "b7f9b0aebe780c127918f1f48c756c2905b58ced48fb3629458a5dc6d2aacd38"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r4/summary.json",
+      "bytes": 5611,
+      "sha256": "86c997890971f34b31a67f470be6c742d45bee5bab9f004e1761dcce84015242"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r5/summary.json",
+      "bytes": 5593,
+      "sha256": "00e95a43627355f970df10afe425a2a2eb5443487118e6c01f507e18a5ad5b64"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r5/summary.json",
+      "bytes": 5610,
+      "sha256": "1ca6725ebd913864becae5f4addad7755a03ee7b3b5401d3a5af22f2e0e6430f"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r6/summary.json",
+      "bytes": 5587,
+      "sha256": "f6273f0ac936e8f7733da4e1bfe10b42d1f5e4d3746a69b9be4f3f795d37f76a"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r6/summary.json",
+      "bytes": 5611,
+      "sha256": "344f760ba6cf4e7a86471a03f956933288b2f8c8de0513fd296654569bcf2e96"
+    }
+  ]
+}

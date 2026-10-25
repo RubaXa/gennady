@@ -1,0 +1,323 @@
+{
+  "schema": "gennady.authoring-portable-replay.1",
+  "performedAt": "2026-10-23T20:27:17.756Z",
+  "stagingDirectory": "/private/tmp/gennady-format-oct23.xNC5Zx/portable-replay.I2umEj",
+  "cwd": "/private/tmp/gennady-format-oct23.xNC5Zx/portable-replay.I2umEj/report-v1",
+  "sourceModuleRoot": "/private/tmp/gennady-format-oct23.xNC5Zx/plan",
+  "node": "v22.19.0",
+  "commands": [
+    {
+      "name": "baseline-baseline",
+      "script": "authoring-baseline-report.ts",
+      "args": [
+        "--input",
+        "./baseline.input.json",
+        "--out",
+        "baseline.replayed-report.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/baseline.replayed-report.json",
+        "sha256": "2cbe2cfa6d5b613ed471a49b1ff5e46e9bb4ed78d656061704eed49f0c56556f",
+        "bytes": 27841
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-audit",
+      "script": "authoring-call-audit.ts",
+      "args": [
+        "./baseline.input.json",
+        "baseline.replayed-calls.md"
+      ],
+      "status": 1,
+      "expectedStatus": 1,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "ed1bae3f793a3b3e14834856aced3e5366c9d86437f4a5755f72e5eb063b5ee5",
+      "modelCalls": 0
+    },
+    {
+      "name": "prose-baseline",
+      "script": "authoring-baseline-report.ts",
+      "args": [
+        "--input",
+        "./prose.input.json",
+        "--out",
+        "prose.replayed-report.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/prose.replayed-report.json",
+        "sha256": "95f00b600b89af311a7a060c69a6267d1c87db0bf3a44c74186e33dfebdf02a0",
+        "bytes": 34664
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "prose-audit",
+      "script": "authoring-call-audit.ts",
+      "args": [
+        "./prose.input.json",
+        "prose.replayed-calls.md"
+      ],
+      "status": 1,
+      "expectedStatus": 1,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "ed1bae3f793a3b3e14834856aced3e5366c9d86437f4a5755f72e5eb063b5ee5",
+      "modelCalls": 0
+    },
+    {
+      "name": "pseudocode-baseline",
+      "script": "authoring-baseline-report.ts",
+      "args": [
+        "--input",
+        "./pseudocode.input.json",
+        "--out",
+        "pseudocode.replayed-report.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/pseudocode.replayed-report.json",
+        "sha256": "019b6a24c66953603245f366036881c53b9c930b0a3ac3bd89bc10f5e825eea5",
+        "bytes": 29689
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "pseudocode-audit",
+      "script": "authoring-call-audit.ts",
+      "args": [
+        "./pseudocode.input.json",
+        "pseudocode.replayed-calls.md"
+      ],
+      "status": 1,
+      "expectedStatus": 1,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "ed1bae3f793a3b3e14834856aced3e5366c9d86437f4a5755f72e5eb063b5ee5",
+      "modelCalls": 0
+    },
+    {
+      "name": "observation-baseline",
+      "script": "authoring-baseline-report.ts",
+      "args": [
+        "--input",
+        "./observation.input.json",
+        "--out",
+        "observation.replayed-report.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/observation.replayed-report.json",
+        "sha256": "6ecf5df60db397345e7b3780577736b8ee8b1a731acc728eebf952ae6a30b9f5",
+        "bytes": 31338
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "observation-audit",
+      "script": "authoring-call-audit.ts",
+      "args": [
+        "./observation.input.json",
+        "observation.replayed-calls.md"
+      ],
+      "status": 1,
+      "expectedStatus": 1,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "ed1bae3f793a3b3e14834856aced3e5366c9d86437f4a5755f72e5eb063b5ee5",
+      "modelCalls": 0
+    },
+    {
+      "name": "baseline-vs-prose",
+      "script": "authoring-experiment.ts",
+      "args": [
+        "compare",
+        "--campaign",
+        "format-oct23",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "prose",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-prose.replayed-compare.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/baseline-vs-prose.replayed-compare.json",
+        "sha256": "adf9de1d824d8e39dfd09df17ad549199b99efcc161030a3231bff89d191c978",
+        "bytes": 2649
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-vs-pseudocode",
+      "script": "authoring-experiment.ts",
+      "args": [
+        "compare",
+        "--campaign",
+        "format-oct23",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "pseudocode",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-pseudocode.replayed-compare.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/baseline-vs-pseudocode.replayed-compare.json",
+        "sha256": "caa2a6530350140a498f63145e0160844318fa794707d7abe6cb50d07838b468",
+        "bytes": 2647
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-vs-observation",
+      "script": "authoring-experiment.ts",
+      "args": [
+        "compare",
+        "--campaign",
+        "format-oct23",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "observation",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-observation.replayed-compare.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/baseline-vs-observation.replayed-compare.json",
+        "sha256": "f84c71198c1e65231787a80288c3645923e48412cafdecc4ddd1d7c7458da133",
+        "bytes": 2775
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "prose-vs-pseudocode",
+      "script": "authoring-experiment.ts",
+      "args": [
+        "compare",
+        "--campaign",
+        "format-oct23",
+        "--baseline",
+        "prose",
+        "--candidate",
+        "pseudocode",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "prose-vs-pseudocode.replayed-compare.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/prose-vs-pseudocode.replayed-compare.json",
+        "sha256": "e7e3301e8f0a6fe6b219d9ad811ad74b104e79c131b03de7cd411450143d9117",
+        "bytes": 2650
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "prose-vs-observation",
+      "script": "authoring-experiment.ts",
+      "args": [
+        "compare",
+        "--campaign",
+        "format-oct23",
+        "--baseline",
+        "prose",
+        "--candidate",
+        "observation",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "3",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "prose-vs-observation.replayed-compare.json"
+      ],
+      "status": 2,
+      "expectedStatus": 2,
+      "expectedExitMatches": true,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "replay/prose-vs-observation.replayed-compare.json",
+        "sha256": "e78a5d427e40cb06ff45226c913726b962358244945aa1299b133de8bb8d4f2a",
+        "bytes": 2778
+      },
+      "equalsArchivedResult": true
+    }
+  ],
+  "allExpectedExits": true,
+  "allProducedResultsByteEqual": true,
+  "primaryInputBytesUnchanged": true,
+  "temporaryReplayDirectoryRemoved": true
+}

@@ -1,0 +1,24 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const own = path.dirname(new URL(import.meta.url).pathname);
+if (fs.realpathSync(own) !== own || !own.startsWith('/private/tmp/gennady-format-transfer-oct25.')) throw Error('OWN_ROOT');
+const deps = '/Users/k.lebedev/.codex/worktrees/template-authoring-evals/gennady/node_modules';
+for (const arm of ['plan','facts']) {
+  const target = path.join(own,arm,'node_modules');
+  if (!fs.existsSync(target)) fs.symlinkSync(deps,target,'dir');
+  if (fs.realpathSync(target) !== fs.realpathSync(deps)) throw Error('DEPENDENCY_ALIAS');
+}
+const source = JSON.parse(fs.readFileSync(path.join(process.env.HOME,'.config/opencode/opencode.json'),'utf8'));
+const provider = source.provider?.['llm-proxy'];
+if (!provider?.options?.apiKey || !provider.models?.['deepseek-v4-flash']) throw Error('MISSING_PROXY_CONFIGURATION');
+const endpoint = new URL(provider.options.baseURL);
+if (endpoint.origin !== 'https://ai-proxy.vk.team' || endpoint.pathname.replace(/\/$/,'') !== '/v1') throw Error('PROXY_ROUTE_NOT_APPROVED');
+const model = 'llm-proxy/deepseek-v4-flash';
+const config = {model,small_model:model,share:'disabled',enabled_providers:['llm-proxy'],
+  provider:{'llm-proxy':{...provider,models:{'deepseek-v4-flash':provider.models['deepseek-v4-flash']}}},
+  mcp:{},plugin:[],instructions:[],compaction:{auto:false,prune:false},permission:'allow',
+  agent:{build:{model,steps:50},general:{model},explore:{model},compaction:{model},title:{model},summary:{model}}};
+const privateDir = path.join(own,'private'); fs.mkdirSync(privateDir,{mode:0o700});
+fs.writeFileSync(path.join(privateDir,'opencode.json'),JSON.stringify(config),{flag:'wx',mode:0o600});
+for (const name of ['xdg-config','xdg-data','xdg-cache','xdg-state']) fs.mkdirSync(path.join(privateDir,name),{mode:0o700});
+console.log(JSON.stringify({configured:true,model,dependenciesShared:true,privateConfigurationPrinted:false}));

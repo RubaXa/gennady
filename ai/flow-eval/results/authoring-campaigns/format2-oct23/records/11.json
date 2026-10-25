@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 11,
+  "scenarioId": "authoring-format2-oct23-module-flat-observation-r2",
+  "sourceSha": "822ba00b0ece32697fc60e2dd5f2348188a5e270",
+  "startedAt": "2026-10-23T21:39:48.622Z",
+  "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/11",
+  "sessions": [
+    {
+      "id": "ses_e954b4a3bffeAMgJa3PyxEeIT7",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/11/sdd-flow-eval-Hqx1Ki",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e954a0011ffeW4qmJofzr9Az2Q",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/11/sdd-flow-eval-Hqx1Ki",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-23-authoring-format2-oct23-module-flat-observation-r2",
+    "summarySha256": "e68e5fe776da763f78006399b570c8e39df98811638b6d0f9b9552d2101df5c6",
+    "trajectorySha256": "cabb9c4753d40f23bc535c3a2233c4d9e3ed518d8d0f0b9da9334036c63ca027",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 26,
+    "nonCacheTokens": 50370,
+    "messages": 20
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-23T21:42:38.802Z",
+  "knownSessions": [
+    {
+      "id": "ses_e954b4a3bffeAMgJa3PyxEeIT7",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/11/sdd-flow-eval-Hqx1Ki"
+    },
+    {
+      "id": "ses_e954a0011ffeW4qmJofzr9Az2Q",
+      "directory": "/private/tmp/gennady-format-repeat-oct23.AbxCDQ/runs/11/sdd-flow-eval-Hqx1Ki"
+    }
+  ]
+}

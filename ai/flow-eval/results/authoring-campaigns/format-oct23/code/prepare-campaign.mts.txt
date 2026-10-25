@@ -1,0 +1,224 @@
+// Offline preparation only. No provider/server calls; --check never creates campaign files.
+// Run with Node 22 and TSX_DISABLE_CACHE=1; --write is the sole file-creation mode.
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createAuthoringMatrix } from './plan/ai/flow-eval/scripts/authoring-experiment.ts';
+import { measureAuthoringPromptFootprint } from './plan/ai/flow-eval/authoring-prompt-footprint.ts';
+
+const MODEL = 'llm-proxy/deepseek-v4-flash';
+const CAMPAIGN = 'format-oct23';
+const SEED = 'format-oct23-v1';
+const CASES = ['module-flat', 'module-nested'] as const;
+const ARMS = ['baseline', 'prose', 'pseudocode', 'observation'] as const;
+const ROOT_NAMES = { baseline: 'plan', prose: 'prose', pseudocode: 'pseudocode', observation: 'observation' };
+const REPEAT = 3;
+const FROZEN_VARIANTS_SHA256 = '7b287f06313712a24a3906a17f5702d60f25bec9fb9bb2d74eb3436b76b40f80';
+const ALLOWED_PATHS = ['ai/kit/templates/sdd-v2/module.directive.hbs', 'ai/directives/sdd-v2/module.directive.xml'];
+const BASE_DIR = dirname(fileURLToPath(import.meta.url));
+const sha = (data: string | Buffer) => createHash('sha256').update(data).digest('hex');
+const json = (value: unknown) => JSON.stringify(value, null, 2) + '\n';
+const norm = (value: string) => value.replace(/\s+/g, ' ').trim();
+const fail = (code: string): never => { throw new Error(code); };
+const args = process.argv.slice(2);
+const mode = args.shift();
+if (mode !== '--check' && mode !== '--write') fail('USAGE: --check|--write --base-url http://127.0.0.1:PORT/');
+if (args.length !== 2 || args[0] !== '--base-url') fail('BASE_URL_REQUIRED');
+const url = new URL(args[1]!);
+if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || Number(url.port) < 4097 || Number(url.port) > 65535 || url.pathname !== '/' || url.search || url.hash || url.username || url.password) fail('OWNED_LOOPBACK_URL_REQUIRED');
+if (Number(process.versions.node.split('.')[0]) !== 22) fail('NODE_22_REQUIRED');
+if (fs.realpathSync(BASE_DIR) !== BASE_DIR || !/^\/private\/tmp\/gennady-format-[a-zA-Z0-9.-]+$/.test(BASE_DIR)) fail('UNSAFE_CAMPAIGN_ROOT');
+
+function bytes(path: string, max = 8 * 1024 * 1024): Buffer {
+  const st = fs.lstatSync(path);
+  if (!st.isFile() || st.isSymbolicLink() || st.size > max) fail('UNSAFE_INPUT_FILE');
+  return fs.readFileSync(path);
+}
+const environment = { ...process.env };
+for (const key of Object.keys(environment)) if (key.startsWith('GIT_')) delete environment[key];
+const git = (root: string, ...argv: string[]) => execFileSync('git', argv, { cwd: root, env: environment, encoding: 'utf8', timeout: 15000, maxBuffer: 4 * 1024 * 1024 }).trim();
+function actionSpan(text: string) {
+  const marker = '<Step id="STEP_2_FILL">';
+  const first = text.indexOf(marker);
+  if (first < 0 || text.indexOf(marker, first + marker.length) >= 0) fail('AMBIGUOUS_STEP_2');
+  const end = text.indexOf('</Step>', first);
+  const startAction = text.indexOf('<Action>', first) + '<Action>'.length;
+  const endAction = text.indexOf('</Action>', startAction);
+  if (startAction < first || endAction < startAction || endAction > end) fail('INVALID_ACTION_BOUNDARY');
+  return { action: text.slice(startAction, endAction), prefix: text.slice(0, startAction), suffix: text.slice(endAction) };
+}
+const variantBytes = bytes(join(BASE_DIR, 'variants.json'));
+if (sha(variantBytes) !== FROZEN_VARIANTS_SHA256) fail('FROZEN_VARIANTS_DRIFT');
+const variants = JSON.parse(variantBytes.toString()) as {
+  source: { commit: string; sourceSHA256: string; actionSha256: string };
+  commonInvariants: string;
+  originalAction: string;
+  proseAction: string;
+  pseudocodeAction: string;
+  observationAction: string;
+  facts: Array<{ id: string; sourceQuote: string; coverage: { common?: string; P: string; C: string; B: string } }>;
+};
+if (variants.facts.length !== 22 || new Set(variants.facts.map(f => f.id)).size !== 22) fail('FACT_INVENTORY_NOT_22');
+const actions = { baseline: variants.originalAction, prose: variants.proseAction, pseudocode: variants.pseudocodeAction, observation: variants.observationAction };
+for (const arm of ['prose', 'pseudocode', 'observation'] as const) if (!actions[arm].startsWith(variants.commonInvariants)) fail('COMMON_INVARIANT_DRIFT');
+for (const fact of variants.facts) {
+  if (!norm(variants.originalAction).includes(norm(fact.sourceQuote))) fail('SOURCE_FACT_QUOTE_MISSING');
+  for (const [arm, label] of [['prose', 'P'], ['pseudocode', 'C'], ['observation', 'B']] as const) if (!norm(actions[arm]).includes(norm(fact.coverage.common ?? fact.coverage[label]))) fail('VARIANT_FACT_COVERAGE_MISSING');
+}
+
+const planRoot = join(BASE_DIR, 'plan');
+const planDocRelative = 'ai/flow-eval/docs/AUTHORING-TRAJECTORY-RESEARCH.md';
+const planDocBytes = bytes(join(planRoot, planDocRelative));
+const planDoc = planDocBytes.toString();
+const preregistrationStart = planDoc.indexOf('### Предрегистрация первого опыта');
+const preregistrationEnd = planDoc.indexOf('### Ветки, изоляция и очистка', preregistrationStart);
+if (preregistrationStart < 0 || preregistrationEnd <= preregistrationStart) fail('PREREGISTRATION_SECTION_MISSING');
+const acceptedText = planDoc.slice(preregistrationStart, preregistrationEnd).trim();
+for (const required of ['24 авторские попытки', 'concurrency=1', 'на 10% на обоих кейсах', 'меньший static envelope', 'unknown не превращается в PASS', 'исторические 30']) {
+  if (!acceptedText.toLocaleLowerCase('ru-RU').includes(required.toLocaleLowerCase('ru-RU'))) fail('PREREGISTERED_ACCEPTANCE_CHANGED');
+}
+
+function distManifest(root: string) {
+  const dist = join(root, 'dist');
+  if (!fs.existsSync(join(dist, 'gennady.js'))) fail('SOURCE_BUILD_MISSING');
+  const files: Array<{ path: string; bytes: number; sha256: string }> = [];
+  let total = 0;
+  const walk = (directory: string) => {
+    for (const name of fs.readdirSync(directory).sort()) {
+      const path = join(directory, name);
+      const st = fs.lstatSync(path);
+      if (st.isSymbolicLink()) fail('DIST_SYMLINK');
+      if (st.isDirectory()) walk(path);
+      else if (st.isFile()) {
+        const data = bytes(path, 16 * 1024 * 1024);
+        total += data.length;
+        if (files.length >= 2048 || total > 64 * 1024 * 1024) fail('DIST_BOUND_EXCEEDED');
+        files.push({ path: relative(dist, path).split('\\').join('/'), bytes: data.length, sha256: sha(data) });
+      } else fail('DIST_NOT_REGULAR');
+    }
+  };
+  walk(dist);
+  return { sha256: sha(JSON.stringify(files)), totalBytes: total, files };
+}
+
+const pending: Array<{ arm: string; reason: string }> = [];
+const sourceMetadata: Array<Record<string, unknown>> = [];
+const byArm = new Map<string, Record<string, unknown>>();
+let baseSourceSHA = '';
+let baseDistSHA = '';
+let basePackageLockSHA = '';
+let baseInstalledLockSHA = '';
+let basePhysicalDependencies = '';
+for (const arm of ARMS) {
+  const root = join(BASE_DIR, ROOT_NAMES[arm]);
+  try {
+    if (!fs.existsSync(root)) fail('SOURCE_ROOT_NOT_CREATED');
+    if (fs.realpathSync(root) !== root || git(root, 'rev-parse', '--show-toplevel') !== root) fail('SOURCE_ROOT_ALIAS');
+    if (git(root, 'status', '--porcelain')) fail('SOURCE_NOT_CLEAN');
+    const sourceSHA = git(root, 'rev-parse', 'HEAD');
+    if (!/^[a-f0-9]{40}$/.test(sourceSHA)) fail('SOURCE_SHA_INVALID');
+    if (arm === 'baseline') baseSourceSHA = sourceSHA;
+    else if (!baseSourceSHA) fail('BASELINE_NOT_READY');
+    git(root, 'merge-base', '--is-ancestor', variants.source.commit, sourceSHA);
+    // All code arms branch from the reviewed frozen main, not the docs-only plan commit.
+    // Baseline adds exactly the preregistration document. Each candidate instead changes
+    // exactly the two permitted owner files. The baseline↔candidate documentation delta
+    // is recorded explicitly; it is not silently treated as another experimental factor.
+    const frozenSourceSHA = variants.source.commit;
+    const changedPaths = git(root, 'diff', '--name-only', frozenSourceSHA, sourceSHA).split('\n').filter(Boolean).sort();
+    const exactPaths = (actual: string[], expected: readonly string[]) => JSON.stringify(actual) === JSON.stringify([...expected].sort());
+    if (arm === 'baseline') {
+      if (!exactPaths(changedPaths, [planDocRelative])) fail('BASELINE_DOCS_ONLY_DIFF_FAILED');
+    } else if (!exactPaths(changedPaths, ALLOWED_PATHS)) fail('ONE_FACTOR_DIFF_ALLOWLIST_FAILED');
+    const baselineDiffPaths = git(root, 'diff', '--name-only', baseSourceSHA, sourceSHA).split('\n').filter(Boolean).sort();
+    if (!exactPaths(baselineDiffPaths, arm === 'baseline' ? [] : [...ALLOWED_PATHS, planDocRelative])) fail('BASELINE_CANDIDATE_DIFF_FAILED');
+    const moduleFiles = ALLOWED_PATHS.map(path => {
+      const raw = bytes(join(root, path));
+      const span = actionSpan(raw.toString());
+      if (span.action !== actions[arm]) fail('ARM_ACTION_MISMATCH');
+      const baselineSpan = actionSpan(bytes(join(planRoot, path)).toString());
+      if (span.prefix !== baselineSpan.prefix || span.suffix !== baselineSpan.suffix) fail('OUTSIDE_STEP_2_ACTION_DRIFT');
+      return { path, bytes: raw.length, sha256: sha(raw), actionBytes: Buffer.byteLength(span.action), actionSha256: sha(span.action), surroundingSha256: sha(span.prefix + '\u0000ACTION\u0000' + span.suffix) };
+    });
+    if (arm === 'baseline' && (moduleFiles[0]!.sha256 !== variants.source.sourceSHA256 || moduleFiles[0]!.actionSha256 !== variants.source.actionSha256)) fail('BASELINE_SOURCE_ACTION_IDENTITY_DRIFT');
+    const nodeModules = join(root, 'node_modules');
+    const physicalDependencies = fs.realpathSync(nodeModules);
+    const packageLockSha256 = sha(bytes(join(root, 'package-lock.json')));
+    const installedLockSha256 = sha(bytes(join(nodeModules, '.package-lock.json')));
+    const dist = distManifest(root);
+    if (arm === 'baseline') {
+      baseDistSHA = dist.sha256;
+      basePackageLockSHA = packageLockSha256;
+      baseInstalledLockSHA = installedLockSha256;
+      basePhysicalDependencies = physicalDependencies;
+    } else if (dist.sha256 !== baseDistSHA || packageLockSha256 !== basePackageLockSHA || installedLockSha256 !== baseInstalledLockSHA || physicalDependencies !== basePhysicalDependencies) fail('SHARED_RUNTIME_IDENTITY_DRIFT');
+    const instructions = Object.fromEntries(CASES.map(caseId => {
+      const footprint = measureAuthoringPromptFootprint(root, caseId);
+      if (!footprint) fail('STATIC_FOOTPRINT_MISSING');
+      return [caseId, footprint];
+    }));
+    const meta = { arm, root, branch: git(root, 'branch', '--show-current'), sourceSHA, changedPaths, diffFromFrozenCodeSource: { baseSHA: frozenSourceSHA, headSHA: sourceSHA, paths: changedPaths }, diffFromBaselinePlan: { baseSHA: baseSourceSHA, headSHA: sourceSHA, paths: baselineDiffPaths }, packageLockSha256, installedLockSha256, physicalDependencies, dist, moduleFiles, instructions };
+    sourceMetadata.push(meta); byArm.set(arm, meta);
+  } catch (error) {
+    pending.push({ arm, reason: error instanceof Error && /^[A-Z0-9_: -]+$/.test(error.message) ? error.message : 'SOURCE_PREFLIGHT_FAILED' });
+  }
+}
+
+// Fisher–Yates using rejection-sampled uint32 words from SHA-256(seed|case|repetition|counter).
+// No Math.random, timing, model result or provider value contributes to the published order.
+function orderFor(caseId: string, repetition: number) {
+  const armOrder: Array<typeof ARMS[number]> = [...ARMS];
+  let counter = 0;
+  const bounded = (bound: number) => {
+    const limit = Math.floor(2 ** 32 / bound) * bound;
+    while (true) {
+      const word = createHash('sha256').update(`${SEED}|${caseId}|${repetition}|${counter++}`).digest().readUInt32BE(0);
+      if (word < limit) return word % bound;
+    }
+  };
+  for (let i = armOrder.length - 1; i > 0; i--) {
+    const j = bounded(i + 1);
+    [armOrder[i], armOrder[j]] = [armOrder[j]!, armOrder[i]!];
+  }
+  return armOrder;
+}
+const matrix = new Map(ARMS.map(arm => [arm, createAuthoringMatrix(CAMPAIGN, arm, REPEAT, CASES)]));
+const blocks = Array.from({ length: REPEAT }, (_, r) => CASES.map(caseId => ({ caseId, repetition: r + 1, arms: orderFor(caseId, r + 1) }))).flat();
+const attempts = blocks.flatMap(block => block.arms.map(arm => {
+  const scenario = matrix.get(arm)!.find(s => s.authoringBenchmark?.caseId === block.caseId && s.authoringBenchmark.repetition === block.repetition);
+  if (!scenario) fail('MATRIX_CASE_MISSING');
+  return { sourceRoot: join(BASE_DIR, ROOT_NAMES[arm]), scenario };
+}));
+if (attempts.length !== 24 || new Set(attempts.map(a => a.scenario.id)).size !== 24) fail('CAMPAIGN_NOT_EXACT24');
+const config = { ownRoot: BASE_DIR, baseUrl: url.origin + '/', permanent: join(BASE_DIR, 'permanent'), attempts, concurrency: 1 };
+const configText = json(config);
+const controllerPath = join(BASE_DIR, 'controller.mjs');
+const prepareScriptPath = fileURLToPath(import.meta.url);
+const protocol = {
+  schema: 'gennady.authoring-format-preregistration.1',
+  campaign: CAMPAIGN,
+  sourceOfAcceptance: { root: planRoot, path: planDocRelative, sha256: sha(planDocBytes), preregistrationText: acceptedText },
+  variants: { path: 'variants.json', sha256: sha(variantBytes), sourceCommit: variants.source.commit, facts: 22, factsSha256: sha(JSON.stringify(variants.facts)), commonInvariantsSha256: sha(variants.commonInvariants), actionBytes: Object.fromEntries(ARMS.map(arm => [arm, Buffer.byteLength(actions[arm])])), sourceFactCoverage: '22 whitespace-normalized presence checks, independently agent-reviewed before run; not a mechanical semantic-equivalence proof' },
+  controlProgram: { path: 'controller.mjs', sha256: sha(bytes(controllerPath)), preparationPath: 'prepare-campaign.mts', preparationSha256: sha(bytes(prepareScriptPath)) },
+  config: { path: 'config.json', sha256: sha(configText), baseUrl: url.origin + '/', concurrency: 1, maximumAttempts: 24, workerMs: 180000, maxTools: 40 },
+  runtime: { node: process.version, nodeAbi: process.versions.modules, platform: process.platform, arch: process.arch, workerModel: MODEL, judgeModel: MODEL, reflectionModel: MODEL, fallback: false, liveServerVersion: 'not queried by this offline preparer; controller freezes it before dispatch', liveConfiguration: 'not queried here; controller verifies Flash-only runtime and binds its public projection' },
+  sources: sourceMetadata,
+  baselineNormalization: { frozenCodeSourceSHA: variants.source.commit, baselinePlanSHA: baseSourceSHA || null, baselineOnlyAllowedDiff: [planDocRelative], candidateOnlyAllowedDiffFromFrozenCodeSource: ALLOWED_PATHS, expectedBaselineToCandidateDiff: [...ALLOWED_PATHS, planDocRelative], explanation: 'Baseline uses the docs-only preregistered plan commit; candidate code arms use frozen main plus only their STEP_2_FILL source/generated Action changes. The plan-document delta is explicit and has no code/tool/prompt/fixture change. Both git diff bases are authenticated per arm.' },
+  order: { seed: SEED, algorithm: 'SHA-256 keyed rejection-sampled Fisher–Yates, fixed case/repetition blocks; see preparation source', blocks, attempts: attempts.map((a, index) => ({ index, scenarioId: a.scenario.id, caseId: a.scenario.authoringBenchmark!.caseId, repetition: a.scenario.authoringBenchmark!.repetition, arm: a.scenario.authoringBenchmark!.variant, sourceSHA: byArm.get(a.scenario.authoringBenchmark!.variant)?.sourceSHA ?? null, scenarioSha256: sha(JSON.stringify(a.scenario)) })) },
+  acceptance: { authority: 'sourceOfAcceptance.preregistrationText verbatim, versioned before calls', outcomes: ['принимаем для дальнейшей проверки', 'отвергаем', 'mixed', 'недостаточно данных'], perCase: ['artifact and semantic quality, required facts/links/pending and preserved reference bytes', 'tools and assistant messages, worker non-cache/cache tokens, wall time, errors/timeouts/unknown'], positivePilotSignal: 'No observed quality loss or growth in tools/messages medians; median non-cache worker tokens at least 10% lower than fresh baseline in both cases. Existing comparator also requires smaller static instruction envelope.', attribution: 'prose versus baseline includes repacking; pseudocode/observation versus prose isolates procedure representation with unchanged common invariants and facts', speed: 'Only claim speed-up with lower wall time; 3 repetitions do not establish statistical equivalence.', path: 'Observed violation prevents adopt; unknown never becomes PASS.', stop: 'First 8 attempts are sanity screen, not success evidence. Stop dispatch for system proxy/capture/cleanup error; preserve failures, no replacement/resampling to green.', reflection: 'Existing reflection is separately accounted self-report, not independent causal proof; do not fabricate/overwrite it.' },
+  cleanup: 'Controller saves primary evidence before deleting only owned SDK sessions and fixtures per attempt, uses inactive-store GC, stops on cleanup failure. Separate campaign finalization must stop owned server, remove owned state/cache and source worktrees after preserving bounded evidence; never sweep prefixes or delete physical shared dependencies.',
+};
+const result = { mode, ready: pending.length === 0, attempts: attempts.length, armSources: sourceMetadata.length, pending, sourceDiffs: sourceMetadata.map(source => ({ arm: source.arm, diffFromFrozenCodeSource: source.diffFromFrozenCodeSource, diffFromBaselinePlan: source.diffFromBaselinePlan })), configSha256: sha(configText), variantsSha256: sha(variantBytes), controllerSha256: protocol.controlProgram.sha256, preparerSha256: protocol.controlProgram.preparationSha256, blocks, liveCalls: 0, filesWritten: 0 };
+if (mode === '--write') {
+  if (pending.length) fail('CAMPAIGN_SOURCES_NOT_READY');
+  for (const path of ['config.json', 'preregistered-protocol.json', 'controller-protocol.json', 'records', 'logs', 'runs']) if (fs.existsSync(join(BASE_DIR, path))) fail('CAMPAIGN_ALREADY_PREPARED_OR_STARTED');
+  const configPath = join(BASE_DIR, 'config.json');
+  const protocolPath = join(BASE_DIR, 'preregistered-protocol.json');
+  fs.writeFileSync(configPath, configText, { flag: 'wx', mode: 0o600 });
+  fs.writeFileSync(protocolPath, json(protocol), { flag: 'wx', mode: 0o600 });
+  result.filesWritten = 2;
+}
+console.log(json(result).trimEnd());
+if (pending.length) process.exitCode = 2;

@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 11,
+  "scenarioId": "authoring-toolfact1-oct24-module-nested-facts-r3",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:36:31.198Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/11",
+  "sessions": [
+    {
+      "id": "ses_e924d41ceffe0UCXbzB60lmj9G",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/11/sdd-flow-eval-tKMqQe",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e924c5898ffeKN3e1WZzaQLReC",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/11/sdd-flow-eval-tKMqQe",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r3",
+    "summarySha256": "87abe7f6645e75e633a03fbc73e3c3528e77a8b1f593835db4eed67fd892efe9",
+    "trajectorySha256": "4acea2d3c50e57fcef9669d3cbc2b905a9d9cefbc69963088ef8c57b153b1758",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 16,
+    "nonCacheTokens": 40054,
+    "messages": 11
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T11:38:17.539Z",
+  "knownSessions": [
+    {
+      "id": "ses_e924d41ceffe0UCXbzB60lmj9G",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/11/sdd-flow-eval-tKMqQe"
+    },
+    {
+      "id": "ses_e924c5898ffeKN3e1WZzaQLReC",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/11/sdd-flow-eval-tKMqQe"
+    }
+  ]
+}

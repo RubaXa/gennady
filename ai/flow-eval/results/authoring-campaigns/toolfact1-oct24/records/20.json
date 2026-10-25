@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 20,
+  "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r6",
+  "sourceSha": "8bf28d294e3dcfd9f63cd28144a01a9f0ea3f94f",
+  "startedAt": "2026-10-24T11:58:07.754Z",
+  "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/20",
+  "sessions": [
+    {
+      "id": "ses_e92397988ffeyG7IJEU1mQu57q",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/20/sdd-flow-eval-NZOPLI",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e92382ec9ffepNw2nKrApRtvxR",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/20/sdd-flow-eval-NZOPLI",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r6",
+    "summarySha256": "f6273f0ac936e8f7733da4e1bfe10b42d1f5e4d3746a69b9be4f3f795d37f76a",
+    "trajectorySha256": "f5fb3634096e73e84e4c40bf0c9e421a9d3500b30180e1e47a075094570207f6",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 27,
+    "nonCacheTokens": 47660,
+    "messages": 18
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T12:00:33.738Z",
+  "knownSessions": [
+    {
+      "id": "ses_e92397988ffeyG7IJEU1mQu57q",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/20/sdd-flow-eval-NZOPLI"
+    },
+    {
+      "id": "ses_e92382ec9ffepNw2nKrApRtvxR",
+      "directory": "/private/tmp/gennady-format-tool-facts-oct24.wQd4ur/runs/20/sdd-flow-eval-NZOPLI"
+    }
+  ]
+}

@@ -1,0 +1,562 @@
+{
+  "scenario": "authoring-factlink1-oct24-module-nested-facts-r3",
+  "events": [
+    {
+      "type": "tool",
+      "i": 0,
+      "t": 1792832385503,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./inputs/brief.md\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d232c10001iFdnyt3PZraq6E",
+      "callId": "call_00_SKLSf3tDfZwvhiodlkf41058",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832385503,
+      "finishedAt": 1792832385505,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 2053,
+          "redactedPrefixBytes": 1979,
+          "redactedPrefixSha256": "cf52a27570e7f7acac04ac2f3e1c477677140b042bcf4120291708d4698092b3",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 1,
+      "t": 1792832385694,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/module.directive.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d232c10001iFdnyt3PZraq6E",
+      "callId": "call_01_x5rYdY29vY97NmVOmDur0661",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832385694,
+      "finishedAt": 1792832385696,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 12968,
+          "redactedPrefixBytes": 12885,
+          "redactedPrefixSha256": "5a30bc9185d254ffdd542024f00451aa486490530c130e010d514814672857b5",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 2,
+      "t": 1792832387365,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls -la && find specs -maxdepth 4 -type f 2>/dev/null | head -50 && ls ai/directives/sdd-v2\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d2332b0001TN1xb8xyglClXE",
+      "callId": "call_00_1vs13iIiZprzkWeNKMCq6919",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "ls -la && find specs -maxdepth 4 -type f 2>/dev/null | head -50 && ls ai/directives/sdd-v2",
+      "startedAt": 1792832387365,
+      "finishedAt": 1792832387366,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 1541,
+          "redactedPrefixBytes": 1541,
+          "redactedPrefixSha256": "0f9fa6963b3b6b8019758e2b14d81e369681170deb9bc7b922157fcd67c4690a",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 3,
+      "t": 1792832389846,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module pipeline/normalize\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d233935001T0M1527dVbW5nS",
+      "callId": "call_00_ET_hENdh23eO1Md5KaNo6Eq3063",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "npx --no-install gennady sdd-new module --scope token --module pipeline/normalize",
+      "startedAt": 1792832389846,
+      "finishedAt": 1792832389851,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 9772,
+          "redactedPrefixBytes": 9624,
+          "redactedPrefixSha256": "f7ad6a255871f1fcb3349073d38014f248440fc54acc211dc67b906dcbe2e739",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 4,
+      "t": 1792832391294,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/token/pipeline/normalize/normalize.spec.md\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d2342df001DBV1I20UrQMOgW",
+      "callId": "call_00_slnbbNjvMRxO0BzEM7MX0422",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832391294,
+      "finishedAt": 1792832391296,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 8947,
+          "redactedPrefixBytes": 8873,
+          "redactedPrefixSha256": "058ed66b1c9c8460e1f3f338b1f2eba4807e9b13da99f5b0e623481931458866",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 5,
+      "t": 1792832391482,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d2342df001DBV1I20UrQMOgW",
+      "callId": "call_01_05RfgA5NsGmz515Teg5v0068",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832391482,
+      "finishedAt": 1792832391485,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 4690,
+          "redactedPrefixBytes": 4618,
+          "redactedPrefixSha256": "b93add3ac0f69db40fab7bd93d0440543b5852dc94a5c0e45deef393ac62cc70",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 6,
+      "t": 1792832393177,
+      "tool": "bash",
+      "arg": "{\"command\":\"ls ai/directives/sdd-v2/formats && ls specs/token/pipeline/normalize && git status --porcelain\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d23494e001P5KdpFEfo9qFxn",
+      "callId": "call_00_vzNUy8maZ7hMhBNk7F0s1275",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "ls ai/directives/sdd-v2/formats && ls specs/token/pipeline/normalize && git status --porcelain",
+      "startedAt": 1792832393177,
+      "finishedAt": 1792832393178,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 641,
+          "redactedPrefixBytes": 641,
+          "redactedPrefixSha256": "86510545d3e5972c26ead58e5c60502aa1845f6d7388e9cdaaa6cfce8df46462",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 7,
+      "t": 1792832394692,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-inventory-format.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d234fdd001mcXNVD37z2d7gl",
+      "callId": "call_00_ET_UDXA9z7qnf4qaICZbfkH3016",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832394692,
+      "finishedAt": 1792832394695,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3720,
+          "redactedPrefixBytes": 3646,
+          "redactedPrefixSha256": "c6f5cb661a21a262fbddf350bd196c4b373dc98196a25d8c90e33a1405e4cc36",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 8,
+      "t": 1792832394892,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/entity-surface-format.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d234fdd001mcXNVD37z2d7gl",
+      "callId": "call_01_ET_HwUsdX34hM6bFoIqi2T23155",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832394892,
+      "finishedAt": 1792832394899,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 3759,
+          "redactedPrefixBytes": 3685,
+          "redactedPrefixSha256": "71b59927830de42f932b132503804fe7d41940bef473a8fed4ea250d4aff380c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 9,
+      "t": 1792832395081,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/dbc-contracts.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d234fdd001mcXNVD37z2d7gl",
+      "callId": "call_02_ET_ViFDz7zFxogDUeU7aHw73618",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832395081,
+      "finishedAt": 1792832395084,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11221,
+          "redactedPrefixBytes": 11147,
+          "redactedPrefixSha256": "195bbc3c842dba6198ffff666328df278ac7cfe3d3a9623569df696dd8a88e78",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 10,
+      "t": 1792832395275,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/diagram-vocabulary.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d234fdd001mcXNVD37z2d7gl",
+      "callId": "call_03_ET_UC4qPjJLPhKI1YOpsv1S6630",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832395275,
+      "finishedAt": 1792832395278,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 14292,
+          "redactedPrefixBytes": 14218,
+          "redactedPrefixSha256": "0db4542e55ea5b97cdfff969dcbb30cc4f9cd4144da6905e90350ca1ce139f0a",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 11,
+      "t": 1792832397930,
+      "tool": "bash",
+      "arg": "{\"command\":\"cat package.json; find specs -type f; find ai/directives -maxdepth 2 -type d\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d235826001muVKOt36eNylOm",
+      "callId": "call_00_yPmLqdLXL0364Q3A2rhh2172",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "cat package.json; find specs -type f; find ai/directives -maxdepth 2 -type d",
+      "startedAt": 1792832397930,
+      "finishedAt": 1792832397931,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 539,
+          "redactedPrefixBytes": 539,
+          "redactedPrefixSha256": "977ffb5090d5d98de46936f138ae2eed6e49929e09ecd305832ae55e8f509cbd",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 12,
+      "t": 1792832398348,
+      "tool": "grep",
+      "arg": "{\"path\":\"./ai/directives/sdd-v2/root.directive.xml\",\"pattern\":\"DECISION_LOG_ENTRY_FORMAT|ACR>-DL|Verification Levels|SDD_SECTION_NOT_FOLDED|SPEC_ID\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d235826001muVKOt36eNylOm",
+      "callId": "call_01_USwHQQYb6KUA7EkWtpdY4158",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832398348,
+      "finishedAt": 1792832398375,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 15392,
+          "redactedPrefixBytes": 13320,
+          "redactedPrefixSha256": "2de40e5e77be6eb369e6e3c5707b9f819f39c52d9d76be3d2289e1ecd6391146",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 13,
+      "t": 1792832398558,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/requirement-entry-format.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d235826001muVKOt36eNylOm",
+      "callId": "call_02_hO6yeZ41H7TeD8KC5fcr1126",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832398558,
+      "finishedAt": 1792832398565,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 7845,
+          "redactedPrefixBytes": 7771,
+          "redactedPrefixSha256": "db4ba842a97111a1c56a28261b7600a1225e17e801d6ba2b7930a5444d454598",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 14,
+      "t": 1792832400739,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/formats/module-spec-structure.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d236503001hEEhct3CY1qSD2",
+      "callId": "call_00_hgxxsPcfpV2b49NFC7SJ6380",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832400739,
+      "finishedAt": 1792832400742,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 10314,
+          "redactedPrefixBytes": 10240,
+          "redactedPrefixSha256": "fe5680eba503932b455f88bd25e80463e2f7790d26eadacf64ff557b55c0bae6",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 15,
+      "t": 1792832401002,
+      "tool": "grep",
+      "arg": "{\"path\":\"./ai/directives/sdd-v2/root.directive.xml\",\"pattern\":\"DECISION_LOG_ENTRY_FORMAT\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d236503001hEEhct3CY1qSD2",
+      "callId": "call_01_yGK0P4puKq7CDC2c44Xt1454",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832401002,
+      "finishedAt": 1792832401011,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 4814,
+          "redactedPrefixBytes": 3630,
+          "redactedPrefixSha256": "1b10bc17a2097b3c283091a33ac676cf32b94e0740659b57cbc6a8beca4cf05c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 16,
+      "t": 1792832402812,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./ai/directives/sdd-v2/root.directive.xml\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d236e820011FGSUlwG1nu7oY",
+      "callId": "call_00_ET_EIptIKDl8HCACqUWYztl0675",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832402812,
+      "finishedAt": 1792832402819,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 2616,
+          "redactedPrefixBytes": 2542,
+          "redactedPrefixSha256": "03da698719ae82fd928b653d3a157c521c94dc3aa351c4dcb9436b3cf1a5d323",
+          "prefixComplete": true
+        },
+        "requestedReadWindow": {
+          "offset": 500,
+          "limit": 45
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 17,
+      "t": 1792832422385,
+      "tool": "bash",
+      "arg": "{\"command\":\"find ai/directives/coding ai/directives/testing -maxdepth 2 -type f | sort\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d2375a5001KftgEc9HgpRU7B",
+      "callId": "call_00_IASm2yzQM4c9kK6Ydsyl2287",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "find ai/directives/coding ai/directives/testing -maxdepth 2 -type f | sort",
+      "startedAt": 1792832422385,
+      "finishedAt": 1792832422388,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 757,
+          "redactedPrefixBytes": 757,
+          "redactedPrefixSha256": "4e651e1f7fae183f5eb0838b4c1e83d3157f7110372770d7912a3070ed509d5d",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 18,
+      "t": 1792832445433,
+      "tool": "write",
+      "arg": "{\"filePath\":\"./specs/token/pipeline/normalize/normalize.spec.md\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d23c2090010LdfDzlOKyn0cK",
+      "callId": "call_00_H1mH3ZQ585V9EB7ggril2686",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "startedAt": 1792832445433,
+      "finishedAt": 1792832445441,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 24,
+          "redactedPrefixBytes": 24,
+          "redactedPrefixSha256": "e3e06ec0f8c958669ed3682941ab88218ff9ee42a7ab9b48fd78126336aa968c",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 19,
+      "t": 1792832447511,
+      "tool": "bash",
+      "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d241c09001ikmDZDExiNGip1",
+      "callId": "call_00_XDuBL1PLjLX9OMhl2fTg9766",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring",
+      "startedAt": 1792832447511,
+      "finishedAt": 1792832447518,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 130,
+          "redactedPrefixBytes": 130,
+          "redactedPrefixSha256": "3c42030406ef0780876370107dda07584351052f393ef47aa3c648802aa8abf3",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 20,
+      "t": 1792832454507,
+      "tool": "bash",
+      "arg": "{\"command\":\"git status --porcelain && npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d242424001s7a7vwxls9gYMn",
+      "callId": "call_00_M5ArymBCDvMRd9zB8Vq04434",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "git status --porcelain && npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring",
+      "startedAt": 1792832454507,
+      "finishedAt": 1792832454518,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 155,
+          "redactedPrefixBytes": 155,
+          "redactedPrefixSha256": "a8952272c1d12a98cf90423a130518e462eec8a281dca78c8b3068858ffa97b7",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 21,
+      "t": 1792832456998,
+      "tool": "bash",
+      "arg": "{\"command\":\"rg -n \\\"УДАЛИ|TODO|<[A-Za-z][^`]*>|\\\\[One-line|placeholder|approved|✅|accepted\\\" specs/token/pipeline/normalize/normalize.spec.md || true\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d243f83001YFKuQNLFfmG2YW",
+      "callId": "call_00_XTLoMY7g47pZq0lebLFZ6533",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "rg -n \"УДАЛИ|TODO|<[A-Za-z][^`]*>|\\[One-line|placeholder|approved|✅|accepted\" specs/token/pipeline/normalize/normalize.spec.md || true",
+      "startedAt": 1792832456998,
+      "finishedAt": 1792832456999,
+      "exitCode": 1,
+      "diagnostic": "zsh:1: unmatched \"\n",
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 19,
+          "redactedPrefixBytes": 19,
+          "redactedPrefixSha256": "a0bd83afc0e1ac93e6f6d8c690cc5ee36afdc7bf2c5939d613d3e8cbee32df16",
+          "prefixComplete": true
+        }
+      }
+    },
+    {
+      "type": "tool",
+      "i": 22,
+      "t": 1792832458967,
+      "tool": "bash",
+      "arg": "{\"command\":\"rg -n 'УДАЛИ|TODO|\\\\[One-line|placeholder|approved|✅|accepted' specs/token/pipeline/normalize/normalize.spec.md || true\",\"workdir\":\".\"}",
+      "messageId": "ses_e92dcd43effeoy3XTgwbGZUJfV:msg_16d244945001TQyIxIHGtN3gO3",
+      "callId": "call_00_QhO4rn2jIBLRg1mVlM3K0366",
+      "status": "completed",
+      "sessionId": "ses_e92dcd43effeoy3XTgwbGZUJfV",
+      "command": "rg -n 'УДАЛИ|TODO|\\[One-line|placeholder|approved|✅|accepted' specs/token/pipeline/normalize/normalize.spec.md || true",
+      "startedAt": 1792832458967,
+      "finishedAt": 1792832458984,
+      "exitCode": 0,
+      "observation": {
+        "version": 1,
+        "output": {
+          "available": true,
+          "bytes": 11,
+          "redactedPrefixBytes": 11,
+          "redactedPrefixSha256": "efefc15c24ee8645a3f5f6958389db729c1577eb6b32aeac4caab2a86d90daa3",
+          "prefixComplete": true
+        }
+      }
+    }
+  ],
+  "coverage": {
+    "complete": true,
+    "sessions": 1,
+    "reasons": []
+  }
+}

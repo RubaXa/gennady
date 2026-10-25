@@ -1,0 +1,31 @@
+// Model-free proof of cleanup through the exact owned OpenCode server.
+import { mkdirSync, rmSync, realpathSync, writeFileSync } from 'node:fs';
+import { createSddEvalOpenCodeClient } from './plan/ai/flow-eval/opencode-client.ts';
+const root = '/private/tmp/gennady-format-tool-facts-oct24.wQd4ur';
+const directory = root + '/lifecycle-smoke-fixture';
+const client = createSddEvalOpenCodeClient({ baseUrl: 'http://127.0.0.1:4200' });
+mkdirSync(directory, { mode: 0o700 });
+if (realpathSync(directory) !== directory) throw new Error('SMOKE_DIRECTORY_ALIAS');
+let sessionId;
+const facts = { modelCalls: 0, created: false, directoryRemoved: false, aborted: false, children: null, deleted: false };
+try {
+  const created = await client.session.create({ body: { title: 'owned-model-free-cleanup-smoke' }, query: { directory }, signal: AbortSignal.timeout(10000) });
+  if (created.error || !created.data?.id) throw new Error('SMOKE_CREATE_FAILED');
+  sessionId = created.data.id; facts.created = true;
+  rmSync(directory, { recursive: true }); facts.directoryRemoved = true;
+  const aborted = await client.session.abort({ path: { id: sessionId }, query: { directory }, signal: AbortSignal.timeout(10000) });
+  if (aborted.error) throw new Error('SMOKE_ABORT_FAILED');
+  facts.aborted = true;
+  const children = await client.session.children({ path: { id: sessionId }, query: { directory }, signal: AbortSignal.timeout(10000) });
+  if (children.error || !Array.isArray(children.data) || children.data.length) throw new Error('SMOKE_CHILDREN_FAILED');
+  facts.children = 0;
+} finally {
+  if (sessionId) {
+    const deleted = await client.session.delete({ path: { id: sessionId }, query: { directory }, signal: AbortSignal.timeout(10000) });
+    facts.deleted = deleted.error === undefined && deleted.data === true;
+  }
+  rmSync(directory, { recursive: true, force: true });
+  writeFileSync(root + '/lifecycle-smoke.json', JSON.stringify(facts, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+}
+console.log(JSON.stringify(facts));
+if (!facts.deleted) process.exitCode = 2;

@@ -5,11 +5,13 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 import { getAuthoringCase, type AuthoringCaseId } from './authoring-benchmark.ts';
 import type { SddEvalConfig } from './types.ts';
 import { measureAuthoringPromptFootprint } from './authoring-prompt-footprint.ts';
 import { TEMPLATES, foldSections, loadBearingSections } from '../../shared/sdd/templates.ts';
+import { selectedAuthoringTransfer } from './authoring-transfer.ts';
 import {
   collectHeadings,
   extractHeadingSection,
@@ -181,6 +183,8 @@ export async function authoringProtocolIdentity(
   runtimeVersion?: string
 ) {
   const definition = getAuthoringCase(caseId);
+  // The installed CLI source may differ from the common host harness in a transfer experiment.
+  const harnessRoot = fileURLToPath(new URL('../../', import.meta.url));
   const harnessFiles = [
     'cli.ts',
     'types.ts',
@@ -201,6 +205,9 @@ export async function authoringProtocolIdentity(
     'scripts/authoring-experiment.ts',
   ].map((name) => `ai/flow-eval/${name}`);
   return {
+    ...(selectedAuthoringTransfer()
+      ? { transferTask: { id: selectedAuthoringTransfer()!.id, revision: 'transfer-oct25.1' } }
+      : {}),
     prompt: measureAuthoringPromptFootprint(root, caseId),
     taskDigest: hash({
       caseId,
@@ -210,8 +217,10 @@ export async function authoringProtocolIdentity(
       brief: definition.brief,
       files: definition.files,
     }),
-    oracleDigest: await authoringSourceTreeDigest(root, ['ai/flow-eval/authoring-benchmark.ts']),
-    harnessDigest: await authoringSourceTreeDigest(root, harnessFiles),
+    oracleDigest: await authoringSourceTreeDigest(harnessRoot, [
+      'ai/flow-eval/authoring-benchmark.ts',
+    ]),
+    harnessDigest: await authoringSourceTreeDigest(harnessRoot, harnessFiles),
     environmentDigest: hash({
       node: process.versions.node,
       platform: process.platform,

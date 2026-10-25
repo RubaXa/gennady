@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 3,
+  "scenarioId": "authoring-contractcue1-oct24-module-nested-facts-r1",
+  "sourceSha": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c",
+  "startedAt": "2026-10-24T13:11:11.637Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/3",
+  "sessions": [
+    {
+      "id": "ses_e91f69541ffeVp01wJISMjzsh6",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/3/sdd-flow-eval-OSLiUp",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91f52376ffePxVbFYJPFNhM5Y",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/3/sdd-flow-eval-OSLiUp",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-facts-r1",
+    "summarySha256": "2a2d4b55b4c30f33365f4b87dda87817a390e807f8c107d622df8945f734528c",
+    "trajectorySha256": "14f0f6c8102a088f7f0f9c0d6288a3f285f122500c41a4b291cdd67d3f8d1cf2",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 27,
+    "nonCacheTokens": 48771,
+    "messages": 19
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:13:24.531Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91f69541ffeVp01wJISMjzsh6",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/3/sdd-flow-eval-OSLiUp"
+    },
+    {
+      "id": "ses_e91f52376ffePxVbFYJPFNhM5Y",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/3/sdd-flow-eval-OSLiUp"
+    }
+  ]
+}

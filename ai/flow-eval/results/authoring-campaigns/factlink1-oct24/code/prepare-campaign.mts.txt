@@ -1,0 +1,92 @@
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createAuthoringMatrix } from './plan/ai/flow-eval/scripts/authoring-experiment.ts';
+import { measureAuthoringPromptFootprint } from './plan/ai/flow-eval/authoring-prompt-footprint.ts';
+
+const own = dirname(fileURLToPath(import.meta.url));
+const source = '09c2329bdeafa34209b58d0c0470b05d2c2ca721';
+const campaign = 'factlink1-oct24', model = 'llm-proxy/deepseek-v4-flash';
+const arms = ['baseline', 'facts'] as const, cases = ['module-flat', 'module-nested'] as const;
+const names = { baseline: 'plan', facts: 'facts' };
+const allowed = ['ai/directives/sdd-v2/module.directive.xml', 'ai/kit/templates/sdd-v2/module.directive.hbs'];
+const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
+const fail = (msg: string): never => { throw new Error(msg); };
+const bytes = (path: string) => { const s = fs.lstatSync(path); if (!s.isFile() || s.isSymbolicLink() || s.size > 16*1024*1024) fail('UNSAFE_FILE'); return fs.readFileSync(path); };
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 15000 }).trim();
+const json = (v: unknown) => JSON.stringify(v, null, 2) + '\n';
+const mode = process.argv[2], url = new URL(process.argv[3] || 'http://127.0.0.1:4199/');
+if (!['--check', '--write'].includes(mode || '') || process.argv.length > 4 || process.versions.node.split('.')[0] !== '22' || fs.realpathSync(own) !== own || url.origin !== 'http://127.0.0.1:4199' || url.pathname !== '/' || url.search || url.hash) fail('USAGE_OR_RUNTIME');
+function action(text: string) {
+  const start = text.indexOf('<Step id="STEP_2_FILL">'), end = text.indexOf('</Step>', start);
+  const a = text.indexOf('<Action>', start) + 8, b = text.indexOf('</Action>', a);
+  if (start < 0 || a < start || b <= a || b > end) fail('ACTION_BOUNDARY');
+  return { body: text.slice(a,b), surrounding: text.slice(0,a) + '\0' + text.slice(b) };
+}
+function dist(root: string) {
+  const result: object[] = [];
+  function walk(dir: string) {
+    for (const name of fs.readdirSync(dir).sort()) {
+      const path = join(dir,name), stat = fs.lstatSync(path);
+      if (stat.isSymbolicLink()) fail('DIST_ALIAS');
+      if (stat.isDirectory()) walk(path);
+      else result.push({ path: relative(join(root,'dist'),path), bytes: stat.size, sha256: hash(bytes(path)) });
+    }
+  }
+  if (!fs.existsSync(join(root,'dist/gennady.js'))) fail('NO_BUILD');
+  walk(join(root,'dist'));
+  return { sha256: hash(JSON.stringify(result)), totalBytes: result.reduce((n,item:any)=>n+item.bytes,0), files: result };
+}
+const baseline = join(own,'plan'), baselineActions = allowed.map(path => action(bytes(join(baseline,path)).toString()));
+const variants: any = { source: { commit: source }, treatment: 'facts', targetPaths: allowed, baselineAction: baselineActions[0]!.body, additions: null, factsAreDomainAnswers: false };
+const sources = arms.map(arm => {
+  const root = join(own,names[arm]);
+  if (fs.realpathSync(root) !== root || git(root,'status','--porcelain')) fail('SOURCE_NOT_CLEAN');
+  const sourceSHA = git(root,'rev-parse','HEAD');
+  const paths = git(root,'diff','--name-only',source,sourceSHA).split('\n').filter(Boolean).sort();
+  if (arm === 'baseline' ? sourceSHA !== source : git(root,'rev-parse','HEAD^') !== source || JSON.stringify(paths) !== JSON.stringify(allowed)) fail('SOURCE_DELTA');
+  const moduleFiles = allowed.map((path,i) => {
+    const data = bytes(join(root,path)), section = action(data.toString());
+    if (section.surrounding !== baselineActions[i]!.surrounding || !section.body.startsWith(baselineActions[i]!.body.trimEnd())) fail('ORIGINAL_INSTRUCTIONS_CHANGED');
+    if (arm === 'facts') {
+      const extra = section.body.slice(baselineActions[i]!.body.trimEnd().length);
+      if (variants.additions !== null && variants.additions !== extra) fail('SOURCE_GENERATED_MISMATCH');
+      variants.additions = extra;
+    }
+    return { path, sha256: hash(data), bytes: data.length, actionSha256: hash(section.body) };
+  });
+  return { arm, root, sourceSHA, branch: git(root,'branch','--show-current'), changedPaths: paths, moduleFiles,
+    packageLockSha256: hash(bytes(join(root,'package-lock.json'))), installedLockSha256: hash(bytes(join(root,'node_modules/.package-lock.json'))), physicalDependencies: fs.realpathSync(join(root,'node_modules')), dist: dist(root), instructions: Object.fromEntries(cases.map(c => [c, measureAuthoringPromptFootprint(root,c)])) };
+});
+for (const key of ['packageLockSha256','installedLockSha256','physicalDependencies'] as const) if (sources[0]![key] !== sources[1]![key]) fail('DEPENDENCY_DRIFT');
+if (sources[0]!.dist.sha256 !== sources[1]!.dist.sha256) fail('DIST_DRIFT');
+const matrices = Object.fromEntries(arms.map(arm => [arm,createAuthoringMatrix(campaign,arm,6,cases)]));
+const blocks = Array.from({length:6},(_,r) => cases.map(caseId => {
+  const bit = createHash('sha256').update(`factlink1-oct24-order|${caseId}`).digest()[0]! % 2;
+  const order = (r+bit)%2 ? ['facts','baseline'] : ['baseline','facts'];
+  return {caseId,repetition:r+1,arms:order};
+})).flat();
+const attempts = blocks.flatMap(b => b.arms.map(arm => ({ sourceRoot: join(own,names[arm as keyof typeof names]), scenario: matrices[arm]!.find(s => s.authoringBenchmark!.caseId === b.caseId && s.authoringBenchmark!.repetition === b.repetition)! })));
+if (attempts.length !==24 || attempts.some(a => !a.scenario)) fail('MATRIX_NOT24');
+const config = { ownRoot:own, baseUrl:url.origin+'/', permanent:join(own,'permanent'), attempts, concurrency:1 };
+const variantText = json(variants), configText = json(config);
+const protocol = { schema:'gennady.authoring-format-preregistration.1', campaign,
+  repeatContract:{path:'REPEAT-CONTRACT.md',sha256:hash(bytes(join(own,'REPEAT-CONTRACT.md')))},
+  variants:{path:'variants.json',sha256:hash(variantText)},
+  config:{path:'config.json',sha256:hash(configText)},
+  controlProgram:{path:'controller.mjs',sha256:hash(bytes(join(own,'controller.mjs'))),preparationPath:'prepare-campaign.mts',preparationSha256:hash(bytes(fileURLToPath(import.meta.url)))},
+  offlineReporting:{path:'offline-report.mts',sha256:hash(bytes(join(own,'offline-report.mts')))},
+  mechanism:{path:'mechanism.mjs',sha256:hash(bytes(join(own,'mechanism.mjs')))},
+  runtime:{node:process.version,nodeAbi:process.versions.modules,platform:process.platform,arch:process.arch,workerModel:model,judgeModel:model,reflectionModel:model,fallback:false},
+  sources, order:{seed:'factlink1-oct24-order',algorithm:'SHA256 starting order per case, alternating paired AB/BA, six repetitions',blocks},
+  acceptance:fs.readFileSync(join(own,'REPEAT-CONTRACT.md'),'utf8'),
+};
+if (mode === '--write') {
+  for (const [path,value] of [['variants.json',variantText],['config.json',configText],['preregistered-protocol.json',json(protocol)]]) {
+    if (fs.existsSync(join(own,path!))) fail('EXISTING_CONFIG');
+    fs.writeFileSync(join(own,path!),value!,{flag:'wx',mode:0o600});
+  }
+}
+console.log(json({ready:true,mode,attempts:24,model,sourceSHAs:sources.map(s=>({arm:s.arm,sha:s.sourceSHA})),dist:sources[0]!.dist.sha256,order:blocks,modelCalls:0}).trim());

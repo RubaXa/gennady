@@ -1,0 +1,1766 @@
+[
+  {
+    "path": "report-v1/README.md",
+    "bytes": 11706,
+    "sha256": "4dd3562a378d85f1b8cbec57d92301f910940ad000e0385c3f121b8011f856e5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/README.md"
+  },
+  {
+    "path": "report-v1/baseline.calls.md",
+    "bytes": 81430,
+    "sha256": "dc3a11937d8d571b41f27fdb5270080f7fef757b8c60ff2a0ebf505fd3f65de3",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/baseline.calls.md"
+  },
+  {
+    "path": "report-v1/baseline.input.json",
+    "bytes": 488924,
+    "sha256": "73317f424a720ecac8c5d4d27f1e199b9051f9123de83041a491def3d97beef9",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/baseline.input.json"
+  },
+  {
+    "path": "report-v1/baseline.report.json",
+    "bytes": 276785,
+    "sha256": "8ec990fbbb60f4f09e0cc10b4c6d64b1d9be3e3c27edeec4b87424a92decdc4c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/baseline.report.json"
+  },
+  {
+    "path": "report-v1/baseline.trajectory.md",
+    "bytes": 60157,
+    "sha256": "469ccfc11b45be8b7f805eab2aa920a7451af2be5bc3f4779f8deb1fa5db53e2",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/baseline.trajectory.md"
+  },
+  {
+    "path": "report-v1/bindings.json",
+    "bytes": 18625,
+    "sha256": "30167f107f0639f47398af863cbe4176e824229769bb2475524d15129aeead23",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/bindings.json"
+  },
+  {
+    "path": "report-v1/comparisons.json",
+    "bytes": 2583,
+    "sha256": "e98640b4a99d18ff21daaf92a99e73181e922b35dcc93140d43653b80427a072",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/comparisons.json"
+  },
+  {
+    "path": "report-v1/contract-observations.json",
+    "bytes": 35822,
+    "sha256": "4a2aa4b58a7c088e9af699760824bd3965b6be02bfa25c689991dafc0be664cc",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/contract-observations.json"
+  },
+  {
+    "path": "report-v1/facts.calls.md",
+    "bytes": 68298,
+    "sha256": "5baba966dd7f966bcc2a8869be1855472244f857456e05869ff02df8d313019c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/facts.calls.md"
+  },
+  {
+    "path": "report-v1/facts.input.json",
+    "bytes": 431668,
+    "sha256": "3181ef52e739b1b5c990cfedc49ec002c847281550a057b3c1a20be8bf0c6128",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/facts.input.json"
+  },
+  {
+    "path": "report-v1/facts.report.json",
+    "bytes": 243940,
+    "sha256": "92ab0a64c808688c3a83b27a9f88bdf966b8e6b3906ef398845429cf2dedaf35",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/facts.report.json"
+  },
+  {
+    "path": "report-v1/facts.trajectory.md",
+    "bytes": 51961,
+    "sha256": "aad4c005ec580389229e61b90a1ccc58860205ad0b2eef9e75a2e9214ae53960",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/facts.trajectory.md"
+  },
+  {
+    "path": "report-v1/hypothesis-effects.json",
+    "bytes": 10707,
+    "sha256": "62bce68a0761d56c634e57fa6eef3457ae8cec5260d610ab3bef88aaa901332e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/hypothesis-effects.json"
+  },
+  {
+    "path": "report-v1/net-effects.json",
+    "bytes": 17109,
+    "sha256": "14b355aa2b92df12f66e5f76f7a3b50c625dc38803e159d8849957ebdaa6bb8c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/net-effects.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/summary.json",
+    "bytes": 5595,
+    "sha256": "c58d50411934acfba932145bb8c1b71585773562dc5b407460a276cd46b0e1ed",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/summary.json",
+    "bytes": 5593,
+    "sha256": "ecbac1377d09804ba1521b900c85461c6349ced85df959d1dc78a48d7b415c3c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/summary.json",
+    "bytes": 5651,
+    "sha256": "3eaac52aeb468c7a309a3f0016bd673fdcd972290a27e27c88e397a152aa10b5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/summary.json",
+    "bytes": 5597,
+    "sha256": "a0c4bda15785a18abb46825bb2e661b097ef4d9a0f8c8a50c62ba21506d7e8f7",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/summary.json",
+    "bytes": 5593,
+    "sha256": "8af550a0bb2adbc0d4142bcd83a12f2d21756ac0e1d6f2df5f4984f29edc4a97",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/summary.json",
+    "bytes": 5595,
+    "sha256": "49b7f7ecafeaad846761143a6be65a9e30a92899afa1090ccb174dfb02bd5146",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/summary.json",
+    "bytes": 5651,
+    "sha256": "1d9e86b0c34fdc452ed4977dbdc45e6822f950c27dba645becaf0f0912d873c3",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/summary.json",
+    "bytes": 5585,
+    "sha256": "d2425b27df39622a81d821d559d804c92c97a03f2553758205908fd2d454144b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/summary.json",
+    "bytes": 5586,
+    "sha256": "3553ab8bfe49279073001dfeeaa46d48110d6e9bafdb3fbbf0f67aac157b9c45",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/summary.json",
+    "bytes": 5649,
+    "sha256": "4891a408834c78bbfbb9e8684512cc833e52a5f62a29923c6b142d878f998d83",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/summary.json",
+    "bytes": 5588,
+    "sha256": "06f6456f7de905b64bb562249804d5b281402ea35ecba3cd1b8034f9294c5c9a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/summary.json",
+    "bytes": 5700,
+    "sha256": "caa62dad1b1542901a8626c8d1bce9b4675457a4fe8f33ffb48accd5e9784236",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/summary.json",
+    "bytes": 5617,
+    "sha256": "81b7458fb8d3653f068fa78b53c493fdaacab87954bfdbfec1cbdb502dd5a38a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/summary.json",
+    "bytes": 5617,
+    "sha256": "8aeffa4227f95428b45991cfafe309c7cbc1bf21b9cf688bfe128e203ba1645f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/summary.json",
+    "bytes": 5618,
+    "sha256": "b96fe2b352217d830640dadf7cc6567574f547ff09aec7a1fce46d3c46a121bc",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/summary.json",
+    "bytes": 5618,
+    "sha256": "f5dbfb42f91cf8a4aa219c5f297f361c582dfac489533f0ba79dfdf753b5cd6e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/summary.json",
+    "bytes": 5616,
+    "sha256": "e67104c9c496fac76160e0fb98bb62d260effb123b5be9d155accda91f063127",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/summary.json",
+    "bytes": 5616,
+    "sha256": "bae06bc3a36182a7192c23e3a5a968b47ab54b1d241d006cf4cf34c599e805a4",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/summary.json",
+    "bytes": 5611,
+    "sha256": "198ebb43127565d109803cc1615ed1a5f8d99ae7eeb0e373f671ba658dfa13e5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/summary.json",
+    "bytes": 5682,
+    "sha256": "694651f14f6dcab40360e9e467a2f30873227e1ec1109a1fbe3eeabce5a4e8f5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/summary.json",
+    "bytes": 5611,
+    "sha256": "6284840e7fa25f015099492c783d6915ff51ad9c36dbedc5d2417e0768482766",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/summary.json",
+    "bytes": 5677,
+    "sha256": "fdf7e80e43f0bb9e94b38685170cd26ad918024d29f15ada17ab49328791ce8a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/summary.json",
+    "bytes": 5678,
+    "sha256": "9b7b5bb52d53639186acd15818774e9af27dd2bc158b428841ba5aee8a9a2110",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/summary.json",
+    "bytes": 5610,
+    "sha256": "330f222fc058e17b826604896459e2e178ed794cf3aa5b0018bbf5cefc44fae6",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/raw-metrics.json",
+    "bytes": 238103,
+    "sha256": "05068879b213087183bc9ede3ec6a74b19f19d438fbee2b8d6175c658d2b04ff",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/report-v1/raw-metrics.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/judge.md",
+    "bytes": 609,
+    "sha256": "11709422d4e5c695190866190a4fe3f1eca4b7df66cf1e60227a32455646200f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/reflection.json",
+    "bytes": 4638,
+    "sha256": "e7078f2fe38479eeed4ac9bedfc8a46e28cb712d1125067f9f8ca2cf7e38ee4f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/specs/token/normalize/normalize.spec.md",
+    "bytes": 11387,
+    "sha256": "bcc57079dcb4d39fcdb4e60a219c04d5b687da0a285543c39e9a1d61b125df92",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/summary.json",
+    "bytes": 5595,
+    "sha256": "c58d50411934acfba932145bb8c1b71585773562dc5b407460a276cd46b0e1ed",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/trajectory.json",
+    "bytes": 23814,
+    "sha256": "4459d60e9e914316c43f085dc6cfbd0737e95193a3a2efbe4d531a5b96e05544",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/judge.md",
+    "bytes": 557,
+    "sha256": "28ad853d6625612bd0909921bd91d59a680958e8c9fb5d8bf1407487cc4c0648",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/reflection.json",
+    "bytes": 4871,
+    "sha256": "cf79e371795f8551f3c59aaf87ee642923a68fddec21fc25e91fbbe43424dab2",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/specs/token/normalize/normalize.spec.md",
+    "bytes": 8990,
+    "sha256": "162851be57bbc5384f7567732e0a4f18bb37cf29f9c901d64412ae51bec70f98",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/summary.json",
+    "bytes": 5593,
+    "sha256": "ecbac1377d09804ba1521b900c85461c6349ced85df959d1dc78a48d7b415c3c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/trajectory.json",
+    "bytes": 22257,
+    "sha256": "0708137bdae1d98c127e698a9be1ed85c911cb11186017d4f4cd413b5b388443",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/judge.md",
+    "bytes": 555,
+    "sha256": "171c6aaa6f67a57f35bc625c0e2ed9d50dce9ff4997ffca4f9aa9ddc83203c62",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/reflection.json",
+    "bytes": 3993,
+    "sha256": "e0b1054e74a9fedb3409cda634d89c03fa4ea346cc459585d119a974e9048ac1",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/specs/token/normalize/normalize.spec.md",
+    "bytes": 12129,
+    "sha256": "b274fffc2b244c5cfb2bc7669f75a5bc6d7293d06cee4985354bf4d58a502f99",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/summary.json",
+    "bytes": 5651,
+    "sha256": "3eaac52aeb468c7a309a3f0016bd673fdcd972290a27e27c88e397a152aa10b5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/trajectory.json",
+    "bytes": 23218,
+    "sha256": "8bce0dd6d3236aa081ca4e1a3eec523c25edfeab7f2fb028c3c2774c1901691d",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/judge.md",
+    "bytes": 838,
+    "sha256": "85650e42e72708e054d495dae75525b6ba085ac5d23accaeed96315d979bb8ce",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/reflection.json",
+    "bytes": 4491,
+    "sha256": "e436162872b5428ed575bbf2742ff8848078dc5be53fa0b357bfe70bcd18fd93",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/specs/token/normalize/normalize.spec.md",
+    "bytes": 10115,
+    "sha256": "3ba061dfa7f98a8668d5b3fdb07222bc5f52b1304c9060a811302ce1cd465ee5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/summary.json",
+    "bytes": 5597,
+    "sha256": "a0c4bda15785a18abb46825bb2e661b097ef4d9a0f8c8a50c62ba21506d7e8f7",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/trajectory.json",
+    "bytes": 19844,
+    "sha256": "be3bd967df3e11f3b3f6703c01146fda88d76bd1ae6733bcde121c205e658cf8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/judge.md",
+    "bytes": 401,
+    "sha256": "bfe40d2b18842aa85e27f3ae7df14d2ddc03d6fbd6c23c2e0fc987789c0fdc57",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/reflection.json",
+    "bytes": 4955,
+    "sha256": "bd895f2f9496583f5070e43a05b21b9f2bdea0a4af8745c6361c7e4c0504a0b9",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/specs/token/normalize/normalize.spec.md",
+    "bytes": 9939,
+    "sha256": "7875df153e8a06d67ca95f7f31c17c078496c8548eafac2406daf0e02c5b4284",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/summary.json",
+    "bytes": 5593,
+    "sha256": "8af550a0bb2adbc0d4142bcd83a12f2d21756ac0e1d6f2df5f4984f29edc4a97",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/trajectory.json",
+    "bytes": 16956,
+    "sha256": "c5a29edc50e67580cd380d542651eaa67a2d0a304a8eb9f17890005b7cc5b787",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/judge.md",
+    "bytes": 603,
+    "sha256": "69f2c00a29d9c1af90fd84fddb8be2cf75e3f8158b99d06f51cd634417e89414",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/reflection.json",
+    "bytes": 4190,
+    "sha256": "9fed87009df4ef6f908854905c3084959250b3cad61434f12838f8e008241581",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/specs/token/normalize/normalize.spec.md",
+    "bytes": 9365,
+    "sha256": "7898e24dffc6bc4e9e4e77dd62b2ff41938c118ca688e4de6618eea58a9f4cbb",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/summary.json",
+    "bytes": 5595,
+    "sha256": "49b7f7ecafeaad846761143a6be65a9e30a92899afa1090ccb174dfb02bd5146",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/trajectory.json",
+    "bytes": 24109,
+    "sha256": "474d872d2558dea40e0e0397359a1a2f9c9e10ac9193bfcbf011870c7071f3bd",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/judge.md",
+    "bytes": 873,
+    "sha256": "d12ddd2eaa7d308769f4214b116cf76e9cd17b4807575691f5a06c50ad9d72c6",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/reflection.json",
+    "bytes": 4443,
+    "sha256": "45322af6a4b625a44d22994487f64a70ac36e0bdd0383c08d9de4f0a32162c4f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/specs/token/normalize/normalize.spec.md",
+    "bytes": 10388,
+    "sha256": "a7e9b5ffc2dfaa09d20e10fe31bf6c2ba91d0dd205f4b175c97d71d8f03807a9",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/summary.json",
+    "bytes": 5651,
+    "sha256": "1d9e86b0c34fdc452ed4977dbdc45e6822f950c27dba645becaf0f0912d873c3",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/trajectory.json",
+    "bytes": 13232,
+    "sha256": "3a1cc053ab4677885ae9df6257896d766e3d4259a0bd80ff10d017e0db6281c5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/judge.md",
+    "bytes": 509,
+    "sha256": "bb03881079d1da14883341d92928cecbc26b8ed23dbfd328527e422188dc47e0",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/reflection.json",
+    "bytes": 4877,
+    "sha256": "ad5c5ac2faad3997f8fc70bbacc339b85c27cb2d6ba8a4838b9c571856096180",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/specs/token/normalize/normalize.spec.md",
+    "bytes": 11951,
+    "sha256": "c05cfcc01ad8529dbeb73558e596ae4eaeb344bb19f167967c2718c94a1214a0",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/summary.json",
+    "bytes": 5585,
+    "sha256": "d2425b27df39622a81d821d559d804c92c97a03f2553758205908fd2d454144b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/trajectory.json",
+    "bytes": 14662,
+    "sha256": "95156ce5a8a9a802326dd677a09124726207b985c156fc7b244b43f966bcb6d0",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/judge.md",
+    "bytes": 603,
+    "sha256": "91364e476459aef61ef8911ad33fc6fe1ed2520baf5acc6d702886279e580a86",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/reflection.json",
+    "bytes": 4502,
+    "sha256": "afb79a478f37f4e3df956d2d10477fae1ec1ea2f65886cb99fcfe2c822739400",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/specs/token/normalize/normalize.spec.md",
+    "bytes": 9332,
+    "sha256": "90f895bc358cde237a5f8ec012a93609cbf115c315f650f76b18289a8f2281bc",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/summary.json",
+    "bytes": 5586,
+    "sha256": "3553ab8bfe49279073001dfeeaa46d48110d6e9bafdb3fbbf0f67aac157b9c45",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/trajectory.json",
+    "bytes": 15798,
+    "sha256": "005e07f7801b4ff35ba0963825f5517f5f8ee6f7dc4b8081509a23f3313a7cb9",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/judge.md",
+    "bytes": 565,
+    "sha256": "fce7a9ecf8ab6465ebc6aece09bc1785ca5cd52dd219e09c80ea46e2491e8379",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/reflection.json",
+    "bytes": 3866,
+    "sha256": "2dcd364aab253d478691eac649542b06dfb97b19864e5f7137959eb12bb25d82",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/specs/token/normalize/normalize.spec.md",
+    "bytes": 8681,
+    "sha256": "65e46bd648f6c8ec78f5e6ed6e6bbecd926eca749ce2a80f3732e0d1c2f85b1c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/summary.json",
+    "bytes": 5649,
+    "sha256": "4891a408834c78bbfbb9e8684512cc833e52a5f62a29923c6b142d878f998d83",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/trajectory.json",
+    "bytes": 16914,
+    "sha256": "cde6e06bae3abc9e62e11a7aa1c5bbb1aefbcaaaa96d8a34a97c46d5bec7ba09",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/judge.md",
+    "bytes": 566,
+    "sha256": "beb5b7c3ea0e2886d289462fa6adc42a116ca277d496632fc93817a3e6f2619e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/reflection.json",
+    "bytes": 3956,
+    "sha256": "32375c5956c6b873fb87bb20fdb45d146d46c02073ef69331ab08619555c2ebb",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/specs/token/normalize/normalize.spec.md",
+    "bytes": 9891,
+    "sha256": "20c77a8a3c2a83af14ef1061a6a922a133c2c62b9b85058150d73c10b97f8c25",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/summary.json",
+    "bytes": 5588,
+    "sha256": "06f6456f7de905b64bb562249804d5b281402ea35ecba3cd1b8034f9294c5c9a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/trajectory.json",
+    "bytes": 15568,
+    "sha256": "6dc7a5b032e223553cc05d9101c23914c5c39f16ac2bbbe0161632af27446011",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/judge.md",
+    "bytes": 1074,
+    "sha256": "9de3625d361faec8c8e621bc778acc709184a7c19bc8424f15817f3dc7e9af54",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/reflection.json",
+    "bytes": 3447,
+    "sha256": "cffe0e894c8d1b40abb272b5cfcc51ca173e65f83945dedebe47ba42e60986a5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/specs/token/normalize/normalize.spec.md",
+    "bytes": 10689,
+    "sha256": "84c87e44cf2a5dcb35bb21c4d76a41d7b4615f391f6c8159092ca436813aeffb",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/specs/token/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/specs/token/token.spec.md",
+    "bytes": 4003,
+    "sha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/summary.json",
+    "bytes": 5700,
+    "sha256": "caa62dad1b1542901a8626c8d1bce9b4675457a4fe8f33ffb48accd5e9784236",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/trajectory.json",
+    "bytes": 17662,
+    "sha256": "c735be563dfdf1b6b6c3dda4eee39f97fdab3b47f340907cbacbd5c691cc1976",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/judge.md",
+    "bytes": 554,
+    "sha256": "1aa0569e24e23f8466adb5e8f19c66fceb24052a75887eb00be9037f536c3b80",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/reflection.json",
+    "bytes": 4630,
+    "sha256": "c7b6966e03fe2d0a79c5523cae8d3e5c49254c7c3ee797e85a42b4776ea1c345",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9185,
+    "sha256": "dc0e733d00ddfe7ecb5d799c35c4054865271e1d26026176a6e00d981c6a8119",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/summary.json",
+    "bytes": 5617,
+    "sha256": "81b7458fb8d3653f068fa78b53c493fdaacab87954bfdbfec1cbdb502dd5a38a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/trajectory.json",
+    "bytes": 19579,
+    "sha256": "7bdb07008a25b9857f89599feae8e3973e85c8e40fd6c7b931c58395abe59c19",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/judge.md",
+    "bytes": 655,
+    "sha256": "5b6a55bd3e22d359cf30c53b150109a85f6464a8e4dcdd90f97b6f6794f7452a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/reflection.json",
+    "bytes": 4940,
+    "sha256": "acd4a916db70b8b7b3ba92c4f3559da36ee6934299efd2ed6c9f9908930d4229",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10525,
+    "sha256": "df0e34943b993a87682413261cab092ad3da8dacc469330a2f305ecea7838792",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/summary.json",
+    "bytes": 5617,
+    "sha256": "8aeffa4227f95428b45991cfafe309c7cbc1bf21b9cf688bfe128e203ba1645f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/trajectory.json",
+    "bytes": 24709,
+    "sha256": "5ffd87a9e68fc147c663cf06d2fe3397661e4834d25dd88b66b892126b2ec6ad",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/judge.md",
+    "bytes": 586,
+    "sha256": "88ca3253a24aa8d3161cf29ec34df3029f877188ae50e943906474fa671f487d",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/reflection.json",
+    "bytes": 4212,
+    "sha256": "0598bb7e5c48cc7057dd3573dd8461c4e8a07fec703a82e69f3efbe35b3e4941",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 11782,
+    "sha256": "741a74261191d653ec3ac86418328574f44cf68204e5bcb24b59626a3a501801",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/summary.json",
+    "bytes": 5618,
+    "sha256": "b96fe2b352217d830640dadf7cc6567574f547ff09aec7a1fce46d3c46a121bc",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/trajectory.json",
+    "bytes": 16486,
+    "sha256": "ab6057118bab5c02d818c98c07ab0d1f0122671c220c471b03e40b8d07b30a80",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/judge.md",
+    "bytes": 538,
+    "sha256": "93e5a110c73e06d4ab4ee60101d9ec31cf47bd914afc8f277eed7df429ac64b8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/reflection.json",
+    "bytes": 4419,
+    "sha256": "51808501779792bc43046b29162618c2940893b88d104321ad6c3403564a4ee4",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9416,
+    "sha256": "ed7ed4eba6cf4b8f305c9204653ddf4b5a2ae4c98c0b824ad5a735ec318f05b6",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/summary.json",
+    "bytes": 5618,
+    "sha256": "f5dbfb42f91cf8a4aa219c5f297f361c582dfac489533f0ba79dfdf753b5cd6e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/trajectory.json",
+    "bytes": 21043,
+    "sha256": "e7ecc36d58d8101c702570667b81d9f46500c5103dfb8146a9db6d5316f04040",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/judge.md",
+    "bytes": 794,
+    "sha256": "e15fc46b258a00e8646277ee5e0129a984a268953fe4849b7af5f1943b02ae39",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/reflection.json",
+    "bytes": 3817,
+    "sha256": "0a1066aabba083afccca300f91ce18d57ec3f95f8f90125e52ca32af6602ab0b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 7156,
+    "sha256": "65ef6f6c8397aabccc0d13bfeeee2e838cf851f5cb40ac24c078f77ef5421e7f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/summary.json",
+    "bytes": 5616,
+    "sha256": "e67104c9c496fac76160e0fb98bb62d260effb123b5be9d155accda91f063127",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/trajectory.json",
+    "bytes": 18597,
+    "sha256": "37d6d4d1854b219bb20651d6f899f435d95cc05dbe25fae68f715657a021ba95",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/judge.md",
+    "bytes": 1474,
+    "sha256": "bb6d4f65a98e83b43c889ed026c2a760b0930c76dc99d99322226bfde5d98156",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/reflection.json",
+    "bytes": 5517,
+    "sha256": "b93bf152b8c811cac78e083f521fa837483a7fde137fb935c15e4018f2d625a7",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10178,
+    "sha256": "12651b4777df6c9db800cf85c975b66e6bfa3fbccae054cb32a78b6b7ea6f974",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/summary.json",
+    "bytes": 5616,
+    "sha256": "bae06bc3a36182a7192c23e3a5a968b47ab54b1d241d006cf4cf34c599e805a4",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/trajectory.json",
+    "bytes": 27785,
+    "sha256": "0989dfa7229d02f838f164474a5ddb48a0cfa80d64f28b9d7dd79be87586a329",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/judge.md",
+    "bytes": 618,
+    "sha256": "366fde4fe30ebf50a0243109570056f9d445ef18066b9a843d3f41554e923fa0",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/reflection.json",
+    "bytes": 4838,
+    "sha256": "fa5f435e89b0dc37d6b5655c62aef3f7b68ddf9d666c84eef29b703045512cc7",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 8706,
+    "sha256": "76d057c177aadecd869b2c9a562b4e81d7cebdab58d0d91d8e177267a05dd82e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/summary.json",
+    "bytes": 5611,
+    "sha256": "198ebb43127565d109803cc1615ed1a5f8d99ae7eeb0e373f671ba658dfa13e5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/trajectory.json",
+    "bytes": 21515,
+    "sha256": "4b34e275e4ef3809c7c43810f8465dc0372f37ba33ddbed80f7c3dcc9f282964",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/judge.md",
+    "bytes": 597,
+    "sha256": "9999fa8b356b11c6552f18519cbf030afc43b82f38d0cfa265635e1f09af6f11",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/reflection.json",
+    "bytes": 4918,
+    "sha256": "8c70dbbdb849a8346d2ffe59e0911c4e0ac10f219ac8cc48ab696f018e0dee47",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9946,
+    "sha256": "dafd19fd43c78190bfdae0fc189e68a2724a67efd2e09a69aa2c99b1f6c1895e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/summary.json",
+    "bytes": 5682,
+    "sha256": "694651f14f6dcab40360e9e467a2f30873227e1ec1109a1fbe3eeabce5a4e8f5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/trajectory.json",
+    "bytes": 19510,
+    "sha256": "455673be9be23b3fd18dfd483bab53dba3f3cebf11bdabeb141f3b3582c7b886",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/judge.md",
+    "bytes": 699,
+    "sha256": "ccba42bfbb216ce41ca7055709b99a1679c8cfe0c0c64211552b869863e9c1af",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/reflection.json",
+    "bytes": 4774,
+    "sha256": "35db8470fde4f456eadf6424c6abc1b6d60bdb2fcc7056dde55bc5aeac2e249f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 9138,
+    "sha256": "9937ff2f40f2af26f58c1b92ab0f5b3f384de7edb3e7334f29ceec84bf7b529c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/summary.json",
+    "bytes": 5611,
+    "sha256": "6284840e7fa25f015099492c783d6915ff51ad9c36dbedc5d2417e0768482766",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/trajectory.json",
+    "bytes": 20280,
+    "sha256": "29c9d4d52501176419e484ee8f7026057d7de38d739f252ed27ef30ebc45b4ba",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/judge.md",
+    "bytes": 443,
+    "sha256": "716bf819e51068616887e83c622620e4d6f06fbb2594d42753d034c8cbbc6340",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/reflection.json",
+    "bytes": 4438,
+    "sha256": "d4de2a790b4278b36f2b74e96d6df5f0b47a6ea6a2c5f33ce4e989ff415c6daa",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10295,
+    "sha256": "1a487d0c0532c05f1a05c0acef1fe41c78c45d604273f110e2cb6f8943fade49",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/summary.json",
+    "bytes": 5677,
+    "sha256": "fdf7e80e43f0bb9e94b38685170cd26ad918024d29f15ada17ab49328791ce8a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/trajectory.json",
+    "bytes": 15378,
+    "sha256": "db620532b314a6386372cfd4514b7b7147e64b664b9f60e5c7367783c2ce38e4",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/judge.md",
+    "bytes": 872,
+    "sha256": "938067cabeadd9681858a9898361a7280712899dd7489401e9fd1bdc50ba7157",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/reflection.json",
+    "bytes": 4279,
+    "sha256": "9e34bccec7d5f33aea8eca1b9d9af5d1e7474a9a6202e704806237a41debbaba",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10189,
+    "sha256": "cfe4ad903d3355760eec24bf2d73cfc046a027b6ca359ef41abf22628cfbb70b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/summary.json",
+    "bytes": 5678,
+    "sha256": "9b7b5bb52d53639186acd15818774e9af27dd2bc158b428841ba5aee8a9a2110",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/trajectory.json",
+    "bytes": 20103,
+    "sha256": "20caf7b997cba9c0992d6a8857a96a9b6aaee9f895bb8eb9b994162de869fc52",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/trajectory.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/judge.md",
+    "bytes": 941,
+    "sha256": "e01f48101f6ce2dc1eca7df2fbd621a0137143645200b49e07dcc40ee2d33b14",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/judge.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/reflection.json",
+    "bytes": 5920,
+    "sha256": "f312bf81137db23fc968f617b5b6a3973feef6e16882cfa539fbb66e18ea20cd",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/reflection.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/specs/infra-base/infra-base.spec.md",
+    "bytes": 4635,
+    "sha256": "7fd96f9befe451b2437927beda4a438fbbf4a153f916d5872f91169ce8d854a8",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/specs/infra-base/infra-base.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/specs/token/pipeline/normalize/normalize.spec.md",
+    "bytes": 10849,
+    "sha256": "8be6ce471e96f60b8e0f9e720e2a7c384f9bf74ec2d4750b92131a4867c3f85d",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/specs/token/pipeline/normalize/normalize.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/specs/token/token.spec.md",
+    "bytes": 4012,
+    "sha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/specs/token/token.spec.md"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/summary.json",
+    "bytes": 5610,
+    "sha256": "330f222fc058e17b826604896459e2e178ed794cf3aa5b0018bbf5cefc44fae6",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/summary.json"
+  },
+  {
+    "path": "report-v1/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/trajectory.json",
+    "bytes": 18582,
+    "sha256": "13a881088df9e5c7c3d34f707c097ac88a1f4197a5d137e103635051658a3a66",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/trajectory.json"
+  },
+  {
+    "path": "protocol/config.json",
+    "bytes": 80548,
+    "sha256": "0b10d163ce149a0c9635d8cc80ecb449e9e10ec9884dce1be79fef9e8b865aff",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/config.json"
+  },
+  {
+    "path": "protocol/controller-protocol.json",
+    "bytes": 9395,
+    "sha256": "6327f0f0384df7639d815b77c52c86bd73f0d378914c6b3c4964f783b96c0ef2",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/controller-protocol.json"
+  },
+  {
+    "path": "protocol/preregistered-protocol.json",
+    "bytes": 60946,
+    "sha256": "a887464a9430ab568a1ed05ee686e362bba500d4ed02fc2dbcf719bc494cf245",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/preregistered-protocol.json"
+  },
+  {
+    "path": "protocol/variants.json",
+    "bytes": 3598,
+    "sha256": "50315fe3eb8cf28ae079c8a364e16447c557f72ecb7f673dfda43c08d8ebe7c4",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/variants.json"
+  },
+  {
+    "path": "protocol/batch.json",
+    "bytes": 20737,
+    "sha256": "e4a9b050d5d82b80567a3e04fd5cd960ba792a382712d660502a0361d6cffb4b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/batch.json"
+  },
+  {
+    "path": "protocol/REPEAT-CONTRACT.md",
+    "bytes": 3578,
+    "sha256": "a3968d33fa28a91948808efd711814eb3385b155281399edf361936f987bf4cb",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/REPEAT-CONTRACT.md"
+  },
+  {
+    "path": "protocol/journal-permissions.json",
+    "bytes": 200,
+    "sha256": "d4fc59870559f2cb38a582c3ad19b96317d16c7dd280b3ca38842b31066ed680",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/journal-permissions.json"
+  },
+  {
+    "path": "protocol/lifecycle-smoke.json",
+    "bytes": 124,
+    "sha256": "d231d51eff9b4eb24ac8105ae6e545cdef5ae1840974ecab0c22aca9cf1bf97e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/lifecycle-smoke.json"
+  },
+  {
+    "path": "protocol/OPERATIONAL-NOTES.md",
+    "bytes": 1325,
+    "sha256": "f12e8f9f6f4eb697f1ae0464119d2aeaf42c43bd9f56019e67ba003b458b5d12",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/OPERATIONAL-NOTES.md"
+  },
+  {
+    "path": "code/controller.mjs.txt",
+    "bytes": 29006,
+    "sha256": "6776a8b856af8aea017fb197d4ef7236c7a2cc95d9a575557ee7a29fba9ecae7",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/controller.mjs"
+  },
+  {
+    "path": "code/prepare-campaign.mts.txt",
+    "bytes": 7359,
+    "sha256": "c292aca64a54f8843ea935d78687765104be3ac14935567f6ab79a6471ad6653",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/prepare-campaign.mts"
+  },
+  {
+    "path": "code/offline-report.mts.txt",
+    "bytes": 44754,
+    "sha256": "eec69a2add848821360b93539d48af8b6c2873466d6c904404dccd9c9e6b1f5c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/offline-report.mts"
+  },
+  {
+    "path": "code/controller-checks.mjs.txt",
+    "bytes": 8495,
+    "sha256": "abf0884b47b2b233cf24245e85646c48cb7152f21b2a08deb7ea9fa7422493d0",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/controller-checks.mjs"
+  },
+  {
+    "path": "code/fact-checks.mts.txt",
+    "bytes": 2299,
+    "sha256": "4a530b7097fa6f296fdf62ba8630c438f8d03378b8bcf52cacd5e08053bb8fe7",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/fact-checks.mts"
+  },
+  {
+    "path": "code/lifecycle-smoke.mjs.txt",
+    "bytes": 2059,
+    "sha256": "bcf5ef2d94b0ecc053fa460afea251e80f2fb86e1bd38eac47eaa64050be0613",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/lifecycle-smoke.mjs"
+  },
+  {
+    "path": "code/server-launcher.mjs.txt",
+    "bytes": 9807,
+    "sha256": "571aae86f8a39f284e47c57adf006514d2edebcc46c6127afe3dbc48850e2968",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/server-launcher.mjs"
+  },
+  {
+    "path": "code/export-facts.mjs.txt",
+    "bytes": 19002,
+    "sha256": "5ff8eb7db1615a01688b610a6a9a2d63fd5627df45e5e0d5d66f937c99da7f7a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/export-facts.mjs"
+  },
+  {
+    "path": "code/finalize-owned-runtime.mjs.txt",
+    "bytes": 9992,
+    "sha256": "d17a8159b41aba8cc6ded25b257331a939a6556a0462d5c04f77fda8d8892f29",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/finalize-owned-runtime.mjs"
+  },
+  {
+    "path": "code/portable-replay.mjs.txt",
+    "bytes": 11425,
+    "sha256": "99a74b441494266f0407a2f35c82cefe12ebb5a5cca9fb95cb87ffc3a626b642",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/portable-replay.mjs"
+  },
+  {
+    "path": "code/mechanism.mjs.txt",
+    "bytes": 3072,
+    "sha256": "cace78515365e48b537f79e11e03f1c3c03a1236f94ea06cf64b502b7bf9d930",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/mechanism.mjs"
+  },
+  {
+    "path": "mechanism.json",
+    "bytes": 81842,
+    "sha256": "802c1539e281d2c02605aeca31ba82bc1d9112739c41823a6c87a8c42ead7292",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/mechanism.json"
+  },
+  {
+    "path": "recalibration/calibrated-v5-replay.json",
+    "bytes": 407373,
+    "sha256": "4ea3362e0c47ae3167db63c011814d1bd3cdd01c19e5450b462e6ad1e0adad10",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/calibrated-v5-replay.json"
+  },
+  {
+    "path": "code/authoring-benchmark.calibrated-v5.ts.txt",
+    "bytes": 36164,
+    "sha256": "6eec2f78650c412969562beff9bea09571c75b83f983a56ad78ab448af841c83",
+    "original": "/private/tmp/gennady-format-oct23.xNC5Zx/plan/ai/flow-eval/authoring-benchmark.ts"
+  },
+  {
+    "path": "code/replay-v5.mts.txt",
+    "bytes": 4791,
+    "sha256": "12806b9ac71212b1e9919df89561e9b97cbdf14dd77aab68d6014b1a776e1e4b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/replay-v5.mts"
+  },
+  {
+    "path": "code/authoring-benchmark.calibrated-v4.ts.txt",
+    "bytes": 35736,
+    "sha256": "0ceb13f2e59a630615181fe7171e55a41beb4fc39f6d1d9171007db150ac9e09",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/plan/ai/flow-eval/authoring-benchmark.ts"
+  },
+  {
+    "path": "replay-proof.json",
+    "bytes": 15247,
+    "sha256": "556a855f4dfbb814762e46929d0bce2846e4b851610d80832d6076351fa4c324",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/replay-proof.json"
+  },
+  {
+    "path": "runtime-cleanup-summary.json",
+    "bytes": 1732,
+    "sha256": "979634bbc808f31c92d53c45472c6314e1529db3c33f217247d861d5cd24b051",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runtime-cleanup-summary.json"
+  },
+  {
+    "path": "runtime-summary-erratum.json",
+    "bytes": 585,
+    "sha256": "e97e02905b420e3e6ff1cf5a1ff30be8f3c8b9f5379544f1eff7047afdb45de9",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/runtime-summary-erratum.json"
+  },
+  {
+    "path": "protocol/server-pid.json",
+    "bytes": 877,
+    "sha256": "8956ff07a100677e4b398ad122ea6255cf68bb4bcdc8801367e740f163ae6dde",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/server-pid.json"
+  },
+  {
+    "path": "records/0.json",
+    "bytes": 1973,
+    "sha256": "832c24c079a2ddd1e2e9868d6c33ba90b8b92ced3d76efd1a4d855a431966f62",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/0.json"
+  },
+  {
+    "path": "controller-output/0.txt",
+    "bytes": 11703,
+    "sha256": "bf828a3313bb7302e0656df5fbb5a93668acdb3f9631d65d7c98b13ae1ed8ab9",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/0.log"
+  },
+  {
+    "path": "records/1.json",
+    "bytes": 1968,
+    "sha256": "dcf8bde6dbf295fe2155d7b0bcd89c64ace91c582c358a591fafbd4d9df30971",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/1.json"
+  },
+  {
+    "path": "controller-output/1.txt",
+    "bytes": 7628,
+    "sha256": "a5c0d05f226b3e81fe68b0f6648300e182210bf51e38b18be45f27da76a6849d",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/1.log"
+  },
+  {
+    "path": "records/2.json",
+    "bytes": 1977,
+    "sha256": "0aad5b299b63ea88303dbc393d9793721b06e0243b49e94b71dd59457b881a7e",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/2.json"
+  },
+  {
+    "path": "controller-output/2.txt",
+    "bytes": 9697,
+    "sha256": "2af014921a7479752a5df72fb3fa1b8470d2421589e7a1725f30b0bb37635d4b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/2.log"
+  },
+  {
+    "path": "records/3.json",
+    "bytes": 1971,
+    "sha256": "7083453b4e5ee1096f025e56c840dbd09f6eaaca4cb6d7d7b6ac57fcfb2ffebf",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/3.json"
+  },
+  {
+    "path": "controller-output/3.txt",
+    "bytes": 9748,
+    "sha256": "3a6e4b054b76d85e56fc15b509b89790899edeab2364213872a30e773409f9f5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/3.log"
+  },
+  {
+    "path": "records/4.json",
+    "bytes": 1967,
+    "sha256": "932226718379348bd9fe058229732280731e7995d90a7e8cc64b2f46a9344a44",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/4.json"
+  },
+  {
+    "path": "controller-output/4.txt",
+    "bytes": 8044,
+    "sha256": "8b44a9d5e58b26da507050e11a8bbc710989405c42a1740f76637902f0dd3156",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/4.log"
+  },
+  {
+    "path": "records/5.json",
+    "bytes": 1973,
+    "sha256": "de30f36cbd8dd620a085d88b004d89a6a03d84910ca4c6fd158b9e8336f9e1b7",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/5.json"
+  },
+  {
+    "path": "controller-output/5.txt",
+    "bytes": 9080,
+    "sha256": "e6f635b356f942cf155b8e59cbc5c69486d869a2aee363dec5a230cb299380c1",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/5.log"
+  },
+  {
+    "path": "records/6.json",
+    "bytes": 1972,
+    "sha256": "437d54d2d92fa368f81ffcf51e06fd60d20e84747bf6551afdbecb45cf693814",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/6.json"
+  },
+  {
+    "path": "controller-output/6.txt",
+    "bytes": 12615,
+    "sha256": "9b37786ad886a65a6b959e633fdfe2ffcaebdd8e6971bee05592665eeb54cf1a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/6.log"
+  },
+  {
+    "path": "records/7.json",
+    "bytes": 1977,
+    "sha256": "e05ec2decc5afd92a63b0cdb42465c654ff875aed9990cff3473d8b0a55a7cc6",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/7.json"
+  },
+  {
+    "path": "controller-output/7.txt",
+    "bytes": 10246,
+    "sha256": "8f09bda0919fc0055629f1b3e0656a512f46acebcb3556e42168ba203c01a20d",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/7.log"
+  },
+  {
+    "path": "records/8.json",
+    "bytes": 1974,
+    "sha256": "04430ca6c30c5ce54a12ef2b680ee1afbcda1d5669e6171de081d05a94e8ceb5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/8.json"
+  },
+  {
+    "path": "controller-output/8.txt",
+    "bytes": 10672,
+    "sha256": "70036822a1006457d760efc5b0402a5f31c990aa00692a44e33e585afcf58da2",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/8.log"
+  },
+  {
+    "path": "records/9.json",
+    "bytes": 1967,
+    "sha256": "f2916e4bbe97b8be1f41aff41681d916629b818d87398b716f3f21bcafa0e8ae",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/9.json"
+  },
+  {
+    "path": "controller-output/9.txt",
+    "bytes": 9255,
+    "sha256": "d98aaca528d13f2312606e04e332a557c45039e5d8ef19bd0f2689462e47ba48",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/9.log"
+  },
+  {
+    "path": "records/10.json",
+    "bytes": 1983,
+    "sha256": "5046544507c1ad8986d1f90daaa4a134672dd00b4453f6be832268ba665a3c78",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/10.json"
+  },
+  {
+    "path": "controller-output/10.txt",
+    "bytes": 9952,
+    "sha256": "e017b5b798ac2422d54d6c01887055d4ff92ca4c30cd78f81727690deccba69a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/10.log"
+  },
+  {
+    "path": "records/11.json",
+    "bytes": 1977,
+    "sha256": "f31756c8d48c3304152aaf8fb320cbbe41aed1fd853880663c36d8b3c40a2308",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/11.json"
+  },
+  {
+    "path": "controller-output/11.txt",
+    "bytes": 9542,
+    "sha256": "2ac7273bc1c0d489f025a036b410398f6a347d4c0ad061cf93285ff06ea937cc",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/11.log"
+  },
+  {
+    "path": "records/12.json",
+    "bytes": 1974,
+    "sha256": "0aef60ec6bcf3794df87e832cd740bd1a589edd9473fbd862fe8d6e471f52c1a",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/12.json"
+  },
+  {
+    "path": "controller-output/12.txt",
+    "bytes": 9274,
+    "sha256": "7af910ba8eae7a2fed922705fa869417e3d53a7aa06cd242b0b9ac07a94b4b10",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/12.log"
+  },
+  {
+    "path": "records/13.json",
+    "bytes": 1979,
+    "sha256": "47aae0633d59301285c21c6a6f2b536572b0fe7ee52fb2d4213999778f925826",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/13.json"
+  },
+  {
+    "path": "controller-output/13.txt",
+    "bytes": 12201,
+    "sha256": "d219f8e4c9ef6bf2587b70c1c740d96081d775c9b53abe51aa4ee7ce5025ab8c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/13.log"
+  },
+  {
+    "path": "records/14.json",
+    "bytes": 1978,
+    "sha256": "26e3c18c9387daf36d9abbcac2d76051969bdc2ef30648bc4f7114776dfce91f",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/14.json"
+  },
+  {
+    "path": "controller-output/14.txt",
+    "bytes": 7542,
+    "sha256": "63f53904c99740e8426a8bf8009b0d1061c3ab93d8cfb0d9f018dee726eacf57",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/14.log"
+  },
+  {
+    "path": "records/15.json",
+    "bytes": 1983,
+    "sha256": "8fd3c7edf0050fbd90af32220be69a339c503c6a76f7d8dd3725c77d4b906316",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/15.json"
+  },
+  {
+    "path": "controller-output/15.txt",
+    "bytes": 9185,
+    "sha256": "56dede33855b7d085b1a56b151fb6d1718908d1554f68ccb02828d64d23cd162",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/15.log"
+  },
+  {
+    "path": "records/16.json",
+    "bytes": 1979,
+    "sha256": "f79deefdc9af2fb880decfbd2445a4de2897b4caeb72aaaa6bd5b8d0f762e192",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/16.json"
+  },
+  {
+    "path": "controller-output/16.txt",
+    "bytes": 9330,
+    "sha256": "f88028fa29ebc66fe4e1c282e200f6d534adaa69d32b4ad5237b63b575bb1d47",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/16.log"
+  },
+  {
+    "path": "records/17.json",
+    "bytes": 1973,
+    "sha256": "4f10fba13a78a0136441d19d56cc2f9c24e66d93602976d5cf0a72b73ee94dfc",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/17.json"
+  },
+  {
+    "path": "controller-output/17.txt",
+    "bytes": 8571,
+    "sha256": "3676478a2c88297271500bbf2c4475afa5092c0574cd136db7217a6b10421688",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/17.log"
+  },
+  {
+    "path": "records/18.json",
+    "bytes": 1983,
+    "sha256": "a40f00bdaddadfd9ec70b3052172f99beb13c0a780deb99e0a37bb846d2d1dd5",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/18.json"
+  },
+  {
+    "path": "controller-output/18.txt",
+    "bytes": 9087,
+    "sha256": "64ba79c40f64bb982fa7bbce97bbaa9a4fdf1049821a4ddea1f0d85e4a7f8cb1",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/18.log"
+  },
+  {
+    "path": "records/19.json",
+    "bytes": 1978,
+    "sha256": "87ea270ca51b327f6aa65f043a705e92de14a3cb4642779e6c9ad9546be597be",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/19.json"
+  },
+  {
+    "path": "controller-output/19.txt",
+    "bytes": 10583,
+    "sha256": "a8cf8c0673f0473baca7ca621534f7e89c9c8d9044f7a5fbfdd787808cb9dafc",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/19.log"
+  },
+  {
+    "path": "records/20.json",
+    "bytes": 1973,
+    "sha256": "1ef4cca5f81a511ce6d460aa6d8457433ab0805b59a18b1de04c860b721ba207",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/20.json"
+  },
+  {
+    "path": "controller-output/20.txt",
+    "bytes": 9411,
+    "sha256": "68d1dfa7e444f9cb0a854ed014605cd26eea9b54fa86df98438322b55fcb4620",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/20.log"
+  },
+  {
+    "path": "records/21.json",
+    "bytes": 1979,
+    "sha256": "dd52f8cec54bbf69ce536ad301d13a7bf59c376937887a3d70adc91d24537f1b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/21.json"
+  },
+  {
+    "path": "controller-output/21.txt",
+    "bytes": 11736,
+    "sha256": "61f83e5a8ef2acd140fcc37c6531df05f1f792f854b61886254e0381ec8c9f6b",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/21.log"
+  },
+  {
+    "path": "records/22.json",
+    "bytes": 1977,
+    "sha256": "48222467a295d392323edb378ce5271da374d5f8f17b34cd2d5aed7a30bc0854",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/22.json"
+  },
+  {
+    "path": "controller-output/22.txt",
+    "bytes": 8964,
+    "sha256": "588caf079d27e8d825156a58848017930ffea177d1c26ca0ff9ec85799d7f4f4",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/22.log"
+  },
+  {
+    "path": "records/23.json",
+    "bytes": 1983,
+    "sha256": "6680cf388620bcf33f0cdec54c10d341d0156b0a9b828b5121e2447caeadd95c",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/records/23.json"
+  },
+  {
+    "path": "controller-output/23.txt",
+    "bytes": 11473,
+    "sha256": "193a6a05906543829cd3d9fa4061c26a6b962a29627b6f309683411f341268bd",
+    "original": "/private/tmp/gennady-format-facts-oct24.nOIZpF/logs/23.log"
+  },
+  {
+    "path": "variants/baseline/source-module-directive.txt",
+    "bytes": 6511,
+    "sha256": "011fb9b12728f4f073425b5952863d944587077ecae1964a558fe5bd250d65e0",
+    "original": "git:09c2329bdeafa34209b58d0c0470b05d2c2ca721:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/baseline/source-step2-action.txt",
+    "bytes": 1650,
+    "sha256": "0ec8890a3d9e72acd17008d2cc695cdd4205e4ff4afb76f61dfc45709f2b5119",
+    "original": "lexical Action slice of git:09c2329bdeafa34209b58d0c0470b05d2c2ca721:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/baseline/generated-module-directive.txt",
+    "bytes": 10397,
+    "sha256": "d86b9cdd6b07cf4e56dbe388945d68bb2b67106800efafe286b61e2c438a1748",
+    "original": "git:09c2329bdeafa34209b58d0c0470b05d2c2ca721:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/baseline/generated-step2-action.txt",
+    "bytes": 1650,
+    "sha256": "0ec8890a3d9e72acd17008d2cc695cdd4205e4ff4afb76f61dfc45709f2b5119",
+    "original": "lexical Action slice of git:09c2329bdeafa34209b58d0c0470b05d2c2ca721:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/baseline/from-frozen-source.diff.txt",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "original": "git-diff:09c2329bdeafa34209b58d0c0470b05d2c2ca721..09c2329bdeafa34209b58d0c0470b05d2c2ca721:two-owner-paths"
+  },
+  {
+    "path": "variants/facts/source-module-directive.txt",
+    "bytes": 8108,
+    "sha256": "ece225ebd3ae5cb0191fcab18d3371de70db251524a1e17d07e375956fad7752",
+    "original": "git:67326bc51786cd548b2334e4e5fbcb4a9bc66c53:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/facts/source-step2-action.txt",
+    "bytes": 3247,
+    "sha256": "4ac77bac9a03dd0f045ae7fc62d247e9902636f6340c9de9a5cc0884a031186b",
+    "original": "lexical Action slice of git:67326bc51786cd548b2334e4e5fbcb4a9bc66c53:ai/kit/templates/sdd-v2/module.directive.hbs"
+  },
+  {
+    "path": "variants/facts/generated-module-directive.txt",
+    "bytes": 11994,
+    "sha256": "7d202e3f544cedc6b149633cf3c5cebd95ae3ca7f80f8b92a31ac21e2e19c837",
+    "original": "git:67326bc51786cd548b2334e4e5fbcb4a9bc66c53:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/facts/generated-step2-action.txt",
+    "bytes": 3247,
+    "sha256": "4ac77bac9a03dd0f045ae7fc62d247e9902636f6340c9de9a5cc0884a031186b",
+    "original": "lexical Action slice of git:67326bc51786cd548b2334e4e5fbcb4a9bc66c53:ai/directives/sdd-v2/module.directive.xml"
+  },
+  {
+    "path": "variants/facts/from-frozen-source.diff.txt",
+    "bytes": 4224,
+    "sha256": "9705fdecec4cb74f3596a2050531e4db4091302df8da93aeaef36239cbfd886e",
+    "original": "git-diff:09c2329bdeafa34209b58d0c0470b05d2c2ca721..67326bc51786cd548b2334e4e5fbcb4a9bc66c53:two-owner-paths"
+  }
+]

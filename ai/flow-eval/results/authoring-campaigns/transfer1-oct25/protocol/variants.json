@@ -1,0 +1,8 @@
+{
+  "treatment": "Full frozen computed facts plus generic consistency cue, no new directive/template changes",
+  "source": {
+    "plan": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+    "facts": "bab3ecc8579bf6a7603fed71df75b3b7922bbe3c"
+  },
+  "commonHostHarness": "423cd831e95dbe727e037103195a15e313816c7a"
+}

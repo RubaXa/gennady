@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 9,
+  "scenarioId": "authoring-contractcue1-oct24-module-flat-baseline-r3",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "startedAt": "2026-10-24T13:25:45.977Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/9",
+  "sessions": [
+    {
+      "id": "ses_e91e93ddbffeKm27o20DttXfod",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/9/sdd-flow-eval-dyNBWE",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91e807a2ffeUIGNPYNrut4ASz",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/9/sdd-flow-eval-dyNBWE",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-flat-baseline-r3",
+    "summarySha256": "bc3e4eed5e82c4ac50ef7f853d13ad3737b425af949233055eeaa574ca27d699",
+    "trajectorySha256": "a1cb53553c2e4c055160f52e5f482d7f419faaf6068dd8da9bfb32f6814e6ecf",
+    "status": "completed",
+    "verdict": "fail",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 22,
+    "nonCacheTokens": 48626,
+    "messages": 15
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T13:27:40.117Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91e93ddbffeKm27o20DttXfod",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/9/sdd-flow-eval-dyNBWE"
+    },
+    {
+      "id": "ses_e91e807a2ffeUIGNPYNrut4ASz",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/9/sdd-flow-eval-dyNBWE"
+    }
+  ]
+}

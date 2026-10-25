@@ -1,0 +1,47 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+const own=path.dirname(new URL(import.meta.url).pathname);
+const read=p=>JSON.parse(fs.readFileSync(path.join(own,p),'utf8'));
+const config=read('config.json'), batch=read('batch.json');
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const rows=[];
+for(let index=0;index<12;index++){
+  const attempt=config.attempts[index],recordPath=`records/${index}.json`;
+  if(!fs.existsSync(path.join(own,recordPath))){rows.push({index,taskId:attempt.taskId,variant:attempt.scenario.authoringBenchmark.variant,missing:true});continue;}
+  const record=read(recordPath);
+  if(!record.primary?.directory){rows.push({index,taskId:attempt.taskId,variant:attempt.scenario.authoringBenchmark.variant,missingPrimary:true,record});continue;}
+  const prefix='permanent/'+record.primary.directory;
+  const summary=read(prefix+'/summary.json'),trajectory=read(prefix+'/trajectory.json');
+  if(sha(fs.readFileSync(path.join(own,prefix+'/summary.json')))!==record.primary.summarySha256||sha(fs.readFileSync(path.join(own,prefix+'/trajectory.json')))!==record.primary.trajectorySha256)throw Error('PRIMARY_HASH_MISMATCH');
+  const u=summary.usage,j=summary.judgeUsage?.usage;
+  rows.push({index,taskId:attempt.taskId,variant:attempt.scenario.authoringBenchmark.variant,caseId:attempt.scenario.authoringBenchmark.caseId,sourceSHA:record.sourceSha,hostHarnessSHA:record.hostHarnessSHA,status:summary.status,outcome:summary.outcome,semanticVerdict:summary.verdict,artifact:summary.quality,path:summary.trajectory,worker:u,judge:j,metrics:summary.authoringBenchmark?.metrics,transferTask:summary.authoringBenchmark?.transferTask,primaryDirectory:prefix,primaryHashes:{summary:record.primary.summarySha256,trajectory:record.primary.trajectorySha256},cleanup:{persisted:record.persistence,tempRemoved:record.tempRemoved,errors:record.cleanupErrors,sessions:record.sessions},toolEvents:trajectory.events});
+}
+const pairs=[...new Set(config.attempts.map(a=>a.taskId))].map(taskId=>{
+  const baseline=rows.find(r=>r.taskId===taskId&&r.variant==='baseline'),candidate=rows.find(r=>r.taskId===taskId&&r.variant==='facts');
+  const metrics={};for(const [key,get]of Object.entries({tokens:r=>r.worker?.total,cacheRead:r=>r.worker?.cacheRead,tools:r=>r.metrics?.tools,timeMs:r=>r.worker?.wallClockMs,messages:r=>r.worker?.messages})){const a=get(baseline),b=get(candidate);metrics[key]={baseline:a??null,candidate:b??null,delta:Number.isFinite(a)&&Number.isFinite(b)?b-a:null,percent:Number.isFinite(a)&&Number.isFinite(b)&&a?100*(b-a)/a:null};}
+  return {taskId,metrics,baseline:{artifact:baseline.artifact?.pass??null,semantic:baseline.semanticVerdict??null,path:baseline.path},candidate:{artifact:candidate.artifact?.pass??null,semantic:candidate.semanticVerdict??null,path:candidate.path}};
+});
+const sum=(arm,get)=>{const selected=rows.filter(r=>r.variant===arm);return selected.length===6&&selected.every(r=>Number.isFinite(get(r)))?selected.reduce((s,r)=>s+get(r),0):null};
+const totals={};for(const [key,get]of Object.entries({tokens:r=>r.worker?.total,cacheRead:r=>r.worker?.cacheRead,tools:r=>r.metrics?.tools,timeMs:r=>r.worker?.wallClockMs,messages:r=>r.worker?.messages,judgeTokens:r=>r.judge?.total})){const a=sum('baseline',get),b=sum('facts',get);totals[key]={baseline:a,candidate:b,percent:a!==null&&b!==null&&a?100*(b-a)/a:null};}
+const candidates=rows.filter(r=>r.variant==='facts');
+const complete=batch.complete===true&&rows.length===12&&rows.every(r=>r.worker?.complete===true&&r.worker.models?.length===1&&r.worker.models[0]==='llm-proxy/deepseek-v4-flash'&&r.cleanup.persisted&&r.cleanup.tempRemoved&&!r.cleanup.errors.length);
+const rawQualityGate=candidates.length===6&&candidates.every(r=>r.artifact?.pass===true&&r.semanticVerdict==='pass'&&r.status==='completed');
+const positiveUnsafe=candidates.some(r=>(r.metrics?.partialWrites??0)>0||(r.metrics?.outsideTargetWrites??0)>0);
+const resourceGate=totals.tokens.baseline!==null&&totals.tokens.candidate<totals.tokens.baseline&&totals.tools.baseline!==null&&totals.tools.candidate<=totals.tools.baseline;
+const manualPath=path.join(own,'manual-review.json');
+const manual=fs.existsSync(manualPath)?read('manual-review.json'):null;
+const pre=read('preregistered-protocol.json');
+const manualComplete=manual?.rows?.length===12&&manual.rows.every(r=>{
+  if(!Number.isInteger(r.index)||r.index<0||r.index>=12||r.reviewed!==true||!['pass','fail','inconclusive'].includes(r.semantic))return false;
+  const row=rows[r.index],task=pre.taskCorpus.find(t=>t.id===row.taskId);
+  if(!task||!row.primaryDirectory)return false;
+  const target=`specs/${task.domain}/${task.module}/${path.posix.basename(task.module)}.spec.md`;
+  return sha(fs.readFileSync(path.join(own,row.primaryDirectory,target)))===r.artifactSha256;
+})&&new Set(manual.rows.map(r=>r.index)).size===12;
+const manualQualityGate=manualComplete&&manual.rows.filter(r=>rows[r.index]?.variant==='facts').every(r=>r.semantic==='pass');
+const recommendation=complete&&rawQualityGate&&!positiveUnsafe&&resourceGate&&manualQualityGate?'recommend-module-integration':'retain-current-default';
+const result={schema:'gennady.authoring-transfer-result.1',planned:12,recorded:rows.filter(r=>!r.missing).length,complete,pairs,totals,rawQualityGate,positiveUnsafeMutation:positiveUnsafe,resourceGate,manualReviewComplete:manualComplete,manualQualityGate,recommendation,adoptionAuthorized:false,roleExecutions:{authoring:rows.filter(r=>r.worker).length,judge:rows.filter(r=>r.judge).length,reflection:0},limits:['one pair per new task does not prove statistical equivalence','no universal guarantee','path unknown is not pass or observed mutation','money and HTTP retries unknown','manual review may add findings but never overwrites raw grades']};
+fs.writeFileSync(path.join(own,'analysis.json'),JSON.stringify(result,null,2)+'\n');
+fs.writeFileSync(path.join(own,'raw-rows.json'),JSON.stringify(rows,null,2)+'\n');
+console.log(JSON.stringify({complete:result.complete,recorded:result.recorded,recommendation,rawQualityGate,resourceGate,manualReviewComplete:manualComplete,totals},null,2));

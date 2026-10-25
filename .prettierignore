@@ -68,3 +68,66 @@ ai/flow-eval/results/authoring-campaigns/semantic-qualification-oct23/**/*.json
 
 # Generated 626-call research ledger; authoring-call-audit.test.ts checks exact regeneration.
 ai/flow-eval/docs/AUTHORING-CALL-AUDIT.md
+
+# Stopped FORMAT1 pilot: exact frozen inputs/raw outputs and generated replay projections.
+# authoring-format-recorded.test.ts verifies the exhaustive manifest and portable bindings;
+# REPORT.md remains authored, format-checked documentation.
+ai/flow-eval/results/authoring-campaigns/format-oct23/*.json
+ai/flow-eval/results/authoring-campaigns/format-oct23/protocol/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/records/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/controller-output/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/report-*/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/recalibration/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/replay/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/variants/**
+ai/flow-eval/results/authoring-campaigns/format-oct23/code/**
+
+# Completed FORMAT2: exact raw/protocol/replay bytes, authenticated by the recorded test.
+ai/flow-eval/results/authoring-campaigns/format2-oct23/*.json
+ai/flow-eval/results/authoring-campaigns/format2-oct23/protocol/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/records/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/controller-output/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/report-*/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/recalibration/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/variants/**
+ai/flow-eval/results/authoring-campaigns/format2-oct23/code/**
+
+# FACTLINK1: byte-preserved live evidence and generated projections; recorded tests own hashes.
+# The authored REPORT.md is deliberately not excluded.
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/*.json
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/protocol/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/records/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/controller-output/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/report-*/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/recalibration/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/variants/**
+ai/flow-eval/results/authoring-campaigns/factlink1-oct24/code/**
+
+# TOOLFACT1 primary bytes and reproducible replay outputs are hash-bound, not formatting input.
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/*.json
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/protocol/**
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/records/**
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/controller-output/**
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/report-*/**
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/recalibration/**
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/variants/**
+ai/flow-eval/results/authoring-campaigns/toolfact1-oct24/code/**
+
+# CONTRACTCUE1: exact frozen evidence bytes; authored REPORT.md remains format-checked.
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/*.json
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/protocol/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/records/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/controller-output/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/report-*/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/variants/**
+ai/flow-eval/results/authoring-campaigns/contractcue1-oct24/code/**
+
+# TRANSFER1: immutable live evidence and frozen harness; authored REPORT.md stays checked.
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/*.json
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/protocol/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/records/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/controller-output/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/permanent/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/host-code/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/code/**
+ai/flow-eval/results/authoring-campaigns/transfer1-oct25/validation/**

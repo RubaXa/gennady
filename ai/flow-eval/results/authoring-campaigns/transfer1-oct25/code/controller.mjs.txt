@@ -1,0 +1,326 @@
+// Owned, bounded lifecycle controller for one predeclared authoring format campaign.
+// Usage: node --import /absolute/base/node_modules/tsx/dist/loader.mjs controller.mjs --config /absolute/config.json [--validate-only]
+import { spawn, execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, rmSync, readdirSync, lstatSync, realpathSync } from 'node:fs';
+import { join, resolve, relative, isAbsolute, dirname } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const MODEL = 'llm-proxy/deepseek-v4-flash';
+const MAX_ATTEMPTS = 12;
+const LOG_BYTES = 512 * 1024;
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const ownFile = fileURLToPath(import.meta.url);
+const inside = (base, value) => { const rel = relative(base, value); return rel !== '' && rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel); };
+const fail = code => { throw new Error(code); };
+const safeCode = error => error instanceof Error && /^[A-Z][A-Z0-9_ :.-]{0,160}$/.test(error.message) ? error.message : 'CONTROLLER_OPERATION_FAILED';
+const args = process.argv.slice(2);
+if (args[0] !== '--config' || !args[1] || !isAbsolute(args[1]) || args.length > 5) fail('USAGE_CONFIG_ABSOLUTE_REQUIRED');
+const configPath = resolve(args[1]);
+const mode = args[2];
+if (mode !== undefined && mode !== '--validate-only' && mode !== '--case') fail('USAGE_UNKNOWN_MODE');
+if ((mode === '--case' && args.length !== 4) || (mode !== '--case' && args.length !== (mode ? 3 : 2))) fail('USAGE_ARGUMENT_COUNT');
+if (Number(process.versions.node.split('.')[0]) !== 22) fail('NODE_22_REQUIRED');
+for (const key of ['LLM_PROXY_BASE_URL', 'LLM_PROXY_API_KEY']) if (!process.env[key]) fail('PROXY_ENV_MISSING');
+const configStat = lstatSync(configPath);
+if (!configStat.isFile() || configStat.isSymbolicLink() || configStat.size > 1024 * 1024) fail('UNSAFE_CONFIG');
+const configBytes = readFileSync(configPath);
+const config = JSON.parse(configBytes);
+if (!config || Object.keys(config).some(key => !['ownRoot', 'baseUrl', 'permanent', 'attempts', 'concurrency', 'hostRoot'].includes(key))) fail('INVALID_CONFIG_KEYS');
+if (config.concurrency !== 1 || !Array.isArray(config.attempts) || !config.attempts.length || config.attempts.length > MAX_ATTEMPTS) fail('INVALID_CAMPAIGN_BOUND');
+for (const name of ['ownRoot', 'permanent']) if (typeof config[name] !== 'string' || !isAbsolute(config[name])) fail('ABSOLUTE_OWNED_PATH_REQUIRED');
+const ownRoot = realpathSync(config.ownRoot);
+if (ownRoot !== resolve(config.ownRoot) || !/^\/private\/tmp\/gennady-format-[a-zA-Z0-9.-]+$/.test(ownRoot) || dirname(ownFile) !== ownRoot || !inside(ownRoot, configPath)) fail('UNSAFE_OWN_ROOT');
+const permanent = resolve(config.permanent);
+if (!inside(ownRoot, permanent) || permanent === join(ownRoot, 'runs') || inside(join(ownRoot, 'runs'), permanent)) fail('UNSAFE_PERMANENT_ROOT');
+for (let path = permanent; path !== ownRoot; path = dirname(path)) if (existsSync(path) && (lstatSync(path).isSymbolicLink() || realpathSync(path) !== path)) fail('PERMANENT_PATH_ALIAS');
+const url = new URL(config.baseUrl);
+if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || Number(url.port) < 4097 || url.pathname !== '/' || url.search || url.hash || url.username || url.password) fail('OWNED_LOOPBACK_SERVER_REQUIRED');
+const baseUrl = url.origin;
+const configSha256 = hash(configBytes);
+const protocolFile = join(ownRoot, 'controller-protocol.json');
+const gitEnvironment = { ...process.env };
+for (const key of Object.keys(gitEnvironment)) if (key.startsWith('GIT_')) delete gitEnvironment[key];
+const git = (root, ...argv) => execFileSync('git', argv, { cwd: root, env: gitEnvironment, encoding: 'utf8', timeout: 15000, maxBuffer: 4 * 1024 * 1024 }).trim();
+const atomic = (path, value) => { const temp = `${path}.pending`; writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600 }); renameSync(temp, path); };
+const shaFile = path => { const s = lstatSync(path); if (!s.isFile() || s.isSymbolicLink() || s.size > 8 * 1024 * 1024) fail('UNSAFE_EVIDENCE_FILE'); return hash(readFileSync(path)); };
+const boundedJson = path => { const s = lstatSync(path); if (!s.isFile() || s.isSymbolicLink() || s.size > 8 * 1024 * 1024) fail('UNSAFE_JSON_FILE'); return JSON.parse(readFileSync(path, 'utf8')); };
+const preregistrationFile = join(ownRoot, 'preregistered-protocol.json');
+const preregistrationSha256 = shaFile(preregistrationFile);
+const preregistration = boundedJson(preregistrationFile);
+function distManifest(root) {
+  const dist = join(root, 'dist'), files = [];
+  let totalBytes = 0;
+  if (lstatSync(dist).isSymbolicLink() || realpathSync(dist) !== dist) fail('DIST_ROOT_ALIAS');
+  function walk(directory, depth = 0) {
+    if (depth > 32) fail('DIST_DEPTH_EXCEEDED');
+    for (const name of readdirSync(directory).sort()) {
+      const path = join(directory, name), s = lstatSync(path);
+      if (s.isSymbolicLink()) fail('DIST_SYMLINK');
+      if (s.isDirectory()) walk(path, depth + 1);
+      else if (s.isFile()) {
+        if (s.size > 16 * 1024 * 1024 || files.length >= 2048 || totalBytes + s.size > 64 * 1024 * 1024) fail('DIST_BOUND_EXCEEDED');
+        const data = readFileSync(path);
+        totalBytes += data.length;
+        files.push({ path: relative(dist, path).split('\\').join('/'), bytes: data.length, sha256: hash(data) });
+      } else fail('DIST_NOT_REGULAR');
+    }
+  }
+  walk(dist);
+  return { sha256: hash(JSON.stringify(files)), totalBytes, files };
+}
+function verifyPreregistration() {
+  if (git(config.hostRoot, 'status', '--porcelain') || git(config.hostRoot, 'rev-parse', 'HEAD') !== preregistration.hostHarness.sourceSHA) fail('COMMON_HOST_HARNESS_DRIFT');
+  for (const item of preregistration.hostHarness.files) if (shaFile(join(config.hostRoot,item.path)) !== item.sha256) fail('COMMON_HOST_FILE_DRIFT');
+  for (const item of preregistration.taskCorpus) if (!config.attempts.some(a => a.taskId === item.id)) fail('TASK_CORPUS_MISMATCH');
+  if (preregistration.repeatContract?.path !== 'REPEAT-CONTRACT.md' || preregistration.repeatContract.sha256 !== shaFile(join(ownRoot, 'REPEAT-CONTRACT.md'))) fail('REPEAT_CONTRACT_DRIFT');
+  if (shaFile(preregistrationFile) !== preregistrationSha256 || preregistration.schema !== 'gennady.authoring-format-preregistration.1' || preregistration.controlProgram?.path !== 'controller.mjs' || preregistration.controlProgram.sha256 !== shaFile(ownFile) || preregistration.config?.path !== 'config.json' || preregistration.config.sha256 !== configSha256 || preregistration.variants?.path !== 'variants.json' || preregistration.variants.sha256 !== shaFile(join(ownRoot, 'variants.json')) || preregistration.controlProgram.preparationPath !== 'prepare-campaign.mts' || preregistration.controlProgram.preparationSha256 !== shaFile(join(ownRoot, 'prepare-campaign.mts'))) fail('PREREGISTRATION_IDENTITY_DRIFT');
+  if (preregistration.runtime?.node !== process.version || preregistration.runtime.nodeAbi !== process.versions.modules || preregistration.runtime.platform !== process.platform || preregistration.runtime.arch !== process.arch || preregistration.runtime.workerModel !== MODEL || preregistration.runtime.judgeModel !== MODEL || preregistration.runtime.reflectionModel !== MODEL || preregistration.runtime.fallback !== false) fail('PREREGISTERED_RUNTIME_DRIFT');
+}
+function verifySource(root) {
+  verifyPreregistration();
+  const expected = preregistration.sources?.filter(source => source.root === root);
+  if (expected?.length !== 1) fail('PREREGISTERED_SOURCE_MISSING_OR_AMBIGUOUS');
+  const source = expected[0];
+  if (git(root, 'status', '--porcelain') || git(root, 'rev-parse', 'HEAD') !== source.sourceSHA || shaFile(join(root, 'package-lock.json')) !== source.packageLockSha256 || shaFile(join(root, 'node_modules/.package-lock.json')) !== source.installedLockSha256 || realpathSync(join(root, 'node_modules')) !== source.physicalDependencies || JSON.stringify(distManifest(root)) !== JSON.stringify(source.dist)) fail('PREREGISTERED_SOURCE_RUNTIME_DRIFT');
+}
+function publicProxyRouting(configuration) {
+  // The live server's provider configuration is authoritative, never stale proxy env values.
+  // Return public route/key names only: apiKey and header values must not enter evidence.
+  const provider = configuration.provider?.['llm-proxy'];
+  const options = provider?.options;
+  if (provider?.npm !== '@ai-sdk/openai-compatible' || !options || typeof options !== 'object' || Array.isArray(options) || typeof options.baseURL !== 'string') fail('AI_PROXY_PROVIDER_CONFIGURATION_INVALID');
+  let endpoint;
+  try { endpoint = new URL(options.baseURL); } catch { fail('AI_PROXY_BASE_URL_INVALID'); }
+  const pathname = endpoint.pathname.endsWith('/') ? endpoint.pathname.slice(0, -1) : endpoint.pathname;
+  if (endpoint.protocol !== 'https:' || endpoint.origin !== 'https://ai-proxy.vk.team' || pathname !== '/v1' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) fail('AI_PROXY_ROUTE_NOT_APPROVED');
+  if (!provider.models || typeof provider.models !== 'object' || Array.isArray(provider.models)) fail('AI_PROXY_MODEL_MAP_INVALID');
+  const modelIDs = Object.keys(provider.models).sort();
+  if (modelIDs.length !== 1 || modelIDs[0] !== 'deepseek-v4-flash') fail('AI_PROXY_FLASH_ONLY_MODEL_MAP_REQUIRED');
+  if (options.headers !== undefined && (!options.headers || typeof options.headers !== 'object' || Array.isArray(options.headers))) fail('AI_PROXY_HEADERS_INVALID');
+  return { origin: endpoint.origin, path: pathname, npm: provider.npm, modelIDs, optionKeys: Object.keys(options).sort(), headerNames: Object.keys(options.headers || {}).sort() };
+}
+function qualifyPrimary(summary, trajectory, judgeDeadlineObserved = false) {
+  const stopReasons = [], warnings = [];
+  const coverage = trajectory.coverage;
+  if (coverage?.complete !== true || !Number.isInteger(coverage.sessions) || coverage.sessions < 1 || !Array.isArray(coverage.reasons) || coverage.reasons.length || !Array.isArray(trajectory.events)) stopReasons.push('TRACE_CAPTURE_INCOMPLETE');
+  if (summary.authoringBenchmark?.environmentVerified !== true) stopReasons.push('ENVIRONMENT_IDENTITY_UNVERIFIED');
+  const usage = summary.usage;
+  if (!Array.isArray(usage?.models) || usage.models.length !== 1 || usage.models[0] !== MODEL) stopReasons.push('ACTUAL_WORKER_MODEL_UNVERIFIED_OR_WRONG');
+  if (usage?.sessions !== coverage?.sessions) stopReasons.push('USAGE_TRACE_SESSION_MISMATCH');
+  const terminalFailure = summary.outcome === 'budget-exhausted' || summary.verdict === 'worker-error' || summary.status === 'error';
+  const metricsQualified = summary.authoringBenchmark?.modelVerified === true && usage?.complete === true;
+  if (!metricsQualified) {
+    if (terminalFailure) warnings.push('TERMINAL_FAILURE_PARTIAL_USAGE_NOT_ELIGIBLE_FOR_COST_OR_PASS_CLAIMS');
+    else stopReasons.push('COMPLETED_ATTEMPT_MODEL_OR_USAGE_UNVERIFIED');
+  }
+  if (summary.hasJudge) {
+    const judge = summary.judgeUsage?.usage;
+    const models = judge?.models;
+    const actualWrongModel = Array.isArray(models) && models.length > 0 && (models.length !== 1 || models[0] !== MODEL);
+    const actualModelVerified = Array.isArray(models) && models.length === 1 && models[0] === MODEL;
+    const qualifiedDeadline = judgeDeadlineObserved && summary.verdict === 'inconclusive';
+    if (actualWrongModel || !actualModelVerified && !qualifiedDeadline) stopReasons.push('ACTUAL_JUDGE_MODEL_UNVERIFIED_OR_WRONG');
+    else if (!actualModelVerified) warnings.push('JUDGE_DEADLINE_MODEL_USAGE_UNKNOWN_NOT_ZERO');
+    if (judge?.complete !== true) warnings.push('JUDGE_USAGE_INCOMPLETE');
+  }
+  return { dispatchMayContinue: stopReasons.length === 0, metricsQualified, judgeDeadlineObserved, stopReasons, warnings };
+}
+const sourceIds = new Set();
+const sourceMetadata = new Map();
+for (const attempt of config.attempts) {
+  if (!attempt || Object.keys(attempt).some(k => !['scenario', 'sourceRoot', 'taskId'].includes(k)) || !isAbsolute(attempt.sourceRoot || '')) fail('INVALID_ATTEMPT');
+  const source = realpathSync(attempt.sourceRoot);
+  if (source !== resolve(attempt.sourceRoot) || inside(ownRoot, source) && inside(join(ownRoot, 'runs'), source)) fail('UNSAFE_SOURCE_ROOT');
+  const s = attempt.scenario;
+  if (!s || typeof s.id !== 'string' || !/^[a-z][a-z0-9-]{0,159}$/.test(s.id) || sourceIds.has(s.id) || s.fixture !== 'authoring-benchmark' || s.phase !== 'artifact-authoring' || s.mode !== 'template-to-artifact' || s.directory !== undefined || s.budgetMs !== 180000 || !s.authoringBenchmark || !['module-flat', 'module-nested'].includes(s.authoringBenchmark.caseId)) fail('INVALID_ISOLATED_SCENARIO');
+  sourceIds.add(s.id);
+  if (!sourceMetadata.has(source)) {
+    if (git(source, 'rev-parse', '--show-toplevel') !== source || git(source, 'status', '--porcelain')) fail('SOURCE_NOT_CLEAN');
+    if (!existsSync(join(source, 'dist/gennady.js')) || !existsSync(join(source, 'node_modules/tsx/dist/loader.mjs'))) fail('SOURCE_RUNTIME_MISSING');
+    verifySource(source);
+    sourceMetadata.set(source, { sourceRoot: source, sha: git(source, 'rev-parse', 'HEAD'), packageLockSha256: shaFile(join(source, 'package-lock.json')), installedLockSha256: shaFile(join(source, 'node_modules/.package-lock.json')), physicalDependencies: realpathSync(join(source, 'node_modules')) });
+  }
+}
+const importSource = sourceMetadata.values().next().value.sourceRoot;
+const load = (_source, name) => import(pathToFileURL(join(config.hostRoot, 'ai/flow-eval', name)).href);
+const { createSddEvalOpenCodeClient } = await load(importSource, 'opencode-client.ts');
+const client = createSddEvalOpenCodeClient({ baseUrl });
+async function preflight() {
+  const auth = process.env.OPENCODE_SERVER_PASSWORD ? { Authorization: `Basic ${Buffer.from(`${process.env.OPENCODE_SERVER_USERNAME || 'opencode'}:${process.env.OPENCODE_SERVER_PASSWORD}`).toString('base64')}` } : {};
+  const health = await fetch(`${baseUrl}/global/health`, { headers: auth, signal: AbortSignal.timeout(10000) });
+  if (!health.ok) fail('SERVER_HEALTH_UNAVAILABLE');
+  const h = await health.json();
+  if (h.healthy !== true || typeof h.version !== 'string') fail('SERVER_HEALTH_INVALID');
+  const c = await client.config.get({ query: { directory: ownRoot }, signal: AbortSignal.timeout(10000) });
+  if (c.error || !c.data || c.data.model !== MODEL || c.data.small_model !== MODEL || Object.values(c.data.agent || {}).some(a => a.model && a.model !== MODEL) || Object.values(c.data.mcp || {}).some(m => m.enabled !== false) || (c.data.plugin || []).length || c.data.enabled_providers && (c.data.enabled_providers.length !== 1 || c.data.enabled_providers[0] !== 'llm-proxy')) fail('FLASH_ONLY_PREFLIGHT_FAILED');
+  const routing = publicProxyRouting(c.data);
+  const projection = Object.fromEntries(['model', 'small_model', 'enabled_providers', 'agent', 'permission', 'tools', 'instructions', 'compaction', 'plugin', 'mcp'].map(k => [k, c.data[k]]));
+  projection.routing = routing;
+  return { version: h.version, configurationSha256: hash(JSON.stringify(projection)), routing };
+}
+const runtime = await preflight();
+const protocol = { schema: 'gennady.authoring-format-controller.1', preregistrationSha256, controllerSha256: shaFile(ownFile), configSha256, node: process.version, model: MODEL, runtime, concurrency: 1, planned: config.attempts.length, sources: [...sourceMetadata.values()], attempts: config.attempts.map(a => ({ id: a.scenario.id, sourceRoot: a.sourceRoot, sourceSha: sourceMetadata.get(a.sourceRoot).sha, scenarioSha256: hash(JSON.stringify(a.scenario)) })), limits: { workerMs: 180000, childGraceMs: 60000, childDeadlineMs: 540000, maximumAttempts: MAX_ATTEMPTS }, frozenAt: new Date().toISOString() };
+if (mode === '--validate-only') {
+  console.log(JSON.stringify({ valid: true, attempts: config.attempts.length, sources: sourceMetadata.size, flashOnly: true, runtimeVersion: runtime.version, modelCalls: 0, filesWritten: 0 }));
+} else if (mode === '--case') {
+  const index = Number(args[3]);
+  if (!Number.isInteger(index) || index < 0 || index >= config.attempts.length) fail('INVALID_CASE_INDEX');
+  const frozen = boundedJson(protocolFile);
+  if (frozen.preregistrationSha256 !== preregistrationSha256 || frozen.controllerSha256 !== shaFile(ownFile) || frozen.configSha256 !== configSha256 || frozen.runtime.configurationSha256 !== runtime.configurationSha256 || frozen.runtime.version !== runtime.version) fail('CAMPAIGN_IDENTITY_DRIFT');
+  const attempt = config.attempts[index];
+  const source = attempt.sourceRoot;
+  if (process.env.GENNADY_AUTHORING_TRANSFER_CASE !== attempt.taskId) fail('TRANSFER_TASK_SELECTION_MISMATCH');
+  if (frozen.attempts[index].sourceSha !== sourceMetadata.get(source).sha) fail('SOURCE_HEAD_DRIFT');
+  const directory = join(ownRoot, 'runs', String(index));
+  const recordPath = join(ownRoot, 'records', `${index}.json`);
+  if (existsSync(directory) || existsSync(recordPath)) fail('ATTEMPT_ALREADY_EXISTS');
+  mkdirSync(directory, { recursive: true });
+  const scenarioPath = join(directory, 'scenario.json');
+  writeFileSync(scenarioPath, JSON.stringify([attempt.scenario], null, 2) + '\n', { flag: 'wx' });
+  const known = new Map(), pendingCreates = new Set();
+  const record = { schema: 'gennady.authoring-format-attempt.1', index, taskId: attempt.taskId, scenarioId: attempt.scenario.id, sourceSha: sourceMetadata.get(source).sha, hostHarnessSHA: preregistration.hostHarness.sourceSHA, startedAt: new Date().toISOString(), directory, sessions: [], cleanupErrors: [], persistence: false, tempRemoved: false, interrupted: null };
+  const save = () => atomic(recordPath, { ...record, knownSessions: [...known].map(([id, cwd]) => ({ id, directory: cwd })) });
+  const verifyDirectory = cwd => {
+    const exact = resolve(cwd);
+    if (!inside(directory, exact) || realpathSync(exact) !== exact) fail('SESSION_DIRECTORY_ESCAPE');
+    return exact;
+  };
+  const { SddEvalOpenCodeRuntime } = await load(source, 'opencode-runtime.ts');
+  const originalCreate = SddEvalOpenCodeRuntime.prototype.createSession;
+  const originalJudge = SddEvalOpenCodeRuntime.prototype.judge;
+  SddEvalOpenCodeRuntime.prototype.createSession = async function(input) {
+    const cwd = verifyDirectory(input.directory);
+    const pending = originalCreate.call(this, { ...input, onCreated: id => {
+      if (typeof id !== 'string' || !/^ses_[\w-]+$/.test(id) || known.has(id) && known.get(id) !== cwd) fail('SESSION_IDENTITY_MISMATCH');
+      known.set(id, cwd); save(); input.onCreated?.(id);
+    } });
+    pendingCreates.add(pending);
+    try { return await pending; } finally { pendingCreates.delete(pending); }
+  };
+  SddEvalOpenCodeRuntime.prototype.judge = async function(input) {
+    const cwd = verifyDirectory(input.directory);
+    if (input.sessionId && known.get(input.sessionId) !== cwd) fail('FOREIGN_JUDGE_SESSION');
+    return originalJudge.call(this, { ...input, onSession: id => {
+      if (known.get(id) !== cwd) fail('UNOBSERVED_JUDGE_SESSION');
+      input.onSession?.(id);
+    } });
+  };
+  const onSignal = signal => { record.interrupted ??= signal; save(); };
+  const onInt = () => onSignal('SIGINT'), onTerm = () => onSignal('SIGTERM');
+  process.on('SIGINT', onInt); process.on('SIGTERM', onTerm);
+  let thrown;
+  save();
+  try {
+    const { main } = await load(source, 'cli.ts');
+    await main(['--scenario-file', scenarioPath, '--directory', directory, '--gennady-root', source, '--base-url', baseUrl, '--model', MODEL, '--judge-model', MODEL, '--concurrency', '1', '--observe-every-ms', '2500', '--stuck-after', '80', '--max-observations', '100', '--max-wall-clock-ms', '180000', '--tail-limit', '20', '--artifacts-dir', join(directory, 'transient'), '--results-dir', permanent]);
+  } catch (error) { thrown = safeCode(error); record.runnerError = thrown; }
+  finally {
+    record.cliExitCode = process.exitCode || 0;
+    try {
+      const results = readdirSync(permanent).filter(name => name.endsWith(`-${attempt.scenario.id}`));
+      if (results.length !== 1) fail('PRIMARY_RESULT_MISSING_OR_AMBIGUOUS');
+      const resultDir = join(permanent, results[0]);
+      const summary = boundedJson(join(resultDir, 'summary.json'));
+      if (summary.scenarioId !== attempt.scenario.id || summary.sha !== record.sourceSha || summary.authoringBenchmark?.sourceCommit !== record.sourceSha || summary.model?.providerID !== 'llm-proxy' || summary.model?.modelID !== 'deepseek-v4-flash' || summary.judgeModel?.providerID !== 'llm-proxy' || summary.judgeModel?.modelID !== 'deepseek-v4-flash') fail('PRIMARY_RESULT_IDENTITY_MISMATCH');
+      const trajectory = boundedJson(join(resultDir, 'trajectory.json'));
+      if (trajectory.scenario !== attempt.scenario.id) fail('PRIMARY_TRAJECTORY_IDENTITY_MISMATCH');
+      if (summary.authoringBenchmark.transferTask?.id !== attempt.taskId || summary.authoringBenchmark.transferTask.revision !== 'transfer-oct25.1') fail('PRIMARY_TRANSFER_TASK_MISMATCH');
+      if (existsSync(join(resultDir,'reflection.json'))) fail('UNEXPECTED_REFLECTION_EXECUTION');
+      const judgePath = join(resultDir, 'judge.md');
+      if (existsSync(judgePath) && (lstatSync(judgePath).isSymbolicLink() || !lstatSync(judgePath).isFile() || lstatSync(judgePath).size > 256 * 1024)) fail('UNSAFE_JUDGE_DIAGNOSTIC');
+      const judgeDeadlineObserved = existsSync(judgePath) && readFileSync(judgePath, 'utf8').includes('Authoring judge deadline exceeded; no semantic pass inferred.');
+      record.qualification = qualifyPrimary(summary, trajectory, judgeDeadlineObserved);
+      record.primary = { directory: results[0], summarySha256: shaFile(join(resultDir, 'summary.json')), trajectorySha256: shaFile(join(resultDir, 'trajectory.json')), status: summary.status, verdict: summary.verdict, artifactPass: summary.quality?.pass, pathPass: summary.trajectory?.pass, actions: summary.actions, nonCacheTokens: summary.usage?.total, messages: summary.usage?.messages };
+      record.persistence = true;
+    } catch (error) { record.persistenceError = safeCode(error); }
+    if (pendingCreates.size) {
+      let timer;
+      try { await Promise.race([Promise.allSettled([...pendingCreates]), new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('LATE_SESSION_CREATION_PENDING')), 10000); })]); }
+      catch (error) { record.cleanupErrors.push(safeCode(error)); }
+      finally { clearTimeout(timer); }
+    }
+    const cleaned = new Set(), visiting = new Set();
+    const deadline = AbortSignal.timeout(30000);
+    async function removeSession(id, cwd, parent = null, depth = 0) {
+      if (cleaned.has(id)) return;
+      if (visiting.has(id) || depth > 8 || cleaned.size + visiting.size > 64) fail('SESSION_TREE_BOUND_EXCEEDED');
+      visiting.add(id);
+      const stopped = await client.session.abort({ path: { id }, query: { directory: cwd }, signal: deadline });
+      if (stopped.error) fail('OWNED_SESSION_ABORT_FAILED');
+      const children = await client.session.children({ path: { id }, query: { directory: cwd }, signal: deadline });
+      if (children.error || !Array.isArray(children.data) || children.data.length > 20) fail('OWNED_SESSION_CHILDREN_UNAVAILABLE');
+      for (const child of children.data) {
+        if (child.parentID !== id || child.directory !== cwd || !/^ses_[\w-]+$/.test(child.id)) fail('CHILD_SESSION_OWNERSHIP_MISMATCH');
+        await removeSession(child.id, cwd, id, depth + 1);
+      }
+      const removed = await client.session.delete({ path: { id }, query: { directory: cwd }, signal: deadline });
+      if (removed.error || removed.data !== true) fail('OWNED_SESSION_DELETE_FAILED');
+      visiting.delete(id); cleaned.add(id); record.sessions.push({ id, directory: cwd, parent, deleted: true }); save();
+    }
+    for (const [id, cwd] of known) {
+      try { await removeSession(id, cwd); }
+      catch (error) { record.cleanupErrors.push(safeCode(error)); }
+    }
+    if (record.persistence && !record.cleanupErrors.length && pendingCreates.size === 0) {
+      try {
+        if (realpathSync(directory) !== directory || !inside(join(ownRoot, 'runs'), directory)) fail('CASE_CLEANUP_IDENTITY_MISMATCH');
+        // A CLI finalizer may intentionally leave a sandbox pending after compaction failure.
+        // The outer controller must never turn that retained evidence into a recursive cleanup.
+        const unexpected = readdirSync(directory).filter(name => !['scenario.json', 'transient', '.sdd-flow-eval-dependencies'].includes(name));
+        if (unexpected.length || [...known.values()].some(cwd => existsSync(cwd))) fail('CLI_SANDBOX_FINALIZATION_PENDING');
+        const { gcEvalDependencyStores } = await load(source, 'dependency-store.ts');
+        const stores = await gcEvalDependencyStores(join(directory, '.sdd-flow-eval-dependencies'), { removeAllInactive: true });
+        record.dependencyCleanup = stores.entries.map(entry => ({ kind: entry.kind, action: entry.action, reason: entry.reason }));
+        if (stores.entries.some(entry => entry.action === 'quarantined' || entry.kind === 'lease' && entry.action === 'kept' || entry.kind === 'store' && entry.action === 'kept')) fail('DEPENDENCY_LEASE_NOT_RELEASED');
+        rmSync(directory, { recursive: true }); record.tempRemoved = true;
+      } catch (error) { record.cleanupErrors.push(safeCode(error)); }
+    }
+    record.endedAt = new Date().toISOString(); save();
+    SddEvalOpenCodeRuntime.prototype.createSession = originalCreate;
+    SddEvalOpenCodeRuntime.prototype.judge = originalJudge;
+    process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm);
+    process.exitCode = record.interrupted ? record.interrupted === 'SIGINT' ? 130 : 143 : !record.persistence || !record.tempRemoved || record.cleanupErrors.length || thrown || record.qualification?.dispatchMayContinue !== true ? 2 : 0;
+    console.log(JSON.stringify({ controllerAttempt: index, scenarioId: record.scenarioId, persistence: record.persistence, cleanup: record.tempRemoved, cleanupErrors: record.cleanupErrors.length, ...record.primary }));
+  }
+} else {
+  if (existsSync(protocolFile) || existsSync(join(ownRoot, 'records')) || existsSync(join(ownRoot, 'logs'))) fail('CAMPAIGN_ALREADY_STARTED');
+  if (existsSync(permanent) && readdirSync(permanent).length) fail('PERMANENT_RESULTS_NOT_EMPTY');
+  mkdirSync(permanent, { recursive: true }); mkdirSync(join(ownRoot, 'records')); mkdirSync(join(ownRoot, 'logs')); mkdirSync(join(ownRoot, 'runs'));
+  writeFileSync(protocolFile, JSON.stringify(protocol, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+  const { safeVerifyText } = await import(pathToFileURL(join(importSource, 'shared/verify/reporting/report-safety.ts')).href);
+  let active, interrupted = null, errors = 0, dispatched = 0;
+  const results = [];
+  const stop = signal => { interrupted ??= signal; active?.kill(signal); };
+  const onInt = () => stop('SIGINT'), onTerm = () => stop('SIGTERM');
+  process.on('SIGINT', onInt); process.on('SIGTERM', onTerm);
+  try {
+    for (let index = 0; index < config.attempts.length && !interrupted; index++) {
+      const attempt = config.attempts[index];
+      verifySource(attempt.sourceRoot);
+      let capture = '', truncated = false;
+      const child = spawn(process.execPath, ['--import', join(attempt.sourceRoot, 'node_modules/tsx/dist/loader.mjs'), ownFile, '--config', configPath, '--case', String(index)], { cwd: attempt.sourceRoot, env: { ...gitEnvironment, GENNADY_AUTHORING_TRANSFER_CASE: attempt.taskId }, stdio: ['ignore', 'pipe', 'pipe'] });
+      active = child; dispatched++;
+      const collect = chunk => { const part = String(chunk); if (Buffer.byteLength(capture) + Buffer.byteLength(part) > LOG_BYTES) { truncated = true; return; } if (!truncated) capture += part; };
+      child.stdout.on('data', collect); child.stderr.on('data', collect);
+      let hardTimer;
+      const timer = setTimeout(() => { child.kill('SIGTERM'); hardTimer = setTimeout(() => child.kill('SIGKILL'), 60000); }, 540000);
+      const outcome = await new Promise(resolveChild => { child.once('error', () => resolveChild({ code: null, signal: 'SPAWN_ERROR' })); child.once('close', (code, signal) => resolveChild({ code, signal })); });
+      clearTimeout(timer); clearTimeout(hardTimer); active = undefined;
+      if (truncated) capture = capture.slice(0, Math.max(0, capture.lastIndexOf('\n'))) + '\n[truncated controller log]\n';
+      writeFileSync(join(ownRoot, 'logs', `${index}.log`), safeVerifyText(capture, attempt.sourceRoot), { flag: 'wx', mode: 0o600 });
+      const recordPath = join(ownRoot, 'records', `${index}.json`);
+      const record = existsSync(recordPath) ? boundedJson(recordPath) : null;
+      const complete = record?.persistence && record.tempRemoved && !record.cleanupErrors.length && record.qualification?.dispatchMayContinue === true;
+      const row = { index, scenarioId: attempt.scenario.id, ...outcome, complete: Boolean(complete), primary: record?.primary || null, qualification: record?.qualification || null };
+      results.push(row);
+      atomic(join(ownRoot, 'batch.json'), { planned: config.attempts.length, dispatched, recorded: results.length, interrupted, complete: results.length === config.attempts.length && results.every(r => r.complete), rows: results });
+      console.log(JSON.stringify(row));
+      if (!complete || outcome.code !== 0) { errors++; break; }
+    }
+  } finally {
+    process.removeListener('SIGINT', onInt); process.removeListener('SIGTERM', onTerm);
+    atomic(join(ownRoot, 'batch.json'), { planned: config.attempts.length, dispatched, recorded: results.length, interrupted, errors, complete: results.length === config.attempts.length && results.every(r => r.complete), rows: results, endedAt: new Date().toISOString() });
+  }
+  process.exitCode = interrupted ? interrupted === 'SIGINT' ? 130 : 143 : results.length !== config.attempts.length || results.some(r => !r.complete) ? 2 : 0;
+}

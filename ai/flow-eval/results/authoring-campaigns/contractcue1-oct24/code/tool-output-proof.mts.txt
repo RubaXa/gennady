@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { join, dirname } from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+const own = dirname(fileURLToPath(import.meta.url));
+const sha = (s: string) => createHash('sha256').update(s).digest('hex');
+const {getAuthoringCase} = await import('./plan/ai/flow-eval/authoring-benchmark.ts');
+const outputs: any[] = [];
+for (const caseId of ['module-flat','module-nested'] as const) {
+  const def = getAuthoringCase(caseId);
+  const skeletons: string[] = [];
+  for (const arm of ['plan','facts']) {
+    const cwd = join(own,`proof-${caseId}-${arm}`), previous = process.cwd();
+    fs.mkdirSync(cwd,{mode:0o700});
+    try {
+      for (const [path,text] of Object.entries(def.files)) {
+        fs.mkdirSync(dirname(join(cwd,path)),{recursive:true});fs.writeFileSync(join(cwd,path),text);
+      }
+      process.chdir(cwd);
+      const text = execFileSync(process.execPath, [join(own,arm,'dist/gennady.js'),'sdd-new',...def.createArgs], {cwd,encoding:'utf8',timeout:15000});
+      const result = {text};
+      const skeleton = fs.readFileSync(join(cwd,def.target),'utf8');skeletons.push(skeleton);
+      if (arm==='facts') {
+        assert.match(result.text,/acronym: NOR /);
+        assert.match(result.text,/retain every input-domain qualifier/);
+        assert.match(result.text,/one boundary witness for each changed condition/);
+        const href = caseId==='module-flat'?'../token.spec.md':'../../token.spec.md';
+        assert.ok(result.text.includes(`[Scope](${href})`));
+        assert.ok(result.text.includes(`${href}#REQUIREMENTS_AND_CONSTRAINTS`));
+        assert.match(result.text,/observed scope requirement IDs.*TOK-REQ-1, TOK-REQ-2/);
+      } else assert.doesNotMatch(result.text,/authoring-facts/);
+      const normalized = result.text.replaceAll(cwd,'<WORKING_DIR>');
+      outputs.push({caseId,arm,stdout:normalized,bytes:Buffer.byteLength(normalized),sha256:sha(normalized),skeletonSha256:sha(skeleton)});
+    } finally {process.chdir(previous);fs.rmSync(cwd,{recursive:true,force:true});}
+  }
+  assert.equal(skeletons[0],skeletons[1],'Only tool report may differ; created file bytes identical');
+}
+fs.writeFileSync(join(own,'tool-output-proof.json'),JSON.stringify({modelCalls:0,skeletonsIdentical:true,fixturesRemoved:true,outputs},null,2)+'\n',{flag:'wx',mode:0o600});
+console.log(JSON.stringify({proof:true,outputs:outputs.map(({stdout,...rest})=>rest),modelCalls:0}));

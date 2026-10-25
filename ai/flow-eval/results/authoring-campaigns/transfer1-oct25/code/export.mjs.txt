@@ -1,0 +1,47 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+const own=path.dirname(new URL(import.meta.url).pathname);
+const repo='/private/tmp/gennady-format-oct23.xNC5Zx/plan';
+const dest=path.join(repo,'ai/flow-eval/results/authoring-campaigns/transfer1-oct25');
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const batch=JSON.parse(fs.readFileSync(path.join(own,'batch.json'),'utf8'));
+const pre=JSON.parse(fs.readFileSync(path.join(own,'preregistered-protocol.json'),'utf8'));
+if(!batch.complete||batch.recorded!==12||fs.existsSync(dest))throw Error('EXPORT_NOT_READY_OR_EXISTS');
+const knownSecrets=[process.env.LLM_PROXY_API_KEY,process.env.OPENCODE_SERVER_PASSWORD];
+const privateConfig=JSON.parse(fs.readFileSync(path.join(own,'private/opencode.json'),'utf8'));
+knownSecrets.push(privateConfig.provider['llm-proxy'].options.apiKey);
+const secrets=knownSecrets.filter(v=>typeof v==='string'&&v.length>=8);
+fs.mkdirSync(dest,{recursive:true});
+function copy(from,rel){
+  if(!/^[a-zA-Z0-9._/-]+$/.test(rel)||rel.split('/').includes('..'))throw Error('ARCHIVE_PATH');
+  const stat=fs.lstatSync(from);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>8*1024*1024)throw Error('ARCHIVE_FILE_BOUND');
+  const data=fs.readFileSync(from),text=data.toString('utf8');if(secrets.some(s=>text.includes(s)))throw Error('KNOWN_CREDENTIAL_IN_EXPORT');
+  const target=path.join(dest,rel);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,data,{flag:'wx'});
+}
+for(const name of ['REPEAT-CONTRACT.md','preregistered-protocol.json','config.json','controller-protocol.json','variants.json','tool-output-proof.json','server-pid.json','journal-modes.json','batch.json','task-inputs.json'])copy(path.join(own,name),'protocol/'+name);
+for(const name of ['controller.mjs','prepare-campaign.mts','analyze.mjs','tool-output-proof.mts','generate-controller.mjs','journal-modes.mjs','bootstrap.mjs','start-server.mjs','capture-inputs.mts','review-extract.mjs','supplement.mjs','finalize-runtime.mjs','export.mjs'])copy(path.join(own,name),'code/'+name+'.txt');
+for(const item of pre.hostHarness.files){const actual=fs.readFileSync(path.join(repo,item.path));if(sha(actual)!==item.sha256)throw Error('HOST_SOURCE_DRIFT');copy(path.join(repo,item.path),'host-code/'+item.path+'.txt');}
+for(const name of ['analysis.json','raw-rows.json','manual-review.json','supplemental.json','cleanup-proof.json','REPORT.md'])copy(path.join(own,name),name);
+for(const name of ['preflight-tests','build-plan','build-facts','harness-commit'])copy(path.join(own,name+'.log'),'validation/'+name+'.txt');
+for(let i=0;i<12;i++){
+  copy(path.join(own,'records',i+'.json'),'records/'+i+'.json');
+  copy(path.join(own,'logs',i+'.log'),'controller-output/'+i+'.txt');
+  const record=JSON.parse(fs.readFileSync(path.join(own,'records',i+'.json'),'utf8'));
+  const source=path.join(own,'permanent',record.primary.directory);
+  function walk(dir,rel=''){
+    for(const name of fs.readdirSync(dir).sort()){
+      const full=path.join(dir,name),s=fs.lstatSync(full),r=rel?rel+'/'+name:name;
+      if(s.isSymbolicLink())throw Error('PRIMARY_ALIAS');
+      if(s.isDirectory())walk(full,r);else copy(full,'permanent/'+record.primary.directory+'/'+r);
+    }
+  }walk(source);
+}
+const entries=[];let bytes=0;
+function inventory(dir,rel=''){for(const name of fs.readdirSync(dir).sort()){const full=path.join(dir,name),s=fs.lstatSync(full),r=rel?rel+'/'+name:name;if(s.isDirectory())inventory(full,r);else{const b=fs.readFileSync(full);bytes+=b.length;entries.push({path:r,bytes:b.length,sha256:sha(b)});}}}
+inventory(dest);if(entries.length>1200||bytes>32*1024*1024)throw Error('ARCHIVE_TOTAL_BOUND');
+const ignored=spawnSync('git',['check-ignore','--no-index','--stdin'],{cwd:repo,input:entries.map(e=>path.relative(repo,path.join(dest,e.path))).join('\n')+'\n',encoding:'utf8'});
+if(![0,1].includes(ignored.status)||ignored.stdout.trim())throw Error('IGNORED_ARCHIVE_FILE');
+fs.writeFileSync(path.join(dest,'manifest.json'),JSON.stringify({schema:'gennady.authoring-transfer-archive.1',campaign:'transfer1-oct25',planned:12,recordedPrimary:12,sourceCommits:pre.sources.map(s=>s.sourceSHA),hostHarnessSHA:pre.hostHarness.sourceSHA,bytesExcludingManifest:bytes,files:entries,safeExportChecks:{knownCredentialValuesFound:0,gitIgnoredArchiveFiles:[],privateConfigOrStateIncluded:false}},null,2)+'\n');
+console.log(JSON.stringify({archive:dest,files:entries.length,bytes,manifestSha256:sha(fs.readFileSync(path.join(dest,'manifest.json')))}));

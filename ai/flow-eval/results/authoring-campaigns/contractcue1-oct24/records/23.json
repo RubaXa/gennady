@@ -1,0 +1,64 @@
+{
+  "schema": "gennady.authoring-format-attempt.1",
+  "index": 23,
+  "scenarioId": "authoring-contractcue1-oct24-module-nested-baseline-r6",
+  "sourceSha": "ddd26bd88a4b80389faf95e2533766ae44e6f84f",
+  "startedAt": "2026-10-24T13:59:59.295Z",
+  "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/23",
+  "sessions": [
+    {
+      "id": "ses_e91c9e64cffehR3rJhcaOjAEbw",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/23/sdd-flow-eval-jIwxew",
+      "parent": null,
+      "deleted": true
+    },
+    {
+      "id": "ses_e91c80d3fffekZGQrukYpBdFFs",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/23/sdd-flow-eval-jIwxew",
+      "parent": null,
+      "deleted": true
+    }
+  ],
+  "cleanupErrors": [],
+  "persistence": true,
+  "tempRemoved": true,
+  "interrupted": null,
+  "cliExitCode": 1,
+  "qualification": {
+    "dispatchMayContinue": true,
+    "metricsQualified": true,
+    "judgeDeadlineObserved": false,
+    "stopReasons": [],
+    "warnings": []
+  },
+  "primary": {
+    "directory": "2026-10-24-authoring-contractcue1-oct24-module-nested-baseline-r6",
+    "summarySha256": "0108547a7484f9eae5b2936a8140bcec9cfd86631491db6d5920636065fac7ba",
+    "trajectorySha256": "8382cf7eb1cc92a2693ed69660968a1dccb96e773674962b869b9c6cdd59eec9",
+    "status": "completed",
+    "verdict": "pass",
+    "artifactPass": true,
+    "pathPass": false,
+    "actions": 27,
+    "nonCacheTokens": 61881,
+    "messages": 18
+  },
+  "dependencyCleanup": [
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "endedAt": "2026-10-24T14:04:03.689Z",
+  "knownSessions": [
+    {
+      "id": "ses_e91c9e64cffehR3rJhcaOjAEbw",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/23/sdd-flow-eval-jIwxew"
+    },
+    {
+      "id": "ses_e91c80d3fffekZGQrukYpBdFFs",
+      "directory": "/private/tmp/gennady-format-invariant-oct24.bMnrNz/runs/23/sdd-flow-eval-jIwxew"
+    }
+  ]
+}

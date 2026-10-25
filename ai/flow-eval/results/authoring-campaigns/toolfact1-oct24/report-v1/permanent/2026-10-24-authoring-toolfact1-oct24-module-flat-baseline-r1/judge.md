@@ -1,0 +1,4 @@
+# authoring-toolfact1-oct24-module-flat-baseline-r1 — pass (completed)
+
+VERDICT: pass
+NOR-REQ-1's precondition requires a non-empty ASCII string with at least one non-separator character, so empty, separator-only, and non-ASCII inputs are handled exclusively by NOR-REQ-2 and the DbC pre-violation TypeError clause; there is no return/throw overlap. The required MODULE_REQUIREMENTS table contains both witnesses (`"  Foo__BAR  "` → `"foo-bar"` and `""` → `TypeError`), and the trim/lowercase/collapse contract matches parent TOK-REQ-1/TOK-REQ-2 and the token contract reference. The target correctly keeps `token` as its parent scope rather than treating the `token`→`infra-base` edge as ownership, and its handoff remains pending-operator with no approval, ticket, execution, or implementation claim. No semantic disagreement with the bounded oracle result.

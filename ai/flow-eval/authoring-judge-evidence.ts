@@ -7,6 +7,7 @@ import { lstatSync } from 'node:fs';
 import { proveRepoFile, readProvenRepoFile } from '../../shared/common/repo-file-identity.ts';
 import { checkAuthoringBenchmark, getAuthoringCase } from './authoring-benchmark.ts';
 import type { AuthoringCaseId } from './authoring-benchmark.ts';
+import { selectedAuthoringTransfer } from './authoring-transfer.ts';
 
 /** @purpose Separate artifact semantics from externally enforced execution/path proof. */
 export type AuthoringJudgeEvidence = {
@@ -48,11 +49,7 @@ export function captureAuthoringJudgeEvidence(
     const references: NonNullable<AuthoringJudgeEvidence['references']> = [];
     let referenceBytes = Buffer.byteLength(definition.brief);
     for (const [path, expected] of Object.entries(definition.files)) {
-      if (
-        path !== 'docs/token-contract.md' &&
-        path !== 'specs/README.md' &&
-        !path.endsWith('.spec.md')
-      )
+      if (!path.startsWith('docs/') && path !== 'specs/README.md' && !path.endsWith('.spec.md'))
         continue;
       const proof = proveRepoFile(root, path);
       if (!proof.ok) return unavailable('source reference missing or unsafe');
@@ -80,7 +77,9 @@ export function captureAuthoringJudgeEvidence(
       content: read.content,
       brief: definition.brief,
       references,
-      oracle: { pass: oracle.pass, detail: oracle.detail },
+      ...(selectedAuthoringTransfer()
+        ? {}
+        : { oracle: { pass: oracle.pass, detail: oracle.detail } }),
     };
   } catch {
     // Do not export arbitrary filesystem exception text (paths/credentials) to the model.

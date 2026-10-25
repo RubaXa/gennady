@@ -1,0 +1,111 @@
+// Offline, deterministic checks for the independently reviewed FORMAT1 controller.
+// Does not execute controller top-level, contact a server, or create files.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { join, relative } from 'node:path';
+
+const MODEL = 'llm-proxy/deepseek-v4-flash';
+const REVIEWED_SHA256 = '6776a8b856af8aea017fb197d4ef7236c7a2cc95d9a575557ee7a29fba9ecae7';
+if (Number(process.versions.node.split('.')[0]) !== 22) throw new Error('NODE_22_REQUIRED');
+const hash = data => createHash('sha256').update(data).digest('hex');
+const source = readFileSync(new URL('./controller.mjs', import.meta.url), 'utf8');
+// Bind bytes before extracting or executing either pure function.
+assert.equal(hash(source), REVIEWED_SHA256, 'Reviewed controller bytes changed: review before refreshing this hash');
+function extract(start, end) {
+  const from = source.indexOf(start), to = source.indexOf(end, from);
+  if (from < 0 || to <= from) throw new Error('REVIEWED_FUNCTION_BOUNDARY_MISSING');
+  return source.slice(from, to);
+}
+
+test('qualification preserves agent failures but stops capture/model/environment failures', () => {
+  const body = extract('function qualifyPrimary(', '\nconst sourceIds');
+  const qualify = new Function('MODEL', `${body}; return qualifyPrimary;`)(MODEL);
+  const trace = { coverage: { complete: true, sessions: 1, reasons: [] }, events: [] };
+  const normal = {
+    authoringBenchmark: { environmentVerified: true, modelVerified: true },
+    usage: { models: [MODEL], sessions: 1, complete: true },
+    status: 'completed', verdict: 'pass', outcome: 'pass', hasJudge: true,
+    judgeUsage: { usage: { models: [MODEL], complete: true } },
+  };
+  assert.equal(qualify(normal, trace).dispatchMayContinue, true, 'normal completed attempt');
+  assert.equal(qualify({ ...normal, quality: { pass: false }, trajectory: { pass: false } }, trace).dispatchMayContinue, true, 'ordinary quality/path failures are observations');
+  assert.equal(qualify({ ...normal, status: 'error', verdict: 'worker-error', outcome: 'worker-error' }, trace).dispatchMayContinue, true, 'complete worker-error must not outcome-condition stopping');
+  const timeout = {
+    ...normal, outcome: 'budget-exhausted',
+    authoringBenchmark: { environmentVerified: true, modelVerified: false },
+    usage: { ...normal.usage, complete: false },
+  };
+  assert.equal(qualify(timeout, trace).dispatchMayContinue, true, 'timeout with complete trace stays an observation');
+  assert.equal(qualify(timeout, trace).metricsQualified, false, 'partial timeout usage cannot support cost/PASS claims');
+  assert.equal(qualify(normal, { ...trace, coverage: { ...trace.coverage, complete: false, reasons: ['capture failed'] } }).dispatchMayContinue, false, 'incomplete capture is distinct from a complete timeout trace');
+  assert.equal(qualify({ ...normal, usage: { ...normal.usage, models: ['llm-proxy/deepseek-v4-pro'] } }, trace).dispatchMayContinue, false, 'wrong actual model');
+  assert.equal(qualify({ ...normal, authoringBenchmark: { ...normal.authoringBenchmark, environmentVerified: false } }, trace).dispatchMayContinue, false, 'unverified environment');
+  assert.equal(qualify({ ...normal, usage: { ...normal.usage, sessions: 2 } }, trace).dispatchMayContinue, false, 'usage/trace session mismatch');
+  assert.equal(qualify({ ...normal, authoringBenchmark: { ...normal.authoringBenchmark, modelVerified: false } }, trace).dispatchMayContinue, false, 'normal completed attempt cannot silently lose model qualification');
+  assert.equal(qualify({ ...normal, judgeUsage: { usage: { ...normal.judgeUsage.usage, models: ['other/model'] } } }, trace).dispatchMayContinue, false, 'wrong actual judge model');
+  const deadline = { ...normal, verdict: 'inconclusive', judgeUsage: { usage: { complete: false, models: [] } } };
+  assert.equal(qualify(deadline, trace, true).dispatchMayContinue, true, 'host-recorded judge deadline is an observation, not a reason to abandon all remaining attempts');
+  assert.ok(qualify(deadline, trace, true).warnings.includes('JUDGE_DEADLINE_MODEL_USAGE_UNKNOWN_NOT_ZERO'));
+  assert.equal(qualify(deadline, trace, false).dispatchMayContinue, false, 'missing model without a host deadline remains a capture fault');
+  assert.equal(qualify({ ...deadline, verdict: 'pass' }, trace, true).dispatchMayContinue, false, 'a claimed semantic pass cannot use the deadline exception');
+  assert.equal(qualify({ ...deadline, judgeUsage: { usage: { complete: true, models: ['other/model'] } } }, trace, true).dispatchMayContinue, false, 'observed wrong model still stops even on a deadline');
+});
+
+test('public route qualification requires configured AI Proxy and Flash without exposing credentials', () => {
+  const body = extract('function publicProxyRouting(', '\nfunction qualifyPrimary');
+  const routing = new Function('fail', `${body}; return publicProxyRouting;`)(code => { throw new Error(code); });
+  const config = baseURL => ({ provider: { 'llm-proxy': {
+    npm: '@ai-sdk/openai-compatible',
+    options: { baseURL, apiKey: 'synthetic-secret-key', headers: { 'Plugin-Type': 'synthetic-plugin', Authorization: 'synthetic-secret-header' } },
+    models: { 'deepseek-v4-flash': { name: 'Flash' } },
+  } } });
+  const approved = routing(config('https://ai-proxy.vk.team/v1'));
+  assert.deepEqual(approved, {
+    origin: 'https://ai-proxy.vk.team', path: '/v1', npm: '@ai-sdk/openai-compatible',
+    modelIDs: ['deepseek-v4-flash'], optionKeys: ['apiKey', 'baseURL', 'headers'], headerNames: ['Authorization', 'Plugin-Type'],
+  });
+  assert.deepEqual(routing(config('https://ai-proxy.vk.team/v1/')), approved, 'normalize one terminal slash');
+  assert.equal(JSON.stringify(approved).includes('synthetic-secret'), false, 'credential values never enter public routing evidence');
+  assert.throws(() => routing(config('https://llm-proxy.vkteam.ru/v1')), /AI_PROXY_ROUTE_NOT_APPROVED/, 'stale env origin cannot replace the approved configured route');
+  assert.throws(() => routing(config('https://example.org/v1')), /AI_PROXY_ROUTE_NOT_APPROVED/);
+  assert.throws(() => routing(config('http://ai-proxy.vk.team/v1')), /AI_PROXY_ROUTE_NOT_APPROVED/);
+  assert.throws(() => routing(config('https://user:secret@ai-proxy.vk.team/v1')), /AI_PROXY_ROUTE_NOT_APPROVED/);
+  assert.throws(() => routing(config('https://ai-proxy.vk.team/v1?token=synthetic')), /AI_PROXY_ROUTE_NOT_APPROVED/);
+  assert.throws(() => routing(config('https://ai-proxy.vk.team/v1#fragment')), /AI_PROXY_ROUTE_NOT_APPROVED/);
+  assert.throws(() => routing(config('https://ai-proxy.vk.team/v2')), /AI_PROXY_ROUTE_NOT_APPROVED/);
+  const wrongPackage = config('https://ai-proxy.vk.team/v1');
+  wrongPackage.provider['llm-proxy'].npm = '@ai-sdk/openai';
+  assert.throws(() => routing(wrongPackage), /AI_PROXY_PROVIDER_CONFIGURATION_INVALID/);
+  const extraModel = config('https://ai-proxy.vk.team/v1');
+  extraModel.provider['llm-proxy'].models['deepseek-v4-pro'] = { name: 'Pro' };
+  assert.throws(() => routing(extraModel), /AI_PROXY_FLASH_ONLY_MODEL_MAP_REQUIRED/);
+});
+
+test('dist manifest binds every file and rejects symlinks using only in-memory filesystem data', () => {
+  const body = extract('function distManifest(', '\nfunction verifyPreregistration');
+  const files = new Map([
+    ['/source/dist/gennady.js', Buffer.from('cli')],
+    ['/source/dist/chunk.js', Buffer.from('chunk')],
+  ]);
+  let symbolic = false;
+  const stat = path => ({
+    isSymbolicLink: () => symbolic && path.endsWith('chunk.js'),
+    isDirectory: () => path === '/source/dist',
+    isFile: () => files.has(path),
+    size: files.get(path)?.length ?? 0,
+  });
+  const manifest = new Function('join', 'relative', 'lstatSync', 'realpathSync', 'readdirSync', 'readFileSync', 'hash', 'fail', `${body}; return distManifest;`)(
+    join, relative, stat, path => path, () => ['gennady.js', 'chunk.js'], path => files.get(path), hash,
+    code => { throw new Error(code); }
+  );
+  const original = manifest('/source');
+  assert.equal(original.files.length, 2);
+  assert.equal(original.totalBytes, 8);
+  assert.equal(original.sha256, hash(JSON.stringify(original.files)));
+  files.set('/source/dist/chunk.js', Buffer.from('changed'));
+  assert.notEqual(manifest('/source').sha256, original.sha256, 'ignored dist byte drift changes identity');
+  symbolic = true;
+  assert.throws(() => manifest('/source'), /DIST_SYMLINK/);
+});

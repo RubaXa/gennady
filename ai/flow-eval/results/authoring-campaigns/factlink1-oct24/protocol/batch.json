@@ -1,0 +1,635 @@
+{
+  "planned": 24,
+  "dispatched": 24,
+  "recorded": 24,
+  "interrupted": null,
+  "errors": 0,
+  "complete": true,
+  "rows": [
+    {
+      "index": 0,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1",
+        "summarySha256": "c58d50411934acfba932145bb8c1b71585773562dc5b407460a276cd46b0e1ed",
+        "trajectorySha256": "4459d60e9e914316c43f085dc6cfbd0737e95193a3a2efbe4d531a5b96e05544",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 27,
+        "nonCacheTokens": 53639,
+        "messages": 20
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 1,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1",
+        "summarySha256": "1d9e86b0c34fdc452ed4977dbdc45e6822f950c27dba645becaf0f0912d873c3",
+        "trajectorySha256": "3a1cc053ab4677885ae9df6257896d766e3d4259a0bd80ff10d017e0db6281c5",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 15,
+        "nonCacheTokens": 35551,
+        "messages": 11
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 2,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1",
+        "summarySha256": "81b7458fb8d3653f068fa78b53c493fdaacab87954bfdbfec1cbdb502dd5a38a",
+        "trajectorySha256": "7bdb07008a25b9857f89599feae8e3973e85c8e40fd6c7b931c58395abe59c19",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 23,
+        "nonCacheTokens": 47254,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 3,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r1",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1",
+        "summarySha256": "198ebb43127565d109803cc1615ed1a5f8d99ae7eeb0e373f671ba658dfa13e5",
+        "trajectorySha256": "4b34e275e4ef3809c7c43810f8465dc0372f37ba33ddbed80f7c3dcc9f282964",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 25,
+        "nonCacheTokens": 47060,
+        "messages": 17
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 4,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2",
+        "summarySha256": "d2425b27df39622a81d821d559d804c92c97a03f2553758205908fd2d454144b",
+        "trajectorySha256": "95156ce5a8a9a802326dd677a09124726207b985c156fc7b244b43f966bcb6d0",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 17,
+        "nonCacheTokens": 39470,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 5,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2",
+        "summarySha256": "ecbac1377d09804ba1521b900c85461c6349ced85df959d1dc78a48d7b415c3c",
+        "trajectorySha256": "0708137bdae1d98c127e698a9be1ed85c911cb11186017d4f4cd413b5b388443",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 26,
+        "nonCacheTokens": 44634,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 6,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2",
+        "summarySha256": "694651f14f6dcab40360e9e467a2f30873227e1ec1109a1fbe3eeabce5a4e8f5",
+        "trajectorySha256": "455673be9be23b3fd18dfd483bab53dba3f3cebf11bdabeb141f3b3582c7b886",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 21,
+        "nonCacheTokens": 53452,
+        "messages": 15
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 7,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r2",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2",
+        "summarySha256": "8aeffa4227f95428b45991cfafe309c7cbc1bf21b9cf688bfe128e203ba1645f",
+        "trajectorySha256": "5ffd87a9e68fc147c663cf06d2fe3397661e4834d25dd88b66b892126b2ec6ad",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 27,
+        "nonCacheTokens": 52725,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 8,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3",
+        "summarySha256": "3eaac52aeb468c7a309a3f0016bd673fdcd972290a27e27c88e397a152aa10b5",
+        "trajectorySha256": "8bce0dd6d3236aa081ca4e1a3eec523c25edfeab7f2fb028c3c2774c1901691d",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 27,
+        "nonCacheTokens": 50846,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 9,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3",
+        "summarySha256": "3553ab8bfe49279073001dfeeaa46d48110d6e9bafdb3fbbf0f67aac157b9c45",
+        "trajectorySha256": "005e07f7801b4ff35ba0963825f5517f5f8ee6f7dc4b8081509a23f3313a7cb9",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 19,
+        "nonCacheTokens": 41880,
+        "messages": 13
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 10,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3",
+        "summarySha256": "b96fe2b352217d830640dadf7cc6567574f547ff09aec7a1fce46d3c46a121bc",
+        "trajectorySha256": "ab6057118bab5c02d818c98c07ab0d1f0122671c220c471b03e40b8d07b30a80",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 19,
+        "nonCacheTokens": 44126,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 11,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r3",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3",
+        "summarySha256": "6284840e7fa25f015099492c783d6915ff51ad9c36dbedc5d2417e0768482766",
+        "trajectorySha256": "29c9d4d52501176419e484ee8f7026057d7de38d739f252ed27ef30ebc45b4ba",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 23,
+        "nonCacheTokens": 51271,
+        "messages": 16
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 12,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4",
+        "summarySha256": "4891a408834c78bbfbb9e8684512cc833e52a5f62a29923c6b142d878f998d83",
+        "trajectorySha256": "cde6e06bae3abc9e62e11a7aa1c5bbb1aefbcaaaa96d8a34a97c46d5bec7ba09",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 20,
+        "nonCacheTokens": 39601,
+        "messages": 13
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 13,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4",
+        "summarySha256": "a0c4bda15785a18abb46825bb2e661b097ef4d9a0f8c8a50c62ba21506d7e8f7",
+        "trajectorySha256": "be3bd967df3e11f3b3f6703c01146fda88d76bd1ae6733bcde121c205e658cf8",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 22,
+        "nonCacheTokens": 50891,
+        "messages": 15
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 14,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4",
+        "summarySha256": "fdf7e80e43f0bb9e94b38685170cd26ad918024d29f15ada17ab49328791ce8a",
+        "trajectorySha256": "db620532b314a6386372cfd4514b7b7147e64b664b9f60e5c7367783c2ce38e4",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 18,
+        "nonCacheTokens": 41693,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 15,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r4",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4",
+        "summarySha256": "f5dbfb42f91cf8a4aa219c5f297f361c582dfac489533f0ba79dfdf753b5cd6e",
+        "trajectorySha256": "e7ecc36d58d8101c702570667b81d9f46500c5103dfb8146a9db6d5316f04040",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 24,
+        "nonCacheTokens": 49841,
+        "messages": 16
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 16,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5",
+        "summarySha256": "8af550a0bb2adbc0d4142bcd83a12f2d21756ac0e1d6f2df5f4984f29edc4a97",
+        "trajectorySha256": "c5a29edc50e67580cd380d542651eaa67a2d0a304a8eb9f17890005b7cc5b787",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 18,
+        "nonCacheTokens": 41715,
+        "messages": 17
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 17,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5",
+        "summarySha256": "06f6456f7de905b64bb562249804d5b281402ea35ecba3cd1b8034f9294c5c9a",
+        "trajectorySha256": "6dc7a5b032e223553cc05d9101c23914c5c39f16ac2bbbe0161632af27446011",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 18,
+        "nonCacheTokens": 37848,
+        "messages": 13
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 18,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5",
+        "summarySha256": "e67104c9c496fac76160e0fb98bb62d260effb123b5be9d155accda91f063127",
+        "trajectorySha256": "37d6d4d1854b219bb20651d6f899f435d95cc05dbe25fae68f715657a021ba95",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 20,
+        "nonCacheTokens": 38742,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 19,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r5",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5",
+        "summarySha256": "9b7b5bb52d53639186acd15818774e9af27dd2bc158b428841ba5aee8a9a2110",
+        "trajectorySha256": "20caf7b997cba9c0992d6a8857a96a9b6aaee9f895bb8eb9b994162de869fc52",
+        "status": "completed",
+        "verdict": "fail",
+        "artifactPass": false,
+        "pathPass": false,
+        "actions": 22,
+        "nonCacheTokens": 43423,
+        "messages": 15
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 20,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-facts-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6",
+        "summarySha256": "caa62dad1b1542901a8626c8d1bce9b4675457a4fe8f33ffb48accd5e9784236",
+        "trajectorySha256": "c735be563dfdf1b6b6c3dda4eee39f97fdab3b47f340907cbacbd5c691cc1976",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 21,
+        "nonCacheTokens": 48054,
+        "messages": 13
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 21,
+      "scenarioId": "authoring-factlink1-oct24-module-flat-baseline-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6",
+        "summarySha256": "49b7f7ecafeaad846761143a6be65a9e30a92899afa1090ccb174dfb02bd5146",
+        "trajectorySha256": "474d872d2558dea40e0e0397359a1a2f9c9e10ac9193bfcbf011870c7071f3bd",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 28,
+        "nonCacheTokens": 53481,
+        "messages": 20
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 22,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-facts-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6",
+        "summarySha256": "330f222fc058e17b826604896459e2e178ed794cf3aa5b0018bbf5cefc44fae6",
+        "trajectorySha256": "13a881088df9e5c7c3d34f707c097ac88a1f4197a5d137e103635051658a3a66",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 21,
+        "nonCacheTokens": 45555,
+        "messages": 12
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    },
+    {
+      "index": 23,
+      "scenarioId": "authoring-factlink1-oct24-module-nested-baseline-r6",
+      "code": 0,
+      "signal": null,
+      "complete": true,
+      "primary": {
+        "directory": "2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6",
+        "summarySha256": "bae06bc3a36182a7192c23e3a5a968b47ab54b1d241d006cf4cf34c599e805a4",
+        "trajectorySha256": "0989dfa7229d02f838f164474a5ddb48a0cfa80d64f28b9d7dd79be87586a329",
+        "status": "completed",
+        "verdict": "pass",
+        "artifactPass": true,
+        "pathPass": false,
+        "actions": 32,
+        "nonCacheTokens": 53881,
+        "messages": 18
+      },
+      "qualification": {
+        "dispatchMayContinue": true,
+        "metricsQualified": true,
+        "judgeDeadlineObserved": false,
+        "stopReasons": [],
+        "warnings": []
+      }
+    }
+  ],
+  "endedAt": "2026-10-24T09:29:51.937Z"
+}

@@ -1,0 +1,396 @@
+{
+  "schema": "gennady.authoring-portable-replay.2",
+  "performedAt": "2026-10-24T09:32:18.504Z",
+  "stagingDirectory": "/private/tmp/gennady-format-facts-oct24.nOIZpF/portable-replay-format2-RxGfaw",
+  "cwd": "/private/tmp/gennady-format-facts-oct24.nOIZpF/portable-replay-format2-RxGfaw/report-v1",
+  "sourceModuleRoot": "/private/tmp/gennady-format-facts-oct24.nOIZpF/plan",
+  "node": "22.19.0",
+  "analysisProgram": {
+    "path": "/private/tmp/gennady-format-facts-oct24.nOIZpF/offline-report.mts",
+    "sha256": "eec69a2add848821360b93539d48af8b6c2873466d6c904404dccd9c9e6b1f5c"
+  },
+  "analysisIdentities": [
+    {
+      "path": "ai/flow-eval/authoring-baseline-report.ts",
+      "reportedSHA256": "a68f9948569799d38ef71272ad77741dbfe420115e6b071940dc1bb99ffddb27",
+      "actualSHA256": "a68f9948569799d38ef71272ad77741dbfe420115e6b071940dc1bb99ffddb27",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-benchmark.ts",
+      "reportedSHA256": "0ceb13f2e59a630615181fe7171e55a41beb4fc39f6d1d9171007db150ac9e09",
+      "actualSHA256": "0ceb13f2e59a630615181fe7171e55a41beb4fc39f6d1d9171007db150ac9e09",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-metrics.ts",
+      "reportedSHA256": "e33e3dfee2c2add746f082291abe901aeb5697c98b81e3003fed9fddb750b6d2",
+      "actualSHA256": "e33e3dfee2c2add746f082291abe901aeb5697c98b81e3003fed9fddb750b6d2",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-trajectory-profile.ts",
+      "reportedSHA256": "4372f5012e89c7f0fb1e5ebc7369672fd406bf7e312b312075e1e0cc2d3eb7cf",
+      "actualSHA256": "4372f5012e89c7f0fb1e5ebc7369672fd406bf7e312b312075e1e0cc2d3eb7cf",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/authoring-call-audit.ts",
+      "reportedSHA256": "3a49cb933693914abbabc5e2b7253007568e7e4035b4d1ed7356ab665c63a12d",
+      "actualSHA256": "3a49cb933693914abbabc5e2b7253007568e7e4035b4d1ed7356ab665c63a12d",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-baseline-report.ts",
+      "reportedSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "actualSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-call-audit.ts",
+      "reportedSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "actualSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    },
+    {
+      "path": "ai/flow-eval/scripts/authoring-experiment.ts",
+      "reportedSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "actualSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "same": true,
+      "expectedOracleDrift": false,
+      "reason": null
+    }
+  ],
+  "replayProgram": {
+    "path": "/private/tmp/gennady-format-facts-oct24.nOIZpF/portable-replay.mjs",
+    "sha256": "99a74b441494266f0407a2f35c82cefe12ebb5a5cca9fb95cb87ffc3a626b642"
+  },
+  "sourceHEADObservedOnly": "09c2329bdeafa34209b58d0c0470b05d2c2ca721",
+  "sourceWorkingTreeStatus": "",
+  "serializedPaths": "Preserved as evidence strings, never used as data-source paths. Only copied inputs and copied summary files are CLI data arguments. Analysis code/dependencies come from the explicit EVAL_REPO above; this is not a syscall audit.",
+  "modelCalls": 0,
+  "expectedCommands": 5,
+  "commands": [
+    {
+      "name": "baseline-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./baseline.input.json",
+        "--out",
+        "baseline.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline.replayed-report.json",
+        "sha256": "8ec990fbbb60f4f09e0cc10b4c6d64b1d9be3e3c27edeec4b87424a92decdc4c",
+        "bytes": 276785
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./baseline.input.json",
+        "baseline.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline.replayed-calls.md",
+        "sha256": "dc3a11937d8d571b41f27fdb5270080f7fef757b8c60ff2a0ebf505fd3f65de3",
+        "bytes": 81430
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "facts-baseline",
+      "script": "authoring-baseline-report.ts",
+      "scriptSHA256": "91472daf97ee0e818c24762eebd658ee2f316ff65ef9e17aa372f13d794c4329",
+      "args": [
+        "--input",
+        "./facts.input.json",
+        "--out",
+        "facts.replayed-report.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "facts.replayed-report.json",
+        "sha256": "92ab0a64c808688c3a83b27a9f88bdf966b8e6b3906ef398845429cf2dedaf35",
+        "bytes": 243940
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "facts-audit",
+      "script": "authoring-call-audit.ts",
+      "scriptSHA256": "3537190c16e6845b100985caa76b71edac39f39cbc930dc526d81b992b29f044",
+      "args": [
+        "./facts.input.json",
+        "facts.replayed-calls.md"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "facts.replayed-calls.md",
+        "sha256": "5baba966dd7f966bcc2a8869be1855472244f857456e05869ff02df8d313019c",
+        "bytes": 68298
+      },
+      "equalsArchivedResult": true
+    },
+    {
+      "name": "baseline-vs-facts",
+      "script": "authoring-experiment.ts",
+      "scriptSHA256": "5ea5229d1865beb447b2e1232d4912805b27b6dac4da64ec16edde1239c0df52",
+      "args": [
+        "compare",
+        "--campaign",
+        "factlink1-oct24",
+        "--baseline",
+        "baseline",
+        "--candidate",
+        "facts",
+        "--cases",
+        "module-flat,module-nested",
+        "--repetitions",
+        "6",
+        "--results-dir",
+        "./permanent",
+        "--out",
+        "baseline-vs-facts.replayed-compare.json"
+      ],
+      "status": 0,
+      "signal": null,
+      "errorCode": null,
+      "expectedStatus": 0,
+      "expectedExitMatches": true,
+      "stdoutSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "modelCalls": 0,
+      "output": {
+        "path": "baseline-vs-facts.replayed-compare.json",
+        "sha256": "093872af670ba9af64b121b0416b7398840720be3a97fe169cd3fa1b6ba716cf",
+        "bytes": 2345
+      },
+      "equalsArchivedResult": true
+    }
+  ],
+  "status": "passed",
+  "allExpectedExits": true,
+  "allProducedResultsByteEqual": true,
+  "comparisonAggregateByteEqual": true,
+  "primaryInputBytesUnchanged": true,
+  "copiedInputBytesUnchanged": true,
+  "temporaryReplayDirectoryRemoved": true,
+  "errors": [],
+  "inputBindings": [
+    {
+      "path": "bindings.json",
+      "bytes": 18625,
+      "sha256": "30167f107f0639f47398af863cbe4176e824229769bb2475524d15129aeead23"
+    },
+    {
+      "path": "raw-metrics.json",
+      "bytes": 238103,
+      "sha256": "05068879b213087183bc9ede3ec6a74b19f19d438fbee2b8d6175c658d2b04ff"
+    },
+    {
+      "path": "baseline.input.json",
+      "bytes": 488924,
+      "sha256": "73317f424a720ecac8c5d4d27f1e199b9051f9123de83041a491def3d97beef9"
+    },
+    {
+      "path": "baseline.report.json",
+      "bytes": 276785,
+      "sha256": "8ec990fbbb60f4f09e0cc10b4c6d64b1d9be3e3c27edeec4b87424a92decdc4c"
+    },
+    {
+      "path": "baseline.calls.md",
+      "bytes": 81430,
+      "sha256": "dc3a11937d8d571b41f27fdb5270080f7fef757b8c60ff2a0ebf505fd3f65de3"
+    },
+    {
+      "path": "facts.input.json",
+      "bytes": 431668,
+      "sha256": "3181ef52e739b1b5c990cfedc49ec002c847281550a057b3c1a20be8bf0c6128"
+    },
+    {
+      "path": "facts.report.json",
+      "bytes": 243940,
+      "sha256": "92ab0a64c808688c3a83b27a9f88bdf966b8e6b3906ef398845429cf2dedaf35"
+    },
+    {
+      "path": "facts.calls.md",
+      "bytes": 68298,
+      "sha256": "5baba966dd7f966bcc2a8869be1855472244f857456e05869ff02df8d313019c"
+    },
+    {
+      "path": "comparisons.json",
+      "bytes": 2583,
+      "sha256": "e98640b4a99d18ff21daaf92a99e73181e922b35dcc93140d43653b80427a072"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r1/summary.json",
+      "bytes": 5595,
+      "sha256": "c58d50411934acfba932145bb8c1b71585773562dc5b407460a276cd46b0e1ed"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r1/summary.json",
+      "bytes": 5617,
+      "sha256": "81b7458fb8d3653f068fa78b53c493fdaacab87954bfdbfec1cbdb502dd5a38a"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r2/summary.json",
+      "bytes": 5593,
+      "sha256": "ecbac1377d09804ba1521b900c85461c6349ced85df959d1dc78a48d7b415c3c"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r2/summary.json",
+      "bytes": 5617,
+      "sha256": "8aeffa4227f95428b45991cfafe309c7cbc1bf21b9cf688bfe128e203ba1645f"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r3/summary.json",
+      "bytes": 5651,
+      "sha256": "3eaac52aeb468c7a309a3f0016bd673fdcd972290a27e27c88e397a152aa10b5"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r3/summary.json",
+      "bytes": 5618,
+      "sha256": "b96fe2b352217d830640dadf7cc6567574f547ff09aec7a1fce46d3c46a121bc"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r4/summary.json",
+      "bytes": 5597,
+      "sha256": "a0c4bda15785a18abb46825bb2e661b097ef4d9a0f8c8a50c62ba21506d7e8f7"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r4/summary.json",
+      "bytes": 5618,
+      "sha256": "f5dbfb42f91cf8a4aa219c5f297f361c582dfac489533f0ba79dfdf753b5cd6e"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r5/summary.json",
+      "bytes": 5593,
+      "sha256": "8af550a0bb2adbc0d4142bcd83a12f2d21756ac0e1d6f2df5f4984f29edc4a97"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r5/summary.json",
+      "bytes": 5616,
+      "sha256": "e67104c9c496fac76160e0fb98bb62d260effb123b5be9d155accda91f063127"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-baseline-r6/summary.json",
+      "bytes": 5595,
+      "sha256": "49b7f7ecafeaad846761143a6be65a9e30a92899afa1090ccb174dfb02bd5146"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-baseline-r6/summary.json",
+      "bytes": 5616,
+      "sha256": "bae06bc3a36182a7192c23e3a5a968b47ab54b1d241d006cf4cf34c599e805a4"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r1/summary.json",
+      "bytes": 5651,
+      "sha256": "1d9e86b0c34fdc452ed4977dbdc45e6822f950c27dba645becaf0f0912d873c3"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r1/summary.json",
+      "bytes": 5611,
+      "sha256": "198ebb43127565d109803cc1615ed1a5f8d99ae7eeb0e373f671ba658dfa13e5"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r2/summary.json",
+      "bytes": 5585,
+      "sha256": "d2425b27df39622a81d821d559d804c92c97a03f2553758205908fd2d454144b"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r2/summary.json",
+      "bytes": 5682,
+      "sha256": "694651f14f6dcab40360e9e467a2f30873227e1ec1109a1fbe3eeabce5a4e8f5"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r3/summary.json",
+      "bytes": 5586,
+      "sha256": "3553ab8bfe49279073001dfeeaa46d48110d6e9bafdb3fbbf0f67aac157b9c45"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r3/summary.json",
+      "bytes": 5611,
+      "sha256": "6284840e7fa25f015099492c783d6915ff51ad9c36dbedc5d2417e0768482766"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r4/summary.json",
+      "bytes": 5649,
+      "sha256": "4891a408834c78bbfbb9e8684512cc833e52a5f62a29923c6b142d878f998d83"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r4/summary.json",
+      "bytes": 5677,
+      "sha256": "fdf7e80e43f0bb9e94b38685170cd26ad918024d29f15ada17ab49328791ce8a"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r5/summary.json",
+      "bytes": 5588,
+      "sha256": "06f6456f7de905b64bb562249804d5b281402ea35ecba3cd1b8034f9294c5c9a"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r5/summary.json",
+      "bytes": 5678,
+      "sha256": "9b7b5bb52d53639186acd15818774e9af27dd2bc158b428841ba5aee8a9a2110"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-flat-facts-r6/summary.json",
+      "bytes": 5700,
+      "sha256": "caa62dad1b1542901a8626c8d1bce9b4675457a4fe8f33ffb48accd5e9784236"
+    },
+    {
+      "path": "permanent/2026-10-24-authoring-factlink1-oct24-module-nested-facts-r6/summary.json",
+      "bytes": 5610,
+      "sha256": "330f222fc058e17b826604896459e2e178ed794cf3aa5b0018bbf5cefc44fae6"
+    }
+  ]
+}

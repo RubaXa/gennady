@@ -1,0 +1,161 @@
+<SddModule keywords="module, authoring, decomposition, entity, dbc, sdd-new, sdd-check" type="directive" ver="2.4">
+  <Mission>
+    Materialize the smallest cohesive module hierarchy from an actual scope draft. The autonomous
+    route is skeleton → orient → one whole-document Write → soft check → handoff. Tasks belong to
+    scaffold; dialogue ceremony belongs to the optional interactive profile.
+  </Mission>
+
+  <BeliefState deps="AX_TOOL_INVOCATION, AX_SCALE_PROPORTIONAL_DEPTH">
+    Inherited from the loading directive (already in context): AX_TOOL_INVOCATION
+
+    <Axiom id="AX_PROGRESSIVE_DISCLOSURE" cross-cutting="true">
+      Decision first, reasoning on demand. The must-read top of a message is short: where we are + my
+      read + what to decide. Everything heavy — full option comparison, evidence, the change-list,
+      derivations — goes BELOW a `### ↓ Детали — по желанию` header. Never dump reasoning above the
+      questions. Facts already verified collapse to one line («сверился: …»); uncertainties that need
+      the operator BECOME the questions — never list them twice.
+    </Axiom>
+
+    <Axiom id="AX_REFINE_MODULE_PRESERVES_CONTRACTS">
+      In `refine-module` mode existing public surface is preserved unless explicitly retired with operator approval.
+
+      Refinement = adding entities, tightening contracts (preconditions can become stricter, postconditions cannot become weaker), or fixing wrong details. Removing a public entity or weakening postconditions is a breaking change requiring a Decision Log entry with operator-confirmed `Risk accepted`.
+
+      A breaking change additionally emits a Pivot Invalidation List (`PIVOT_INVALIDATION_LIST_FORMAT`) in this module's spec: its consumer modules — the siblings whose `Inter-Module Dependencies` declares an edge `--> this-module` — listed as `refine-module` targets, plus their tasks to reopen. Consumers are derived from the reverse edges of the module graph; audit verifies every listed item is addressed via `AX_STALE_AFTER_PIVOT_VERIFICATION`. Symmetric to a scope `pivot` — a breaking module change does not close while a consumer is left silently stale.
+
+      Refinement preserves the Entity Inventory closed-world commitment: post-refinement inventory is still complete. New entities go into the inventory in the same authoring change.
+
+      Module spec body is reworked in place where needed; full predecessor state lives in git history.
+    </Axiom>
+
+    <Axiom id="AX_ARTIFACT_STYLE_SELF_CHECK">
+      Before writing any operator-facing artifact, recall the language rules —
+      `AX_OPERATOR_DIALOGUE_STYLE` (bureaucratic noun-for-verb phrasing, literal calque, bookish word)
+      and `AX_READER_WITHOUT_SESSION_CONTEXT` (a branch name, «как обсуждали», a session-plan label) —
+      and hold the text about to be written to them. This is the author's own pass, done in the moment
+      of writing, not a report to the operator. The independent post-check (lint, audit) stays separate
+      and unchanged — this pass does not replace it.
+    </Axiom>
+  </BeliefState>
+
+  <Contracts>
+    <Contract id="DEVIATION_RECORD_FORMAT">
+      A disputed autonomous decision is one durable line carrying what, why, and where. Record it once
+      in the artifact owner that a fresh agent already reads; never create a deviation sidecar or copy
+      the same fact into both logs.
+
+      - Spec authoring or architecture: append one canonical Decision Log entry:
+        `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>) [verdict: pending-operator]`.
+      - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
+      - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
+        `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+
+      Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
+      re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
+      choice and continue. Operator review happens once, after the whole batch and its audits.
+
+      `verdict` is a closed token: `pending-operator` (the default and the only open state), `accepted`,
+      `rework`, or `rolled-back`. Resolution edits this existing Decision Log line through
+      `sdd-log deviation-verdict`; only `pending-operator` transitions to a terminal verdict, and a
+      terminal verdict is never rewritten to a different terminal state. It never creates another
+      journal or sidecar.
+    </Contract>
+  </Contracts>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_CREATE">
+      <Goal>Create actual module artifacts first.</Goal>
+      <Action>
+        Resolve initial/add/refine from disk once. For each new cohesive module, call the ToolCall
+        before reading optional formats. A function/fix scope creates one Function/Service module
+        without invented Port or parallel owner.
+        <ToolCall owner="this-step" result="moduleManifest">npx gennady sdd-new module --scope <scope> --module <module></ToolCall> Inputs <scope>, <module>: scope and cohesive module name resolved in this step. Use moduleManifest.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_ORIENT">
+      <Goal>Reuse existing ownership and dependencies.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="orientation">npx gennady sdd-orient <module-spec-path></ToolCall> Inputs <module-spec-path>: exact created path from the STEP_0_CREATE moduleManifest, or the existing module spec path read in that step. Use orientation before portal registration.
+        `sdd-orient` is the only unconditional foreign-context read. Depth here is proportional to
+        the confirmed SCALE, never self-assessed (`AX_SCALE_PROPORTIONAL_DEPTH`):
+        <LogicSwitch on="SCALE and orientation ambiguity">
+        - WHEN SCALE is `fix` or `function` AND orientation exposes no real ambiguity -> EXPRESS:
+          skip interview, research, and registry protocols entirely — no gate is dropped,
+          STEP_4_CHECK and STEP_5_CLOSE still run in full.
+        - WHEN SCALE is `product`, or orientation exposes a real ambiguity -> load interview,
+          research, or registry protocols as needed.
+        </LogicSwitch>
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_FILL">
+      <Goal>Generate and write the complete module specification once.</Goal>
+      <Action>
+        Retain every SECTION marker. Replace every guidance/instructional comment with authored
+        content; remove all such comments before Write. Keep a closed inventory, one owner for
+        shared files/errors, public surfaces, per-operation DbC, file structure, and negative behavior.
+        The scope owns its requirement IDs. With no narrower obligation write
+        `No module-specific requirements. Implements parent requirements: <IDs>.`
+        A disputed autonomous boundary choice is one module Decision Log line per
+        `DEVIATION_RECORD_FORMAT`; a zero-new-information decision continues without a dialogue stop.
+        Per `AX_REFINE_MODULE_PRESERVES_CONTRACTS`, removing a public entity or weakening a
+        postcondition is a breaking change: it needs a Decision Log entry with operator-confirmed
+        `Risk accepted` plus a Pivot Invalidation List naming every consumer module (the siblings
+        whose Inter-Module Dependencies edge points at this one) as a `refine-module` target.
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/formats/pivot-formats.xml")` gives the list format.
+        `Edit`, `Patch`, and per-section writes are forbidden in authoring.
+
+        Procedure (pseudocode, not a shell script):
+          skeleton := Read(on-disk skeleton) once
+          document := compose COMPLETE module in memory
+            when filling entity-inventory, entity-surface, or DbC:
+              read its format only from that owning section's comments, at that moment
+          before writing: run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`
+          Write(whole file, document) exactly ONE time, replacing skeleton
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_RECONCILE_MAP">
+      <Goal>Make the scope Module Map match actual module files.</Goal>
+      <Action>
+        Validate that the scope's already generated whole document names the exact relative module
+        links and dependency direction. Do not patch its Module Map here: the scope writer owns that
+        map, and authoring never creates a second sectional writer.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_CHECK">
+      <Goal>Consume mechanical draft receipts.</Goal>
+      <Action>
+        <ToolCall owner="this-step" result="moduleReceipt">npx gennady sdd-check --spec <module-spec-path> --authoring</ToolCall> Inputs <module-spec-path>: exact path from moduleManifest. Use moduleReceipt.
+        The receipt auto-fixes trivial format. If a content hint remains, report authoring incomplete;
+        never switch to sectional Edit/Patch repair. Rerun once only after checker auto-fix for the
+        final receipt. For scale=function|fix, check
+        the scope and its one module in this same pass and treat both receipts as one manifest result.
+      </Action>
+    </Step>
+
+    <ScalePath when="scale=function|fix">
+      One Function/Service module without invented Port/Adapter; one authoring pass, one combined
+      manifest, no repeated boundary discussion.
+    </ScalePath>
+
+    <Step id="STEP_5_CLOSE">
+      <Goal>Make module authoring completion durable.</Goal>
+      <Action>
+        Only after the final moduleReceipt has no hints, close authoring atomically.
+        <ToolCall owner="this-step" result="moduleAuthoringReceipt">npx gennady sdd-log &lt;module-spec-path&gt; authoring-complete</ToolCall> Inputs &lt;module-spec-path&gt;: exact checked path from STEP_4_CHECK. Use moduleAuthoringReceipt.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_HANDOFF">
+      <Goal>Leave an actual checked hierarchy.</Goal>
+      <Action>
+        If an operator explicitly requested live interaction, lazily
+        `READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/authoring-interactive.directive.xml")`.
+        Otherwise record deviations and continue to the mechanical close/scaffold route.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+</SddModule>

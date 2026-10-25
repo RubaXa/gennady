@@ -1,0 +1,151 @@
+// Mechanical post-run export only. NEVER invoke before the owner confirms all 24 and final cleanup.
+// node export-format2.mjs --archive-root /absolute/existing-pr-worktree/ai/flow-eval/results/authoring-campaigns/format2-oct23
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { join, dirname, relative, resolve, isAbsolute } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const own = fs.realpathSync(dirname(fileURLToPath(import.meta.url)));
+const args = process.argv.slice(2);
+const fail = code => { throw new Error(code); };
+const hash = value => createHash('sha256').update(value).digest('hex');
+const inside = (root, path) => { const rel = relative(root, path); return rel !== '' && rel !== '..' && !rel.startsWith('../') && !isAbsolute(rel); };
+if (Number(process.versions.node.split('.')[0]) !== 22 || args.length !== 2 || args[0] !== '--archive-root' || !isAbsolute(args[1])) fail('USAGE_NODE22_ARCHIVE_ROOT_ABSOLUTE');
+const out = resolve(args[1]);
+const suffix = '/ai/flow-eval/results/authoring-campaigns/format2-oct23';
+if (!out.endsWith(suffix) || inside(own, out) || !/^\/private\/tmp\/gennady-format-repeat-[A-Za-z0-9.-]+$/.test(own)) fail('UNSAFE_EXPORT_ROOT');
+const repo = out.slice(0, -suffix.length);
+if (!fs.existsSync(join(repo, '.git')) || fs.realpathSync(repo) !== repo) fail('EXISTING_PR_WORKTREE_REQUIRED');
+for (let p = out; p !== repo; p = dirname(p)) if (fs.existsSync(p) && (fs.lstatSync(p).isSymbolicLink() || fs.realpathSync(p) !== p)) fail('ARCHIVE_PATH_ALIAS');
+if (fs.existsSync(out) && fs.readdirSync(out).some(name => name !== 'REPORT.md')) fail('ARCHIVE_ALREADY_POPULATED');
+const bounded = path => { const s = fs.lstatSync(path); if (!s.isFile() || s.isSymbolicLink() || s.size > 8 * 1024 * 1024) fail('UNSAFE_OR_OVERSIZE_SOURCE_FILE'); return fs.readFileSync(path); };
+const json = path => JSON.parse(bounded(path).toString('utf8'));
+const configBytes = bounded(join(own, 'config.json')), config = JSON.parse(configBytes);
+const preregBytes = bounded(join(own, 'preregistered-protocol.json')), prereg = JSON.parse(preregBytes);
+const protocol = json(join(own, 'controller-protocol.json')), batch = json(join(own, 'batch.json'));
+if (config.ownRoot !== own || config.attempts?.length !== 24 || batch.planned !== 24 || batch.dispatched !== 24 || batch.recorded !== 24 || batch.rows?.length !== 24 || protocol.planned !== 24 || protocol.configSha256 !== hash(configBytes) || protocol.preregistrationSha256 !== hash(preregBytes)) fail('COMPLETE24_BOUND_COLLECTION_REQUIRED');
+if (hash(bounded(join(own, 'controller.mjs'))) !== prereg.controlProgram?.sha256 || hash(bounded(join(own, 'prepare-campaign.mts'))) !== prereg.controlProgram?.preparationSha256 || prereg.offlineReporting?.path !== 'offline-report.mts' || hash(bounded(join(own, 'offline-report.mts'))) !== prereg.offlineReporting?.sha256) fail('FROZEN_HELPER_IDENTITY_DRIFT');
+const permanent = resolve(config.permanent), report = join(own, 'report-v1');
+if (!inside(own, permanent) || fs.realpathSync(permanent) !== permanent || fs.realpathSync(report) !== report) fail('UNSAFE_RESULT_ROOT');
+const raw = json(join(report, 'raw-metrics.json'));
+if (raw.planned !== 24 || raw.recordedPrimary !== 24 || raw.collectionComplete !== true) fail('FULL24_OFFLINE_REPORT_REQUIRED');
+const reportBinding = json(join(report, 'bindings.json'));
+if (reportBinding.configSha256 !== hash(configBytes) || reportBinding.preregistrationSha256 !== hash(preregBytes) || reportBinding.analysisProgramSha256 !== prereg.offlineReporting.sha256) fail('OFFLINE_REPORT_CAMPAIGN_BINDING_MISMATCH');
+if (JSON.stringify(raw.attempts.filter(r => !r.missing).map(r => r.scenarioId).sort()) !== JSON.stringify(config.attempts.map(a => a.scenario.id).sort())) fail('OFFLINE_REPORT_SCENARIO_SET_MISMATCH');
+for (const arm of ['baseline', 'prose', 'pseudocode', 'observation']) if (hash(bounded(join(report, `${arm}.input.json`))) !== reportBinding.replayInputs?.[`${arm}.input.json`]?.sha256) fail('PORTABLE_INPUT_HASH_DRIFT');
+const expectedIndices = Array.from({ length: 24 }, (_, i) => `${i}.json`).sort();
+if (JSON.stringify(fs.readdirSync(join(own, 'records')).sort()) !== JSON.stringify(expectedIndices)) fail('EXACT_CONTROLLER_RECORD_SET_REQUIRED');
+const records = expectedIndices.map(name => json(join(own, 'records', name))).sort((a, b) => a.index - b.index);
+if (records.some((r, index) => r.index !== index)) fail('CONTROLLER_RECORD_INDEX_MISMATCH');
+for (const r of records) {
+  const a = config.attempts[r.index], frozen = protocol.attempts[r.index];
+  if (!a || r.scenarioId !== a.scenario.id || r.sourceSha !== frozen?.sourceSha || frozen.id !== r.scenarioId || r.persistence !== true || r.tempRemoved !== true || !Array.isArray(r.cleanupErrors) || r.cleanupErrors.length || fs.existsSync(r.directory) || !inside(join(own, 'runs'), r.directory)) fail('PERSISTED_CLEAN_ATTEMPTS_REQUIRED');
+  if (!Array.isArray(r.sessions) || r.sessions.some(s => s.deleted !== true || fs.existsSync(s.directory)) || (r.knownSessions ?? []).some(s => !r.sessions.some(deleted => deleted.id === s.id && deleted.deleted))) fail('OWNED_SESSION_DELETION_PROOF_REQUIRED');
+  if (typeof r.primary?.directory !== 'string' || !/^[A-Za-z0-9_.-]+$/.test(r.primary.directory)) fail('UNSAFE_PRIMARY_IDENTITY');
+  const dir = join(permanent, r.primary.directory);
+  if (hash(bounded(join(dir, 'summary.json'))) !== r.primary.summarySha256 || hash(bounded(join(dir, 'trajectory.json'))) !== r.primary.trajectorySha256) fail('RAW_PRIMARY_HASH_DRIFT');
+}
+const expectedResults = records.map(r => r.primary.directory).sort();
+if (JSON.stringify(fs.readdirSync(permanent).sort()) !== JSON.stringify(expectedResults)) fail('FOREIGN_OR_MISSING_PERMANENT_RESULT');
+const privateDirs = ['server-config', 'server-data', 'server-cache', 'server-state', 'server-home', 'server-runtime', 'server-tmp', 'server-bun', 'server-bun-cache', 'server-npm-cache'];
+if (privateDirs.some(name => fs.existsSync(join(own, name)))) fail('FINAL_PRIVATE_STATE_CLEANUP_REQUIRED');
+const pid = json(join(own, 'server-pid.json'));
+const alive = id => { if (!Number.isSafeInteger(id) || id <= 1) fail('UNSAFE_SERVER_PID'); try { process.kill(id, 0); return true; } catch (error) { if (error.code !== 'ESRCH') fail('SERVER_STOP_NOT_PROVEN'); return false; } };
+if (alive(pid.serverPid) || alive(pid.launcherPid)) fail('OWNED_SERVER_STILL_PRESENT');
+function journalPermissionEntries(document) {
+  const expected = ['plan', 'prose', 'pseudocode', 'observation'].map(arm => `${arm}/ai/flow-eval/docs/journal/EXPERIMENTS-LOG.md`).sort();
+  if (!document || !document.before || typeof document.before !== 'object' || Array.isArray(document.before) || document.restorationRequired !== true || document.during !== '444' || JSON.stringify(Object.keys(document.before).sort()) !== JSON.stringify(expected)) fail('EXACT_FOUR_JOURNAL_PERMISSION_RECORDS_REQUIRED');
+  return expected.map(relativePath => {
+    const value = document.before[relativePath];
+    if (typeof value !== 'string' || !/^[0-7]{3}$/.test(value) || value !== '644') fail('EXPECTED_JOURNAL_MODE_644_REQUIRED');
+    return { path: join(own, relativePath), relativePath, mode: Number.parseInt(value, 8) };
+  });
+}
+const permissions = journalPermissionEntries(json(join(own, 'journal-permissions.json')));
+if (permissions.some(p => !inside(own, p.path) || !fs.existsSync(p.path) || !fs.lstatSync(p.path).isFile() || fs.lstatSync(p.path).isSymbolicLink() || fs.realpathSync(p.path) !== p.path || (fs.statSync(p.path).mode & 0o777) !== p.mode)) fail('RESTORED_CANONICAL_SOURCE_JOURNALS_MODE_644_REQUIRED');
+
+const mappings = [], staged = new Map();
+let totalBytes = 0;
+function stage(path, data, original) {
+  if (isAbsolute(path) || path.split('/').some(s => s === '..' || !s) || !inside(out, resolve(out, path))) fail('UNSAFE_ARCHIVE_ENTRY');
+  if (data.length > 8 * 1024 * 1024) fail('EXPORT_FILE_BOUND');
+  if (staged.has(path)) { if (hash(staged.get(path)) !== hash(data)) fail('NONIDENTICAL_DUPLICATE_RESULT'); }
+  else { totalBytes += data.length; if (staged.size >= 1200 || totalBytes > 64 * 1024 * 1024) fail('BOUNDED_ARCHIVE_LIMIT'); staged.set(path, data); }
+  if (original) mappings.push({ path, bytes: data.length, sha256: hash(data), original });
+}
+function copyTree(source, destination, allow, prefix = '', depth = 0) {
+  if (depth > 32 || fs.lstatSync(source).isSymbolicLink()) fail('UNSAFE_EXPORT_TREE');
+  for (const name of fs.readdirSync(source).sort()) {
+    const rel = prefix ? `${prefix}/${name}` : name, path = join(source, name), stat = fs.lstatSync(path);
+    if (stat.isSymbolicLink()) fail('SOURCE_SYMLINK_NOT_EXPORTED');
+    if (stat.isDirectory()) copyTree(path, destination, allow, rel, depth + 1);
+    else { if (!allow(rel)) fail('PERMANENT_OR_REPORT_PATH_NOT_ALLOWLISTED'); stage(`${destination}/${rel}`, bounded(path), path); }
+  }
+}
+const allowPermanent = rel => {
+  if (rel.split('/').some(s => ['node_modules', '.git', '.cache'].includes(s))) return false;
+  if (['summary.json', 'trajectory.json', 'judge.md', 'reflection.json'].includes(rel)) return true;
+  return /^(specs|inputs|refs|reference|references|artifacts|transcript|transcripts)\//.test(rel) || /^(transcript|messages|events)([.-][A-Za-z0-9_-]+)*\.(json|jsonl|ndjson|txt|md)$/.test(rel);
+};
+const reportNames = new Set(['README.md', 'bindings.json', 'raw-metrics.json', 'comparisons.json', 'hypothesis-effects.json', 'contract-observations.json']);
+copyTree(report, 'report-v1', rel => {
+  if (reportNames.has(rel) || /^(baseline|prose|pseudocode|observation)\.(input|report)\.json$/.test(rel) || /^(baseline|prose|pseudocode|observation)\.(trajectory|calls)\.md$/.test(rel)) return true;
+  const match = /^permanent\/([^/]+)\/(.+)$/.exec(rel);
+  return Boolean(match && expectedResults.includes(match[1]) && allowPermanent(match[2]));
+});
+for (const dir of expectedResults) copyTree(join(permanent, dir), `report-v1/permanent/${dir}`, allowPermanent);
+for (const file of ['config.json', 'controller-protocol.json', 'preregistered-protocol.json', 'variants.json', 'batch.json', 'REPEAT-CONTRACT.md', 'journal-permissions.json']) stage(`protocol/${file}`, bounded(join(own, file)), join(own, file));
+for (const file of ['lifecycle-smoke.json']) if (fs.existsSync(join(own, file))) stage(`protocol/${file}`, bounded(join(own, file)), join(own, file));
+for (const file of ['controller.mjs', 'prepare-campaign.mts', 'offline-report.mts', 'controller-checks.mjs', 'campaign-design-checks.mjs', 'lifecycle-smoke.mjs', 'server-launcher.mjs', 'export-format2.mjs', 'finalize-owned-runtime.mjs', 'replay-calibrated-v4.mts', 'portable-replay-format2.mjs']) if (fs.existsSync(join(own, file))) stage(`code/${file}.txt`, bounded(join(own, file)), join(own, file));
+const recalibration = json(join(own, 'calibrated-v4-replay.json'));
+const revisedOracle = join(repo, 'ai/flow-eval/authoring-benchmark.ts');
+if (recalibration.oracleDefault !== 'calibrated-v4' || recalibration.oracleSHA256 !== hash(bounded(revisedOracle)) || recalibration.historicalGradesReplaced !== false || recalibration.liveModelCalls !== 0 || recalibration.cleanup?.fixturesCreated !== 116 || recalibration.cleanup?.fixturesRemoved !== 116 || recalibration.cleanup?.scratchRemoved !== true) fail('POST_RUN_CALIBRATION_PROOF_REQUIRED');
+stage('recalibration/calibrated-v4-replay.json', bounded(join(own, 'calibrated-v4-replay.json')), join(own, 'calibrated-v4-replay.json'));
+stage('code/authoring-benchmark.calibrated-v4.ts.txt', bounded(revisedOracle), revisedOracle);
+stage('replay-proof.json', bounded(join(own, 'replay-proof.json')), join(own, 'replay-proof.json'));
+const runtimeCleanup = json(join(own, 'runtime-cleanup-summary.json'));
+if (runtimeCleanup.status !== 'complete' || runtimeCleanup.attemptsFinalized !== 24 || runtimeCleanup.errors?.length !== 0 || runtimeCleanup.server?.stopped !== true) fail('RUNTIME_CLEANUP_PROOF_REQUIRED');
+stage('runtime-cleanup-summary.json', bounded(join(own, 'runtime-cleanup-summary.json')), join(own, 'runtime-cleanup-summary.json'));
+for (let index = 0; index < 24; index++) {
+  stage(`records/${index}.json`, bounded(join(own, 'records', `${index}.json`)), join(own, 'records', `${index}.json`));
+  stage(`controller-output/${index}.txt`, bounded(join(own, 'logs', `${index}.log`)), join(own, 'logs', `${index}.log`));
+}
+const gitEnv = { ...process.env }; for (const key of Object.keys(gitEnv)) if (key.startsWith('GIT_')) delete gitEnv[key];
+const git = argv => execFileSync('git', argv, { cwd: repo, env: gitEnv, timeout: 15000, maxBuffer: 4 * 1024 * 1024 });
+const promptPaths = ['ai/kit/templates/sdd-v2/module.directive.hbs', 'ai/directives/sdd-v2/module.directive.xml'];
+if (prereg.sources?.length !== 4 || new Set(prereg.sources.map(s => s.arm)).size !== 4) fail('EXACT_FROZEN_ARM_SET_REQUIRED');
+for (const source of prereg.sources) {
+  if (!['baseline', 'prose', 'pseudocode', 'observation'].includes(source.arm) || !/^[a-f0-9]{40}$/.test(source.sourceSHA)) fail('UNSAFE_SOURCE_IDENTITY');
+  for (const path of promptPaths) {
+    const data = git(['show', `${source.sourceSHA}:${path}`]), text = data.toString('utf8');
+    const step = text.indexOf('<Step id="STEP_2_FILL">'), start = text.indexOf('<Action>', step) + '<Action>'.length, end = text.indexOf('</Action>', start);
+    if (step < 0 || start < step || end < start) fail('UNAMBIGUOUS_ACTION_SNAPSHOT_REQUIRED');
+    const kind = path.endsWith('.hbs') ? 'source' : 'generated';
+    stage(`variants/${source.arm}/${kind}-module-directive.txt`, data, `git:${source.sourceSHA}:${path}`);
+    stage(`variants/${source.arm}/${kind}-step2-action.txt`, Buffer.from(text.slice(start, end)), `lexical Action slice of git:${source.sourceSHA}:${path}`);
+  }
+  const base = prereg.baselineNormalization?.frozenCodeSourceSHA;
+  if (!/^[a-f0-9]{40}$/.test(base)) fail('FROZEN_CODE_BASE_REQUIRED');
+  stage(`variants/${source.arm}/from-frozen-source.diff.txt`, git(['diff', '--binary', '--no-ext-diff', base, source.sourceSHA, '--', ...promptPaths]), `git-diff:${base}..${source.sourceSHA}:two-owner-paths`);
+}
+const cleanup = { schema: 'gennady.authoring-public-cleanup-proof.2', observedAt: new Date().toISOString(), evidenceBasis: 'Original recorded API acknowledgements and local read-only absence/permission/PID checks; no post-shutdown SDK query', attempts: records.map(r => ({ index: r.index, persistence: r.persistence, tempRemoved: r.tempRemoved, cleanupErrors: r.cleanupErrors, caseDirectoryAbsent: !fs.existsSync(r.directory), sessionDeletionAcknowledgements: r.sessions.map(s => ({ ...s, directoryAbsent: !fs.existsSync(s.directory) })) })), sessionDeletionAcknowledgements: records.reduce((n, r) => n + r.sessions.length, 0), journals: permissions.map(p => ({ ...p, actualMode: fs.statSync(p.path).mode & 0o777, restored: true })), ownedServer: { launcherPid: pid.launcherPid, serverPid: pid.serverPid, launcherPidPresent: false, serverPidPresent: false }, privateDirectories: privateDirs.map(name => ({ path: join(own, name), absent: true })) };
+stage('cleanup-proof.json', Buffer.from(JSON.stringify(cleanup, null, 2) + '\n'));
+stage('original-byte-mappings.json', Buffer.from(JSON.stringify(mappings, null, 2) + '\n'));
+if (fs.existsSync(join(out, 'REPORT.md'))) stage('REPORT.md', bounded(join(out, 'REPORT.md')));
+// Scan actual configured/environment credential values in memory; never export or print them.
+const secrets = [], sensitive = /api.?key|secret|password|authorization|token/i;
+function collect(value, key = '') { if (typeof value === 'string' && sensitive.test(key) && value.length >= 12 && !value.startsWith('{env:')) secrets.push(value); else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) collect(v, k); }
+const globalConfig = '/Users/k.lebedev/.config/opencode/opencode.json';
+if (fs.existsSync(globalConfig)) collect(JSON.parse(bounded(globalConfig)));
+for (const [key, value] of Object.entries(process.env)) if (sensitive.test(key) && value && value.length >= 12) secrets.push(value);
+for (const data of staged.values()) { const text = data.toString('utf8'); if (secrets.some(secret => text.includes(secret)) || /Bearer\s+[A-Za-z0-9._-]{24,}/.test(text)) fail('SECRET_SCAN_BLOCKED_EXPORT'); }
+const ignore = spawnSync('git', ['check-ignore', '--no-index', '--stdin'], { cwd: repo, env: gitEnv, input: [...staged.keys()].map(path => relative(repo, join(out, path))).join('\n') + '\n', encoding: 'utf8', timeout: 15000, maxBuffer: 1024 * 1024 });
+if (ignore.error || ignore.status !== 1 || ignore.stdout.trim()) fail('ARCHIVE_CONTAINS_GITIGNORED_PATH');
+// Nothing is materialized before all source/proof/allowlist/secret/ignore checks pass.
+fs.mkdirSync(out, { recursive: true });
+for (const [path, data] of staged) { const target = join(out, path); fs.mkdirSync(dirname(target), { recursive: true }); if (fs.existsSync(target)) { if (hash(bounded(target)) !== hash(data)) fail('EXISTING_ARCHIVE_BYTE_CONFLICT'); } else fs.writeFileSync(target, data, { flag: 'wx' }); }
+const files = [...staged].map(([path, data]) => ({ path, bytes: data.length, sha256: hash(data) })).sort((a, b) => a.path.localeCompare(b.path));
+const manifest = { schema: 'gennady.authoring-campaign-archive.1', campaign: 'format2-oct23', createdAt: new Date().toISOString(), planned: 24, recordedPrimary: 24, sourceCommit: prereg.baselineNormalization.frozenCodeSourceSHA, files, bytesExcludingManifest: totalBytes, originalByteMappings: 'original-byte-mappings.json', selfExclusion: 'manifest.json only; authored additions require an explicit regenerated inventory', safeExportChecks: { regularFilesOnly: true, symlinks: 0, knownCredentialValuesFound: 0, bearerCredentialPatternsFound: 0, privateServerContentCopied: false, gitIgnoredArchiveFiles: [] }, excludedPrivateRoots: [...privateDirs, 'node_modules', 'dist'] };
+fs.writeFileSync(join(out, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx' });
+console.log(JSON.stringify({ archive: out, files: files.length, bytes: totalBytes, primaryRecords: 24, noQualitySuccessAsserted: true, manifestSha256: hash(bounded(join(out, 'manifest.json'))), modelCalls: 0 }));

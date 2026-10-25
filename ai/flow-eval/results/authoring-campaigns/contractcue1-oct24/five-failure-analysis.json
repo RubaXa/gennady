@@ -1,0 +1,328 @@
+{
+  "schema": "gennady.toolfact1-five-failure-analysis.1",
+  "sourceCampaign": "toolfact1-oct24",
+  "sourceManifestSha256": "da490fd53999f700fbe6068b274061b4e625726f9892cf7ba2f23f1110e1ff85",
+  "authority": "Observed final artifact contradictions and cited trace facts; not private reasoning or proof of treatment causation.",
+  "rows": [
+    {
+      "index": 1,
+      "kind": "lost-universal-domain-qualifier",
+      "witness": "fooé",
+      "expected": "TypeError",
+      "claim": "содержащая хотя бы один ASCII-символ",
+      "meaning": "Positive requirement includes mixed non-ASCII input; negative requirement rejects it. DbC is stricter but does not define requirement precedence.",
+      "caseId": "module-flat",
+      "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r1",
+      "artifact": {
+        "path": "report-v1/permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r1/specs/token/normalize/normalize.spec.md",
+        "sha256": "668136d1137a4a2886208b84bbe7a558b7c82c23d9df866afdadafa128dd2532",
+        "quote": "содержащая хотя бы один ASCII-символ"
+      },
+      "parentSha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+      "judgeSha256": "c55152250555bf146052c1e422d5d085ac204e79b1e34b3620a89079eb8ed51a",
+      "reflectionSha256": "5d62346f4579721cde24eb6b8711295623d5e7f261f27b275589d2c4dcc09161",
+      "traceSha256": "a2fbf902b75c0cafc8fef41292767590e3d7744b7eee6e329e9c05b464de873d",
+      "observedCalls": [
+        {
+          "callId": "call_00_TdNQPvunLuFwKOGUZCqs1620",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792840379817,
+          "arg": "{\"filePath\":\"./inputs/brief.md\"}"
+        },
+        {
+          "callId": "call_01_7seGkQAKyTGl4AyY6BG93255",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792840383968,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module normalize\"}"
+        },
+        {
+          "callId": "call_01_pO6WXua4uJZQNeADHUa20859",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792840385836,
+          "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}"
+        },
+        {
+          "callId": "call_00_VSbWHGrRWdv93aNYasHX2085",
+          "tool": "write",
+          "status": "completed",
+          "startedAt": 1792840420650,
+          "arg": "{\"filePath\":\"./specs/token/normalize/normalize.spec.md\"}"
+        },
+        {
+          "callId": "call_00_QJy3ylPx4zzbuZYlJp2I7963",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792840422531,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring\"}"
+        }
+      ],
+      "parentReadBeforeWrite": true,
+      "completedNativeWrites": 1,
+      "rawSemanticGrade": "fail",
+      "rawGradesUnchanged": true,
+      "additionalOracleErratum": "Raw pending-approval complaint is false and already separately corrected by calibrated-v6. It does not remove the real requirement contradiction."
+    },
+    {
+      "index": 9,
+      "kind": "lost-universal-domain-qualifier",
+      "witness": "aé",
+      "expected": "TypeError",
+      "claim": "содержащая хотя бы один ASCII-символ",
+      "meaning": "Same overlap: positive Trigger and negative rule disagree despite all-ASCII DbC Pre.",
+      "caseId": "module-flat",
+      "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r3",
+      "artifact": {
+        "path": "report-v1/permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r3/specs/token/normalize/normalize.spec.md",
+        "sha256": "9cd78cebe69b2677e3b4af528cda782104ce6391d93e354b3f3a7a977f10ce5b",
+        "quote": "содержащая хотя бы один ASCII-символ"
+      },
+      "parentSha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+      "judgeSha256": "4b30d373e2d91f9c747ce894cc72e0fa0f9dfc3675d9984129905a37ba3d26bf",
+      "reflectionSha256": "26023eab6bea237472f3bb3102fbd56f42d2c7308665d615645c3ce29243112f",
+      "traceSha256": "aa2cbcf57de73e0018d6a3ce1db964b7f190e14e7f3d9eb05834c63f38de5bef",
+      "observedCalls": [
+        {
+          "callId": "call_00_ET_2e8i3WxWm5JiVrFl04P98206",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792841541429,
+          "arg": "{\"filePath\":\"./inputs/brief.md\"}"
+        },
+        {
+          "callId": "call_00_MFlDr0zUGPFK8XPITDLe0677",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792841544845,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module normalize\",\"workdir\":\".\"}"
+        },
+        {
+          "callId": "call_01_CQXgllDg1IUi8GbaymXS3781",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792841546843,
+          "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}"
+        },
+        {
+          "callId": "call_00_Fzs0gEkHMu18yKbjlPcB9193",
+          "tool": "write",
+          "status": "completed",
+          "startedAt": 1792841634494,
+          "arg": "{\"filePath\":\"./specs/token/normalize/normalize.spec.md\"}"
+        },
+        {
+          "callId": "call_00_DW6bLVWEFicav6SxzMxj3993",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792841636908,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}"
+        },
+        {
+          "callId": "call_00_MmHmhEsu5lXspDVX5Zm12843",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792841645283,
+          "arg": "{\"command\":\"find specs/token/normalize -maxdepth 2 -type f -print; npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}"
+        }
+      ],
+      "parentReadBeforeWrite": true,
+      "completedNativeWrites": 1,
+      "rawSemanticGrade": "fail",
+      "rawGradesUnchanged": true,
+      "additionalOracleErratum": null
+    },
+    {
+      "index": 12,
+      "kind": "lost-universal-domain-qualifier",
+      "witness": "aé",
+      "expected": "TypeError",
+      "claim": "содержащая хотя бы один ASCII-символ",
+      "meaning": "Parent all-ASCII domain broadened when paraphrased; no precedence rule resolves it.",
+      "caseId": "module-flat",
+      "scenarioId": "authoring-toolfact1-oct24-module-flat-facts-r4",
+      "artifact": {
+        "path": "report-v1/permanent/2026-10-24-authoring-toolfact1-oct24-module-flat-facts-r4/specs/token/normalize/normalize.spec.md",
+        "sha256": "1c055fc1c00b21e697ebdd008e8ced241673e6c68eda1fe4136232f7d501f432",
+        "quote": "содержащая хотя бы один ASCII-символ"
+      },
+      "parentSha256": "b290de149892fccb50cc9ace712421f8c4cdf19e41037b51adff798efc71939b",
+      "judgeSha256": "5f26accee19ed6b9572c7e975c4527e1f152a394b0fe3fda52bff078b9a5227f",
+      "reflectionSha256": "5b9187ea4fd2404313a92a9d223466ad6668c3dc448c35f903b37f11b4671624",
+      "traceSha256": "d1362859ef3040d78e37f0a368dcf497fdce9464e05a80a2d8559b2261233a85",
+      "observedCalls": [
+        {
+          "callId": "call_00_ET_V8Wu4SUx9QIR6nU7IMqe8902",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792841901507,
+          "arg": "{\"filePath\":\"./inputs/brief.md\"}"
+        },
+        {
+          "callId": "call_00_rkAMVfOZlFawntBZcTku4719",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792841905838,
+          "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}"
+        },
+        {
+          "callId": "call_00_HbJxivZBXPVDsZJSpTGS3313",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792841908648,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module normalize\",\"workdir\":\".\"}"
+        },
+        {
+          "callId": "call_00_SznHZwGZAmZcbLOSceJh7818",
+          "tool": "write",
+          "status": "completed",
+          "startedAt": 1792841971240,
+          "arg": "{\"filePath\":\"./specs/token/normalize/normalize.spec.md\"}"
+        },
+        {
+          "callId": "call_00_eAat8arbDROTn47Jf4D93663",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792841973800,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}"
+        }
+      ],
+      "parentReadBeforeWrite": true,
+      "completedNativeWrites": 1,
+      "rawSemanticGrade": "fail",
+      "rawGradesUnchanged": true,
+      "additionalOracleErratum": null
+    },
+    {
+      "index": 14,
+      "kind": "invented-narrower-domain",
+      "witness": "a1",
+      "expected": "a1",
+      "claim": "хотя бы одну ASCII-букву и не содержит символов вне ASCII-пробелов, underscore и hyphen",
+      "meaning": "Required letter is excluded by the same allowed set. Digits/punctuation allowed by parent are also lost; even successful table example contradicts Trigger.",
+      "caseId": "module-nested",
+      "scenarioId": "authoring-toolfact1-oct24-module-nested-facts-r4",
+      "artifact": {
+        "path": "report-v1/permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r4/specs/token/pipeline/normalize/normalize.spec.md",
+        "sha256": "3d342569197ee6227ec74af78740d8c599930b234545cef77e9df66bea8193d2",
+        "quote": "хотя бы одну ASCII-букву и не содержит символов вне ASCII-пробелов, underscore и hyphen"
+      },
+      "parentSha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+      "judgeSha256": "648b4b148f6328a770626f19e8ca48ca4fa60075060999f47ae75987d63820b2",
+      "reflectionSha256": "3440dd63998a813ac9c1125fbb66bbaf9acebd04ca4643a05c22558d31599ab3",
+      "traceSha256": "815f93534eff3041d673117d7ae2c9099f5fd59fbd031886924cdcf269bf117a",
+      "observedCalls": [
+        {
+          "callId": "call_00_ET_2i6Hk8rxh8QBznFfnCt24047",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792842172633,
+          "arg": "{\"filePath\":\"./inputs/brief.md\"}"
+        },
+        {
+          "callId": "call_00_FcUCozFIgx8dIPkEkyIQ8568",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792842177507,
+          "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}"
+        },
+        {
+          "callId": "call_00_6YPkIhYkMXIvpdDSueCr3521",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792842180526,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module pipeline/normalize\",\"workdir\":\".\"}"
+        },
+        {
+          "callId": "call_00_AucSM2eH8r6sitZRvPhD0261",
+          "tool": "write",
+          "status": "completed",
+          "startedAt": 1792842224793,
+          "arg": "{\"filePath\":\"./specs/token/pipeline/normalize/normalize.spec.md\"}"
+        },
+        {
+          "callId": "call_00_r82Fuw9ryDuOpgcrAGdg3178",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792842226805,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring\",\"workdir\":\".\"}"
+        }
+      ],
+      "parentReadBeforeWrite": true,
+      "completedNativeWrites": 1,
+      "rawSemanticGrade": "fail",
+      "rawGradesUnchanged": true,
+      "additionalOracleErratum": null
+    },
+    {
+      "index": 22,
+      "kind": "invented-stronger-postcondition",
+      "witness": " -a",
+      "expected": "-a",
+      "claim": "не начинается и не заканчивается на `-`",
+      "meaning": "Only edge ASCII spaces are trimmed; the new edge-hyphen guarantee is not source-backed.",
+      "caseId": "module-nested",
+      "scenarioId": "authoring-toolfact1-oct24-module-nested-facts-r6",
+      "artifact": {
+        "path": "report-v1/permanent/2026-10-24-authoring-toolfact1-oct24-module-nested-facts-r6/specs/token/pipeline/normalize/normalize.spec.md",
+        "sha256": "a775828586f5dde8c346ddf34c7e6ea64ca7389d92a9d58cf27233bf0c2ec174",
+        "quote": "не начинается и не заканчивается на `-`"
+      },
+      "parentSha256": "8d2399ea964c1695e1816b412a5d803427f5a288c2c701697a0bcbb3a4ade64f",
+      "judgeSha256": "8bf0b96f798db8223f1c8a9945434805b06df3da024193513a3d8c9a474d8e69",
+      "reflectionSha256": "2278a77502c29287cf77b04de386f8445627c8844b6f5566fd9dccc1feb7b8dd",
+      "traceSha256": "78b356f1ffc3244a4682b7c61178fd2d9489eaefd679ce5482ba12f80a9bb209",
+      "observedCalls": [
+        {
+          "callId": "call_00_ET_vxd8yH7PnDKjN79LUuv84134",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792843447114,
+          "arg": "{\"filePath\":\"./inputs/brief.md\"}"
+        },
+        {
+          "callId": "call_00_uonqIMTCHlDQRXuNot9r8827",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792843452436,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-new module --scope token --module pipeline/normalize\"}"
+        },
+        {
+          "callId": "call_01_U0a5mbbBTZ03GAonOMTn8270",
+          "tool": "read",
+          "status": "completed",
+          "startedAt": 1792843454279,
+          "arg": "{\"filePath\":\"./specs/token/token.spec.md\"}"
+        },
+        {
+          "callId": "call_00_eZnLmAUQp0OjyOGJg8xV0497",
+          "tool": "write",
+          "status": "completed",
+          "startedAt": 1792843503627,
+          "arg": "{\"filePath\":\"./specs/token/pipeline/normalize/normalize.spec.md\"}"
+        },
+        {
+          "callId": "call_00_Ias2rcHgFVB8cgdHKTpv4082",
+          "tool": "bash",
+          "status": "completed",
+          "startedAt": 1792843505805,
+          "arg": "{\"command\":\"npx --no-install gennady sdd-check --spec specs/token/pipeline/normalize/normalize.spec.md --authoring\"}"
+        }
+      ],
+      "parentReadBeforeWrite": true,
+      "completedNativeWrites": 1,
+      "rawSemanticGrade": "fail",
+      "rawGradesUnchanged": true,
+      "additionalOracleErratum": null
+    }
+  ],
+  "conclusions": {
+    "parentSkipped": false,
+    "commonObservedFailure": "Loss of source-contract meaning when restating across Trigger/DbC, not missing IDs/links.",
+    "reflectionLimit": "Workers mostly guessed handoff/ID/routing problems; self-report did not reliably identify independent semantic findings.",
+    "rewriteLimit": "Two completed writes in prior baseline correlate with PASS, but initial file bodies were not retained: semantic improvement from rewriting cannot be established.",
+    "nextHypothesis": "Keep mechanical facts and append one generic bounded source-domain/postcondition consistency cue in the tool output; no directive/template/domain-answer injection.",
+    "causalLimit": "New revised packet versus fresh original control; prior trials are diagnostic evidence, not fresh controls or an isolated incremental contrast."
+  }
+}

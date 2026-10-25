@@ -1315,3 +1315,87 @@ fails or no quality was set yet,`cli.ts:397`), unrelated to this batch's fix; th
   гипотез нужен новый frozen baseline. Прежние ошибочные документы и отрицательные исходы сохранены.
 - **Сырые данные и воспроизведение:** [calibration](../../results/authoring-campaigns/template-calibration-oct23/calibration.json),
   [описание и границы](../../results/authoring-campaigns/template-calibration-oct23/README.md).
+
+## 2026-10-24 — FORMAT2: 24 новых попытки, три гипотезы отклонены
+
+- **Frozen source:** `c676bb09`; candidate children меняют только STEP_2_FILL в source/generated
+  owner-файлах. `module-flat/module-nested` × 4 arm × 3 повтора, `concurrency=1`, Flash-only AI Proxy.
+- **Collection:** 24/24 complete, 644 tools, capture/model/cleanup квалифицированы 24/24;
+  никакого resampling. Исторические результаты не переиспользованы как контроль.
+- **Эффект:** prose — без экономии; pseudocode экономит действия на flat, но semantic 1/3
+  против 2/3; observation даёт небольшой flat выигрыш и nested регрессию. Не достигнуты
+  ≥10% non-cache tokens на обоих сценариях без роста tools/messages. Активные prompts не меняем.
+- **Методологические errata:** attempt 9 — false-negative «не получено», отдельно исправлен
+  v4; attempt 15 — неоднозначное смешение authoring validation/implementation execution у judge.
+  Сырые 15 PASS / 9 FAIL не переписаны; два спорных исхода не объявлены новым semantic PASS.
+- **Офлайн:** 58 документов × 2 режима = 116 очищенных фикстур; новые raw-v3 воспроизведены
+  24/24, единственная v4 разница — pending у attempt 9. 13 CLI на копии данных — byte-equal.
+- **Расход:** worker 1 283 863, judge 314 014, reflection 990 835 non-cache tokens; денежная
+  стоимость неизвестна. Серия 55m50s, source preparation/tests отдельно.
+- **Cleanup:** 48 SDK deletion acknowledgements; 24 fixtures removed; свой server остановлен,
+  десять private roots удалены, source journal modes восстановлены. Shared dependencies не тронуты.
+- **Доказательства/решения:** [полный отчёт](../../results/authoring-campaigns/format2-oct23/REPORT.md).
+
+## 2026-10-24 — FACTLINK1: факты/ссылки вместо части поиска, пакет отклонён
+
+- **Матрица:** 24 свежих live попытки, flat/nested × baseline/facts × шесть повторов;
+  Flash-only AI Proxy, concurrency=1, три AB и три BA позиции на сценарий.
+  Clean source `09c2329b`; candidate `67326bc5` меняет только два module owner-файла.
+- **Гипотеза:** недостающая механика ACR/ID, relative links и Decision Log подана сразу
+  в читаемой директиве. Это не реализация динамического факта в ответе tool/manifest.
+- **Эффект:** flat tokens −22,3%, tools −30,2%, time −24,5%; nested −4,6% / −8,5% / −1,7%.
+  Наблюдаемые ACR/DL-поиски flat 6→1 / 4→1, nested 5→6 / 4→6. Принятой общей оптимизации нет:
+  не достигнут ≥10% token target обоих кейсов, качество не доказано неухудшающимся.
+- **Качество:** raw structural 18/24; semantic 13 PASS / 11 FAIL; path 0/24 proven.
+  Четыре SECTION false-negative отдельно исправлены v5: 96/96 cleaned replay fixtures,
+  ровно relative-links changes, structural 22/24 в replay. Semantic grades не заменялись.
+  Остальные FAIL содержат реальные domain/reference/metadata finding, не только ошибки стенда.
+- **Расход:** 533 tools; worker 1 106 633, judge 355 683, reflection 852 812 non-cache tokens.
+  Денежная цена неизвестна. Серия 55m43s; время описательное, не dedicated-host causal benchmark.
+- **Очистка:** 24 fixtures, 48 SDK sessions удалены; owned server остановлен, десять private
+  roots удалены, два journal mode восстановлены. Shared dependency owner сохранён.
+  Ошибка метки порта cleanup-summary явно связана erratum, raw proof не переписан.
+- **Решение:** исходные production prompts сохраняем; candidate branch и bounded archive — evidence
+  отрицательного/частичного результата. [Полный отчёт](../../results/authoring-campaigns/factlink1-oct24/REPORT.md).
+
+## 2026-10-24 — TOOLFACT1: факты в ответе инструмента, экономия есть, пакет отклонён
+
+- **Матрица:** 24 новых live-попытки, два module cases × baseline/facts × шесть повторов;
+  clean `b30093dc`/`8bf28d29`, frozen calibrated-v5, только Flash через AI Proxy, sequential AB/BA.
+- **Переменная:** `sdd-new module` выдаёт вычисленные ID/ACR/REQ-DL syntax и точные parent links.
+  Скелеты одинаковы; директивы/шаблоны не расширялись. Dynamic output +923/+944 байта.
+- **Расход:** flat tokens −13.0%, tools −20.7%, worker time −20.3%; nested −12.9%/−8.9%/−17.5%.
+  Всего tools 305→260, worker non-cache 641 633→571 973; parent native Read 11→12, не пропускался.
+- **Качество:** semantic 12/12→7/12. Три positive ASCII/precondition overlap, одно недопустимое
+  сужение parent domain, одно выдуманное исключение крайних hyphen. Не принимаем этот пакет.
+- **Стенд:** два false-negative pending (1 и 7, обе стороны) отдельно исправлены v6;
+  48/48 replay fixtures воспроизвели raw v5, только pending-approval изменён, все удалены.
+  Semantic verdict/rationale и исходные summary не переписаны. Path proof по-прежнему 0/24 unknown.
+- **Роли:** worker 1 213 606, judge 356 853, reflection 920 421 non-cache; все 72 usage complete/Flash.
+  Всего cache-read 11 800 064; денежная цена и точный HTTP/retry count неизвестны.
+  Live-серия 58m46.5s; prep/post проверки отдельно. Время descriptive на общем хосте.
+- **Cleanup:** 24 fixtures и inactive stores + 48 SDK deletion acknowledgements; сервер остановлен,
+  десять private roots удалены, journal modes восстановлены. Shared dependencies сохранены.
+- **Решение:** рабочие prompts/CLI не меняем, вариант остаётся в экспериментальной ветке/архиве.
+  [Отчёт и каждый call](../../results/authoring-campaigns/toolfact1-oct24/REPORT.md).
+
+## 2026-10-24 — CONTRACTCUE1: source-contract cue, частично успешный пилот
+
+- Все пять TOOLFACT1 failures разобраны по документам/trace/reflection: 3 потерянных ASCII-only
+  qualifiers, 1 ошибочное сужение домена, 1 выдуманный edge-hyphen Post. Родитель прочитан в 5/5;
+  причинность «это из-за facts» не установлена, self-report не является доказательством.
+- 24 НОВЫХ попытки, `ddd26bd8`/`bab3ecc8`, Flash AI Proxy, frozen v6/AB-BA/шесть повторов.
+  Revised tool-output packet: механические факты плюс короткая generic проверка Trigger/Pre/Post
+  и boundary witness. Domain answers не инжектируются, директивы/шаблоны не увеличены.
+- Flat: tokens 57 721.5→47 146.5, tools 29→20, time 100.793→90.841s, semantic 4/6→6/6.
+  Nested: tokens 49 700.5→45 868.5, tools 25→22.5, time 103.969→84.276s, semantic 5/6→5/6.
+  Формальная цель ≥10% tokens в обоих случаях не выполнена. Один candidate semantic FAIL остался.
+- 579 calls полностью сохранены; суммарно tools 318→261, worker non-cache 645 316→584 519.
+  Все 72 role usages qualified: worker 1 229 835 / judge 366 209 / reflection 929 602 non-cache;
+  cache-read всего 12 504 832. Денежная цена/HTTP/retries unknown. Live span 62m11.3s.
+- Контроль имеет свои реальные ошибки. Baseline nested r5 disputed pending-approval FAIL сохранён
+  без regrade; generic comparator/path proofs не ослаблены. Никакой post-hoc версии grader.
+- Решение: сохранить положительный flat pilot, не включать общий пакет в production. Не выбирать
+  каталоговую глубину по benchmark и не считать шесть повторов статистической эквивалентностью.
+- Cleanup: 24 fixtures/stores, 48 SDK sessions, свой сервер и 10 private dirs удалены; journal modes
+  восстановлены, node_modules общий. [Результаты](../../results/authoring-campaigns/contractcue1-oct24/REPORT.md).
