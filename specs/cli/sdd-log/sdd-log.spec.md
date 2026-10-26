@@ -287,6 +287,32 @@ creating a Verify attempt or receipt. Earlier phase proof excludes later phase c
 records; own-phase decision content remains identity-bearing. An operator's acceptance alone does
 not stale the proof, but rejection, malformed/ambiguous records and semantic plan edits do.
 
+### 4.8 Additive Technical Replan (EA-2a)
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+- Preconditions: orchestrator has stopped the previous worker; Git worktree, incomplete phase in an
+  open Round; exact `replan --phase P<N> --payload-file .claude/tmp/<name>.json`. JSON keys are exactly
+  `id, base, reason, evidence, addTargets, dependencies`: stable `RP-...` ID, exact observed ticket
+  `REPLAN_BASE`, reason/evidence, additive exact implementation paths and complete local dependency list.
+- Postconditions: preserve all existing targets, kinds, rules, Meta/product/BDD/Verification/Test
+  Coverage declarations and old attempts. Record the readable delta with payload/result identities
+  in Execution Log in the same expected-content atomic replacement. Success consumes scratch;
+  rejection changes no ticket bytes and retains scratch. Same payload/ID with unchanged resulting
+  plan is byte-idempotent, not fresh worker write authority.
+- Invariants: no cycles, detached explicit inputs, root/path escape, symlinks, protected/evidence
+  paths, no unrelated directory expansion, no unordered shared writers. Ordered shared writers are
+  allowed. Corpus claim-check/write is serialized among replan calls; the ticket lease also excludes
+  Verify/lifecycle writes. External editors and unrelated authoring do not participate in that lease.
+- Context: ACK requires fresh `sdd-task --phase` before work beyond the previous boundary. Rules,
+  selector and Verify are re-resolved by the existing dispatch/facade, not copied by another runner.
+  Plan changes stale old proof; completed prerequisites may be reverified without rewriting DONE
+  or erasing attempts. Declaration preservation is not mechanical proof of preserved business meaning;
+  independent scenario oracle/review remains required.
+- Current scope: additive targets within an existing non-root implementation boundary and local
+  edges only. New phases, target removal and test allocation are still planned EA-2 work, not enabled
+  through arbitrary Markdown or an operator-approval bypass.
+
 </details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -294,22 +320,23 @@ not stale the proof, but rejection, malformed/ambiguous records and semantic pla
 
 ## 5. Public Options & Policies
 
-| Argument                                                            | Type   | Description                                                          |
-| ------------------------------------------------------------------- | ------ | -------------------------------------------------------------------- |
-| `<ticket>`                                                          | string | Путь к тикету (или Task-ID — резолвится через `resolveTicketArg`)    |
-| `round "<reason>"`                                                  | mode   | Открыть Round (авто-номер, дата)                                     |
-| `line "<content>" [--phase P<N>]`                                   | mode   | Дописать timestamped event-строку (в конец журнала либо в блок фазы) |
-| `close`                                                             | mode   | Атомарно закрыть текущий Round без дублирования skeleton             |
-| `phase <P-ID> ["— re-run: <reason>"]`                               | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT`       |
-| `handoff "<payload>" [--phase P<N>]`                                | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`              |
-| `blocker "<reason>" --phase P<N> --axiom <AX> --unblock "<action>"` | mode   | Human-compatible inline form; фаза обязательна                       |
-| `resolved "<content>" --phase P<N>`                                 | mode   | Дописать timestamped строку закрытия блокера в блок фазы             |
-| `complete "<typed payload>" --phase P<N>`                           | mode   | Одной записью закрыть проверенную фазу                               |
-| `authoring-complete <spec.md>`                                      | mode   | Заменить draft-маркер спеки на final authoring receipt (см. 4.4)     |
-| `audit-receipt "<verdict>"` / `review-receipt "<verdict>"`          | mode   | Записать group-completion receipt на владеющую спеку (см. 4.5)       |
-| `deviation-verdict <D-id> <accepted\|rework\|rolled-back>`          | mode   | Exact ticket/module/tasks-index DL-запись (см. 4.6)                  |
-| `--content-file .claude/tmp/<name>`                                 | flag   | One-shot literal payload for round/line/phase/handoff/resolved       |
-| `--payload-file .claude/tmp/<name>.json`                            | flag   | Strict `{reason,axiom,unblock}` blocker payload                      |
+| Argument                                                            | Type   | Description                                                                       |
+| ------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------- |
+| `<ticket>`                                                          | string | Путь к тикету (или Task-ID — резолвится через `resolveTicketArg`)                 |
+| `round "<reason>"`                                                  | mode   | Открыть Round (авто-номер, дата)                                                  |
+| `line "<content>" [--phase P<N>]`                                   | mode   | Дописать timestamped event-строку (в конец журнала либо в блок фазы)              |
+| `close`                                                             | mode   | Атомарно закрыть текущий Round без дублирования skeleton                          |
+| `phase <P-ID> ["— re-run: <reason>"]`                               | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT`                    |
+| `handoff "<payload>" [--phase P<N>]`                                | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`                           |
+| `blocker "<reason>" --phase P<N> --axiom <AX> --unblock "<action>"` | mode   | Human-compatible inline form; фаза обязательна                                    |
+| `resolved "<content>" --phase P<N>`                                 | mode   | Дописать timestamped строку закрытия блокера в блок фазы                          |
+| `complete "<typed payload>" --phase P<N>`                           | mode   | Одной записью закрыть проверенную фазу                                            |
+| `authoring-complete <spec.md>`                                      | mode   | Заменить draft-маркер спеки на final authoring receipt (см. 4.4)                  |
+| `audit-receipt "<verdict>"` / `review-receipt "<verdict>"`          | mode   | Записать group-completion receipt на владеющую спеку (см. 4.5)                    |
+| `deviation-verdict <D-id> <accepted\|rework\|rolled-back>`          | mode   | Exact ticket/module/tasks-index DL-запись (см. 4.6)                               |
+| `replan --phase P<N> --payload-file <path>`                         | mode   | Orchestrator-owned additive targets/local dependencies, then fresh dispatch (4.8) |
+| `--content-file .claude/tmp/<name>`                                 | flag   | One-shot literal payload for round/line/phase/handoff/resolved                    |
+| `--payload-file .claude/tmp/<name>.json`                            | flag   | Strict `{reason,axiom,unblock}` blocker payload                                   |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 

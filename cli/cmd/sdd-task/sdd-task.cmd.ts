@@ -56,6 +56,7 @@ import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-a
 import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { deviationIsOpen, parseDeviationRecords } from '../../../shared/sdd/deviation.ts';
+import { technicalReplanBase } from '../../../shared/sdd/technical-replan.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
 import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
@@ -692,8 +693,13 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
     );
     return withResolutionLine(
       infraExemptionNote && phaseOutcome.ok
-        ? { ok: true, text: `${infraExemptionNote}\n${phaseOutcome.text}` }
-        : phaseOutcome,
+        ? {
+            ok: true,
+            text: `${infraExemptionNote}\n${phaseOutcome.text}\nREPLAN_BASE: ${technicalReplanBase(content)}`,
+          }
+        : phaseOutcome.ok
+          ? { ok: true, text: `${phaseOutcome.text}\nREPLAN_BASE: ${technicalReplanBase(content)}` }
+          : phaseOutcome,
       resolutionLine
     );
   }
@@ -713,15 +719,16 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
   return withResolutionLine(
     {
       ok: true,
-      text: formatPlan(
-        meta,
-        phases,
-        detailsById,
-        gates,
-        activeBlockers,
-        auditGroupLine,
-        openDeviations
-      ),
+      text:
+        formatPlan(
+          meta,
+          phases,
+          detailsById,
+          gates,
+          activeBlockers,
+          auditGroupLine,
+          openDeviations
+        ) + `\nREPLAN_BASE: ${technicalReplanBase(content)}`,
     },
     resolutionLine
   );

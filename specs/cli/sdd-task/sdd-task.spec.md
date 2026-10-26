@@ -74,6 +74,9 @@ fallback к declared files; любой другой git/corpus/path failure бл
   a concrete operator decision. A hint never expands write scope, invents a retry budget or permits
   dependent execution while its blocker remains active.
 - Тело каждой фазы извлекается отдельной секцией `PHASE_P<n>` — не общим чтением
+- Ticket/phase output includes `REPLAN_BASE: sha256:...` of exact observed ticket bytes for an
+  orchestrator's bounded `sdd-log replan` request. This is a stale-read precondition, not approval,
+  a hidden session checkpoint or permission to reuse an old phase dispatch after a plan change.
 - exit `0` поверхность · `1` файл · `2` не тикет (нет Meta) · `4` нет пути
 <!--/SECTION:MODULE_VISION-->
 
@@ -191,7 +194,7 @@ Gates (all):
 ### 5.1 `--phase P<n>` — компактный контекст одной фазы
 
 Печатает только то, что фаза читает: `objective`, composed Verify `selector` и provenance, ровно одну
-canonical invocation `gennady verify --phase=<selector> --task=<ticket> --sdd-phase=<P>`, `exit`,
+canonical invocation `gennady sdd-verify --task=<ticket> --phase=<P>`, `exit`,
 read-манифест (rules · specs · ticket-секции · target-файлы), и, если это не первая фаза,
 `[HANDOFF]` — дословные `**Handoff →**`-строки из `EXECUTION_LOG` предыдущих завершённых (`[x]`)
 фаз, с префиксом `Handoff ←P<k>:`. `READ specs` берёт фазовое поле `Spec Refs` (см.
@@ -201,7 +204,7 @@ provide zero-YAML mappings and `verify.sdd.mapping` overrides them with provenan
 Target/Deleted scope decides which detected presets participate; unresolved kind or undeclared
 selector fails before emitting a worker command. The agent never selects individual gates. Output
 renders every invocation token with deterministic POSIX-shell quoting, so a valid ticket path with
-spaces or metacharacters remains one exact `--task` argument. It ends with `next:` directing the
+spaces or metacharacters remains one exact `--task` argument. It includes `next:` directing the
 worker to execute exactly that invocation. Неизвестный `--phase` → exit 2 с перечнем известных фаз.
 
 <!--/SECTION:PUBLIC_OPTIONS-->

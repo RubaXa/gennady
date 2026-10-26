@@ -67,6 +67,18 @@ export function printHelp(): void {
   console.info(
     '  Identical ID/payload retry preserves date/verdict; conflicts and rework/rolled-back choices reject. No new targets, approval or authority.'
   );
+  console.info(
+    '  npx gennady sdd-log <ticket> replan --phase P<N> --payload-file .claude/tmp/<name>.json'
+  );
+  console.info(
+    '  Orchestrator only, after the old worker stops. JSON: id (RP-...), base (REPLAN_BASE from sdd-task), reason, evidence, addTargets (exact paths), dependencies (complete phase-ID list).'
+  );
+  console.info(
+    '  Additive implementation neighbors and local phase edges only; no removed targets, kinds, new phases, test-plan/check/goal edits. Complete corpus path/DAG/writer checks precede the atomic write.'
+  );
+  console.info(
+    '  Replan operations serialize corpus claims; arbitrary editors/other authoring do not share that lease. Refresh sdd-task after ACK; reverify stale prerequisite attempts before dispatch. Same ID/payload replay is byte-idempotent, not reuse of old worker authority.'
+  );
   console.info('  npx gennady sdd-log <ticket> round --content-file .claude/tmp/<name>');
   console.info(
     '  npx gennady sdd-log <ticket> line --content-file .claude/tmp/<name> [--phase P<N>]'

@@ -56,6 +56,21 @@ infrastructure
 | `syncFormatter`  | Function | Форматирование вывода синхронизации (+, ~, =, -, !) |
 | `pathNormalizer` | Function | Нормализация путей (разделители, trailing slash)    |
 
+### 2.4 `shared/sdd/` — bounded execution transitions
+
+| Name                     | Type     | Purpose                                                                                                         |
+| ------------------------ | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `technicalReplanBase`    | Function | Exact observed ticket identity for a stale-read precondition                                                    |
+| `prepareTechnicalReplan` | Function | Additive target/local-edge transition with preserved declarations and readable Execution Log delta              |
+| `withSddReplanMutation`  | Function | Serialize replan corpus claim checks, then use the existing ticket/Verify lease and expected-byte atomic writer |
+
+`technical-replan.ts` does not prove preserved business meaning. It mechanically preserves all
+existing targets, kinds, rules, product/BDD/verification/test-coverage declarations, refuses unsafe
+paths, cycles, detached inputs and unordered writers, and keeps old evidence. Only implementation
+neighbors and local edges are supported; phase insertion/removal and test reallocation remain planned.
+The replan-corpus lease coordinates replan CLI operations, not external editors or arbitrary authoring.
+Redispatch and fresh Verify use the existing rule resolver/facade, never a second runner.
+
 ## 3. File Structure
 
 ```

@@ -802,7 +802,46 @@ export async function withSddTicketMutation<T>(
     afterValidation?: () => void;
   }
 ): Promise<T> {
-  const lock = acquireLock(root, ticketPath, `mutation-${randomUUID()}`);
+  return withMutationLease(root, ticketPath, operation, runtime, 'ticket');
+}
+
+/**
+ * @purpose Serialize replan claim-check/write operations across tickets, then share the Verify ticket lease.
+ * @invariant This covers CLI replan operations, not arbitrary editors or other authoring commands.
+ * @param root Git worktree root.
+ * @param ticketPath Selected canonical ticket, reread by the operation after both leases are held.
+ * @param operation Bounded transition using the expected-content replacement callback.
+ * @returns Result only after both owned leases have been released.
+ */
+export async function withSddReplanMutation<T>(
+  root: string,
+  ticketPath: string,
+  operation: (replace: (expected: string, next: string) => void) => T | Promise<T>
+): Promise<T> {
+  return withMutationLease(
+    root,
+    ticketPath,
+    (_replace, assertCorpusOwner) =>
+      withSddTicketMutation(root, ticketPath, operation, {
+        afterValidation: assertCorpusOwner,
+      }),
+    undefined,
+    'replan'
+  );
+}
+
+/** @purpose Common owned lease lifecycle; domain separates global claim checks from ticket writers. */
+async function withMutationLease<T>(
+  root: string,
+  ticketPath: string,
+  operation: (
+    replace: (expected: string, next: string) => void,
+    assertLease: () => void
+  ) => T | Promise<T>,
+  runtime: Parameters<typeof withSddTicketMutation>[3],
+  domain: 'ticket' | 'replan'
+): Promise<T> {
+  const lock = acquireLock(root, ticketPath, `mutation-${randomUUID()}`, undefined, domain);
   const assertOwner = () => {
     if (readOwner(lock.ownerPath).token !== lock.owner.token)
       throw new Error('SDD_VERIFY_ATTEMPT_LOCK_LOST');
@@ -816,15 +855,18 @@ export async function withSddTicketMutation<T>(
     }
   }, runtime?.heartbeatMs ?? HEARTBEAT_MS);
   heartbeat.unref();
+  const assertLease = () => {
+    if (heartbeatFailure) throw heartbeatFailure;
+    assertOwner();
+  };
   try {
     const result = await operation((expected, next) => {
-      if (heartbeatFailure) throw heartbeatFailure;
-      assertOwner();
+      assertLease();
       writeTicketAtomically(root, ticketPath, next, runtime?.beforeRename, expected, () => {
         runtime?.afterValidation?.();
         assertOwner();
       });
-    });
+    }, assertLease);
     if (heartbeatFailure) throw heartbeatFailure;
     assertOwner();
     return result;
@@ -968,7 +1010,8 @@ function acquireLock(
   root: string,
   ticketPath: string,
   runId: string,
-  beforeStaleOwnerRecheck?: () => void
+  beforeStaleOwnerRecheck?: () => void,
+  domain: 'ticket' | 'replan' = 'ticket'
 ): {
   readonly directory: string;
   readonly ownerPath: string;
@@ -994,7 +1037,10 @@ function acquireLock(
   ).trim();
   const parent = path.resolve(worktree, gitPath);
   fs.mkdirSync(parent, { recursive: true });
-  const directory = path.join(parent, sha256(ticket.identity.relative).slice(7));
+  const directory = path.join(
+    parent,
+    domain === 'replan' ? 'replan-corpus' : sha256(ticket.identity.relative).slice(7)
+  );
   const ownerPath = path.join(directory, 'owner.json');
   try {
     fs.mkdirSync(directory);

@@ -3,7 +3,8 @@
 Статус: исходные дефекты воспроизведены; **EA-1 реализован, детерминированная квалификация пройдена**.
 Подсказка blocker исправлена; canonical decision writer, Handoff reference validation и единая
 writer model внедрены локально. Итоговая регрессия и повторное независимое review этой части прошли.
-EA-2 (technical replan) и сравнительные live-эвалы пока **не выполнены**.
+EA-2 выполняется: добавлены additive targets/local edges (EA-2a) и opt-in progress classifier;
+проверка расширенного replan и сравнительные live-эвалы пока **не выполнены**.
 База: `7958ecb0a3cabcfd2ba923d272a65e00a981a0c6` (main после PR #129).
 Начат этап исходных проверок: [четыре воспроизведения и положительные controls](../results/2026-10-26-execution-autonomy/BASELINE.md).
 Независимое read-only review draft не оставило содержательных blockers. Работа организована как
@@ -17,19 +18,25 @@ EA-2 (technical replan) и сравнительные live-эвалы пока *
 
 ## 0. Текущая доска и журнал проверок
 
-Обновлено: 2026-10-26. Рабочая ветка `codex/execution-autonomy`; общий PR ещё не открыт.
-Этапы фиксируются отдельными контрольными коммитами. Прежние архивы экспериментов не изменялись. Здесь отмечается фактический результат,
+Обновлено: 2026-10-26. Рабочая ветка `codex/execution-autonomy`; работа накапливается в
+[PR #130](https://github.com/RubaXa/gennady/pull/130) → `main`.
+Поправка оператора: **один накопительный PR для EA-1 → EA-2 → EA-3, review после каждого этапа**.
+Промежуточный Approve относится только к проверенному этапу/commit, не разрешает merge и не
+означает приёмку всего решения. PR остаётся Draft до завершения плана и итогового review;
+reviewer каждый раз получает текущую стадию, scope проверяемой delta и оставшиеся работы.
+Прежняя трактовка «отдельный PR и отдельный merge для каждого этапа» отменена.
+Прежние архивы экспериментов не изменялись. Здесь отмечается фактический результат,
 а не обещанный эффект. Unit/CLI checks не заменяют проверку самостоятельности модели.
 
-| Этап                                 | Состояние                                  | Что получено / что остаётся                                                                                          |
-| ------------------------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| Исходная квалификация                | Выполнена детерминированная часть          | Четыре воспроизведения + controls в BASELINE.md; live baseline ещё не снят                                           |
-| EA-1: blocker guidance               | Проверено локально                         | Technical recovery отделён от product/authority boundary; исходные 4 RED assertions стали GREEN                      |
-| EA-1: decision / writer roles        | Детерминированно проверено                 | CLI-owned запись до применения, стабильный ID, Handoff-ссылка; удалены противоречащие worker-команды                 |
-| EA-1: race / freshness controls      | Новые controls прошли                      | Общий ticket/Verify lock; после решения P2 proof P1 остаётся текущим; смысловые изменения и rejection stale-ят proof |
-| EA-2: technical replan / no-progress | Не начат                                   | Нельзя выдавать новые targets, deps или фазы за уже разрешённые                                                      |
-| EA-3: fixtures / live comparison     | Не выполнен                                | 0/16 первичных live-сценариев; нет новых LLM/HTTP/judge/reflection вызовов                                           |
-| Independent review / PR              | EA-1 review пройден; общий PR ещё не готов | Все substantive findings EA-1 закрыты; merge до EA-2/EA-3 не объявляется готовым                                     |
+| Этап                                 | Состояние                                                        | Что получено / что остаётся                                                                                                                 |
+| ------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Исходная квалификация                | Выполнена детерминированная часть                                | Четыре воспроизведения + controls в BASELINE.md; live baseline ещё не снят                                                                  |
+| EA-1: blocker guidance               | Проверено локально                                               | Technical recovery отделён от product/authority boundary; исходные 4 RED assertions стали GREEN                                             |
+| EA-1: decision / writer roles        | Детерминированно проверено                                       | CLI-owned запись до применения, стабильный ID, Handoff-ссылка; удалены противоречащие worker-команды                                        |
+| EA-1: race / freshness controls      | Новые controls прошли                                            | Общий ticket/Verify lock; после решения P2 proof P1 остаётся текущим; смысловые изменения и rejection stale-ят proof                        |
+| EA-2: technical replan / no-progress | EA-2a локально реализован, общее review/гейты выполняются        | Additive implementation targets + local deps; старые proof stale, восстановление префикса проверено; новые фазы/test allocation ещё pending |
+| EA-3: fixtures / live comparison     | Не выполнен                                                      | 0/16 первичных live-сценариев; нет новых LLM/HTTP/judge/reflection вызовов                                                                  |
+| Independent review / PR              | EA-1: промежуточный Approve на `6b28af66`; PR #130 накопительный | Это результат первой части, не разрешение на merge; EA-2/EA-3 и финальное review впереди                                                    |
 
 ### Что пробовали и чему научились
 
@@ -69,6 +76,28 @@ EA-2 (technical replan) и сравнительные live-эвалы пока *
 
 ### Итоговые проверки EA-1
 
+Внешний reviewer по сообщению оператора: Approve **только EA-1 на `6b28af66`**; чистая копия,
+targeted+contract suites 207/207, flow-eval 574/574 + shell 7/7, kit без failures с одним deferred skip.
+Это не наш дополнительный прогон и не разрешение на merge всего PR. Оставшиеся замечания:
+
+- Итоговая documentation delta локальна из-за guard violation — не считать её уже доставленной.
+- В EA-3 измерить цену canonical decision: запись scratch JSON + CLI, включая retries/recovery;
+  зелёная механика сама по себе не подтверждает приемлемость этого трения для модели.
+- Замечание о числе аргументов baseline repro перепроверено по source: и `7958ecb0`, и текущий
+  `completePhase` имеют пять параметров; snippet передаёт пять. Именно mismatch arity не найден.
+  Repro явно относится к frozen source, не должен ожидать старое buggy-поведение от candidate.
+  Новый `execution-autonomy-baseline.test.ts` действительно выполнил snippet на exact `7958ecb0`:
+  1/1 PASS (orphan принят, records=0, verdict not found; положительный canonical control работает).
+  Source files извлечены из Git, dependencies через общий symlink, временный каталог удалён в finally.
+  Старый evidence не переписан; это проверка его воспроизводимости, не новый замер модели.
+
+Контрольный implementation commit: `6b28af66` (`feat(sdd): persist phase decisions before autonomous execution`).
+Его полный pre-commit прошёл без обхода: `verify --phase full` PASS, мутаций нет;
+unit `executed=4973 / passed=4965 / failed=0 / skipped=8`, coverage-гейт PASS.
+Дополнительно прошли main-carry (520 rows), E-18 checker tests (не реальный Swift-прогон),
+release-boundary/npm-denial и directive gates. Это checkpoint EA-1, не завершение всего плана;
+EA-1 прошёл промежуточное review в накопительном PR #130; его отдельный merge не разрешён.
+
 | Проверка                                                    | Результат                                                               | Что это НЕ доказывает                                                         |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | Decision / journal / sdd-log / sdd-task suites              | 203/203 PASS; дополнительный heartbeat control 1/1 PASS                 | Самостоятельное поведение модели не измерялось                                |
@@ -82,11 +111,67 @@ EA-2 (technical replan) и сравнительные live-эвалы пока *
 
 Временные test repositories удаляются через finally/after; новых dependency copies и live sessions
 нет. Сохранён только компактный baseline evidence (16 KiB на этой точке), без sandbox/coverage trees.
+После полного pre-commit удалён его регенерируемый `coverage/` (495 MiB); общий `node_modules`
+не тронут. Documentation delta после implementation checkpoint пока локальна: её commit остановлен
+Verify (`node:unit exit=0`, но `VIOLATION` после изменения служебных `refs/codex/turn-diffs/...`).
+HEAD/branch/upstream остались на `6b28af66`; guard и refs не менялись и не откатывались.
+Recovery выполнен после read-only проверки: PID 50815 завершён; HEAD, index bytes/identity совпали;
+corrupt snapshot entries=0; workspace отличается только нашими документированными правками плана;
+все четыре ref-delta — служебные `refs/codex/turn-diffs/...`. Только мёртвый lock перемещён в
+файл manual-recovery.lock.json внутри прежнего Git-metadata checkpoint с ID
+`44e818ff-38dc-42f5-b0da-2142f98e5aaa`;
+снимок и история сохранены. Это не делает неудачный gate успешным: следующий commit обязан
+повторить полный pre-commit с новым snapshot, без обхода и без изменения guard policy.
 Состав BeliefState и число шагов не менялись: изменён текст существующих аксиом и добавлена
 доставка уже существующего контракта; нового lazy-split решения в EA-1 нет. Hard budgets проверены.
 
-Ближайшее действие: EA-2 — проверяемая technical delta до записи новых targets/перестройки deps;
-затем viability фикстур и конечная baseline/candidate серия, **не** новый круг authoring-оптимизации.
+### Продолжение после промежуточного review EA-1
+
+- Исполняемый source-pinned baseline repro + writer contracts: 4/4 PASS на Node 22; замечание
+  reviewer о возможной невоспроизводимости проверено, immutable baseline не переписывался.
+- EA-2a: `sdd-log replan` принимает exact observed base, stable operation ID, reason/evidence,
+  additive implementation neighbors и полный список local deps. Рабочий процесс останавливает
+  orchestrator до перехода; новая запись не является операторским approval. Worker не получил
+  права вручную переписывать тикет или самостоятельно расширять свой dispatch.
+- Общий corpus lease сериализует именно replan calls, затем берётся прежний ticket/Verify lease.
+  Это не lock над произвольным редактором или всем authoring. Перед атомарной записью проверяются
+  оба owner; paths/DAG/ordered writers — по полному worktree, в том числе при nested cwd.
+- Focused replan: первоначально 7/7 PASS; независимое review нашло два реальных пропуска в replay:
+  пример receipt внутри fence принимался за факт; повтор обходил свежую проверку foreign writer.
+  Исправлены unfenced/uncommented parsing, проверка фактических postconditions и повторная проверка
+  текущего corpus перед ACK. Добавлены causal regressions; focused suite стал 8/8 PASS.
+  Дополнительный review воспроизвёл hidden append при незакрытом inline HTML comment; scanner
+  исправлен, добавлены fresh/replay controls. Этот failure не выдаётся за дефект модели.
+- Currentness control: реальный CLI replan делает старый P1 PASS stale; повторная journal-проверка
+  уже DONE P1 восстанавливает актуальный proof, не стирая ни одной attempt и не меняя статус.
+  Последующее создание downstream-owned helper не делает префикс вечным stale. Это integration
+  control с injected runner report, не живое доказательство выполнения тестов или автономии модели.
+- `meaningful-progress.ts`: 10/10 focused controls на opt-in host evidence; same error/new call ID,
+  clock и journal-only writes — не progress; новое относящееся к причине наблюдение различается;
+  неполное evidence даёт unknown. Observer/watchdog/retry policy и старые результаты не менялись.
+  Стабильность host scope/excerpt selection остаётся доверенной предпосылкой, не semantic oracle.
+- TypeScript, targeted DbC lint, boundary inventory (прежний digest), main-carry и directive freshness /
+  activation / hard budgets прошли до итогового commit. Сокращение prompts не заявляется;
+  execute soft budget предупреждает, hard limit соблюдён. Inventory/forbidden markers не изменялись.
+- Общий focused run обнаружил compatibility regression: REPLAN_BASE перед прежним banner ломал
+  anchored output assertions. Поле перенесено в конец ответа; banner сохранён. Повтор всего
+  focused набора на Node 22: **228/228 PASS** (17 suites); отдельно task+replan 93/93 PASS.
+- Первый offline flow run: 580 PASS / 6 FAIL. Один doc-path в этом плане указывал Git-local
+  recovery file как repository path — исправлен; повтор дал 581 PASS / 5 FAIL, все пять —
+  sandbox `listen EPERM 127.0.0.1`. Честный полный повтор с доступом к loopback на Node 22:
+  **586/586 PASS + shell 7/7 PASS**, без LLM/внешнего proxy. Ни одна красная попытка не перекрашена.
+- Повторное независимое review EA-2a: открытых substantive findings нет; самостоятельно проверены
+  replay/inline comment controls и actual CLI из nested cwd с конфликтом в sibling subtree.
+  Это не approval всего EA-2/PR. Полный pre-commit этой delta ещё должен пройти перед push;
+  его точный результат будет приложен к тому же PR, без обхода hooks и без merge.
+- Первый commit EA-2a остановлен read-only format gate: неотформатирована изменённая строка
+  `cli/cmd/help/help.cmd.ts`. Общие unit/coverage в этой попытке не запускались; source не менялся
+  самим gate. Формат исправлен локально, полный hook запускается заново (не считается PASS заранее).
+
+Следующие работы того же Draft PR #130: закончить review/полные gates EA-2a; затем EA-2b —
+проверяемые изменения фаз и test allocation с сохранением поведенческих обязательств и viability
+полного redispatch (новые Rules/Verify). После этого конечная EA-3 baseline/candidate серия,
+**0/16 сейчас**, не новый круг authoring-оптимизации. Поэтапный review не разрешает merge PR.
 
 ## 1. Результат для пользователя
 
@@ -296,7 +381,12 @@ session/port/lease IDs и одинаковая фиксированная concur
 остаток/cleanup errors; при неполной очистке остановить очередь и сообщить путь/причину. Итоговый
 evidence сохраняется компактно; чужие leases/worktrees, исходные архивы и shared store не удалять.
 
-Каждый implementation PR проходит независимое review с тестами; merge выполняет reviewer, не автор.
+Все этапы EA-1 → EA-2 → EA-3 накапливаются в одном PR #130. Каждый этап проходит независимое
+review с тестами; в handoff явно указаны exact commit, проверяемая delta, уже проверенные части и
+оставшиеся этапы. Промежуточный Approve не разрешает merge и не переносится автоматически на
+следующий commit. Merge возможен только после завершения плана, итогового review всего PR и
+отдельного разрешения оператора;
+автор PR сам его не мержит.
 Перед handoff: type-check, targeted suites, flow-eval offline suite, directive freshness/budgets,
 gate и действующие boundary checks без обхода hooks. При новом inventory drift нельзя ослаблять
 маркеры/защищённые пути или baseline: только отдельно разрешённое точное обновление inventory.

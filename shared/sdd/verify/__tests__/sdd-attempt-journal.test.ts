@@ -20,6 +20,7 @@ import os from 'node:os';
 import { join } from 'node:path';
 import { it } from 'node:test';
 import { appendExecutionDecision } from '../../deviation.ts';
+import { technicalReplanBase } from '../../technical-replan.ts';
 import { runCli } from '../../../../cli/__tests__/tool-behavior/run-cli.ts';
 import type {
   VerifyRunReport,
@@ -141,6 +142,101 @@ function lockOwnerPath(root: string, ticket: string): string {
   const id = createHash('sha256').update('specs/task.md').digest('hex');
   return join(root, '.git', 'gennady', 'sdd-attempts', id, 'owner.json');
 }
+
+it('replan stales old prerequisite proof and can recover by re-verifying DONE without erasing any attempt', async () => {
+  const f = fixture();
+  try {
+    mkdirSync(join(f.root, 'src'));
+    writeFileSync(join(f.root, 'src/source.ts'), 'export const value = 1;\n');
+    const initial = readFileSync(f.ticket, 'utf8')
+      .replace(
+        '# Task',
+        '# Task\n<!--SECTION:META-->\n- **Task-ID:** DEM-work\n- **Status:** [~] IN_PROGRESS\n<!--/SECTION:META-->'
+      )
+      .replace('| P1 | unit | — | [ ] |', '| P1 | unit | — | [ ] |\n| P2 | code | P1 | [ ] |')
+      .replace('  - source.ts', '  - src/source.ts')
+      .replace(
+        '<!--SECTION:EXECUTION_LOG-->',
+        '<!--SECTION:PHASE_P2-->\n- **Target Files:**\n  - src/later.ts\n- **Inputs:** P1 handoff\n<!--/SECTION:PHASE_P2-->\n<!--SECTION:EXECUTION_LOG-->\n### Round 1 — active\n#### P1\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]\n#### P2\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]'
+      );
+    writeFileSync(f.ticket, initial);
+    const verify = (phase: string) =>
+      runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: phase,
+        run: async () => ({
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          report: report(f.root, [result('pass', true)]),
+        }),
+      });
+    await verify('P1');
+    const done = runCli(
+      [
+        'sdd-log',
+        'specs/task.md',
+        'complete',
+        'artifacts: [src/source.ts]; decisions: []; open: []; deviations: []',
+        '--phase',
+        'P1',
+      ],
+      f.root
+    );
+    assert.equal(done.exitCode, 0, done.stdout + done.stderr);
+    const before = readFileSync(f.ticket, 'utf8');
+    const oldAttempt = allEvidence(f.ticket)[0];
+    mkdirSync(join(f.root, '.claude/tmp'), { recursive: true });
+    writeFileSync(
+      join(f.root, '.claude/tmp/replan.json'),
+      JSON.stringify({
+        id: 'RP-helper',
+        base: technicalReplanBase(before),
+        reason: 'Extract a helper',
+        evidence: 'The downstream caller needs normalization',
+        addTargets: ['src/helper.ts'],
+        dependencies: ['P1'],
+      })
+    );
+    const replan = runCli(
+      [
+        'sdd-log',
+        'specs/task.md',
+        'replan',
+        '--phase',
+        'P2',
+        '--payload-file',
+        '.claude/tmp/replan.json',
+      ],
+      f.root
+    );
+    assert.equal(replan.exitCode, 0, replan.stdout + replan.stderr);
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, false);
+    assert.deepEqual(
+      allEvidence(f.ticket)[0],
+      oldAttempt,
+      'stale history remains byte-semantic intact'
+    );
+    await verify('P1');
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, true);
+    assert.match(readFileSync(f.ticket, 'utf8'), /\| P1 \| unit \| — \| \[x\] \|/);
+    assert.equal(allEvidence(f.ticket).length, 2);
+    writeFileSync(join(f.root, 'src/helper.ts'), 'export const helper = 1;\n');
+    writeFileSync(join(f.root, 'src/later.ts'), 'export const later = 2;\n');
+    assert.equal(
+      validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok,
+      true,
+      'downstream owned creation does not deadlock the prefix'
+    );
+    await verify('P2');
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P2').ok, true);
+    assert.equal(allEvidence(f.ticket).length, 3);
+    assert.deepEqual(allEvidence(f.ticket)[0], oldAttempt);
+  } finally {
+    f.cleanup();
+  }
+});
 
 it('keeps P1 proof current after a downstream decision and operator verdict, but not semantic decision or plan edits', async () => {
   const f = fixture();

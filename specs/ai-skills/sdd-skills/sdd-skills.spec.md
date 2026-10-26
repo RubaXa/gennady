@@ -215,6 +215,13 @@ scenario и подмену gate body при неизменном имени ко
 
 ### `TechnicalReplan` — planned execution extension
 
+EA-2a implements only additive implementation neighbors and local dependency corrections through
+`sdd-log replan`: exact observed `REPLAN_BASE`, stable operation ID and readable atomic delta.
+The orchestrator stops the old worker first and refreshes dispatch; the worker never applies the
+transition or manually rewrites the ticket. The CLI validates declaration preservation, paths,
+graphs and writer ordering, not business equivalence. New phases, target removal and test allocation
+are still planned; their fields are rejected rather than treated as silently supported.
+
 - Preserved commitments: agreed user outcome, observable behavior, required negative scenarios,
   safety/authority constraints and acceptance strength.
 - Mutable means: technical targets, phases, dependency edges, implementation and test allocation

@@ -49,3 +49,19 @@ test('generated phase package carries the same writer responsibilities as its so
   assert.match(implement, /sdd-log decision[\s\S]*before applying the choice/);
   assert.match(handoff, /`sdd-log complete`, verdict or receipt modes/);
 });
+
+test('orchestrator uses checked means-only replan and fresh dispatch, never expands the worker writer role', () => {
+  for (const path of [
+    'ai/kit/templates/sdd-v2/execute.directive.hbs',
+    'ai/directives/sdd-v2/execute.directive.xml',
+  ]) {
+    const text = read(path);
+    assert.match(text, /first stop\/await the old worker/);
+    assert.match(text, /exact `REPLAN_BASE`/);
+    assert.match(text, /orchestrator, not the worker/);
+    assert.match(text, /reverify stale completed prerequisites/);
+    assert.match(text, /fresh `sdd-task[\s\S]*rules\/Verify included/);
+    assert.match(text, /Removed targets, new phases and test allocation[\s\S]*not yet supported/);
+    assert.doesNotMatch(text, /dependencies, phases, or test plan invalidates approval/);
+  }
+});

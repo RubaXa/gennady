@@ -24,7 +24,12 @@ import {
   collectHeadings,
 } from '../../../shared/sdd/section.ts';
 import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
-import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  collectTicketCorpus,
+  resolveTicketArg,
+  resolutionLine,
+} from '../../../shared/sdd/ticket-resolve.ts';
+import { prepareTechnicalReplan } from '../../../shared/sdd/technical-replan.ts';
 import { isSddEvidencePath } from '../../../shared/sdd/corpus-path.ts';
 import { ticketFlowVersion } from '../../../shared/sdd/flow.ts';
 import {
@@ -42,6 +47,7 @@ import {
 import {
   resolveSddTicketWorktreeRoot,
   withSddTicketMutation,
+  withSddReplanMutation,
   validateCurrentSddPhaseAttempt,
 } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import {
@@ -97,6 +103,7 @@ const MODES = [
   'review-receipt',
   'deviation-verdict',
   'decision',
+  'replan',
 ] as const;
 /** @purpose Single-line verdict token accepted by the group-completion receipt modes. */
 const GROUP_VERDICT_RE = /^[^\r\n]{1,120}$/;
@@ -208,12 +215,15 @@ async function runCommand(
   if (contentFile && blockerFile) {
     return badInvocation('--content-file and --payload-file are mutually exclusive');
   }
-  if (blockerFile && mode !== 'blocker' && mode !== 'decision') {
-    return badInvocation('--payload-file applies only to blocker or decision mode');
+  if (blockerFile && mode !== 'blocker' && mode !== 'decision' && mode !== 'replan') {
+    return badInvocation('--payload-file applies only to blocker, decision or replan mode');
   }
-  if (mode === 'decision' && (!blockerFile || contentFile || positional.length !== 2))
+  if (
+    (mode === 'decision' || mode === 'replan') &&
+    (!blockerFile || contentFile || positional.length !== 2)
+  )
     return badInvocation(
-      'decision requires only --payload-file .claude/tmp/<name>.json and --phase P<digits>'
+      `${mode} requires only --payload-file .claude/tmp/<name>.json and --phase P<digits>`
     );
   if (mode !== 'blocker' && (axiomFlag || unblockFlag)) {
     return badInvocation('--axiom and --unblock apply only to blocker mode');
@@ -270,7 +280,7 @@ async function runCommand(
     return badInvocation('mode "complete" requires --phase <PhaseID>');
   }
   if (
-    (mode === 'blocker' || mode === 'resolved' || mode === 'decision') &&
+    (mode === 'blocker' || mode === 'resolved' || mode === 'decision' || mode === 'replan') &&
     phaseFlag === undefined
   ) {
     return missingFlag(
@@ -284,10 +294,11 @@ async function runCommand(
       mode !== 'blocker' &&
       mode !== 'resolved' &&
       mode !== 'decision' &&
+      mode !== 'replan' &&
       mode !== 'complete'
     ) {
       return badInvocation(
-        `--phase only applies to line | handoff | blocker | resolved | complete | decision (not "${mode}")`
+        `--phase only applies to line | handoff | blocker | resolved | complete | decision | replan (not "${mode}")`
       );
     }
     if (hasPlaceholder(phaseFlag)) return placeholderError(phaseFlag);
@@ -462,6 +473,47 @@ async function runCommand(
 
   const bounds = findSectionBounds(content, LOG_SECTION);
   if (!bounds) return noLogSection(displayPath);
+
+  if (mode === 'replan') {
+    if (!replaceTicket)
+      return badInvocation(
+        'replan requires an initialized Git project and the shared claim/ticket leases'
+      );
+    let raw: unknown;
+    try {
+      raw = JSON.parse(scratch?.content ?? '');
+    } catch {
+      return payloadFileError('replan payload must be valid JSON');
+    }
+    const worktree = resolveSddTicketWorktreeRoot(root);
+    if (!worktree) return badInvocation('replan requires the complete initialized Git worktree');
+    const corpus = collectTicketCorpus(worktree);
+    if (!corpus.ok) return fileError(corpus.detail);
+    const prepared = prepareTechnicalReplan({
+      root: worktree,
+      ticketFile: abs,
+      content,
+      phaseId: phaseFlag ?? '',
+      payload: raw,
+      corpus: corpus.refs,
+      timestamp: now.toISOString(),
+    });
+    if (!prepared.ok) return badInvocation(prepared.detail);
+    if (prepared.created) {
+      if (isCurrentRoundClosed(content, bounds)) return roundClosedError(displayPath);
+      const lookup = findPhaseBlockBounds(content, bounds, phaseFlag ?? '');
+      if (!lookup.found) return phaseNotOpenError(displayPath, phaseFlag ?? '', lookup.openPhases);
+      replaceTicket(content, prepared.content);
+    }
+    const cleanupFailure = scratch?.consume();
+    logger.debug(
+      `[SddLogCommand#run] [replan → ${prepared.created ? 'recorded' : 'already-recorded'}] ${prepared.id}`
+    );
+    return {
+      ok: true,
+      text: `${idBanner ? `${idBanner}\n` : ''}[sdd-log] replan ${prepared.id} ${prepared.created ? 'recorded' : 'already recorded'}; product/BDD/verification declarations unchanged.\nStop the old worker before applying; redispatch sdd-task ${displayPath} --phase ${phaseFlag}. Old dispatch is not write authority. Re-run sdd-verify for completed prerequisites in dependency order if their attempts are stale; retain their history. No new external authority or operator verdict was granted.${cleanupFailure ? `\n[sdd-log] payload applied but cleanup failed: ${cleanupFailure}` : ''}`,
+    };
+  }
 
   if (mode === 'decision') {
     if (!replaceTicket)
@@ -749,9 +801,11 @@ export async function run(
 ): Promise<LogOutcome> {
   let outcome: LogOutcome;
   let target: ReturnType<typeof resolveTicketArg> | undefined;
+  let replan = false;
   try {
     const parsed = parseArgs(rawArgs, LOG_ARGUMENTS, { strict: true });
     const positional = (parsed._ as string[]).filter((value) => value !== 'sdd-log');
+    replan = positional[1] === 'replan';
     if (
       positional[0] &&
       !['authoring-complete', 'audit-receipt', 'review-receipt'].includes(positional[1] ?? '') &&
@@ -764,8 +818,10 @@ export async function run(
   try {
     outcome =
       target?.ok && resolveSddTicketWorktreeRoot(projectRoot)
-        ? await withSddTicketMutation(resolve(projectRoot), target.path, (replace) =>
-            runCommand(rawArgs, now, projectRoot, checkAuthoring, replace)
+        ? await (replan ? withSddReplanMutation : withSddTicketMutation)(
+            resolve(projectRoot),
+            target.path,
+            (replace) => runCommand(rawArgs, now, projectRoot, checkAuthoring, replace)
           )
         : await runCommand(rawArgs, now, projectRoot, checkAuthoring);
   } catch (cause) {
