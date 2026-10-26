@@ -1,0 +1,9 @@
+{
+  "caseId": "ex2-config",
+  "arm": "candidate",
+  "originalIndex": 2,
+  "exitCode": 1,
+  "status": "recorded",
+  "completedAt": "2026-10-26T17:48:22.482Z",
+  "remainingSandboxes": []
+}

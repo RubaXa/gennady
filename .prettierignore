@@ -139,3 +139,13 @@ ai/flow-eval/results/2026-10-26-task-quality-final/*.json
 ai/flow-eval/results/2026-10-26-task-quality-final/executed-task-quality-live.ts.txt
 ai/flow-eval/results/2026-10-26-task-quality-boundaries/*.json
 ai/flow-eval/results/2026-10-26-task-quality-boundaries/executed-task-quality-live.ts.txt
+
+# EA-3: immutable generated protocols/primary captures (including failed documents) retain
+# exact run bytes. Authored EA3-PARTIAL.md and the maintained plan are still format-checked.
+ai/flow-eval/results/2026-10-26-execution-autonomy-preflight/**/*.json
+ai/flow-eval/results/2026-10-26-execution-autonomy-live/**/*.json
+ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/**
+ai/flow-eval/results/2026-10-26-execution-autonomy-live/transient/**
+ai/flow-eval/results/2026-10-26-execution-autonomy-continued/**/*.json
+ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/**
+ai/flow-eval/results/2026-10-26-execution-autonomy-continued/transient/**

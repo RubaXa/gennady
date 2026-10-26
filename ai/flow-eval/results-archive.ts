@@ -50,6 +50,13 @@ export type SddEvalDurableOutcome =
 
 /** @purpose One scenario's durable outcome record — the ai/flow-eval/results/<dir>/summary.json shape. */
 export type SddEvalDurableSummary = {
+  /** @purpose Sanitized execution failure diagnosis; absent for older/generic campaigns. */
+  executionFailure?: { detail: string };
+  /** @purpose Opt-in frozen execution results; full bounded snapshot lives alongside as execution.json. */
+  executionAutonomy?: Omit<
+    import('./execution-autonomy-evaluation.ts').ExecutionAutonomyEvaluation,
+    'evidence'
+  >;
   /** @purpose Isolated authoring observations; absent on historical/full-flow scenarios. */
   authoringBenchmark?: import('./authoring-metrics.ts').AuthoringObservation;
   scenarioId: string;
@@ -174,6 +181,8 @@ export async function persistDurableResult(
   resultsRoot: string,
   summary: SddEvalDurableSummary,
   options: {
+    /** @purpose Host-owned compact execution snapshot, never a worker-selected output file. */
+    executionFile?: string;
     judgeFile?: string;
     trajectoryFile?: string;
     specs?: { root: string; files: readonly string[] };
@@ -185,6 +194,17 @@ export async function persistDurableResult(
     await cp(options.judgeFile, join(dir, 'judge.md'));
   }
   if (options.trajectoryFile) await cp(options.trajectoryFile, join(dir, 'trajectory.json'));
+  if (options.executionFile) {
+    const file = options.executionFile;
+    if (!/\.sdd-eval-execution\.[a-zA-Z0-9_-]+\.json$/.test(file))
+      throw new Error('unsafe execution evidence filename');
+    const proof = proveRepoFile(join(file, '..'), file.split(sep).at(-1)!);
+    if (!proof.ok) throw new Error('unsafe execution evidence identity');
+    const observed = readProvenRepoFile(proof.identity);
+    if (!observed.ok || Buffer.byteLength(observed.content) > 2_000_000)
+      throw new Error('execution evidence incomplete or over bound');
+    await writeFile(join(dir, 'execution.json'), observed.content, 'utf8');
+  }
   const savedSpecs: string[] = [];
   for (const file of options.specs?.files ?? []) {
     const root = options.specs!.root;

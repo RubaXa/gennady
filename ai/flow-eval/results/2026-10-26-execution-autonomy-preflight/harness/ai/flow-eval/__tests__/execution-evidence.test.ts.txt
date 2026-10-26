@@ -1,0 +1,370 @@
+// @file: Recursive usage and two-snapshot SDK quiescence controls without models or live sessions.
+// @spec: AI-SKILLS
+// @consumers: SddEvalOpenCodeEvidenceSource, offline execution-autonomy qualification
+
+import assert from 'node:assert/strict';
+import { it } from 'node:test';
+import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
+import { SddEvalSessionDirectoryMap } from '../session-directory.ts';
+
+type Node = {
+  children?: string[];
+  messages?: unknown[];
+  directory?: string;
+};
+type Request = {
+  path?: { id: string };
+  query: { directory: string; limit?: number };
+  signal?: AbortSignal;
+};
+
+function message(session = 'root', value = 1) {
+  return {
+    info: {
+      id: `message-${session}`,
+      sessionID: session,
+      role: 'assistant',
+      providerID: 'fixture',
+      modelID: 'evidence',
+      time: { created: 100 * value, completed: 100 * value + 20 },
+      tokens: {
+        input: value,
+        output: value,
+        reasoning: value,
+        cache: { read: value, write: value },
+      },
+      cost: value / 100,
+    },
+    parts: [
+      { type: 'text', text: `public ${session}` },
+      {
+        type: 'tool',
+        callID: `call-${session}`,
+        tool: 'bash',
+        state: {
+          status: 'completed',
+          input: { command: 'node --test' },
+          time: { start: 100, end: 110 },
+        },
+      },
+    ],
+  };
+}
+
+function source(
+  nodes: Record<string, Node>,
+  hooks: {
+    messages?: (id: string, snapshot: number, request: Request) => unknown;
+    children?: (id: string, snapshot: number) => unknown;
+    status?: (snapshot: number) => unknown;
+    registry?: SddEvalSessionDirectoryMap;
+  } = {}
+) {
+  const calls: Array<{ method: string; id?: string; directory: string; limit?: number }> = [];
+  let snapshots = 0;
+  const client = {
+    session: {
+      messages: async (request: Request) => {
+        const id = request.path!.id;
+        calls.push({
+          method: 'messages',
+          id,
+          directory: request.query.directory,
+          limit: request.query.limit,
+        });
+        return hooks.messages
+          ? await hooks.messages(id, snapshots, request)
+          : { data: nodes[id]?.messages ?? [message(id)] };
+      },
+      children: async (request: Request) => {
+        const id = request.path!.id;
+        calls.push({ method: 'children', id, directory: request.query.directory });
+        return hooks.children
+          ? hooks.children(id, snapshots)
+          : {
+              data: (nodes[id]?.children ?? []).map((child) => ({
+                id: child,
+                parentID: id,
+                directory: nodes[child]?.directory ?? '/owned',
+              })),
+            };
+      },
+      status: async (request: Request) => {
+        calls.push({ method: 'status', directory: request.query.directory });
+        return hooks.status
+          ? hooks.status(snapshots++)
+          : (snapshots++,
+            { data: Object.fromEntries(Object.keys(nodes).map((id) => [id, { type: 'idle' }])) });
+      },
+    },
+  };
+  return {
+    evidence: new SddEvalOpenCodeEvidenceSource({
+      directory: '/owned',
+      registry: hooks.registry,
+      client: client as never,
+      readEvents: async () => [],
+    }),
+    calls,
+  };
+}
+
+const quick = { timeoutMs: 100, stableIntervalMs: 1 };
+
+it('sums root, child and grandchild exactly once using the same bounded directory query', async () => {
+  const f = source({
+    root: { children: ['child'], messages: [message('root', 1)] },
+    child: { children: ['grandchild'], messages: [message('child', 2)] },
+    grandchild: { messages: [message('grandchild', 3)] },
+  });
+  const usage = await f.evidence.readUsage('root');
+  assert.equal(usage.complete, true);
+  assert.equal(usage.sessions, 3);
+  assert.equal(usage.messages, 3);
+  assert.equal(usage.total, 18);
+  assert.equal(usage.cacheRead, 6);
+  assert.equal(usage.cacheWrite, 6);
+  assert.equal(usage.cost, 0.06);
+  assert.equal(usage.wallClockMs, 220);
+  assert.deepEqual(usage.models, ['fixture/evidence']);
+  assert.ok(f.calls.every((call) => call.directory === '/owned'));
+  assert.ok(
+    f.calls.filter((call) => call.method === 'messages').every((call) => call.limit === 2000)
+  );
+});
+
+it('marks cycles and repeated descendants incomplete without double-counting their usage', async () => {
+  for (const nodes of [
+    { root: { children: ['child'] }, child: { children: ['root'] } },
+    { root: { children: ['child', 'child'] }, child: {} },
+  ]) {
+    const f = source(nodes);
+    const usage = await f.evidence.readUsage('root');
+    assert.equal(usage.complete, false);
+    assert.equal(usage.sessions, 2);
+    assert.equal(usage.total, 6);
+    assert.equal(usage.wallClockMs, undefined);
+  }
+});
+
+it('keeps partial observed totals on SDK errors and exceptions without proving complete usage', async () => {
+  for (const fail of [
+    () => ({ error: { message: 'unavailable' } }),
+    () => {
+      throw new Error('unavailable');
+    },
+  ]) {
+    const f = source(
+      { root: { children: ['child'] }, child: {} },
+      { messages: (id) => (id === 'child' ? fail() : { data: [message(id)] }) }
+    );
+    const usage = await f.evidence.readUsage('root');
+    assert.equal(usage.complete, false);
+    assert.equal(usage.total, 3);
+    assert.equal(usage.wallClockMs, undefined);
+  }
+});
+
+it('bounds usage to 32 total sessions and refuses an exactly saturated message window as complete', async () => {
+  const nodes: Record<string, Node> = {
+    root: { children: Array.from({ length: 32 }, (_, i) => `child-${i}`) },
+  };
+  const tree = source(nodes);
+  const usage = await tree.evidence.readUsage('root');
+  assert.equal(usage.complete, false);
+  assert.equal(usage.sessions, 32);
+  assert.equal(tree.calls.filter((call) => call.method === 'messages').length, 32);
+  const saturated = source({
+    root: {
+      messages: Array.from({ length: 2000 }, (_, i) => ({
+        ...message(),
+        info: { ...message().info, id: `message-${i}` },
+      })),
+    },
+  });
+  assert.equal((await saturated.evidence.readUsage('root')).complete, false);
+});
+
+it('never queries escaped child directories or conflicting registry bindings', async () => {
+  for (const registryConflict of [false, true]) {
+    const registry = new SddEvalSessionDirectoryMap();
+    registry.set('root', '/owned');
+    if (registryConflict) registry.set('child', '/other');
+    const f = source(
+      {
+        root: { children: ['child'] },
+        child: { directory: registryConflict ? '/owned' : '/other' },
+      },
+      { registry }
+    );
+    const usage = await f.evidence.readUsage('root');
+    assert.equal(usage.complete, false);
+    assert.equal(usage.sessions, 1);
+    assert.ok(f.calls.every((call) => call.id !== 'child' && call.directory === '/owned'));
+  }
+});
+
+it('refuses mismatched message bindings and missing cost or token evidence', async () => {
+  for (const change of [
+    (m: ReturnType<typeof message>) => {
+      m.info.sessionID = 'foreign';
+    },
+    (m: ReturnType<typeof message>) => {
+      delete (m.info as Partial<typeof m.info>).cost;
+    },
+    (m: ReturnType<typeof message>) => {
+      m.info.tokens.input = -1;
+    },
+  ]) {
+    const m = message();
+    change(m);
+    const usage = await source({ root: { messages: [m] } }).evidence.readUsage('root');
+    assert.equal(usage.complete, false);
+    assert.equal(usage.wallClockMs, undefined);
+    assert.ok(usage.total >= 0);
+  }
+});
+
+it('requires two complete stable snapshots of every descendant, not just root idle or an abort ACK', async () => {
+  const f = source({
+    root: { children: ['child'] },
+    child: { children: ['grandchild'] },
+    grandchild: {},
+  });
+  assert.deepEqual(await f.evidence.readQuiescence('root', quick), {
+    complete: true,
+    sessions: 3,
+    reasons: [],
+  });
+  assert.equal(f.calls.filter((call) => call.method === 'status').length, 2);
+  assert.equal(f.calls.filter((call) => call.method === 'messages').length, 6);
+});
+
+it('resets stability when a new descendant or public message appears between snapshots', async () => {
+  const f = source(
+    { root: {}, child: {} },
+    {
+      children: (id, snapshot) => ({
+        data:
+          id === 'root' && snapshot > 0
+            ? [{ id: 'child', directory: '/owned', parentID: 'root' }]
+            : [],
+      }),
+      messages: (id, snapshot) => ({
+        data: [
+          { ...message(id), parts: [{ type: 'text', text: snapshot === 0 ? 'before' : 'after' }] },
+        ],
+      }),
+    }
+  );
+  const result = await f.evidence.readQuiescence('root', quick);
+  assert.equal(result.complete, true);
+  assert.equal(result.sessions, 2);
+  assert.equal(f.calls.filter((call) => call.method === 'status').length, 3);
+});
+
+it('waits within its bound for busy sessions and nonterminal tools, then requires fresh stability', async () => {
+  const f = source(
+    { root: {} },
+    {
+      messages: (id, snapshot) => {
+        const m = message(id);
+        if (snapshot === 0) m.parts[1]!.state!.status = 'running';
+        return { data: [m] };
+      },
+      status: (snapshot) => ({ data: { root: { type: snapshot === 0 ? 'busy' : 'idle' } } }),
+    }
+  );
+  assert.equal((await f.evidence.readQuiescence('root', quick)).complete, true);
+  assert.equal(f.calls.filter((call) => call.method === 'status').length, 3);
+});
+
+it('accepts terminal tool errors as quiescent, not as product success', async () => {
+  const m = message();
+  m.parts[1]!.state!.status = 'error';
+  const f = source({ root: { messages: [m] } }, { status: () => ({ data: {} }) });
+  assert.equal((await f.evidence.readQuiescence('root', quick)).complete, true);
+});
+
+it('returns incomplete for idle root with an active child, unknown status, hidden tools or incomplete SDK evidence', async () => {
+  const cases = [
+    source(
+      { root: { children: ['child'] }, child: {} },
+      { status: () => ({ data: { root: { type: 'idle' }, child: { type: 'retry' } } }) }
+    ),
+    source(
+      { root: { messages: [{ info: { role: 'user' }, parts: [] }] } },
+      { status: () => ({ data: {} }) }
+    ),
+    source({ root: { messages: [{ ...message(), parts: undefined }] } }),
+    source({ root: { children: ['root'] } }),
+    source({ root: {} }, { children: () => ({ error: { message: 'unavailable' } }) }),
+    source({ root: {} }, { messages: () => ({ data: [{ ...message(), parts: 'malformed' }] }) }),
+  ];
+  for (const f of cases) {
+    const result = await f.evidence.readQuiescence('root', { timeoutMs: 10, stableIntervalMs: 1 });
+    assert.equal(result.complete, false);
+    assert.ok(result.reasons.length > 0);
+  }
+});
+
+it('stays incomplete when snapshots keep changing until the deadline', async () => {
+  const f = source(
+    { root: {} },
+    {
+      messages: (id, snapshot) => ({
+        data: [{ ...message(id), parts: [{ type: 'text', text: String(snapshot) }] }],
+      }),
+    }
+  );
+  const result = await f.evidence.readQuiescence('root', { timeoutMs: 10, stableIntervalMs: 1 });
+  assert.equal(result.complete, false);
+  assert.ok(result.reasons.some((reason) => /stable|deadline/.test(reason)));
+});
+
+it('refuses a registry binding that changes during capture instead of certifying the former sandbox', async () => {
+  const registry = new SddEvalSessionDirectoryMap();
+  registry.set('root', '/owned');
+  const f = source(
+    { root: {} },
+    {
+      registry,
+      status: () => {
+        registry.set('root', '/other');
+        return { data: { root: { type: 'idle' } } };
+      },
+    }
+  );
+  const result = await f.evidence.readQuiescence('root', { timeoutMs: 10, stableIntervalMs: 1 });
+  assert.equal(result.complete, false);
+  assert.ok(result.reasons.some((reason) => /binding|deadline/.test(reason)));
+  assert.ok(f.calls.every((call) => call.directory === '/owned'));
+  assert.equal(f.calls.filter((call) => call.method === 'messages').length, 1);
+});
+
+it('bounds a non-cooperative SDK request and never treats cancellation or missing bindings as proof', async () => {
+  const f = source({ root: {} }, { messages: () => new Promise(() => {}) });
+  const keepAlive = setTimeout(() => {}, 1000);
+  try {
+    const result = await f.evidence.readQuiescence('root', { timeoutMs: 10, stableIntervalMs: 1 });
+    assert.equal(result.complete, false);
+    assert.ok(result.reasons.some((reason) => /deadline|cancellation/.test(reason)));
+  } finally {
+    clearTimeout(keepAlive);
+  }
+  const cancelled = new AbortController();
+  cancelled.abort();
+  const untouched = source({ root: {} });
+  assert.equal(
+    (await untouched.evidence.readQuiescence('root', { ...quick, signal: cancelled.signal }))
+      .complete,
+    false
+  );
+  assert.equal(untouched.calls.length, 0);
+  const unbound = new SddEvalOpenCodeEvidenceSource({ client: {} as never });
+  assert.deepEqual(await unbound.readQuiescence('root'), {
+    complete: false,
+    sessions: 0,
+    reasons: ['missing session directory binding'],
+  });
+});

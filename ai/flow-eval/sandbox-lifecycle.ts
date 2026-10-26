@@ -41,6 +41,8 @@ export type SddEvalRunArtifact = {
   judgeFile?: string;
   /** @purpose Observed path, copied before deleting its owned sandbox. */
   trajectoryFile?: string;
+  /** @purpose Immutable host execution facts, including compact file snapshots. */
+  executionFile?: string;
   /** Absolute sandbox directory this outcome came from. */
   directory: string;
 };
@@ -139,6 +141,10 @@ export async function persistRunArtifacts(
       await mkdir(scenarioDir, { recursive: true });
       await cp(entry.trajectoryFile, join(scenarioDir, 'trajectory.json'));
     }
+    if (entry.executionFile) {
+      await mkdir(scenarioDir, { recursive: true });
+      await cp(entry.executionFile, join(scenarioDir, 'execution.json'));
+    }
     summary.push({
       scenarioId: entry.scenarioId,
       verdict: entry.verdict,
@@ -151,6 +157,7 @@ export async function persistRunArtifacts(
       specFiles: savedSpecs,
       hasJudge: Boolean(entry.judgeFile),
       hasTrajectory: Boolean(entry.trajectoryFile),
+      ...(entry.executionFile ? { hasExecutionEvidence: true } : {}),
     });
   }
   await writeFile(join(runDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
@@ -287,6 +294,7 @@ export class SddEvalSandboxLifecycle {
   readonly #removeDirectory: (path: string) => Promise<void>;
   readonly #persistArtifacts: typeof persistRunArtifacts;
   readonly #owned = new Map<string, string>();
+  readonly #unsafeWriters = new Map<string, string>();
   readonly #dependencyLeases = new Map<
     string,
     { readonly handle: EvalDependencyLeaseHandle; readonly heartbeat: EvalDependencyLeaseHeartbeat }
@@ -355,6 +363,13 @@ export class SddEvalSandboxLifecycle {
       throw new Error(`owned eval sandbox must be an existing ordinary directory: ${directory}`);
     }
     this.#owned.set(exact, scenarioId);
+  }
+
+  /** @purpose Never delete a sandbox whose SDK-owned writers have not been proven terminal. */
+  retainForWriterRecovery(scenarioId: string, detail: string): void {
+    if (![...this.#owned.values()].includes(scenarioId))
+      throw new Error('writer recovery needs an owned scenario');
+    this.#unsafeWriters.set(scenarioId, detail);
   }
 
   /** @purpose Retain the exact dependency-store lease until sandbox cleanup completes. */
@@ -438,6 +453,7 @@ export class SddEvalSandboxLifecycle {
   async #markRetained(): Promise<number> {
     const now = this.#now();
     const retainedDirectories = [...this.#owned.keys()]
+      .filter((directory) => !this.#unsafeWriters.has(this.#owned.get(directory) ?? ''))
       .sort()
       .slice(0, SDD_EVAL_RETENTION_POLICY.debugSandbox.maxEntries);
     for (const directory of retainedDirectories) {
@@ -463,6 +479,11 @@ export class SddEvalSandboxLifecycle {
     let removed = 0;
     const errors: string[] = [];
     for (const directory of [...this.#owned.keys()]) {
+      const writerIssue = this.#unsafeWriters.get(this.#owned.get(directory) ?? '');
+      if (writerIssue) {
+        errors.push(`writer quiescence unproven: ${writerIssue}`);
+        continue;
+      }
       try {
         const entry = await lstat(directory).catch(() => undefined);
         if (entry?.isSymbolicLink()) throw new Error('owned sandbox path became a symlink');

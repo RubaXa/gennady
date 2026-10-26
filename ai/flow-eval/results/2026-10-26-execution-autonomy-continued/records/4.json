@@ -1,0 +1,9 @@
+{
+  "caseId": "ex4-decision",
+  "arm": "candidate",
+  "originalIndex": 6,
+  "exitCode": 143,
+  "status": "recorded",
+  "completedAt": "2026-10-26T18:10:07.864Z",
+  "remainingSandboxes": []
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "scenarioId": "execution-autonomy-ex1-clean-baseline",
+    "verdict": "budget-exhausted",
+    "status": "unknown",
+    "outcome": "budget-exhausted",
+    "budgetExhausted": {
+      "kind": "wall-clock",
+      "detail": "wall-clock budget 480000ms exceeded",
+      "pendingOperatorCount": 1
+    },
+    "usage": {
+      "messages": 77,
+      "input": 234550,
+      "output": 17497,
+      "reasoning": 40804,
+      "cacheRead": 5325056,
+      "cacheWrite": 0,
+      "total": 292851,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 4,
+      "wallClockMs": 470146
+    },
+    "quality": {
+      "rule": "R-COMPLETE",
+      "pass": false,
+      "detail": "artifact built but no group audit receipt on spec (receipt verdict is \"FAIL\", not an explicit PASS); no group code-review receipt on spec (no receipt recorded)"
+    },
+    "trajectory": {
+      "rule": "EXECUTION-PATH",
+      "pass": false,
+      "detail": "successful real Verify invocation not observed"
+    },
+    "specFiles": [
+      "specs/delay/core/core.spec.md",
+      "specs/delay/delay.spec.md"
+    ],
+    "hasJudge": false,
+    "hasTrajectory": true,
+    "hasExecutionEvidence": true
+  }
+]

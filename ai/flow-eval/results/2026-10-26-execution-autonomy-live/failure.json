@@ -1,0 +1,6 @@
+{
+  "stage": "live:2:candidate:ex1-clean",
+  "detail": "Writer cleanup unproven; campaign stopped, recovery paths retained",
+  "replacements": 0,
+  "fallback": false
+}

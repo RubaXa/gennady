@@ -1,0 +1,10 @@
+{
+  "caseId": "ex1-clean",
+  "arm": "candidate",
+  "exitCode": 143,
+  "status": "cleanup-unproven",
+  "completedAt": "2026-10-26T17:17:27.534Z",
+  "remainingSandboxes": [
+    "sdd-flow-eval-8WhCEs"
+  ]
+}

@@ -47,7 +47,10 @@ function implementationArchaeology(tail: readonly SddEvalTailEntry[]): string | 
 }
 
 /** @purpose Detect interface probing or deliberately discarded SDD CLI diagnostics. */
-function cliInvocationViolation(tail: readonly SddEvalTailEntry[]): string | null {
+function cliInvocationViolation(
+  tail: readonly SddEvalTailEntry[],
+  allowRequiredHelp = false
+): string | null {
   for (const entry of tail) {
     for (const call of entry.toolCalls) {
       const input = call.inputSummary ?? '';
@@ -55,7 +58,10 @@ function cliInvocationViolation(tail: readonly SddEvalTailEntry[]): string | nul
       if (/(?:^|\s)2>\/dev\/null(?:\s|[;"'}]|$)/.test(input)) {
         return `forbidden CLI shell redirection: ${call.tool} ${input.slice(0, 180)}`;
       }
-      if (/(?:^|\s)--(?:help|version)\b/.test(input)) {
+      if (
+        /(?:^|\s)--version\b/.test(input) ||
+        (!allowRequiredHelp && /(?:^|\s)--help\b/.test(input))
+      ) {
         return `forbidden CLI interface probe: ${call.tool} ${input.slice(0, 180)}`;
       }
     }
@@ -65,6 +71,8 @@ function cliInvocationViolation(tail: readonly SddEvalTailEntry[]): string | nul
 
 /** @purpose Options controlling one bounded observation loop. */
 export type SddEvalObserveOptions = {
+  /** @purpose Opt-in neutral execution carrier permits help required by the installed contract, not version probing. */
+  allowRequiredHelp?: boolean;
   everyMs: number;
   stuckAfter: number;
   tailLimit: number;
@@ -93,6 +101,7 @@ export class SddEvalObserver {
     this.#source = source;
     this.#clock = options.clock ?? realClock;
     this.#opts = {
+      allowRequiredHelp: options.allowRequiredHelp ?? false,
       everyMs: options.everyMs,
       stuckAfter: options.stuckAfter,
       tailLimit: options.tailLimit,
@@ -138,9 +147,10 @@ export class SddEvalObserver {
       .filter((event) => event.type === 'session.error' || event.type.endsWith('.error'))
       .map((event) => event.summary ?? event.type);
     if (readError) errors.push(readError);
-    const policyViolations = [implementationArchaeology(tail), cliInvocationViolation(tail)].filter(
-      (violation): violation is string => violation !== null
-    );
+    const policyViolations = [
+      implementationArchaeology(tail),
+      cliInvocationViolation(tail, this.#opts.allowRequiredHelp),
+    ].filter((violation): violation is string => violation !== null);
     errors.push(...policyViolations);
     const waiting =
       (repeated && previous?.waiting === true) ||

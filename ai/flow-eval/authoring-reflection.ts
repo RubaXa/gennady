@@ -23,6 +23,8 @@ export async function collectAuthoringReflection(
     quality: unknown;
     semanticVerdict: string;
     signal?: AbortSignal;
+    /** @purpose Same bounded post-task interview mechanics; schema distinguishes execution from authoring. */
+    domain?: 'execution';
   },
   timeoutMs = 90000
 ) {
@@ -101,7 +103,10 @@ export async function collectAuthoringReflection(
   const cited = [...new Set(text.match(/call_[A-Za-z0-9_-]+/g) ?? [])];
   const unknownCallIds = cited.filter((id) => !known.has(id));
   return {
-    schema: 'gennady.authoring-reflection.1',
+    schema:
+      input.domain === 'execution'
+        ? 'gennady.execution-reflection.1'
+        : 'gennady.authoring-reflection.1',
     sessionId: input.sessionId,
     status,
     startedAt,

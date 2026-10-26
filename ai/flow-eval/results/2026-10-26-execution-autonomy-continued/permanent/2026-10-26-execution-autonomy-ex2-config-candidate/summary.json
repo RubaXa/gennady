@@ -1,0 +1,92 @@
+{
+  "executionFailure": {
+    "detail": "forbidden implementation archaeology: bash {\"command\":\"ls -la node_modules | head -40; echo '---gennady bin---'; cat node_modules/.bin/gennady 2>/dev/null | head -5; echo '---package json of gennady---'; cat node_modules/ge"
+  },
+  "executionAutonomy": {
+    "schema": "gennady.execution-autonomy-evaluation.1",
+    "caseId": "ex2-config",
+    "quiescence": {
+      "complete": true,
+      "sessions": 1,
+      "reasons": []
+    },
+    "functional": {
+      "pass": false,
+      "exitCode": 1,
+      "detail": "independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests"
+    },
+    "integrity": {
+      "pass": true,
+      "issues": []
+    },
+    "terminal": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": false,
+      "detail": "0 sdd-check error(s), 1 warning(s) (warnings allowed); declared artifact was not produced; independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests; pending=0"
+    },
+    "attempts": [],
+    "pendingDecisions": [],
+    "snapshotDigest": "3e3e805bafa8ce50639812e16ca0be795a0aaffeb8f035e95295455a59d35ae9"
+  },
+  "scenarioId": "execution-autonomy-ex2-config-candidate",
+  "date": "2026-10-26",
+  "timestamp": "2026-10-26T17:48:22.288Z",
+  "sha": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "7bd9965e399048324e51eb1f0ff8e731577d1468ca3476315ea36fa4b72d2f15",
+    "configSha256": "b414893352979100f5261ddda2c9b57a813e2cf90b4118535473361ad939d0a5"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "worker-error",
+  "status": "error",
+  "outcome": "worker-error",
+  "actions": 16,
+  "durationMs": 15079,
+  "usage": {
+    "messages": 6,
+    "input": 37596,
+    "output": 1509,
+    "reasoning": 94,
+    "cacheRead": 89856,
+    "cacheWrite": 0,
+    "total": 39199,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 15203
+  },
+  "quality": {
+    "rule": "R-COMPLETE",
+    "pass": false,
+    "detail": "declared artifact was not produced"
+  },
+  "trajectory": {
+    "rule": "EXECUTION-PATH",
+    "pass": false,
+    "detail": "successful installed sdd-task dispatch not observed; successful real Verify invocation not observed; successful real full audit Verify invocation not observed"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delay/core/core.spec.md",
+    "specs/delay/delay.spec.md"
+  ]
+}

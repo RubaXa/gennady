@@ -1,0 +1,54 @@
+{
+  "planned": 14,
+  "recorded": 5,
+  "originalBudget": 16,
+  "previouslySpent": 2,
+  "totalSpent": 7,
+  "records": [
+    {
+      "caseId": "ex2-config",
+      "arm": "candidate",
+      "originalIndex": 2,
+      "exitCode": 1,
+      "status": "recorded",
+      "completedAt": "2026-10-26T17:48:22.482Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex2-config",
+      "arm": "baseline",
+      "originalIndex": 3,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-26T17:56:27.579Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex3-helper",
+      "arm": "baseline",
+      "originalIndex": 4,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-26T18:04:31.714Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex3-helper",
+      "arm": "candidate",
+      "originalIndex": 5,
+      "exitCode": 1,
+      "status": "recorded",
+      "completedAt": "2026-10-26T18:07:05.659Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex4-decision",
+      "arm": "candidate",
+      "originalIndex": 6,
+      "exitCode": 143,
+      "status": "recorded",
+      "completedAt": "2026-10-26T18:10:07.864Z",
+      "remainingSandboxes": []
+    }
+  ]
+}

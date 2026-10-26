@@ -8,6 +8,10 @@ import { withEvalSignal } from './eval-signal.ts';
 import { SddEvalObserver } from './observer.ts';
 import { assertUniqueScenarioDirectories } from './provision.ts';
 import { composeSddPhasePrompt } from './prompts.ts';
+import {
+  captureExecutionAutonomy,
+  executionSnapshotUnchanged,
+} from './execution-autonomy-evaluation.ts';
 import type {
   SddEvalConfig,
   SddEvalEvidenceSource,
@@ -163,6 +167,7 @@ export class SddEvalRunner {
             agent: this.#config.agent,
           });
           return new SddEvalObserver(this.#evidence, {
+            allowRequiredHelp: scenario.executionAutonomy !== undefined,
             everyMs: this.#config.observeEveryMs,
             stuckAfter: this.#config.stuckAfter,
             tailLimit: this.#config.tailLimit,
@@ -242,11 +247,32 @@ export class SddEvalRunner {
       };
       workerResult = worker;
       this.#throwIfAborted();
+      if (scenario.executionAutonomy) {
+        const quiescence = (await this.#evidence
+          .readQuiescence?.(session.id, { signal: this.#config.signal })
+          .catch(() => ({
+            complete: false,
+            sessions: 0,
+            reasons: ['SDK quiescence capture failed'],
+          }))) ?? { complete: false, sessions: 0, reasons: ['SDK quiescence API unavailable'] };
+        worker.execution = await captureExecutionAutonomy(
+          directory,
+          scenario.executionAutonomy.caseId,
+          quiescence
+        );
+        if (!quiescence.complete) {
+          workerError ??=
+            'execution writer quiescence unproven; retain partial evidence and stop the campaign';
+          worker.error = workerError;
+          worker.status = 'error';
+        }
+      }
       if (workerError || budgetExhausted) return { worker };
       const judge = await this.#judge?.evaluate(
         scenario.id,
         scenario.directory,
         {
+          ...(worker.execution ? { execution: worker.execution.evidence } : {}),
           ...(scenario.authoringBenchmark
             ? {
                 authoring: captureAuthoringJudgeEvidence(
@@ -279,6 +305,15 @@ export class SddEvalRunner {
         } catch {
           /* separate telemetry remains unknown */
         }
+      }
+      if (worker.execution && !executionSnapshotUnchanged(directory, worker.execution)) {
+        worker.execution.evidence.complete = false;
+        worker.execution.integrity.pass = false;
+        worker.execution.integrity.issues.push(
+          'primary files changed after tool-free semantic review'
+        );
+        worker.execution.terminal.pass = false;
+        worker.execution.terminal.detail += '; post-judge snapshot drift';
       }
       return { worker, ...(judge ? { judge } : {}) };
     } catch (cause) {

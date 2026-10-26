@@ -1,0 +1,15 @@
+{
+  "schema": "gennady.execution-autonomy-hold.1",
+  "classification": "shared-routing-readiness-confound",
+  "originalBudget": 16,
+  "previouslySpent": 2,
+  "continuationSpent": 5,
+  "totalSpent": 7,
+  "unstarted": 9,
+  "replacements": 0,
+  "modelFallback": false,
+  "furtherLiveCallsAuthorizedByThisRecord": false,
+  "claim": "Global execution map and exact project-selector phase dispatch disagree on both frozen runtimes; specific execution is permitted, so impossibility and candidate-only regression are not proven.",
+  "behaviorImprovement": "not-proven",
+  "action": "Preserve all primary evidence, clean owned runtime resources, fix and independently review routing consistency and qualification before any remaining-scope decision."
+}

@@ -1,0 +1,190 @@
+// @file: No-model normal/broken/tamper qualification through each exact installed runtime.
+// @spec: AI-SKILLS
+// @consumers: finite execution-autonomy campaign preflight and deterministic tests
+
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { provisionScenarioDirectories } from './provision.ts';
+import { releaseEvalDependencyLease, type EvalDependencyLeaseHandle } from './dependency-store.ts';
+import { appendExecutionDecision } from '../../shared/sdd/deviation.ts';
+import {
+  executionAutonomyScenario,
+  executionAutonomyCase,
+  executionAutonomyReference,
+  type ExecutionAutonomyCaseId,
+} from './execution-autonomy-cases.ts';
+import {
+  captureExecutionAutonomy,
+  checkExecutionAutonomyFunction,
+} from './execution-autonomy-evaluation.ts';
+
+/** @purpose Qualify canonical inputs and host normal/broken/tamper controls before any model call. | @param runtimeRoot Exact freshly built source checkout. | @param id Registered case. | @post Supplies qualification facts after cleanup; throws on any failed control. */
+export async function qualifyExecutionAutonomyCase(
+  runtimeRoot: string,
+  id: ExecutionAutonomyCaseId
+) {
+  const root = mkdtempSync(join(tmpdir(), 'gennady-autonomy-control-'));
+  const leases: EvalDependencyLeaseHandle[] = [];
+  let commands = 0;
+  try {
+    const [item] = await provisionScenarioDirectories(
+      [executionAutonomyScenario(id, 'candidate')],
+      {
+        rootDirectory: root,
+        gennadyRoot: runtimeRoot,
+        dependencyLeaseId: randomUUID(),
+        onDependencyLease: (lease) => {
+          leases.push(lease);
+        },
+      }
+    );
+    if (!item) throw new Error('control provisioning returned no scenario');
+    const cwd = item.directory;
+    const c = executionAutonomyCase(id);
+    const env = { PATH: process.env.PATH ?? '', NO_COLOR: '1', GIT_CONFIG_NOSYSTEM: '1' };
+    const cli = (...args: string[]) => {
+      commands++;
+      const result = spawnSync(join(cwd, 'node_modules/.bin/gennady'), args, {
+        cwd,
+        env,
+        encoding: 'utf8',
+        timeout: 30_000,
+        killSignal: 'SIGKILL',
+        maxBuffer: 256_000,
+      });
+      if (result.status !== 0)
+        throw new Error(
+          `control ${id}: ${args[0]} ${args[2] ?? ''} refused (${result.status}): ${result.stdout.slice(-5000)} ${result.stderr.slice(-1500)}`
+        );
+      return result;
+    };
+    const isolated = ['flow-eval', 'flow-sim', 'drafts', 'inspector'].every(
+      (path) => !existsSync(join(cwd, 'node_modules/gennady/ai', path))
+    );
+    if (!isolated) throw new Error('control installed a host answer corpus');
+    const brokenSource = `// @spec: COR\nexport function ${c.operation}(${c.holdout ? 'values: readonly string[], capacity: number' : 'value: number, limit: number'}): ${c.holdout ? 'string[]' : 'number'} { ${c.holdout ? 'return [];' : 'return 0;'} }\n`;
+    writeFileSync(join(cwd, c.source), brokenSource);
+    const brokenRejected = !checkExecutionAutonomyFunction(cwd, id).pass;
+    if (!brokenRejected) throw new Error('control independent oracle accepted broken source');
+    // The reference helper is pre-approved in this CONTROL input. This is not a successful live replan.
+    if (id === 'ex3-helper')
+      writeFileSync(
+        join(cwd, c.ticket),
+        readFileSync(join(cwd, c.ticket), 'utf8').replace(
+          `  - ${c.source}`,
+          `  - ${c.source}\n  - src/number.ts`
+        )
+      );
+    for (const [path, bytes] of Object.entries(executionAutonomyReference(id))) {
+      mkdirSync(dirname(join(cwd, path)), { recursive: true });
+      writeFileSync(join(cwd, path), bytes);
+    }
+    if (id === 'ex2-config') {
+      writeFileSync(join(cwd, 'config/runtime.json'), '{"maxWaitMs": 1000}\n');
+      cli(
+        'sdd-log',
+        c.ticket,
+        'resolved',
+        'Corrected finite nonnegative runtime limit',
+        '--phase',
+        'P1'
+      );
+    }
+    const pending = c.expectedTerminal !== 'complete';
+    if (pending) {
+      const original = readFileSync(join(cwd, c.ticket), 'utf8');
+      const decision = appendExecutionDecision(
+        original,
+        {
+          id: 'COR-DL-1',
+          what:
+            c.expectedTerminal === 'decision-review'
+              ? 'Validate value before limit for stable diagnostics'
+              : 'Preserve approved contract and leave the incompatible request pending',
+          why: c.extra,
+          where: c.source,
+          evidence: `inputs/brief.md: ${c.extra}`,
+          alternative: 'Do not replace the public goal or invent external authority',
+          verify: 'Retain the actual local gate and independent behavior results',
+        },
+        'P1',
+        '2026-10-26'
+      );
+      if (!decision.ok) throw new Error(decision.detail);
+      // Host-authored reference INPUT, identical to both runtimes. Never claim the old runtime supports the new writer API.
+      writeFileSync(join(cwd, c.ticket), decision.content);
+    }
+    if (c.expectedTerminal === 'complete' || c.expectedTerminal === 'decision-review') {
+      mkdirSync(join(cwd, '.claude/tmp'), { recursive: true });
+      for (const phase of ['P1', 'P2']) {
+        cli('sdd-task', c.ticket, '--phase', phase);
+        cli('sdd-verify', '--task', c.ticket, '--phase', phase);
+        writeFileSync(
+          join(cwd, '.claude/tmp/handoff.txt'),
+          `artifacts: [${phase === 'P1' ? c.source : `src/${c.scope}.test.ts`}]; decisions: []; open: []; deviations: [${pending && phase === 'P1' ? 'COR-DL-1' : ''}]`
+        );
+        cli(
+          'sdd-log',
+          c.ticket,
+          'complete',
+          '--phase',
+          phase,
+          '--content-file',
+          '.claude/tmp/handoff.txt'
+        );
+      }
+      if (c.expectedTerminal === 'complete') {
+        cli('sdd-log', c.ticket, 'close');
+        cli('sdd-sync', c.ticket);
+        cli('sdd-log', c.ticket, 'audit-receipt', 'PASS');
+        cli('sdd-log', c.ticket, 'review-receipt', 'PASS');
+        for (const phase of ['P1', 'P2']) cli('sdd-verify', '--task', c.ticket, '--phase', phase);
+      }
+    }
+    const normal = await captureExecutionAutonomy(cwd, id, {
+      complete: true,
+      sessions: 0,
+      reasons: ['host reference control; no model sessions exist'],
+    });
+    if (!normal.terminal.pass || !normal.functional.pass || !normal.integrity.pass)
+      throw new Error(
+        `control ${id} normal failed: ${JSON.stringify({ terminal: normal.terminal, functional: normal.functional, integrity: normal.integrity })}`
+      );
+    // A worker-owned test/gate cannot authorize a different public behavior.
+    writeFileSync(
+      join(cwd, 'package.json'),
+      JSON.stringify({
+        name: 'tampered',
+        private: true,
+        type: 'module',
+        scripts: { unit: 'node -e "process.exit(0)"' },
+      })
+    );
+    const tamper = await captureExecutionAutonomy(cwd, id, {
+      complete: true,
+      sessions: 0,
+      reasons: ['host-only tamper control'],
+    });
+    if (tamper.integrity.pass || tamper.terminal.pass)
+      throw new Error('control accepted weakened project gate');
+    return {
+      caseId: id,
+      normalPass: true,
+      brokenRejected,
+      tamperRejected: true,
+      answerIsolation: isolated,
+      commands,
+      modelCalls: 0,
+      controlScope:
+        'reference helper pre-approved; pending cards are fixture input, not proof of model behavior',
+      cleanup: true,
+    };
+  } finally {
+    for (const lease of leases) await releaseEvalDependencyLease(lease);
+    rmSync(root, { recursive: true, force: true });
+    if (existsSync(root)) throw new Error('control sandbox cleanup failed');
+  }
+}

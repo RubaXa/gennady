@@ -33,10 +33,13 @@ export function printHelp(): void {
     'GATE_QUEUE grants bootstrap setup only when each missing readiness gate has one declared ticket/phase owner.'
   );
   console.info(
-    'The execution map prints EXECUTION_READY explicitly; ordinary product phases require yes, while only the exact active GATE_QUEUE setup phase may run on no.'
+    'EXECUTION_READY describes builtin readiness. Builtin product phases require yes, except the exact active GATE_QUEUE setup owner.'
   );
   console.info(
-    'Therefore pickable is readiness-filtered: on no it contains only dependency-ready GATE_QUEUE owners; every unrelated graph-ready ticket is blocked.'
+    'A graph-ready ticket whose first unfinished phase resolves a project-authored selector is also pickable on no, matching explicit --phase dispatch; later custom phases never bypass an earlier builtin phase.'
+  );
+  console.info(
+    'PROJECT_SELECTOR_QUEUE is a routing projection, not a PASS: exact phase dependencies, paths, rules and selected Verify gates remain mandatory. Malformed/unresolved selectors fail closed.'
   );
   console.info('');
   console.info('Without --phase, emits (the ONLY ticket read the orchestrator needs):');

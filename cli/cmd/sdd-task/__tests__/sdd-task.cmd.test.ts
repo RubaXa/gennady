@@ -250,6 +250,47 @@ function writeCrossSpecMapFixture(root: string, flow: 'v1' | 'v2', withAudit: bo
   writeFileSync(join(bDir, 'b.spec.md'), '# B\n', 'utf-8');
 }
 
+/** @purpose Reuse the audited dependency fixture with a project-owned first-phase selector and missing legacy npm gates. */
+function writeProjectSelectorMapFixture(root: string): string {
+  writeCrossSpecMapFixture(root, 'v2', true);
+  writeDeclaredPhaseTargets(root);
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'custom-map', scripts: {} }));
+  writeFileSync(
+    join(root, 'gennady.yaml'),
+    [
+      'verify:',
+      '  sdd:',
+      '    mapping:',
+      '      impl: custom-code',
+      '  presets:',
+      '    node:',
+      '      phases:',
+      '        custom-code: { include: [custom-proof] }',
+      '      steps:',
+      '        custom-proof:',
+      '          tags: [custom-proof]',
+      '          needs: []',
+      '          executor: local',
+      '          effect: observe',
+      '          command:',
+      '            argv: [node, --check, src/foo.ts]',
+      '            cwd: .',
+      '          timeout: 2m',
+      '          onFailure: stop-phase',
+      '',
+    ].join('\n')
+  );
+  const path = join(root, 'specs', 'b', 'b.task.B-one.md');
+  writeFileSync(
+    path,
+    TICKET.replaceAll('cli-foo', 'B-one')
+      .replace('- **Scope:** cli', '- **Scope:** b')
+      .replace('- **Dependencies:** None', '- **Dependencies:** A-one') +
+      '\n<!--SECTION:EXECUTION_LOG-->\n### Round 1 — 2026-10-26, initial\n<!--PHASE_RECEIPTS:v1-->\n<!--/SECTION:EXECUTION_LOG-->\n'
+  );
+  return path;
+}
+
 /** @purpose Seed actual historical ticket evidence so V2 owning-spec rules are not
  *  accidentally exercised by tests whose subject is map formatting or runtime readiness. */
 function markLegacyFlow(root: string): void {
@@ -1574,6 +1615,172 @@ describe('SddTaskCommand', () => {
   });
 
   describe('READINESS / GATE_QUEUE preflight fields', () => {
+    it('project selector map exposes the first custom phase while global EXECUTION_READY stays no', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-'));
+      try {
+        const customTicket = writeProjectSelectorMapFixture(mapDir);
+        const phase = await mod.run(argv(customTicket, '--phase', 'P1'));
+        assert.equal(phase.ok, true, phase.ok ? '' : phase.message);
+        if (phase.ok) assert.match(phase.text, /selector: custom-code ← gennady\.yaml/);
+        const result = await mod.run(argv(mapDir));
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (!result.ok) return;
+        assert.match(result.text, /EXECUTION_READY=no/);
+        assert.match(result.text, /GATE_QUEUE=none/);
+        assert.match(result.text, /PROJECT_SELECTOR_QUEUE=B-one/);
+        assert.match(
+          result.text,
+          /pickable \(ready now\):\n  B-one → specs\/b\/b\.task\.B-one\.md/
+        );
+        assert.doesNotMatch(result.text, /blocked: B-one/);
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
+    it('project selector map keeps builtin phases blocked when legacy readiness is missing', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-builtin-'));
+      try {
+        const customTicket = writeProjectSelectorMapFixture(mapDir);
+        rmSync(join(mapDir, 'gennady.yaml'));
+        const result = await mod.run(argv(mapDir));
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (!result.ok) return;
+        assert.match(result.text, /pickable \(ready now\): — none/);
+        assert.match(result.text, /blocked: B-one ← EXECUTION_READY=no/);
+        const phase = await mod.run(argv(customTicket, '--phase', 'P1'));
+        assert.equal(phase.ok, false);
+        if (!phase.ok) assert.equal(phase.code, 'ERR_CLI_SDD_TASK_INFRA_NOT_READY');
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
+    it('project selector map does not grant readiness for malformed or unresolved configuration', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-invalid-'));
+      try {
+        const customTicket = writeProjectSelectorMapFixture(mapDir);
+        const config = join(mapDir, 'gennady.yaml');
+        const original = readFileSync(config, 'utf8');
+        for (const invalid of [
+          original.replace('impl: custom-code', 'impl: absent'),
+          original.replace('impl: custom-code', 'impl: [custom-code]'),
+          'verify: [\n',
+        ]) {
+          writeFileSync(config, invalid);
+          const result = await mod.run(argv(mapDir));
+          assert.equal(result.ok, true, result.ok ? '' : result.message);
+          if (!result.ok) return;
+          assert.match(result.text, /pickable \(ready now\): — none/);
+          assert.match(result.text, /blocked: B-one/);
+          assert.doesNotMatch(result.text, /PROJECT_SELECTOR_QUEUE=/);
+          const phase = await mod.run(argv(customTicket, '--phase', 'P1'));
+          assert.equal(phase.ok, false);
+          if (!phase.ok) assert.equal(phase.code, 'ERR_CLI_SDD_TASK_PHASE_EVIDENCE');
+        }
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
+    it('project selector map never skips an unfinished builtin prerequisite to a later custom phase', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-no-skip-'));
+      try {
+        writeProjectSelectorMapFixture(mapDir);
+        const config = join(mapDir, 'gennady.yaml');
+        writeFileSync(
+          config,
+          readFileSync(config, 'utf8').replace('impl: custom-code', 'test: custom-code')
+        );
+        const result = await mod.run(argv(mapDir));
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (!result.ok) return;
+        assert.match(result.text, /pickable \(ready now\): — none/);
+        assert.match(result.text, /blocked: B-one ← EXECUTION_READY=no/);
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
+    it('project selector map uses the next unfinished kind rather than a completed custom phase', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-next-builtin-'));
+      try {
+        const customTicket = writeProjectSelectorMapFixture(mapDir);
+        writeFileSync(
+          customTicket,
+          readFileSync(customTicket, 'utf8').replace(
+            '| P1 | impl | — | [ ] |',
+            '| P1 | impl | — | [x] |'
+          )
+        );
+        const result = await mod.run(argv(mapDir));
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (!result.ok) return;
+        assert.match(result.text, /pickable \(ready now\): — none/);
+        assert.match(result.text, /blocked: B-one ← EXECUTION_READY=no/);
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
+    it('project selector map recognizes the custom test kind once the earlier phase is marked complete', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-next-custom-'));
+      try {
+        const customTicket = writeProjectSelectorMapFixture(mapDir);
+        const config = join(mapDir, 'gennady.yaml');
+        writeFileSync(
+          config,
+          readFileSync(config, 'utf8').replace('impl: custom-code', 'test: custom-code')
+        );
+        writeFileSync(
+          customTicket,
+          readFileSync(customTicket, 'utf8').replace(
+            '| P1 | impl | — | [ ] |',
+            '| P1 | impl | — | [x] |'
+          )
+        );
+        const result = await mod.run(argv(mapDir));
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (!result.ok) return;
+        assert.match(result.text, /EXECUTION_READY=no/);
+        assert.match(result.text, /pickable \(ready now\):\n  B-one →/);
+        assert.doesNotMatch(result.text, /blocked: B-one/);
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
+    it('project selector map preserves unfinished graph dependency blockers', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-dependency-'));
+      try {
+        writeProjectSelectorMapFixture(mapDir);
+        const dependency = join(mapDir, 'specs', 'a', 'a.task.A-one.md');
+        writeFileSync(dependency, readFileSync(dependency, 'utf8').replace('[x] DONE', '[ ] TODO'));
+        const result = await mod.run(argv(mapDir));
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (!result.ok) return;
+        assert.match(result.text, /blocked: B-one ← A-one/);
+        assert.doesNotMatch(result.text, /^  B-one →/m);
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
+    it('project selector map preserves cross-spec audit blockers despite DONE dependencies', async () => {
+      const mapDir = mkdtempSync(join(tmpdir(), 'sdd-task-custom-map-audit-'));
+      try {
+        writeProjectSelectorMapFixture(mapDir);
+        writeFileSync(join(mapDir, 'specs', 'a', 'a.spec.md'), '# A\n');
+        const result = await mod.run(argv(mapDir));
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (!result.ok) return;
+        assert.match(result.text, /blocked: B-one ← A-one \(group audit receipt\)/);
+        assert.doesNotMatch(result.text, /^  B-one →/m);
+      } finally {
+        rmSync(mapDir, { recursive: true, force: true });
+      }
+    });
+
     const infraTicket = (taskId: string) =>
       [
         `# Task: ${taskId} — Bootstrap`,

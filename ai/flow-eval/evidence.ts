@@ -4,14 +4,17 @@
 
 import type { OpencodeClient } from '@opencode-ai/sdk';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { lstat, readFile, readlink, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import { createSddEvalOpenCodeClient } from './opencode-client.ts';
 import { fingerprintTail } from './observer.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
 import { projectToolObservation } from './tool-observation.ts';
+import { withEvalSignal } from './eval-signal.ts';
 import { proveRepoFile, readProvenRepoFile } from '../../shared/common/repo-file-identity.ts';
 import type {
   SddEvalEvent,
@@ -26,29 +29,11 @@ import type {
 export type SddEvalEventReader = (sessionId: string, directory?: string) => Promise<SddEvalEvent[]>;
 
 /**
- * @purpose GAP-E-1b: connect readEvents to the real OpenCode event stream instead of the dead
- *   `async () => []` default. `client.event.subscribe` (GET /event) is a single long-lived SSE
- *   connection for the whole server, not one per session — so this opens it ONCE, lazily, on the
- *   first call, and keeps appending every event it sees into a per-session buffer for the life of
- *   the evidence source. `readEvents(sessionId)` then just returns whatever has accumulated for
- *   that session; it never blocks waiting for a NEW event (observer.ts polls on an interval, so a
- *   later poll picks up what a race missed on this one).
- * @param sessionId Extracted from the raw event's `properties.sessionID` (or nested
- *   `properties.info.id` for session.created/updated/deleted); events without either are dropped —
- *   there is nowhere to file them.
- * @param type Passed through VERBATIM from the raw event's `type` field, whatever string the server
- *   sends (`permission.updated`, `session.idle`, ... or a future/synthetic name) — this reader does
- *   not maintain its own allow-list; observer.ts owns which type strings it treats as "waiting".
- * @param signal Optional external abort — without one, a server that starts refusing/dropping the
- *   connection would otherwise retry with exponential backoff FOREVER (the SDK's SSE client has no
- *   default retry cap), which is exactly the kind of lingering handle that keeps a process from
- *   exiting after teardown. `sseMaxRetryAttempts` is ALSO capped independent of `signal`, so a dead
- *   server still gives up (and readEvents keeps returning whatever was buffered before it died)
- *   even when no caller supplied a signal.
- * Not exported: its one production call site is this file's own constructor default below (YAGNI —
- *   a private symbol used at least once is ordinary decomposition, not speculative surface). Tested
- *   through the public `SddEvalOpenCodeEvidenceSource` class (its actual production interface), not
- *   by importing this function directly — see __tests__/evidence-events.test.ts.
+ * @purpose Lazily subscribe once and retain per-session events without blocking observer polls on new events.
+ * @invariant Sessionless events are ignored; event types remain verbatim. Stream retry count is bounded independently of lifecycle cancellation.
+ * @param client Installed SDK client owning the global SSE subscription.
+ * @param [options] External cancellation for the shared subscription's lifetime.
+ * @returns Nonblocking reader of already observed session events.
  */
 function createSddEvalLiveEventReader(
   client: OpencodeClient,
@@ -107,10 +92,7 @@ type SddEvalEvidenceOptions = {
   readEvents?: SddEvalEventReader;
   /** @purpose Same registry populated by the runtime on session creation. */
   registry?: SddEvalSessionDirectoryRegistry;
-  /** @purpose Stops the default live event subscription (see createSddEvalLiveEventReader) on
-   *  teardown — pass the SAME signal used to tear down the rest of a run so the process can exit
-   *  once the batch is done, without waiting out the SSE client's retry backoff. Ignored when
-   *  `readEvents` is explicitly injected (fake-backed tests own their own lifecycle). */
+  /** @purpose Stop the default SSE subscription during lifecycle teardown; injected event readers retain their own lifecycle. */
   eventSignal?: AbortSignal;
 };
 
@@ -122,6 +104,8 @@ const DIFF_FILE_CONTENT_LIMIT = 6_000;
 const DIFF_TOTAL_LIMIT = 24_000;
 const CHILD_SESSION_LIMIT = 8;
 const CHILD_TAIL_LIMIT = 2;
+const EXECUTION_SESSION_LIMIT = 32;
+const EXECUTION_MESSAGE_LIMIT = 2_000;
 const UNTRACKED_FILE_LIMIT = 24;
 const execFileAsync = promisify(execFile);
 
@@ -412,15 +396,41 @@ function boundedMessageEntries(
   return entries;
 }
 
+/** @purpose One exactly queried SDK session, retained only during the bounded evidence read. */
+type ExecutionSessionCapture = {
+  /** @purpose Session identity queried under the root's bound directory. */
+  id: string;
+  /** @purpose Discovery parent, absent for the requested root session. */
+  parent?: string;
+  /** @purpose Bounded SDK messages; unavailable messages remain empty with an explicit reason. */
+  messages: Array<{ info?: Record<string, any>; parts?: unknown[] }>;
+};
+
+/** @purpose Partial observations and explicit incompleteness, never a claim from abort acknowledgement. */
+type ExecutionSessionTree = {
+  /** @purpose Root and recursively discovered sessions within the fixed total session bound. */
+  sessions: ExecutionSessionCapture[];
+  /** @purpose Missing, ambiguous, escaped or truncated SDK evidence. */
+  reasons: string[];
+};
+
 /** @purpose Read only bounded evidence through the installed SDK; never mutates the session. */
 export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
+  /** @purpose Installed SDK client; evidence operations never invoke model prompts. */
   readonly #client: OpencodeClient;
+  /** @purpose Optional explicit directory for consumers without a shared session registry. */
   readonly #directory?: string;
+  /** @purpose Nonblocking per-session event projection, injected or SDK-backed. */
   readonly #readEvents: SddEvalEventReader;
+  /** @purpose Exact runtime-established session-to-sandbox bindings. */
   readonly #registry: SddEvalSessionDirectoryRegistry;
   /** @purpose Preserve a proven fixture baseline across worker commits and later metadata loss. */
   readonly #fixtureBaselines = new Map<string, string>();
 
+  /**
+   * @purpose Bind SDK evidence reads and existing event subscription ownership.
+   * @param [options] Explicit SDK client, session bindings and lifecycle cancellation.
+   */
   constructor(options: SddEvalEvidenceOptions = {}) {
     this.#directory = options.directory;
     this.#registry = options.registry ?? new SddEvalSessionDirectoryMap();
@@ -439,7 +449,11 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
       createSddEvalLiveEventReader(this.#client, { signal: options.eventSignal });
   }
 
-  /** @purpose Fail closed when evidence cannot be tied to one exact sandbox cwd. */
+  /**
+   * @purpose Fail closed when evidence cannot be tied to one exact sandbox cwd.
+   * @param sessionId Exact root session selected by its owning runtime.
+   * @returns Absolute bound sandbox directory.
+   */
   #sessionDirectory(sessionId: string): string {
     const directory = this.#registry.get(sessionId) ?? this.#directory;
     if (!directory)
@@ -447,7 +461,266 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     return resolve(directory);
   }
 
-  /** @purpose Capture bounded root AND descendant history; never claim a polling tail is complete. */
+  /**
+   * @purpose Share bounded same-directory recursive discovery between usage and quiescence.
+   * @param sessionId Exact root session selected by the caller.
+   * @param directory Previously resolved root session binding, reused for every query.
+   * @param signal Total capture deadline or lifecycle cancellation.
+   * @returns Observed sessions and explicit reasons for incomplete capture.
+   */
+  async #readExecutionSessions(
+    sessionId: string,
+    directory: string,
+    signal: AbortSignal
+  ): Promise<ExecutionSessionTree> {
+    const pending: Array<{ id: string; parent?: string }> = [{ id: sessionId }];
+    const discovered = new Set([sessionId]);
+    const sessions: ExecutionSessionCapture[] = [];
+    const reasons: string[] = [];
+    while (pending.length && !signal.aborted) {
+      const next = pending.shift()!;
+      const bound = this.#registry.get(next.id);
+      if (bound !== undefined && resolve(bound) !== directory) {
+        reasons.push(`session binding changed: ${next.id}`);
+        continue;
+      }
+      const captured: ExecutionSessionCapture = { ...next, messages: [] };
+      sessions.push(captured);
+      try {
+        const result = await withEvalSignal(
+          () =>
+            this.#client.session.messages({
+              path: { id: next.id },
+              query: { directory, limit: EXECUTION_MESSAGE_LIMIT },
+              signal,
+            }),
+          signal
+        );
+        if (result.error || !Array.isArray(result.data)) {
+          reasons.push(`messages unavailable: ${next.id}`);
+        } else {
+          if (result.data.length >= EXECUTION_MESSAGE_LIMIT)
+            reasons.push(`message limit reached: ${next.id}`);
+          const messageIds = new Set<string>();
+          for (const raw of result.data.slice(0, EXECUTION_MESSAGE_LIMIT)) {
+            const message = raw as ExecutionSessionCapture['messages'][number];
+            if (
+              !message ||
+              typeof message !== 'object' ||
+              !message.info ||
+              typeof message.info !== 'object' ||
+              Array.isArray(message.info) ||
+              (message.parts !== undefined &&
+                (!Array.isArray(message.parts) ||
+                  message.parts.some((part) => !part || typeof part !== 'object')))
+            ) {
+              reasons.push(`malformed message: ${next.id}`);
+              continue;
+            }
+            const info = message.info;
+            if (
+              (info.sessionID !== undefined && info.sessionID !== next.id) ||
+              (typeof info.path?.cwd === 'string' && resolve(info.path.cwd) !== directory)
+            ) {
+              reasons.push(`message escaped session binding: ${next.id}`);
+              continue;
+            }
+            if (typeof info.id === 'string') {
+              if (messageIds.has(info.id)) {
+                reasons.push(`duplicate message: ${next.id}`);
+                continue;
+              }
+              messageIds.add(info.id);
+            }
+            captured.messages.push(message);
+          }
+        }
+      } catch {
+        reasons.push(`messages read failed: ${next.id}`);
+      }
+      if (signal.aborted) break;
+      try {
+        const children = await withEvalSignal(
+          () =>
+            this.#client.session.children({
+              path: { id: next.id },
+              query: { directory },
+              signal,
+            }),
+          signal
+        );
+        if (children.error || !Array.isArray(children.data)) {
+          reasons.push(`children unavailable: ${next.id}`);
+          continue;
+        }
+        for (const child of children.data) {
+          if (
+            !child ||
+            typeof child.id !== 'string' ||
+            !child.id ||
+            typeof child.directory !== 'string' ||
+            resolve(child.directory) !== directory ||
+            (child.parentID !== undefined && child.parentID !== next.id) ||
+            (this.#registry.get(child.id) !== undefined &&
+              resolve(this.#registry.get(child.id)!) !== directory)
+          ) {
+            reasons.push(`child escaped or ambiguous binding: ${next.id}`);
+            continue;
+          }
+          if (discovered.has(child.id)) {
+            reasons.push(`cycle or repeated session: ${child.id}`);
+            continue;
+          }
+          if (discovered.size >= EXECUTION_SESSION_LIMIT) {
+            reasons.push('descendant session limit reached');
+            break;
+          }
+          discovered.add(child.id);
+          pending.push({ id: child.id, parent: next.id });
+        }
+      } catch {
+        reasons.push(`children read failed: ${next.id}`);
+      }
+    }
+    if (signal.aborted) reasons.push('session evidence deadline or cancellation');
+    return { sessions, reasons: [...new Set(reasons)] };
+  }
+
+  /**
+   * @purpose Prove two stable terminal SDK session/tool snapshots, not detached process termination.
+   * @param sessionId Exact root session already bound to the owned sandbox.
+   * @param [options] Bounded observation timing and external cancellation; never a retry policy.
+   * @returns Complete SDK quiescence evidence, or explicit reasons without a positive claim.
+   */
+  async readQuiescence(
+    sessionId: string,
+    options: {
+      timeoutMs?: number;
+      stableIntervalMs?: number;
+      signal?: AbortSignal;
+    } = {}
+  ): Promise<{ complete: boolean; sessions: number; reasons: string[] }> {
+    const timeoutMs = options.timeoutMs ?? 5_000;
+    const intervalMs = options.stableIntervalMs ?? 25;
+    if (
+      !Number.isSafeInteger(timeoutMs) ||
+      timeoutMs < 1 ||
+      timeoutMs > 30_000 ||
+      !Number.isSafeInteger(intervalMs) ||
+      intervalMs < 0 ||
+      intervalMs > timeoutMs
+    )
+      return { complete: false, sessions: 0, reasons: ['invalid quiescence bounds'] };
+    let directory: string;
+    try {
+      directory = this.#sessionDirectory(sessionId);
+    } catch {
+      return { complete: false, sessions: 0, reasons: ['missing session directory binding'] };
+    }
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+    let previous: string | undefined;
+    let sessions = 0;
+    let reasons = ['two stable terminal snapshots not observed'];
+    while (!signal.aborted) {
+      const tree = await this.#readExecutionSessions(sessionId, directory, signal);
+      sessions = tree.sessions.length;
+      const issues = [...tree.reasons];
+      const statuses: Record<string, { type?: string }> = {};
+      try {
+        const status = await withEvalSignal(
+          () => this.#client.session.status({ query: { directory }, signal }),
+          signal
+        );
+        if (
+          status.error ||
+          !status.data ||
+          typeof status.data !== 'object' ||
+          Array.isArray(status.data)
+        )
+          issues.push('session statuses unavailable');
+        else Object.assign(statuses, status.data);
+      } catch {
+        issues.push('session statuses read failed');
+      }
+      const state = tree.sessions
+        .map((captured) => {
+          const bound = this.#registry.get(captured.id);
+          if (bound !== undefined && resolve(bound) !== directory)
+            issues.push(`session binding changed: ${captured.id}`);
+          const status = statuses[captured.id]?.type;
+          const latest = captured.messages.at(-1)?.info;
+          const completed = latest?.role === 'assistant' && Number.isFinite(latest.time?.completed);
+          if (status === 'busy' || status === 'retry')
+            issues.push(`session is active: ${captured.id}`);
+          else if (status !== 'idle' && !(status === undefined && completed))
+            issues.push(`session terminal state unknown: ${captured.id}`);
+          const metadata = captured.messages.map((message) => {
+            const info = message.info;
+            if (
+              typeof info?.id !== 'string' ||
+              !info.id ||
+              !['user', 'assistant'].includes(info.role)
+            )
+              issues.push(`message identity unavailable: ${captured.id}`);
+            if (
+              info?.role === 'assistant' &&
+              (!Number.isFinite(info.time?.created) ||
+                !Number.isFinite(info.time?.completed) ||
+                info.time.completed < info.time.created)
+            )
+              issues.push(`assistant message nonterminal: ${captured.id}`);
+            if (!Array.isArray(message.parts))
+              issues.push(`tool inventory unavailable: ${captured.id}`);
+            const tools = (message.parts ?? [])
+              .filter((part) => (part as { type?: unknown })?.type === 'tool')
+              .map((raw) => {
+                const tool = raw as {
+                  callID?: string;
+                  state?: { status?: string; time?: unknown };
+                };
+                if (!tool.callID || !['completed', 'error'].includes(tool.state?.status ?? ''))
+                  issues.push(`tool nonterminal or unidentified: ${captured.id}`);
+                return { id: tool.callID, status: tool.state?.status, time: tool.state?.time };
+              });
+            return { id: info?.id, role: info?.role, time: info?.time, tools };
+          });
+          return {
+            id: captured.id,
+            parent: captured.parent,
+            status: status ?? 'completed',
+            metadata,
+            publicFingerprint: fingerprintTail(
+              boundedMessageEntries(captured.messages, captured.id, undefined, directory)
+            ),
+          };
+        })
+        .sort((left, right) => left.id.localeCompare(right.id));
+      const fingerprint = createHash('sha256').update(JSON.stringify(state)).digest('hex');
+      if (!issues.length && tree.sessions.length && previous === fingerprint)
+        return { complete: true, sessions, reasons: [] };
+      previous = issues.length ? undefined : fingerprint;
+      reasons = issues.length
+        ? [...new Set(issues)]
+        : ['two stable terminal snapshots not observed'];
+      try {
+        await delay(intervalMs, undefined, { signal });
+      } catch {
+        break;
+      }
+    }
+    return {
+      complete: false,
+      sessions,
+      reasons: [...new Set([...reasons, 'quiescence deadline or cancellation'])],
+    };
+  }
+
+  /**
+   * @purpose Capture bounded root AND descendant history; never claim a polling tail is complete.
+   * @param sessionId Exact runtime-bound root session.
+   * @returns Public action history with explicit capture coverage.
+   */
   async readTrajectory(sessionId: string): Promise<{
     entries: SddEvalTailEntry[];
     coverage: { complete: boolean; sessions: number; reasons: string[] };
@@ -498,6 +771,12 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     };
   }
 
+  /**
+   * @purpose Preserve the existing bounded root/direct-child liveness projection.
+   * @param sessionId Runtime-bound root session.
+   * @param limit Maximum combined tail entries returned.
+   * @returns Bounded public entries with liveness fingerprints.
+   */
   async readTail(sessionId: string, limit: number): Promise<SddEvalTailEntry[]> {
     const directory = this.#sessionDirectory(sessionId);
     const result = await this.#client.session.messages({
@@ -530,6 +809,11 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     }));
   }
 
+  /**
+   * @purpose Read accumulated session events without waiting for another event.
+   * @param sessionId Runtime-bound root session.
+   * @returns Existing per-session event projection.
+   */
   async readEvents(sessionId: string): Promise<SddEvalEvent[]> {
     return this.#readEvents(sessionId, this.#sessionDirectory(sessionId));
   }
@@ -568,6 +852,11 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
       : `${evidence.slice(0, DIFF_TOTAL_LIMIT)}\n… <diff evidence truncated>`;
   }
 
+  /**
+   * @purpose Preserve existing root-session liveness status semantics.
+   * @param sessionId Runtime-bound root session.
+   * @returns Observed running, idle, completed or unknown state.
+   */
   async readStatus(sessionId: string): Promise<SddEvalObservation['status']> {
     const directory = this.#sessionDirectory(sessionId);
     const result = await this.#client.session.status({ query: { directory } });
@@ -589,13 +878,13 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     return status ? 'idle' : 'unknown';
   }
 
-  /**
-   * @purpose Sum token and cost usage across the worker session and its children — the whole run.
-   * @param sessionId Parent worker session id.
-   * @returns Total input/output/reasoning/cache tokens and cost across every assistant message.
-   */
   // Each OpenCode assistant message carries info.tokens {input,output,reasoning,cache{read,write}}
-  // and info.cost; user messages carry none. Not bounded by the tail/child limits — the true total.
+  // and info.cost; user messages carry none. The execution capture bounds are independent of tails.
+  /**
+   * @purpose Sum observed recursive usage without claiming missing usage is zero.
+   * @param sessionId Parent worker session id.
+   * @returns Partial or complete observed totals; incompleteness prevents a comparable duration claim.
+   */
   async readUsage(sessionId: string): Promise<SddEvalUsage> {
     const directory = this.#sessionDirectory(sessionId);
     const models = new Set<string>();
@@ -629,7 +918,10 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
         };
         if (typeof info.time?.created === 'number' && Number.isFinite(info.time.created))
           earliest = Math.min(earliest, info.time.created);
-        if (info.role !== 'assistant') continue;
+        if (info.role !== 'assistant') {
+          if (info.role !== 'user') complete = false;
+          continue;
+        }
         if (typeof info.providerID === 'string' && typeof info.modelID === 'string')
           models.add(`${info.providerID}/${info.modelID}`);
         else complete = false;
@@ -656,7 +948,10 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
           ].some((value) => typeof value !== 'number' || !Number.isFinite(value) || value < 0)
         )
           complete = false;
-        const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+        if (typeof info.cost !== 'number' || !Number.isFinite(info.cost) || info.cost < 0)
+          complete = false;
+        const n = (v: unknown): number =>
+          typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 0;
         const input = n(info.tokens.input);
         const output = n(info.tokens.output);
         const reasoning = n(info.tokens.reasoning);
@@ -671,33 +966,29 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
       }
       return acc;
     };
-    const sessionIds = [sessionId];
-    const children = await this.#client.session.children({
-      path: { id: sessionId },
-      query: { directory },
-    });
-    if (!children.error && children.data)
-      sessionIds.push(...children.data.map((child) => child.id));
-    else complete = false;
+    const tree = await this.#readExecutionSessions(
+      sessionId,
+      directory,
+      AbortSignal.timeout(30_000)
+    );
+    if (tree.reasons.length) complete = false;
     const usage = { ...zero };
-    for (const id of sessionIds) {
-      const messages = await this.#client.session.messages({ path: { id }, query: { directory } });
-      if (messages.error || !messages.data) {
-        complete = false;
-        continue;
-      }
+    for (const session of tree.sessions) {
       add(
         usage,
-        messages.data.map((message) => (message as { info?: unknown }).info)
+        session.messages.map((message) => message.info)
       );
     }
-    if (models.size) {
-      usage.models = [...models].sort();
-      usage.complete = complete;
-      usage.sessions = sessionIds.length;
-      if (complete && Number.isFinite(earliest) && Number.isFinite(latest) && latest >= earliest)
-        usage.wallClockMs = latest - earliest;
-    }
+    usage.models = [...models].sort();
+    usage.complete = complete && models.size > 0;
+    usage.sessions = tree.sessions.length;
+    if (
+      usage.complete &&
+      Number.isFinite(earliest) &&
+      Number.isFinite(latest) &&
+      latest >= earliest
+    )
+      usage.wallClockMs = latest - earliest;
     return usage;
   }
 }

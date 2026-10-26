@@ -30,6 +30,8 @@ export type SddEvalScenario = {
     variant: string;
     repetition: number;
   };
+  /** @purpose Source-owned execution case/terminal contract, identical for baseline and candidate. */
+  executionAutonomy?: { caseId: import('./execution-autonomy-cases.ts').ExecutionAutonomyCaseId };
   /** @purpose Optional declared execute target for the mechanical completion rule (R-COMPLETE). When
    *  present on an execute scenario, the quality gate reads these files from disk and fails the run if
    *  the artifact was built but the ticket did not reach a real DONE (closed round + group receipts).
@@ -110,6 +112,7 @@ export type SddEvalMode = (typeof SDD_EVAL_MODES)[number];
 
 /** @purpose Prepared, small, deterministic fixture scenarios for cheap eval smoke runs. */
 export type SddEvalFixtureId =
+  | 'execution-autonomy'
   | 'authoring-benchmark'
   | 'v2-brownfield-routing'
   | 'deviation-verdict'
@@ -285,6 +288,8 @@ export type SddEvalUsage = {
 
 /** @purpose Worker result plus the evidence needed by the judge. */
 export type SddEvalWorkerResult = {
+  /** @purpose Opt-in immutable host execution evidence captured after SDK quiescence, before semantic review. */
+  execution?: import('./execution-autonomy-evaluation.ts').ExecutionAutonomyEvaluation;
   scenarioId: string;
   sessionId: string;
   intent: string;
@@ -309,6 +314,8 @@ export type SddEvalWorkerResult = {
 export type SddEvalJudgeInput = {
   /** @purpose Artifact-only semantic review; execution proof remains a separate deterministic gate. */
   authoring?: import('./authoring-judge-evidence.ts').AuthoringJudgeEvidence;
+  /** @purpose Frozen host-owned execution evidence; opt-in tool-free semantic review with an explicit terminal contract. */
+  execution?: import('./execution-judge-evidence.ts').ExecutionJudgeEvidence;
   intent: string;
   /** @purpose Exact bounded acceptance facts; unlike the intent, this carries numeric/negative edges. */
   acceptance?: string;
@@ -377,4 +384,9 @@ export interface SddEvalEvidenceSource {
   readStatus(sessionId: string): Promise<SddEvalObservation['status']>;
   /** @purpose Sum token/cost usage across the session and its children; optional so fakes may omit it. */
   readUsage?(sessionId: string): Promise<SddEvalUsage>;
+  /** @purpose Opt-in bounded proof that discovered SDK-owned sessions/tools are terminal; not arbitrary detached OS processes. */
+  readQuiescence?(
+    sessionId: string,
+    options?: { timeoutMs?: number; stableIntervalMs?: number; signal?: AbortSignal }
+  ): Promise<{ complete: boolean; sessions: number; reasons: string[] }>;
 }

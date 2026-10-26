@@ -4,6 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { it } from 'node:test';
@@ -17,6 +18,9 @@ import { parseTaskQualityAnswer } from '../task-quality-probes.ts';
 const root = resolve(import.meta.dirname, '../../..');
 const dir = resolve(root, 'ai/flow-eval/results/2026-10-26-task-quality-boundaries');
 const read = (name: string) => JSON.parse(readFileSync(resolve(dir, name), 'utf8'));
+// Adopted PR #129 snapshot, not today's evolving harness. Existing evidence/hashes stay immutable.
+const historicalSource = (path: string) =>
+  execFileSync('git', ['-C', root, 'show', `7958ecb0a3cabcfd2ba923d272a65e00a981a0c6:${path}`]);
 const hashes = {
   '0-structural-review-baseline.json':
     '6b9b125b4d2e22a28c49d58e8c467628d2379cfd4e33204036b83917a2c745e9',
@@ -45,19 +49,16 @@ it('hash-binds the four actual attempts, input policies and executed harness', (
   assert.equal(protocol.source.cleanBefore, false);
   for (const input of protocol.inputs.filter((i: { arm: string }) => i.arm === 'candidate'))
     assert.equal(
-      taskQualityBoundaryPolicy(input.id, (path) => readFileSync(resolve(root, path), 'utf8'))
-        .policy,
+      taskQualityBoundaryPolicy(input.id, (path) => historicalSource(path).toString('utf8')).policy,
       input.policy
     );
   for (const file of protocol.harness)
     assert.equal(
       createHash('sha256')
         .update(
-          readFileSync(
-            file.path === 'ai/flow-eval/scripts/task-quality-live.ts'
-              ? resolve(dir, 'executed-task-quality-live.ts.txt')
-              : resolve(root, file.path)
-          )
+          file.path === 'ai/flow-eval/scripts/task-quality-live.ts'
+            ? readFileSync(resolve(dir, 'executed-task-quality-live.ts.txt'))
+            : historicalSource(file.path)
         )
         .digest('hex'),
       file.sha256,

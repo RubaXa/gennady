@@ -148,6 +148,10 @@ npx gennady verify --plan --json --phase=full
 # SDD phase получает selector из preset defaults + verify.sdd.mapping override
 npx gennady sdd-task CLI-example --phase P2
 
+# Карта согласована с --phase: project selector не наследует чужой builtin readiness;
+# PROJECT_SELECTOR_QUEUE — маршрут, не Verify PASS. Zero-YAML сохраняет GATE_QUEUE guard.
+npx gennady sdd-task
+
 # Worker исполняет ровно выданную SDD-facade команду; facade доказывает ticket/phase/scope/selector,
 # вызывает общий Verify engine и сохраняет append-only attempt evidence
 npx gennady sdd-verify --task=specs/app/app.task.CLI-example.md --phase=P2

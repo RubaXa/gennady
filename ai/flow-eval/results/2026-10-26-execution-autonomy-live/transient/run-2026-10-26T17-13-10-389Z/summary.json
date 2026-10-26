@@ -1,0 +1,23 @@
+[
+  {
+    "scenarioId": "execution-autonomy-ex1-clean-candidate",
+    "verdict": "interrupted",
+    "status": "interrupted",
+    "quality": {
+      "rule": "INTERRUPTED",
+      "pass": false,
+      "detail": "run interrupted before reporting completed"
+    },
+    "trajectory": {
+      "rule": "TRAJECTORY",
+      "pass": false,
+      "detail": "interrupted path; retained for diagnosis only"
+    },
+    "specFiles": [
+      "specs/delay/core/core.spec.md",
+      "specs/delay/delay.spec.md"
+    ],
+    "hasJudge": false,
+    "hasTrajectory": true
+  }
+]

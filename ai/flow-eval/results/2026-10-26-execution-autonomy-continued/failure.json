@@ -1,0 +1,6 @@
+{
+  "stage": "live:6:baseline:ex4-decision",
+  "detail": "Campaign interrupted; no automatic replacement attempt",
+  "replacements": 0,
+  "fallback": false
+}

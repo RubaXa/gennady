@@ -1,0 +1,92 @@
+{
+  "executionFailure": {
+    "detail": "forbidden CLI interface probe: bash {\"command\":\"node --version; npx tsc --version; npx prettier --version; npx c8 --version; npx gennady --version 2>&1 | head -5\"}"
+  },
+  "executionAutonomy": {
+    "schema": "gennady.execution-autonomy-evaluation.1",
+    "caseId": "ex3-helper",
+    "quiescence": {
+      "complete": true,
+      "sessions": 1,
+      "reasons": []
+    },
+    "functional": {
+      "pass": false,
+      "exitCode": 1,
+      "detail": "independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests"
+    },
+    "integrity": {
+      "pass": true,
+      "issues": []
+    },
+    "terminal": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": false,
+      "detail": "sdd-check --all clean; declared artifact was not produced; independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests; pending=0"
+    },
+    "attempts": [],
+    "pendingDecisions": [],
+    "snapshotDigest": "18f3930dc044c6891e7d6d39af8e8364110837fdf3a5005bfde6f9976721fbe3"
+  },
+  "scenarioId": "execution-autonomy-ex3-helper-candidate",
+  "date": "2026-10-26",
+  "timestamp": "2026-10-26T18:07:05.464Z",
+  "sha": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+  "source": {
+    "dirty": true,
+    "worktreeSha256": "bbe187ad6e62bb7b016c07a6cef3fb7fc2663aea38e7f6f3645feb6f269b1192",
+    "scenarioSha256": "7729d62078b7c6ebb8eab9aebc0e9cab200c48a62d2228c466a23b7ce6afcebc",
+    "configSha256": "b414893352979100f5261ddda2c9b57a813e2cf90b4118535473361ad939d0a5"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "worker-error",
+  "status": "error",
+  "outcome": "worker-error",
+  "actions": 45,
+  "durationMs": 150594,
+  "usage": {
+    "messages": 21,
+    "input": 82967,
+    "output": 3736,
+    "reasoning": 15692,
+    "cacheRead": 1032704,
+    "cacheWrite": 0,
+    "total": 102395,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 150720
+  },
+  "quality": {
+    "rule": "R-COMPLETE",
+    "pass": false,
+    "detail": "declared artifact was not produced"
+  },
+  "trajectory": {
+    "rule": "EXECUTION-PATH",
+    "pass": false,
+    "detail": "successful real Verify invocation not observed; successful real full audit Verify invocation not observed; replan-before-new-helper-write is not proven"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delay/core/core.spec.md",
+    "specs/delay/delay.spec.md"
+  ]
+}

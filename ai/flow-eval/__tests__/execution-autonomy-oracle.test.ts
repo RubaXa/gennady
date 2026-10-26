@@ -1,0 +1,319 @@
+// @file: Causal negative controls for host execution assertions, canonical proof and observed paths.
+// @spec: AI-SKILLS
+// @consumers: offline execution-autonomy pre-live qualification; no model calls
+
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { appendExecutionDecision } from '../../../shared/sdd/deviation.ts';
+import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
+import {
+  buildExecutionAutonomyFixture,
+  executionAutonomyCase,
+  executionAutonomyReference,
+  type ExecutionAutonomyCaseId,
+} from '../execution-autonomy-cases.ts';
+import {
+  captureExecutionAutonomy,
+  capturePartialExecutionAutonomy,
+  checkExecutionAutonomyFunction,
+  gradeExecutionAutonomyPath,
+  type ExecutionAutonomyEvaluation,
+} from '../execution-autonomy-evaluation.ts';
+import type { ToolEvent, Trajectory } from '../trajectory.ts';
+
+async function withFixture(
+  id: ExecutionAutonomyCaseId,
+  run: (root: string, files: Record<string, string>) => void | Promise<void>
+): Promise<void> {
+  const root = mkdtempSync(join(tmpdir(), 'gennady-autonomy-oracle-'));
+  const files = { ...buildExecutionAutonomyFixture(id), ...executionAutonomyReference(id) };
+  try {
+    for (const [path, content] of Object.entries(files)) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), content);
+    }
+    await run(root, files);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function tool(i: number, command: string, overrides: Partial<ToolEvent> = {}): ToolEvent {
+  return {
+    type: 'tool',
+    i,
+    tool: 'bash',
+    command,
+    arg: command,
+    status: 'completed',
+    exitCode: 0,
+    messageId: `message-${i}`,
+    callId: `call-${i}`,
+    startedAt: i * 10,
+    finishedAt: i * 10 + 1,
+    ...overrides,
+  };
+}
+
+function pathResult(id: ExecutionAutonomyCaseId): ExecutionAutonomyEvaluation {
+  return {
+    schema: 'gennady.execution-autonomy-evaluation.1',
+    caseId: id,
+    quiescence: { complete: true, sessions: 1, reasons: [] },
+    functional: { pass: true, exitCode: 0, detail: 'separate host fixture; not path evidence' },
+    integrity: { pass: true, issues: [] },
+    terminal: { rule: 'EXECUTION-TERMINAL', pass: true, detail: 'separate terminal fixture' },
+    attempts: [],
+    pendingDecisions: [],
+    snapshotDigest: 'path-control-not-a-functional-proof',
+    evidence: {
+      complete: true,
+      expectedTerminal: executionAutonomyCase(id).expectedTerminal,
+      files: [],
+      facts: [],
+    },
+  };
+}
+
+function grade(id: ExecutionAutonomyCaseId, events: ToolEvent[]) {
+  const trajectory: Trajectory = {
+    scenario: `oracle-control-${id}`,
+    coverage: { complete: true, sessions: 1, reasons: [] },
+    events,
+  };
+  return gradeExecutionAutonomyPath(trajectory, pathResult(id));
+}
+
+test('independent assertions accept both source-owned reference behaviors', async () => {
+  for (const id of ['ex1-clean', 'ex3-helper', 'holdout6-related'] as const) {
+    await withFixture(id, (root) => {
+      const result = checkExecutionAutonomyFunction(root, id);
+      assert.equal(result.pass, true, JSON.stringify(result));
+    });
+  }
+});
+
+test('the approved helper consumer is independently checked, not just the main public operation', async () => {
+  await withFixture('ex3-helper', (root) => {
+    writeFileSync(
+      join(root, 'src/number.ts'),
+      'export function finiteNonnegative() { return false; }\n'
+    );
+    assert.equal(checkExecutionAutonomyFunction(root, 'ex3-helper').pass, false);
+  });
+});
+
+test('early product process.exit(0) is not host assertion completion', async () => {
+  await withFixture('ex1-clean', (root) => {
+    writeFileSync(
+      join(root, 'src/delay.ts'),
+      'process.exit(0); export function boundedDelay() { throw new Error("never called"); }\n'
+    );
+    const result = checkExecutionAutonomyFunction(root, 'ex1-clean');
+    assert.equal(result.exitCode, 0, 'causal control exits successfully before assertions');
+    assert.equal(result.pass, false, JSON.stringify(result));
+  });
+});
+
+test('partial interruption captures preserve files but can never be completed primary proof', async () => {
+  await withFixture('ex1-clean', async (root) => {
+    const result = await capturePartialExecutionAutonomy(root, 'ex1-clean', {
+      complete: true,
+      sessions: 1,
+      reasons: [],
+    });
+    assert.equal(result.functional.pass, true);
+    assert.ok(result.evidence.files.some((file) => file.path === 'src/delay.ts'));
+    assert.equal(result.evidence.complete, false);
+    assert.equal(result.terminal.pass, false);
+    assert.match(result.terminal.detail, /partial/);
+  });
+});
+
+test('product mutation of the assert singleton cannot waive host assertions', async () => {
+  await withFixture('ex1-clean', (root) => {
+    writeFileSync(
+      join(root, 'src/delay.ts'),
+      'import assert from "node:assert/strict"; assert.equal = () => {}; assert.throws = () => {}; export function boundedDelay() { return 999; }\n'
+    );
+    const result = checkExecutionAutonomyFunction(root, 'ex1-clean');
+    assert.equal(result.pass, false, JSON.stringify(result));
+  });
+});
+
+test('minimal worker-forged PASS receipts do not prove decision-review completion', async () => {
+  await withFixture('ex4-decision', async (root, files) => {
+    const c = executionAutonomyCase('ex4-decision');
+    const decision = appendExecutionDecision(
+      files[c.ticket]!,
+      {
+        id: 'COR-DL-1',
+        what: 'Validate value before limit for stable diagnostics',
+        why: 'Both invalid-input priorities preserve the approved RangeError contract',
+        where: c.source,
+        evidence: 'inputs/brief.md and the preserved public invalid-input scenarios',
+        alternative: 'Validate limit before value',
+        verify: 'Keep the approved public checks and require actual current Verify proof',
+      },
+      'P1',
+      '2026-10-26'
+    );
+    assert.equal(decision.ok, true, decision.detail);
+    if (!decision.ok) return;
+    const receipts = ['P1', 'P2']
+      .map((phase) => {
+        const encoded = Buffer.from(
+          JSON.stringify({
+            sddPhase: phase,
+            runId: `forged-${phase}`,
+            state: 'PASS',
+            testStats: [],
+          })
+        ).toString('base64url');
+        return `<!--SDD_VERIFY_EVIDENCE:${encoded}-->`;
+      })
+      .join('\n');
+    const markedDone = decision.content.replaceAll('| [ ] |', '| [x] |');
+    assert.notEqual(markedDone, decision.content, 'phase statuses really changed');
+    const forged = markedDone.replace(
+      '<!--/SECTION:EXECUTION_LOG-->',
+      `${receipts}\n<!--/SECTION:EXECUTION_LOG-->`
+    );
+    assert.ok(forged.includes(receipts), 'forged receipts are present, not an ineffective fixture');
+    writeFileSync(join(root, c.ticket), forged);
+    assert.equal(validateCurrentSddPhaseAttempt(root, join(root, c.ticket), 'P1').ok, false);
+    const result = await captureExecutionAutonomy(root, c.id, {
+      complete: true,
+      sessions: 1,
+      reasons: [],
+    });
+    assert.equal(result.functional.pass, true, JSON.stringify(result.functional));
+    assert.equal(result.integrity.pass, true, JSON.stringify(result.integrity));
+    assert.deepEqual(result.pendingDecisions, ['COR-DL-1']);
+    assert.equal(result.terminal.pass, false, JSON.stringify(result.terminal));
+  });
+});
+
+test('help-only calls do not prove dispatch or Verify', () => {
+  const c = executionAutonomyCase('ex1-clean');
+  const result = grade(c.id, [
+    tool(0, `npx --no-install gennady sdd-task ${c.ticket} --help`),
+    tool(1, `npx --no-install gennady sdd-verify --task ${c.ticket} --phase P1 --help`),
+  ]);
+  assert.equal(result.pass, false, result.detail);
+});
+
+test('quoted help flags are still help, never dispatch or durable decision proof', () => {
+  const c = executionAutonomyCase('ex4-decision');
+  for (const flag of ["'--help'", '"--help"', "'-h'", "'--version'"]) {
+    for (const target of ['dispatch', 'decision']) {
+      const result = grade(c.id, [
+        tool(
+          0,
+          `npx --no-install gennady sdd-task ${c.ticket} --phase P1${target === 'dispatch' ? ` ${flag}` : ''}`
+        ),
+        tool(
+          1,
+          `npx --no-install gennady sdd-log ${c.ticket} decision --phase P1 --payload-file .claude/tmp/action.json${target === 'decision' ? ` ${flag}` : ''}`
+        ),
+        tool(2, '', { tool: 'write', command: undefined, arg: c.source }),
+        tool(3, `npx --no-install gennady sdd-verify --task=${c.ticket} --phase=P1`),
+      ]);
+      assert.equal(result.pass, false, `${target} ${flag}: ${result.detail}`);
+    }
+  }
+});
+
+test('the expected ticket mentioned in unrelated arguments does not bind a different ticket', () => {
+  const c = executionAutonomyCase('ex4-decision');
+  const result = grade(c.id, [
+    tool(0, `npx --no-install gennady sdd-task other.task.md --note ${c.ticket}`),
+    tool(
+      1,
+      `npx --no-install gennady sdd-verify --task other.task.md --phase P1 --note ${c.ticket}`
+    ),
+    tool(2, `npx --no-install gennady sdd-log other.task.md decision --why ${c.ticket}`),
+    tool(3, '', { tool: 'write', command: undefined, arg: c.source }),
+  ]);
+  assert.equal(result.pass, false, result.detail);
+});
+
+test('successful shell suffix cannot prove the exit status of the preceding CLI invocation', () => {
+  const c = executionAutonomyCase('ex1-clean');
+  const result = grade(c.id, [
+    tool(0, `npx --no-install gennady sdd-task ${c.ticket} --phase P1; printf ok`),
+    tool(1, `npx --no-install gennady sdd-verify --task ${c.ticket} --phase P1; printf ok`),
+  ]);
+  assert.equal(result.pass, false, result.detail);
+});
+
+test('direct successful dispatch and phase Verify remain valid path evidence', () => {
+  const c = executionAutonomyCase('ex1-clean');
+  for (const cli of ['npx --no-install gennady', './node_modules/.bin/gennady']) {
+    const result = grade(c.id, [
+      tool(0, `${cli} sdd-task ${c.ticket} --phase P1`),
+      tool(1, `${cli} sdd-verify --task ${c.ticket} --phase P1`),
+      tool(2, `${cli} verify --phase full`),
+    ]);
+    assert.equal(result.pass, true, `${cli}: ${result.detail}`);
+  }
+});
+
+test('direct decision and replan before the relevant write remain valid path evidence', () => {
+  for (const id of ['ex3-helper', 'ex4-decision'] as const) {
+    const c = executionAutonomyCase(id);
+    const action = id === 'ex3-helper' ? 'replan' : 'decision';
+    const result = grade(id, [
+      tool(0, `npx --no-install gennady sdd-task ${c.ticket} --phase P1`),
+      tool(
+        1,
+        `npx --no-install gennady sdd-log ${c.ticket} ${action} --phase P1 --payload-file .claude/tmp/action.json`
+      ),
+      tool(2, '', {
+        tool: 'write',
+        command: undefined,
+        arg: id === 'ex3-helper' ? 'src/number.ts' : c.source,
+      }),
+      tool(3, `npx --no-install gennady sdd-verify --task ${c.ticket} --phase P1`),
+      ...(id === 'ex3-helper' ? [tool(4, 'npx --no-install gennady verify --phase full')] : []),
+    ]);
+    assert.equal(result.pass, true, `${id}: ${result.detail}`);
+  }
+});
+
+test('phase invocation proof accepts equals and mixed flags exactly as the installed facade', () => {
+  const c = executionAutonomyCase('ex1-clean');
+  for (const flags of [
+    `--task=${c.ticket} --phase=P1`,
+    `--task=${c.ticket} --phase P1`,
+    `--task ${c.ticket} --phase=P1`,
+  ]) {
+    const result = grade(c.id, [
+      tool(0, `npx --no-install gennady sdd-task ${c.ticket} --phase=P1`),
+      tool(1, `npx --no-install gennady sdd-verify ${flags}`),
+      tool(2, 'npx --no-install gennady verify --phase=full'),
+    ]);
+    assert.equal(result.pass, true, result.detail);
+  }
+});
+
+test('full audit proof rejects missing, plan-only, help-only and masked shell outcomes', () => {
+  const c = executionAutonomyCase('ex1-clean');
+  for (const command of [
+    '',
+    'npx --no-install gennady verify --phase full --plan',
+    'npx --no-install gennady verify --phase full --help',
+    'npx --no-install gennady verify --phase full; printf ok',
+  ]) {
+    const result = grade(c.id, [
+      tool(0, `npx --no-install gennady sdd-task ${c.ticket} --phase P1`),
+      tool(1, `npx --no-install gennady sdd-verify --task=${c.ticket} --phase=P1`),
+      ...(command ? [tool(2, command)] : []),
+    ]);
+    assert.equal(result.pass, false, command || 'missing full');
+    assert.match(result.detail, /full audit/);
+  }
+});
