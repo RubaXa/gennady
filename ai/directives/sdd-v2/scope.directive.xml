@@ -48,8 +48,12 @@
       - Spec authoring or architecture: append one canonical Decision Log entry:
         `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>) [verdict: pending-operator]`.
       - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
-      - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
-        `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+      - Phase execution: write one JSON payload under `.claude/tmp/` with exactly
+        `id, what, why, where, evidence, alternative, verify` (non-empty single-line strings), then run
+        `sdd-log <ticket> decision --phase <PhaseID> --payload-file <path>` before using the choice.
+        It persists one pending record in the ticket's canonical Decision Log. Wait for the command's
+        acknowledgement; an identical retry reuses the ID, a conflicting payload rejects. Handoff
+        `deviations: [...]` contains only those canonical IDs, not another verdict or decision store.
 
       Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
       re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe

@@ -52,7 +52,7 @@ _Обзор пути от контракта к реализации и пров
 
 **Invariants:**
 
-- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker` | `resolved` | `complete` | `authoring-complete` | `audit-receipt` | `review-receipt` (11; см. `MODES`, `sdd-log.cmd.ts:62-74`)
+- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker` | `resolved` | `complete` | `authoring-complete` | `audit-receipt` | `review-receipt` | `deviation-verdict` | `decision` (см. `MODES`)
 - `complete` требует `--phase P<N>`, typed payload с `artifacts` / `decisions` / `open` / `deviations`, receipt этой фазы и ровно один её skeleton в последнем Round
 - `authoring-complete` требует exact `*.spec.md` путь (не Task-ID), чистый `checkSpecAuthoringDraft` и записывает draft/final authoring receipt на саму спеку — `sdd-log` для тикетов и этот режим для спек делят одну команду, не парсер журнала
 - `audit-receipt`/`review-receipt` требуют single-line `<verdict>` (≤120 символов, без плейсхолдера) и группу, где каждый член резолвится и стоит `[x]` DONE; пишут group-completion receipt на владеющую спеку, не в `EXECUTION_LOG` тикета
@@ -145,6 +145,9 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 | `unknownIdError` / `ambiguousIdError`                                                 | Utility      | Билдеры диагностик Task-ID-резолва (`_UNKNOWN_ID`/`_AMBIGUOUS_ID`)                                                 |
 | `PLACEHOLDER_RE`                                                                      | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                                                                               |
 | `LogOutcome`                                                                          | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                           |
+| `ExecutionDecision`                                                                   | Value Object | Bounded id/what/why/where/evidence/alternative/verify input                                                        |
+| `appendExecutionDecision` / `decisionReferenceIssue`                                  | Utility      | Canonical pending append, idempotency and exact Handoff references                                                 |
+| `withSddTicketMutation`                                                               | Utility      | Shared ticket/Verify lease and atomic expected-content writer                                                      |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -255,6 +258,34 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 - Preconditions: one exact live repo-local artifact path (or existing ticket Task-ID), one canonical DL-ID, and one terminal verdict; one unambiguous owning log boundary and exactly one matching entry carrying exactly one verdict token. Legacy/evidence paths and unsafe aliases remain read-only.
 - Postconditions: only the selected entry's `[verdict: pending-operator]` token becomes the requested terminal token; newline style, adjacent entries, fenced examples and all other sections remain byte-identical. Same-terminal retry is a byte-no-op; any other terminal rewrite is refused.
 - Invariants: no generic document-wide token replacement; duplicate sections/headings, duplicate exact IDs (including an ordinary entry with that ID), duplicate verdict tokens, unknown IDs/verdicts and malformed boundaries fail before the identity-preserving write. Tasks-index headings stop at the next same-or-higher-level heading; arbitrary Markdown files do not gain heading-based write authority.
+
+### 4.7 Canonical Execution Decision
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+- Preconditions: initialized Git repository, exact live ticket; `decision --phase P<N> --payload-file .claude/tmp/<name>.json`;
+  exact JSON keys `id, what, why, where, evidence, alternative, verify`, all non-empty single-line
+  strings without reserved markup. A new record requires one incomplete phase and its block in
+  the current open Round, plus one canonical Decision Log.
+- Postconditions: append one CLI-dated, phase-bound `pending-operator` record to that log before
+  acknowledgement. The identity-checked atomic ticket writer preserves every other byte. Same
+  ID/payload retries reuse date and pending/accepted verdict; rejected choices (`rework`/`rolled-back`)
+  cannot receive an actionable retry acknowledgement. A conflicting payload/phase never overwrites history.
+- Invariants: no verdict field, new targets, product acceptance or external authority is granted.
+  Scratch payload is consumed after success, retained on rejection. Git-backed same-ticket lifecycle
+  commands and Verify serialize read/prepare/write/ack with the same owner lease. The decision write
+  checks expected bytes and atomically replaces the ticket; a stale choice cannot overwrite a newer
+  one. Arbitrary external editors do not participate in that lock and remain outside its guarantee.
+- Completion validates deviation references against exactly one canonical record; missing,
+  ambiguous, invalid or foreign-phase references cannot become DONE. Mechanical ticket checking
+  exposes persisted orphans (warning during work, error at DONE), preserving the owning-scope
+  grandfather boundary. Final Handoff/record existence alone does not prove live before-action order.
+
+The shared functions `appendExecutionDecision` / `decisionReferenceIssue` own this record grammar;
+`withSddTicketMutation` reuses the existing Verify-journal lock and filesystem primitive without
+creating a Verify attempt or receipt. Earlier phase proof excludes later phase canonical decision
+records; own-phase decision content remains identity-bearing. An operator's acceptance alone does
+not stale the proof, but rejection, malformed/ambiguous records and semantic plan edits do.
 
 </details>
 <!--/SECTION:MODULE_CONTRACTS-->

@@ -16,6 +16,7 @@ import {
 import type { VerifyRunReport, VerifyStepResult } from '../../verify/model/verify-report.type.ts';
 import { extractSection } from '../section.ts';
 import { parsePhaseDetail, parsePhasesOverview } from '../ticket.ts';
+import { decisionReferenceIssue, parseDeviationRecords } from '../deviation.ts';
 
 const ATTEMPT_SCHEMA = 'gennady.sdd-verify-attempt.v1';
 const LOCK_SCHEMA = 'gennady.sdd-verify-attempt-lock.v1';
@@ -453,7 +454,9 @@ export function currentSddPhaseWorktreeDigest(
     if (entry.isSymbolicLink()) hash.update(fs.readlinkSync(absolute));
     else if (entry.isFile()) {
       const content = fs.readFileSync(absolute);
-      hash.update(file === ticketRelative ? normalizedTicketForFreshness(content) : content);
+      hash.update(
+        file === ticketRelative ? normalizedTicketForFreshness(content, sddPhase) : content
+      );
     } else hash.update('non-file');
   }
   return `sha256:${hash.digest('hex')}`;
@@ -489,8 +492,8 @@ function remoteSourceMatches(
       if (file !== ticketRelative) return false;
       const pushedTicket = exactGitDigest(root, ['show', `${exactSha}:${ticketRelative}`]);
       if (
-        !normalizedTicketForFreshness(fs.readFileSync(ticketPath)).equals(
-          normalizedTicketForFreshness(pushedTicket)
+        !normalizedTicketForFreshness(fs.readFileSync(ticketPath), sddPhase).equals(
+          normalizedTicketForFreshness(pushedTicket, sddPhase)
         )
       ) {
         return false;
@@ -521,8 +524,9 @@ function normalizedSection(
  * @invariant Phase declarations, targets, selectors, rules and every non-ticket project byte remain
  * identity-bearing; terminalization, `sdd-log complete` and Round close cannot stale their own proof.
  */
-function normalizedTicketForFreshness(content: Buffer): Buffer {
+function normalizedTicketForFreshness(content: Buffer, sddPhase: string): Buffer {
   let source = withoutAttemptJournal(content).toString('utf8');
+  source = normalizedDecisionState(source, sddPhase);
   source = normalizedSection(source, 'EXECUTION_LOG', () => '\n<SDD_EXECUTION_LOG_STATE>\n');
   source = normalizedSection(source, 'PHASES_OVERVIEW', (body) =>
     body
@@ -534,6 +538,46 @@ function normalizedTicketForFreshness(content: Buffer): Buffer {
     body.replace(/(\*\*Status:\*\*\s*)\[[^\]]\]\s*[A-Z_]+/g, '$1[?] <STATE>')
   );
   return Buffer.from(source);
+}
+
+/**
+ * @purpose Keep phase decisions identity-bearing without letting later-phase bookkeeping stale an earlier PASS.
+ * @invariant Only unambiguous CLI-shaped records are eligible; unknown/global/malformed prose stays hashed.
+ * Own-phase acceptance preserves proof, rejection does not. Declaration/target/rule changes stay hashed.
+ */
+function normalizedDecisionState(source: string, sddPhase: string): string {
+  const overview = extractSection(source, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') return source;
+  const phases = parsePhasesOverview(overview.content);
+  const index = phases.findIndex((phase) => phase.id === sddPhase);
+  if (index < 0 || new Set(phases.map((phase) => phase.id)).size !== phases.length) return source;
+  const downstream = new Set(phases.slice(index + 1).map((phase) => phase.id));
+  const replacements = new Map<number, string | null>();
+  for (const record of parseDeviationRecords(source)) {
+    const owner =
+      /^\S+ \d{4}-\d{2}-\d{2} — phase: (P[0-9]+); what: .+; why: .+; where: .+; evidence: .+; alternative: .+; verify: .+ \[verdict: (?:pending-operator|accepted|rework|rolled-back)\]\r?$/.exec(
+        record.text
+      )?.[1];
+    if (
+      !owner ||
+      !phases.some((phase) => phase.id === owner) ||
+      decisionReferenceIssue(source, record.id, owner)
+    )
+      continue;
+    if (downstream.has(owner)) replacements.set(record.line - 1, null);
+    else if (record.verdict === 'accepted')
+      replacements.set(
+        record.line - 1,
+        record.text.replace('[verdict: accepted]', '[verdict: pending-operator]')
+      );
+  }
+  return source
+    .split('\n')
+    .flatMap((line, lineIndex) => {
+      const replacement = replacements.get(lineIndex);
+      return replacement === null ? [] : [replacement ?? line];
+    })
+    .join('\n');
 }
 
 function headSha(root: string): string {
@@ -703,9 +747,14 @@ function writeTicketAtomically(
   root: string,
   ticketPath: string,
   content: string,
-  beforeRename?: (ticketPath: string, temporaryPath: string) => void
+  beforeRename?: (ticketPath: string, temporaryPath: string) => void,
+  expectedContent?: string,
+  afterValidation?: () => void
 ): void {
   const captured = captureTicketIdentity(root, ticketPath);
+  if (expectedContent !== undefined && captured.digest !== sha256(expectedContent)) {
+    throw new Error('SDD_VERIFY_ATTEMPT_UNSAFE: ticket changed since the transition was prepared');
+  }
   const temporary = createOwnedTemporary(ticketPath, 'verify-attempt', content, captured.mode);
   let renamed = false;
   try {
@@ -720,6 +769,7 @@ function writeTicketAtomically(
     if (!read.ok || sha256(read.content) !== captured.digest) {
       throw new Error('SDD_VERIFY_ATTEMPT_UNSAFE: ticket bytes changed before atomic rename');
     }
+    afterValidation?.();
     fs.renameSync(temporary.absolute, ticketPath);
     renamed = true;
     if (sha256(readOwnedInstalled(ticketPath, temporary)) !== sha256(content)) {
@@ -730,6 +780,63 @@ function writeTicketAtomically(
     fsyncParent(ticketPath);
   } finally {
     if (!renamed) cleanupOwnedTemporary(temporary);
+  }
+}
+
+/**
+ * @purpose Serialize lifecycle mutations with the existing per-ticket Verify owner lock.
+ * @invariant Read/prepare/write/ack share one lease; a stale edit rejects without a fake receipt.
+ * @param root Repository root.
+ * @param ticketPath Exact ticket path resolved before acquiring the lock; the operation rereads it.
+ * @param operation Bounded transition; its replace callback checks expected bytes and atomically writes.
+ * @param [runtime] Fault/race seams used by deterministic filesystem tests only.
+ * @returns Operation result after releasing the owned lease; throws instead of acknowledging failure.
+ */
+export async function withSddTicketMutation<T>(
+  root: string,
+  ticketPath: string,
+  operation: (replace: (expected: string, next: string) => void) => T | Promise<T>,
+  runtime?: {
+    heartbeatMs?: number;
+    beforeRename?: (ticketPath: string, temporaryPath: string) => void;
+    afterValidation?: () => void;
+  }
+): Promise<T> {
+  const lock = acquireLock(root, ticketPath, `mutation-${randomUUID()}`);
+  const assertOwner = () => {
+    if (readOwner(lock.ownerPath).token !== lock.owner.token)
+      throw new Error('SDD_VERIFY_ATTEMPT_LOCK_LOST');
+  };
+  let heartbeatFailure: unknown;
+  const heartbeat = setInterval(() => {
+    try {
+      updateOwner(lock.ownerPath, lock.owner);
+    } catch (cause) {
+      heartbeatFailure = cause;
+    }
+  }, runtime?.heartbeatMs ?? HEARTBEAT_MS);
+  heartbeat.unref();
+  try {
+    const result = await operation((expected, next) => {
+      if (heartbeatFailure) throw heartbeatFailure;
+      assertOwner();
+      writeTicketAtomically(root, ticketPath, next, runtime?.beforeRename, expected, () => {
+        runtime?.afterValidation?.();
+        assertOwner();
+      });
+    });
+    if (heartbeatFailure) throw heartbeatFailure;
+    assertOwner();
+    return result;
+  } finally {
+    clearInterval(heartbeat);
+    const releaseMutation = acquireOwnerMutation(lock.directory);
+    try {
+      const current = readOwner(lock.ownerPath);
+      if (current.token === lock.owner.token) fs.rmSync(lock.directory, { recursive: true });
+    } finally {
+      releaseMutation();
+    }
   }
 }
 
@@ -837,6 +944,26 @@ function writeOwnerAtomically(
   }
 }
 
+/**
+ * @purpose Resolve the physical Git worktree for a lifecycle call, including calls from nested directories.
+ * @param root Existing caller directory, which may be below the Git worktree root.
+ * @returns Physical worktree root, or null only for an uninitialized repository; other failures throw.
+ */
+export function resolveSddTicketWorktreeRoot(root: string): string | null {
+  try {
+    return fs.realpathSync(
+      execFileSync('git', ['-C', root, 'rev-parse', '--show-toplevel'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim()
+    );
+  } catch (cause) {
+    const failure = cause as { stderr?: Buffer; status?: number };
+    if (failure.status === 128 && /not a git repository/.test(String(failure.stderr))) return null;
+    throw cause;
+  }
+}
+
 function acquireLock(
   root: string,
   ticketPath: string,
@@ -847,16 +974,27 @@ function acquireLock(
   readonly ownerPath: string;
   readonly owner: LockOwner;
 } {
+  const worktree = resolveSddTicketWorktreeRoot(root);
+  if (!worktree)
+    throw new Error('SDD_VERIFY_ATTEMPT_GIT_REQUIRED: initialize the repository first');
+  const physicalRoot = fs.realpathSync(root);
+  let relativeTicket = path.relative(root, ticketPath);
+  if (relativeTicket === '..' || relativeTicket.startsWith(`..${path.sep}`))
+    relativeTicket = path.relative(physicalRoot, ticketPath);
+  const requested = proveRepoFile(physicalRoot, relativeTicket);
+  if (!requested.ok) throw new Error(`SDD_VERIFY_ATTEMPT_TARGET_INVALID: ${requested.detail}`);
+  const ticket = proveRepoFile(worktree, path.relative(worktree, requested.identity.absolute));
+  if (!ticket.ok) throw new Error(`SDD_VERIFY_ATTEMPT_TARGET_INVALID: ${ticket.detail}`);
   const gitPath = execFileSync(
     'git',
-    ['-C', root, 'rev-parse', '--git-path', 'gennady/sdd-attempts'],
+    ['-C', worktree, 'rev-parse', '--git-path', 'gennady/sdd-attempts'],
     {
       encoding: 'utf8',
     }
   ).trim();
-  const parent = path.resolve(root, gitPath);
+  const parent = path.resolve(worktree, gitPath);
   fs.mkdirSync(parent, { recursive: true });
-  const directory = path.join(parent, sha256(path.relative(root, ticketPath)).slice(7));
+  const directory = path.join(parent, sha256(ticket.identity.relative).slice(7));
   const ownerPath = path.join(directory, 'owner.json');
   try {
     fs.mkdirSync(directory);

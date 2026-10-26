@@ -68,6 +68,11 @@ fallback к declared files; любой другой git/corpus/path failure бл
 
 **Invariants:**
 
+- Active blocker guidance classifies the cause before escalation: recoverable technical failures
+  permit investigation and repair within the current targets/authority, followed by recorded
+  resolution and a fresh check. Product-goal conflict or unavailable external authority requires
+  a concrete operator decision. A hint never expands write scope, invents a retry budget or permits
+  dependent execution while its blocker remains active.
 - Тело каждой фазы извлекается отдельной секцией `PHASE_P<n>` — не общим чтением
 - exit `0` поверхность · `1` файл · `2` не тикет (нет Meta) · `4` нет пути
 <!--/SECTION:MODULE_VISION-->

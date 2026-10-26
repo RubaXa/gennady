@@ -51,7 +51,8 @@ import {
   matchingTestPhaseIds,
   parseTestCoverage,
 } from './bdd-coverage.ts';
-import { deviationIsOpen, parseDeviationRecords } from './deviation.ts';
+import { decisionReferenceIssue, deviationIsOpen, parseDeviationRecords } from './deviation.ts';
+import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
 
 /**
  * @purpose One audit finding.
@@ -377,6 +378,34 @@ export function checkTicket(
 
   // #region START_DEVIATIONS — pending operator decisions stay advisory mid-work and block DONE.
   if (enforceV2JournalContract) {
+    if (logSec.status === 'ok') {
+      let fence: MarkdownFence | null = null;
+      let comment = false;
+      let phase: string | undefined;
+      const logBounds = findSectionBounds(content, 'EXECUTION_LOG');
+      for (const [index, raw] of logSec.content.split('\n').entries()) {
+        const beforeFence = fence;
+        fence = nextMarkdownFence(raw.replace(/\r$/, ''), fence);
+        if (beforeFence || fence) continue;
+        if (/^\s*<!--/.test(raw)) comment = true;
+        if (comment) {
+          if (raw.includes('-->')) comment = false;
+          continue;
+        }
+        if (/^#{1,6}\s/.test(raw.trim())) phase = /^####\s+(P[0-9]+)\b/.exec(raw.trim())?.[1];
+        const refs = /^\s*\*\*Handoff\s*→\*\*.*;\s*deviations:\s*\[(.*)\]\s*$/.exec(raw)?.[1];
+        if (refs === undefined || refs.trim() === '...') continue;
+        const issue = decisionReferenceIssue(content, refs, phase);
+        if (issue)
+          findings.push({
+            severity: isDone ? 'error' : 'warn',
+            code: 'SDD_DEVIATION_REFERENCE_INVALID',
+            file,
+            line: (logBounds?.openLine ?? 0) + index + 2,
+            message: issue,
+          });
+      }
+    }
     for (const deviation of parseDeviationRecords(content).filter(deviationIsOpen)) {
       const message =
         deviation.verdict === 'invalid'

@@ -136,14 +136,12 @@
     <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
       Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
       reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
-      the release-ready default — then append a ticket-local Decision Log entry
-      (`<ACR>-DL-N <date> — <statement> (почему: …; отвергнуто: …) [verdict: pending-operator]`, direct `Edit` —
-      the ticket write-scope contract treats this
-      section as writable for exactly this purpose) at the point of decision, not after the fact; then
-      continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
-      ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
-      the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
-      directly (`AX_OWNER`).
+      the release-ready default — then use `sdd-log <ticket> decision --phase <PhaseID> --payload-file
+      <path>` per `DEVIATION_RECORD_FORMAT` to persist a canonical pending Decision Log record. Use a
+      stable ID and wait for acknowledgement BEFORE applying the choice. Never directly Edit the ticket.
+      A lost acknowledgement permits the identical ID/payload retry, not a new invented record. Return
+      `deviations: [<D-id>, ...]` in Handoff (empty `[]` when none). Handoff references the canonical
+      record; it never replaces it. The orchestrator uses the same owner-log mechanism, not another trail.
 
       Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
       work needs to make. Technical environment/infra gaps use `RECOVERABLE_TECHNICAL`; exact missing
@@ -167,7 +165,7 @@
     <Contract id="HANDOFF_FORMAT">
       Compact, typed, single line at end of phase block:
       ```
-      **Handoff →** artifacts: [path1, path2]; decisions: [key=value(measured), key=value]; open: [id(reported; depth-only): text, id: text]; deviations: [id: text, id: text]
+      **Handoff →** artifacts: [path1, path2]; decisions: [key=value(measured), key=value]; open: [id(reported; depth-only): text, id: text]; deviations: [SS-DL-1, SS-DL-2]
       ```
       Fields:
       - `artifacts` — files produced or modified by this phase (paths).
@@ -184,7 +182,8 @@
         as covering the whole original question. Empty list → `[]`.
       - `deviations` — spec/ticket holes this phase self-resolved rather than asking the operator
         (`AX_DEVIATION_SELF_RESOLVE`); each entry cites the ticket-local Decision Log id it produced
-        (e.g. `SS-skills-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
+        (e.g. `SS-DL-2`). Persist it through `sdd-log decision` before use, not during final Handoff.
+        Completion rejects an unknown, ambiguous or foreign-phase ID. Empty list → `[]`.
 
       Free-form text forbidden outside the tag/extent grammar above. Each field is an array (possibly
       empty).
@@ -219,8 +218,12 @@
       - Spec authoring or architecture: append one canonical Decision Log entry:
         `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>) [verdict: pending-operator]`.
       - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
-      - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
-        `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+      - Phase execution: write one JSON payload under `.claude/tmp/` with exactly
+        `id, what, why, where, evidence, alternative, verify` (non-empty single-line strings), then run
+        `sdd-log <ticket> decision --phase <PhaseID> --payload-file <path>` before using the choice.
+        It persists one pending record in the ticket's canonical Decision Log. Wait for the command's
+        acknowledgement; an identical retry reuses the ID, a conflicting payload rejects. Handoff
+        `deviations: [...]` contains only those canonical IDs, not another verdict or decision store.
 
       Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
       re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
@@ -308,7 +311,9 @@
         prompt block, followed by exact resolved spec/rule excerpts and current Git evidence. Never
         summarize, retype, or omit its lifecycle manifest and worker contract. The worker edits only its declared targets, runs the phase's real
         verification, and returns a typed handoff. Apart from the runner-owned attempt evidence written by the `sdd-verify` facade, the
-        worker never edits the ticket or invokes `sdd-log`.
+        worker never manually edits the ticket. Its only additional lifecycle calls are the exact
+        ticket/phase's CLI-owned `sdd-log line | blocker | resolved | decision`; file-backed text,
+        no completion, verdict, audit/review receipt, new targets or new authority.
 
         Evaluate the typed handoff per `AX_HANDOFF_TYPED` against repository evidence. Per
         `AX_HALT_VS_FAIL_DISTINCTION`, on a recoverable technical failure form one

@@ -107,7 +107,9 @@
         prompt block, followed by exact resolved spec/rule excerpts and current Git evidence. Never
         summarize, retype, or omit its lifecycle manifest and worker contract. The worker edits only its declared targets, runs the phase's real
         verification, and returns a typed handoff. Apart from the runner-owned attempt evidence written by the `sdd-verify` facade, the
-        worker never edits the ticket or invokes `sdd-log`.
+        worker never manually edits the ticket. Its only additional lifecycle calls are the exact
+        ticket/phase's CLI-owned `sdd-log line | blocker | resolved | decision`; file-backed text,
+        no completion, verdict, audit/review receipt, new targets or new authority.
 
         Evaluate the typed handoff per `AX_HANDOFF_TYPED` against repository evidence. Per
         `AX_HALT_VS_FAIL_DISTINCTION`, on a recoverable technical failure form one

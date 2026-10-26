@@ -55,6 +55,18 @@ export function printHelp(): void {
   );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
+  console.info(
+    '  npx gennady sdd-log <ticket> decision --phase P<N> --payload-file .claude/tmp/<name>.json'
+  );
+  console.info(
+    '  decision JSON keys: id, what, why, where, evidence, alternative, verify (single-line strings).'
+  );
+  console.info(
+    '  Requires initialized Git. Records pending-operator before use under the shared ticket/Verify lock.'
+  );
+  console.info(
+    '  Identical ID/payload retry preserves date/verdict; conflicts and rework/rolled-back choices reject. No new targets, approval or authority.'
+  );
   console.info('  npx gennady sdd-log <ticket> round --content-file .claude/tmp/<name>');
   console.info(
     '  npx gennady sdd-log <ticket> line --content-file .claude/tmp/<name> [--phase P<N>]'
@@ -77,6 +89,9 @@ export function printHelp(): void {
   console.info('  blocker JSON keys: {"reason":"...","axiom":"AX_...","unblock":"..."}');
   console.info('');
   console.info('Guarantees:');
+  console.info(
+    '  - complete rejects unknown/ambiguous/foreign-phase deviation references; Handoff is not another Decision Log.'
+  );
   console.info(
     '  - Append modes insert before a section/block boundary and never rewrite prior event lines.'
   );

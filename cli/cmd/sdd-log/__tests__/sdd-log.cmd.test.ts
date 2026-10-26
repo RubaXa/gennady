@@ -18,10 +18,11 @@ import {
 import { isAbsolute, join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { runCli } from '../../../__tests__/tool-behavior/run-cli.ts';
+import { cleanTestChildEnv, runCli } from '../../../__tests__/tool-behavior/run-cli.ts';
 import { DEVIATION_VERDICT_FILES } from '../../../../ai/flow-eval/fixtures/deviation-verdict.ts';
 import { readScratchPayloadFile } from '../../../../shared/common/scratch-payload-file.ts';
 import { checkPhaseDependencies } from '../../../../shared/sdd/phase-dependencies.ts';
+import { parseDeviationRecords } from '../../../../shared/sdd/deviation.ts';
 import {
   formatPhaseReceipt,
   phaseReceiptPlanState,
@@ -137,6 +138,11 @@ describe('SddLogCommand', () => {
     process.exit = ((_code?: number) => undefined) as typeof process.exit;
     process.argv = ['node', 'gennady', 'sdd-log'];
     dir = mkdtempSync(join(tmpdir(), 'sdd-log-'));
+    const initialized = spawnSync('git', ['init', '-q', dir], {
+      encoding: 'utf8',
+      env: cleanTestChildEnv(process.env),
+    });
+    assert.equal(initialized.status, 0, initialized.stderr);
     ticket = join(dir, 'ticket.md');
     process.chdir(dir);
     const loaded = await import('../sdd-log.cmd.ts');
@@ -156,6 +162,118 @@ describe('SddLogCommand', () => {
   beforeEach(() => {
     process.chdir(dir);
     writeFileSync(ticket, BASE, 'utf-8');
+  });
+
+  it('records a decision through the real CLI and survives fresh-process retry and operator verdict', () => {
+    const original = `${completableTicket()}\n<!--SECTION:DECISION_LOG-->\n<!--/SECTION:DECISION_LOG-->\n`;
+    writeFileSync(ticket, original);
+    const scratchPath = '.claude/tmp/decision.json';
+    mkdirSync(join(dir, '.claude/tmp'), { recursive: true });
+    const payload = {
+      id: 'DEM-DL-1',
+      what: 'Bound the retry',
+      why: 'Preserve caller behavior',
+      where: 'src/retry.ts#retry',
+      evidence: 'Caller requires bounded recovery',
+      alternative: 'Unbounded retries violate the contract',
+      verify: 'Run the phase verification',
+    };
+    const invoke = () => {
+      writeFileSync(join(dir, scratchPath), JSON.stringify(payload));
+      return runCli(
+        ['sdd-log', 'ticket.md', 'decision', '--phase', 'P1', '--payload-file', scratchPath],
+        dir
+      );
+    };
+    const recorded = invoke();
+    assert.equal(recorded.exitCode, 0, recorded.stdout + recorded.stderr);
+    assert.match(recorded.stdout, /decision DEM-DL-1 recorded/);
+    assert.equal(existsSync(join(dir, scratchPath)), false);
+    const persisted = readFileSync(ticket, 'utf8');
+    assert.equal(parseDeviationRecords(persisted).length, 1);
+    assert.equal(parseDeviationRecords(persisted)[0]?.verdict, 'pending-operator');
+    assert.equal(persisted.replace(/DEM-DL-1[^\n]*\n/, ''), original);
+    const retry = invoke();
+    assert.equal(retry.exitCode, 0, retry.stdout + retry.stderr);
+    assert.match(retry.stdout, /already recorded/);
+    assert.equal(readFileSync(ticket, 'utf8'), persisted);
+    const verdict = runCli(
+      ['sdd-log', 'ticket.md', 'deviation-verdict', payload.id, 'accepted'],
+      dir
+    );
+    assert.equal(verdict.exitCode, 0, verdict.stdout + verdict.stderr);
+    const accepted = readFileSync(ticket, 'utf8');
+    assert.equal(parseDeviationRecords(accepted)[0]?.verdict, 'accepted');
+    assert.equal(invoke().exitCode, 0);
+    assert.equal(
+      readFileSync(ticket, 'utf8'),
+      accepted,
+      'retry must not reset the operator verdict'
+    );
+    payload.what = 'A different decision';
+    const conflict = invoke();
+    assert.equal(conflict.exitCode, 4);
+    assert.match(conflict.stdout, /conflicts with an existing entry/);
+    assert.equal(readFileSync(ticket, 'utf8'), accepted);
+    assert.equal(
+      existsSync(join(dir, scratchPath)),
+      true,
+      'failed input remains available for diagnosis'
+    );
+    payload.what = 'Bound the retry';
+    for (const rejected of ['rework', 'rolled-back']) {
+      writeFileSync(ticket, persisted);
+      const review = runCli(
+        ['sdd-log', 'ticket.md', 'deviation-verdict', payload.id, rejected],
+        dir
+      );
+      assert.equal(review.exitCode, 0, review.stdout + review.stderr);
+      const beforeRetry = readFileSync(ticket, 'utf8');
+      const retryRejected = invoke();
+      assert.equal(retryRejected.exitCode, 4, retryRejected.stdout + retryRejected.stderr);
+      assert.match(retryRejected.stdout, /do not apply this rejected choice/);
+      assert.equal(readFileSync(ticket, 'utf8'), beforeRetry);
+      assert.equal(existsSync(join(dir, scratchPath)), true);
+    }
+  });
+
+  it('decision requires a current incomplete phase and rejects inline, forged and foreign-scope input without writes', async () => {
+    const original = `${completableTicket()}\n<!--SECTION:DECISION_LOG-->\n<!--/SECTION:DECISION_LOG-->\n`;
+    writeFileSync(ticket, original);
+    const scratchPath = '.claude/tmp/decision-invalid.json';
+    mkdirSync(join(dir, '.claude/tmp'), { recursive: true });
+    const payload = {
+      id: 'DEM-DL-2',
+      what: 'Choose a default',
+      why: 'Spec is silent',
+      where: 'src/main.ts',
+      evidence: 'Caller contract',
+      alternative: 'Changing the caller is unnecessary',
+      verify: 'Run verification',
+    };
+    writeFileSync(join(dir, scratchPath), JSON.stringify(payload));
+    for (const args of [
+      ['decision', 'inline', '--phase', 'P1', '--payload-file', scratchPath],
+      ['decision', '--payload-file', scratchPath],
+      ['decision', '--phase', 'P2', '--payload-file', scratchPath],
+      ['decision', '--phase', 'P9', '--payload-file', scratchPath],
+      ['decision', '--phase', 'P1', '--payload-file', '../decision.json'],
+    ]) {
+      const outcome = await mod.run(argv(ticket, ...args), CLOCK);
+      assert.equal(outcome.ok, false, args.join(' '));
+      assert.equal(readFileSync(ticket, 'utf8'), original);
+    }
+    writeFileSync(join(dir, scratchPath), JSON.stringify({ ...payload, verdict: 'accepted' }));
+    assert.equal(
+      (
+        await mod.run(
+          argv(ticket, 'decision', '--phase', 'P1', '--payload-file', scratchPath),
+          CLOCK
+        )
+      ).ok,
+      false
+    );
+    assert.equal(readFileSync(ticket, 'utf8'), original);
   });
 
   it('V14-2b edits one existing deviation verdict and creates no sidecar', async () => {

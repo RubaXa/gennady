@@ -440,7 +440,8 @@ describe('SddTaskCommand', () => {
     if (!outcome.ok) return;
     assert.match(outcome.text, /\[BLOCKERS\]\nblockers: ACTIVE 1/);
     assert.match(outcome.text, /- 🛑 BLOCKED waiting on operator decision/);
-    assert.match(outcome.text, /next: сначала разбери активные блокеры с оператором/);
+    assert.match(outcome.text, /next: классифицируй причину блокера/);
+    assert.match(outcome.text, /SPEC_GOAL_CONFLICT.*EXTERNAL_AUTHORITY_REQUIRED.*оператор/);
   });
 
   it('active blockers keep stop-first priority when a pending deviation is also visible', async () => {
@@ -464,8 +465,57 @@ describe('SddTaskCommand', () => {
     if (!outcome.ok) return;
     assert.match(outcome.text, /\[BLOCKERS\]\nblockers: ACTIVE 1/);
     assert.match(outcome.text, /\[DEVIATIONS\]\ndeviations: pending-operator 1/);
-    assert.match(outcome.text, /next: сначала разбери активные блокеры с оператором/);
+    assert.match(outcome.text, /next: классифицируй причину блокера/);
     assert.doesNotMatch(outcome.text, /next: заверши работу по фазам/);
+  });
+
+  it('technical blocker guidance permits bounded recovery without an automatic operator pause', async () => {
+    const t = join(dir, 'technical-blocker.md');
+    writeFileSync(
+      t,
+      [
+        TICKET,
+        '<!--SECTION:EXECUTION_LOG-->',
+        '#### P1',
+        '- 🛑 BLOCKED RECOVERABLE_TECHNICAL: tsconfig moduleResolution conflicts with package type',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const outcome = await mod.run(argv(t));
+    assert.equal(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    if (!outcome.ok) return;
+    const next = outcome.text.split('\n').find((line) => line.startsWith('next:')) ?? '';
+    assert.match(next, /RECOVERABLE_TECHNICAL.*текущих границах.*resolved.*повтор/);
+    assert.match(next, /не запускай зависимую фазу.*блокер не снят/);
+    assert.doesNotMatch(next, /сначала разбери активные блокеры с оператором/);
+    assert.match(outcome.text, /blockers: ACTIVE 1/);
+    assert.match(outcome.text, /tsconfig moduleResolution conflicts with package type/);
+  });
+
+  it('authority blocker guidance retains an operator boundary instead of promising a technical bypass', async () => {
+    const t = join(dir, 'authority-blocker.md');
+    writeFileSync(
+      t,
+      [
+        TICKET,
+        '<!--SECTION:EXECUTION_LOG-->',
+        '#### P1',
+        '- 🛑 BLOCKED EXTERNAL_AUTHORITY_REQUIRED: deployment permission is unavailable',
+        '<!--/SECTION:EXECUTION_LOG-->',
+      ].join('\n'),
+      'utf-8'
+    );
+
+    const outcome = await mod.run(argv(t));
+    assert.equal(outcome.ok, true, outcome.ok ? '' : outcome.message);
+    if (!outcome.ok) return;
+    const next = outcome.text.split('\n').find((line) => line.startsWith('next:')) ?? '';
+    assert.match(next, /SPEC_GOAL_CONFLICT.*EXTERNAL_AUTHORITY_REQUIRED.*оператор/);
+    assert.match(next, /не запускай зависимую фазу.*блокер не снят/);
+    assert.match(outcome.text, /deployment permission is unavailable/);
+    assert.doesNotMatch(outcome.text, /blockers: none/);
   });
 
   it('a resolved blocker (later ✅ RESOLVED) reports blockers: none', async () => {
@@ -1283,10 +1333,13 @@ describe('SddTaskCommand', () => {
       assert.match(outcome.text, /never expand WRITE\/DELETE, selected rules or Verify scope/);
       assert.match(outcome.text, /paths resolving outside checkout/);
       assert.doesNotMatch(outcome.text, /DO NOT READ: other phase bodies/);
+      assert.match(outcome.text, /Verify alone owns attempt evidence/);
       assert.match(
         outcome.text,
-        /only the exact unified Verify invocation above may own evidence\/receipt/
+        /May call sdd-log line \| blocker \| resolved \| decision only for this exact ticket and phase/
       );
+      assert.match(outcome.text, /Never call complete \| close \| deviation-verdict/);
+      assert.doesNotMatch(outcome.text, /never call sdd-log/);
       assert.doesNotMatch(outcome.text, /по завершении sdd-log/);
     });
 

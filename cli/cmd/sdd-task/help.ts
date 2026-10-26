@@ -21,6 +21,12 @@ export function printHelp(): void {
   );
   console.info('Pass one listed Task-ID or ticket path to get its planning surface.');
   console.info(
+    'Active blockers require cause classification: repair technical failures within existing targets/authority; product-goal conflict or missing external authority needs a concrete operator decision.'
+  );
+  console.info(
+    'Record resolution only after removing the cause, rerun verification, and do not dispatch a dependent phase while its blocker remains active.'
+  );
+  console.info(
     'A missing or malformed three-column Verification table fails before any task, phase, or group context is emitted.'
   );
   console.info(
