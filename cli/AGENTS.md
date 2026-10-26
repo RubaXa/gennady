@@ -43,7 +43,7 @@
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Thin SDD task/phase facade over universal Verify                                        |
 | verify            | [cmd/verify/](cmd/verify/)                       | SDD-agnostic unified phase runner; `--plan` strictly read-only                          |
 | rules             | [cmd/rules/](cmd/rules/)                         | Read-only embedded rule inventory/detail and explicit-scope resolver                    |
-| sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | V2 lifecycle, canonical decisions + additive technical replan; history read-only        |
+| sdd-log           | [cmd/sdd-log/](cmd/sdd-log/)                     | V2 lifecycle, canonical decisions + bounded technical replan; history read-only         |
 | sdd-sync          | [cmd/sdd-sync/](cmd/sdd-sync/)                   | V2 tracker synchronization; V1 scope requires migration before writes                   |
 | sdd-task          | [cmd/sdd-task/](cmd/sdd-task/)                   | V2 execution map/phase context; bounded blocker triage; legacy scopes migration-blocked |
 | sdd-migrate       | [cmd/sdd-migrate/](cmd/sdd-migrate/)             | Детерминированная миграция SDD v1 → v2                                                  |

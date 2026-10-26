@@ -117,15 +117,17 @@
         `AX_HALT_VS_FAIL_DISTINCTION`, on a recoverable technical failure form one
         new concrete hypothesis, correct the phase within its approved boundary, and redispatch a
         fresh bounded worker. Do not require continuation of the same worker and do not serialize a
-        checkpoint. For an additive implementation target or local phase-dependency correction that
+        checkpoint. For an implementation neighbor, local dependency correction, or bounded provider
+        phase/test-target transfer that
         preserves the approved behavior, first stop/await the old worker, refresh `sdd-task`, and
         prepare the bounded file-backed `replan` payload described by `sdd-log --help` using its
         exact `REPLAN_BASE`. The orchestrator, not the worker, calls `sdd-log <ticket> replan
         --phase <PhaseID> --payload-file <path>`. Consume the refusal or durable delta; after ACK,
         reverify stale completed prerequisites in dependency order and obtain fresh `sdd-task
         --phase` context (rules/Verify included) before redispatch. No new product approval is needed
-        for this checked technical means change. Removed targets, new phases and test allocation
-        changes are not yet supported by this transition; never improvise ticket edits. A change to
+        for this checked technical means change. A new provider inherits the selected phase's kind,
+        rules, exit and inputs; existing scenario/check obligations stay unchanged. Arbitrary phase
+        deletion, weaker checks or rewritten test scenarios are unsupported; never improvise ticket edits. A change to
         approved product meaning, acceptance strength or authority returns to the appropriate boundary.
         A concrete missing external decision or capability that remains
         after bounded diagnosis stops with `H_PHASE_BLOCKED`.

@@ -61,7 +61,12 @@ test('orchestrator uses checked means-only replan and fresh dispatch, never expa
     assert.match(text, /orchestrator, not the worker/);
     assert.match(text, /reverify stale completed prerequisites/);
     assert.match(text, /fresh `sdd-task[\s\S]*rules\/Verify included/);
-    assert.match(text, /Removed targets, new phases and test allocation[\s\S]*not yet supported/);
+    assert.match(text, /new provider inherits the selected phase's kind/);
+    assert.match(text, /existing scenario\/check obligations stay unchanged/);
+    assert.match(
+      text,
+      /Arbitrary phase[\s\S]*deletion, weaker checks or rewritten test scenarios are unsupported/
+    );
     assert.doesNotMatch(text, /dependencies, phases, or test plan invalidates approval/);
   }
 });

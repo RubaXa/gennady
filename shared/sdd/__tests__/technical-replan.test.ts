@@ -281,6 +281,152 @@ test('preserves CRLF and canonical dependencies with reordered columns', () => {
     );
 });
 
+/** @purpose Pending test work with two independent mapped files; no requirement is rewritten. */
+function reallocationTicket(): string {
+  return replanTicket()
+    .replace('  - `src/core.test.ts`', '  - `src/core.test.ts`\n  - `src/recovery.test.ts`')
+    .replace(
+      '<!--/SECTION:TEST_COVERAGE-->',
+      '- Scenario recovery → `src/recovery.test.ts` :: `recovery path`\n<!--/SECTION:TEST_COVERAGE-->'
+    );
+}
+
+function splitPayload(content: string) {
+  return {
+    ...payload(content),
+    addTargets: [],
+    dependencies: ['P3'],
+    insertPhase: {
+      id: 'P3',
+      objective: 'Isolate the existing invalid-input test implementation',
+      targets: ['src/core.test.ts'],
+      dependencies: ['P1'],
+    },
+    moveTests: ['src/core.test.ts'],
+  };
+}
+
+function splitPrepare(content = reallocationTicket(), value: unknown = splitPayload(content)) {
+  return prepareTechnicalReplan({
+    root,
+    ticketFile: file,
+    content,
+    phaseId: 'P2',
+    payload: value,
+    corpus: [{ ...ticketRef(file, content), content }],
+    timestamp: '2026-10-26T12:00:00Z',
+  });
+}
+
+test('inserts a dependency-ordered phase, transfers exact test ownership and preserves scenario/check bytes and old log facts', () => {
+  const original = reallocationTicket();
+  const result = splitPrepare(original);
+  assert.ok(result.ok, JSON.stringify(result));
+  if (!result.ok) return;
+  for (const name of ['META', 'BDD', 'VERIFICATION', 'TEST_COVERAGE', 'PHASE_P1', 'DECISION_LOG'])
+    assert.deepEqual(extractSection(result.content, name), extractSection(original, name));
+  const overview = extractSection(result.content, 'PHASES_OVERVIEW');
+  assert.ok(overview.status === 'ok');
+  if (overview.status === 'ok')
+    assert.deepEqual(
+      parsePhasesOverview(overview.content).map((p) => [p.id, p.kind, p.deps]),
+      [
+        ['P1', 'code', []],
+        ['P3', 'test', ['P1']],
+        ['P2', 'test', ['P3']],
+      ]
+    );
+  const inserted = extractSection(result.content, 'PHASE_P3');
+  const source = extractSection(result.content, 'PHASE_P2');
+  assert.ok(inserted.status === 'ok' && source.status === 'ok');
+  if (inserted.status !== 'ok' || source.status !== 'ok') return;
+  assert.deepEqual(parsePhaseDetail(inserted.content).targetFiles, ['src/core.test.ts']);
+  assert.deepEqual(parsePhaseDetail(source.content).targetFiles, ['src/recovery.test.ts']);
+  assert.equal(parsePhaseDetail(inserted.content).exit, parsePhaseDetail(source.content).exit);
+  const log = extractSection(result.content, 'EXECUTION_LOG');
+  assert.ok(log.status === 'ok' && log.content.indexOf('#### P3') < log.content.indexOf('#### P2'));
+  assert.doesNotMatch(result.content, /\[x\].*DONE/);
+  const replay = splitPrepare(result.content, splitPayload(original));
+  assert.ok(
+    replay.ok && !replay.created && replay.content === result.content,
+    JSON.stringify(replay)
+  );
+  const provider = /#### P3\n[\s\S]*?(?=#### P2)/.exec(result.content)?.[0];
+  assert.ok(provider);
+  for (const tampered of [
+    result.content.replace(provider, ''),
+    result.content.replace(provider, '').replace('#### P2\n', `#### P2\n${provider}`),
+    result.content.replace(provider, `${provider}${provider}`),
+    result.content.replace(provider, `<!--\n${provider}-->\n`),
+  ])
+    assert.equal(
+      splitPrepare(tampered, splitPayload(original)).ok,
+      false,
+      'log structure is a replay postcondition too'
+    );
+});
+
+test('refuses disappearing scenarios, weaker/new kinds, duplicate or completed phase IDs, cycles and detached prerequisites', () => {
+  const original = reallocationTicket();
+  const good = splitPayload(original);
+  for (const value of [
+    { ...good, dependencies: ['P1'] },
+    { ...good, insertPhase: { ...good.insertPhase, id: 'P1' } },
+    { ...good, insertPhase: { ...good.insertPhase, kind: 'doc' } },
+    { ...good, insertPhase: { ...good.insertPhase, dependencies: ['P2'] } },
+    { ...good, insertPhase: { ...good.insertPhase, dependencies: [] } },
+    { ...good, insertPhase: { ...good.insertPhase, targets: ['../escape.ts'] } },
+    { ...good, insertPhase: { ...good.insertPhase, targets: [] } },
+    {
+      ...good,
+      insertPhase: { ...good.insertPhase, targets: ['src/core.ts'] },
+      moveTests: ['src/core.ts'],
+    },
+    { ...good, moveTests: ['src/recovery.test.ts'] },
+    {
+      ...good,
+      moveTests: ['src/core.test.ts', 'src/recovery.test.ts'],
+      insertPhase: { ...good.insertPhase, targets: ['src/core.test.ts', 'src/recovery.test.ts'] },
+    },
+    { ...good, moveTests: ['src/core.test.ts', 'src/core.test.ts'] },
+    { ...good, verification: [] },
+  ]) {
+    const result = splitPrepare(original, value);
+    assert.equal(result.ok, false, JSON.stringify(value));
+    assert.equal('content' in result, false);
+  }
+  for (const content of [
+    original.replace('| P2 | test | P1 | [ ] |', '| P2 | test | P1 | [x] |'),
+    original.replace(
+      '<!--/SECTION:TEST_COVERAGE-->',
+      '- Scenario broken → no executable mapping\n<!--/SECTION:TEST_COVERAGE-->'
+    ),
+    original.replace('#### P2', '#### P3\n#### P2'),
+    original.replace('#### P2', '<!--\n#### P2\n-->'),
+    original + '\n<!--SECTION:PHASE_P3-->\n<!--/SECTION:PHASE_P3-->',
+  ])
+    assert.equal(splitPrepare(content, splitPayload(content)).ok, false, content);
+});
+
+test('resolves existing basename coverage by the shared ownership matcher and refuses ambiguous collisions', () => {
+  const original = reallocationTicket()
+    .replace('- Scenario invalid → `src/core.test.ts`', '- Scenario invalid → `core.test.ts`')
+    .replace(
+      '- Scenario recovery → `src/recovery.test.ts`',
+      '- Scenario recovery → `recovery.test.ts`'
+    );
+  assert.ok(splitPrepare(original, splitPayload(original)).ok);
+  const collision = original.replace(
+    '  - `src/recovery.test.ts`',
+    '  - `src/recovery.test.ts`\n  - `src/other/core.test.ts`'
+  );
+  const result = splitPrepare(collision, splitPayload(collision));
+  assert.ok(
+    !result.ok && /ambiguous scenario ownership/.test(result.detail),
+    JSON.stringify(result)
+  );
+});
+
 test('actual CLI persists before redispatch, consumes only success, survives restart, and rejects stale or unsafe requests byte-exactly', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'gennady-replan-cli-'));
   try {

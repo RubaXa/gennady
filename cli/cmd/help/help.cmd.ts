@@ -50,7 +50,7 @@ console.info(
   '  rules             Read-only embedded rule inventory, detail, and scoped resolution'
 );
 console.info(
-  '  sdd-log           Phase events/decisions, additive technical replan, verified completion'
+  '  sdd-log           Phase events/decisions, bounded technical replan, verified completion'
 );
 console.info('  sdd-sync          Propagate ticket status into task trackers');
 console.info('  sdd-task          Show the execution map or one ticket phase context');

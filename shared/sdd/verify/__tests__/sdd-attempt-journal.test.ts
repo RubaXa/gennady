@@ -54,6 +54,75 @@ it('atomically installs a prepared canonical edit and rejects a stale expected t
   }
 });
 
+it('rejects a stale facade preflight under the lease before starting any gate or modifying the newer plan', async () => {
+  const f = fixture();
+  try {
+    const preflight = readFileSync(f.ticket, 'utf8');
+    const changed = preflight.replace('  - source.ts', '  - replacement.ts');
+    writeFileSync(f.ticket, changed);
+    let calls = 0;
+    await assert.rejects(
+      runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: 'P1',
+        expectedTicketContent: preflight,
+        run: async () => {
+          calls++;
+          return {
+            exitCode: 0,
+            stdout: '',
+            stderr: '',
+            report: report(f.root, [result('pass', true)]),
+          };
+        },
+      }),
+      /SDD_VERIFY_CONTEXT_STALE/
+    );
+    assert.equal(calls, 0, 'a stale plan must not execute a single old gate');
+    assert.equal(
+      readFileSync(f.ticket, 'utf8'),
+      changed,
+      'no obsolete attempt is persisted over the new plan'
+    );
+    assert.equal(allEvidence(f.ticket).length, 0);
+    // The failed precondition releases its lease instead of blocking a fresh context forever.
+    await withSddTicketMutation(f.root, f.ticket, () => null);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('preserves a concurrent task edit but never stamps old gates as a current PASS', async () => {
+  const f = fixture();
+  try {
+    const outcome = await runWithSddAttemptJournal({
+      root: f.root,
+      ticketPath: f.ticket,
+      sddPhase: 'P1',
+      run: async () => {
+        const oldReport = report(f.root, [result('pass', true)]);
+        writeFileSync(
+          f.ticket,
+          readFileSync(f.ticket, 'utf8').replace('  - source.ts', '  - replacement.ts')
+        );
+        return { exitCode: 0, stdout: '', stderr: '', report: oldReport };
+      },
+    });
+    assert.equal(outcome.exitCode, 1);
+    assert.match(outcome.stderr, /task changed during verification/);
+    assert.match(readFileSync(f.ticket, 'utf8'), /  - replacement\.ts/);
+    const attempts = allEvidence(f.ticket);
+    assert.equal(attempts.length, 1);
+    assert.equal(attempts[0]!.state, 'VIOLATION');
+    assert.equal(attempts[0]!.trust.source, 'ticket-context-drift');
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, false);
+    await withSddTicketMutation(f.root, f.ticket, () => null);
+  } finally {
+    f.cleanup();
+  }
+});
+
 it('keeps the original ticket after a pre-rename fault and preserves a competing edit', async () => {
   const f = fixture();
   try {

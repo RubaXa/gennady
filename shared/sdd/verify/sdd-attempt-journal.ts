@@ -1259,6 +1259,8 @@ export async function runWithSddAttemptJournal(input: {
   readonly root: string;
   readonly ticketPath: string;
   readonly sddPhase: string;
+  /** @purpose Optional facade preflight bytes; a concurrent plan/log change must be reread, never executed from stale context. */
+  readonly expectedTicketContent?: string;
   /** @internal Deterministic race seams used only by adversarial contract tests. */
   readonly runtime?: {
     readonly heartbeatMs?: number;
@@ -1318,6 +1320,11 @@ export async function runWithSddAttemptJournal(input: {
   heartbeat.unref();
   try {
     let ticket = fs.readFileSync(input.ticketPath, 'utf8');
+    if (input.expectedTicketContent !== undefined && ticket !== input.expectedTicketContent)
+      throw new Error(
+        'SDD_VERIFY_CONTEXT_STALE: ticket changed between preflight and lease; reread sdd-task and retry before executing any gate'
+      );
+    const observedTicket = ticket;
     const stale = parseRecords(ticket).filter((record) => record.state === 'RUNNING');
     for (const record of stale) {
       ticket = replaceRecord(ticket, {
@@ -1330,7 +1337,13 @@ export async function runWithSddAttemptJournal(input: {
       });
     }
     ticket = insertRecord(ticket, running);
-    writeTicketAtomically(input.root, input.ticketPath, ticket, input.runtime?.beforeTicketRename);
+    writeTicketAtomically(
+      input.root,
+      input.ticketPath,
+      ticket,
+      input.runtime?.beforeTicketRename,
+      observedTicket
+    );
     let outcome: SddAttemptOutcome;
     let runnerFailure: Error | undefined;
     try {
@@ -1343,13 +1356,22 @@ export async function runWithSddAttemptJournal(input: {
         stderr: `[sdd-verify] ${runnerFailure.message}\n`,
       };
     }
+    // Repairs may change source files, but never the task that selected these gates.
+    // Capture once: the final expected-byte write also rejects a later competing edit.
+    const terminalTicket = fs.readFileSync(input.ticketPath, 'utf8');
+    const ticketContextDrift = !withoutAttemptJournal(Buffer.from(ticket)).equals(
+      withoutAttemptJournal(Buffer.from(terminalTicket))
+    );
     const finished = terminalRecord(input.root, input.ticketPath, running, outcome);
     const remoteTrustUnproven =
       outcome.report?.plan.trust.level === 'remote-provider' &&
       finished.state !== 'BLOCKED' &&
       !finished.trust.resolved;
     const terminal =
-      heartbeatFailure === undefined && runnerFailure === undefined && !remoteTrustUnproven
+      heartbeatFailure === undefined &&
+      runnerFailure === undefined &&
+      !remoteTrustUnproven &&
+      !ticketContextDrift
         ? finished
         : {
             ...finished,
@@ -1358,6 +1380,7 @@ export async function runWithSddAttemptJournal(input: {
               level: 'pending' as const,
               source:
                 heartbeatFailure?.message ??
+                (ticketContextDrift ? 'ticket-context-drift' : undefined) ??
                 (remoteTrustUnproven
                   ? 'remote-provider exact-SHA pipeline proof is incomplete'
                   : 'runner-exception'),
@@ -1367,14 +1390,15 @@ export async function runWithSddAttemptJournal(input: {
     writeTicketAtomically(
       input.root,
       input.ticketPath,
-      replaceRecord(fs.readFileSync(input.ticketPath, 'utf8'), terminal),
-      input.runtime?.beforeTicketRename
+      replaceRecord(terminalTicket, terminal),
+      input.runtime?.beforeTicketRename,
+      terminalTicket
     );
     if (terminal.state === 'VIOLATION' && outcome.exitCode === 0) {
       return {
         ...outcome,
         exitCode: 1,
-        stderr: `${outcome.stderr}[sdd-verify] SDD_VERIFY_ATTEMPT_EVIDENCE_INVALID: required runner evidence is incomplete\n`,
+        stderr: `${outcome.stderr}[sdd-verify] SDD_VERIFY_ATTEMPT_EVIDENCE_INVALID: ${ticketContextDrift ? 'task changed during verification; reread sdd-task and rerun the selected gates' : 'required runner evidence is incomplete'}\n`,
       };
     }
     return outcome;

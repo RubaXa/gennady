@@ -213,14 +213,16 @@ scenario и подмену gate body при неизменном имени ко
 - Review: pending decisions remain visible to reconstruction and final operator review; verdict
   edits address the same ID. A Handoff-only missing reference is diagnostic, not an empty clean log.
 
-### `TechnicalReplan` — planned execution extension
+### `TechnicalReplan` — bounded execution transition
 
-EA-2a implements only additive implementation neighbors and local dependency corrections through
+EA-2 implements additive implementation neighbors, local dependency corrections and an inherited
+provider-phase insertion with exact covered-test ownership transfer through
 `sdd-log replan`: exact observed `REPLAN_BASE`, stable operation ID and readable atomic delta.
 The orchestrator stops the old worker first and refreshes dispatch; the worker never applies the
 transition or manually rewrites the ticket. The CLI validates declaration preservation, paths,
-graphs and writer ordering, not business equivalence. New phases, target removal and test allocation
-are still planned; their fields are rejected rather than treated as silently supported.
+graphs and writer ordering, not business equivalence. New provider inherits kind/rules/exit/inputs;
+coverage/scenarios/checks remain unchanged and selected source retains a mapped test target.
+Arbitrary target/phase removal, scenario rewrites, weaker kinds/checks and changed goals are rejected.
 
 - Preserved commitments: agreed user outcome, observable behavior, required negative scenarios,
   safety/authority constraints and acceptance strength.

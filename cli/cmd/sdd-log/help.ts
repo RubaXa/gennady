@@ -74,7 +74,7 @@ export function printHelp(): void {
     '  Orchestrator only, after the old worker stops. JSON: id (RP-...), base (REPLAN_BASE from sdd-task), reason, evidence, addTargets (exact paths), dependencies (complete phase-ID list).'
   );
   console.info(
-    '  Additive implementation neighbors and local phase edges only; no removed targets, kinds, new phases, test-plan/check/goal edits. Complete corpus path/DAG/writer checks precede the atomic write.'
+    '  Additive implementation neighbors/local edges; optionally supply BOTH insertPhase ({id, objective, targets, dependencies}) and moveTests (existing exact covered test paths, or []). The new provider precedes the selected phase and inherits its kind/rules/exit/inputs; selected dependencies must include it. Source retains a mapped test target. No removed obligations, weaker kinds/checks or goal edits. Corpus path/DAG/writer checks precede the atomic write.'
   );
   console.info(
     '  Replan operations serialize corpus claims; arbitrary editors/other authoring do not share that lease. Refresh sdd-task after ACK; reverify stale prerequisite attempts before dispatch. Same ID/payload replay is byte-idempotent, not reuse of old worker authority.'

@@ -58,16 +58,21 @@ infrastructure
 
 ### 2.4 `shared/sdd/` — bounded execution transitions
 
-| Name                     | Type     | Purpose                                                                                                         |
-| ------------------------ | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `technicalReplanBase`    | Function | Exact observed ticket identity for a stale-read precondition                                                    |
-| `prepareTechnicalReplan` | Function | Additive target/local-edge transition with preserved declarations and readable Execution Log delta              |
-| `withSddReplanMutation`  | Function | Serialize replan corpus claim checks, then use the existing ticket/Verify lease and expected-byte atomic writer |
+| Name                             | Type     | Purpose                                                                                                                           |
+| -------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `technicalReplanBase`            | Function | Exact observed ticket identity for a stale-read precondition                                                                      |
+| `prepareTechnicalReplan`         | Function | Bounded target/local-edge/provider-phase/test ownership transition preserving scenario/check declarations and recording its delta |
+| `TechnicalPhaseInsertion`        | Type     | Exact provider ID/objective/targets/dependencies; kind/rules/exit/inputs inherited, not arbitrary authority                       |
+| `parseTechnicalPhaseInsertion`   | Function | Validate the exact bounded insertion payload before candidate bytes are prepared                                                  |
+| `prepareTechnicalPhaseInsertion` | Function | Preserve covered-test ownership and provider ordering, recheck insertion/log postconditions on replay                             |
+| `withSddReplanMutation`          | Function | Serialize replan corpus claim checks, then use the existing ticket/Verify lease and expected-byte atomic writer                   |
 
-`technical-replan.ts` does not prove preserved business meaning. It mechanically preserves all
-existing targets, kinds, rules, product/BDD/verification/test-coverage declarations, refuses unsafe
-paths, cycles, detached inputs and unordered writers, and keeps old evidence. Only implementation
-neighbors and local edges are supported; phase insertion/removal and test reallocation remain planned.
+`technical-replan.ts` does not prove preserved business meaning. It mechanically preserves kinds,
+rules and product/BDD/verification/test-coverage declarations, refuses unsafe paths, cycles,
+detached inputs and unordered writers, and keeps old evidence. Supported means changes are
+implementation neighbors, local edges, one inherited provider phase and exact covered-test ownership
+transfer to it; the source retains a mapped test target. Arbitrary target/phase removal, changed
+scenario/level and weaker checks remain unsupported.
 The replan-corpus lease coordinates replan CLI operations, not external editors or arbitrary authoring.
 Redispatch and fresh Verify use the existing rule resolver/facade, never a second runner.
 

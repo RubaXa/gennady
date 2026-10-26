@@ -19,6 +19,11 @@ import { phaseVerificationNodeReaches } from './phase-verification-plan.ts';
 import { isSddEvidencePath } from './corpus-path.ts';
 import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
 import { checkTaskGraph } from './check.ts';
+import {
+  parseTechnicalPhaseInsertion,
+  prepareTechnicalPhaseInsertion,
+  type TechnicalPhaseInsertion,
+} from './technical-replan-phases.ts';
 
 /**
  * @purpose Exact observed bytes precondition, not an approval or semantic proof.
@@ -42,7 +47,7 @@ function planIdentity(content: string): string {
   return technicalReplanBase(source);
 }
 
-/** @purpose One phase's limited change; no arbitrary Markdown, removed targets, kinds or checks. */
+/** @purpose One bounded means change; no arbitrary Markdown, removed obligations, kinds or checks. */
 type TechnicalReplan = {
   id: string;
   base: string;
@@ -50,6 +55,8 @@ type TechnicalReplan = {
   evidence: string;
   addTargets: string[];
   dependencies: string[];
+  insertPhase?: TechnicalPhaseInsertion;
+  moveTests?: string[];
 };
 
 /** @purpose Prepared immutable transition or a refusal before any ticket write. */
@@ -71,7 +78,11 @@ function prose(value: unknown): value is string {
 function parsePayload(raw: unknown): TechnicalReplan | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const value = raw as Record<string, unknown>;
-  if (Object.keys(value).sort().join(',') !== 'addTargets,base,dependencies,evidence,id,reason')
+  const keys = Object.keys(value).sort().join(',');
+  if (
+    keys !== 'addTargets,base,dependencies,evidence,id,reason' &&
+    keys !== 'addTargets,base,dependencies,evidence,id,insertPhase,moveTests,reason'
+  )
     return null;
   if (
     typeof value.id !== 'string' ||
@@ -90,6 +101,17 @@ function parsePayload(raw: unknown): TechnicalReplan | null {
     value.dependencies.some((p) => typeof p !== 'string' || !/^P[0-9]+$/.test(p)) ||
     new Set(value.addTargets).size !== value.addTargets.length ||
     new Set(value.dependencies).size !== value.dependencies.length
+  )
+    return null;
+  if (
+    keys.includes('insertPhase') &&
+    (!parseTechnicalPhaseInsertion(value.insertPhase) ||
+      !Array.isArray(value.moveTests) ||
+      value.moveTests.length > 32 ||
+      value.moveTests.some(
+        (p) => typeof p !== 'string' || /[<>`\x00-\x1f\x7f\u2028\u2029]/u.test(p)
+      ) ||
+      new Set(value.moveTests).size !== value.moveTests.length)
   )
     return null;
   return value as TechnicalReplan;
@@ -145,8 +167,8 @@ function liveLogLines(body: string): string[] | null {
 }
 
 /**
- * @purpose Prepare an additive target/dependency delta and its durable Execution Log fact.
- * @invariant No removed targets, changed kinds, product/BDD/test/verification fields or self-approval;
+ * @purpose Prepare a bounded target/dependency/provider/test-ownership delta and its durable log fact.
+ * @invariant No removed obligations, changed kinds, product/BDD/test/verification fields or self-approval;
  *   caller holds the replan-corpus and ticket leases and rereads the corpus before applying.
  * @param input Observed ticket, exact phase, bounded payload and complete ticket corpus.
  * @returns Candidate bytes with a readable delta, or a reason without candidate bytes.
@@ -164,7 +186,7 @@ export function prepareTechnicalReplan(input: {
   const payload = parsePayload(input.payload);
   if (!payload)
     return fail(
-      'replan JSON requires exactly id, base, reason, evidence, addTargets, dependencies; no authority/check overrides'
+      'replan JSON requires id, base, reason, evidence, addTargets, dependencies; optional pair insertPhase and moveTests; no authority/check overrides'
     );
   const eol = input.content.includes('\r\n') ? '\r\n' : '\n';
   const content = input.content.replaceAll('\r\n', '\n');
@@ -173,17 +195,26 @@ export function prepareTechnicalReplan(input: {
   const section = extractSection(content, `PHASE_${input.phaseId}`);
   if (overview.status !== 'ok' || log.status !== 'ok' || section.status !== 'ok')
     return fail('replan needs unique readable phase, overview and open Execution Log');
-  const signature = technicalReplanBase(
-    JSON.stringify([
-      input.phaseId,
-      payload.id,
-      payload.base,
-      payload.reason,
-      payload.evidence,
-      payload.addTargets,
-      payload.dependencies,
-    ])
-  );
+  const signatureParts: unknown[] = [
+    input.phaseId,
+    payload.id,
+    payload.base,
+    payload.reason,
+    payload.evidence,
+    payload.addTargets,
+    payload.dependencies,
+  ];
+  if (payload.insertPhase)
+    signatureParts.push(
+      [
+        payload.insertPhase.id,
+        payload.insertPhase.objective,
+        payload.insertPhase.targets,
+        payload.insertPhase.dependencies,
+      ],
+      payload.moveTests
+    );
+  const signature = technicalReplanBase(JSON.stringify(signatureParts));
   const prefix = `- [x] technical-replan ${payload.id} `;
   const live = liveLogLines(log.content);
   if (!live) return fail('replan log has an unclosed fence/comment; do not hide a canonical fact');
@@ -208,11 +239,28 @@ export function prepareTechnicalReplan(input: {
     !/^\[ \](?:\s+[A-Z_]+)?$/.test(selected[0]?.status ?? '')
   )
     return fail('replan requires one incomplete phase; completed phases are not rewritten');
-  if (payload.dependencies.some((d) => !phases.some((p) => p.id === d)))
+  if (payload.insertPhase && !payload.dependencies.includes(payload.insertPhase.id))
+    return fail('source must depend on the inserted provider before redispatch');
+  if (
+    payload.dependencies.some(
+      (d) => !phases.some((p) => p.id === d) && d !== payload.insertPhase?.id
+    )
+  )
     return fail('replan dependency names an absent phase');
-  const nextPhases = phases.map((p) =>
+  let nextPhases = phases.map((p) =>
     p.id === input.phaseId ? { ...p, deps: payload.dependencies } : p
   );
+  if (payload.insertPhase && !replay)
+    nextPhases.splice(
+      nextPhases.findIndex((p) => p.id === input.phaseId),
+      0,
+      {
+        id: payload.insertPhase.id,
+        kind: selected[0]?.kind ?? '',
+        deps: payload.insertPhase.dependencies,
+        status: '[ ]',
+      }
+    );
   if (nextPhases.some((p) => reaches(nextPhases, p.id, p.id)))
     return fail('replan would create a phase dependency cycle');
   const detail = parsePhaseDetail(section.content);
@@ -227,7 +275,9 @@ export function prepareTechnicalReplan(input: {
     return body.status === 'ok' ? parsePhaseDetail(body.content).targetFiles : [];
   });
   const roots = allTargets.map(dirname).filter((p) => p !== '.');
-  for (const path of payload.addTargets) {
+  for (const path of [
+    ...new Set([...payload.addTargets, ...(payload.insertPhase?.targets ?? [])]),
+  ]) {
     const inspected = inspectRepoPath(input.root, path, 'potential');
     if (!inspected.ok || inspected.relative !== path)
       return fail(
@@ -252,11 +302,12 @@ export function prepareTechnicalReplan(input: {
       return fail(
         `replan target ${path} has no existing non-root implementation boundary in this ticket`
       );
-    if (!replay && detail.targetFiles.includes(path))
+    if (!replay && payload.addTargets.includes(path) && detail.targetFiles.includes(path))
       return fail(`replan target ${path} is already declared`);
   }
   if (
     !replay &&
+    !payload.insertPhase &&
     !payload.addTargets.length &&
     selected[0]?.deps.join(',') === payload.dependencies.join(',')
   )
@@ -302,6 +353,20 @@ export function prepareTechnicalReplan(input: {
   }
   let next = replay ? content : replaceSection(content, 'PHASES_OVERVIEW', nextOverview);
   if (!replay) next = replaceSection(next, `PHASE_${input.phaseId}`, nextBody);
+  if (payload.insertPhase) {
+    const extended = prepareTechnicalPhaseInsertion({
+      content: next,
+      sourceId: input.phaseId,
+      originalPhases: phases,
+      originalSourceBody: section.content,
+      insertion: payload.insertPhase,
+      moveTests: payload.moveTests ?? [],
+      replay,
+    });
+    if (!extended.ok) return fail(extended.detail);
+    next = extended.content;
+    nextPhases = extended.phases;
+  }
   const corpus = input.corpus.map((ref) =>
     resolve(ref.file) === resolve(input.ticketFile) ? { ...ref, content: next } : ref
   );
@@ -368,7 +433,7 @@ export function prepareTechnicalReplan(input: {
     }
   }
   if (replay) return { ok: true, content: input.content, created: false, id: payload.id };
-  const fact = `${prefix}${signature} ${planIdentity(next)} phase=${input.phaseId} at=${input.timestamp}; addTargets=${JSON.stringify(payload.addTargets)}; deps=${JSON.stringify(selected[0]?.deps)} -> ${JSON.stringify(payload.dependencies)}; reason=${payload.reason}; evidence=${payload.evidence}`;
+  const fact = `${prefix}${signature} ${planIdentity(next)} phase=${input.phaseId} at=${input.timestamp}; addTargets=${JSON.stringify(payload.addTargets)}; deps=${JSON.stringify(selected[0]?.deps)} -> ${JSON.stringify(payload.dependencies)};${payload.insertPhase ? ` insertPhase=${JSON.stringify(payload.insertPhase)}; moveTests=${JSON.stringify(payload.moveTests)};` : ''} reason=${payload.reason}; evidence=${payload.evidence}`;
   const bounds = findSectionBounds(next, 'EXECUTION_LOG');
   if (!bounds) return fail('replan Execution Log became ambiguous');
   const lines = next.split('\n');
