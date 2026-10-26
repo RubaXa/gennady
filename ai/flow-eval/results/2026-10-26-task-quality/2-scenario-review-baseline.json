@@ -1,0 +1,63 @@
+{
+  "id": "scenario-review",
+  "arm": "baseline",
+  "sessionId": "ses_e8afef75fffesssxBCohjAFvA8",
+  "response": "{\n  \"findings\": [\n    {\n      \"requirement\": \"MAIL-REQ-1 visibleRange(count, offset, viewport) boundary clamping\",\n      \"risk\": \"Empty lists or offsets at the end can produce invalid or extra indexes; the only proposed test is a successful initial browser load.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No unit cases cover empty lists, offset at the end, or indexes beyond count; no visibleRange assertions are proposed.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-2 stale-response ordering under rapid or scrollbar navigation\",\n      \"risk\": \"A late old response can replace the latest requested window and display the wrong message range.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No controlled request-adapter test issues overlapping responses or asserts the latest request wins via request correlation.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-3 cancellation behavior\",\n      \"risk\": \"Cancelled requests may show an error banner or replace the current list.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No cancellation test asserts that no error banner appears and that the current list is unchanged.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-4 failed-load recovery\",\n      \"risk\": \"A failed load may clear visible messages or omit retry, losing the operator's context.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No controlled failure/retry test verifies retained visible messages and a retry affordance; the only browser test covers success.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-5 window-only mounting and bounded requests for 100000 messages\",\n      \"risk\": \"The full list may mount beyond documented overscan or repeated navigation may accumulate requests; no structural evidence is supplied and no elapsed-time SLA exists.\",\n      \"testLevel\": \"integration\",\n      \"evidence\": \"No render-counter assertion covers mounted rows and overscan at 100000 messages, and no repeated-navigation request-count assertion is proposed.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-6 real browser scrollbar navigation\",\n      \"risk\": \"Dragging the real scrollbar may not reach or display the chosen viewport, leaving the operator unable to reach a chosen email.\",\n      \"testLevel\": \"e2e\",\n      \"evidence\": \"No actual-browser scrollbar-drag scenario exists; the sole heavy browser test covers only a successful initial load.\"\n    }\n  ],\n  \"reuse\": \"Reuse the existing unit-test helpers, controlled request adapter, browser fixtures, request correlation, render counters, and logger. Remove the second browser harness and new logger; keep logging to meaningful identity, state, error, and timing events, not trivial functions.\",\n  \"metrics\": [\n    \"visibleRange index bounds for empty lists, end offsets, and clamping\",\n    \"mounted DOM message count versus viewport plus documented overscan at 100000 messages\",\n    \"request count across repeated navigation (must not accumulate)\",\n    \"latest-request correlation versus displayed window\",\n    \"render counts per request or navigation\",\n    \"error banner absent and current list unchanged after cancellation\",\n    \"visible messages retained and retry offered after failure\",\n    \"real browser scrollbar drag reaches and displays chosen viewport\"\n  ],\n  \"timingBudget\": null,\n  \"styleBlocking\": false\n}",
+  "facets": [
+    "missing-risk-evidence:MAIL-REQ-1",
+    "missing-risk-evidence:MAIL-REQ-2",
+    "missing-risk-evidence:MAIL-REQ-3",
+    "missing-risk-evidence:MAIL-REQ-4",
+    "missing-risk-evidence:MAIL-REQ-6",
+    "missing-performance-risk"
+  ],
+  "wallMs": 47426,
+  "trajectory": {
+    "entries": [
+      {
+        "messageId": "ses_e8afef75fffesssxBCohjAFvA8:msg_1750108ab00114YRb9PmCWvoRn",
+        "sessionId": "ses_e8afef75fffesssxBCohjAFvA8",
+        "role": "user",
+        "createdAt": 1792964364459,
+        "text": "Task:\nApply the supplied actual-ticket review policy to this bounded synthetic plan; no actual artifact approval is requested. Return JSON only:\n{\"findings\":[{\"requirement\":string,\"risk\":string,\"testLevel\":\"unit\"|\"integration\"|\"e2e\",\"evidence\":string}],\"reuse\":string,\"metrics\":string[],\"timingBudget\":number|null,\"styleBlocking\":boolean}.\nRole: a support operator must reach a chosen email quickly and reliably in a long list.\nApproved MAIL requirements:\nMAIL-REQ-1: visibleRange(count, offset, viewport) clamps indexes and never includes items beyond the list, including empty lists and offset at the end.\nMAIL-REQ-2: when rapid or scrollbar navigation issues multiple requests, a late old response must not replace the latest requested window.\nMAIL-REQ-3: cancelled requests must not show an error banner or replace the current list.\nMAIL-REQ-4: a failed load preserves visible messages and offers retry.\nMAIL-REQ-5: a 100000-message list mounts only the window and documented overscan, and repeated navigation must not accumulate requests. No elapsed-time SLA is specified.\nMAIL-REQ-6: dragging the real browser scrollbar reaches and displays the chosen viewport correctly.\nProposed ticket implements everything above but tests only one successful initial load through a heavy browser suite. It adds a second browser harness and new logger even though project helpers already provide unit tests, a controlled request adapter, browser fixtures, request correlation and render counters. A reviewer also suggests blocking because a local variable name is short.\nExisting testing rules: assert observable behavior; use controlled collaborators for unit/component tests; real browser behavior requires actual browser evidence. Existing logging: function/method identity, state transitions, error context, and timing of meaningful operations, not every trivial function.\nReview the omissions and test allocation, reuse and diagnostic/performance evidence. Do not implement anything.\n\nSupplied policy (apply as instructions):\n2.0.0-draft.1\n\n<Step id=\"STEP_4_INDEPENDENT_TICKET_REVIEW\">\n      <Goal>Judge the actual ticket set against approved specifications.</Goal>\n      <Action>\n        Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,\n        indexes, and their approved specs. The reviewer checks: coherent decomposition; provider before\n        consumer; no conflicting/shared writes; phases form an executable order; each requirement is\n        owned; negative/failure behavior is represented; test cases would demonstrate the declared\n        requirement; and no ticket adds product meaning absent from specs.\n\n        The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The\n        reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON\n        plan. If a finding changes ticket meaning, edit the actual ticket, repeat STEP_3, and obtain one\n        fresh review of the new actual set. An unresolved semantic conflict stops with\n        `H_TICKET_REVIEW_FINDING`.\n      </Action>\n    </Step>\n\nAfter completing this step, and only then, READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml\"). Do not preload later step packages.",
+        "toolCalls": [],
+        "fingerprint": ""
+      },
+      {
+        "messageId": "ses_e8afef75fffesssxBCohjAFvA8:msg_1750108df001pehayaTHylWHQz",
+        "sessionId": "ses_e8afef75fffesssxBCohjAFvA8",
+        "role": "assistant",
+        "createdAt": 1792964364511,
+        "text": "{\n  \"findings\": [\n    {\n      \"requirement\": \"MAIL-REQ-1 visibleRange(count, offset, viewport) boundary clamping\",\n      \"risk\": \"Empty lists or offsets at the end can produce invalid or extra indexes; the only proposed test is a successful initial browser load.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No unit cases cover empty lists, offset at the end, or indexes beyond count; no visibleRange assertions are proposed.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-2 stale-response ordering under rapid or scrollbar navigation\",\n      \"risk\": \"A late old response can replace the latest requested window and display the wrong message range.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No controlled request-adapter test issues overlapping responses or asserts the latest request wins via request correlation.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-3 cancellation behavior\",\n      \"risk\": \"Cancelled requests may show an error banner or replace the current list.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No cancellation test asserts that no error banner appears and that the current list is unchanged.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-4 failed-load recovery\",\n      \"risk\": \"A failed load may clear visible messages or omit retry, losing the operator's context.\",\n      \"testLevel\": \"unit\",\n      \"evidence\": \"No controlled failure/retry test verifies retained visible messages and a retry affordance; the only browser test covers success.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-5 window-only mounting and bounded requests for 100000 messages\",\n      \"risk\": \"The full list may mount beyond documented overscan or repeated navigation may accumulate requests; no structural evidence is supplied and no elapsed-time SLA exists.\",\n      \"testLevel\": \"integration\",\n      \"evidence\": \"No render-counter assertion covers mounted rows and overscan at 100000 messages, and no repeated-navigation request-count assertion is proposed.\"\n    },\n    {\n      \"requirement\": \"MAIL-REQ-6 real browser scrollbar navigation\",\n      \"risk\": \"Dragging the real scrollbar may not reach or display the chosen viewport, leaving the operator unable to reach a chosen email.\",\n      \"testLevel\": \"e2e\",\n      \"evidence\": \"No actual-browser scrollbar-drag scenario exists; the sole heavy browser test covers only a successful initial load.\"\n    }\n  ],\n  \"reuse\": \"Reuse the existing unit-test helpers, controlled request adapter, browser fixtures, request correlation, render counters, and logger. Remove the second browser harness and new logger; keep logging to meaningful identity, state, error, and timing events, not trivial functions.\",\n  \"metrics\": [\n    \"visibleRange index bounds for empty lists, end offsets, and clamping\",\n    \"mounted DOM message count versus viewport plus documented overscan at 100000 messages\",\n    \"request count across repeated navigation (must not accumulate)\",\n    \"latest-request correlation versus displayed window\",\n    \"render counts per request or navigation\",\n    \"error banner absent and current list unchanged after cancellation\",\n    \"visible messages retained and retry offered after failure\",\n    \"real browser scrollbar drag reaches and displays chosen viewport\"\n  ],\n  \"timingBudget\": null,\n  \"styleBlocking\": false\n}",
+        "toolCalls": [],
+        "fingerprint": ""
+      }
+    ],
+    "coverage": {
+      "complete": true,
+      "sessions": 1,
+      "reasons": []
+    }
+  },
+  "usage": {
+    "messages": 1,
+    "input": 941,
+    "output": 719,
+    "reasoning": 7201,
+    "cacheRead": 1792,
+    "cacheWrite": 0,
+    "total": 8861,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 47406
+  },
+  "toolCalls": 0,
+  "seedUnchanged": true,
+  "sandboxEntries": [],
+  "sessionDeleted": true,
+  "sandboxRemoved": true
+}

@@ -1,0 +1,56 @@
+{
+  "id": "structural-review",
+  "arm": "candidate",
+  "sessionId": "ses_e88a3093dffeEgI4cU9EKfSxHx",
+  "response": "{\"findings\":[{\"id\":\"COLLISION\",\"evidence\":[\"Ticket A (CSV export) and Ticket B (avatar resize) are marked parallel.\",\"Both A and B declare package.json in Target Files, while their source targets are otherwise disjoint.\",\"The package manifest cannot have concurrent writers.\"],\"consequence\":\"Concurrent writes to package.json can overwrite each other's dependency or script changes, leaving an inconsistent manifest and breaking install, build, or test behavior for CSV export and avatar resize.\",\"fix\":\"serialize\",\"testAction\":\"none\",\"testReason\":\"This is a structural scheduling conflict visible from the shared package.json target; no product behavior or diagnostic changes, and a runtime test would not demonstrate concurrent manifest writers.\"},{\"id\":\"ORDER\",\"evidence\":[\"Ticket C installs the required test harness through package.json.\",\"Ticket D invokes that harness in its first phase but declares no dependency on C.\",\"Without a dependency edge, D can be scheduled and run before the harness exists.\"],\"consequence\":\"D's first phase can fail on a missing test harness or produce false failures, blocking D's user-visible outcome.\",\"fix\":\"add-dependency\",\"testAction\":\"none\",\"testReason\":\"The missing C-to-D prerequisite is directly visible from ticket ordering metadata; no runtime test or diagnostic is needed to demonstrate the structural ordering defect.\"}]}",
+  "facets": [],
+  "wallMs": 6160,
+  "trajectory": {
+    "entries": [
+      {
+        "messageId": "ses_e88a3093dffeEgI4cU9EKfSxHx:msg_1775cf6cf001QJAJSVFPXKW04j",
+        "sessionId": "ses_e88a3093dffeEgI4cU9EKfSxHx",
+        "role": "user",
+        "createdAt": 1793003943631,
+        "text": "Task:\nReview the supplied synthetic ticket plan under the supplied actual-ticket policy. Return JSON only:\n{\"findings\":[{\"id\":\"COLLISION\"|\"ORDER\",\"evidence\":string[],\"consequence\":string,\"fix\":\"serialize\"|\"add-dependency\",\"testAction\":\"none\"|\"add\",\"testReason\":string}]}.\nApproved outcomes and all runtime behavior tests are already covered, including applicable negative scenarios. No product behavior or diagnostic is changed by this plan correction. Evaluate these two scheduling defects; do not implement code or approve tickets.\nCOLLISION: independent tickets A (CSV export) and B (avatar resize) are marked parallel but both declare package.json in Target Files. Their source targets are otherwise disjoint. The package manifest cannot have concurrent writers.\nORDER: ticket C installs the required test harness through package.json. Ticket D invokes that harness in its first phase but declares no dependency on C, so D can run before the harness exists.\nIdentify concrete evidence, the user consequence, the minimal scheduling correction and whether any additional runtime test or diagnostic is needed to demonstrate this structural defect.\n\nSupplied policy (apply as instructions):\n2.0.0-draft.1\n\n<Step id=\"STEP_4_INDEPENDENT_TICKET_REVIEW\">\n      <Goal>Judge the actual ticket set against approved specifications.</Goal>\n      <Action>\n        Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,\n        indexes, their approved specs, applicable testing rules, and the existing test infrastructure\n        entry points. Review in this order:\n        - Start with the user role, business outcome and complete user journey. Trace requirements\n          through success, recovery and relevant failure/boundary cases across ticket boundaries.\n          For asynchronous/interactive behavior consider delays, cancellation, repeated actions,\n          out-of-order results and realistic data volume where applicable; these are risk prompts,\n          not a mandatory Cartesian product of invented scenarios.\n        - Choose the cheapest sufficient evidence for each risk: contract/unit for local logic,\n          integration/component for interacting parts, browser/e2e only for behavior depending on\n          the real runtime. Reuse existing test infrastructure; fakes cannot establish actual browser\n          or network fidelity. Check that assertions demonstrate the user outcome, not just code shape.\n        - For relevant performance risks, require a reproducible workload and an observable signal.\n          Check diagnostic coverage: function/method identity, state transitions, error context and\n          meaningful latency/request/render-volume metrics. Reuse existing instrumentation; avoid\n          trivial-operation log noise. If the spec lacks a necessary budget, identify the spec gap;\n          invent neither requirements nor timing thresholds, and do not treat prose as runtime evidence.\n        - Check coherent decomposition and actively look for tickets to merge: actual producer before\n          consumer, shared writers serialized, executable phases, every requirement owned, and the\n          split rationale justified. Preserve real prerequisite dependencies.\n\n        Every substantive finding names the user consequence, evidence/spec anchor and missing or\n        insufficient test/diagnostic where relevant. A structural finding may instead identify the conflicting targets or dependency order\n        and the required serialization/order correction; it need not invent a runtime test or diagnostic.\n        Style preferences belong to lint and must not displace material\n        coverage gaps. Distinguish a spec gap from a ticket omission; add no unapproved product meaning.\n\n        The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The\n        reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON\n        plan. If a finding changes ticket meaning, edit the actual ticket, repeat STEP_3, and obtain one\n        fresh review of the new actual set. An unresolved semantic conflict stops with\n        `H_TICKET_REVIEW_FINDING`.\n      </Action>\n    </Step>\n\nAfter completing this step, and only then, READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml\"). Do not preload later step packages.",
+        "toolCalls": [],
+        "fingerprint": ""
+      },
+      {
+        "messageId": "ses_e88a3093dffeEgI4cU9EKfSxHx:msg_1775cf706001TCtOWoflmeqRdp",
+        "sessionId": "ses_e88a3093dffeEgI4cU9EKfSxHx",
+        "role": "assistant",
+        "createdAt": 1793003943686,
+        "text": "{\"findings\":[{\"id\":\"COLLISION\",\"evidence\":[\"Ticket A (CSV export) and Ticket B (avatar resize) are marked parallel.\",\"Both A and B declare package.json in Target Files, while their source targets are otherwise disjoint.\",\"The package manifest cannot have concurrent writers.\"],\"consequence\":\"Concurrent writes to package.json can overwrite each other's dependency or script changes, leaving an inconsistent manifest and breaking install, build, or test behavior for CSV export and avatar resize.\",\"fix\":\"serialize\",\"testAction\":\"none\",\"testReason\":\"This is a structural scheduling conflict visible from the shared package.json target; no product behavior or diagnostic changes, and a runtime test would not demonstrate concurrent manifest writers.\"},{\"id\":\"ORDER\",\"evidence\":[\"Ticket C installs the required test harness through package.json.\",\"Ticket D invokes that harness in its first phase but declares no dependency on C.\",\"Without a dependency edge, D can be scheduled and run before the harness exists.\"],\"consequence\":\"D's first phase can fail on a missing test harness or produce false failures, blocking D's user-visible outcome.\",\"fix\":\"add-dependency\",\"testAction\":\"none\",\"testReason\":\"The missing C-to-D prerequisite is directly visible from ticket ordering metadata; no runtime test or diagnostic is needed to demonstrate the structural ordering defect.\"}]}",
+        "toolCalls": [],
+        "fingerprint": ""
+      }
+    ],
+    "coverage": {
+      "complete": true,
+      "sessions": 1,
+      "reasons": []
+    }
+  },
+  "usage": {
+    "messages": 1,
+    "input": 1085,
+    "output": 277,
+    "reasoning": 576,
+    "cacheRead": 1792,
+    "cacheWrite": 0,
+    "total": 1938,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 6132
+  },
+  "toolCalls": 0,
+  "seedUnchanged": true,
+  "sandboxEntries": [],
+  "sessionDeleted": true,
+  "sandboxRemoved": true
+}

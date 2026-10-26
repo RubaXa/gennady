@@ -1,0 +1,96 @@
+{
+  "id": "related-read",
+  "arm": "baseline",
+  "sessionId": "ses_e8afa44c3ffe4TAgkaqVUopKTk",
+  "response": "{\"answer\":null,\"status\":\"needs-orchestrator\",\"relatedReads\":[{\"path\":\"src/view.ts\",\"reason\":\"Read per manifest; visibleCount(12) depends on the imported windowEnd helper, whose implementation was not supplied.\"}]}",
+  "facets": [
+    "context-gap-unresolved",
+    "related-read-not-explained"
+  ],
+  "wallMs": 3687,
+  "trajectory": {
+    "entries": [
+      {
+        "messageId": "ses_e8afa44c3ffe4TAgkaqVUopKTk:msg_17505bb4f001ApubakMKbLPc18",
+        "sessionId": "ses_e8afa44c3ffe4TAgkaqVUopKTk",
+        "role": "user",
+        "createdAt": 1792964672335,
+        "text": "Task:\nApply the supplied read-manifest policy. This is only the orientation step, not implementation, Verify or completion. Return JSON only:\n{\"answer\":number|null,\"status\":\"answered\"|\"needs-orchestrator\",\"relatedReads\":[{\"path\":string,\"reason\":string}]}.\nManifest: READ files: src/view.ts. Target Files for writing: src/view.ts. Start there and determine what visibleCount(12) returns. No writes are requested or permitted. The helper implementation was not supplied. Follow the policy for any missing context. Never inspect unrelated files, bundled tools or secrets. Stop when the question is answered.\n\nSupplied policy (apply as instructions):\n<!-- new for sdd-v2 tooling lens: bound worker context to the tool's read-manifest -->\n<Axiom id=\"AX_READ_PER_MANIFEST\">\n  When a tool hands a read-manifest for the current step — the exact rule anchors, spec anchors,\n  ticket sections, and Target Files to read — read EXACTLY that, nothing beyond it. The manifest's\n  \"do not read\" list and line budget are binding.\n\n  - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file\n    end-to-end for one section clogs context and degrades a cheaper model on long input.\n  - Need something the manifest does not list? That signals the ticket or manifest is wrong — log a\n    `discovery` line and surface it; never silently widen the read.\n</Axiom>",
+        "toolCalls": [],
+        "fingerprint": ""
+      },
+      {
+        "messageId": "ses_e8afa44c3ffe4TAgkaqVUopKTk:msg_17505bc3e001had15TAiwkbJg2",
+        "sessionId": "ses_e8afa44c3ffe4TAgkaqVUopKTk",
+        "role": "assistant",
+        "createdAt": 1792964672574,
+        "text": "",
+        "toolCalls": [
+          {
+            "callId": "call_00_Qf2BztS2CnRi9Lj4KxXB9187",
+            "tool": "read",
+            "status": "completed",
+            "inputSummary": "{\"filePath\":\"./src/view.ts\"}",
+            "startedAt": 1792964674472,
+            "finishedAt": 1792964674494,
+            "observation": {
+              "version": 1,
+              "output": {
+                "available": true,
+                "bytes": 315,
+                "redactedPrefixBytes": 220,
+                "redactedPrefixSha256": "ad7e4131c11fc1ff6c54a2ce485411be5a23fc9ff0b6da5963d3c65a589f5e2d",
+                "prefixComplete": true
+              }
+            }
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "messageId": "ses_e8afa44c3ffe4TAgkaqVUopKTk:msg_17505c3cb00135Wpcj0mCPub6B",
+        "sessionId": "ses_e8afa44c3ffe4TAgkaqVUopKTk",
+        "role": "assistant",
+        "createdAt": 1792964674507,
+        "text": "{\"answer\":null,\"status\":\"needs-orchestrator\",\"relatedReads\":[{\"path\":\"src/view.ts\",\"reason\":\"Read per manifest; visibleCount(12) depends on the imported windowEnd helper, whose implementation was not supplied.\"}]}",
+        "toolCalls": [],
+        "fingerprint": ""
+      }
+    ],
+    "coverage": {
+      "complete": true,
+      "sessions": 1,
+      "reasons": []
+    }
+  },
+  "usage": {
+    "messages": 2,
+    "input": 1341,
+    "output": 138,
+    "reasoning": 181,
+    "cacheRead": 4864,
+    "cacheWrite": 0,
+    "total": 1660,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 1,
+    "wallClockMs": 3611
+  },
+  "toolCalls": 1,
+  "pathIssues": [
+    "required-target-to-helper-path-missing"
+  ],
+  "relatedReadObserved": false,
+  "unexpectedTool": false,
+  "unrelatedRead": false,
+  "seedUnchanged": true,
+  "sandboxEntries": [
+    "src",
+    "unrelated"
+  ],
+  "sessionDeleted": true,
+  "sandboxRemoved": true
+}

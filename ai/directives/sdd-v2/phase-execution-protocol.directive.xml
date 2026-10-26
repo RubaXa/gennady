@@ -131,6 +131,7 @@
 
 
 
+
   </BeliefState>
   <Contracts></Contracts>
   <HaltConditions>
@@ -140,7 +141,7 @@
     | `H_OUT_OF_PHASE_WRITE` | Per `AX_PHASE_SCOPE_LOCK`, the worker creates, edits, or deletes anything outside its declared `Target Files`/`Deleted Files`, or manually mutates the ticket, `Phases Overview`, `Execution Log`, Handoff placeholder, or DONE line instead of leaving SDD evidence persistence to the exact `sdd-verify --task ... --phase ...` facade |
   </HaltConditions>
   <ExecutionPlan>
-    - **STEP_1_ORIENT** — Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution Log facts, and Git evidence. Verify targets still match the ticket. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml").
+    - **STEP_1_ORIENT** — Start with the supplied phase block, referenced spec/rule excerpts, target files, Execution Log facts, and Git evidence. Per `AX_READ_PER_MANIFEST`, close a concrete context gap by reading the smallest exact related project file/section and return its path and reason in Handoff decisions. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml").
     - **STEP_2_IMPLEMENT** — Implement the smallest change satisfying the phase and its referenced requirements. Stay inside target files. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml").
     - **STEP_3_VERIFY** — Per `AX_VERIFICATION_BEFORE_HANDOFF`, run the phase's exact declared commands, staying within `AX_PERMITTED_BASH_COMMANDS`. Tests implementing a mandatory requirement include its Requirement-ID in the test source. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml").
     - **STEP_4_HANDOFF** — Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results, deviations, and the next declared phase. Return the payload in the response only. Before executing this step, READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml").

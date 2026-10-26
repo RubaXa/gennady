@@ -104,6 +104,45 @@ describe('stateless SDD entry contract', () => {
 });
 
 describe('two artifact approval boundaries', () => {
+  it('requires evidence for a split and merges uncertain dependencies instead of multiplying tickets', () => {
+    const boundary = read('ai', 'kit', 'axiom', 'scaffold', 'ax-dag-and-ticket-boundaries.xml');
+    const scaffold = read('ai', 'kit', 'templates', 'sdd-v2', 'scaffold.directive.hbs');
+    assert.match(boundary, /Uncertain dependencies favor keeping work together/);
+    assert.match(scaffold, /For each proposed split/);
+    for (const fact of ['producer', 'consumer', 'shared writers', 'keeping it together']) {
+      assert.ok(scaffold.includes(fact), fact);
+    }
+    assert.match(scaffold, /actively look for tickets to merge/);
+    assert.doesNotMatch(boundary, /only when BOTH conditions hold/);
+    assert.doesNotMatch(boundary, /without \(C\)/);
+  });
+
+  it('reviews user journeys, cheapest sufficient tests and observable performance before style', () => {
+    const scaffold = read('ai', 'kit', 'templates', 'sdd-v2', 'scaffold.directive.hbs');
+    const review = scaffold.slice(scaffold.indexOf('<Step id="STEP_4_INDEPENDENT_TICKET_REVIEW">'));
+    for (const fact of [
+      'user role', 'business outcome', 'recovery', 'out-of-order',
+      'cheapest sufficient', 'existing test infrastructure', 'performance', 'state transitions',
+      'user consequence', 'style',
+    ]) assert.ok(review.toLowerCase().includes(fact.toLowerCase()), fact);
+    assert.match(review, /invent neither requirements nor timing thresholds/);
+    assert.match(review, /test\/diagnostic where relevant/);
+    assert.match(review, /structural finding may instead identify the conflicting targets or dependency order/);
+  });
+
+  it('permits evidence-directed related reads without expanding write authority or tool permissions', () => {
+    const manifest = read('ai', 'kit', 'axiom', 'process', 'ax-read-per-manifest.xml');
+    const worker = read('ai', 'kit', 'templates', 'sdd-v2', 'phase-execution-protocol.directive.hbs');
+    assert.match(manifest, /starting context, not a read allowlist/);
+    assert.match(manifest, /exact related project file/);
+    assert.match(manifest, /path and the gap/);
+    assert.match(manifest, /never expands write authority/);
+    assert.match(worker, /per `AX_READ_PER_MANIFEST`/i);
+    assert.doesNotMatch(worker, /Consume only the supplied phase block/);
+    assert.match(worker, /Do not alter task dependencies, phases, approved BDD\/test plan/);
+    assert.match(worker, /H_OUT_OF_PHASE_WRITE/);
+  });
+
   it('stores readable approval markers without hashes or sidecar state', () => {
     const marker = read('ai', 'kit', 'contract', 'process', 'artifact-approval-marker.xml');
     assert.match(marker, /Approval #1 — current specification set/);

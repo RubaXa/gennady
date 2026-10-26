@@ -4,10 +4,31 @@
       <Goal>Judge the actual ticket set against approved specifications.</Goal>
       <Action>
         Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,
-        indexes, and their approved specs. The reviewer checks: coherent decomposition; provider before
-        consumer; no conflicting/shared writes; phases form an executable order; each requirement is
-        owned; negative/failure behavior is represented; test cases would demonstrate the declared
-        requirement; and no ticket adds product meaning absent from specs.
+        indexes, their approved specs, applicable testing rules, and the existing test infrastructure
+        entry points. Review in this order:
+        - Start with the user role, business outcome and complete user journey. Trace requirements
+          through success, recovery and relevant failure/boundary cases across ticket boundaries.
+          For asynchronous/interactive behavior consider delays, cancellation, repeated actions,
+          out-of-order results and realistic data volume where applicable; these are risk prompts,
+          not a mandatory Cartesian product of invented scenarios.
+        - Choose the cheapest sufficient evidence for each risk: contract/unit for local logic,
+          integration/component for interacting parts, browser/e2e only for behavior depending on
+          the real runtime. Reuse existing test infrastructure; fakes cannot establish actual browser
+          or network fidelity. Check that assertions demonstrate the user outcome, not just code shape.
+        - For relevant performance risks, require a reproducible workload and an observable signal.
+          Check diagnostic coverage: function/method identity, state transitions, error context and
+          meaningful latency/request/render-volume metrics. Reuse existing instrumentation; avoid
+          trivial-operation log noise. If the spec lacks a necessary budget, identify the spec gap;
+          invent neither requirements nor timing thresholds, and do not treat prose as runtime evidence.
+        - Check coherent decomposition and actively look for tickets to merge: actual producer before
+          consumer, shared writers serialized, executable phases, every requirement owned, and the
+          split rationale justified. Preserve real prerequisite dependencies.
+
+        Every substantive finding names the user consequence, evidence/spec anchor and missing or
+        insufficient test/diagnostic where relevant. A structural finding may instead identify the conflicting targets or dependency order
+        and the required serialization/order correction; it need not invent a runtime test or diagnostic.
+        Style preferences belong to lint and must not displace material
+        coverage gaps. Distinguish a spec gap from a ticket omission; add no unapproved product meaning.
 
         The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The
         reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON

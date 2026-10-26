@@ -16,6 +16,7 @@
     {{> "axiom/process/ax-blocker-escalation"}}
     {{> "axiom/process/ax-blocker-resolution-trail"}}
     {{> "axiom/process/ax-task-resolution"}}
+    {{> "axiom/process/ax-read-per-manifest"}}
     {{> "axiom/coding/ax-file-header-task-traceability"}}
     {{> "axiom/coding/ax-file-header-append-only"}}
   </BeliefState>
@@ -29,9 +30,12 @@
   <ExecutionPlan>
     <Step id="STEP_1_ORIENT">
       <Action>
-        Consume only the supplied phase block, referenced spec/rule excerpts, target files, Execution
-        Log facts, and Git evidence. Verify targets still match the ticket. Ask the orchestrator for a
-        missing required excerpt; do not explore unrelated repository areas or inspect CLI source.
+        Start with the supplied phase block, referenced spec/rule excerpts, target files, Execution
+        Log facts, and Git evidence. Per `AX_READ_PER_MANIFEST`, close a concrete context gap by reading
+        the smallest exact related project file/section and return its path and reason in Handoff
+        decisions. A related read needs no operator approval; it grants no additional write, rule or
+        verification authority. Verify targets still match the ticket. Unavailable protected context
+        returns to the orchestrator; do not explore unrelated areas or inspect bundled CLI internals.
         Reconstruct state from these durable inputs per `AX_STATELESS_FLOW` and enforce the declared
         phase boundary per `AX_PHASE_SCOPE_LOCK`: a phase worker owns failures only inside its own
         Target Files — a repo-wide gate failing inside ANOTHER phase's Target Files is not this
