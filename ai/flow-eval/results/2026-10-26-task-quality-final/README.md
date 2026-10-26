@@ -52,6 +52,10 @@ indefinitely. The maintained runner now bounds every lifecycle wait and always r
 after a failed delete. Hanging-request/cancellation tests cover that repair; these live records
 do not claim to have executed the later lifecycle hardening. No extra model attempts were made.
 
+The subsequent boundary follow-up clarified the review policy. Its earlier executed text remains
+preserved as `executed-review-policy.json`; the original protocol still binds that exact string.
+The four new attempts and their limits are recorded [separately](../2026-10-26-task-quality-boundaries/README.md).
+
 ## Cleanup and reproduction
 
 Both `cleanup.json` records show private server stopped, all owned roots removed and zero dependency

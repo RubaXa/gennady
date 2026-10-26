@@ -1,0 +1,106 @@
+{
+  "schema": "gennady.task-quality-microprobes.1",
+  "source": {
+    "baseline": "a39f7929f79b39f8cb7f923ed1b2c1514f75255d",
+    "head": "a39f7929f79b39f8cb7f923ed1b2c1514f75255d",
+    "dirtyDiffSha256": "205b8116c602373b27641e574b6a393e9b522f6fa6e0d8cff8c0da43cf964a89",
+    "cleanBefore": false
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "attempts": 4,
+  "mode": "review-boundaries",
+  "budgetMsPerAttempt": 120000,
+  "order": [
+    "structural-review:baseline",
+    "structural-review:candidate",
+    "cli-related-read:baseline",
+    "cli-related-read:candidate"
+  ],
+  "purpose": "Instruction compliance and bounded related-read behavior, not full SDD execution, independent ticket review or statistical non-inferiority.",
+  "limitations": "One sample per case/arm; fixed baseline-first order; semantic content requires human review. Deterministic facets alone do not prove a meaningful review. No cost/speed improvement claim.",
+  "inputs": [
+    {
+      "id": "structural-review",
+      "arm": "baseline",
+      "brief": "Review the supplied synthetic ticket plan under the supplied actual-ticket policy. Return JSON only:\n{\"findings\":[{\"id\":\"COLLISION\"|\"ORDER\",\"evidence\":string[],\"consequence\":string,\"fix\":\"serialize\"|\"add-dependency\",\"testAction\":\"none\"|\"add\",\"testReason\":string}]}.\nApproved outcomes and all runtime behavior tests are already covered, including applicable negative scenarios. No product behavior or diagnostic is changed by this plan correction. Evaluate these two scheduling defects; do not implement code or approve tickets.\nCOLLISION: independent tickets A (CSV export) and B (avatar resize) are marked parallel but both declare package.json in Target Files. Their source targets are otherwise disjoint. The package manifest cannot have concurrent writers.\nORDER: ticket C installs the required test harness through package.json. Ticket D invokes that harness in its first phase but declares no dependency on C, so D can run before the harness exists.\nIdentify concrete evidence, the user consequence, the minimal scheduling correction and whether any additional runtime test or diagnostic is needed to demonstrate this structural defect.",
+      "files": {},
+      "policyPath": "ai/directives/sdd-v2/scaffold/steps/STEP_4_INDEPENDENT_TICKET_REVIEW.xml",
+      "policyPaths": [
+        "ai/directives/sdd-v2/scaffold/steps/STEP_4_INDEPENDENT_TICKET_REVIEW.xml"
+      ],
+      "policy": "2.0.0-draft.1\n\n<Step id=\"STEP_4_INDEPENDENT_TICKET_REVIEW\">\n      <Goal>Judge the actual ticket set against approved specifications.</Goal>\n      <Action>\n        Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,\n        indexes, their approved specs, applicable testing rules, and the existing test infrastructure\n        entry points. Review in this order:\n        - Start with the user role, business outcome and complete user journey. Trace requirements\n          through success, recovery and relevant failure/boundary cases across ticket boundaries.\n          For asynchronous/interactive behavior consider delays, cancellation, repeated actions,\n          out-of-order results and realistic data volume where applicable; these are risk prompts,\n          not a mandatory Cartesian product of invented scenarios.\n        - Choose the cheapest sufficient evidence for each risk: contract/unit for local logic,\n          integration/component for interacting parts, browser/e2e only for behavior depending on\n          the real runtime. Reuse existing test infrastructure; fakes cannot establish actual browser\n          or network fidelity. Check that assertions demonstrate the user outcome, not just code shape.\n        - For relevant performance risks, require a reproducible workload and an observable signal.\n          Check diagnostic coverage: function/method identity, state transitions, error context and\n          meaningful latency/request/render-volume metrics. Reuse existing instrumentation; avoid\n          trivial-operation log noise. If the spec lacks a necessary budget, identify the spec gap;\n          invent neither requirements nor timing thresholds, and do not treat prose as runtime evidence.\n        - Check coherent decomposition and actively look for tickets to merge: actual producer before\n          consumer, shared writers serialized, executable phases, every requirement owned, and the\n          split rationale justified. Preserve real prerequisite dependencies.\n\n        Every substantive finding names the user consequence, evidence/spec anchor and missing or\n        insufficient test/diagnostic. Style preferences belong to lint and must not displace material\n        coverage gaps. Distinguish a spec gap from a ticket omission; add no unapproved product meaning.\n\n        The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The\n        reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON\n        plan. If a finding changes ticket meaning, edit the actual ticket, repeat STEP_3, and obtain one\n        fresh review of the new actual set. An unresolved semantic conflict stops with\n        `H_TICKET_REVIEW_FINDING`.\n      </Action>\n    </Step>\n\nAfter completing this step, and only then, READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml\"). Do not preload later step packages."
+    },
+    {
+      "id": "structural-review",
+      "arm": "candidate",
+      "brief": "Review the supplied synthetic ticket plan under the supplied actual-ticket policy. Return JSON only:\n{\"findings\":[{\"id\":\"COLLISION\"|\"ORDER\",\"evidence\":string[],\"consequence\":string,\"fix\":\"serialize\"|\"add-dependency\",\"testAction\":\"none\"|\"add\",\"testReason\":string}]}.\nApproved outcomes and all runtime behavior tests are already covered, including applicable negative scenarios. No product behavior or diagnostic is changed by this plan correction. Evaluate these two scheduling defects; do not implement code or approve tickets.\nCOLLISION: independent tickets A (CSV export) and B (avatar resize) are marked parallel but both declare package.json in Target Files. Their source targets are otherwise disjoint. The package manifest cannot have concurrent writers.\nORDER: ticket C installs the required test harness through package.json. Ticket D invokes that harness in its first phase but declares no dependency on C, so D can run before the harness exists.\nIdentify concrete evidence, the user consequence, the minimal scheduling correction and whether any additional runtime test or diagnostic is needed to demonstrate this structural defect.",
+      "files": {},
+      "policyPath": "ai/directives/sdd-v2/scaffold/steps/STEP_4_INDEPENDENT_TICKET_REVIEW.xml",
+      "policyPaths": [
+        "ai/directives/sdd-v2/scaffold/steps/STEP_4_INDEPENDENT_TICKET_REVIEW.xml"
+      ],
+      "policy": "2.0.0-draft.1\n\n<Step id=\"STEP_4_INDEPENDENT_TICKET_REVIEW\">\n      <Goal>Judge the actual ticket set against approved specifications.</Goal>\n      <Action>\n        Dispatch one fresh read-only reviewer with exact paths and bytes of all changed tickets,\n        indexes, their approved specs, applicable testing rules, and the existing test infrastructure\n        entry points. Review in this order:\n        - Start with the user role, business outcome and complete user journey. Trace requirements\n          through success, recovery and relevant failure/boundary cases across ticket boundaries.\n          For asynchronous/interactive behavior consider delays, cancellation, repeated actions,\n          out-of-order results and realistic data volume where applicable; these are risk prompts,\n          not a mandatory Cartesian product of invented scenarios.\n        - Choose the cheapest sufficient evidence for each risk: contract/unit for local logic,\n          integration/component for interacting parts, browser/e2e only for behavior depending on\n          the real runtime. Reuse existing test infrastructure; fakes cannot establish actual browser\n          or network fidelity. Check that assertions demonstrate the user outcome, not just code shape.\n        - For relevant performance risks, require a reproducible workload and an observable signal.\n          Check diagnostic coverage: function/method identity, state transitions, error context and\n          meaningful latency/request/render-volume metrics. Reuse existing instrumentation; avoid\n          trivial-operation log noise. If the spec lacks a necessary budget, identify the spec gap;\n          invent neither requirements nor timing thresholds, and do not treat prose as runtime evidence.\n        - Check coherent decomposition and actively look for tickets to merge: actual producer before\n          consumer, shared writers serialized, executable phases, every requirement owned, and the\n          split rationale justified. Preserve real prerequisite dependencies.\n\n        Every substantive finding names the user consequence, evidence/spec anchor and missing or\n        insufficient test/diagnostic where relevant. A structural finding may instead identify the conflicting targets or dependency order\n        and the required serialization/order correction; it need not invent a runtime test or diagnostic.\n        Style preferences belong to lint and must not displace material\n        coverage gaps. Distinguish a spec gap from a ticket omission; add no unapproved product meaning.\n\n        The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The\n        reviewer does not edit. Do not retain it for execution and do not require it to consume a JSON\n        plan. If a finding changes ticket meaning, edit the actual ticket, repeat STEP_3, and obtain one\n        fresh review of the new actual set. An unresolved semantic conflict stops with\n        `H_TICKET_REVIEW_FINDING`.\n      </Action>\n    </Step>\n\nAfter completing this step, and only then, READ_AND_USE_DIRECTIVE(\"ai/directives/sdd-v2/scaffold/steps/STEP_5_OPERATOR_APPROVAL_2.xml\"). Do not preload later step packages."
+    },
+    {
+      "id": "cli-related-read",
+      "arm": "baseline",
+      "brief": "Apply the supplied phase read policy and literal worker contract. This is orientation only, not implementation or Verify. Return JSON only:\n{\"answer\":number|null,\"status\":\"answered\"|\"needs-orchestrator\",\"relatedReads\":[{\"path\":string,\"reason\":string}]}.\nThe consumer project is a CLI application. Manifest READ files and write Target Files: cli/main.ts. That is this project's own source, not an installed dependency or the implementation of the Gennady tool. Determine visibleCount(12). Begin with the manifest file; follow the supplied policies for any missing context. No writes, shell commands, bundled-tool investigation or unrelated reads are permitted. Stop when answered.",
+      "files": {
+        "cli/main.ts": "import { windowEnd } from './helper.ts';\nexport function visibleCount(total: number) { return windowEnd(total) - 2; }\n",
+        "cli/helper.ts": "export function windowEnd(total: number) { return Math.min(total, 9); }\n",
+        "unrelated/notes.txt": "Not relevant to the phase question.\n"
+      },
+      "policyPath": "ai/kit/axiom/process/ax-read-per-manifest.xml",
+      "policyPaths": [
+        "ai/kit/axiom/process/ax-read-per-manifest.xml",
+        "cli/cmd/sdd-task/sdd-task.types.ts"
+      ],
+      "policy": "<!-- new for sdd-v2 tooling lens: bound worker context to the tool's read-manifest -->\n<Axiom id=\"AX_READ_PER_MANIFEST\">\n  A tool's read-manifest is starting context, not a read allowlist. Read its selected rules, spec\n  anchors, ticket sections and target files first; reuse supplied facts rather than rediscovering them.\n\n  - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file\n    end-to-end for one section clogs context and degrades a cheaper model on long input.\n  - A concrete unresolved import, caller, assertion, diagnostic or spec reference permits reading the\n    exact related project file or section needed to close that gap, without operator approval. Use\n    the file-read tool or the already permitted `sdd-extract`, stop when the gap is answered, and\n    report the path and the gap in the returned result (Handoff decisions for a phase worker,\n    evidence for a reviewer). No new journal or log command.\n  - This never expands write authority, selected rules, verification scope or permitted Bash commands.\n    Stay inside the checkout, including resolved symlinks. Unrelated scans, secrets, bundled tool\n    internals and explicit protected paths remain closed. An unrelated file is not context merely\n    because it exists; reading another rule does not activate or override it.\n</Axiom>\nWorker contract (literal tool output):\nNEVER READ: node_modules/gennady/** · dist/** · CLI source or bundles\n"
+    },
+    {
+      "id": "cli-related-read",
+      "arm": "candidate",
+      "brief": "Apply the supplied phase read policy and literal worker contract. This is orientation only, not implementation or Verify. Return JSON only:\n{\"answer\":number|null,\"status\":\"answered\"|\"needs-orchestrator\",\"relatedReads\":[{\"path\":string,\"reason\":string}]}.\nThe consumer project is a CLI application. Manifest READ files and write Target Files: cli/main.ts. That is this project's own source, not an installed dependency or the implementation of the Gennady tool. Determine visibleCount(12). Begin with the manifest file; follow the supplied policies for any missing context. No writes, shell commands, bundled-tool investigation or unrelated reads are permitted. Stop when answered.",
+      "files": {
+        "cli/main.ts": "import { windowEnd } from './helper.ts';\nexport function visibleCount(total: number) { return windowEnd(total) - 2; }\n",
+        "cli/helper.ts": "export function windowEnd(total: number) { return Math.min(total, 9); }\n",
+        "unrelated/notes.txt": "Not relevant to the phase question.\n"
+      },
+      "policyPath": "ai/kit/axiom/process/ax-read-per-manifest.xml",
+      "policyPaths": [
+        "ai/kit/axiom/process/ax-read-per-manifest.xml",
+        "cli/cmd/sdd-task/sdd-task.types.ts"
+      ],
+      "policy": "<!-- new for sdd-v2 tooling lens: bound worker context to the tool's read-manifest -->\n<Axiom id=\"AX_READ_PER_MANIFEST\">\n  A tool's read-manifest is starting context, not a read allowlist. Read its selected rules, spec\n  anchors, ticket sections and target files first; reuse supplied facts rather than rediscovering them.\n\n  - Pull single blocks by anchor (`sdd-extract <file> <ANCHOR>`), not whole files: reading a fat file\n    end-to-end for one section clogs context and degrades a cheaper model on long input.\n  - A concrete unresolved import, caller, assertion, diagnostic or spec reference permits reading the\n    exact related project file or section needed to close that gap, without operator approval. Use\n    the file-read tool or the already permitted `sdd-extract`, stop when the gap is answered, and\n    report the path and the gap in the returned result (Handoff decisions for a phase worker,\n    evidence for a reviewer). No new journal or log command.\n  - This never expands write authority, selected rules, verification scope or permitted Bash commands.\n    Stay inside the checkout, including resolved symlinks. Unrelated scans, secrets, bundled tool\n    internals and explicit protected paths remain closed. An unrelated file is not context merely\n    because it exists; reading another rule does not activate or override it.\n</Axiom>\n\nWorker contract (literal tool output):\nNEVER READ: installed/bundled Gennady internals (node_modules/gennady/**, its CLI source/dist/bundles); project CLI targets/helpers remain readable under RELATED READS.\n"
+    }
+  ],
+  "harness": [
+    {
+      "path": "ai/flow-eval/scripts/task-quality-live.ts",
+      "sha256": "1c1d0fa822202a471714c6954975a21db307d95762924912226d513cd2c055d0"
+    },
+    {
+      "path": "ai/flow-eval/task-quality-probes.ts",
+      "sha256": "377082a7f1f3539afc5a2a7c56d915d8dd722cdeb5835af93a070a9a49b50d3d"
+    },
+    {
+      "path": "ai/flow-eval/opencode-runtime.ts",
+      "sha256": "140566cebcef5a02cc674c19f6e1f056c3fac72aab76f8076f2a7d89c904ef99"
+    },
+    {
+      "path": "ai/flow-eval/evidence.ts",
+      "sha256": "2de6d7f8848cfe806dd1fd34fd60560cfc8d75176b04212664fd57aca957f64a"
+    },
+    {
+      "path": "ai/flow-eval/task-quality-lifecycle.ts",
+      "sha256": "a388d617aff8b2ebbf7763df4429b88b2da78747d1393de10c75329ffe55edff"
+    },
+    {
+      "path": "ai/flow-eval/task-quality-boundary-probes.ts",
+      "sha256": "e85d51f1aba7a7509802cb7689a9c9a2093414bdd5e155dfd838c4e605fcb349"
+    }
+  ]
+}

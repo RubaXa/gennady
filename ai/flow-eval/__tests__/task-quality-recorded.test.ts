@@ -71,7 +71,11 @@ it('binds final inputs to candidate policy and the actually executed harness wit
   for (const input of protocol.inputs.filter(
     (input: { arm: string }) => input.arm === 'candidate'
   )) {
-    assert.equal(readFileSync(resolve(root, input.policyPath), 'utf8'), input.policy);
+    const policy =
+      input.id === 'scenario-review'
+        ? read('2026-10-26-task-quality-final/executed-review-policy.json').policy
+        : readFileSync(resolve(root, input.policyPath), 'utf8');
+    assert.equal(policy, input.policy);
   }
   for (const file of protocol.harness) {
     const recordedPath =

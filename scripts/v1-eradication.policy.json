@@ -303,11 +303,11 @@
     "scripts/v1-eradication.policy.json",
     "scripts/__tests__/v1-eradication.test.ts"
   ],
-  "expectedInventoryDigest": "5029d82a44a8703533e4711a8008385eac4734f34644153a8f3b9185c22464bb",
+  "expectedInventoryDigest": "0b0de345cea25687b2f007710290c57e29c79d730ad5dbd38ab7ffd3662730ee",
   "expectedCounts": {
     "canonical-v2": 234,
     "required-v1-to-v2-migration-boundary": 15,
-    "historical-test-evidence": 524,
+    "historical-test-evidence": 525,
     "unrelated-product-version": 70
   }
 }

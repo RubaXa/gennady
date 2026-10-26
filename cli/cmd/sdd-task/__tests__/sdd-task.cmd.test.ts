@@ -1267,7 +1267,15 @@ describe('SddTaskCommand', () => {
         /исполняй переданный worker contract без сокращений, запусти ровно unified Verify command above/
       );
       assert.match(outcome.text, /worker contract \(copy verbatim into dispatch\)/);
-      assert.match(outcome.text, /NEVER READ: node_modules\/gennady\/\*\* · dist\/\*\*/);
+      assert.match(outcome.text, /NEVER READ: installed\/bundled Gennady internals/);
+      assert.match(
+        outcome.text,
+        /project CLI targets\/helpers remain readable under RELATED READS/
+      );
+      assert.doesNotMatch(
+        outcome.text,
+        /NEVER READ: node_modules\/gennady\/\*\* · dist\/\*\* · CLI source/
+      );
       assert.match(outcome.text, /at most one target-local hypothesis/);
       assert.match(outcome.text, /RELATED READS: exact project files\/sections/);
       assert.match(outcome.text, /report path \+ gap in Handoff decisions/);

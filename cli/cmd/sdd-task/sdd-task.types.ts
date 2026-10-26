@@ -312,7 +312,7 @@ export function formatPhase(
     '',
     'worker contract (copy verbatim into dispatch):',
     '  READ protocol: ai/directives/sdd-v2/phase-execution-protocol.directive.xml and its four step files',
-    '  NEVER READ: node_modules/gennady/** · dist/** · CLI source or bundles',
+    '  NEVER READ: installed/bundled Gennady internals (node_modules/gennady/**, its CLI source/dist/bundles); project CLI targets/helpers remain readable under RELATED READS.',
     '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis using RELATED READS when needed, then return a typed blocker; no implementation archaeology',
     '  TICKET: only the exact unified Verify invocation above may own evidence/receipt; never edit status/DONE/Handoff and never call sdd-log'
   );

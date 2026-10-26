@@ -1,0 +1,144 @@
+{
+  "schema": "gennady.task-quality-report.1",
+  "source": {
+    "baseline": "a39f7929f79b39f8cb7f923ed1b2c1514f75255d",
+    "head": "a39f7929f79b39f8cb7f923ed1b2c1514f75255d",
+    "dirtyDiffSha256": "205b8116c602373b27641e574b6a393e9b522f6fa6e0d8cff8c0da43cf964a89",
+    "cleanBefore": false
+  },
+  "planned": 4,
+  "recorded": 4,
+  "records": [
+    {
+      "id": "structural-review",
+      "arm": "baseline",
+      "sessionId": "ses_e88a325d1ffei0PSBsnDBA1iiM",
+      "facets": [],
+      "wallMs": 7429,
+      "usage": {
+        "messages": 1,
+        "input": 1049,
+        "output": 292,
+        "reasoning": 482,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "total": 1823,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 7242
+      },
+      "toolCalls": 0,
+      "seedUnchanged": true,
+      "sandboxEntries": [],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "structural-review",
+      "arm": "candidate",
+      "sessionId": "ses_e88a3093dffeEgI4cU9EKfSxHx",
+      "facets": [],
+      "wallMs": 6160,
+      "usage": {
+        "messages": 1,
+        "input": 1085,
+        "output": 277,
+        "reasoning": 576,
+        "cacheRead": 1792,
+        "cacheWrite": 0,
+        "total": 1938,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 6132
+      },
+      "toolCalls": 0,
+      "seedUnchanged": true,
+      "sandboxEntries": [],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "cli-related-read",
+      "arm": "baseline",
+      "sessionId": "ses_e88a2f111ffegjMcHL4EZ46hQj",
+      "facets": [],
+      "wallMs": 8358,
+      "usage": {
+        "messages": 5,
+        "input": 2126,
+        "output": 391,
+        "reasoning": 237,
+        "cacheRead": 15744,
+        "cacheWrite": 0,
+        "total": 2754,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 8330
+      },
+      "toolCalls": 4,
+      "pathIssues": [
+        "unrelated-read"
+      ],
+      "relatedReadObserved": true,
+      "unexpectedTool": false,
+      "unrelatedRead": true,
+      "seedUnchanged": true,
+      "sandboxEntries": [
+        "cli",
+        "unrelated"
+      ],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    },
+    {
+      "id": "cli-related-read",
+      "arm": "candidate",
+      "sessionId": "ses_e88a2d050ffenBn36q5rxRAjHG",
+      "facets": [],
+      "wallMs": 7489,
+      "usage": {
+        "messages": 4,
+        "input": 1984,
+        "output": 441,
+        "reasoning": 202,
+        "cacheRead": 11904,
+        "cacheWrite": 0,
+        "total": 2627,
+        "cost": 0,
+        "models": [
+          "llm-proxy/deepseek-v4-flash"
+        ],
+        "complete": true,
+        "sessions": 1,
+        "wallClockMs": 7465
+      },
+      "toolCalls": 4,
+      "pathIssues": [
+        "unrelated-read"
+      ],
+      "relatedReadObserved": true,
+      "unexpectedTool": false,
+      "unrelatedRead": true,
+      "seedUnchanged": true,
+      "sandboxEntries": [
+        "cli",
+        "unrelated"
+      ],
+      "sessionDeleted": true,
+      "sandboxRemoved": true
+    }
+  ],
+  "monetaryCost": "unknown; provider-reported zero is not a bill"
+}

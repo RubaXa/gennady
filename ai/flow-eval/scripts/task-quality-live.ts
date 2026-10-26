@@ -23,6 +23,13 @@ import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
 import { SddEvalSessionDirectoryMap } from '../session-directory.ts';
 import { cleanupTaskQualitySession, withTaskQualityDeadline } from '../task-quality-lifecycle.ts';
 import {
+  TASK_QUALITY_BOUNDARY_PROBES,
+  isTaskQualityBoundaryId,
+  taskQualityBoundaryPolicy,
+  gradeTaskQualityBoundary,
+  gradeTaskQualityBoundaryReads,
+} from '../task-quality-boundary-probes.ts';
+import {
   TASK_QUALITY_PROBES,
   gradeTaskQualityAnswer,
   gradeTaskQualityReads,
@@ -38,6 +45,9 @@ const out = resolve(root, process.argv[2] ?? 'ai/flow-eval/results/2026-10-26-ta
 if (!relative(root, out).startsWith('ai/flow-eval/results/') || existsSync(out)) {
   throw new Error('[taskQualityLive] Require a new repository-owned results directory');
 }
+const boundaryMode = process.argv[3] === '--boundaries';
+if (boundaryMode && !process.argv[4])
+  throw new Error('[taskQualityLive] Explicit boundary baseline required');
 const owned = realpathSync(mkdtempSync(join(tmpdir(), 'gennady-task-quality-')));
 const privateDir = join(owned, 'private');
 mkdirSync(privateDir, { mode: 0o700 });
@@ -49,31 +59,43 @@ const onSignal = () => stop.abort(new Error('[taskQualityLive] Operator interrup
 process.once('SIGINT', onSignal);
 process.once('SIGTERM', onSignal);
 const records: Record<string, unknown>[] = [];
-const baseline = git('rev-parse', 'origin/main');
+const baseline = git('rev-parse', boundaryMode ? process.argv[4] : 'origin/main');
 const source = {
   baseline,
   head: git('rev-parse', 'HEAD'),
   dirtyDiffSha256: sha(git('diff', '--binary', 'HEAD')),
   cleanBefore: git('status', '--porcelain') === '',
 };
-const inputs = TASK_QUALITY_PROBES.flatMap((probe) =>
-  ['baseline', 'candidate'].map((arm) => ({
-    id: probe.id,
-    arm,
-    brief: probe.brief,
-    files: probe.files,
-    policyPath: probe.policy,
-    policy:
+const probes = boundaryMode ? TASK_QUALITY_BOUNDARY_PROBES : TASK_QUALITY_PROBES;
+const inputs = probes.flatMap((probe) =>
+  ['baseline', 'candidate'].map((arm) => {
+    const read = (path: string) =>
       arm === 'baseline'
-        ? git('show', `${baseline}:${probe.policy}`)
-        : readFileSync(join(root, probe.policy), 'utf8'),
-  }))
+        ? git('show', `${baseline}:${path}`)
+        : readFileSync(join(root, path), 'utf8');
+    const selected = isTaskQualityBoundaryId(probe.id)
+      ? taskQualityBoundaryPolicy(probe.id, read)
+      : {
+          policy: read('policy' in probe ? probe.policy : ''),
+          policyPaths: ['policy' in probe ? probe.policy : ''],
+        };
+    return {
+      id: probe.id,
+      arm,
+      brief: probe.brief,
+      files: probe.files,
+      policyPath: selected.policyPaths[0],
+      policyPaths: selected.policyPaths,
+      policy: selected.policy,
+    };
+  })
 );
 writeJson(join(out, 'protocol.json'), {
   schema: 'gennady.task-quality-microprobes.1',
   source,
   model,
-  attempts: 6,
+  attempts: inputs.length,
+  mode: boundaryMode ? 'review-boundaries' : 'task-quality',
   budgetMsPerAttempt: 120000,
   order: inputs.map(({ id, arm }) => `${id}:${arm}`),
   purpose:
@@ -87,6 +109,7 @@ writeJson(join(out, 'protocol.json'), {
     'ai/flow-eval/opencode-runtime.ts',
     'ai/flow-eval/evidence.ts',
     'ai/flow-eval/task-quality-lifecycle.ts',
+    ...(boundaryMode ? ['ai/flow-eval/task-quality-boundary-probes.ts'] : []),
   ].map((path) => ({
     path,
     sha256: sha(readFileSync(join(root, path))),
@@ -167,7 +190,7 @@ try {
     if (!ready) await delay(500);
   }
   if (!ready) throw new Error('[taskQualityLive] Owned server unavailable; no model fallback');
-  console.log('[taskQualityLive] Private Flash server ready; six finite probes');
+  console.log(`[taskQualityLive] Private Flash server ready; ${inputs.length} finite probes`);
   for (const [index, input] of inputs.entries()) {
     stop.signal.throwIfAborted();
     const sandbox = mkdtempSync(join(owned, 'case-'));
@@ -201,7 +224,7 @@ try {
             sessionId: session.id,
             model,
             prompt: `Task:\n${input.brief}\n\nSupplied policy (apply as instructions):\n${input.policy}`,
-            readOnly: input.id !== 'related-read',
+            readOnly: input.id !== 'related-read' && input.id !== 'cli-related-read',
             signal,
           }),
         120000,
@@ -209,7 +232,9 @@ try {
       );
       record.response = response;
       try {
-        record.facets = gradeTaskQualityAnswer(input.id, parseTaskQualityAnswer(response));
+        record.facets = isTaskQualityBoundaryId(input.id)
+          ? gradeTaskQualityBoundary(input.id, parseTaskQualityAnswer(response))
+          : gradeTaskQualityAnswer(input.id, parseTaskQualityAnswer(response));
       } catch {
         record.facets = ['invalid-public-json'];
       }
@@ -227,16 +252,20 @@ try {
         const calls = trajectory.entries.flatMap((entry) => entry.toolCalls);
         record.toolCalls = calls.length;
         if (!trajectory.coverage.complete) record.captureIssue = 'incomplete-trajectory';
-        if (input.id === 'related-read') {
-          record.pathIssues = gradeTaskQualityReads(calls, trajectory.coverage.complete);
+        if (input.id === 'related-read' || input.id === 'cli-related-read') {
+          const pathIssues =
+            input.id === 'cli-related-read'
+              ? gradeTaskQualityBoundaryReads(calls, trajectory.coverage.complete)
+              : gradeTaskQualityReads(calls, trajectory.coverage.complete);
+          record.pathIssues = pathIssues;
           const reads = calls.filter((call) => call.tool === 'read' && call.status === 'completed');
           record.relatedReadObserved = reads.some((call) =>
-            call.inputSummary?.includes('src/window.ts')
+            call.inputSummary?.includes(
+              input.id === 'cli-related-read' ? 'cli/helper.ts' : 'src/window.ts'
+            )
           );
           record.unexpectedTool = calls.some((call) => call.tool !== 'read');
-          record.unrelatedRead = reads.some(
-            (call) => !/src\/(?:view|window)\.ts/.test(call.inputSummary ?? '')
-          );
+          record.unrelatedRead = pathIssues.includes('unrelated-read');
         }
       } catch {
         record.captureIssue = 'public-evidence-capture-failed';
@@ -297,7 +326,7 @@ try {
   writeJson(join(out, 'report.json'), {
     schema: 'gennady.task-quality-report.1',
     source,
-    planned: 6,
+    planned: inputs.length,
     recorded: records.length,
     failure,
     records: records.map(({ trajectory, response, ...record }) => record),

@@ -126,6 +126,8 @@ describe('two artifact approval boundaries', () => {
       'user consequence', 'style',
     ]) assert.ok(review.toLowerCase().includes(fact.toLowerCase()), fact);
     assert.match(review, /invent neither requirements nor timing thresholds/);
+    assert.match(review, /test\/diagnostic where relevant/);
+    assert.match(review, /structural finding may instead identify the conflicting targets or dependency order/);
   });
 
   it('permits evidence-directed related reads without expanding write authority or tool permissions', () => {

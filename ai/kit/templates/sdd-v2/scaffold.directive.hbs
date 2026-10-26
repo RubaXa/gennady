@@ -155,7 +155,9 @@
           split rationale justified. Preserve real prerequisite dependencies.
 
         Every substantive finding names the user consequence, evidence/spec anchor and missing or
-        insufficient test/diagnostic. Style preferences belong to lint and must not displace material
+        insufficient test/diagnostic where relevant. A structural finding may instead identify the conflicting targets or dependency order
+        and the required serialization/order correction; it need not invent a runtime test or diagnostic.
+        Style preferences belong to lint and must not displace material
         coverage gaps. Distinguish a spec gap from a ticket omission; add no unapproved product meaning.
 
         The reviewer returns `CLEAN` or concrete findings naming ticket, section, and spec anchor. The

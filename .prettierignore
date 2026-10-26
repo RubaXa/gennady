@@ -137,3 +137,5 @@ ai/flow-eval/results/authoring-campaigns/transfer1-oct25/validation/**
 ai/flow-eval/results/2026-10-26-task-quality/*.json
 ai/flow-eval/results/2026-10-26-task-quality-final/*.json
 ai/flow-eval/results/2026-10-26-task-quality-final/executed-task-quality-live.ts.txt
+ai/flow-eval/results/2026-10-26-task-quality-boundaries/*.json
+ai/flow-eval/results/2026-10-26-task-quality-boundaries/executed-task-quality-live.ts.txt

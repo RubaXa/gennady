@@ -291,6 +291,14 @@ deadline/cancellation и обязательный local cleanup при ошиб�
 зависших запросов. Выполненный runner сохранён отдельным hash-bound snapshot; live результаты не
 переписаны и не выдаются за прогон последующего hardening.
 
+Независимое goal/research review выявило две текстовые неоднозначности: test/diagnostic evidence
+нужно только где применимо (структурный DAG/writer-конфликт доказывают сами targets/deps);
+запрещены installed/bundled tool internals, а не CLI targets/helpers проекта. Они уточнены и
+покрыты RED→GREEN controls. Четыре дополнительных Flash-прогона не воспроизвели предполагаемые
+ошибки модели: ответы верны в обоих вариантах. При этом оба CLI-прогона сделали два лишних
+directory reads; исходные path failures сохранены. [Полный follow-up](../../../ai/flow-eval/results/2026-10-26-task-quality-boundaries/README.md)
+не объявляет ни экономию, ни full-trajectory PASS; новых live-серий для этого пакета не требуется.
+
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
