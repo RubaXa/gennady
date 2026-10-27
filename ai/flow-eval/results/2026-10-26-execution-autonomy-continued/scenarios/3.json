@@ -1,0 +1,25 @@
+[
+  {
+    "id": "execution-autonomy-ex3-helper-candidate",
+    "fixture": "execution-autonomy",
+    "phase": "execute",
+    "mode": "canonical-execute",
+    "executionAutonomy": {
+      "caseId": "ex3-helper"
+    },
+    "intent": "Execute the approved specs/delay/core/core.task.COR-work.md using the installed SDD execution flow. The existing integration caller imports a shared validation helper whose implementation is absent. Preserve the caller and the approved behavior; determine the smallest justified technical plan correction before writing outside the current targets.",
+    "acceptance": "boundedDelay receives value and limit in milliseconds. For finite nonnegative numbers return the smaller number, including zero. Reject a non-number, non-finite number or negative argument with RangeError. Never wait, sleep, perform I/O or mutate input. Error message text and internal implementation are not otherwise prescribed.",
+    "completion": {
+      "artifact": "src/delay.ts",
+      "ticket": "specs/delay/core/core.task.COR-work.md",
+      "spec": "specs/delay/core/core.spec.md"
+    },
+    "budgetMs": 480000,
+    "trajectoryRules": {
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ]
+    }
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "schema": "gennady.execution-stand-invalidation.1",
+  "classifiedAt": "2026-10-26 17:32:30 UTC",
+  "classification": "invalid-fixture-full-audit",
+  "replaceAttempts": false,
+  "spentPrimaryAttempts": 2,
+  "originalPrimaryBudget": 16,
+  "remainingOriginalAttempts": 14,
+  "maximumValidPairedCases": 7,
+  "unprovenCase": "ex1-clean",
+  "reason": "Fixture configured only autonomy-code/autonomy-test. The actual mandatory group audit runs universal verify --phase full, which selected builtin Node requirements absent from protected package/YAML. Reference preflight wrote PASS audit receipts without running that full gate. Completion was therefore not qualified, even with correct source.",
+  "evidence": {
+    "baselineFunctional": true,
+    "baselineIntegrity": true,
+    "baselineTerminal": false,
+    "baselineOutcome": "wall-clock budget-exhausted",
+    "candidateOutcome": "operator-interrupted after stand defect confirmation",
+    "independentNoModelReproduction": {
+      "command": "gennady verify --phase full",
+      "exitCode": 1,
+      "readiness": "BLOCKED",
+      "selectorSource": "builtin:node.phases.full",
+      "correctReferenceInstalled": true,
+      "modelCalls": 0
+    },
+    "paths": [
+      "permanent/2026-10-26-execution-autonomy-ex1-clean-baseline/execution.json",
+      "permanent/2026-10-26-execution-autonomy-ex1-clean-candidate/post-stop-snapshot.json",
+      "cleanup-recovery.json"
+    ]
+  },
+  "interpretation": "Keep code/test-phase facts and usage for diagnosis only. Neither failed terminal outcome proves a baseline/candidate autonomy regression; interrupted/censored timings are not an efficiency comparison. Original records, summaries and grades remain unchanged.",
+  "nextStage": "Qualify fixture v2 through actual full and exact contract/inventory gates, then continue ONLY original schedule entries 2..15 under a new frozen manifest. No pooling fixture versions, no EX1 replacement or extra primary calls."
+}

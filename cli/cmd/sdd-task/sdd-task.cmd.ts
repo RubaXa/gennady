@@ -56,6 +56,7 @@ import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-a
 import { appendSddSessionBoundary } from '../../../shared/sdd/session-boundary.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import { deviationIsOpen, parseDeviationRecords } from '../../../shared/sdd/deviation.ts';
+import { technicalReplanBase } from '../../../shared/sdd/technical-replan.ts';
 import { phaseReceiptIssue } from '../sdd-verify/phase-receipt-validation.ts';
 import { isGennadyLintTarget } from '../lint/lint-source-policy.ts';
 import { resolveSddRuleSnapshot } from '../../../shared/rules/sdd-rule-snapshot.ts';
@@ -193,6 +194,35 @@ function pickableAuditContext(refs: TicketCorpusRef[]): PickableAuditContext {
   return { ownerByTaskId, validAuditOwners };
 }
 
+/**
+ * @purpose Apply the existing project-selector readiness boundary to the next unfinished phase in the map.
+ * @invariant This grants no PASS or dispatch authority: dependencies, paths, rules and actual selected gates remain checked by phase dispatch/Verify. Never skip a builtin phase to expose a later custom one.
+ * @param ref Graph-ready ticket from the immutable corpus snapshot.
+ * @param root Canonical project root used by the exact phase selector resolver.
+ * @returns Whether this ticket's next phase uses a resolved project-authored selector, not builtin readiness.
+ */
+function nextPhaseUsesProjectSelector(ref: TicketCorpusRef, root: string): boolean {
+  const overview = extractSection(ref.content, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') return false;
+  const phase = parsePhasesOverview(overview.content).find((item) => !/^\[x\]/i.test(item.status));
+  if (!phase) return false;
+  const section = extractSection(ref.content, `PHASE_${phase.id}`);
+  if (section.status !== 'ok') return false;
+  const detail = parsePhaseDetail(section.content);
+  try {
+    const selection = resolveProjectSddVerifySelector(root, phase.kind, {
+      scope: {
+        mode: 'files',
+        files: [...new Set([...detail.targetFiles, ...detail.deletedFiles])].sort(),
+      },
+    });
+    return !selection.source.startsWith('builtin:');
+  } catch {
+    // A broken selector/config never turns a globally unready ticket into a pickable one.
+    return false;
+  }
+}
+
 /** @purpose Render the execution map — tickets ready now and those still blocked, by which deps.
  * @invariant Every pickable/blocked line carries the ticket's relative path, so the map is self-sufficient without a follow-up lookup.
  * @param refs Every ticket's graph ref. | @param root Absolute project root (readiness + portal reads). | @returns A human + agent readable map. */
@@ -201,7 +231,13 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
   const readiness = resolveProjectReadiness(canonicalRoot);
   const gateQueue = infraGateQueue(refs, canonicalRoot, readiness);
   const auditContext = pickableAuditContext(refs);
-  const graphPickable = pickableTasks(refs, auditContext).filter((ref) => ref.flowVersion === 'v2');
+  const graphPickableFiles = new Set(pickableTasks(refs, auditContext).map((ref) => ref.file));
+  const graphPickable = refs.filter(
+    (ref) => ref.flowVersion === 'v2' && graphPickableFiles.has(ref.file)
+  );
+  const projectPickable = readiness.executionReady
+    ? []
+    : graphPickable.filter((ref) => nextPhaseUsesProjectSelector(ref, canonicalRoot));
   const gateTicketFiles = new Set(gateQueue.owners.map((owner) => owner.ticketFile));
   const queuePickable = refs.filter(
     (ref) =>
@@ -210,7 +246,11 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
       !/\bDONE\b/i.test(ref.status ?? '') &&
       pickabilityBlockers(ref, refs, auditContext).length === 0
   );
-  const pickable = readiness.executionReady ? graphPickable : queuePickable;
+  const projectTicketFiles = new Set(projectPickable.map((ref) => ref.file));
+  const queuePickableFiles = new Set(queuePickable.map((ref) => ref.file));
+  const pickable = readiness.executionReady
+    ? graphPickable
+    : refs.filter((ref) => projectTicketFiles.has(ref.file) || queuePickableFiles.has(ref.file));
   const pickableIds = new Set(pickable.map((r) => r.taskId));
   const graphPickableIds = new Set(graphPickable.map((r) => r.taskId));
   const blocked = refs.filter(
@@ -237,10 +277,15 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
   }
   lines.push(
     readiness.level === 'provisional'
-      ? `READINESS=provisional (stubs: ${readiness.stubbed.join(', ')} — impl/refactor/test-фазы заблокированы, начинай с infra-очереди)`
+      ? `READINESS=provisional (stubs: ${readiness.stubbed.join(', ')} — builtin impl/refactor/test-фазы заблокированы, начинай с infra-очереди; project selectors проверяют свои гейты)`
       : `READINESS=${readiness.level}`
   );
   lines.push(`EXECUTION_READY=${readiness.executionReady ? 'yes' : 'no'}`);
+  if (projectPickable.length > 0) {
+    lines.push(
+      `PROJECT_SELECTOR_QUEUE=${projectPickable.map((ref) => ref.taskId).join(',')} · следующий project selector не наследует builtin readiness; вызови точный --phase за обязательными проверками, это не Verify PASS`
+    );
+  }
   if (gateQueue.ticketIds.length > 0) {
     lines.push(
       `GATE_QUEUE=${gateQueue.ticketIds.join(',')} · гейты отсутствуют, их строят эти тикеты — для исполнения это штатно, начинай с них`
@@ -259,7 +304,9 @@ function formatMap(refs: TicketCorpusRef[], root: string): string {
     pickable.length
       ? readiness.executionReady
         ? 'next: возьми Task-ID из pickable и вызови `sdd-task <id>` за планом фаз.'
-        : 'next: возьми Task-ID из GATE_QUEUE/pickable и вызови `sdd-task <id>` за bootstrap-планом.'
+        : projectPickable.length > 0
+          ? 'next: возьми Task-ID из pickable и вызови `sdd-task <id>`; project selector выполняется по своим фазовым гейтам, bootstrap owners — по GATE_QUEUE.'
+          : 'next: возьми Task-ID из GATE_QUEUE/pickable и вызови `sdd-task <id>` за bootstrap-планом.'
       : needsScaffold
         ? 'next: bootstrap-тикетов ещё нет — запусти `/sdd-scaffold` по готовым спецификациям.'
         : blocked.length > 0
@@ -692,8 +739,13 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
     );
     return withResolutionLine(
       infraExemptionNote && phaseOutcome.ok
-        ? { ok: true, text: `${infraExemptionNote}\n${phaseOutcome.text}` }
-        : phaseOutcome,
+        ? {
+            ok: true,
+            text: `${infraExemptionNote}\n${phaseOutcome.text}\nREPLAN_BASE: ${technicalReplanBase(content)}`,
+          }
+        : phaseOutcome.ok
+          ? { ok: true, text: `${phaseOutcome.text}\nREPLAN_BASE: ${technicalReplanBase(content)}` }
+          : phaseOutcome,
       resolutionLine
     );
   }
@@ -713,15 +765,16 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
   return withResolutionLine(
     {
       ok: true,
-      text: formatPlan(
-        meta,
-        phases,
-        detailsById,
-        gates,
-        activeBlockers,
-        auditGroupLine,
-        openDeviations
-      ),
+      text:
+        formatPlan(
+          meta,
+          phases,
+          detailsById,
+          gates,
+          activeBlockers,
+          auditGroupLine,
+          openDeviations
+        ) + `\nREPLAN_BASE: ${technicalReplanBase(content)}`,
     },
     resolutionLine
   );

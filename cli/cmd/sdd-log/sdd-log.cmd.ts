@@ -21,9 +21,15 @@ import {
   extractHeadingSection,
   extractSection,
   findSectionBounds,
+  collectHeadings,
 } from '../../../shared/sdd/section.ts';
 import { parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
-import { resolveTicketArg, resolutionLine } from '../../../shared/sdd/ticket-resolve.ts';
+import {
+  collectTicketCorpus,
+  resolveTicketArg,
+  resolutionLine,
+} from '../../../shared/sdd/ticket-resolve.ts';
+import { prepareTechnicalReplan } from '../../../shared/sdd/technical-replan.ts';
 import { isSddEvidencePath } from '../../../shared/sdd/corpus-path.ts';
 import { ticketFlowVersion } from '../../../shared/sdd/flow.ts';
 import {
@@ -33,8 +39,17 @@ import {
 } from '../../../shared/common/repo-file-identity.ts';
 import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check.ts';
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
-import { setDeviationVerdict, type DeviationVerdict } from '../../../shared/sdd/deviation.ts';
-import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
+import {
+  appendExecutionDecision,
+  setDeviationVerdict,
+  type DeviationVerdict,
+} from '../../../shared/sdd/deviation.ts';
+import {
+  resolveSddTicketWorktreeRoot,
+  withSddTicketMutation,
+  withSddReplanMutation,
+  validateCurrentSddPhaseAttempt,
+} from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import {
   ambiguousIdError,
   appendToBlockerTrail,
@@ -87,6 +102,8 @@ const MODES = [
   'audit-receipt',
   'review-receipt',
   'deviation-verdict',
+  'decision',
+  'replan',
 ] as const;
 /** @purpose Single-line verdict token accepted by the group-completion receipt modes. */
 const GROUP_VERDICT_RE = /^[^\r\n]{1,120}$/;
@@ -94,6 +111,13 @@ const PHASE_ID_RE = /^P[0-9]+$/;
 const AXIOM_ID_RE = /^AX_[A-Z0-9_]+$/;
 
 type BlockerPayload = { reason: string; axiom: string; unblock: string };
+const LOG_ARGUMENTS = {
+  axiom: { aliases: ['axiom'], takesValue: true },
+  unblock: { aliases: ['unblock'], takesValue: true },
+  phase: { aliases: ['phase'], takesValue: true },
+  contentFile: { aliases: ['content-file'], takesValue: true },
+  payloadFile: { aliases: ['payload-file'], takesValue: true },
+};
 
 function oneFlag(value: unknown, name: string): string | undefined | LogOutcome {
   if (Array.isArray(value)) return badInvocation(`--${name} must appear exactly once`);
@@ -151,21 +175,12 @@ async function runCommand(
   rawArgs: string[],
   now: Date,
   projectRoot = resolve('.'),
-  checkAuthoring: (file: string, content: string) => Finding[] = checkSpecAuthoringDraft
+  checkAuthoring: (file: string, content: string) => Finding[] = checkSpecAuthoringDraft,
+  replaceTicket?: (expected: string, next: string) => void
 ): Promise<LogOutcome> {
   let args;
   try {
-    args = parseArgs(
-      rawArgs,
-      {
-        axiom: { aliases: ['axiom'], takesValue: true },
-        unblock: { aliases: ['unblock'], takesValue: true },
-        phase: { aliases: ['phase'], takesValue: true },
-        contentFile: { aliases: ['content-file'], takesValue: true },
-        payloadFile: { aliases: ['payload-file'], takesValue: true },
-      },
-      { strict: true }
-    );
+    args = parseArgs(rawArgs, LOG_ARGUMENTS, { strict: true });
   } catch (cause) {
     return badInvocation((cause as Error).message);
   }
@@ -200,9 +215,16 @@ async function runCommand(
   if (contentFile && blockerFile) {
     return badInvocation('--content-file and --payload-file are mutually exclusive');
   }
-  if (blockerFile && mode !== 'blocker') {
-    return badInvocation('--payload-file applies only to blocker mode');
+  if (blockerFile && mode !== 'blocker' && mode !== 'decision' && mode !== 'replan') {
+    return badInvocation('--payload-file applies only to blocker, decision or replan mode');
   }
+  if (
+    (mode === 'decision' || mode === 'replan') &&
+    (!blockerFile || contentFile || positional.length !== 2)
+  )
+    return badInvocation(
+      `${mode} requires only --payload-file .claude/tmp/<name>.json and --phase P<digits>`
+    );
   if (mode !== 'blocker' && (axiomFlag || unblockFlag)) {
     return badInvocation('--axiom and --unblock apply only to blocker mode');
   }
@@ -257,7 +279,10 @@ async function runCommand(
   if (mode === 'complete' && phaseFlag === undefined) {
     return badInvocation('mode "complete" requires --phase <PhaseID>');
   }
-  if ((mode === 'blocker' || mode === 'resolved') && phaseFlag === undefined) {
+  if (
+    (mode === 'blocker' || mode === 'resolved' || mode === 'decision' || mode === 'replan') &&
+    phaseFlag === undefined
+  ) {
     return missingFlag(
       `mode "${mode}" requires --phase <PhaseID> so the blocker lifecycle stays phase-owned`
     );
@@ -268,10 +293,12 @@ async function runCommand(
       mode !== 'handoff' &&
       mode !== 'blocker' &&
       mode !== 'resolved' &&
+      mode !== 'decision' &&
+      mode !== 'replan' &&
       mode !== 'complete'
     ) {
       return badInvocation(
-        `--phase only applies to line | handoff | blocker | resolved | complete (not "${mode}")`
+        `--phase only applies to line | handoff | blocker | resolved | complete | decision | replan (not "${mode}")`
       );
     }
     if (hasPlaceholder(phaseFlag)) return placeholderError(phaseFlag);
@@ -446,6 +473,108 @@ async function runCommand(
 
   const bounds = findSectionBounds(content, LOG_SECTION);
   if (!bounds) return noLogSection(displayPath);
+
+  if (mode === 'replan') {
+    if (!replaceTicket)
+      return badInvocation(
+        'replan requires an initialized Git project and the shared claim/ticket leases'
+      );
+    let raw: unknown;
+    try {
+      raw = JSON.parse(scratch?.content ?? '');
+    } catch {
+      return payloadFileError('replan payload must be valid JSON');
+    }
+    const worktree = resolveSddTicketWorktreeRoot(root);
+    if (!worktree) return badInvocation('replan requires the complete initialized Git worktree');
+    const corpus = collectTicketCorpus(worktree);
+    if (!corpus.ok) return fileError(corpus.detail);
+    const prepared = prepareTechnicalReplan({
+      root: worktree,
+      ticketFile: abs,
+      content,
+      phaseId: phaseFlag ?? '',
+      payload: raw,
+      corpus: corpus.refs,
+      timestamp: now.toISOString(),
+    });
+    if (!prepared.ok) return badInvocation(prepared.detail);
+    if (prepared.created) {
+      if (isCurrentRoundClosed(content, bounds)) return roundClosedError(displayPath);
+      const lookup = findPhaseBlockBounds(content, bounds, phaseFlag ?? '');
+      if (!lookup.found) return phaseNotOpenError(displayPath, phaseFlag ?? '', lookup.openPhases);
+      replaceTicket(content, prepared.content);
+    }
+    const cleanupFailure = scratch?.consume();
+    logger.debug(
+      `[SddLogCommand#run] [replan → ${prepared.created ? 'recorded' : 'already-recorded'}] ${prepared.id}`
+    );
+    return {
+      ok: true,
+      text: `${idBanner ? `${idBanner}\n` : ''}[sdd-log] replan ${prepared.id} ${prepared.created ? 'recorded' : 'already recorded'}; product/BDD/verification declarations unchanged.\nStop the old worker before applying; redispatch sdd-task ${displayPath} --phase ${phaseFlag}. Old dispatch is not write authority. Re-run sdd-verify for completed prerequisites in dependency order if their attempts are stale; retain their history. No new external authority or operator verdict was granted.${cleanupFailure ? `\n[sdd-log] payload applied but cleanup failed: ${cleanupFailure}` : ''}`,
+    };
+  }
+
+  if (mode === 'decision') {
+    if (!replaceTicket)
+      return badInvocation(
+        'decision requires an initialized Git project so ticket mutations share the Verify lock'
+      );
+    let raw: unknown;
+    try {
+      raw = JSON.parse(scratch?.content ?? '');
+    } catch {
+      return payloadFileError('decision payload must be valid JSON');
+    }
+    const prepared = appendExecutionDecision(
+      content,
+      raw,
+      phaseFlag ?? '',
+      now.toISOString().slice(0, 10)
+    );
+    if (!prepared.ok) return badInvocation(prepared.detail);
+    if (prepared.created) {
+      if (isCurrentRoundClosed(content, bounds)) return roundClosedError(displayPath);
+      const overview = extractSection(content, 'PHASES_OVERVIEW');
+      const phases =
+        overview.status === 'ok'
+          ? parsePhasesOverview(overview.content).filter((p) => p.id === phaseFlag)
+          : [];
+      const log = extractSection(content, LOG_SECTION);
+      const headings = log.status === 'ok' ? collectHeadings(log.content) : [];
+      const round = headings.filter((h) => h.level === 3 && /^Round\s+\d+\b/.test(h.text)).at(-1);
+      const phaseHeads = headings.filter(
+        (h) =>
+          round &&
+          h.start > round.start &&
+          h.level === 4 &&
+          new RegExp(`^${phaseFlag}(?:\\s|$)`).test(h.text)
+      );
+      if (
+        phases.length !== 1 ||
+        !/^\[ \](?:\s+[A-Z_]+)?$/.test(phases[0]?.status ?? '') ||
+        phaseHeads.length !== 1
+      )
+        return badInvocation(
+          'decision requires one incomplete phase and its exact block in the current Round'
+        );
+      try {
+        replaceTicket(content, prepared.content);
+      } catch (cause) {
+        logger.error(
+          '[SddLogCommand#run] [decision → write-failed] Canonical decision was not acknowledged',
+          { cause }
+        );
+        return fileError(`${displayPath}: ${(cause as Error).message}`);
+      }
+    }
+    const cleanupFailure = scratch?.consume();
+    logger.debug(
+      `[SddLogCommand#run] [decision → ${prepared.created ? 'recorded' : 'already-recorded'}] ${prepared.id}`
+    );
+    const body = `[sdd-log] decision ${prepared.id} ${prepared.created ? 'recorded' : 'already recorded'} in canonical Decision Log; phase ${phaseFlag}. This grants no new authority.${cleanupFailure ? `\n[sdd-log] payload applied but cleanup failed: ${cleanupFailure}` : ''}`;
+    return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
+  }
 
   // B2-04: append-only means a fix goes into a NEW Round, never after a closed one — round/close
   // are the only modes exempt (round opens the escape hatch; close is the transition itself).
@@ -670,7 +799,37 @@ export async function run(
   projectRoot = resolve('.'),
   checkAuthoring: (file: string, content: string) => Finding[] = checkSpecAuthoringDraft
 ): Promise<LogOutcome> {
-  const outcome = await runCommand(rawArgs, now, projectRoot, checkAuthoring);
+  let outcome: LogOutcome;
+  let target: ReturnType<typeof resolveTicketArg> | undefined;
+  let replan = false;
+  try {
+    const parsed = parseArgs(rawArgs, LOG_ARGUMENTS, { strict: true });
+    const positional = (parsed._ as string[]).filter((value) => value !== 'sdd-log');
+    replan = positional[1] === 'replan';
+    if (
+      positional[0] &&
+      !['authoring-complete', 'audit-receipt', 'review-receipt'].includes(positional[1] ?? '') &&
+      MODES.includes(positional[1] as (typeof MODES)[number])
+    )
+      target = resolveTicketArg(positional[0], resolve(projectRoot), 'execution');
+  } catch {
+    // The command's normal argument path renders the exact actionable syntax failure.
+  }
+  try {
+    outcome =
+      target?.ok && resolveSddTicketWorktreeRoot(projectRoot)
+        ? await (replan ? withSddReplanMutation : withSddTicketMutation)(
+            resolve(projectRoot),
+            target.path,
+            (replace) => runCommand(rawArgs, now, projectRoot, checkAuthoring, replace)
+          )
+        : await runCommand(rawArgs, now, projectRoot, checkAuthoring);
+  } catch (cause) {
+    logger.error('[SddLogCommand#run] [ticket → locked-or-unsafe] Lifecycle transition rejected', {
+      cause,
+    });
+    outcome = fileError(`ticket mutation was not acknowledged: ${(cause as Error).message}`);
+  }
   if (outcome.ok) return outcome;
   return {
     ...outcome,

@@ -1,0 +1,9 @@
+{
+  "schema": "gennady.execution-autonomy-analysis-amendment.1",
+  "discoveredAt": "2026-10-26 17:09:27 UTC",
+  "observationPoint": "Live attempt 1 baseline still running; candidate not yet run; no primary outcomes inspected",
+  "finding": "Installed sdd-task emits sdd-verify --task=<ticket> --phase=<phase>; frozen path recognizer accepts only space-separated flag values.",
+  "scope": "After finite collection, qualify argv normalization for these equivalent forms, then replay path grading uniformly over all frozen trajectories. Original raw path grades, worker input, host functional/terminal checks, judge verdict, usage and reflection remain unchanged.",
+  "forbidden": "No replacement model attempts, no selective case correction, no semantic/judge regrading or changed obligations; complex shell remains explicitly unproven.",
+  "status": "registered-before-candidate-outcome; implementation deferred until source freeze ends"
+}

@@ -1,0 +1,90 @@
+{
+  "planned": 9,
+  "recorded": 9,
+  "originalBudget": 16,
+  "previouslySpent": 7,
+  "totalSpent": 16,
+  "records": [
+    {
+      "caseId": "ex4-decision",
+      "arm": "baseline",
+      "originalIndex": 7,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-27T11:24:29.428Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex5-repeat",
+      "arm": "baseline",
+      "originalIndex": 8,
+      "exitCode": 1,
+      "status": "recorded",
+      "completedAt": "2026-10-27T11:26:50.479Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex5-repeat",
+      "arm": "candidate",
+      "originalIndex": 9,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-27T11:35:02.258Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex7-conflict",
+      "arm": "candidate",
+      "originalIndex": 10,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-27T11:43:07.057Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "ex7-conflict",
+      "arm": "baseline",
+      "originalIndex": 11,
+      "exitCode": 1,
+      "status": "recorded",
+      "completedAt": "2026-10-27T11:46:27.760Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "holdout6-related",
+      "arm": "baseline",
+      "originalIndex": 12,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-27T11:54:40.994Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "holdout6-related",
+      "arm": "candidate",
+      "originalIndex": 13,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-27T12:02:45.308Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "holdout8-authority",
+      "arm": "candidate",
+      "originalIndex": 14,
+      "exitCode": 0,
+      "status": "recorded",
+      "completedAt": "2026-10-27T12:10:50.116Z",
+      "remainingSandboxes": []
+    },
+    {
+      "caseId": "holdout8-authority",
+      "arm": "baseline",
+      "originalIndex": 15,
+      "exitCode": 1,
+      "status": "recorded",
+      "completedAt": "2026-10-27T12:17:37.216Z",
+      "remainingSandboxes": []
+    }
+  ]
+}

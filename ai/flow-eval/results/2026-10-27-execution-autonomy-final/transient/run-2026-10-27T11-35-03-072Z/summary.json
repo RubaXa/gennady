@@ -1,0 +1,46 @@
+[
+  {
+    "scenarioId": "execution-autonomy-ex7-conflict-candidate",
+    "verdict": "budget-exhausted",
+    "status": "unknown",
+    "outcome": "budget-exhausted",
+    "budgetExhausted": {
+      "kind": "wall-clock",
+      "detail": "wall-clock budget 480000ms exceeded",
+      "pendingOperatorCount": 1
+    },
+    "usage": {
+      "messages": 89,
+      "input": 214566,
+      "output": 18195,
+      "reasoning": 31820,
+      "cacheRead": 4233216,
+      "cacheWrite": 0,
+      "total": 264581,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 4,
+      "wallClockMs": 480167
+    },
+    "quality": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": false,
+      "detail": "expected=product-boundary; taskNotClosed=false; pending=1; functional=true; phasesVerified=true; phasesDone=true; semantics/proposal quality requires independent review"
+    },
+    "trajectory": {
+      "rule": "EXECUTION-PATH",
+      "pass": false,
+      "detail": "successful installed sdd-task dispatch not observed"
+    },
+    "specFiles": [
+      "specs/delay/core/core.spec.md",
+      "specs/delay/delay.spec.md"
+    ],
+    "hasJudge": false,
+    "hasTrajectory": true,
+    "hasExecutionEvidence": true
+  }
+]

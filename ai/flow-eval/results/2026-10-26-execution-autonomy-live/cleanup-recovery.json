@@ -1,0 +1,25 @@
+{
+  "schema": "gennady.execution-cleanup-recovery.1",
+  "verifiedAt": "2026-10-26T17:23:59.244Z",
+  "controllerPidGone": 67209,
+  "cliPidGone": 67566,
+  "ownedOpenFiles": 0,
+  "dependencyGc": [
+    {
+      "kind": "lease",
+      "action": "removed",
+      "reason": "stale-heartbeat"
+    },
+    {
+      "kind": "store",
+      "action": "removed",
+      "reason": "explicit inactive-store clean"
+    }
+  ],
+  "approxRemovedKiB": 262956,
+  "rootRemoved": true,
+  "privateConfigRemoved": true,
+  "sharedDependenciesUntouched": true,
+  "primaryEvidenceNotRewritten": true,
+  "postStopSnapshot": "permanent/2026-10-26-execution-autonomy-ex1-clean-candidate/post-stop-snapshot.json"
+}

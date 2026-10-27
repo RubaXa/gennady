@@ -136,14 +136,12 @@
     <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
       Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
       reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
-      the release-ready default — then append a ticket-local Decision Log entry
-      (`<ACR>-DL-N <date> — <statement> (почему: …; отвергнуто: …) [verdict: pending-operator]`, direct `Edit` —
-      the ticket write-scope contract treats this
-      section as writable for exactly this purpose) at the point of decision, not after the fact; then
-      continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
-      ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
-      the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
-      directly (`AX_OWNER`).
+      the release-ready default — then use `sdd-log <ticket> decision --phase <PhaseID> --payload-file
+      <path>` per `DEVIATION_RECORD_FORMAT` to persist a canonical pending Decision Log record. Use a
+      stable ID and wait for acknowledgement BEFORE applying the choice. Never directly Edit the ticket.
+      A lost acknowledgement permits the identical ID/payload retry, not a new invented record. Return
+      `deviations: [<D-id>, ...]` in Handoff (empty `[]` when none). Handoff references the canonical
+      record; it never replaces it. The orchestrator uses the same owner-log mechanism, not another trail.
 
       Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
       work needs to make. Technical environment/infra gaps use `RECOVERABLE_TECHNICAL`; exact missing
@@ -167,7 +165,7 @@
     <Contract id="HANDOFF_FORMAT">
       Compact, typed, single line at end of phase block:
       ```
-      **Handoff →** artifacts: [path1, path2]; decisions: [key=value(measured), key=value]; open: [id(reported; depth-only): text, id: text]; deviations: [id: text, id: text]
+      **Handoff →** artifacts: [path1, path2]; decisions: [key=value(measured), key=value]; open: [id(reported; depth-only): text, id: text]; deviations: [SS-DL-1, SS-DL-2]
       ```
       Fields:
       - `artifacts` — files produced or modified by this phase (paths).
@@ -184,7 +182,8 @@
         as covering the whole original question. Empty list → `[]`.
       - `deviations` — spec/ticket holes this phase self-resolved rather than asking the operator
         (`AX_DEVIATION_SELF_RESOLVE`); each entry cites the ticket-local Decision Log id it produced
-        (e.g. `SS-skills-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
+        (e.g. `SS-DL-2`). Persist it through `sdd-log decision` before use, not during final Handoff.
+        Completion rejects an unknown, ambiguous or foreign-phase ID. Empty list → `[]`.
 
       Free-form text forbidden outside the tag/extent grammar above. Each field is an array (possibly
       empty).
@@ -219,8 +218,12 @@
       - Spec authoring or architecture: append one canonical Decision Log entry:
         `<ACR>-DL-N <date> — <what>; где: <path#section> (почему: <why>) [verdict: pending-operator]`.
       - Task decomposition: append that same Decision Log grammar to the narrowest owning task index.
-      - Phase execution: put `<what> ← <why> @ <path#anchor>` in the current phase Handoff
-        `deviations: [...]` field; `sdd-log complete` persists that Handoff line in the Execution Log.
+      - Phase execution: write one JSON payload under `.claude/tmp/` with exactly
+        `id, what, why, where, evidence, alternative, verify` (non-empty single-line strings), then run
+        `sdd-log <ticket> decision --phase <PhaseID> --payload-file <path>` before using the choice.
+        It persists one pending record in the ticket's canonical Decision Log. Wait for the command's
+        acknowledgement; an identical retry reuses the ID, a conflicting payload rejects. Handoff
+        `deviations: [...]` contains only those canonical IDs, not another verdict or decision store.
 
       Obvious/recoverable mechanics are not deviations. Record only a choice a fresh agent could not
       re-derive from artifacts. Uncertainty does not pause an autonomous batch: record the smallest safe
@@ -294,8 +297,10 @@
       <Action>
         Mentally simulate the declared phases against their dependencies, targets, requirements, and
         verification commands. Confirm providers precede consumers and every phase has an observable
-        completion condition. If the ticket itself is inconsistent, stop and return it to scaffold;
-        do not invent a replacement plan in JSON. Show the concise phase sequence and start.
+        completion condition. A supported means-only target/edge correction follows the checked
+        replan transition in STEP_3_DISPATCH before worker dispatch; it is not automatically a new
+        product approval. A conflict with the approved goal/acceptance follows its typed boundary.
+        Never invent an arbitrary replacement ticket in JSON. Show the concise phase sequence and start.
       </Action>
     </Step>
 
@@ -308,14 +313,27 @@
         prompt block, followed by exact resolved spec/rule excerpts and current Git evidence. Never
         summarize, retype, or omit its lifecycle manifest and worker contract. The worker edits only its declared targets, runs the phase's real
         verification, and returns a typed handoff. Apart from the runner-owned attempt evidence written by the `sdd-verify` facade, the
-        worker never edits the ticket or invokes `sdd-log`.
+        worker never manually edits the ticket. Its only additional lifecycle calls are the exact
+        ticket/phase's CLI-owned `sdd-log line | blocker | resolved | decision`; file-backed text,
+        no completion, verdict, audit/review receipt, new targets or new authority.
 
         Evaluate the typed handoff per `AX_HANDOFF_TYPED` against repository evidence. Per
         `AX_HALT_VS_FAIL_DISTINCTION`, on a recoverable technical failure form one
         new concrete hypothesis, correct the phase within its approved boundary, and redispatch a
         fresh bounded worker. Do not require continuation of the same worker and do not serialize a
-        checkpoint. A change to task meaning, dependencies, phases, or test plan invalidates approval
-        #2 and returns to scaffold. A concrete missing external decision or capability that remains
+        checkpoint. For an implementation neighbor, local dependency correction, or bounded provider
+        phase/test-target transfer that
+        preserves the approved behavior, first stop/await the old worker, refresh `sdd-task`, and
+        prepare the bounded file-backed `replan` payload described by `sdd-log --help` using its
+        exact `REPLAN_BASE`. The orchestrator, not the worker, calls `sdd-log <ticket> replan
+        --phase <PhaseID> --payload-file <path>`. Consume the refusal or durable delta; after ACK,
+        reverify stale completed prerequisites in dependency order and obtain fresh `sdd-task
+        --phase` context (rules/Verify included) before redispatch. No new product approval is needed
+        for this checked technical means change. A new provider inherits the selected phase's kind,
+        rules, exit and inputs; existing scenario/check obligations stay unchanged. Arbitrary phase
+        deletion, weaker checks or rewritten test scenarios are unsupported; never improvise ticket edits. A change to
+        approved product meaning, acceptance strength or authority returns to the appropriate boundary.
+        A concrete missing external decision or capability that remains
         after bounded diagnosis stops with `H_PHASE_BLOCKED`.
         If this step asks the operator about a spec/ticket hole before writing its
         `[verdict: pending-operator]` Decision Log card, stop with `H_ASK_WITHOUT_CARD`; record first,

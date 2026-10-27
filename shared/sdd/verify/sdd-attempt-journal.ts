@@ -16,6 +16,7 @@ import {
 import type { VerifyRunReport, VerifyStepResult } from '../../verify/model/verify-report.type.ts';
 import { extractSection } from '../section.ts';
 import { parsePhaseDetail, parsePhasesOverview } from '../ticket.ts';
+import { decisionReferenceIssue, parseDeviationRecords } from '../deviation.ts';
 
 const ATTEMPT_SCHEMA = 'gennady.sdd-verify-attempt.v1';
 const LOCK_SCHEMA = 'gennady.sdd-verify-attempt-lock.v1';
@@ -453,7 +454,9 @@ export function currentSddPhaseWorktreeDigest(
     if (entry.isSymbolicLink()) hash.update(fs.readlinkSync(absolute));
     else if (entry.isFile()) {
       const content = fs.readFileSync(absolute);
-      hash.update(file === ticketRelative ? normalizedTicketForFreshness(content) : content);
+      hash.update(
+        file === ticketRelative ? normalizedTicketForFreshness(content, sddPhase) : content
+      );
     } else hash.update('non-file');
   }
   return `sha256:${hash.digest('hex')}`;
@@ -489,8 +492,8 @@ function remoteSourceMatches(
       if (file !== ticketRelative) return false;
       const pushedTicket = exactGitDigest(root, ['show', `${exactSha}:${ticketRelative}`]);
       if (
-        !normalizedTicketForFreshness(fs.readFileSync(ticketPath)).equals(
-          normalizedTicketForFreshness(pushedTicket)
+        !normalizedTicketForFreshness(fs.readFileSync(ticketPath), sddPhase).equals(
+          normalizedTicketForFreshness(pushedTicket, sddPhase)
         )
       ) {
         return false;
@@ -521,8 +524,9 @@ function normalizedSection(
  * @invariant Phase declarations, targets, selectors, rules and every non-ticket project byte remain
  * identity-bearing; terminalization, `sdd-log complete` and Round close cannot stale their own proof.
  */
-function normalizedTicketForFreshness(content: Buffer): Buffer {
+function normalizedTicketForFreshness(content: Buffer, sddPhase: string): Buffer {
   let source = withoutAttemptJournal(content).toString('utf8');
+  source = normalizedDecisionState(source, sddPhase);
   source = normalizedSection(source, 'EXECUTION_LOG', () => '\n<SDD_EXECUTION_LOG_STATE>\n');
   source = normalizedSection(source, 'PHASES_OVERVIEW', (body) =>
     body
@@ -534,6 +538,46 @@ function normalizedTicketForFreshness(content: Buffer): Buffer {
     body.replace(/(\*\*Status:\*\*\s*)\[[^\]]\]\s*[A-Z_]+/g, '$1[?] <STATE>')
   );
   return Buffer.from(source);
+}
+
+/**
+ * @purpose Keep phase decisions identity-bearing without letting later-phase bookkeeping stale an earlier PASS.
+ * @invariant Only unambiguous CLI-shaped records are eligible; unknown/global/malformed prose stays hashed.
+ * Own-phase acceptance preserves proof, rejection does not. Declaration/target/rule changes stay hashed.
+ */
+function normalizedDecisionState(source: string, sddPhase: string): string {
+  const overview = extractSection(source, 'PHASES_OVERVIEW');
+  if (overview.status !== 'ok') return source;
+  const phases = parsePhasesOverview(overview.content);
+  const index = phases.findIndex((phase) => phase.id === sddPhase);
+  if (index < 0 || new Set(phases.map((phase) => phase.id)).size !== phases.length) return source;
+  const downstream = new Set(phases.slice(index + 1).map((phase) => phase.id));
+  const replacements = new Map<number, string | null>();
+  for (const record of parseDeviationRecords(source)) {
+    const owner =
+      /^\S+ \d{4}-\d{2}-\d{2} — phase: (P[0-9]+); what: .+; why: .+; where: .+; evidence: .+; alternative: .+; verify: .+ \[verdict: (?:pending-operator|accepted|rework|rolled-back)\]\r?$/.exec(
+        record.text
+      )?.[1];
+    if (
+      !owner ||
+      !phases.some((phase) => phase.id === owner) ||
+      decisionReferenceIssue(source, record.id, owner)
+    )
+      continue;
+    if (downstream.has(owner)) replacements.set(record.line - 1, null);
+    else if (record.verdict === 'accepted')
+      replacements.set(
+        record.line - 1,
+        record.text.replace('[verdict: accepted]', '[verdict: pending-operator]')
+      );
+  }
+  return source
+    .split('\n')
+    .flatMap((line, lineIndex) => {
+      const replacement = replacements.get(lineIndex);
+      return replacement === null ? [] : [replacement ?? line];
+    })
+    .join('\n');
 }
 
 function headSha(root: string): string {
@@ -703,9 +747,14 @@ function writeTicketAtomically(
   root: string,
   ticketPath: string,
   content: string,
-  beforeRename?: (ticketPath: string, temporaryPath: string) => void
+  beforeRename?: (ticketPath: string, temporaryPath: string) => void,
+  expectedContent?: string,
+  afterValidation?: () => void
 ): void {
   const captured = captureTicketIdentity(root, ticketPath);
+  if (expectedContent !== undefined && captured.digest !== sha256(expectedContent)) {
+    throw new Error('SDD_VERIFY_ATTEMPT_UNSAFE: ticket changed since the transition was prepared');
+  }
   const temporary = createOwnedTemporary(ticketPath, 'verify-attempt', content, captured.mode);
   let renamed = false;
   try {
@@ -720,6 +769,7 @@ function writeTicketAtomically(
     if (!read.ok || sha256(read.content) !== captured.digest) {
       throw new Error('SDD_VERIFY_ATTEMPT_UNSAFE: ticket bytes changed before atomic rename');
     }
+    afterValidation?.();
     fs.renameSync(temporary.absolute, ticketPath);
     renamed = true;
     if (sha256(readOwnedInstalled(ticketPath, temporary)) !== sha256(content)) {
@@ -730,6 +780,105 @@ function writeTicketAtomically(
     fsyncParent(ticketPath);
   } finally {
     if (!renamed) cleanupOwnedTemporary(temporary);
+  }
+}
+
+/**
+ * @purpose Serialize lifecycle mutations with the existing per-ticket Verify owner lock.
+ * @invariant Read/prepare/write/ack share one lease; a stale edit rejects without a fake receipt.
+ * @param root Repository root.
+ * @param ticketPath Exact ticket path resolved before acquiring the lock; the operation rereads it.
+ * @param operation Bounded transition; its replace callback checks expected bytes and atomically writes.
+ * @param [runtime] Fault/race seams used by deterministic filesystem tests only.
+ * @returns Operation result after releasing the owned lease; throws instead of acknowledging failure.
+ */
+export async function withSddTicketMutation<T>(
+  root: string,
+  ticketPath: string,
+  operation: (replace: (expected: string, next: string) => void) => T | Promise<T>,
+  runtime?: {
+    heartbeatMs?: number;
+    beforeRename?: (ticketPath: string, temporaryPath: string) => void;
+    afterValidation?: () => void;
+  }
+): Promise<T> {
+  return withMutationLease(root, ticketPath, operation, runtime, 'ticket');
+}
+
+/**
+ * @purpose Serialize replan claim-check/write operations across tickets, then share the Verify ticket lease.
+ * @invariant This covers CLI replan operations, not arbitrary editors or other authoring commands.
+ * @param root Git worktree root.
+ * @param ticketPath Selected canonical ticket, reread by the operation after both leases are held.
+ * @param operation Bounded transition using the expected-content replacement callback.
+ * @returns Result only after both owned leases have been released.
+ */
+export async function withSddReplanMutation<T>(
+  root: string,
+  ticketPath: string,
+  operation: (replace: (expected: string, next: string) => void) => T | Promise<T>
+): Promise<T> {
+  return withMutationLease(
+    root,
+    ticketPath,
+    (_replace, assertCorpusOwner) =>
+      withSddTicketMutation(root, ticketPath, operation, {
+        afterValidation: assertCorpusOwner,
+      }),
+    undefined,
+    'replan'
+  );
+}
+
+/** @purpose Common owned lease lifecycle; domain separates global claim checks from ticket writers. */
+async function withMutationLease<T>(
+  root: string,
+  ticketPath: string,
+  operation: (
+    replace: (expected: string, next: string) => void,
+    assertLease: () => void
+  ) => T | Promise<T>,
+  runtime: Parameters<typeof withSddTicketMutation>[3],
+  domain: 'ticket' | 'replan'
+): Promise<T> {
+  const lock = acquireLock(root, ticketPath, `mutation-${randomUUID()}`, undefined, domain);
+  const assertOwner = () => {
+    if (readOwner(lock.ownerPath).token !== lock.owner.token)
+      throw new Error('SDD_VERIFY_ATTEMPT_LOCK_LOST');
+  };
+  let heartbeatFailure: unknown;
+  const heartbeat = setInterval(() => {
+    try {
+      updateOwner(lock.ownerPath, lock.owner);
+    } catch (cause) {
+      heartbeatFailure = cause;
+    }
+  }, runtime?.heartbeatMs ?? HEARTBEAT_MS);
+  heartbeat.unref();
+  const assertLease = () => {
+    if (heartbeatFailure) throw heartbeatFailure;
+    assertOwner();
+  };
+  try {
+    const result = await operation((expected, next) => {
+      assertLease();
+      writeTicketAtomically(root, ticketPath, next, runtime?.beforeRename, expected, () => {
+        runtime?.afterValidation?.();
+        assertOwner();
+      });
+    }, assertLease);
+    if (heartbeatFailure) throw heartbeatFailure;
+    assertOwner();
+    return result;
+  } finally {
+    clearInterval(heartbeat);
+    const releaseMutation = acquireOwnerMutation(lock.directory);
+    try {
+      const current = readOwner(lock.ownerPath);
+      if (current.token === lock.owner.token) fs.rmSync(lock.directory, { recursive: true });
+    } finally {
+      releaseMutation();
+    }
   }
 }
 
@@ -837,26 +986,61 @@ function writeOwnerAtomically(
   }
 }
 
+/**
+ * @purpose Resolve the physical Git worktree for a lifecycle call, including calls from nested directories.
+ * @param root Existing caller directory, which may be below the Git worktree root.
+ * @returns Physical worktree root, or null only for an uninitialized repository; other failures throw.
+ */
+export function resolveSddTicketWorktreeRoot(root: string): string | null {
+  try {
+    return fs.realpathSync(
+      execFileSync('git', ['-C', root, 'rev-parse', '--show-toplevel'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim()
+    );
+  } catch (cause) {
+    const failure = cause as { stderr?: Buffer; status?: number };
+    if (failure.status === 128 && /not a git repository/.test(String(failure.stderr))) return null;
+    throw cause;
+  }
+}
+
 function acquireLock(
   root: string,
   ticketPath: string,
   runId: string,
-  beforeStaleOwnerRecheck?: () => void
+  beforeStaleOwnerRecheck?: () => void,
+  domain: 'ticket' | 'replan' = 'ticket'
 ): {
   readonly directory: string;
   readonly ownerPath: string;
   readonly owner: LockOwner;
 } {
+  const worktree = resolveSddTicketWorktreeRoot(root);
+  if (!worktree)
+    throw new Error('SDD_VERIFY_ATTEMPT_GIT_REQUIRED: initialize the repository first');
+  const physicalRoot = fs.realpathSync(root);
+  let relativeTicket = path.relative(root, ticketPath);
+  if (relativeTicket === '..' || relativeTicket.startsWith(`..${path.sep}`))
+    relativeTicket = path.relative(physicalRoot, ticketPath);
+  const requested = proveRepoFile(physicalRoot, relativeTicket);
+  if (!requested.ok) throw new Error(`SDD_VERIFY_ATTEMPT_TARGET_INVALID: ${requested.detail}`);
+  const ticket = proveRepoFile(worktree, path.relative(worktree, requested.identity.absolute));
+  if (!ticket.ok) throw new Error(`SDD_VERIFY_ATTEMPT_TARGET_INVALID: ${ticket.detail}`);
   const gitPath = execFileSync(
     'git',
-    ['-C', root, 'rev-parse', '--git-path', 'gennady/sdd-attempts'],
+    ['-C', worktree, 'rev-parse', '--git-path', 'gennady/sdd-attempts'],
     {
       encoding: 'utf8',
     }
   ).trim();
-  const parent = path.resolve(root, gitPath);
+  const parent = path.resolve(worktree, gitPath);
   fs.mkdirSync(parent, { recursive: true });
-  const directory = path.join(parent, sha256(path.relative(root, ticketPath)).slice(7));
+  const directory = path.join(
+    parent,
+    domain === 'replan' ? 'replan-corpus' : sha256(ticket.identity.relative).slice(7)
+  );
   const ownerPath = path.join(directory, 'owner.json');
   try {
     fs.mkdirSync(directory);
@@ -1075,6 +1259,8 @@ export async function runWithSddAttemptJournal(input: {
   readonly root: string;
   readonly ticketPath: string;
   readonly sddPhase: string;
+  /** @purpose Optional facade preflight bytes; a concurrent plan/log change must be reread, never executed from stale context. */
+  readonly expectedTicketContent?: string;
   /** @internal Deterministic race seams used only by adversarial contract tests. */
   readonly runtime?: {
     readonly heartbeatMs?: number;
@@ -1134,6 +1320,11 @@ export async function runWithSddAttemptJournal(input: {
   heartbeat.unref();
   try {
     let ticket = fs.readFileSync(input.ticketPath, 'utf8');
+    if (input.expectedTicketContent !== undefined && ticket !== input.expectedTicketContent)
+      throw new Error(
+        'SDD_VERIFY_CONTEXT_STALE: ticket changed between preflight and lease; reread sdd-task and retry before executing any gate'
+      );
+    const observedTicket = ticket;
     const stale = parseRecords(ticket).filter((record) => record.state === 'RUNNING');
     for (const record of stale) {
       ticket = replaceRecord(ticket, {
@@ -1146,7 +1337,13 @@ export async function runWithSddAttemptJournal(input: {
       });
     }
     ticket = insertRecord(ticket, running);
-    writeTicketAtomically(input.root, input.ticketPath, ticket, input.runtime?.beforeTicketRename);
+    writeTicketAtomically(
+      input.root,
+      input.ticketPath,
+      ticket,
+      input.runtime?.beforeTicketRename,
+      observedTicket
+    );
     let outcome: SddAttemptOutcome;
     let runnerFailure: Error | undefined;
     try {
@@ -1159,13 +1356,22 @@ export async function runWithSddAttemptJournal(input: {
         stderr: `[sdd-verify] ${runnerFailure.message}\n`,
       };
     }
+    // Repairs may change source files, but never the task that selected these gates.
+    // Capture once: the final expected-byte write also rejects a later competing edit.
+    const terminalTicket = fs.readFileSync(input.ticketPath, 'utf8');
+    const ticketContextDrift = !withoutAttemptJournal(Buffer.from(ticket)).equals(
+      withoutAttemptJournal(Buffer.from(terminalTicket))
+    );
     const finished = terminalRecord(input.root, input.ticketPath, running, outcome);
     const remoteTrustUnproven =
       outcome.report?.plan.trust.level === 'remote-provider' &&
       finished.state !== 'BLOCKED' &&
       !finished.trust.resolved;
     const terminal =
-      heartbeatFailure === undefined && runnerFailure === undefined && !remoteTrustUnproven
+      heartbeatFailure === undefined &&
+      runnerFailure === undefined &&
+      !remoteTrustUnproven &&
+      !ticketContextDrift
         ? finished
         : {
             ...finished,
@@ -1174,6 +1380,7 @@ export async function runWithSddAttemptJournal(input: {
               level: 'pending' as const,
               source:
                 heartbeatFailure?.message ??
+                (ticketContextDrift ? 'ticket-context-drift' : undefined) ??
                 (remoteTrustUnproven
                   ? 'remote-provider exact-SHA pipeline proof is incomplete'
                   : 'runner-exception'),
@@ -1183,14 +1390,15 @@ export async function runWithSddAttemptJournal(input: {
     writeTicketAtomically(
       input.root,
       input.ticketPath,
-      replaceRecord(fs.readFileSync(input.ticketPath, 'utf8'), terminal),
-      input.runtime?.beforeTicketRename
+      replaceRecord(terminalTicket, terminal),
+      input.runtime?.beforeTicketRename,
+      terminalTicket
     );
     if (terminal.state === 'VIOLATION' && outcome.exitCode === 0) {
       return {
         ...outcome,
         exitCode: 1,
-        stderr: `${outcome.stderr}[sdd-verify] SDD_VERIFY_ATTEMPT_EVIDENCE_INVALID: required runner evidence is incomplete\n`,
+        stderr: `${outcome.stderr}[sdd-verify] SDD_VERIFY_ATTEMPT_EVIDENCE_INVALID: ${ticketContextDrift ? 'task changed during verification; reread sdd-task and rerun the selected gates' : 'required runner evidence is incomplete'}\n`,
       };
     }
     return outcome;

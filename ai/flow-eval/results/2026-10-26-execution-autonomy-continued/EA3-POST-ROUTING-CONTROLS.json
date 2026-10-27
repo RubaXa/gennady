@@ -1,0 +1,60 @@
+{
+  "schema": "gennady.execution-autonomy-post-routing-controls.1",
+  "kind": "no-model-qualification-not-live-replacement",
+  "node": "v22.19.0",
+  "sourceHead": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+  "sourceTrackedDirty": true,
+  "sourceLimitation": "Tested a fresh dirty build containing EA-2c, not the exact committed 9d4057df product used by the primary live attempts.",
+  "testedDist": {
+    "files": 319,
+    "digest": "06eacbb2250f64470d61cec620b7cf15d451a08af0d60ef8c08da4e9ee385bab"
+  },
+  "testedRuntime": {
+    "files": 454,
+    "digest": "a844f5c44538436a2daf55e05e797fa0482cd222b737e597c9df69f395253d45",
+    "projection": "Sorted repository-relative package.json/package-lock.json/dist/ai-directives/ai-skills files, SHA256 per file; SHA256 of JSON.stringify(entries)."
+  },
+  "runtimeUnchangedAfterControls": true,
+  "normalPassed": 8,
+  "realCliCommands": 128,
+  "modelCalls": 0,
+  "cleanup": true,
+  "allCases": {
+    "initialMapExit": 0,
+    "initialP1Exit": 0,
+    "initialTaskPickable": true,
+    "initialProjectSelectorQueue": "COR-work",
+    "builtinExecutionReady": false,
+    "normalPass": true,
+    "fullVerificationPass": true,
+    "brokenHostRejected": true,
+    "brokenActualScenarioRejected": true,
+    "gateTamperRejected": true,
+    "answerCorpusIsolated": true,
+    "reverseInventoryRoot": "src"
+  },
+  "cases": [
+    { "id": "ex1-clean", "commands": 20, "terminal": "complete" },
+    { "id": "ex2-config", "commands": 21, "terminal": "complete" },
+    { "id": "ex3-helper", "commands": 20, "terminal": "complete" },
+    { "id": "ex4-decision", "commands": 13, "terminal": "decision-review" },
+    { "id": "ex5-repeat", "commands": 20, "terminal": "complete" },
+    { "id": "ex7-conflict", "commands": 7, "terminal": "product-boundary" },
+    { "id": "holdout6-related", "commands": 20, "terminal": "complete" },
+    { "id": "holdout8-authority", "commands": 7, "terminal": "authority-boundary" }
+  ],
+  "causalNegative": {
+    "exactOldRuntime": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+    "caseId": "ex3-helper",
+    "expectedStop": "readiness-map-conflict",
+    "stage": "initial-pre-reference",
+    "modelCalls": 0,
+    "cleanup": true
+  },
+  "limitations": [
+    "Host reference controls are not model autonomy or semantic judgment.",
+    "No previous primary outcome, grade or runtime snapshot is replaced.",
+    "The unchanged old baseline still has the routing conflict and now stops qualification; it is not relabeled as qualified.",
+    "EX4 and boundary references are not task DONE or operator approval."
+  ]
+}

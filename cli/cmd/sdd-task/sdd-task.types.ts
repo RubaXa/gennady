@@ -191,7 +191,7 @@ export function formatPlan(
   lines.push(
     '',
     activeBlockers.length > 0
-      ? 'next: сначала разбери активные блокеры с оператором — фазы не запускать, пока список не пуст.'
+      ? 'next: классифицируй причину блокера: RECOVERABLE_TECHNICAL — исследуй и исправь в текущих границах, запиши resolved после устранения причины и повтори проверку; SPEC_GOAL_CONFLICT или EXTERNAL_AUTHORITY_REQUIRED — передай конкретное решение оператору. Не расширяй targets/полномочия и не запускай зависимую фазу, пока её блокер не снят.'
       : openDeviations.length > 0
         ? 'next: заверши работу по фазам; перед закрытием группы разбери pending-operator через deviation-review.'
         : 'next: открой тикет, исполняй фазы по протоколу (phase-execution-protocol), по одной, в порядке deps.'
@@ -314,7 +314,7 @@ export function formatPhase(
     '  READ protocol: ai/directives/sdd-v2/phase-execution-protocol.directive.xml and its four step files',
     '  NEVER READ: installed/bundled Gennady internals (node_modules/gennady/**, its CLI source/dist/bundles); project CLI targets/helpers remain readable under RELATED READS.',
     '  TOOL FAILURE: preserve the exact diagnostic, form at most one target-local hypothesis using RELATED READS when needed, then return a typed blocker; no implementation archaeology',
-    '  TICKET: only the exact unified Verify invocation above may own evidence/receipt; never edit status/DONE/Handoff and never call sdd-log'
+    '  TICKET: never manually edit ticket/status/DONE/Handoff; Verify alone owns attempt evidence. May call sdd-log line | blocker | resolved | decision only for this exact ticket and phase, using file-backed free text. Never call complete | close | deviation-verdict | audit-receipt | review-receipt as a worker.'
   );
 
   if (ruleSnapshot !== undefined) {

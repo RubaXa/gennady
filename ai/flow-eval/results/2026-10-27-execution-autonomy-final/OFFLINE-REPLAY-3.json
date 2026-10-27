@@ -1,0 +1,1610 @@
+{
+  "schema": "gennady.execution-autonomy-offline-replay.3",
+  "primaryAttempts": 16,
+  "replacements": 0,
+  "modelCalls": 0,
+  "outcome": "inconclusive; no demonstrated model-autonomy or efficiency improvement",
+  "monetaryCost": "unknown: provider zero is not proof of free calls",
+  "cleanupProofs": [
+    {
+      "stage": "2026-10-26-execution-autonomy-live",
+      "primary": {
+        "safeCleanup": false,
+        "ownedRoot": "/private/var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-execution-campaign-kFPLVO",
+        "rootRemoved": false,
+        "planned": 16,
+        "recorded": 2
+      },
+      "separateRecovery": {
+        "schema": "gennady.execution-cleanup-recovery.1",
+        "verifiedAt": "2026-10-26T17:23:59.244Z",
+        "controllerPidGone": 67209,
+        "cliPidGone": 67566,
+        "ownedOpenFiles": 0,
+        "dependencyGc": [
+          {
+            "kind": "lease",
+            "action": "removed",
+            "reason": "stale-heartbeat"
+          },
+          {
+            "kind": "store",
+            "action": "removed",
+            "reason": "explicit inactive-store clean"
+          }
+        ],
+        "approxRemovedKiB": 262956,
+        "rootRemoved": true,
+        "privateConfigRemoved": true,
+        "sharedDependenciesUntouched": true,
+        "primaryEvidenceNotRewritten": true,
+        "postStopSnapshot": "permanent/2026-10-26-execution-autonomy-ex1-clean-candidate/post-stop-snapshot.json"
+      }
+    },
+    {
+      "stage": "2026-10-26-execution-autonomy-continued",
+      "primary": {
+        "safeCleanup": true,
+        "ownedRoot": "<removed>",
+        "rootRemoved": true,
+        "planned": 14,
+        "recorded": 5
+      }
+    },
+    {
+      "stage": "2026-10-27-execution-autonomy-final",
+      "primary": {
+        "safeCleanup": true,
+        "ownedRoot": "<removed>",
+        "rootRemoved": true,
+        "planned": 9,
+        "recorded": 9
+      }
+    }
+  ],
+  "totals": {
+    "knownPrimaryUsage": 14,
+    "unknownPrimaryUsage": 2,
+    "nonCacheTokens": 3035125,
+    "cacheReadTokens": 58101504,
+    "observedToolCalls": 1645,
+    "judgeTokens": 24907,
+    "judgeCacheReadTokens": 3584,
+    "reflectionTokens": 122723,
+    "reflectionCacheReadTokens": 3584
+  },
+  "limitations": [
+    "Two primary usage totals are missing, so cumulative primary tokens/tools are observed lower bounds, not exact billing.",
+    "No pooling of the three fixture/runtime stages. H8 owner defect invalidates its A/B pair.",
+    "Corrected operator-checkpoint state is not semantic approval, completed-worker outcome or new/external authority.",
+    "This is NOT a fresh Git/phase-receipt revalidation: observed live facts and pure receipt parsing are distinguished."
+  ],
+  "sourceHashes": [
+    {
+      "path": "ai/flow-eval/scripts/execution-autonomy-replay.ts",
+      "sha256": "2b4230dc5719d0720bb0f871221a8e56594c28b35e1b727658c6fd591deae107"
+    },
+    {
+      "path": "ai/flow-eval/execution-autonomy-evaluation.ts",
+      "sha256": "41149d4215811e9545dc68aa8845a3cf4d8d9d6f95b920c4b865778ee653d947"
+    },
+    {
+      "path": "ai/flow-eval/execution-autonomy-cases.ts",
+      "sha256": "6d3fb6d9ed051998ddc92ec7a7ef77a913289083ccb21c8527066295f9c1e34c"
+    },
+    {
+      "path": "ai/flow-eval/quality-gate.ts",
+      "sha256": "07d4df0be457c8c3f7d46146c100442ba8a1ad738e224ba1ef941edc0b53165f"
+    }
+  ],
+  "bindings": [
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/protocol.json",
+      "sha256": "ec6978908b6203f71f00bc58ef5257a97401c9522bcef2c3020d1a258f9a07c0"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/cleanup.json",
+      "sha256": "375841e8a4d41608e1d477c1e7d2ead8ec371a91130b0d5e5768d461467c066a"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/cleanup-recovery.json",
+      "sha256": "ce3aadf5c69e5d4d6daa8431ea68374160bf7a3aac8e6bdca8c8ebfa26ecb073"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/records/0.json",
+      "sha256": "f8ce4c0a011f6e870d65652384c0368a56463408c627d4fab8b401d2be0277c4"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-baseline/summary.json",
+      "sha256": "f419a33f4e01269d99f22db09ae7db1869a9174cba4ac16451e18c3de0540052"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-baseline/trajectory.json",
+      "sha256": "76e6a0dfb029a94ab0c74e833c3ddb0c9d76fdda138e554e5d330d2cdd6c6591"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-baseline/execution.json",
+      "sha256": "be834540336cc0e314d7b7fc31231fb02cc0d81843fd6b9d5e2f51c3bde11ccd"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/records/1.json",
+      "sha256": "c084b57e5d99f2c9f1aea473f2eacad2714b247fe4b1a07c7c9ea73cd8135ebc"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-candidate/summary.json",
+      "sha256": "012cd2dd301fa4cfd30c9f975073ed72a7a39688043ceda2fed8e18b98cd7b8b"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-candidate/trajectory.json",
+      "sha256": "99eb49481d90a03df4388eff6885e2839f040d9fdf80ea04ce3fb8cd3b4c0776"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/protocol.json",
+      "sha256": "7a7f41a6c03fb4d440de84530ccb4f9e6a29b81f6b0d75b63e79e8e6708c6bf8"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/cleanup.json",
+      "sha256": "00c5ca447cbbdb069127b13d1240043e1f30e498a0064c36de5bc8a1388e6e5a"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/records/0.json",
+      "sha256": "b383241d0d97b37df23785a3d5b79187a216aae8ce87a99d776c5bd7dcad532a"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-candidate/summary.json",
+      "sha256": "1287b3b626c84b042cf27b1f060f330fb152541487ecffb1aafdc315a2d6f8f1"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-candidate/trajectory.json",
+      "sha256": "aa11e3bb9113fff092d68399142fcd04f920f30a0bd4dd60b9758c82e7e77a45"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-candidate/execution.json",
+      "sha256": "df6a1bcbfad5a71655c5f17ef0536079460a668b1481ff1136fd5f601284b5b7"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/records/1.json",
+      "sha256": "7f5b717007b4723037f3720a3c1387f0921b1119142f91f068a57b2d322cb351"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-baseline/summary.json",
+      "sha256": "e61ae62224cb1db0bd6cd5990d6ad8cf6437a30f938734a6a0fa327fd55412cc"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-baseline/trajectory.json",
+      "sha256": "16dccc2d1f966f9956d2ce03af1eb495f30104337f128c7f7bb497cc5043b760"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-baseline/execution.json",
+      "sha256": "dda2006726d7729e6d54c182ade16635481529378a4af6e2b492d5519f4f1d9b"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/records/2.json",
+      "sha256": "df81c75ef0ccd23af0b5e18b333184abe4e3850fc2244b80ee378bcd1c277f70"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-baseline/summary.json",
+      "sha256": "ab2626a88a6949ecc3ea4343f04662fed87a71723c9b3eb9a57f4595b98d6c41"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-baseline/trajectory.json",
+      "sha256": "decbc366d43a443ccddec7c2d8858ec4ff573e0fd51ff767f9c3f9ccb3e16c3b"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-baseline/execution.json",
+      "sha256": "e309e9ca1b4243115e57657d38608c032eb2625a8e5437f6e7b3feafb98285b8"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/records/3.json",
+      "sha256": "016eec29d1fc59378bf7d2721fd4d9e0fb0e19ace032541c8a1bac7e3bf6adea"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-candidate/summary.json",
+      "sha256": "54fbf6696e7edc9076e91d4df9f6ddaf116fe122afeece9401685f0ff3e74b09"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-candidate/trajectory.json",
+      "sha256": "dc5e85c74b64d6482c013bb0012037fc6954cf798c8438588ed454ca05841713"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-candidate/execution.json",
+      "sha256": "3db5696ba3827645ad979982ee7b1acaf2237cae23b60100d479b5b498cef9f8"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/records/4.json",
+      "sha256": "74838f3a7e5ef1cf9e2b96d2cede7cd9d4e22eb8c0e8c320d344cab20a01f4e7"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex4-decision-candidate/summary.json",
+      "sha256": "022d82eeac5b8a00f7eb5b2120abd75812fba17bc82f58a5b235bf4acba03221"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex4-decision-candidate/trajectory.json",
+      "sha256": "44dcdb1f09f628578353468ce05487bcfc5ae3e9e160e9fc5285086fdbd4e0c9"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex4-decision-candidate/execution.json",
+      "sha256": "6262b82055c3528bc49cafd5b45478ec52191d37864c1c40d2614f812bd5fe90"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/protocol.json",
+      "sha256": "1a8cb7dc68b21f9ee6a92861a4ab1cbecc8ae22abd8d763a747bb6ec9b81711d"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/cleanup.json",
+      "sha256": "100db0ab5cbe7ad93fe1b8030759d04a4f572a473f242d99d88849545375048c"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/0.json",
+      "sha256": "d119ee65e5128eb18d416817bd8499c2ba6732ec76df31ceffcc3c7cd770ea2c"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex4-decision-baseline/summary.json",
+      "sha256": "2f55e386b4e14783d55ec423765580ed2c3fa86926f2511c788e0b3b2024cced"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex4-decision-baseline/trajectory.json",
+      "sha256": "17805b0ad02a8a47a97d427589004ad75327fd4f843adc4fdd0920830edf42c5"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex4-decision-baseline/execution.json",
+      "sha256": "dffffd3aeff87b94f8e6f810c3b32afaa87d87101378d531445d5c57029cf9fd"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/1.json",
+      "sha256": "b299669e5ca1989a4a2c695970856c2b42512876dce63ad13aa8e110236e95c8"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-baseline/summary.json",
+      "sha256": "6fdd5e875ef20543afd6a1e457b4e9f2349a18463719e99c830bfcdd1fec8e31"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-baseline/trajectory.json",
+      "sha256": "efb255205d8db2ec025261be473af60d87f1f03b71ae0e6866b9c86345b26670"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-baseline/execution.json",
+      "sha256": "3a6dc05ce69945fcd274d65f60d88803c26060c56fade39cbd14ca8400ba28bc"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/2.json",
+      "sha256": "54151b3cb176122014c05e0b7332ecbad12fa6a1218a55c8704606bb2c66df5c"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-candidate/summary.json",
+      "sha256": "07852e0f5aae76778ac85dbafebe6f7ba3733ce0d76cd322f59e36766129b615"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-candidate/trajectory.json",
+      "sha256": "8b58eaa71fd4e14b7e8dec3e911c05089ec5f05dbac9f4a8275116c5e2b2e616"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-candidate/execution.json",
+      "sha256": "95d4e2a479343e298a060cf7cb9014f8fa4ace68bc87e2964e8f9bd74938707e"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/3.json",
+      "sha256": "8a7fe6549f01142aa449398c2d6da6daf05ea8e46c3251c3b6172029c3185bb8"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-candidate/summary.json",
+      "sha256": "32ec93b06afd8afe02885737e8b41f74b8afdd78af91db888e189449d0263f0f"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-candidate/trajectory.json",
+      "sha256": "9fdd70fe962419f28fdf0c489fda490808bd34144624ceb389927ca87dcbf466"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-candidate/execution.json",
+      "sha256": "607ab9bcec76a4d10ce371b3b9c509caea399a27301e1fa2859be98e09f8e63e"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/4.json",
+      "sha256": "2726789a6b8518c244888f148a67e564150a8a15e216cc0723a283300c6e68bd"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-baseline/summary.json",
+      "sha256": "7a61bfac3e82363d65c255b547ef2a2f4e552041b5676d027474ab7d966cb3ed"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-baseline/trajectory.json",
+      "sha256": "6ba82a8ecb8385140c6d05375f37c35a18c3697cad31f039fb9f7cd316ebd8cd"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-baseline/execution.json",
+      "sha256": "7b8ecbfce51fe894e5dec1f6581129ee3d1e573d61066a2289aed3565e86f0e0"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/5.json",
+      "sha256": "7b6317416d7a811ab8d224730d83725153807621498903239a7326ee20ba348d"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-baseline/summary.json",
+      "sha256": "6f9252919b796f18fc8138abe2f61de9aa797137933ec878cf3dcc2f13f03039"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-baseline/trajectory.json",
+      "sha256": "bba7100d63bff9c369c402a6e34ab7b192a524ceb29666c0dd9144c007090b1d"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-baseline/execution.json",
+      "sha256": "fee7b6186e590f97814902df82511eaacf695928f3375ce109da680bd78072ff"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/6.json",
+      "sha256": "f9caf9094eb89dbec4aa11c73360eaf97d3b7f8afa2bf301df4c669e9fd3c330"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-candidate/summary.json",
+      "sha256": "6585b97afe6e55c63c258f0b8c1321115eb65e251c21c50f6f99cd77804d6871"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-candidate/trajectory.json",
+      "sha256": "d49158547eebbd55005bb10c97e19a360032adc294c43fcbab6eeecbd849eb14"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-candidate/execution.json",
+      "sha256": "aa57233b4f82ce91c90b0021af9e64f985e59bc83d95d6381e2f431f7f9784dd"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/7.json",
+      "sha256": "1a1513758606db7bda81e92b020420a307dff73616bed82c9b6dff8ad4537188"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-candidate/summary.json",
+      "sha256": "57ca781d6e9c96f2bc96fc9326ec2a92c5e093b379591dd4f33c660e4b4155dd"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-candidate/trajectory.json",
+      "sha256": "451f4bd53a03b9a525b7f03fece408572fba5346276b5e5fd0b49f5244b6ba50"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-candidate/execution.json",
+      "sha256": "4e4fc1257faf974fa24eb795cfc063b198629e6785b858d5bf1b54e72c5503d9"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/records/8.json",
+      "sha256": "04f966d6999601ccf90066247fcb87025a4eadce495e01ec87db8b513d5e1c30"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/summary.json",
+      "sha256": "5ae041c871b184b8d25271a8b185d5ebd818d89b641fe14bf07e95f3536a1a79"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/judge.md",
+      "sha256": "c9851ff5d0e473333fd2094122d195af99162210a6aa216ebfba5bbe023f6962"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/trajectory.json",
+      "sha256": "335c332d663843ecbdcb52c3e8efd1ce2b87a5e5b758f3cbe2be8f3f764191d6"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/execution.json",
+      "sha256": "288fb4078d8e8c7c6d92c2a8d011a43c6976a8cff86cf81a695f8d5b738ec1e9"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/reflection.json",
+      "sha256": "fa096d3c2861eda3ea28a7c6028dee6f486ea48c2947e1d14c52f771704e0a20"
+    }
+  ],
+  "rows": [
+    {
+      "originalIndex": 0,
+      "stage": "2026-10-26-execution-autonomy-live",
+      "caseId": "ex1-clean",
+      "arm": "baseline",
+      "stand": "invalid-original-full-audit-fixture",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": false,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "checker exited nonzero: 2 sdd-check error(s); artifact built but no group audit receipt on spec (receipt verdict is \"FAIL\", not an explicit PASS); no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=1"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful real Verify invocation not observed"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful real full audit Verify invocation not observed"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 137,
+        "usage": {
+          "messages": 77,
+          "input": 234550,
+          "output": 17497,
+          "reasoning": 40804,
+          "cacheRead": 5325056,
+          "cacheWrite": 0,
+          "total": 292851,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 4,
+          "wallClockMs": 470146
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-baseline/execution.json"
+      }
+    },
+    {
+      "originalIndex": 1,
+      "stage": "2026-10-26-execution-autonomy-live",
+      "caseId": "ex1-clean",
+      "arm": "candidate",
+      "stand": "invalid-original-full-audit-fixture",
+      "sourceHead": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+      "sourceDirty": false,
+      "runOutcome": "interrupted",
+      "workerStatus": "interrupted",
+      "raw": {
+        "path": {
+          "rule": "TRAJECTORY",
+          "pass": false,
+          "detail": "interrupted path; retained for diagnosis only"
+        },
+        "aggregateVerdict": "interrupted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "missing/incomplete primary capture; no upgrade"
+        },
+        "initialTicketBound": false,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 74,
+        "usage": null,
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/2026-10-26-execution-autonomy-ex1-clean-candidate/trajectory.json"
+      }
+    },
+    {
+      "originalIndex": 2,
+      "stage": "2026-10-26-execution-autonomy-continued",
+      "caseId": "ex2-config",
+      "arm": "candidate",
+      "stand": "shared-routing-confound; exact dispatch remained possible",
+      "sourceHead": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+      "sourceDirty": false,
+      "runOutcome": "worker-error",
+      "workerStatus": "error",
+      "raw": {
+        "functional": {
+          "pass": false,
+          "exitCode": 1,
+          "detail": "independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "0 sdd-check error(s), 1 warning(s) (warnings allowed); declared artifact was not produced; independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests; pending=0"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed; successful real Verify invocation not observed; successful real full audit Verify invocation not observed"
+        },
+        "aggregateVerdict": "worker-error",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed; successful real Verify invocation not observed; successful real full audit Verify invocation not observed"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 16,
+        "usage": {
+          "messages": 6,
+          "input": 37596,
+          "output": 1509,
+          "reasoning": 94,
+          "cacheRead": 89856,
+          "cacheWrite": 0,
+          "total": 39199,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 1,
+          "wallClockMs": 15203
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-candidate/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-candidate/execution.json"
+      }
+    },
+    {
+      "originalIndex": 3,
+      "stage": "2026-10-26-execution-autonomy-continued",
+      "caseId": "ex2-config",
+      "arm": "baseline",
+      "stand": "shared-routing-confound; exact dispatch remained possible",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": false,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "checker exited nonzero: 3 sdd-check error(s); artifact built but no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+        },
+        "path": {
+          "rule": "TRAJECTORY",
+          "pass": true,
+          "detail": "146 tools; complete capture"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": true,
+          "detail": "mandatory observed transitions proven; not a unique preferred trajectory"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 146,
+        "usage": {
+          "messages": 81,
+          "input": 248659,
+          "output": 20828,
+          "reasoning": 43964,
+          "cacheRead": 4518784,
+          "cacheWrite": 0,
+          "total": 313451,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 5,
+          "wallClockMs": 480029
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex2-config-baseline/execution.json"
+      }
+    },
+    {
+      "originalIndex": 4,
+      "stage": "2026-10-26-execution-autonomy-continued",
+      "caseId": "ex3-helper",
+      "arm": "baseline",
+      "stand": "shared-routing-confound; exact dispatch remained possible",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": true,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "checker exited nonzero: 3 sdd-check error(s); artifact built but no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "replan-before-new-helper-write is not proven"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "replan-before-new-helper-write is not proven"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 179,
+        "usage": {
+          "messages": 78,
+          "input": 299719,
+          "output": 26717,
+          "reasoning": 39746,
+          "cacheRead": 6386048,
+          "cacheWrite": 0,
+          "total": 366182,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 4,
+          "wallClockMs": 480028
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-baseline/execution.json"
+      }
+    },
+    {
+      "originalIndex": 5,
+      "stage": "2026-10-26-execution-autonomy-continued",
+      "caseId": "ex3-helper",
+      "arm": "candidate",
+      "stand": "shared-routing-confound; exact dispatch remained possible",
+      "sourceHead": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+      "sourceDirty": true,
+      "runOutcome": "worker-error",
+      "workerStatus": "error",
+      "raw": {
+        "functional": {
+          "pass": false,
+          "exitCode": 1,
+          "detail": "independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "sdd-check --all clean; declared artifact was not produced; independent assertions failed, exited before completion, produced unexpected output or timed out; not derived from worker tests; pending=0"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful real Verify invocation not observed; successful real full audit Verify invocation not observed; replan-before-new-helper-write is not proven"
+        },
+        "aggregateVerdict": "worker-error",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful real Verify invocation not observed; successful real full audit Verify invocation not observed; replan-before-new-helper-write is not proven"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 45,
+        "usage": {
+          "messages": 21,
+          "input": 82967,
+          "output": 3736,
+          "reasoning": 15692,
+          "cacheRead": 1032704,
+          "cacheWrite": 0,
+          "total": 102395,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 1,
+          "wallClockMs": 150720
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-candidate/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex3-helper-candidate/execution.json"
+      }
+    },
+    {
+      "originalIndex": 6,
+      "stage": "2026-10-26-execution-autonomy-continued",
+      "caseId": "ex4-decision",
+      "arm": "candidate",
+      "stand": "shared-routing-confound; exact dispatch remained possible",
+      "sourceHead": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+      "sourceDirty": true,
+      "runOutcome": "interrupted",
+      "workerStatus": "interrupted",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "partial failure/interruption capture; not a completed primary evaluation"
+        },
+        "path": {
+          "rule": "TRAJECTORY",
+          "pass": false,
+          "detail": "interrupted path; retained for diagnosis only"
+        },
+        "aggregateVerdict": "interrupted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "missing/incomplete primary capture; no upgrade"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "initialTicketBound": false,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 42,
+        "usage": null,
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex4-decision-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex4-decision-candidate/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/2026-10-26-execution-autonomy-ex4-decision-candidate/execution.json"
+      }
+    },
+    {
+      "originalIndex": 7,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "ex4-decision",
+      "arm": "baseline",
+      "stand": "routing-qualified",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": true,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=decision-review; taskNotClosed=false; pending=0; functional=true; phasesVerified=true; phasesDone=true; semantics/proposal quality requires independent review"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed; durable decision-before-product-write is not proven (opaque Bash remains unknown, not pass)"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "durable decision-before-product-write is not proven (opaque Bash remains unknown, not pass)"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "operatorCheckpoint": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=decision-review; taskNotClosed=false; pending=0; functional=true; phasesVerified=true; phasesDone=true; localClosure=false; awaiting operator, NOT approved external/new-goal delivery; semantics/proposal quality requires independent review"
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 138,
+        "usage": {
+          "messages": 78,
+          "input": 211897,
+          "output": 21352,
+          "reasoning": 31683,
+          "cacheRead": 4626176,
+          "cacheWrite": 0,
+          "total": 264932,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 4,
+          "wallClockMs": 479978
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex4-decision-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex4-decision-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex4-decision-baseline/execution.json"
+      }
+    },
+    {
+      "originalIndex": 8,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "ex5-repeat",
+      "arm": "baseline",
+      "stand": "routing-qualified",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": true,
+      "runOutcome": "worker-error",
+      "workerStatus": "error",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "0 sdd-check error(s), 1 warning(s) (warnings allowed); artifact built but ticket not [x] DONE; no group audit receipt on spec (no receipt recorded); no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed; successful real Verify invocation not observed; successful real full audit Verify invocation not observed"
+        },
+        "aggregateVerdict": "worker-error",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed; successful real Verify invocation not observed; successful real full audit Verify invocation not observed"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 53,
+        "usage": {
+          "messages": 30,
+          "input": 89476,
+          "output": 6746,
+          "reasoning": 7483,
+          "cacheRead": 1162624,
+          "cacheWrite": 0,
+          "total": 103705,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 2,
+          "wallClockMs": 136525
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-baseline/execution.json"
+      }
+    },
+    {
+      "originalIndex": 9,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "ex5-repeat",
+      "arm": "candidate",
+      "stand": "routing-qualified",
+      "sourceHead": "6a91aeec357ef10dff23f6f0f19f99b8c365e059",
+      "sourceDirty": false,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": true,
+          "detail": "0 sdd-check error(s), 1 warning(s) (warnings allowed); artifact built + ticket DONE + round closed + receipts (verdict + provenance checked); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+        },
+        "path": {
+          "rule": "TRAJECTORY",
+          "pass": true,
+          "detail": "149 tools; complete capture"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": true,
+          "detail": "mandatory observed transitions proven; not a unique preferred trajectory"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 149,
+        "usage": {
+          "messages": 72,
+          "input": 228753,
+          "output": 23888,
+          "reasoning": 36064,
+          "cacheRead": 4523520,
+          "cacheWrite": 0,
+          "total": 288705,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 5,
+          "wallClockMs": 480006
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-candidate/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex5-repeat-candidate/execution.json"
+      }
+    },
+    {
+      "originalIndex": 10,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "ex7-conflict",
+      "arm": "candidate",
+      "stand": "routing-qualified",
+      "sourceHead": "6a91aeec357ef10dff23f6f0f19f99b8c365e059",
+      "sourceDirty": true,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=product-boundary; taskNotClosed=false; pending=1; functional=true; phasesVerified=true; phasesDone=true; semantics/proposal quality requires independent review"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": true,
+          "detail": "mandatory observed transitions proven; not a unique preferred trajectory"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "operatorCheckpoint": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=product-boundary; taskNotClosed=false; pending=1; functional=true; phasesVerified=true; phasesDone=true; localClosure=false; awaiting operator, NOT approved external/new-goal delivery; semantics/proposal quality requires independent review"
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 133,
+        "usage": {
+          "messages": 89,
+          "input": 214566,
+          "output": 18195,
+          "reasoning": 31820,
+          "cacheRead": 4233216,
+          "cacheWrite": 0,
+          "total": 264581,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 4,
+          "wallClockMs": 480167
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-candidate/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-candidate/execution.json"
+      }
+    },
+    {
+      "originalIndex": 11,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "ex7-conflict",
+      "arm": "baseline",
+      "stand": "routing-qualified",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": true,
+      "runOutcome": "worker-error",
+      "workerStatus": "error",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=product-boundary; taskNotClosed=false; pending=0; functional=true; phasesVerified=false; phasesDone=true; semantics/proposal quality requires independent review"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed"
+        },
+        "aggregateVerdict": "worker-error",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "operatorCheckpoint": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=product-boundary; taskNotClosed=false; pending=0; functional=true; phasesVerified=false; phasesDone=true; localClosure=false; awaiting operator, NOT approved external/new-goal delivery; semantics/proposal quality requires independent review"
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 43,
+        "usage": {
+          "messages": 26,
+          "input": 85792,
+          "output": 4529,
+          "reasoning": 12666,
+          "cacheRead": 1633664,
+          "cacheWrite": 0,
+          "total": 102987,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 1,
+          "wallClockMs": 197672
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-ex7-conflict-baseline/execution.json"
+      }
+    },
+    {
+      "originalIndex": 12,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "holdout6-related",
+      "arm": "baseline",
+      "stand": "routing-qualified",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": true,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "checker exited nonzero: 3 sdd-check error(s); artifact built but no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+        },
+        "path": {
+          "rule": "TRAJECTORY",
+          "pass": true,
+          "detail": "139 tools; complete capture"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": true,
+          "detail": "mandatory observed transitions proven; not a unique preferred trajectory"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 139,
+        "usage": {
+          "messages": 86,
+          "input": 253166,
+          "output": 17743,
+          "reasoning": 29325,
+          "cacheRead": 4859520,
+          "cacheWrite": 0,
+          "total": 300234,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 5,
+          "wallClockMs": 485560
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-baseline/execution.json"
+      }
+    },
+    {
+      "originalIndex": 13,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "holdout6-related",
+      "arm": "candidate",
+      "stand": "routing-qualified",
+      "sourceHead": "6a91aeec357ef10dff23f6f0f19f99b8c365e059",
+      "sourceDirty": true,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "checker exited nonzero: 3 sdd-check error(s); artifact built but no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+        },
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": false,
+          "detail": "successful installed sdd-task dispatch not observed"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 155,
+        "usage": {
+          "messages": 86,
+          "input": 226572,
+          "output": 22431,
+          "reasoning": 30667,
+          "cacheRead": 4328448,
+          "cacheWrite": 0,
+          "total": 279670,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 5,
+          "wallClockMs": 480074
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-candidate/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout6-related-candidate/execution.json"
+      }
+    },
+    {
+      "originalIndex": 14,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "holdout8-authority",
+      "arm": "candidate",
+      "stand": "invalid-unowned-protected-authority-adapter",
+      "sourceHead": "6a91aeec357ef10dff23f6f0f19f99b8c365e059",
+      "sourceDirty": true,
+      "runOutcome": "budget-exhausted",
+      "workerStatus": "unknown",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": false,
+          "issues": [
+            "approved obligation changed: specs/queue/core/core.task.COR-work.md#META"
+          ]
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=authority-boundary; taskNotClosed=false; pending=0; functional=true; phasesVerified=true; phasesDone=true; semantics/proposal quality requires independent review; integrity/capture/quiescence: approved obligation changed: specs/queue/core/core.task.COR-work.md#META"
+        },
+        "path": {
+          "rule": "TRAJECTORY",
+          "pass": true,
+          "detail": "112 tools; complete capture"
+        },
+        "aggregateVerdict": "budget-exhausted",
+        "semanticVerdict": "not-run",
+        "hasJudge": false
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": true,
+          "detail": "mandatory observed transitions proven; not a unique preferred trajectory"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "operatorCheckpoint": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=authority-boundary; taskNotClosed=false; pending=0; functional=true; phasesVerified=true; phasesDone=true; localClosure=false; awaiting operator, NOT approved external/new-goal delivery; semantics/proposal quality requires independent review"
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 112,
+        "usage": {
+          "messages": 107,
+          "input": 128139,
+          "output": 12007,
+          "reasoning": 27578,
+          "cacheRead": 10413824,
+          "cacheWrite": 0,
+          "total": 167724,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 1,
+          "wallClockMs": 480022
+        },
+        "judgeUsage": null,
+        "reflectionUsage": null
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-candidate/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-candidate/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-candidate/execution.json"
+      }
+    },
+    {
+      "originalIndex": 15,
+      "stage": "2026-10-27-execution-autonomy-final",
+      "caseId": "holdout8-authority",
+      "arm": "baseline",
+      "stand": "invalid-unowned-protected-authority-adapter",
+      "sourceHead": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+      "sourceDirty": true,
+      "runOutcome": "fail",
+      "workerStatus": "completed",
+      "raw": {
+        "functional": {
+          "pass": true,
+          "exitCode": 0,
+          "detail": "independent public behavior assertions reached their host-owned terminal marker"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": []
+        },
+        "terminal": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": false,
+          "detail": "expected=authority-boundary; taskNotClosed=false; pending=1; functional=true; phasesVerified=true; phasesDone=true; semantics/proposal quality requires independent review"
+        },
+        "path": {
+          "rule": "TRAJECTORY",
+          "pass": true,
+          "detail": "84 tools; complete capture"
+        },
+        "aggregateVerdict": "fail",
+        "semanticVerdict": "fail",
+        "hasJudge": true
+      },
+      "derived": {
+        "path": {
+          "rule": "EXECUTION-PATH",
+          "pass": true,
+          "detail": "mandatory observed transitions proven; not a unique preferred trajectory"
+        },
+        "integrity": {
+          "pass": true,
+          "issues": [],
+          "limitation": "Only the META lifecycle delta is corrected; every other observed issue remains. NOT a fresh receipt revalidation."
+        },
+        "operatorCheckpoint": {
+          "rule": "EXECUTION-TERMINAL",
+          "pass": true,
+          "detail": "expected=authority-boundary; taskNotClosed=false; pending=1; functional=true; phasesVerified=true; phasesDone=true; localClosure=true; awaiting operator, NOT approved external/new-goal delivery; semantics/proposal quality requires independent review"
+        },
+        "initialTicketBound": true,
+        "semanticVerdict": "not-regraded",
+        "limitation": "Pure post-collection correction only; budgets/censorship/interruption, missing evidence and invalid fixtures remain. No worker completion or semantic-quality upgrade."
+      },
+      "measurements": {
+        "tools": 84,
+        "usage": {
+          "messages": 55,
+          "input": 115210,
+          "output": 8439,
+          "reasoning": 24860,
+          "cacheRead": 4968064,
+          "cacheWrite": 0,
+          "total": 148509,
+          "cost": 0,
+          "models": [
+            "llm-proxy/deepseek-v4-flash"
+          ],
+          "complete": true,
+          "sessions": 1,
+          "wallClockMs": 323610
+        },
+        "judgeUsage": {
+          "sessionId": "ses_e82b5ae4cffeb0pDrCvUSQ7Z4p",
+          "usage": {
+            "messages": 1,
+            "input": 17543,
+            "output": 169,
+            "reasoning": 7195,
+            "cacheRead": 3584,
+            "cacheWrite": 0,
+            "total": 24907,
+            "cost": 0,
+            "models": [
+              "llm-proxy/deepseek-v4-flash"
+            ],
+            "complete": true,
+            "sessions": 1,
+            "wallClockMs": 49040
+          }
+        },
+        "reflectionUsage": {
+          "input": 119664,
+          "output": 1179,
+          "reasoning": 1880,
+          "cacheRead": 3584,
+          "cacheWrite": 0,
+          "total": 122723,
+          "messages": 1
+        }
+      },
+      "primaryFiles": {
+        "summary": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/summary.json",
+        "trajectory": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/trajectory.json",
+        "execution": "ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/2026-10-27-execution-autonomy-holdout8-authority-baseline/execution.json"
+      }
+    }
+  ]
+}

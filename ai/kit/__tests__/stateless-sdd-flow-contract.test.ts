@@ -227,7 +227,8 @@ describe('stateless execution and specification format', () => {
     const reconcile = read('ai', 'kit', 'templates', 'sdd-v2', 'reconcile.directive.hbs');
     assert.match(phase, /run the phase's exact declared commands/i);
     assert.match(phase, /Requirement-ID in the test source/);
-    assert.match(phase, /worker never closes the phase or edits the ticket/i);
+    assert.match(phase, /worker never closes the phase or manually edits the ticket/i);
+    assert.match(phase, /bounded CLI fact[\s\S]*writes are allowed by `AX_PHASE_SCOPE_LOCK`/);
     assert.match(phase, /single `sdd-log complete` transition/i);
     assert.doesNotMatch(phase, /update the\s+phase's durable Execution Log facts/i);
     assert.match(reconcile, /independent verdict and operator approval #1/);
@@ -312,7 +313,9 @@ describe('stateless execution and specification format', () => {
       );
     }
     assert.match(format, /Decision Log/);
-    assert.match(format, /Execution Log/);
+    assert.match(format, /ticket's canonical Decision Log/);
+    assert.match(format, /Handoff[\s\S]*contains only those canonical IDs/);
+    assert.match(format, /sdd-log <ticket> decision[\s\S]*before using the choice/);
     assert.match(format, /what.*why.*where/i);
     assert.match(format, /never.*sidecar/i);
     assert.match(review, /deviations/i);

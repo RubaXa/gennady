@@ -383,6 +383,12 @@ marker validation and facade-owned attempt persistence remain after UV-24.
   receipt validation remain unchanged. V1 tickets without the V2 schema marker remain
   grandfathered; V2 never fabricates historical receipts. Group audit/review receipts remain
   blocking for completed V2 groups.
+- **Execution context:** facade preflight bytes are rechecked under the ticket lease before any gate starts. A mismatch
+  produces `SDD_VERIFY_CONTEXT_STALE` without an obsolete attempt. During execution, ticket bytes
+  outside runner-owned attempt blocks must stay unchanged: an external task edit yields terminal
+  VIOLATION (`ticket-context-drift`), preserves the new task, and cannot stamp old gates current.
+  The final atomic write checks the same captured end snapshot; later competing edits refuse the
+  write rather than overwriting them. Declared source-file repairs remain allowed.
 - **Freshness consumption:** every canonical-attempt consumer validates the latest state plus current
   phase-aware content/worktree identity. Local-runner freshness is content-addressed over present
   filesystem bytes (including an already-verified deletion as absence) and therefore survives

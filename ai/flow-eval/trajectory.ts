@@ -67,7 +67,8 @@ export type TrajectoryRules = {
   commandOrder?: readonly string[];
 };
 
-function invokesCommand(event: ToolEvent, name: string): boolean {
+/** @purpose Recognize an observed direct CLI attempt, never help/version, quoted narration or a terminal checkpoint. */
+export function invokesCommand(event: ToolEvent, name: string): boolean {
   if (
     event.tool !== 'bash' ||
     !event.command ||

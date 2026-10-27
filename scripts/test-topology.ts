@@ -83,9 +83,11 @@ const OUTER_TEST_CONCURRENCY = Math.min(10, Math.max(6, availableParallelism()))
 // and V-BATCH-03.md §5/§6. Running `local` as its own partition at a lower concurrency (variant
 // (б), not a blanket `=1`) cuts that pressure precisely where it originates while leaving
 // contract/external/unit — which carry no comparable subprocess fan-out — at the existing bounded
-// concurrency. 4 matches the archived precedent (`51195c48`, `--test-concurrency=4`) and keeps
-// wall time close to the pre-PR#36 baseline instead of paying the ×4.4–8.0 cost of `=1` everywhere.
-const LOCAL_PARTITION_CONCURRENCY = 4;
+// concurrency. The earlier bound was four; EA follow-up tightens it without serializing the
+// unrelated hermetic unit/contract corpus or excluding any mandatory file.
+// EA follow-up: each file may fan out into several real CLI/Git processes. Bound the ordinary
+// local pool to two; long-budget build/history/fixture suites below run serially, not beside peers.
+const LOCAL_PARTITION_CONCURRENCY = 2;
 const DEFAULT_FILE_TIMEOUT_MS = 30_000;
 // Owned whole-file budgets, not describe/test timeouts. These mandatory local suites cross real
 // build/install or historical Git/Swift process boundaries and exceed 30s under sibling load.
@@ -99,10 +101,31 @@ const OWNED_FILE_BUDGETS: Readonly<
     }
   >
 > = {
+  'ai/flow-eval/__tests__/execution-autonomy-audit.test.ts': {
+    timeoutMs: 120_000,
+    owner: 'AI-SKILLS',
+    reason: 'real phase/full/audit/receipt and broken-source controls (~38s without sibling load)',
+  },
+  'ai/flow-eval/__tests__/execution-autonomy-fixture.test.ts': {
+    timeoutMs: 120_000,
+    owner: 'AI-SKILLS',
+    reason:
+      'installed CLI phase/round/group closure and independent broken-source controls under sibling load',
+  },
   'scripts/__tests__/declared-exports.test.ts': {
     timeoutMs: 360_000,
     owner: 'INFRA-NPM-PUBLISH',
     reason: 'real offline build/pack/install/import and installed worker acceptance (~180s)',
+  },
+  'scripts/__tests__/release-boundary.test.ts': {
+    timeoutMs: 120_000,
+    owner: 'INFRA-BASE',
+    reason: 'real Git candidate/ACK and npm-denial fixtures exceed 30s under bounded sibling load',
+  },
+  'scripts/__tests__/main-carry-disposition.test.ts': {
+    timeoutMs: 120_000,
+    owner: 'INFRA-BASE',
+    reason: 'frozen Git-history and exhaustive disposition fixtures exceed 30s under sibling load',
   },
   'ai/flow-eval/scripts/__tests__/release-migration-scopes.test.ts': {
     timeoutMs: 120_000,
@@ -533,10 +556,17 @@ export function runNodeTests(
   // Only noncoverage has multiple budgets. The observed corpus stays one c8 invocation so later
   // spawns cannot overwrite its report; no file is omitted or repeated by this grouping.
   for (const [timeoutMs, targets] of [...groups].sort(([left], [right]) => left - right)) {
-    const result = runNodeTestBatch(targets, { ...options, timeoutMs });
+    const result = runNodeTestBatch(targets, {
+      ...options,
+      concurrency: targets.some((file) => OWNED_FILE_BUDGETS[file]) ? 1 : options.concurrency,
+      timeoutMs,
+    });
     if (result.stats !== undefined) stats.push(result.stats);
     if (result.status !== 0)
-      return { status: result.status, ...(stats.length ? { stats: aggregateStats(stats) } : {}) };
+      return {
+        status: result.status,
+        ...(result.stats !== undefined ? { stats: aggregateStats(stats) } : {}),
+      };
   }
   return { status: 0, stats: aggregateStats(stats) };
 }
@@ -598,8 +628,10 @@ function runNodeTestBatch(
     };
     const executed = metric('tests');
     const passed = metric('pass');
-    const failed = metric('fail');
-    const skipped = (metric('skipped') ?? 0) + (metric('todo') ?? 0) + (metric('cancelled') ?? 0);
+    const reportedFailed = metric('fail');
+    // Cancellation/timeout is an unsuccessful attempt, not an intentional skip.
+    const failed = reportedFailed === null ? null : reportedFailed + (metric('cancelled') ?? 0);
+    const skipped = (metric('skipped') ?? 0) + (metric('todo') ?? 0);
     if (
       executed === null ||
       passed === null ||
@@ -609,7 +641,17 @@ function runNodeTestBatch(
       process.stderr.write('[test-topology] test reporter did not produce coherent statistics\n');
       return { status: 1 };
     }
-    return { status, stats: { executed, passed, failed, skipped } };
+    if (status !== 0 && failed === 0) {
+      process.stderr.write(
+        '[test-topology] unaccounted nonzero runner exit; aggregate statistics withheld\n'
+      );
+      return { status };
+    }
+    if (status === 0 && failed > 0) process.stderr.write(failureDiagnostic(output));
+    return {
+      status: failed > 0 && status === 0 ? 1 : status,
+      stats: { executed, passed, failed, skipped },
+    };
   } finally {
     rmSync(reporterDirectory, { recursive: true, force: true });
   }

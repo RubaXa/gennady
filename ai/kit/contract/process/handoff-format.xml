@@ -2,7 +2,7 @@
 <Contract id="HANDOFF_FORMAT">
       Compact, typed, single line at end of phase block:
       ```
-      **Handoff →** artifacts: [path1, path2]; decisions: [key=value(measured), key=value]; open: [id(reported; depth-only): text, id: text]; deviations: [id: text, id: text]
+      **Handoff →** artifacts: [path1, path2]; decisions: [key=value(measured), key=value]; open: [id(reported; depth-only): text, id: text]; deviations: [SS-DL-1, SS-DL-2]
       ```
       Fields:
       - `artifacts` — files produced or modified by this phase (paths).
@@ -19,7 +19,8 @@
         as covering the whole original question. Empty list → `[]`.
       - `deviations` — spec/ticket holes this phase self-resolved rather than asking the operator
         (`AX_DEVIATION_SELF_RESOLVE`); each entry cites the ticket-local Decision Log id it produced
-        (e.g. `SS-skills-D-2: chose retry cap 3, spec silent on it`). Empty list → `[]`.
+        (e.g. `SS-DL-2`). Persist it through `sdd-log decision` before use, not during final Handoff.
+        Completion rejects an unknown, ambiguous or foreign-phase ID. Empty list → `[]`.
 
       Free-form text forbidden outside the tag/extent grammar above. Each field is an array (possibly
       empty).

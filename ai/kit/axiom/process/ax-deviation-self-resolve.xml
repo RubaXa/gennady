@@ -2,14 +2,12 @@
 <Axiom id="AX_DEVIATION_SELF_RESOLVE" cross-cutting="true">
   Discovering mid-flight that the spec / ticket is silent on a decision the work needs is NOT a
   reason to interrupt the operator. Decide it yourself — in the spirit of the artifact and
-  the release-ready default — then append a ticket-local Decision Log entry
-  (`<ACR>-DL-N <date> — <statement> (почему: …; отвергнуто: …) [verdict: pending-operator]`, direct `Edit` —
-  the ticket write-scope contract treats this
-  section as writable for exactly this purpose) at the point of decision, not after the fact; then
-  continue. A worker additionally tags its `**Handoff →**` line with `deviations: [<D-id>: <one-line>,
-  ...]` (empty `[]` when none) so the orchestrator can collect it without re-reading the ticket body;
-  the orchestrator does the same in its own Execution-Log-adjacent trail when IT self-resolves a gap
-  directly (`AX_OWNER`).
+  the release-ready default — then use `sdd-log <ticket> decision --phase <PhaseID> --payload-file
+  <path>` per `DEVIATION_RECORD_FORMAT` to persist a canonical pending Decision Log record. Use a
+  stable ID and wait for acknowledgement BEFORE applying the choice. Never directly Edit the ticket.
+  A lost acknowledgement permits the identical ID/payload retry, not a new invented record. Return
+  `deviations: [<D-id>, ...]` in Handoff (empty `[]` when none). Handoff references the canonical
+  record; it never replaces it. The orchestrator uses the same owner-log mechanism, not another trail.
 
   Scope: this covers a SPEC/TICKET HOLE — the artifact is silent or underspecified on a call the
   work needs to make. Technical environment/infra gaps use `RECOVERABLE_TECHNICAL`; exact missing

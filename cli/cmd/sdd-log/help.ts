@@ -55,6 +55,30 @@ export function printHelp(): void {
   );
   console.info('');
   console.info('File-backed form (required for agent-produced free text):');
+  console.info(
+    '  npx gennady sdd-log <ticket> decision --phase P<N> --payload-file .claude/tmp/<name>.json'
+  );
+  console.info(
+    '  decision JSON keys: id, what, why, where, evidence, alternative, verify (single-line strings).'
+  );
+  console.info(
+    '  Requires initialized Git. Records pending-operator before use under the shared ticket/Verify lock.'
+  );
+  console.info(
+    '  Identical ID/payload retry preserves date/verdict; conflicts and rework/rolled-back choices reject. No new targets, approval or authority.'
+  );
+  console.info(
+    '  npx gennady sdd-log <ticket> replan --phase P<N> --payload-file .claude/tmp/<name>.json'
+  );
+  console.info(
+    '  Orchestrator only, after the old worker stops. JSON: id (RP-...), base (REPLAN_BASE from sdd-task), reason, evidence, addTargets (exact paths), dependencies (complete phase-ID list).'
+  );
+  console.info(
+    '  Additive implementation neighbors/local edges; optionally supply BOTH insertPhase ({id, objective, targets, dependencies}) and moveTests (existing exact covered test paths, or []). The new provider precedes the selected phase and inherits its kind/rules/exit/inputs; selected dependencies must include it. Source retains a mapped test target. No removed obligations, weaker kinds/checks or goal edits. Corpus path/DAG/writer checks precede the atomic write.'
+  );
+  console.info(
+    '  Replan operations serialize corpus claims; arbitrary editors/other authoring do not share that lease. Refresh sdd-task after ACK; reverify stale prerequisite attempts before dispatch. Same ID/payload replay is byte-idempotent, not reuse of old worker authority.'
+  );
   console.info('  npx gennady sdd-log <ticket> round --content-file .claude/tmp/<name>');
   console.info(
     '  npx gennady sdd-log <ticket> line --content-file .claude/tmp/<name> [--phase P<N>]'
@@ -77,6 +101,9 @@ export function printHelp(): void {
   console.info('  blocker JSON keys: {"reason":"...","axiom":"AX_...","unblock":"..."}');
   console.info('');
   console.info('Guarantees:');
+  console.info(
+    '  - complete rejects unknown/ambiguous/foreign-phase deviation references; Handoff is not another Decision Log.'
+  );
   console.info(
     '  - Append modes insert before a section/block boundary and never rewrite prior event lines.'
   );

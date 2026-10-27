@@ -1,0 +1,12 @@
+{
+  "checks": [
+    {
+      "sessionId": "ses_e82e530fdffe9cT5r6zCVFJOFA",
+      "complete": true,
+      "sessions": 2,
+      "reasons": []
+    }
+  ],
+  "snapshotUnchanged": true,
+  "safeToCleanup": true
+}

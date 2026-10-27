@@ -4,6 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { it } from 'node:test';
@@ -50,6 +51,10 @@ const hashes = {
     '00efdbe8a78bda9a3cb0b752f362b815c56a844764a180966db482cead8de119',
 };
 const read = (path: string) => JSON.parse(readFileSync(resolve(results, path), 'utf8'));
+// PR #129's adopted source: archived experiment inputs must not follow later production edits.
+const adoptedSource = '7958ecb0a3cabcfd2ba923d272a65e00a981a0c6';
+const historicalSource = (path: string) =>
+  execFileSync('git', ['-C', root, 'show', `${adoptedSource}:${path}`]);
 
 it('preserves every original public record and the first-series measurement failures', () => {
   for (const [path, hash] of Object.entries(hashes)) {
@@ -65,7 +70,7 @@ it('preserves every original public record and the first-series measurement fail
   assert.ok(read('2026-10-26-task-quality/5-related-read-candidate.json').pathIssues.length > 0);
 });
 
-it('binds final inputs to candidate policy and the actually executed harness without claiming a clean source', () => {
+it('binds final inputs to the adopted historical policy and executed harness, not later live-source edits', () => {
   const protocol = read('2026-10-26-task-quality-final/protocol.json');
   assert.equal(protocol.source.cleanBefore, false);
   for (const input of protocol.inputs.filter(
@@ -74,19 +79,17 @@ it('binds final inputs to candidate policy and the actually executed harness wit
     const policy =
       input.id === 'scenario-review'
         ? read('2026-10-26-task-quality-final/executed-review-policy.json').policy
-        : readFileSync(resolve(root, input.policyPath), 'utf8');
+        : historicalSource(input.policyPath).toString('utf8');
     assert.equal(policy, input.policy);
   }
   for (const file of protocol.harness) {
-    const recordedPath =
+    const recorded =
       file.path === 'ai/flow-eval/scripts/task-quality-live.ts'
-        ? resolve(results, '2026-10-26-task-quality-final/executed-task-quality-live.ts.txt')
-        : resolve(root, file.path);
-    assert.equal(
-      createHash('sha256').update(readFileSync(recordedPath)).digest('hex'),
-      file.sha256,
-      file.path
-    );
+        ? readFileSync(
+            resolve(results, '2026-10-26-task-quality-final/executed-task-quality-live.ts.txt')
+          )
+        : historicalSource(file.path);
+    assert.equal(createHash('sha256').update(recorded).digest('hex'), file.sha256, file.path);
   }
 });
 

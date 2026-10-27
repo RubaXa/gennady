@@ -1,0 +1,129 @@
+{
+  "executionFailure": {
+    "detail": "flow-eval interrupted by SIGTERM"
+  },
+  "executionAutonomy": {
+    "schema": "gennady.execution-autonomy-evaluation.1",
+    "caseId": "ex4-decision",
+    "quiescence": {
+      "complete": true,
+      "sessions": 1,
+      "reasons": []
+    },
+    "functional": {
+      "pass": true,
+      "exitCode": 0,
+      "detail": "independent public behavior assertions reached their host-owned terminal marker"
+    },
+    "integrity": {
+      "pass": true,
+      "issues": []
+    },
+    "terminal": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": false,
+      "detail": "partial failure/interruption capture; not a completed primary evaluation"
+    },
+    "attempts": [
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "7b40e8f0-a19c-4805-901a-2af36f7526f2",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "ae907d81-116d-4082-a1f4-b814ebbbf5cd",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      },
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "0e0cbd9e-171f-48b9-888c-19dcd2318c83",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "c07c101a-e0e0-4eb4-bfb3-9ffca814bb99",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      }
+    ],
+    "pendingDecisions": [
+      "COR-DL-3"
+    ],
+    "snapshotDigest": "3f8648725013a76e8e3816743d03fc1ac7a981039c5e8a6992c4c5d86871f080"
+  },
+  "scenarioId": "execution-autonomy-ex4-decision-candidate",
+  "date": "2026-10-26",
+  "timestamp": "2026-10-26T18:09:56.820Z",
+  "sha": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+  "source": {
+    "dirty": true,
+    "worktreeSha256": "27edd00e6c3e76aa91b301f317c191f86e4d2d56cb130dbbf177e2fd3ac98737",
+    "scenarioSha256": "b33b9c7b4a0ff576d0514ab6b420ca45b670f255057ab4b5b5068f5896266e21",
+    "configSha256": "b414893352979100f5261ddda2c9b57a813e2cf90b4118535473361ad939d0a5"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "interrupted",
+  "status": "interrupted",
+  "outcome": "interrupted",
+  "actions": 42,
+  "durationMs": 165594,
+  "quality": {
+    "rule": "INTERRUPTED",
+    "pass": false,
+    "detail": "run interrupted before reporting completed"
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": false,
+    "detail": "interrupted path; retained for diagnosis only"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delay/core/core.spec.md",
+    "specs/delay/delay.spec.md"
+  ]
+}

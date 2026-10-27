@@ -1,0 +1,344 @@
+// @file: Six finite Flash microprobes using the existing runtime/evidence adapters and owned cleanup.
+// @spec: AI-SKILLS
+// @consumers: operator task-quality verification; offline probe tests
+
+import { execFileSync, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join, relative, resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
+import { createSddEvalOpenCodeClient } from '../opencode-client.ts';
+import { SddEvalOpenCodeRuntime } from '../opencode-runtime.ts';
+import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
+import { SddEvalSessionDirectoryMap } from '../session-directory.ts';
+import { cleanupTaskQualitySession, withTaskQualityDeadline } from '../task-quality-lifecycle.ts';
+import {
+  TASK_QUALITY_BOUNDARY_PROBES,
+  isTaskQualityBoundaryId,
+  taskQualityBoundaryPolicy,
+  gradeTaskQualityBoundary,
+  gradeTaskQualityBoundaryReads,
+} from '../task-quality-boundary-probes.ts';
+import {
+  TASK_QUALITY_PROBES,
+  gradeTaskQualityAnswer,
+  gradeTaskQualityReads,
+  parseTaskQualityAnswer,
+} from '../task-quality-probes.ts';
+
+const root = resolve(import.meta.dirname, '../../..');
+const model = { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' };
+const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
+const git = (...args: string[]) =>
+  execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+const out = resolve(root, process.argv[2] ?? 'ai/flow-eval/results/2026-10-26-task-quality');
+if (!relative(root, out).startsWith('ai/flow-eval/results/') || existsSync(out)) {
+  throw new Error('[taskQualityLive] Require a new repository-owned results directory');
+}
+const boundaryMode = process.argv[3] === '--boundaries';
+if (boundaryMode && !process.argv[4])
+  throw new Error('[taskQualityLive] Explicit boundary baseline required');
+const owned = realpathSync(mkdtempSync(join(tmpdir(), 'gennady-task-quality-')));
+const privateDir = join(owned, 'private');
+mkdirSync(privateDir, { mode: 0o700 });
+mkdirSync(out, { recursive: true });
+const writeJson = (path: string, value: unknown) =>
+  writeFileSync(path, JSON.stringify(value, null, 2) + '\n');
+const stop = new AbortController();
+const onSignal = () => stop.abort(new Error('[taskQualityLive] Operator interrupted'));
+process.once('SIGINT', onSignal);
+process.once('SIGTERM', onSignal);
+const records: Record<string, unknown>[] = [];
+const baseline = git('rev-parse', boundaryMode ? process.argv[4] : 'origin/main');
+const source = {
+  baseline,
+  head: git('rev-parse', 'HEAD'),
+  dirtyDiffSha256: sha(git('diff', '--binary', 'HEAD')),
+  cleanBefore: git('status', '--porcelain') === '',
+};
+const probes = boundaryMode ? TASK_QUALITY_BOUNDARY_PROBES : TASK_QUALITY_PROBES;
+const inputs = probes.flatMap((probe) =>
+  ['baseline', 'candidate'].map((arm) => {
+    const read = (path: string) =>
+      arm === 'baseline'
+        ? git('show', `${baseline}:${path}`)
+        : readFileSync(join(root, path), 'utf8');
+    const selected = isTaskQualityBoundaryId(probe.id)
+      ? taskQualityBoundaryPolicy(probe.id, read)
+      : {
+          policy: read('policy' in probe ? probe.policy : ''),
+          policyPaths: ['policy' in probe ? probe.policy : ''],
+        };
+    return {
+      id: probe.id,
+      arm,
+      brief: probe.brief,
+      files: probe.files,
+      policyPath: selected.policyPaths[0],
+      policyPaths: selected.policyPaths,
+      policy: selected.policy,
+    };
+  })
+);
+writeJson(join(out, 'protocol.json'), {
+  schema: 'gennady.task-quality-microprobes.1',
+  source,
+  model,
+  attempts: inputs.length,
+  mode: boundaryMode ? 'review-boundaries' : 'task-quality',
+  budgetMsPerAttempt: 120000,
+  order: inputs.map(({ id, arm }) => `${id}:${arm}`),
+  purpose:
+    'Instruction compliance and bounded related-read behavior, not full SDD execution, independent ticket review or statistical non-inferiority.',
+  limitations:
+    'One sample per case/arm; fixed baseline-first order; semantic content requires human review. Deterministic facets alone do not prove a meaningful review. No cost/speed improvement claim.',
+  inputs,
+  harness: [
+    'ai/flow-eval/scripts/task-quality-live.ts',
+    'ai/flow-eval/task-quality-probes.ts',
+    'ai/flow-eval/opencode-runtime.ts',
+    'ai/flow-eval/evidence.ts',
+    'ai/flow-eval/task-quality-lifecycle.ts',
+    ...(boundaryMode ? ['ai/flow-eval/task-quality-boundary-probes.ts'] : []),
+  ].map((path) => ({
+    path,
+    sha256: sha(readFileSync(join(root, path))),
+  })),
+});
+let server: ReturnType<typeof spawn> | undefined;
+let stoppedServer: Promise<void> | undefined;
+let failure: string | undefined;
+try {
+  for (const name of ['LLM_PROXY_BASE_URL', 'LLM_PROXY_API_KEY']) {
+    if (!process.env[name]) throw new Error('[taskQualityLive] Proxy environment missing');
+  }
+  const configured = JSON.parse(
+    readFileSync(join(homedir(), '.config/opencode/opencode.json'), 'utf8')
+  );
+  const provider = configured.provider?.['llm-proxy'];
+  if (!provider?.options?.apiKey || !provider.models?.['deepseek-v4-flash']) {
+    throw new Error('[taskQualityLive] Configured Flash proxy missing');
+  }
+  const endpoint = new URL(provider.options.baseURL);
+  if (
+    endpoint.origin !== 'https://ai-proxy.vk.team' ||
+    endpoint.pathname.replace(/\/$/, '') !== '/v1'
+  ) {
+    throw new Error('[taskQualityLive] Route is outside the approved AI Proxy');
+  }
+  const config = {
+    model: 'llm-proxy/deepseek-v4-flash',
+    small_model: 'llm-proxy/deepseek-v4-flash',
+    enabled_providers: ['llm-proxy'],
+    share: 'disabled',
+    instructions: [],
+    plugin: [],
+    mcp: {},
+    compaction: { auto: false, prune: false },
+    permission: { '*': 'deny', read: 'allow' },
+    provider: {
+      'llm-proxy': {
+        ...provider,
+        models: { 'deepseek-v4-flash': provider.models['deepseek-v4-flash'] },
+      },
+    },
+  };
+  writeFileSync(join(privateDir, 'opencode.json'), JSON.stringify(config), { mode: 0o600 });
+  // A port selected by the OS avoids touching the operator's existing OpenCode server.
+  const net = await import('node:net');
+  const reservation = net.createServer();
+  await new Promise<void>((done, reject) =>
+    reservation.once('error', reject).listen(0, '127.0.0.1', done)
+  );
+  const port = (reservation.address() as import('node:net').AddressInfo).port;
+  await new Promise<void>((done) => reservation.close(() => done()));
+  if (port < 4097) throw new Error('[taskQualityLive] Unsafe local port');
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const env = {
+    ...process.env,
+    OPENCODE_CONFIG: join(privateDir, 'opencode.json'),
+    OPENCODE_DISABLE_SHARE: 'true',
+  };
+  for (const key of ['CONFIG', 'DATA', 'CACHE', 'STATE'])
+    env[`XDG_${key}_HOME`] = join(privateDir, key.toLowerCase());
+  server = spawn(
+    'opencode',
+    ['serve', '--hostname', '127.0.0.1', '--port', String(port), '--log-level', 'WARN'],
+    { cwd: owned, env, stdio: ['ignore', 'pipe', 'pipe'] }
+  );
+  stoppedServer = new Promise((done) => server!.once('close', () => done()));
+  // Drain but never publish private server diagnostics; only bounded public errors enter the report.
+  server.stdout?.resume();
+  server.stderr?.resume();
+  server.once('error', () => stop.abort(new Error('[taskQualityLive] OpenCode could not start')));
+  let ready = false;
+  for (let attempt = 0; attempt < 60 && !ready; attempt++) {
+    stop.signal.throwIfAborted();
+    ready = await fetch(`${baseUrl}/global/health`, { signal: AbortSignal.timeout(1000) })
+      .then((r) => r.ok)
+      .catch(() => false);
+    if (!ready) await delay(500);
+  }
+  if (!ready) throw new Error('[taskQualityLive] Owned server unavailable; no model fallback');
+  console.log(`[taskQualityLive] Private Flash server ready; ${inputs.length} finite probes`);
+  for (const [index, input] of inputs.entries()) {
+    stop.signal.throwIfAborted();
+    const sandbox = mkdtempSync(join(owned, 'case-'));
+    for (const [path, content] of Object.entries(input.files)) {
+      mkdirSync(dirname(join(sandbox, path)), { recursive: true });
+      writeFileSync(join(sandbox, path), content);
+    }
+    const registry = new SddEvalSessionDirectoryMap();
+    const runtime = new SddEvalOpenCodeRuntime({ baseUrl, registry });
+    const evidence = new SddEvalOpenCodeEvidenceSource({ baseUrl, registry });
+    const client = createSddEvalOpenCodeClient({ baseUrl });
+    const started = Date.now();
+    const attemptSignal = AbortSignal.any([stop.signal, AbortSignal.timeout(120000)]);
+    const session = await withTaskQualityDeadline(
+      (signal) =>
+        runtime.createSession({
+          title: `task-quality:${input.id}:${input.arm}`,
+          directory: sandbox,
+          signal,
+        }),
+      15000,
+      attemptSignal
+    );
+    const record: Record<string, unknown> = { id: input.id, arm: input.arm, sessionId: session.id };
+    let evidenceSaved = false;
+    try {
+      const response = await withTaskQualityDeadline(
+        (signal) =>
+          runtime.judge({
+            directory: sandbox,
+            sessionId: session.id,
+            model,
+            prompt: `Task:\n${input.brief}\n\nSupplied policy (apply as instructions):\n${input.policy}`,
+            readOnly: input.id !== 'related-read' && input.id !== 'cli-related-read',
+            signal,
+          }),
+        120000,
+        attemptSignal
+      );
+      record.response = response;
+      try {
+        record.facets = isTaskQualityBoundaryId(input.id)
+          ? gradeTaskQualityBoundary(input.id, parseTaskQualityAnswer(response))
+          : gradeTaskQualityAnswer(input.id, parseTaskQualityAnswer(response));
+      } catch {
+        record.facets = ['invalid-public-json'];
+      }
+    } catch {
+      record.error = 'MODEL_OR_RUNTIME_FAILURE';
+    } finally {
+      record.wallMs = Date.now() - started;
+      try {
+        const trajectory = await withTaskQualityDeadline(
+          () => evidence.readTrajectory(session.id),
+          10000
+        );
+        record.trajectory = trajectory;
+        record.usage = await withTaskQualityDeadline(() => evidence.readUsage(session.id), 10000);
+        const calls = trajectory.entries.flatMap((entry) => entry.toolCalls);
+        record.toolCalls = calls.length;
+        if (!trajectory.coverage.complete) record.captureIssue = 'incomplete-trajectory';
+        if (input.id === 'related-read' || input.id === 'cli-related-read') {
+          const pathIssues =
+            input.id === 'cli-related-read'
+              ? gradeTaskQualityBoundaryReads(calls, trajectory.coverage.complete)
+              : gradeTaskQualityReads(calls, trajectory.coverage.complete);
+          record.pathIssues = pathIssues;
+          const reads = calls.filter((call) => call.tool === 'read' && call.status === 'completed');
+          record.relatedReadObserved = reads.some((call) =>
+            call.inputSummary?.includes(
+              input.id === 'cli-related-read' ? 'cli/helper.ts' : 'src/window.ts'
+            )
+          );
+          record.unexpectedTool = calls.some((call) => call.tool !== 'read');
+          record.unrelatedRead = pathIssues.includes('unrelated-read');
+        }
+      } catch {
+        record.captureIssue = 'public-evidence-capture-failed';
+      }
+      const models = (record.usage as { models?: string[] } | undefined)?.models ?? [];
+      if (models.length !== 1 || models[0] !== 'llm-proxy/deepseek-v4-flash') {
+        record.captureIssue = 'actual-model-identity-missing-or-unexpected';
+      }
+      const unchanged = Object.entries(input.files).every(
+        ([path, content]) => readFileSync(join(sandbox, path), 'utf8') === content
+      );
+      record.seedUnchanged = unchanged;
+      record.sandboxEntries = readdirSync(sandbox);
+      writeJson(join(out, `${index}-${input.id}-${input.arm}.json`), record);
+      records.push(record);
+      evidenceSaved = true;
+      record.sessionDeleted = await cleanupTaskQualitySession(
+        async (signal) => {
+          const deleted = await client.session.delete({
+            path: { id: session.id },
+            query: { directory: sandbox },
+            signal,
+          });
+          return !deleted.error;
+        },
+        () => {
+          if (evidenceSaved) rmSync(sandbox, { recursive: true });
+        }
+      );
+      record.sandboxRemoved = !existsSync(sandbox);
+      writeJson(join(out, `${index}-${input.id}-${input.arm}.json`), record);
+      console.log(
+        JSON.stringify({
+          id: input.id,
+          arm: input.arm,
+          facets: record.facets,
+          error: record.error,
+          wallMs: record.wallMs,
+          sandboxRemoved: record.sandboxRemoved,
+        })
+      );
+    }
+    if (record.error || record.captureIssue || !record.sessionDeleted)
+      throw new Error('[taskQualityLive] Model/evidence failed; stop without fallback');
+  }
+} catch {
+  failure = 'LIVE_SETUP_OR_CAPTURE_FAILED; inspect retained public records; no fallback';
+  process.exitCode = 1;
+} finally {
+  if (server?.pid && server.exitCode === null && server.signalCode === null) {
+    server.kill('SIGTERM');
+    await Promise.race([stoppedServer, delay(3000)]);
+    if (server.exitCode === null && server.signalCode === null) {
+      server.kill('SIGKILL');
+      await Promise.race([stoppedServer, delay(3000)]);
+    }
+  }
+  writeJson(join(out, 'report.json'), {
+    schema: 'gennady.task-quality-report.1',
+    source,
+    planned: inputs.length,
+    recorded: records.length,
+    failure,
+    records: records.map(({ trajectory, response, ...record }) => record),
+    monetaryCost: 'unknown; provider-reported zero is not a bill',
+  });
+  rmSync(owned, { recursive: true });
+  writeJson(join(out, 'cleanup.json'), {
+    ownedRootRemoved: !existsSync(owned),
+    serverStopped: !server || server.exitCode !== null || server.signalCode !== null,
+    dependencyCopies: 0,
+    modelFallback: false,
+  });
+  process.removeListener('SIGINT', onSignal);
+  process.removeListener('SIGTERM', onSignal);
+}

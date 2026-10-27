@@ -1,7 +1,8 @@
 <PhaseExecutionProtocol keywords="sdd, phase, worker, implementation, verification" type="directive" ver="2.3">
   <Mission>
     Implement exactly one approved ticket phase, verify it with declared real commands, and return a
-    typed handoff. The worker never closes the phase or edits the ticket: the thin `sdd-verify` facade
+    typed handoff. The worker never closes the phase or manually edits the ticket: bounded CLI fact
+    writes are allowed by `AX_PHASE_SCOPE_LOCK`. The thin `sdd-verify` facade
     owns its append-only attempt evidence from the universal Verify report, while the orchestrator owns
     the later durable state transition. The worker is disposable;
     its conversation identity is never continuation state.
@@ -20,7 +21,7 @@
     {{> "axiom/coding/ax-file-header-task-traceability"}}
     {{> "axiom/coding/ax-file-header-append-only"}}
   </BeliefState>
-  <Contracts>{{> "contract/process/handoff-format"}}{{> "contract/process/phase-block-format"}}{{> "contract/process/blocker-format"}}{{> "contract/process/return-summary-format"}}</Contracts>
+  <Contracts>{{> "contract/process/handoff-format"}}{{> "contract/process/phase-block-format"}}{{> "contract/process/blocker-format"}}{{> "contract/process/return-summary-format"}}{{> "contract/process/deviation-record-format"}}</Contracts>
   <HaltConditions>
     | ID | Trigger |
     |---|---|
@@ -64,9 +65,12 @@
         bash invocation while implementing stays within it.
         Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per
         intro/decision/tried/discovery/insight, never batched from memory afterward:
-        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; line "&lt;event&gt;" --phase &lt;PhaseID&gt;</ToolCall>
-        Inputs &lt;ticket&gt;, &lt;event&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the exact
-        event line per its token's grammar, this phase's id.
+        Write the event with a file-write tool under `.claude/tmp/`, then:
+        <ToolCall owner="phase-agent" result="terminal">npx gennady sdd-log &lt;ticket&gt; line --content-file &lt;event-path&gt; --phase &lt;PhaseID&gt;</ToolCall>
+        Inputs &lt;ticket&gt;, &lt;event-path&gt;, &lt;PhaseID&gt;: this phase's own ticket path, the exact
+        event payload file per its token's grammar, this phase's id. Non-obvious autonomous choices
+        use `sdd-log decision` per `DEVIATION_RECORD_FORMAT` before applying the choice; Handoff
+        carries the acknowledged canonical ID, never a Handoff-only decision.
         When stuck (`AX_BLOCKER_ESCALATION`'s triggers — a missing rule file, a broken Handoff
         promise, a self-contradicting spec, a Target Files boundary, an unhonorable Runtime
         Backing, a verification command that cannot run), write the reason/axiom/unblock JSON keys
@@ -95,7 +99,7 @@
       <Action>
         Per `AX_HANDOFF_TYPED`, return `HANDOFF_FORMAT` with files changed, requirements demonstrated, commands/results,
         deviations, and the next declared phase. Return the payload in the response only. Do not call
-        `sdd-log`, manually edit the ticket, remove its placeholders, or mark any checkbox. The
+        `sdd-log complete`, verdict or receipt modes, manually edit the ticket, remove its placeholders, or mark any checkbox. The
         orchestrator validates the payload against Git plus the CLI-owned receipt and performs the
         single `sdd-log complete` transition. Do not write JSON checkpoints, worker IDs, session keys,
         or NEXT state.

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "execution-autonomy-ex4-decision-baseline",
+    "fixture": "execution-autonomy",
+    "phase": "execute",
+    "mode": "canonical-execute",
+    "executionAutonomy": {
+      "caseId": "ex4-decision"
+    },
+    "intent": "Execute the approved specs/delay/core/core.task.COR-work.md using the installed SDD execution flow. When both numeric arguments are invalid, choose a stable diagnostic priority (value first or limit first). Integration consumes only RangeError. Record the non-obvious diagnostic choice and evidence before applying it; do not seek a new product approval merely for this internal choice.",
+    "acceptance": "boundedDelay receives value and limit in milliseconds. For finite nonnegative numbers return the smaller number, including zero. Reject a non-number, non-finite number or negative argument with RangeError. Never wait, sleep, perform I/O or mutate input. Error message text and internal implementation are not otherwise prescribed.",
+    "budgetMs": 480000,
+    "trajectoryRules": {
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ]
+    }
+  }
+]

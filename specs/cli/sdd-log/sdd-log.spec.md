@@ -52,7 +52,7 @@ _Обзор пути от контракта к реализации и пров
 
 **Invariants:**
 
-- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker` | `resolved` | `complete` | `authoring-complete` | `audit-receipt` | `review-receipt` (11; см. `MODES`, `sdd-log.cmd.ts:62-74`)
+- Ровно один режим: `round` | `line` | `close` | `phase` | `handoff` | `blocker` | `resolved` | `complete` | `authoring-complete` | `audit-receipt` | `review-receipt` | `deviation-verdict` | `decision` (см. `MODES`)
 - `complete` требует `--phase P<N>`, typed payload с `artifacts` / `decisions` / `open` / `deviations`, receipt этой фазы и ровно один её skeleton в последнем Round
 - `authoring-complete` требует exact `*.spec.md` путь (не Task-ID), чистый `checkSpecAuthoringDraft` и записывает draft/final authoring receipt на саму спеку — `sdd-log` для тикетов и этот режим для спек делят одну команду, не парсер журнала
 - `audit-receipt`/`review-receipt` требуют single-line `<verdict>` (≤120 символов, без плейсхолдера) и группу, где каждый член резолвится и стоит `[x]` DONE; пишут group-completion receipt на владеющую спеку, не в `EXECUTION_LOG` тикета
@@ -145,6 +145,9 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 | `unknownIdError` / `ambiguousIdError`                                                 | Utility      | Билдеры диагностик Task-ID-резолва (`_UNKNOWN_ID`/`_AMBIGUOUS_ID`)                                                 |
 | `PLACEHOLDER_RE`                                                                      | Value Object | `/<[^>\s]+>/` — паттерн плейсхолдера                                                                               |
 | `LogOutcome`                                                                          | Type         | `{ok:true,text}` либо `{ok:false,code,exitCode,message}`                                                           |
+| `ExecutionDecision`                                                                   | Value Object | Bounded id/what/why/where/evidence/alternative/verify input                                                        |
+| `appendExecutionDecision` / `decisionReferenceIssue`                                  | Utility      | Canonical pending append, idempotency and exact Handoff references                                                 |
+| `withSddTicketMutation`                                                               | Utility      | Shared ticket/Verify lease and atomic expected-content writer                                                      |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -256,6 +259,68 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 - Postconditions: only the selected entry's `[verdict: pending-operator]` token becomes the requested terminal token; newline style, adjacent entries, fenced examples and all other sections remain byte-identical. Same-terminal retry is a byte-no-op; any other terminal rewrite is refused.
 - Invariants: no generic document-wide token replacement; duplicate sections/headings, duplicate exact IDs (including an ordinary entry with that ID), duplicate verdict tokens, unknown IDs/verdicts and malformed boundaries fail before the identity-preserving write. Tasks-index headings stop at the next same-or-higher-level heading; arbitrary Markdown files do not gain heading-based write authority.
 
+### 4.7 Canonical Execution Decision
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+- Preconditions: initialized Git repository, exact live ticket; `decision --phase P<N> --payload-file .claude/tmp/<name>.json`;
+  exact JSON keys `id, what, why, where, evidence, alternative, verify`, all non-empty single-line
+  strings without reserved markup. A new record requires one incomplete phase and its block in
+  the current open Round, plus one canonical Decision Log.
+- Postconditions: append one CLI-dated, phase-bound `pending-operator` record to that log before
+  acknowledgement. The identity-checked atomic ticket writer preserves every other byte. Same
+  ID/payload retries reuse date and pending/accepted verdict; rejected choices (`rework`/`rolled-back`)
+  cannot receive an actionable retry acknowledgement. A conflicting payload/phase never overwrites history.
+- Invariants: no verdict field, new targets, product acceptance or external authority is granted.
+  Scratch payload is consumed after success, retained on rejection. Git-backed same-ticket lifecycle
+  commands and Verify serialize read/prepare/write/ack with the same owner lease. The decision write
+  checks expected bytes and atomically replaces the ticket; a stale choice cannot overwrite a newer
+  one. Arbitrary external editors do not participate in that lock and remain outside its guarantee.
+- Completion validates deviation references against exactly one canonical record; missing,
+  ambiguous, invalid or foreign-phase references cannot become DONE. Mechanical ticket checking
+  exposes persisted orphans (warning during work, error at DONE), preserving the owning-scope
+  grandfather boundary. Final Handoff/record existence alone does not prove live before-action order.
+
+The shared functions `appendExecutionDecision` / `decisionReferenceIssue` own this record grammar;
+`withSddTicketMutation` reuses the existing Verify-journal lock and filesystem primitive without
+creating a Verify attempt or receipt. Earlier phase proof excludes later phase canonical decision
+records; own-phase decision content remains identity-bearing. An operator's acceptance alone does
+not stale the proof, but rejection, malformed/ambiguous records and semantic plan edits do.
+
+### 4.8 Bounded Technical Replan (EA-2)
+
+- **Runtime Backing:** `real-runtime`
+- **Verification Levels:** `unit`, `integration`
+- Preconditions: orchestrator has stopped the previous worker; Git worktree, incomplete phase in an
+  open Round; exact `replan --phase P<N> --payload-file .claude/tmp/<name>.json`. JSON keys are exactly
+  `id, base, reason, evidence, addTargets, dependencies`: stable `RP-...` ID, exact observed ticket
+  `REPLAN_BASE`, reason/evidence, additive exact implementation paths and complete local dependency list.
+  Extended form adds BOTH `insertPhase` and `moveTests`: insertion keys exactly
+  `id, objective, targets, dependencies`; moveTests is an array of existing exact covered test paths
+  (possibly empty). Insert one provider immediately before the selected incomplete phase, inheriting
+  its kind/rules/exit/inputs/spec references. Original prerequisites remain prerequisites of the provider;
+  selected dependencies include the provider. Existing phase IDs/history cannot be reused.
+- Postconditions: preserve existing targets except explicitly transferred test ownership, kinds, rules, Meta/product/BDD/Verification/Test
+  Coverage declarations and old attempts. Record the readable delta with payload/result identities
+  in Execution Log in the same expected-content atomic replacement. Success consumes scratch;
+  rejection changes no ticket bytes and retains scratch. Same payload/ID with unchanged resulting
+  plan is byte-idempotent, not fresh worker write authority.
+- Invariants: no cycles, detached explicit inputs, root/path escape, symlinks, protected/evidence
+  paths, no unrelated directory expansion, no unordered shared writers. Ordered shared writers are
+  allowed. Corpus claim-check/write is serialized among replan calls; the ticket lease also excludes
+  Verify/lifecycle writes. External editors and unrelated authoring do not participate in that lease.
+- Context: ACK requires fresh `sdd-task --phase` before work beyond the previous boundary. Rules,
+  selector and Verify are re-resolved by the existing dispatch/facade, not copied by another runner.
+  Plan changes stale old proof; completed prerequisites may be reverified without rewriting DONE
+  or erasing attempts. Declaration preservation is not mechanical proof of preserved business meaning;
+  independent scenario oracle/review remains required.
+- Current scope: additive targets within an existing non-root implementation boundary, local edges,
+  one inherited provider phase and transfer of covered test targets from selected phase to provider.
+  Preserve coverage mappings byte-for-byte; resolve basename references uniquely and retain at least
+  one mapped source-phase test target. Refuse ambiguous ownership, deletion/readiness-provider splitting,
+  duplicate/moved/missing live provider log blocks on replay, arbitrary phase removal/rename, changed
+  test scenario/level, or weaker kind/checks. This is not arbitrary Markdown or an approval bypass.
+
 </details>
 <!--/SECTION:MODULE_CONTRACTS-->
 
@@ -263,22 +328,23 @@ $ npx gennady sdd-log ticket.md line 'ver `<cmd>` → pass'
 
 ## 5. Public Options & Policies
 
-| Argument                                                            | Type   | Description                                                          |
-| ------------------------------------------------------------------- | ------ | -------------------------------------------------------------------- |
-| `<ticket>`                                                          | string | Путь к тикету (или Task-ID — резолвится через `resolveTicketArg`)    |
-| `round "<reason>"`                                                  | mode   | Открыть Round (авто-номер, дата)                                     |
-| `line "<content>" [--phase P<N>]`                                   | mode   | Дописать timestamped event-строку (в конец журнала либо в блок фазы) |
-| `close`                                                             | mode   | Атомарно закрыть текущий Round без дублирования skeleton             |
-| `phase <P-ID> ["— re-run: <reason>"]`                               | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT`       |
-| `handoff "<payload>" [--phase P<N>]`                                | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`              |
-| `blocker "<reason>" --phase P<N> --axiom <AX> --unblock "<action>"` | mode   | Human-compatible inline form; фаза обязательна                       |
-| `resolved "<content>" --phase P<N>`                                 | mode   | Дописать timestamped строку закрытия блокера в блок фазы             |
-| `complete "<typed payload>" --phase P<N>`                           | mode   | Одной записью закрыть проверенную фазу                               |
-| `authoring-complete <spec.md>`                                      | mode   | Заменить draft-маркер спеки на final authoring receipt (см. 4.4)     |
-| `audit-receipt "<verdict>"` / `review-receipt "<verdict>"`          | mode   | Записать group-completion receipt на владеющую спеку (см. 4.5)       |
-| `deviation-verdict <D-id> <accepted\|rework\|rolled-back>`          | mode   | Exact ticket/module/tasks-index DL-запись (см. 4.6)                  |
-| `--content-file .claude/tmp/<name>`                                 | flag   | One-shot literal payload for round/line/phase/handoff/resolved       |
-| `--payload-file .claude/tmp/<name>.json`                            | flag   | Strict `{reason,axiom,unblock}` blocker payload                      |
+| Argument                                                            | Type   | Description                                                                                            |
+| ------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| `<ticket>`                                                          | string | Путь к тикету (или Task-ID — резолвится через `resolveTicketArg`)                                      |
+| `round "<reason>"`                                                  | mode   | Открыть Round (авто-номер, дата)                                                                       |
+| `line "<content>" [--phase P<N>]`                                   | mode   | Дописать timestamped event-строку (в конец журнала либо в блок фазы)                                   |
+| `close`                                                             | mode   | Атомарно закрыть текущий Round без дублирования skeleton                                               |
+| `phase <P-ID> ["— re-run: <reason>"]`                               | mode   | Дописать заголовок фазы `#### <P-ID>` per `PHASE_BLOCK_FORMAT`                                         |
+| `handoff "<payload>" [--phase P<N>]`                                | mode   | Дописать `**Handoff →** <payload>` per `HANDOFF_FORMAT`                                                |
+| `blocker "<reason>" --phase P<N> --axiom <AX> --unblock "<action>"` | mode   | Human-compatible inline form; фаза обязательна                                                         |
+| `resolved "<content>" --phase P<N>`                                 | mode   | Дописать timestamped строку закрытия блокера в блок фазы                                               |
+| `complete "<typed payload>" --phase P<N>`                           | mode   | Одной записью закрыть проверенную фазу                                                                 |
+| `authoring-complete <spec.md>`                                      | mode   | Заменить draft-маркер спеки на final authoring receipt (см. 4.4)                                       |
+| `audit-receipt "<verdict>"` / `review-receipt "<verdict>"`          | mode   | Записать group-completion receipt на владеющую спеку (см. 4.5)                                         |
+| `deviation-verdict <D-id> <accepted\|rework\|rolled-back>`          | mode   | Exact ticket/module/tasks-index DL-запись (см. 4.6)                                                    |
+| `replan --phase P<N> --payload-file <path>`                         | mode   | Orchestrator-owned bounded targets/phases/test ownership/local dependencies, then fresh dispatch (4.8) |
+| `--content-file .claude/tmp/<name>`                                 | flag   | One-shot literal payload for round/line/phase/handoff/resolved                                         |
+| `--payload-file .claude/tmp/<name>.json`                            | flag   | Strict `{reason,axiom,unblock}` blocker payload                                                        |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 

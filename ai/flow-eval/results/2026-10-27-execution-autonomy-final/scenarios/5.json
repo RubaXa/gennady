@@ -1,0 +1,25 @@
+[
+  {
+    "id": "execution-autonomy-holdout6-related-baseline",
+    "fixture": "execution-autonomy",
+    "phase": "execute",
+    "mode": "canonical-execute",
+    "executionAutonomy": {
+      "caseId": "holdout6-related"
+    },
+    "intent": "Execute the approved specs/queue/core/core.task.COR-work.md using the installed SDD execution flow. A declared consumer in src/caller.ts documents the observable usage. Read the exact related contract when needed; multiple pure implementations are valid. Preserve the consumer.",
+    "acceptance": "selectBatch receives an array of strings and a nonnegative integer capacity. Return a fresh array containing the first capacity entries, preserving order and duplicates and leaving the input unchanged. Reject a non-array, any non-string entry, or a capacity that is negative, fractional or non-finite with TypeError. A zero capacity returns an empty array.",
+    "completion": {
+      "artifact": "src/queue.ts",
+      "ticket": "specs/queue/core/core.task.COR-work.md",
+      "spec": "specs/queue/core/core.spec.md"
+    },
+    "budgetMs": 480000,
+    "trajectoryRules": {
+      "forbiddenCommands": [
+        "--no-verify",
+        "sdd-migrate"
+      ]
+    }
+  }
+]

@@ -19,6 +19,9 @@ import { tmpdir } from 'node:os';
 import os from 'node:os';
 import { join } from 'node:path';
 import { it } from 'node:test';
+import { appendExecutionDecision } from '../../deviation.ts';
+import { technicalReplanBase } from '../../technical-replan.ts';
+import { runCli } from '../../../../cli/__tests__/tool-behavior/run-cli.ts';
 import type {
   VerifyRunReport,
   VerifyStepResult,
@@ -31,7 +34,124 @@ import {
   inspectSddPhaseAttempt,
   runWithSddAttemptJournal,
   validateCurrentSddPhaseAttempt,
+  withSddTicketMutation,
 } from '../sdd-attempt-journal.ts';
+
+it('atomically installs a prepared canonical edit and rejects a stale expected ticket', async () => {
+  const f = fixture();
+  try {
+    const original = readFileSync(f.ticket, 'utf8');
+    const next = original + '\nDecision example\n';
+    await withSddTicketMutation(f.root, f.ticket, (replace) => replace(original, next));
+    assert.equal(readFileSync(f.ticket, 'utf8'), next);
+    await assert.rejects(
+      withSddTicketMutation(f.root, f.ticket, (replace) => replace(original, 'stale replacement')),
+      /ticket changed since/
+    );
+    assert.equal(readFileSync(f.ticket, 'utf8'), next);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('rejects a stale facade preflight under the lease before starting any gate or modifying the newer plan', async () => {
+  const f = fixture();
+  try {
+    const preflight = readFileSync(f.ticket, 'utf8');
+    const changed = preflight.replace('  - source.ts', '  - replacement.ts');
+    writeFileSync(f.ticket, changed);
+    let calls = 0;
+    await assert.rejects(
+      runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: 'P1',
+        expectedTicketContent: preflight,
+        run: async () => {
+          calls++;
+          return {
+            exitCode: 0,
+            stdout: '',
+            stderr: '',
+            report: report(f.root, [result('pass', true)]),
+          };
+        },
+      }),
+      /SDD_VERIFY_CONTEXT_STALE/
+    );
+    assert.equal(calls, 0, 'a stale plan must not execute a single old gate');
+    assert.equal(
+      readFileSync(f.ticket, 'utf8'),
+      changed,
+      'no obsolete attempt is persisted over the new plan'
+    );
+    assert.equal(allEvidence(f.ticket).length, 0);
+    // The failed precondition releases its lease instead of blocking a fresh context forever.
+    await withSddTicketMutation(f.root, f.ticket, () => null);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('preserves a concurrent task edit but never stamps old gates as a current PASS', async () => {
+  const f = fixture();
+  try {
+    const outcome = await runWithSddAttemptJournal({
+      root: f.root,
+      ticketPath: f.ticket,
+      sddPhase: 'P1',
+      run: async () => {
+        const oldReport = report(f.root, [result('pass', true)]);
+        writeFileSync(
+          f.ticket,
+          readFileSync(f.ticket, 'utf8').replace('  - source.ts', '  - replacement.ts')
+        );
+        return { exitCode: 0, stdout: '', stderr: '', report: oldReport };
+      },
+    });
+    assert.equal(outcome.exitCode, 1);
+    assert.match(outcome.stderr, /task changed during verification/);
+    assert.match(readFileSync(f.ticket, 'utf8'), /  - replacement\.ts/);
+    const attempts = allEvidence(f.ticket);
+    assert.equal(attempts.length, 1);
+    assert.equal(attempts[0]!.state, 'VIOLATION');
+    assert.equal(attempts[0]!.trust.source, 'ticket-context-drift');
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, false);
+    await withSddTicketMutation(f.root, f.ticket, () => null);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('keeps the original ticket after a pre-rename fault and preserves a competing edit', async () => {
+  const f = fixture();
+  try {
+    const original = readFileSync(f.ticket, 'utf8');
+    let temporary = '';
+    await assert.rejects(
+      withSddTicketMutation(f.root, f.ticket, (replace) => replace(original, 'candidate'), {
+        beforeRename: (_ticket, temp) => {
+          temporary = temp;
+          throw new Error('injected pre-rename failure');
+        },
+      }),
+      /injected pre-rename failure/
+    );
+    assert.equal(readFileSync(f.ticket, 'utf8'), original);
+    assert.equal(existsSync(temporary), false, 'owned temporary must be cleaned on failure');
+    await assert.rejects(
+      withSddTicketMutation(f.root, f.ticket, (replace) => replace(original, 'candidate'), {
+        beforeRename: () => {
+          writeFileSync(f.ticket, 'competing edit');
+        },
+      }),
+      /ticket bytes changed before atomic rename/
+    );
+    assert.equal(readFileSync(f.ticket, 'utf8'), 'competing edit');
+  } finally {
+    f.cleanup();
+  }
+});
 
 function git(root: string, ...args: string[]): string {
   return execFileSync('git', ['-C', root, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], {
@@ -91,6 +211,373 @@ function lockOwnerPath(root: string, ticket: string): string {
   const id = createHash('sha256').update('specs/task.md').digest('hex');
   return join(root, '.git', 'gennady', 'sdd-attempts', id, 'owner.json');
 }
+
+it('replan stales old prerequisite proof and can recover by re-verifying DONE without erasing any attempt', async () => {
+  const f = fixture();
+  try {
+    mkdirSync(join(f.root, 'src'));
+    writeFileSync(join(f.root, 'src/source.ts'), 'export const value = 1;\n');
+    const initial = readFileSync(f.ticket, 'utf8')
+      .replace(
+        '# Task',
+        '# Task\n<!--SECTION:META-->\n- **Task-ID:** DEM-work\n- **Status:** [~] IN_PROGRESS\n<!--/SECTION:META-->'
+      )
+      .replace('| P1 | unit | — | [ ] |', '| P1 | unit | — | [ ] |\n| P2 | code | P1 | [ ] |')
+      .replace('  - source.ts', '  - src/source.ts')
+      .replace(
+        '<!--SECTION:EXECUTION_LOG-->',
+        '<!--SECTION:PHASE_P2-->\n- **Target Files:**\n  - src/later.ts\n- **Inputs:** P1 handoff\n<!--/SECTION:PHASE_P2-->\n<!--SECTION:EXECUTION_LOG-->\n### Round 1 — active\n#### P1\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]\n#### P2\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]'
+      );
+    writeFileSync(f.ticket, initial);
+    const verify = (phase: string) =>
+      runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: phase,
+        run: async () => ({
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          report: report(f.root, [result('pass', true)]),
+        }),
+      });
+    await verify('P1');
+    const done = runCli(
+      [
+        'sdd-log',
+        'specs/task.md',
+        'complete',
+        'artifacts: [src/source.ts]; decisions: []; open: []; deviations: []',
+        '--phase',
+        'P1',
+      ],
+      f.root
+    );
+    assert.equal(done.exitCode, 0, done.stdout + done.stderr);
+    const before = readFileSync(f.ticket, 'utf8');
+    const oldAttempt = allEvidence(f.ticket)[0];
+    mkdirSync(join(f.root, '.claude/tmp'), { recursive: true });
+    writeFileSync(
+      join(f.root, '.claude/tmp/replan.json'),
+      JSON.stringify({
+        id: 'RP-helper',
+        base: technicalReplanBase(before),
+        reason: 'Extract a helper',
+        evidence: 'The downstream caller needs normalization',
+        addTargets: ['src/helper.ts'],
+        dependencies: ['P1'],
+      })
+    );
+    const replan = runCli(
+      [
+        'sdd-log',
+        'specs/task.md',
+        'replan',
+        '--phase',
+        'P2',
+        '--payload-file',
+        '.claude/tmp/replan.json',
+      ],
+      f.root
+    );
+    assert.equal(replan.exitCode, 0, replan.stdout + replan.stderr);
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, false);
+    assert.deepEqual(
+      allEvidence(f.ticket)[0],
+      oldAttempt,
+      'stale history remains byte-semantic intact'
+    );
+    await verify('P1');
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, true);
+    assert.match(readFileSync(f.ticket, 'utf8'), /\| P1 \| unit \| — \| \[x\] \|/);
+    assert.equal(allEvidence(f.ticket).length, 2);
+    writeFileSync(join(f.root, 'src/helper.ts'), 'export const helper = 1;\n');
+    writeFileSync(join(f.root, 'src/later.ts'), 'export const later = 2;\n');
+    assert.equal(
+      validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok,
+      true,
+      'downstream owned creation does not deadlock the prefix'
+    );
+    await verify('P2');
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P2').ok, true);
+    assert.equal(allEvidence(f.ticket).length, 3);
+    assert.deepEqual(allEvidence(f.ticket)[0], oldAttempt);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('keeps P1 proof current after a downstream decision and operator verdict, but not semantic decision or plan edits', async () => {
+  const f = fixture();
+  try {
+    const decision = {
+      id: 'DEM-DL-1',
+      what: 'Bound retry',
+      why: 'Preserve the caller contract',
+      where: 'source.ts',
+      evidence: 'Caller needs bounded recovery',
+      alternative: 'Unbounded retries violate behavior',
+      verify: 'Run phase verification',
+    };
+    const initial =
+      readFileSync(f.ticket, 'utf8')
+        .replace(
+          '# Task',
+          '# Task\n<!--SECTION:META-->\n- **Task-ID:** DEM-work\n- **Status:** [~] IN_PROGRESS\n<!--/SECTION:META-->'
+        )
+        .replace('| P1 | unit | — | [ ] |', '| P1 | unit | — | [ ] |\n| P2 | code | P1 | [ ] |')
+        .replace(
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--SECTION:PHASE_P2-->\n### P2\n- **Target Files:**\n  - later.ts\n<!--/SECTION:PHASE_P2-->\n<!--SECTION:EXECUTION_LOG-->\n### Round 1 — active\n#### P1\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]\n#### P2\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]'
+        ) + '\n<!--SECTION:DECISION_LOG-->\n<!--/SECTION:DECISION_LOG-->\n';
+    const prepared = appendExecutionDecision(initial, decision, 'P1', '2026-10-26');
+    assert.equal(prepared.ok, true);
+    if (!prepared.ok) return;
+    writeFileSync(f.ticket, prepared.content);
+    await runWithSddAttemptJournal({
+      root: f.root,
+      ticketPath: f.ticket,
+      sddPhase: 'P1',
+      run: async () => ({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        report: report(f.root, [result('pass', true)]),
+      }),
+    });
+    const complete = runCli(
+      [
+        'sdd-log',
+        'specs/task.md',
+        'complete',
+        'artifacts: [source.ts]; decisions: [bounded retry]; open: []; deviations: [DEM-DL-1]',
+        '--phase',
+        'P1',
+      ],
+      f.root
+    );
+    assert.equal(complete.exitCode, 0, complete.stdout + complete.stderr);
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, true);
+    mkdirSync(join(f.root, '.claude/tmp'), { recursive: true });
+    writeFileSync(
+      join(f.root, '.claude/tmp/decision.json'),
+      JSON.stringify({ ...decision, id: 'DEM-DL-2', what: 'Implement the downstream phase' })
+    );
+    const downstream = runCli(
+      [
+        'sdd-log',
+        'specs/task.md',
+        'decision',
+        '--phase',
+        'P2',
+        '--payload-file',
+        '.claude/tmp/decision.json',
+      ],
+      f.root
+    );
+    assert.equal(downstream.exitCode, 0, downstream.stdout + downstream.stderr);
+    assert.deepEqual(
+      validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1'),
+      { ok: true },
+      'a downstream choice must not stale P1'
+    );
+    writeFileSync(join(f.root, 'later.ts'), 'export const later = 2;\n');
+    await runWithSddAttemptJournal({
+      root: f.root,
+      ticketPath: f.ticket,
+      sddPhase: 'P2',
+      run: async () => ({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        report: report(f.root, [result('pass', true)]),
+      }),
+    });
+    const completeP2 = runCli(
+      [
+        'sdd-log',
+        'specs/task.md',
+        'complete',
+        'artifacts: [later.ts]; decisions: [downstream]; open: []; deviations: [DEM-DL-2]',
+        '--phase',
+        'P2',
+      ],
+      f.root
+    );
+    assert.equal(completeP2.exitCode, 0, completeP2.stdout + completeP2.stderr);
+    assert.deepEqual(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P2'), { ok: true });
+    const verdict = runCli(
+      ['sdd-log', 'specs/task.md', 'deviation-verdict', 'DEM-DL-1', 'accepted'],
+      f.root
+    );
+    assert.equal(verdict.exitCode, 0, verdict.stdout + verdict.stderr);
+    assert.deepEqual(
+      validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1'),
+      { ok: true },
+      'review metadata must not stale code proof'
+    );
+    assert.deepEqual(
+      validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P2'),
+      { ok: true },
+      'end-of-batch upstream acceptance must not stale completed downstream proof'
+    );
+    const stable = readFileSync(f.ticket, 'utf8');
+    for (const tampered of [
+      stable.replace('what: Bound retry;', 'what: Unbounded retry;'),
+      stable.replace('[verdict: accepted]', '[verdict: rework]'),
+      stable.replace('[verdict: accepted]', '[verdict: rolled-back]'),
+      stable.replace('  - source.ts', '  - other.ts'),
+      stable.replace('DEM-DL-2 ', 'DEM-DL-2 malformed '),
+      stable.replace(
+        '<!--/SECTION:DECISION_LOG-->',
+        'DEM-DL-2 ordinary duplicate\n<!--/SECTION:DECISION_LOG-->'
+      ),
+      stable.replace(
+        '<!--/SECTION:DECISION_LOG-->',
+        'DEM-DL-9 global product change\n<!--/SECTION:DECISION_LOG-->'
+      ),
+    ]) {
+      writeFileSync(f.ticket, tampered);
+      assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, false);
+      assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P2').ok, false);
+      writeFileSync(f.ticket, stable);
+    }
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('serializes a competing mutation after final validation and shares the Verify lock', async () => {
+  const f = fixture();
+  try {
+    const original = readFileSync(f.ticket, 'utf8');
+    let overlap: Promise<unknown> | undefined;
+    let secondEntered = false;
+    await withSddTicketMutation(
+      f.root,
+      f.ticket,
+      (replace) => replace(original, original + '\nA\n'),
+      {
+        afterValidation: () => {
+          overlap = assert.rejects(
+            withSddTicketMutation(f.root, f.ticket, (replace) => {
+              secondEntered = true;
+              replace(original, 'B');
+            }),
+            /SDD_VERIFY_ATTEMPT_ACTIVE/
+          );
+        },
+      }
+    );
+    await overlap;
+    assert.equal(secondEntered, false);
+    assert.equal(readFileSync(f.ticket, 'utf8'), original + '\nA\n');
+    await assert.rejects(
+      withSddTicketMutation(f.root, f.ticket, (replace) => replace(original, 'stale B')),
+      /changed since/
+    );
+    writeFileSync(f.ticket, original);
+    await runWithSddAttemptJournal({
+      root: f.root,
+      ticketPath: f.ticket,
+      sddPhase: 'P1',
+      run: async () => {
+        await assert.rejects(
+          withSddTicketMutation(f.root, f.ticket, () => {
+            throw new Error('must not enter');
+          }),
+          /SDD_VERIFY_ATTEMPT_ACTIVE/
+        );
+        return {
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          report: report(f.root, [result('pass', true)]),
+        };
+      },
+    });
+    assert.deepEqual(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1'), { ok: true });
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('shares the same ticket lease from a nested cwd and allows nested decision writes after release', async () => {
+  const f = fixture();
+  try {
+    const initial =
+      readFileSync(f.ticket, 'utf8').replace(
+        '<!--SECTION:EXECUTION_LOG-->',
+        '<!--SECTION:EXECUTION_LOG-->\n### Round 1 — active\n#### P1\n- [ ] `<ts>` DONE\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]'
+      ) + '\n<!--SECTION:DECISION_LOG-->\n<!--/SECTION:DECISION_LOG-->\n';
+    writeFileSync(f.ticket, initial);
+    const nested = join(f.root, 'specs');
+    await withSddTicketMutation(f.root, f.ticket, async () => {
+      await assert.rejects(
+        withSddTicketMutation(nested, f.ticket, () => assert.fail('second lease')),
+        /SDD_VERIFY_ATTEMPT_ACTIVE/
+      );
+      const blocked = runCli(['sdd-log', 'task.md', 'line', 'bounded progress'], nested);
+      assert.equal(blocked.exitCode, 1, blocked.stdout + blocked.stderr);
+      assert.match(blocked.stdout, /SDD_VERIFY_ATTEMPT_ACTIVE/);
+      assert.equal(readFileSync(f.ticket, 'utf8'), initial);
+    });
+    mkdirSync(join(nested, '.claude/tmp'), { recursive: true });
+    writeFileSync(
+      join(nested, '.claude/tmp/decision.json'),
+      JSON.stringify({
+        id: 'DEM-DL-1',
+        what: 'Bound retry',
+        why: 'Preserve caller',
+        where: 'source.ts',
+        evidence: 'Caller expectation',
+        alternative: 'Unbounded retry breaks behavior',
+        verify: 'Phase verification',
+      })
+    );
+    const recorded = runCli(
+      [
+        'sdd-log',
+        'task.md',
+        'decision',
+        '--phase',
+        'P1',
+        '--payload-file',
+        '.claude/tmp/decision.json',
+      ],
+      nested
+    );
+    assert.equal(recorded.exitCode, 0, recorded.stdout + recorded.stderr);
+    assert.match(readFileSync(f.ticket, 'utf8'), /DEM-DL-1.*phase: P1/);
+    assert.equal(existsSync(join(nested, '.claude/tmp/decision.json')), false);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('renews the mutation lease timestamp without changing its owner identity', async () => {
+  const f = fixture();
+  try {
+    await withSddTicketMutation(
+      f.root,
+      f.ticket,
+      async () => {
+        const before = JSON.parse(readFileSync(lockOwnerPath(f.root, f.ticket), 'utf8'));
+        await new Promise((resolve) => setTimeout(resolve, 40));
+        const after = JSON.parse(readFileSync(lockOwnerPath(f.root, f.ticket), 'utf8'));
+        assert.ok(
+          Date.parse(after.heartbeatAt) > Date.parse(before.heartbeatAt),
+          'heartbeat must renew lease time'
+        );
+        assert.equal(after.token, before.token);
+        assert.equal(after.runId, before.runId);
+      },
+      { heartbeatMs: 5 }
+    );
+  } finally {
+    f.cleanup();
+  }
+});
 
 function result(status: VerifyStepResult['status'], withStats: boolean): VerifyStepResult {
   return {

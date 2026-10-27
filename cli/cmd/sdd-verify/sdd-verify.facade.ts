@@ -84,6 +84,7 @@ export async function runSddVerifyFacade(
       root: canonicalRoot,
       ticketPath: resolved.path,
       sddPhase: phase.id,
+      expectedTicketContent: resolved.content,
       run: async () => {
         const paths = validateTicketReviewPaths(canonicalRoot, resolved.content, {
           phaseIds: [phase.id],

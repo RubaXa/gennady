@@ -10,6 +10,7 @@ import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 import { MARKED_DONE_LINE_RE } from '../../../shared/sdd/execution-log.ts';
 import { extractSection, findSectionBounds } from '../../../shared/sdd/section.ts';
 import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
+import { decisionReferenceIssue } from '../../../shared/sdd/deviation.ts';
 import { unreadableTicketHint } from '../../../shared/sdd/ticket-resolve.ts';
 import {
   matchPhaseOverviewHeader,
@@ -415,6 +416,11 @@ export function completePhase(
 ):
   | { ok: true; content: string; doneLine: string; handoffLine: string }
   | { ok: false; detail: string } {
+  const handoff = COMPLETE_HANDOFF_PAYLOAD_RE.exec(payload);
+  if (!handoff)
+    return { ok: false, detail: 'phase completion needs the four canonical Handoff fields' };
+  const referenceIssue = decisionReferenceIssue(content, handoff[4] ?? '', phaseId);
+  if (referenceIssue) return { ok: false, detail: referenceIssue };
   const receipts = parsePhaseReceipts(content);
   if (!receipts.ok) return { ok: false, detail: receipts.issue };
   if (!receipts.receipts.some((receipt) => receipt.phase === phaseId) && !currentAttemptProven) {
@@ -807,9 +813,14 @@ export function badInvocation(detail: string): LogOutcome {
       '         authoring-complete   # exact scope/module *.spec.md path |',
       '         audit-receipt <verdict> | review-receipt <verdict>   # group-completion receipt on the owning spec',
       '         deviation-verdict <D-id> <accepted|rework|rolled-back>   # exact ticket/module/tasks-index Decision Log entry',
+      '         decision --phase P<N> --payload-file .claude/tmp/<safe-name>.json   # canonical pending decision, before use',
+      '         replan --phase P<N> --payload-file .claude/tmp/<safe-name>.json     # orchestrator: bounded technical delta, then redispatch',
       '  agent free text: replace the quoted content with --content-file .claude/tmp/<safe-name>;',
       '  blocker uses --payload-file .claude/tmp/<safe-name>.json with reason/axiom/unblock keys.',
-      '  --phase P<N> is only valid on line | handoff | blocker | resolved | complete.',
+      '  decision JSON keys: id, what, why, where, evidence, alternative, verify; no verdict field.',
+      '  replan JSON keys: id, base, reason, evidence, addTargets, dependencies; base is the exact REPLAN_BASE from sdd-task.',
+      '  Optional pair: insertPhase {id, objective, targets, dependencies} and moveTests []; inherits selected kind/rules/exit/inputs, preserves scenario/check obligations.',
+      '  --phase P<N> is only valid on line | handoff | blocker | resolved | complete | decision | replan.',
       '  For append modes it inserts at the end',
       "  of that phase's own block instead of the end of EXECUTION_LOG (phases execute sequentially).",
       '  content must carry no <…> placeholder.',

@@ -1,0 +1,21 @@
+{
+  "modelCalls": 0,
+  "canaryOnly": true,
+  "node": "v22.19.0",
+  "hostHomePolicy": "deny read/write; exact toolchain/package roots read-only",
+  "deleteHook": "{\"secretPresent\":true,\"configPresent\":true}",
+  "undefinedHook": "{\"secretPresent\":false,\"configPresent\":true}",
+  "wrappedEnv": "{\"secretPresent\":false,\"configPresent\":false}",
+  "privateRead": "CONFIG_READ_DENIED",
+  "processArgs": "PROCESS_ARGS_DENIED",
+  "basic": "WORKSPACE_SHELL_OK",
+  "symlinkRead": "ESCAPE_DENIED",
+  "workspaceWrite": "WORKSPACE_WRITE_OK",
+  "npm": "10.9.3",
+  "typecheck": "TYPECHECK_OK",
+  "installedCli": "[sdd-task] ERR_CLI_SDD_TASK_TICKET_CORPUS\n  object: sdd-task specs/delay/core/core.task.COR-work.md --phase P1\n  reason: root: /private/var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-shell-canary-dBC0We/workspace/sdd-flow-eval-MJ0MjH | problem: ticket corpus contains an unsafe symlink: escape-canary | fix the named ticket file/directory (or remove the unsafe symlink), then rerun the same command; no partial execution map or GATE_QUEUE was emitted.\n  action: repair the named ticket or phase evidence, then repeat the same state query\n  example: npx gennady sdd-task specs/demo/core/core.task.DEM-work.md --phase P1",
+  "outsideWrite": "opencode: line 4: /private/var/folders/5w/ps846s155p5_1r7sh3zg34lm0000gq/T/gennady-shell-canary-dBC0We/outside-write: Operation not permitted\nOUTSIDE_WRITE_DENIED",
+  "dependencyWrite": "opencode: line 4: shared-dependency-canary/denied-write: Operation not permitted\nDEPENDENCY_WRITE_DENIED",
+  "network": "NETWORK_DENIED",
+  "safeCleanup": true
+}

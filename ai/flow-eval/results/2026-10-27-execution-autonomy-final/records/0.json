@@ -1,0 +1,9 @@
+{
+  "caseId": "ex4-decision",
+  "arm": "baseline",
+  "originalIndex": 7,
+  "exitCode": 0,
+  "status": "recorded",
+  "completedAt": "2026-10-27T11:24:29.428Z",
+  "remainingSandboxes": []
+}

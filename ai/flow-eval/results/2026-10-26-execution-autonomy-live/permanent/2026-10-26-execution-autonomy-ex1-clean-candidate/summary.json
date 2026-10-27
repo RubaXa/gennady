@@ -1,0 +1,50 @@
+{
+  "executionFailure": {
+    "detail": "flow-eval interrupted by SIGTERM"
+  },
+  "scenarioId": "execution-autonomy-ex1-clean-candidate",
+  "date": "2026-10-26",
+  "timestamp": "2026-10-26T17:17:27.329Z",
+  "sha": "9d4057dff34261d5aae05ac14ed049fac123d3a8",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "4aad0b4409090266c9aeeadce300d2fce2c0ce862aaa76031d971c9ab6efac3f",
+    "configSha256": "aa7b327e69c9ed1435bf389c1cb93ba6a1de04d9c93147537596b3a5992a5137"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "interrupted",
+  "status": "interrupted",
+  "outcome": "interrupted",
+  "actions": 74,
+  "durationMs": 241100,
+  "quality": {
+    "rule": "INTERRUPTED",
+    "pass": false,
+    "detail": "run interrupted before reporting completed"
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": false,
+    "detail": "interrupted path; retained for diagnosis only"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delay/core/core.spec.md",
+    "specs/delay/delay.spec.md"
+  ]
+}

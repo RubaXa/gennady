@@ -1,0 +1,169 @@
+{
+  "executionAutonomy": {
+    "schema": "gennady.execution-autonomy-evaluation.1",
+    "caseId": "holdout6-related",
+    "quiescence": {
+      "complete": true,
+      "sessions": 5,
+      "reasons": []
+    },
+    "functional": {
+      "pass": true,
+      "exitCode": 0,
+      "detail": "independent public behavior assertions reached their host-owned terminal marker"
+    },
+    "integrity": {
+      "pass": true,
+      "issues": []
+    },
+    "terminal": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": false,
+      "detail": "checker exited nonzero: 3 sdd-check error(s); artifact built but no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+    },
+    "attempts": [
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "aa64ca91-d298-4157-b1b8-65d05bce0ae4",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "952bc06a-0570-41cc-9b95-1257e74d658b",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      },
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "33bf95d8-88b3-4f9f-a0c8-f85527f897c5",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "c186d3c9-2f9f-41ac-82fb-bcc5d0a22322",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      },
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "effd313c-8e9a-4c00-b202-751c59e1985f",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "c29f59ad-8f68-487e-92ab-4274acdd07c8",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      }
+    ],
+    "pendingDecisions": [],
+    "snapshotDigest": "eea78a9286afa850d99d3a4993cd4a296e1d5066d44c3ae5d41bb901ce5cb06a"
+  },
+  "scenarioId": "execution-autonomy-holdout6-related-baseline",
+  "date": "2026-10-27",
+  "timestamp": "2026-10-27T11:54:37.876Z",
+  "sha": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+  "source": {
+    "dirty": true,
+    "worktreeSha256": "d496d62343cc0d707474258a1fd5a6863ec68f02ff20c424725eb66653d0d747",
+    "scenarioSha256": "53e4454302d1486bf32a22188dadab487130cd83a03a480be9b08ad67bea6f4a",
+    "configSha256": "e6bca8b2d85586477d68d4b290746155143105c74ec980bc947f5d81d994ef32"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "budget-exhausted",
+  "status": "unknown",
+  "outcome": "budget-exhausted",
+  "budgetExhausted": {
+    "kind": "wall-clock",
+    "detail": "wall-clock budget 480000ms exceeded",
+    "pendingOperatorCount": 0
+  },
+  "actions": 139,
+  "usage": {
+    "messages": 86,
+    "input": 253166,
+    "output": 17743,
+    "reasoning": 29325,
+    "cacheRead": 4859520,
+    "cacheWrite": 0,
+    "total": 300234,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 5,
+    "wallClockMs": 485560
+  },
+  "quality": {
+    "rule": "R-COMPLETE",
+    "pass": false,
+    "detail": "artifact built but no group code-review receipt on spec (no receipt recorded)"
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": true,
+    "detail": "139 tools; complete capture"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/queue/core/core.spec.md",
+    "specs/queue/queue.spec.md"
+  ]
+}

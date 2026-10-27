@@ -1,0 +1,51 @@
+{
+  "schema": "gennady.execution-test-infra-followup.1",
+  "command": [
+    "npm",
+    "test"
+  ],
+  "alias": "node --import tsx scripts/test-topology.ts deterministic",
+  "modelCalls": 0,
+  "baseCommit": "60fbef817a66bc6aa9b6896daf96382b7d7ab5b0",
+  "dirtySourceOverlay": true,
+  "sourceHashes": [
+    {
+      "path": "scripts/test-topology.ts",
+      "sha256": "d342c5c46e81c96999d7f9cfa5073fe7827feb0b2cc8f712eef104632cedd717"
+    },
+    {
+      "path": "shared/common/__tests__/test-topology.test.ts",
+      "sha256": "127f1b7c4deef3f0cffe83c73e92b75ce68ed92767e8fcf6849922a65b188ed9"
+    }
+  ],
+  "sourceUnchanged": true,
+  "node": "v22.19.0",
+  "startedAt": "2026-10-27T14:20:13.890Z",
+  "finishedAt": "2026-10-27T14:24:41.677Z",
+  "durationMs": 267782,
+  "exitCode": 0,
+  "signal": null,
+  "spawnErrorCode": null,
+  "status": "pass",
+  "normalizedTotals": {
+    "executed": 5108,
+    "passed": 5100,
+    "failed": 0,
+    "skipped": 8
+  },
+  "partitionAnnouncements": [
+    "[test-topology] deterministic: 445 files",
+    "[test-topology] local: 119 files (local; concurrency=4)",
+    "[test-topology] rest: 326 files (contract+external+unit; concurrency=10)"
+  ],
+  "rawOutput": {
+    "archived": false,
+    "bytes": 647870,
+    "sha256": "aff776cff82b8e2224bed9e263f9cbb17be294a5749553881b437947716710d8",
+    "reason": "Compact local-check record, not a full raw-log archive or a model trajectory."
+  },
+  "limitations": [
+    "One deterministic invocation; nonzero exits are partial fail-fast corpora, not unit+coverage summed or LLM evidence.",
+    "Before final commit: exact source hashes bind the two-file overlay; ordinary commit/push hooks are reported separately."
+  ]
+}

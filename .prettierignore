@@ -139,3 +139,23 @@ ai/flow-eval/results/2026-10-26-task-quality-final/*.json
 ai/flow-eval/results/2026-10-26-task-quality-final/executed-task-quality-live.ts.txt
 ai/flow-eval/results/2026-10-26-task-quality-boundaries/*.json
 ai/flow-eval/results/2026-10-26-task-quality-boundaries/executed-task-quality-live.ts.txt
+
+# EA-3: immutable generated protocols/primary captures (including failed documents) retain
+# exact run bytes. Authored EA3-PARTIAL.md and the maintained plan are still format-checked.
+ai/flow-eval/results/2026-10-26-execution-autonomy-preflight/**/*.json
+ai/flow-eval/results/2026-10-26-execution-autonomy-live/**/*.json
+ai/flow-eval/results/2026-10-26-execution-autonomy-live/permanent/**
+ai/flow-eval/results/2026-10-26-execution-autonomy-live/transient/**
+ai/flow-eval/results/2026-10-26-execution-autonomy-continued/**/*.json
+ai/flow-eval/results/2026-10-26-execution-autonomy-continued/permanent/**
+ai/flow-eval/results/2026-10-26-execution-autonomy-continued/transient/**
+
+# Final finite EA-3 stage: machine evidence stays byte-preserved; maintained notes/reports checked.
+ai/flow-eval/results/2026-10-27-execution-autonomy-routing-qualification.json
+ai/flow-eval/results/2026-10-27-execution-autonomy-final/**/*.json
+ai/flow-eval/results/2026-10-27-execution-autonomy-final/permanent/**
+ai/flow-eval/results/2026-10-27-execution-autonomy-final/transient/**
+
+# Exact machine-generated post-review run records; keep the original result bytes.
+ai/flow-eval/docs/EXECUTION-TEST-INFRA-RESULT.json
+ai/flow-eval/docs/EXECUTION-TEST-INFRA-RESULT-2.json

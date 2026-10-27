@@ -49,9 +49,11 @@ console.info('  verify            Run one unified Verify phase; text or stable J
 console.info(
   '  rules             Read-only embedded rule inventory, detail, and scoped resolution'
 );
-console.info('  sdd-log           Append an event or atomically complete a verified ticket phase');
+console.info(
+  '  sdd-log           Phase events/decisions, bounded technical replan, verified completion'
+);
 console.info('  sdd-sync          Propagate ticket status into task trackers');
-console.info('  sdd-task          Show the execution map or one ticket phase context');
+console.info('  sdd-task          Show the phase-aware execution map or one ticket phase context');
 console.info('  sdd-migrate       Run deterministic SDD v1-to-v2 migration steps');
 console.info(
   '  agents-rules      Print usage instructions for AI agents (navigate public entities, DBC contracts, file headers)'

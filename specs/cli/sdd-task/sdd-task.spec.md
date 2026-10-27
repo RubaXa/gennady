@@ -32,7 +32,7 @@ _Обзор пути от контракта к реализации и пров
 
 ## 1. Module Vision
 
-Планировочная поверхность тикета для оркестратора `execute`. `sdd-task <ticket-path|Task-ID>` извлекает ТОЛЬКО планировочные секции (Meta + Phases Overview + тело каждой фазы + Verification), машинно поверхностит `[BLOCKERS]` и `[DEVIATIONS]` (`pending-operator` из ticket-local Decision Log) и собирает per-phase read-manifest (`AX_READ_PER_MANIFEST`): что фаза читает (rules / specs / ticket-секции / target-файлы / gates) и **что НЕ читает**. В `--phase` этот manifest становится lifecycle-aware: существующие targets остаются в `READ files`, а отсутствующие exact repo-local targets отделяются в `CREATE files`. Аргумент — путь ИЛИ голый Task-ID (резолвится сканом по Meta, `AX_TASK_RESOLUTION`, D-TK006). Оркестратор читает этот вывод вместо всего тикета и не лезет в тела фаз, BDD, спеки, код. **Без Task-ID** `sdd-task` отдаёт **карту исполнения** — детерминированный pickable-набор + заблокированные + строка `root:`. При `EXECUTION_READY=yes` pickable совпадает с graph-ready (`pickableTasks`); при `no` он fail-closed сужается до dependency-ready exact active owners из единого `GATE_QUEUE`, поэтому unrelated graph-ready ticket не может стать `next` (D-TK019). Карта печатает все `GATE_QUEUE_DIAG`, включая отсутствующий/неоднозначный owner и неполный Bootstrap contract. Парсеры тикета вынесены в `shared/sdd/ticket.ts` (переиспользует `sdd-check`).
+Планировочная поверхность тикета для оркестратора `execute`. `sdd-task <ticket-path|Task-ID>` извлекает ТОЛЬКО планировочные секции (Meta + Phases Overview + тело каждой фазы + Verification), машинно поверхностит `[BLOCKERS]` и `[DEVIATIONS]` (`pending-operator` из ticket-local Decision Log) и собирает per-phase read-manifest (`AX_READ_PER_MANIFEST`): что фаза читает (rules / specs / ticket-секции / target-файлы / gates) и **что НЕ читает**. В `--phase` этот manifest становится lifecycle-aware: существующие targets остаются в `READ files`, а отсутствующие exact repo-local targets отделяются в `CREATE files`. Аргумент — путь ИЛИ голый Task-ID (резолвится сканом по Meta, `AX_TASK_RESOLUTION`, D-TK006). Оркестратор читает этот вывод вместо всего тикета и не лезет в тела фаз, BDD, спеки, код. **Без Task-ID** `sdd-task` отдаёт **карту исполнения** — детерминированный pickable-набор + заблокированные + строка `root:`. При `EXECUTION_READY=yes` pickable совпадает с graph-ready (`pickableTasks`); при `no` он включает dependency-ready exact active owners из `GATE_QUEUE` и graph-ready тикеты с project-authored selector именно первой незавершённой фазы (D-TK019/D-TK023). Последние явно помечаются `PROJECT_SELECTOR_QUEUE`: это отдельная маршрутизация, не Verify PASS и не разрешение пропустить выбранные фазовые проверки. Карта печатает все `GATE_QUEUE_DIAG`, включая отсутствующий/неоднозначный owner и неполный Bootstrap contract. Парсеры тикета вынесены в `shared/sdd/ticket.ts` (переиспользует `sdd-check`).
 
 Target dispatch дополнительно строит open-vocabulary `PhaseFacts`, до agent work разрешает и
 замораживает exact `RuleSnapshot` (prompt bodies + digest), затем печатает одну существующую SDD
@@ -68,7 +68,15 @@ fallback к declared files; любой другой git/corpus/path failure бл
 
 **Invariants:**
 
+- Active blocker guidance classifies the cause before escalation: recoverable technical failures
+  permit investigation and repair within the current targets/authority, followed by recorded
+  resolution and a fresh check. Product-goal conflict or unavailable external authority requires
+  a concrete operator decision. A hint never expands write scope, invents a retry budget or permits
+  dependent execution while its blocker remains active.
 - Тело каждой фазы извлекается отдельной секцией `PHASE_P<n>` — не общим чтением
+- Ticket/phase output includes `REPLAN_BASE: sha256:...` of exact observed ticket bytes for an
+  orchestrator's bounded `sdd-log replan` request. This is a stale-read precondition, not approval,
+  a hidden session checkpoint or permission to reuse an old phase dispatch after a plan change.
 - exit `0` поверхность · `1` файл · `2` не тикет (нет Meta) · `4` нет пути
 <!--/SECTION:MODULE_VISION-->
 
@@ -179,14 +187,14 @@ Gates (all):
 | `<ticket-path\|Task-ID> --phase P<n>` | string | Компактный контекст ОДНОЙ фазы вместо полной поверхности — см. 5.1                    |
 | _(без аргумента)_                     | —      | **Карта исполнения**: pickable-набор + заблокированные (детерминированно из трекеров) |
 
-`<ticket-path|Task-ID>` → поверхность одного тикета. Путь читается как раньше; голый Task-ID (грамматика `shared/sdd/task-id.ts`) резолвится сканом дерева по Meta Task-ID (`AX_TASK_RESOLUTION`, D-TK006) — ровно один матч печатает строку резолва `[sdd-task] <id> → <относительный путь>` и продолжает как обычно; несколько матчей → exit 2 со списком кандидатов+путей; ноль → exit 2 со списком известных Task-ID (или «очередь пуста»). Без аргумента → карта исполнения. Graph-ready вычисляет `pickableTasks` (D-TK004), а runtime pickable дополнительно фильтруется тем же readiness/owner snapshot: `EXECUTION_READY=yes` оставляет graph-ready; `no` оставляет только dependency-ready IDs из accepted `GATE_QUEUE` и помечает unrelated ticket `EXECUTION_READY=no`. Каждая строка несёт относительный путь и общую `root:`. Карта печатает каждую advisory или blocking `GATE_QUEUE_DIAG`; zero/ambiguous/mismatched owner оставляет runtime pickable пустым.
+`<ticket-path|Task-ID>` → поверхность одного тикета. Путь читается как раньше; голый Task-ID (грамматика `shared/sdd/task-id.ts`) резолвится сканом дерева по Meta Task-ID (`AX_TASK_RESOLUTION`, D-TK006) — ровно один матч печатает строку резолва `[sdd-task] <id> → <относительный путь>` и продолжает как обычно; несколько матчей → exit 2 со списком кандидатов+путей; ноль → exit 2 со списком известных Task-ID (или «очередь пуста»). Без аргумента → карта исполнения. Graph-ready вычисляет `pickableTasks` (D-TK004), а runtime pickable дополнительно фильтруется тем же readiness/owner snapshot: `EXECUTION_READY=yes` оставляет graph-ready; `no` оставляет dependency-ready IDs из accepted `GATE_QUEUE` и graph-ready тикеты, чья первая незавершённая фаза разрешает project-authored selector (D-TK023). Более поздний custom selector не обходит незавершённую builtin-фазу. Каждая строка несёт относительный путь и общую `root:`. Карта печатает каждую advisory или blocking `GATE_QUEUE_DIAG`; zero/ambiguous/mismatched owner не даёт bootstrap exemption и не блокирует независимый корректно разрешённый project selector. Exact phase dispatch и Verify по-прежнему проверяют зависимости, paths, rules и выбранные гейты; глобальный флаг не подменяется успехом.
 
 Для D-TK021 обычная незакрытая зависимость печатается своим Task-ID; завершённая V2 cross-spec dependency без текущего audit receipt печатается как `<Task-ID> (group audit receipt)`. V1 и same-spec dependencies остаются status-only.
 
 ### 5.1 `--phase P<n>` — компактный контекст одной фазы
 
 Печатает только то, что фаза читает: `objective`, composed Verify `selector` и provenance, ровно одну
-canonical invocation `gennady verify --phase=<selector> --task=<ticket> --sdd-phase=<P>`, `exit`,
+canonical invocation `gennady sdd-verify --task=<ticket> --phase=<P>`, `exit`,
 read-манифест (rules · specs · ticket-секции · target-файлы), и, если это не первая фаза,
 `[HANDOFF]` — дословные `**Handoff →**`-строки из `EXECUTION_LOG` предыдущих завершённых (`[x]`)
 фаз, с префиксом `Handoff ←P<k>:`. `READ specs` берёт фазовое поле `Spec Refs` (см.
@@ -196,7 +204,7 @@ provide zero-YAML mappings and `verify.sdd.mapping` overrides them with provenan
 Target/Deleted scope decides which detected presets participate; unresolved kind or undeclared
 selector fails before emitting a worker command. The agent never selects individual gates. Output
 renders every invocation token with deterministic POSIX-shell quoting, so a valid ticket path with
-spaces or metacharacters remains one exact `--task` argument. It ends with `next:` directing the
+spaces or metacharacters remains one exact `--task` argument. It includes `next:` directing the
 worker to execute exactly that invocation. Неизвестный `--phase` → exit 2 с перечнем известных фаз.
 
 <!--/SECTION:PUBLIC_OPTIONS-->
@@ -330,7 +338,7 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 
 ### D-TK019 — Runtime readiness filters the execution map itself
 
-- **Status:** active · **Extends:** D-TK010/D-TK016/D-TK017
+- **Status:** active for builtin selectors; project-selector boundary clarified by D-TK023 · **Extends:** D-TK010/D-TK016/D-TK017
 - **Why:** printing `EXECUTION_READY=no` beside an unfiltered graph-pickable list still let `next` choose an unrelated product/config ticket before its missing gate owner. The map now derives readiness and `GateQueueResult` once, then exposes only dependency-ready accepted queue owners while runtime is red. `TODO` and already-open `IN_PROGRESS` owners are actionable; DONE, ambiguous, artifact-mismatched, or absent owners yield an empty queue plus diagnostics. State, task phase dispatch and verify already consume the same canonical `missingGates` and structural owner contract.
 - **Safety:** readiness projection includes declared-prefix failures (`format:fix`/`lint:fix`) as their exact canonical IDs and de-duplicates aliases, so a present but broad-root repair script cannot collapse to `GATE_QUEUE=none`.
 
@@ -338,6 +346,26 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 
 - **Status:** active · **Extends:** D-TK007/D-TK019
 - **Why:** the map printed “unblock blocked” before scaffold, contradicting its own `infra-spec-no-tickets` diagnostic and `sdd-state`. The final hint now gives that typed diagnostic priority and routes to `/sdd-scaffold`; a genuinely non-empty blocked set without the diagnostic keeps the dependency repair hint, while no active TODO and no scaffold diagnostic routes back to `sdd-state`.
+
+### D-TK023 — Project selectors use the same readiness boundary in map and explicit phase
+
+- **Status:** implemented; discovered during EA-3 qualification, independent review pending.
+- **Cause:** on both frozen runtimes a prepared project-authored phase was dispatchable by exact
+  ticket/phase, while the execution map hid that same graph-ready ticket behind unrelated builtin
+  npm-script readiness. Help incorrectly said only GATE_QUEUE could run at `EXECUTION_READY=no`.
+- **Boundary:** when global builtin readiness is red, graph-ready tickets whose **first unfinished**
+  phase resolves a project-authored selector also enter pickable. The exact phase kind and its
+  target/deleted-file scope use the same selector resolver as explicit dispatch. Never skip an
+  unfinished builtin phase to expose a later custom one. Missing/malformed/unresolved config or
+  selector stays blocked; graph dependencies, ownership and cross-spec audit evidence are unchanged.
+- **No weaker checks:** `EXECUTION_READY` retains its builtin meaning and is not rewritten to yes.
+  `PROJECT_SELECTOR_QUEUE` explains the independent configured-phase route, not a Verify PASS.
+  Dispatch still validates paths/rules/dependency receipts and Verify still runs the actual selected
+  gates. Zero-YAML builtin readiness and exact GATE_QUEUE ownership remain unchanged. Merely having
+  a YAML file never grants an exemption. This reconciles the existing selector contract; it does not
+  add authority, an empty success gate or permission to alter accepted obligations.
+- **Evidence:** causal RED map/explicit-phase disagreement plus GREEN routing and negative controls.
+  Previous live records remain unmodified; no behavioral improvement is inferred from unit tests.
 
 ### D-TK021 — V2 cross-spec DONE dependency requires a current group audit receipt
 

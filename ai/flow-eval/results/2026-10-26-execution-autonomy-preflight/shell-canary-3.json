@@ -1,0 +1,7 @@
+{
+  "modelCalls": 0,
+  "canaryOnly": true,
+  "node": "v22.19.0",
+  "hostHomePolicy": "deny read/write; exact toolchain/package roots read-only",
+  "safeCleanup": true
+}

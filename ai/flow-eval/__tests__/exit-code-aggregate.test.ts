@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { computeAggregateExitCode } from '../cli.ts';
+import { computeAggregateExitCode, formatSddEvalGatePreview } from '../cli.ts';
 import {
   countPendingOperatorDeviations,
   formatBudgetExhausted,
@@ -76,6 +76,11 @@ describe('E-00: the batch exit code is a mechanical fold over durable outcomes, 
       quality: { rule: 'R-COMPLETE', pass: false, detail: 'unfinished at budget boundary' },
     });
     assert.strictEqual(computeAggregateExitCode([exhausted]), 0);
+    assert.equal(
+      formatSddEvalGatePreview(exhausted),
+      'batch-exit-policy: excluded (budget-exhausted); task completion NOT PROVEN'
+    );
+    assert.doesNotMatch(formatSddEvalGatePreview(exhausted), /gate: pass/);
     assert.deepEqual(exhausted.budgetExhausted, {
       kind: 'observation',
       detail: 'maximum observation count 3 reached',
@@ -86,6 +91,15 @@ describe('E-00: the batch exit code is a mechanical fold over durable outcomes, 
       formatBudgetExhausted(exhausted.budgetExhausted),
       'observation — maximum observation count 3 reached; pending-operator=1'
     );
+  });
+
+  it('ordinary console outcomes still follow the existing batch fold', () => {
+    assert.equal(formatSddEvalGatePreview(artifact({})), 'gate: pass');
+    assert.equal(
+      formatSddEvalGatePreview(artifact({ quality: { rule: 'R1', pass: false, detail: 'red' } })),
+      'gate: FAIL'
+    );
+    assert.equal(formatSddEvalGatePreview(artifact({ verdict: 'worker-error' })), 'gate: FAIL');
   });
 
   it('E-17 counts unresolved pending records at the budget boundary without fabricating proof', async () => {

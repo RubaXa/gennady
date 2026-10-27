@@ -1,0 +1,46 @@
+[
+  {
+    "scenarioId": "execution-autonomy-holdout6-related-baseline",
+    "verdict": "budget-exhausted",
+    "status": "unknown",
+    "outcome": "budget-exhausted",
+    "budgetExhausted": {
+      "kind": "wall-clock",
+      "detail": "wall-clock budget 480000ms exceeded",
+      "pendingOperatorCount": 0
+    },
+    "usage": {
+      "messages": 86,
+      "input": 253166,
+      "output": 17743,
+      "reasoning": 29325,
+      "cacheRead": 4859520,
+      "cacheWrite": 0,
+      "total": 300234,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 5,
+      "wallClockMs": 485560
+    },
+    "quality": {
+      "rule": "R-COMPLETE",
+      "pass": false,
+      "detail": "artifact built but no group code-review receipt on spec (no receipt recorded)"
+    },
+    "trajectory": {
+      "rule": "TRAJECTORY",
+      "pass": true,
+      "detail": "139 tools; complete capture"
+    },
+    "specFiles": [
+      "specs/queue/core/core.spec.md",
+      "specs/queue/queue.spec.md"
+    ],
+    "hasJudge": false,
+    "hasTrajectory": true,
+    "hasExecutionEvidence": true
+  }
+]

@@ -67,10 +67,18 @@ import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { SDD_EVAL_PHASES, SDD_EVAL_MODES } from './types.ts';
 import type { SddEvalConfig, SddEvalScenario } from './types.ts';
 import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
+import { EXECUTION_AUTONOMY_CASE_IDS } from './execution-autonomy-cases.ts';
+import {
+  gradeExecutionAutonomyPath,
+  executionSnapshotUnchanged,
+  capturePartialExecutionAutonomy,
+} from './execution-autonomy-evaluation.ts';
 import { proveRepoFile } from '../../shared/common/repo-file-identity.ts';
 
 /** @purpose Parsed command-line options; all model values retain provider/model configurability. */
 type SddEvalCliOptions = {
+  /** @purpose In-process lifecycle handoff: retain exact owned sandbox when writers may still be active. */
+  onUnsafeWriter?: (scenarioId: string, detail: string) => void;
   scenarioFile: string;
   directory: string;
   gennadyRoot?: string;
@@ -210,6 +218,21 @@ export async function loadScenarios(path: string): Promise<SddEvalScenario[]> {
   const scales = new Set(['product', 'module', 'function', 'fix']);
   for (const item of value as Array<Record<string, unknown>>) {
     const id = String(item.id ?? '<unknown>');
+    if (item.executionAutonomy !== undefined || item.fixture === 'execution-autonomy') {
+      const execution = item.executionAutonomy as Record<string, unknown> | undefined;
+      if (
+        item.phase !== 'execute' ||
+        item.mode !== 'canonical-execute' ||
+        item.fixture !== 'execution-autonomy' ||
+        item.directory !== undefined ||
+        !execution ||
+        typeof execution !== 'object' ||
+        Array.isArray(execution) ||
+        Object.keys(execution).join(',') !== 'caseId' ||
+        !(EXECUTION_AUTONOMY_CASE_IDS as readonly unknown[]).includes(execution.caseId)
+      )
+        throw new Error(`scenario ${id} has invalid execution-autonomy fixture`);
+    }
     if (
       item.phase === 'artifact-authoring' ||
       item.authoringBenchmark !== undefined ||
@@ -334,6 +357,16 @@ export function computeAggregateExitCode(artifacts: readonly SddEvalRunArtifact[
   return failed ? 1 : 0;
 }
 
+/** @purpose Distinguish an excluded budget outcome from proof of task completion.
+ * @param artifact Exact persisted primary outcome; never change its grade.
+ * @returns Console-only explanation, retaining the historical batch exit policy.
+ */
+export function formatSddEvalGatePreview(artifact: SddEvalRunArtifact): string {
+  return artifact.outcome === 'budget-exhausted'
+    ? 'batch-exit-policy: excluded (budget-exhausted); task completion NOT PROVEN'
+    : `gate: ${computeAggregateExitCode([artifact]) === 1 ? 'FAIL' : 'pass'}`;
+}
+
 /** @purpose Execute the CLI; results are human-readable lines and no trace/JSON file is written. */
 export async function main(argv = process.argv.slice(2)): Promise<void> {
   const options = parseSddEvalCliArgs(argv);
@@ -393,7 +426,12 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       if (scenario.phase === 'migration')
         migrationBaselines.set(scenario.id, await captureBaseline(scenario.directory));
     }
-    await runAndReport(options, isolated, artifacts, migrationBaselines);
+    await runAndReport(
+      { ...options, onUnsafeWriter: (id, detail) => lifecycle.retainForWriterRecovery(id, detail) },
+      isolated,
+      artifacts,
+      migrationBaselines
+    );
     reason = signalBoundary.received() ?? 'success';
   } catch (cause) {
     failure = cause;
@@ -505,6 +543,22 @@ export async function runAndReportBody(
         );
     }
     const scenario = byId.get(result.worker.scenarioId);
+    if (scenario?.executionAutonomy && !result.worker.execution) {
+      const quiescence = result.worker.sessionId
+        ? await evidence.readQuiescence(result.worker.sessionId).catch(() => ({
+            complete: false,
+            sessions: 0,
+            reasons: ['partial capture writer state unavailable'],
+          }))
+        : { complete: false, sessions: 0, reasons: ['missing worker session identity'] };
+      result.worker.execution = await capturePartialExecutionAutonomy(
+        scenario.directory,
+        scenario.executionAutonomy.caseId,
+        quiescence
+      );
+    }
+    if (scenario?.executionAutonomy && result.worker.execution?.quiescence.complete !== true)
+      options.onUnsafeWriter?.(scenario.id, 'execution SDK writer quiescence is unproven');
     // Objective quality rule R1 (structural integrity) for phases that PRODUCE specs — the mechanical
     // signal alongside the stochastic judge (docs/EVAL-SPEC.md). The pure golden-graded work carries
     // no specs and is graded by its own golden set, not sdd-check: `task`, and the brownfield delta
@@ -519,7 +573,13 @@ export async function runAndReportBody(
       scenario.phase !== 'task' &&
       (scenario.phase !== 'brownfield' || brownfieldSpecMode);
     let quality: SddEvalRunArtifact['quality'];
-    if (!interrupted && scenario?.authoringBenchmark && scenario.directory) {
+    if (!interrupted && scenario?.executionAutonomy) {
+      quality = result.worker.execution?.terminal ?? {
+        rule: 'EXECUTION-TERMINAL',
+        pass: false,
+        detail: 'host execution evidence unavailable',
+      };
+    } else if (!interrupted && scenario?.authoringBenchmark && scenario.directory) {
       quality = checkAuthoringBenchmark(scenario.directory, scenario.authoringBenchmark.caseId);
       console.log(
         `  quality ${quality.rule}: ${quality.pass ? 'pass' : 'FAIL'} — ${quality.detail}`
@@ -576,6 +636,7 @@ export async function runAndReportBody(
     let trajectoryFile: string | undefined;
     let trajectoryGrade: SddEvalRunArtifact['trajectory'];
     let trajectoryToolCount: number | undefined;
+    let unsafeExecutionWriter = false;
     // Final checkpoints prove terminal state, not intermediate transitions in the agent's path.
     // Capture descendants separately from the deliberately short observer tail and persist before cleanup.
     interrupted ||= options.config.signal?.aborted === true;
@@ -630,6 +691,17 @@ export async function runAndReportBody(
         const traj: Trajectory = buildTrajectory(result.worker.scenarioId, tools, checkpoints);
         traj.coverage = capture.coverage;
         trajectoryGrade = gradeTrajectory(traj, scenario?.trajectoryRules);
+        if (scenario?.executionAutonomy && result.worker.execution) {
+          const executionPath = gradeExecutionAutonomyPath(traj, result.worker.execution);
+          if (!executionPath.pass) trajectoryGrade = executionPath;
+          if (executionPath.detail.includes('unsupported background process')) {
+            unsafeExecutionWriter = true;
+            options.onUnsafeWriter?.(
+              scenario.id,
+              'observed background process; OS writer quiescence is unproven'
+            );
+          }
+        }
         if (scenario?.authoringBenchmark) {
           const definition = getAuthoringCase(scenario.authoringBenchmark.caseId);
           const measured = measureAuthoringPath(
@@ -683,6 +755,15 @@ export async function runAndReportBody(
     }
     // Collect this scenario's durable outcome so it survives the sandbox teardown below.
     if (directory) {
+      let executionFile: string | undefined;
+      if (result.worker.execution) {
+        executionFile = join(directory, `.sdd-eval-execution.${result.worker.scenarioId}.json`);
+        await writeFile(
+          executionFile,
+          JSON.stringify(result.worker.execution, null, 2) + '\n',
+          'utf8'
+        );
+      }
       const budgetExhausted = result.worker.budgetExhausted
         ? {
             ...result.worker.budgetExhausted,
@@ -702,6 +783,7 @@ export async function runAndReportBody(
         quality,
         trajectory: trajectoryGrade,
         trajectoryFile,
+        ...(executionFile ? { executionFile } : {}),
         specFiles: producesSpecs ? await collectSpecFiles(directory) : [],
         judgeFile,
         directory,
@@ -710,7 +792,7 @@ export async function runAndReportBody(
       // Per-scenario gate preview (E-00): the same fold the final batch exit code uses, applied to
       // this one scenario, so a mechanical FAIL is visible immediately next to its line instead of
       // only in the trailing "batch outcome" summary once every scenario has finished.
-      console.log(`  gate: ${computeAggregateExitCode([artifact]) === 1 ? 'FAIL' : 'pass'}`);
+      console.log(`  ${formatSddEvalGatePreview(artifact)}`);
 
       // GAP-E-6/D-62: the permanent record — written even when --keep is set or the run is later
       // interrupted, unlike persistRunArtifacts below (which only runs once the whole batch finishes).
@@ -725,6 +807,16 @@ export async function runAndReportBody(
             ? verdict
             : 'unknown';
       const durableSummary: SddEvalDurableSummary = {
+        ...(scenario?.executionAutonomy && result.worker.error
+          ? {
+              executionFailure: {
+                detail: safeVerifyText(result.worker.error, directory).slice(0, 8192),
+              },
+            }
+          : {}),
+        ...(result.worker.execution
+          ? { executionAutonomy: { ...result.worker.execution, evidence: undefined } }
+          : {}),
         scenarioId: result.worker.scenarioId,
         date: finishedAt.toISOString().slice(0, 10),
         timestamp: finishedAt.toISOString(),
@@ -792,6 +884,7 @@ export async function runAndReportBody(
       const resultDir = await persistDurableResult(resultsRoot, durableSummary, {
         judgeFile,
         trajectoryFile,
+        ...(executionFile ? { executionFile } : {}),
         specs: { root: directory, files: artifact.specFiles },
         ...(benchmarkTargetProof?.ok
           ? { artifacts: { root: directory, files: [benchmarkTarget!] } }
@@ -799,7 +892,7 @@ export async function runAndReportBody(
       });
       if (resultDir) console.log(`  results → ${resultDir}`);
       if (
-        benchmark &&
+        (benchmark || scenario?.executionAutonomy) &&
         resultDir &&
         trajectoryFile &&
         result.worker.status === 'completed' &&
@@ -815,6 +908,7 @@ export async function runAndReportBody(
             quality,
             semanticVerdict: verdict,
             signal: options.config.signal,
+            ...(scenario?.executionAutonomy ? { domain: 'execution' as const } : {}),
           });
           await writeFile(
             join(resultDir, 'reflection.json'),
@@ -834,6 +928,43 @@ export async function runAndReportBody(
           console.log('  reflection: capture-error (primary record unchanged)');
         }
       }
+      if (scenario?.executionAutonomy) {
+        const sessions = [
+          ...new Set(
+            [result.worker.sessionId, result.judge?.sessionId].filter((id): id is string =>
+              Boolean(id)
+            )
+          ),
+        ];
+        const checks = [];
+        for (const id of sessions) {
+          const observed = await evidence.readQuiescence(id).catch(() => ({
+            complete: false,
+            sessions: 0,
+            reasons: ['post-interview/judge quiescence unavailable'],
+          }));
+          checks.push({ sessionId: id, ...observed });
+        }
+        const snapshotUnchanged = Boolean(
+          result.worker.execution && executionSnapshotUnchanged(directory, result.worker.execution)
+        );
+        if (!sessions.length || checks.some((check) => !check.complete) || !snapshotUnchanged) {
+          unsafeExecutionWriter = true;
+          options.onUnsafeWriter?.(
+            scenario.id,
+            'post-interview/judge quiescence or primary snapshot stability is unproven'
+          );
+        }
+        if (resultDir)
+          await writeFile(
+            join(resultDir, 'postflight.json'),
+            JSON.stringify(
+              { checks, snapshotUnchanged, safeToCleanup: !unsafeExecutionWriter },
+              null,
+              2
+            ) + '\n'
+          );
+      }
       // GAP-E-6/D-62 (в): a stub entry per run, append-only — see the template documented at the
       // top of EXPERIMENTS-LOG.md. Best-effort: a missing/moved log file must never fail a real run.
       if (resultDir) {
@@ -849,6 +980,13 @@ export async function runAndReportBody(
           }
         );
       }
+      if (
+        scenario?.executionAutonomy &&
+        (unsafeExecutionWriter || result.worker.execution?.quiescence.complete !== true)
+      )
+        throw new Error(
+          'Execution campaign stopped: writer quiescence is unproven; owned sandbox retained for recovery'
+        );
     }
   });
 }

@@ -1,0 +1,344 @@
+{
+  "modelCalls": 0,
+  "controls": [
+    {
+      "arm": "baseline",
+      "caseId": "ex1-clean",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "baseline",
+      "caseId": "ex2-config",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 19,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "baseline",
+      "caseId": "ex3-helper",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/number.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "baseline",
+      "caseId": "ex4-decision",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 11,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "baseline",
+      "caseId": "ex5-repeat",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "baseline",
+      "caseId": "ex7-conflict",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 5,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "baseline",
+      "caseId": "holdout6-related",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/queue.ts",
+        "src/queue.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "baseline",
+      "caseId": "holdout8-authority",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/queue.ts",
+        "src/queue.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 5,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "ex1-clean",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "ex2-config",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 19,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "ex3-helper",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/number.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "ex4-decision",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 11,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "ex5-repeat",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "ex7-conflict",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/delay.ts",
+        "src/delay.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 5,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "holdout6-related",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/queue.ts",
+        "src/queue.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 18,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    },
+    {
+      "arm": "candidate",
+      "caseId": "holdout8-authority",
+      "normalPass": true,
+      "brokenRejected": true,
+      "brokenFullRejected": true,
+      "tamperRejected": true,
+      "fullVerificationPass": true,
+      "contractLintFiles": [
+        "src/queue.ts",
+        "src/queue.test.ts"
+      ],
+      "inventoryRoots": [
+        "src"
+      ],
+      "answerIsolation": true,
+      "commands": 5,
+      "modelCalls": 0,
+      "controlScope": "reference helper pre-approved; pending cards are fixture input, not proof of model behavior",
+      "cleanup": true
+    }
+  ],
+  "complete": true
+}

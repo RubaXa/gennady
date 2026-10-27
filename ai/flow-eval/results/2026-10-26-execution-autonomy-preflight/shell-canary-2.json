@@ -1,0 +1,19 @@
+{
+  "modelCalls": 0,
+  "canaryOnly": true,
+  "node": "v22.19.0",
+  "hostHomePolicy": "deny read/write; exact toolchain/package roots read-only",
+  "deleteHook": "{\"secretPresent\":true,\"configPresent\":true}",
+  "undefinedHook": "{\"secretPresent\":false,\"configPresent\":true}",
+  "wrappedEnv": "{\"secretPresent\":false,\"configPresent\":false}",
+  "privateRead": "CONFIG_READ_DENIED",
+  "processArgs": "PROCESS_ARGS_DENIED",
+  "basic": "WORKSPACE_SHELL_OK",
+  "symlinkRead": "ESCAPE_DENIED",
+  "workspaceWrite": "WORKSPACE_WRITE_OK",
+  "npm": "10.9.3",
+  "typecheck": "TYPECHECK_FAILED",
+  "installedCli": "INSTALLED_CLI_FAILED",
+  "network": "NETWORK_DENIED",
+  "safeCleanup": true
+}

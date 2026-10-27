@@ -1,0 +1,46 @@
+[
+  {
+    "scenarioId": "execution-autonomy-ex2-config-baseline",
+    "verdict": "budget-exhausted",
+    "status": "unknown",
+    "outcome": "budget-exhausted",
+    "budgetExhausted": {
+      "kind": "wall-clock",
+      "detail": "wall-clock budget 480000ms exceeded",
+      "pendingOperatorCount": 0
+    },
+    "usage": {
+      "messages": 81,
+      "input": 248659,
+      "output": 20828,
+      "reasoning": 43964,
+      "cacheRead": 4518784,
+      "cacheWrite": 0,
+      "total": 313451,
+      "cost": 0,
+      "models": [
+        "llm-proxy/deepseek-v4-flash"
+      ],
+      "complete": true,
+      "sessions": 5,
+      "wallClockMs": 480029
+    },
+    "quality": {
+      "rule": "R-COMPLETE",
+      "pass": false,
+      "detail": "artifact built but no group code-review receipt on spec (no receipt recorded)"
+    },
+    "trajectory": {
+      "rule": "TRAJECTORY",
+      "pass": true,
+      "detail": "146 tools; complete capture"
+    },
+    "specFiles": [
+      "specs/delay/core/core.spec.md",
+      "specs/delay/delay.spec.md"
+    ],
+    "hasJudge": false,
+    "hasTrajectory": true,
+    "hasExecutionEvidence": true
+  }
+]
