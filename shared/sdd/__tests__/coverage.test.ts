@@ -329,3 +329,137 @@ test('large and deeply nested spec graphs do not depend on the JavaScript call s
     true
   );
 });
+
+test('spec projection ignores foreign write/delete claims while project projection diagnoses their conflict', () => {
+  const input = fixture();
+  const specs = [
+    { ...input.specs[1]!, files: ['src/main.ts'] },
+    { id: 'OTHER', path: 'specs/other.spec.md', children: [], files: [] },
+  ];
+  const targets = [
+    input.targets[0]!,
+    { ...input.targets[0]!, specId: 'OTHER', task: 'OTHER-work', operation: 'delete' as const },
+  ];
+  const scoped: CoverageInput = {
+    ...input,
+    stage: 'audit',
+    selection: { kind: 'spec', id: 'CORE' },
+    specs,
+    targets,
+    observations: [observed('src/main.ts', ['CORE'])],
+  };
+  assert.deepEqual(resolveSddCoverage(scoped).findings, []);
+  const projectCodes = codes({ ...scoped, selection: { kind: 'project' } });
+  assert.ok(projectCodes.includes('WRITE_DELETE_CONFLICT'));
+  assert.ok(projectCodes.includes('TARGET_OWNER_CONFLICT'));
+  assert.ok(projectCodes.includes('DELETE_TARGET_EXISTS'));
+});
+
+test('a foreign target cannot suppress a selected header-only owner', () => {
+  const input = fixture();
+  const result = resolveSddCoverage({
+    ...input,
+    selection: { kind: 'spec', id: 'CORE' },
+    specs: [
+      { ...input.specs[1]!, files: [] },
+      { id: 'OTHER', path: 'specs/other.spec.md', children: [], files: [] },
+    ],
+    targets: [{ ...input.targets[0]!, specId: 'OTHER' }],
+    observations: [observed('src/main.ts', ['CORE'])],
+  });
+  assert.deepEqual(result.rows[0]?.owners, ['CORE']);
+  assert.deepEqual(result.findings, []);
+});
+
+test('previous headers detect removal but cannot assign a second current owner', () => {
+  const input = fixture();
+  const scoped: CoverageInput = {
+    ...input,
+    stage: 'audit',
+    selection: { kind: 'project' },
+    specs: input.specs.map((spec) => ({ ...spec, files: [] })),
+    targets: [],
+    observations: [{ ...observed('src/main.ts', ['CORE']), previousSpecIds: ['PORTAL'] }],
+  };
+  const result = resolveSddCoverage(scoped);
+  assert.deepEqual(result.rows[0]?.owners, ['CORE']);
+  assert.deepEqual(
+    result.findings.map((finding) => finding.code),
+    ['MAPPING_REQUIRED']
+  );
+  assert.ok(!result.rows[0]?.sources.includes('header:PORTAL'));
+  assert.ok(
+    codes({
+      ...scoped,
+      observations: [{ ...observed('src/main.ts'), previousSpecIds: ['CORE'] }],
+    }).includes('REMOVED_OWNERSHIP')
+  );
+});
+
+test('a bounded phase does not traverse irrelevant structural descendants of its owner', () => {
+  const input = fixture();
+  const specs = input.specs.map((spec) =>
+    spec.id === 'CORE' ? { ...spec, children: ['MISSING'] } : spec
+  );
+  const scoped = {
+    ...input,
+    specs,
+    observations: [observed('src/main.ts', ['CORE'])],
+  };
+  assert.deepEqual(resolveSddCoverage(scoped).findings, []);
+  assert.ok(
+    codes({ ...scoped, selection: { kind: 'spec', id: 'CORE' } }).includes('UNRESOLVED_SPEC')
+  );
+});
+
+test('real no-write phase contexts and read-only phases have no implementation obligations', () => {
+  const input = fixture();
+  for (const targets of [[], [{ ...input.targets[0]!, operation: 'read' as const }]]) {
+    const result = resolveSddCoverage({
+      ...input,
+      stage: 'phase-exit',
+      targets,
+      phaseContexts: [{ task: 'CORE-work', phase: 'P1' }],
+    });
+    assert.equal(result.complete, true);
+    assert.equal(result.canProceed, true);
+    assert.deepEqual(result.rows, []);
+    assert.deepEqual(result.findings, []);
+  }
+  assert.ok(codes({ ...input, targets: [] }).includes('PHASE_CONTEXT_MISSING'));
+});
+
+test('unresolved write/delete target owners produce one actionable error and an invalid row', () => {
+  const input = fixture();
+  for (const operation of ['write', 'delete'] as const) {
+    const result = resolveSddCoverage({
+      ...input,
+      specs: [],
+      targets: [{ ...input.targets[0]!, specId: 'MISSING', operation }],
+      observations: [{ path: 'src/main.ts', state: 'missing', specIds: [] }],
+    });
+    assert.equal(result.findings.filter((finding) => finding.code === 'UNRESOLVED_SPEC').length, 1);
+    assert.equal(result.rows[0]?.state, 'invalid');
+    assert.equal(result.canProceed, false);
+  }
+});
+
+test('header-only audit claims need File Mapping and invalid spec identities remain errors', () => {
+  const input = fixture();
+  const scoped: CoverageInput = {
+    ...input,
+    stage: 'audit',
+    selection: { kind: 'project' },
+    specs: input.specs.map((spec) => ({ ...spec, files: [] })),
+    targets: [],
+    observations: [observed('src/main.ts', ['CORE'])],
+  };
+  assert.deepEqual(codes(scoped), ['MAPPING_REQUIRED']);
+  assert.ok(
+    codes({
+      ...scoped,
+      specs: [{ id: 'invalid id', path: 'specs/core.spec.md', children: [], files: [] }],
+      observations: [],
+    }).includes('INVALID_SPEC')
+  );
+});

@@ -115,6 +115,29 @@ cannot waive a code file's header, and does not replace the project's schema or 
 Source ownership is parsed only from the canonical leading comment region; an `@spec` inside a
 declaration body is not a file header.
 
+Spec projections use the same selected target set for path inclusion, owner inference and row
+diagnostics. Foreign targets cannot add write/delete duties to a selected spec; the project view
+still diagnoses real collisions. Prior headers are historical provenance for removal/disappearance,
+not current owners. An exact phase checks its outputs without traversing its owner's child subtree.
+A real no-write phase has no ownership rows; this is not execution or Verify evidence.
+
+Repository adapters use the same pure filename convention as audit groups to resolve the structural
+task owner (`<name>.task.<ID>.md` → co-located `<name>.spec.md`). An explicit Owning Spec must agree
+with that exact path; malformed, duplicate or foreign declarations fail closed. Scope and arbitrary
+Spec References do not assign ownership. Exact inline and nested phase path lists are supported;
+parenthesized annotations are labels, not extra paths. The closed no-write labels are `none`, `—`
+and `(нет — проверочная фаза)`; mixing a label and paths is invalid. Directory expansion and prose
+such as conditional `remove …` are not write/delete declarations: list exact files and explicit
+Deleted Files instead. Visible text around HTML comments remains declarative; commented/fenced
+examples never add claims.
+
+Coverage source reads conservatively exclude the reserved segments `node_modules`, `.git`, `dist`,
+`coverage`, `build` and `out`, case-insensitively at any depth. This is an explicit coverage-reader
+boundary, not a claim that every directory called `build` is unsafe, and not a new Verify/write
+permission. Excluded, unsafe, unreadable and unsupported-format paths cannot enter either worktree
+reads or Git prior-content batches. Supported missing files retain prior evidence for tombstones
+and unexpected deletion. No repository-wide source scan or persistent exception list is introduced.
+
 **File Mapping:**
 
 - `shared/sdd/coverage.ts`: stage-aware coverage projection

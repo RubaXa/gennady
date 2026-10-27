@@ -40,11 +40,20 @@ export type SpecResolution =
  * @returns The resolved spec path, or why it could not be resolved.
  */
 export function resolveOwningSpec(ticketPath: string): SpecResolution {
-  const m = V2_TASK_TICKET_NAME.exec(basename(ticketPath));
-  if (!m?.[1]) return { ok: false, reason: 'not-v2-ticket-name' };
-  const specPath = join(dirname(ticketPath), `${m[1]}.spec.md`);
+  const specPath = ticketOwningSpecPath(ticketPath);
+  if (specPath === null) return { ok: false, reason: 'not-v2-ticket-name' };
   if (!existsSync(specPath)) return { ok: false, reason: 'spec-missing', specPath };
   return { ok: true, specPath };
+}
+
+/**
+ * @purpose Derive the exact structural V2 owner without I/O or interpreting contract-reference links.
+ * @param ticketPath Absolute or repo-relative canonical V2 ticket name.
+ * @returns Co-located spec path, or null when the filename declares no V2 structural owner.
+ */
+export function ticketOwningSpecPath(ticketPath: string): string | null {
+  const m = V2_TASK_TICKET_NAME.exec(basename(ticketPath));
+  return m?.[1] ? join(dirname(ticketPath), `${m[1]}.spec.md`) : null;
 }
 
 /**

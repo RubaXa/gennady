@@ -21,6 +21,7 @@ import { runSddCoverageQuery } from '../sdd-coverage-query.ts';
 import { inspectRepoPath } from '../../../../shared/common/repo-path.ts';
 import type { CoverageDocument } from '../../../../shared/sdd/coverage-repository.ts';
 import { printHelp as printSddCheckHelp } from '../../sdd-check/help.ts';
+import { extractSection } from '../../../../shared/sdd/section.ts';
 
 const ownRoot = resolve(import.meta.dirname, '../../../..');
 
@@ -376,6 +377,376 @@ test('strict argument failures precede filesystem reads and reject mixed query m
     );
   }
 });
+
+test('existing V2 filename ownership works without Owning Spec; context references do not assign it', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE', ['src/value.ts']));
+    put('specs/other/other.spec.md', spec('OTHER'));
+    put(
+      'specs/core/core.task.work.md',
+      ticket().replace(
+        '**Owning Spec:** [owner](./core.spec.md)',
+        '**Scope:** other\n**Spec References:** [other](../other/other.spec.md)'
+      )
+    );
+    put('src/value.ts', '// @spec: CORE\nexport const value = 7;');
+    const result = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+      'phase-exit'
+    );
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+    assert.deepEqual(result.coverage.rows[0]?.owners, ['CORE']);
+  }));
+
+test('explicit owner conflicts, broken links and duplicates never fall back silently', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE', ['src/value.ts']));
+    put('specs/other/other.spec.md', spec('OTHER'));
+    put('src/value.ts', '// @spec: CORE');
+    for (const declaration of [
+      '**Owning Spec:** [owner](../other/other.spec.md)',
+      '**Owning Spec:** [owner](./missing.spec.md)',
+      '**Owning Spec:** not a link',
+      '**Owning Spec:** [owner](./core.spec.md)\n**Owning Spec:** [owner](./core.spec.md)',
+    ]) {
+      put(
+        'specs/core/core.task.work.md',
+        ticket().replace('**Owning Spec:** [owner](./core.spec.md)', declaration)
+      );
+      const result = readSddCoverage(
+        root,
+        { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+        'preflight'
+      );
+      assert.equal(result.coverage.canProceed, false, declaration);
+      assert.ok(
+        result.coverage.findings.some((finding) => finding.code === 'INVALID_TASK'),
+        declaration
+      );
+    }
+  }));
+
+test('inline HTML comments cannot conceal a foreign or duplicate explicit owner', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE'));
+    put('specs/other/other.spec.md', spec('OTHER'));
+    for (const declaration of [
+      '**Owning Spec:** [foreign](../other/other.spec.md) <!-- explanation -->',
+      '**Owning Spec:** [owner](./core.spec.md)\n**Owning Spec:** [foreign](../other/other.spec.md) <!-- explanation -->',
+      '<!-- comment --> **Owning Spec:** [foreign](../other/other.spec.md)',
+    ]) {
+      put(
+        'specs/core/core.task.work.md',
+        ticket([{ id: 'P1' }]).replace('**Owning Spec:** [owner](./core.spec.md)', declaration)
+      );
+      const result = readSddCoverage(
+        root,
+        { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+        'preflight'
+      );
+      assert.equal(result.coverage.canProceed, false, declaration);
+      assert.ok(result.coverage.findings.some((finding) => finding.code === 'INVALID_TASK'));
+    }
+    put(
+      'specs/core/core.task.work.md',
+      ticket([{ id: 'P1' }]).replace(
+        '**Owning Spec:** [owner](./core.spec.md)',
+        '<!-- **Owning Spec:** [foreign](../other/other.spec.md) -->\n```md\n**Owning Spec:** [foreign](../other/other.spec.md)\n```\n**Owning Spec:** [owner](./core.spec.md) <!-- explanation -->'
+      )
+    );
+    assert.equal(
+      readSddCoverage(root, { kind: 'phase', task: 'CORE-work', phase: 'P1' }, 'phase-exit')
+        .coverage.complete,
+      true
+    );
+  }));
+
+test('inline and literal path syntax survives comments without scanning fenced examples', () =>
+  fixture((root, put) => {
+    const paths = ['src/a,b.ts', 'src/a b.ts', 'pages/[...slug].tsx'];
+    put('specs/core/core.spec.md', spec('CORE', paths));
+    for (const path of paths) put(path, '// @spec: CORE');
+    put(
+      'specs/core/core.task.work.md',
+      ticket([{ id: 'P1' }]).replace(
+        '- **Target Files:**\n',
+        '- **Target Files:** `src/a,b.ts`, `src/a b.ts`, `pages/[...slug].tsx` <!-- literal examples -->\n'
+      )
+    );
+    const result = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+      'phase-exit'
+    );
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+    assert.deepEqual(
+      result.coverage.rows.map((row) => row.path),
+      [...paths].sort()
+    );
+  }));
+
+test('visible File Mapping declarations survive inline comments while commented/fenced examples stay inert', () =>
+  fixture((root, put) => {
+    put(
+      'specs/core/core.spec.md',
+      section('SPEC_ID', 'CORE') +
+        section(
+          'FILE_STRUCTURE',
+          [
+            '**File Mapping:** <!-- explanation -->',
+            '- `src/value.ts`: implementation <!-- explanation -->',
+            '<!-- - `src/hidden.ts`: example -->',
+            '```md',
+            '- `src/example.ts`: example',
+            '<!-- unfinished example comment',
+            '```',
+          ].join('\n')
+        )
+    );
+    put('src/value.ts', '// @spec: CORE');
+    const result = readSddCoverage(root, { kind: 'project' }, 'audit');
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+    assert.deepEqual(
+      result.coverage.rows.map((row) => row.path),
+      ['src/value.ts']
+    );
+    assert.equal(result.reads.sourceReads, 1);
+  }));
+
+test('unsupported missing artifacts never bypass the worktree format policy through Git prior reads', () =>
+  fixture((root, put) => {
+    const paths = ['settings.env', 'secret.bin', 'old.md'];
+    put('specs/core/core.spec.md', spec('CORE', paths));
+    for (const path of paths) put(path, 'synthetic unsupported-format control');
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+    git('init', '-q');
+    git('add', '.');
+    git(
+      '-c',
+      'user.name=Coverage Control',
+      '-c',
+      'user.email=coverage@example.invalid',
+      '-c',
+      'core.hooksPath=/dev/null',
+      'commit',
+      '-qm',
+      'control input'
+    );
+    for (const path of paths) rmSync(join(root, path));
+    const result = readSddCoverage(root, { kind: 'project' }, 'audit');
+    assert.equal(result.coverage.canProceed, false);
+    assert.equal(result.reads.sourceReads, 0);
+    assert.equal(result.reads.priorBytes, 0);
+    assert.equal(
+      result.coverage.findings.filter((finding) => finding.code === 'UNSUPPORTED_HEADER_FORMAT')
+        .length,
+      paths.length
+    );
+  }));
+
+test('inline and nested exact paths agree; annotations are not paths and a known no-write label is empty', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE', ['src/value.ts', 'config.json']));
+    put('src/value.ts', '// @spec: CORE\nexport const value = 7;');
+    put('config.json', '{}');
+    const base = ticket([{ id: 'P1', writes: ['src/value.ts', 'config.json'] }]);
+    const field = '- **Target Files:**\n  - `src/value.ts`\n  - `config.json`';
+    for (const replacement of [
+      '- **Target Files:** `src/value.ts`, `config.json`',
+      '- **Target Files:** `src/value.ts`; `config.json` (scripts: test, integration)',
+      '- **Target Files:**\n  - `src/value.ts`\n  - `config.json` (scripts: test, integration)',
+    ]) {
+      put('specs/core/core.task.work.md', base.replace(field, replacement));
+      const result = readSddCoverage(
+        root,
+        { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+        'phase-exit'
+      );
+      assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+      assert.deepEqual(
+        result.coverage.rows.map((row) => row.path),
+        ['config.json', 'src/value.ts']
+      );
+    }
+    put(
+      'specs/core/core.task.work.md',
+      base.replace(field, '- **Target Files:**\n  - (нет — проверочная фаза)')
+    );
+    const empty = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+      'phase-exit'
+    );
+    assert.equal(empty.coverage.complete, true, JSON.stringify(empty.coverage.findings));
+    assert.deepEqual(empty.coverage.rows, []);
+    assert.equal(empty.reads.sourceReads, 0);
+  }));
+
+test('ambiguous inline deletion, directories, mixed placeholders and duplicate fields are not empty-success', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE'));
+    const field = '- **Target Files:**\n  - `src/value.ts`';
+    for (const replacement of [
+      '- **Target Files:** `src/value.ts`; remove `src/old.ts` only after migration',
+      '- **Target Files:** `src/`',
+      '- **Target Files:**\n  - (нет — проверочная фаза)\n  - `src/value.ts`',
+      '- **Target Files:**\n  - invent some files',
+      '- **Target Files:** none\n- **Target Files:** `src/value.ts`',
+      '- **Target Files:** `src/value.ts`\n  - `src/second.ts`',
+    ]) {
+      put('specs/core/core.task.work.md', ticket().replace(field, replacement));
+      const result = readSddCoverage(
+        root,
+        { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+        'preflight'
+      );
+      assert.equal(result.coverage.canProceed, false, replacement);
+      assert.ok(
+        result.coverage.findings.some((finding) => finding.code === 'INVALID_PHASE'),
+        replacement
+      );
+      assert.equal(result.reads.sourceReads, 0);
+    }
+  }));
+
+test('declared excluded territory is never read from worktree or Git, including nested and JSON paths', () =>
+  fixture((root, put) => {
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    for (const directory of [
+      'node_modules',
+      '.git',
+      'dist',
+      'coverage',
+      'build',
+      'out',
+      'NODE_MODULES',
+    ]) {
+      for (const path of [`${directory}/probe.ts`, `src/${directory}/probe.json`]) {
+        put('specs/core/core.spec.md', spec('CORE', [path]));
+        put(path, path.endsWith('.json') ? '{}' : '// @spec: CORE\n');
+        const result = readSddCoverage(root, { kind: 'project' }, 'audit');
+        assert.equal(result.coverage.canProceed, false, path);
+        assert.ok(
+          result.coverage.findings.some((finding) => finding.code === 'EXCLUDED_SOURCE_PATH'),
+          path
+        );
+        assert.equal(result.reads.sourceReads, 0, path);
+        assert.equal(result.reads.priorBytes, 0, path);
+      }
+    }
+  }));
+
+test('phase queries do not grade an unrelated child subtree; project query still reports it', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE', ['src/value.ts'], ['./missing/missing.spec.md']));
+    put('specs/core/core.task.work.md', ticket());
+    put('src/value.ts', '// @spec: CORE');
+    const result = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+      'phase-exit'
+    );
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+    assert.equal(readSddCoverage(root, { kind: 'project' }, 'audit').coverage.canProceed, false);
+  }));
+
+test('mixed Git observations exclude blocked and unsafe paths but retain safe missing-file evidence', () =>
+  fixture((root, put) => {
+    const paths = ['node_modules/vendor.ts', 'src/link.ts', 'src/gone.ts', 'src/value.ts'];
+    put('specs/core/core.spec.md', spec('CORE', paths));
+    for (const path of paths) put(path, '// @spec: CORE\nexport const value = 7;');
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+    git('init', '-q');
+    git('add', '.');
+    git(
+      '-c',
+      'user.name=Coverage Control',
+      '-c',
+      'user.email=coverage@example.invalid',
+      '-c',
+      'core.hooksPath=/dev/null',
+      'commit',
+      '-qm',
+      'control input'
+    );
+    put('outside.ts', '// @spec: CORE');
+    rmSync(join(root, 'src/link.ts'));
+    symlinkSync(join(root, 'outside.ts'), join(root, 'src/link.ts'));
+    rmSync(join(root, 'src/gone.ts'));
+    const result = readSddCoverage(root, { kind: 'project' }, 'audit');
+    const safePrior = execFileSync('git', ['cat-file', '--batch'], {
+      cwd: root,
+      input: 'HEAD:src/gone.ts\nHEAD:src/value.ts\n',
+    });
+    assert.equal(result.reads.sourceReads, 1);
+    assert.equal(result.reads.priorBytes, safePrior.byteLength);
+    for (const code of ['EXCLUDED_SOURCE_PATH', 'UNSAFE_PATH', 'UNEXPECTED_MISSING'])
+      assert.ok(
+        result.coverage.findings.some((finding) => finding.code === code),
+        code
+      );
+    assert.equal(
+      result.coverage.rows.find((row) => row.path === 'src/value.ts')?.state,
+      'consistent'
+    );
+  }));
+
+test('actual V2 no-write and conditional-directory forms are distinguished without altering historical tickets', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE'));
+    const actual = (file: string, phase: string) => {
+      const parsed = extractSection(readFileSync(join(ownRoot, file), 'utf8'), `PHASE_${phase}`);
+      assert.equal(parsed.status, 'ok');
+      return parsed.status === 'ok' ? parsed.content : '';
+    };
+    const verification = actual('specs/agent-inbox/agent-inbox.task.AI-fasttest.md', 'P2');
+    const base = ticket([{ id: 'P2' }]);
+    const original = extractSection(base, 'PHASE_P2');
+    assert.equal(original.status, 'ok');
+    if (original.status !== 'ok') throw new Error('fixture phase absent');
+    put('specs/core/core.task.work.md', base.replace(original.content, verification));
+    const noWrite = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P2' },
+      'phase-exit'
+    );
+    assert.equal(noWrite.coverage.complete, true, JSON.stringify(noWrite.coverage.findings));
+    assert.equal(noWrite.reads.sourceReads, 0);
+    const ambiguous = actual('specs/agent-inbox/agent-inbox.task.AI-cutover.md', 'P1');
+    const other = ticket();
+    const old = extractSection(other, 'PHASE_P1');
+    assert.equal(old.status, 'ok');
+    if (old.status !== 'ok') throw new Error('fixture phase absent');
+    put('specs/core/core.task.work.md', other.replace(old.content, ambiguous));
+    const rejected = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+      'preflight'
+    );
+    assert.equal(rejected.coverage.canProceed, false);
+    assert.ok(rejected.coverage.findings.some((finding) => finding.code === 'INVALID_PHASE'));
+    assert.equal(rejected.reads.sourceReads, 0);
+  }));
+
+test('header parser preserves conservative JSDoc and interleaved-comment semantics without body spoof', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE', ['src/value.ts']));
+    for (const [content, complete] of [
+      ['/* license */\n// @spec: CORE\nexport const value = 7;', true],
+      ['/** declaration docs */\n// @spec: CORE\nexport const value = 7;', false],
+      ['/** @license MIT */\n// @spec: CORE\nexport const value = 7;', false],
+      ['// @file: value\n// explanatory text\n// @spec: CORE\nexport const value = 7;', true],
+      ['// @spec: CORE\n\n/** declaration docs */\nexport const value = 7;', true],
+    ] as const) {
+      put('src/value.ts', content);
+      assert.equal(
+        readSddCoverage(root, { kind: 'project' }, 'audit').coverage.complete,
+        complete,
+        content
+      );
+    }
+  }));
 
 test(
   'both actual CLI entrypoints return the same map without scanning unrelated sources',

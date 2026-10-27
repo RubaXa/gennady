@@ -44,6 +44,8 @@ function diagnoseRow(
   const owners = ordered(claim.owners);
   if (owners.length !== 1)
     add('OWNER_CONFLICT', `Expected one owner; observed ${owners.join(', ')}`);
+  for (const id of owners)
+    if (!specs.has(id)) add('UNRESOLVED_SPEC', `Unknown declared owner ${id}`);
   if (targets.some((target) => !owners.includes(target.specId)))
     add('TARGET_OWNER_CONFLICT', 'A phase claim disagrees with the declared file owner');
   if (deletion && write)
@@ -153,20 +155,6 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
       claim.mapped = true;
     }
   }
-  const targetMap = new Map<string, CoverageTarget[]>();
-  for (const target of input.targets) {
-    if (target.operation === 'read') continue;
-    if (selection.kind === 'phase' && !inPhase(target)) continue;
-    if (!exactPath(target.path)) {
-      add('INVALID_PATH', target.path, 'Target needs an exact repo-relative path');
-      continue;
-    }
-    if (!specs.has(target.specId))
-      add('UNRESOLVED_SPEC', target.path, `Unknown target owner ${target.specId}`);
-    const list = targetMap.get(target.path) ?? [];
-    list.push(target);
-    targetMap.set(target.path, list);
-  }
   const observations = new Map<string, CoverageObservation>();
   for (const observed of input.observations) {
     if (!exactPath(observed.path)) {
@@ -216,7 +204,23 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
       )
     )
       add('PHASE_CONTEXT_MISSING', '', 'No declared target context for the selected task/phase');
-    for (const target of selected) if (target.operation !== 'read') visit(target.specId);
+    // A phase proves its exact outputs, not every descendant declared by their owner.
+    // Unknown output owners are diagnosed on the affected row below.
+    for (const target of selected)
+      if (target.operation !== 'read' && specs.has(target.specId)) selectedSpecs.add(target.specId);
+  }
+  const targetMap = new Map<string, CoverageTarget[]>();
+  for (const target of input.targets) {
+    if (target.operation === 'read') continue;
+    if (selection.kind === 'phase' && !inPhase(target)) continue;
+    if (selection.kind === 'spec' && !selectedSpecs.has(target.specId)) continue;
+    if (!exactPath(target.path)) {
+      add('INVALID_PATH', target.path, 'Target needs an exact repo-relative path');
+      continue;
+    }
+    const list = targetMap.get(target.path) ?? [];
+    list.push(target);
+    targetMap.set(target.path, list);
   }
   const paths = new Set<string>();
   if (selection.kind !== 'phase') {
@@ -225,8 +229,6 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
   }
   for (const [path, targets] of targetMap) {
     for (const target of targets) {
-      if (selection.kind === 'phase' ? !inPhase(target) : !selectedSpecs.has(target.specId))
-        continue;
       paths.add(path);
       const claim = claimFor(path);
       if (!claim.mapped) claim.owners.add(target.specId);
@@ -235,19 +237,24 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
   }
   if (selection.kind !== 'phase')
     for (const observed of observations.values()) {
-      for (const id of ordered([...observed.specIds, ...(observed.previousSpecIds ?? [])])) {
+      for (const id of ordered(observed.specIds)) {
         if (selection.kind !== 'project' && !selectedSpecs.has(id)) continue;
         paths.add(observed.path);
         const claim = claimFor(observed.path);
         if (!claim.mapped && !targetMap.has(observed.path)) claim.owners.add(id);
         claim.sources.add(`header:${id}`);
       }
+      // Historical ownership keeps removal/disappearance observable without assigning
+      // a former owner to the current file or authorizing a current owner transfer.
+      for (const id of ordered(observed.previousSpecIds ?? [])) {
+        if (selection.kind !== 'project' && !selectedSpecs.has(id)) continue;
+        paths.add(observed.path);
+        claimFor(observed.path).sources.add(`previous-header:${id}`);
+      }
     }
   const rows: CoverageRow[] = [];
   for (const path of ordered(paths)) {
-    const targets = (targetMap.get(path) ?? []).filter(
-      (target) => selection.kind !== 'phase' || inPhase(target)
-    );
+    const targets = targetMap.get(path) ?? [];
     const diagnosis = diagnoseRow(
       input,
       path,

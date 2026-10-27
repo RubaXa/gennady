@@ -168,8 +168,41 @@ HEADER_OWNER_CONFLICT; ещё 47 PLANNED_FILE — pending, не ошибка. Э
 доказательством repo-relative пути. Production lifecycle, обычные --all/--changed и Verify оставлены
 без изменения; неудачные пробы не выдаются за принятый cutover. Архивы, baseline и запреты не менялись.
 
-Осталось внутри SC3: квалифицировать точную V2 filename-привязку и существующие формы File Mapping;
+На момент preparatory-коммита оставалось внутри SC3: квалифицировать точную V2 filename-привязку и существующие формы File Mapping;
 закрыть безопасное чтение changed/header-positive evidence; обновить стенды до реальных метаданных;
 затем подключить dispatch/Verify/complete/close/audit, включая повторную проверку после repair и
 позднее удаление target. Нужны причинные реальные CLI PASS/FAIL, JSON и масштабирование. Только
 после отдельного Approve SC3 разрешён SC4; live остаётся 0/8, PR остаётся Draft.
+
+### SC3 независимая перепроверка findings
+
+Независимые проверки core, метаданных и read-boundary подтвердили реальные ошибки резолвера и
+адаптера. Прежнее описание «несовместимость форматов» было неполным. Исправления покрыты причинными
+RED→GREEN контролями; данные прошлых кампаний, baseline и правила eradication-аудита не менялись.
+
+| Finding                                    | Вывод и исправление                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Отсутствует Owning Spec                    | Реальный баг адаптера. Используется та же pure filename-привязка, что у audit-group. Явное поле проверяется на точное совпадение, не заменяется Scope/произвольными Spec References.                                                                                                                                                 |
+| Inline Target Files / no-write placeholder | Реальный баг молчаливого пропуска. Однозначные inline/nested paths и пояснения читаются; известная no-write метка даёт ноль обязанностей. Directory/conditional-remove prose даёт INVALID_PHASE, а не пустой PASS или расширенные полномочия.                                                                                        |
+| Foreign targets / previous headers         | Реальные scope/ownership-баги core. Один scoped targetMap применяется во всех циклах; prior header больше не становится текущим владельцем.                                                                                                                                                                                          |
+| Нерелевантный child / неизвестный owner    | Phase не обходит чужое поддерево; project/spec аудит его по-прежнему видит. Неизвестный write/delete owner даёт один адресный UNRESOLVED_SPEC.                                                                                                                                                                                       |
+| Declared reserved paths / Git batch        | Реальная недоговорённость read-boundary. Шесть reserved segments теперь явно запрещены reader-контрактом; исключённые/unsafe/unsupported paths не читаются ни из worktree, ни через Git. Safe missing сохраняет prior evidence.                                                                                                      |
+| Пустая read-only фаза                      | Не баг: отсутствие write-обязанностей, не Verify PASS. Добавлен лёгкий позитивный unit для phaseContexts.                                                                                                                                                                                                                            |
+| JSDoc / interleaved comment                | Blanket-разрешение JSDoc нарушило бы действующую защиту от prose examples. Общий migration parser не менялся. Обычный license-комментарий поддержан; declaration JSDoc (включая leading /\*_ @license _/) остаётся консервативно неподдержанным. Interleaved line-comment не теряет @spec — исходная формулировка не воспроизвелась. |
+
+Повторный независимый просмотр нашёл ещё два дефекта: whole-line HTML masking мог скрыть явный
+чужой/повторный Owning Spec; missing unsupported artifact обходил format-policy через Git prior.
+Оба исправлены. HTML masking сохраняет видимые prefix/suffix и не теряет File Mapping с inline
+комментариями. Узкие новые контроли сначала 0/3, после исправления зелёные. Повторные независимые
+вердикты corrective-части: Approve; это не Approve полного SC3.
+
+Targeted suite: 126/126 (core + adapter + brownfield + canonical ticket/audit-group/header parser).
+Отдельные новые RED: core 5 отказов; adapter 6 отказов; повторный атакующий проход 3 отказа.
+Закрыты gaps WRITE_DELETE_CONFLICT, phaseContexts, unknown write/delete owner, INVALID_SPEC и
+header-only MAPPING_REQUIRED. На реальных телах AI-fasttest/AI-cutover: no-write распознан, а
+условные удаления/директории честно отвергаются; исторические тикеты не редактировались.
+
+До завершения SC3 остаются квалификация прочих File Mapping форм, changed/header-positive discovery
+и реальное подключение stage-aware dispatch/Verify/complete/close/audit с причинными CLI-контролями
+и performance. Основной runtime, универсальный Verify и охранные границы не переключались этой
+коррекцией. SC4 не запущен (0/8), PR остаётся Draft, merge/npm publication не разрешены.

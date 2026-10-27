@@ -20,7 +20,8 @@ import type {
 import { collectHeadings, extractSection } from './section.ts';
 import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
 import { parseSpecId } from './spec-id.ts';
-import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
+import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
+import { ticketOwningSpecPath } from './audit-group.ts';
 import { isSddSourceFile } from './source-extensions.ts';
 import { parseSourceOwnershipHeader } from './source-ownership-header.ts';
 
@@ -60,6 +61,7 @@ type ParsedTask = {
 };
 const PORTAL_ID = 'PROJECT-PORTAL';
 const skipped = new Set(['node_modules', '.git', 'dist', 'coverage', 'build', 'out']);
+const noWriteLabels = new Set(['none', '—', '(нет — проверочная фаза)']);
 
 function body(content: string, section: string, heading: string): string | null {
   const anchored = extractSection(content, section);
@@ -87,34 +89,42 @@ function visibleMarkdown(content: string): string {
   return content
     .split('\n')
     .map((line) => {
-      const prior = fence;
-      fence = nextMarkdownFence(line, fence);
-      if (prior !== null || fence !== null) return '';
-      if (line.includes('<!--')) comment = true;
-      if (comment) {
-        if (line.includes('-->')) comment = false;
+      if (fence !== null) {
+        fence = nextMarkdownFence(line, fence);
         return '';
       }
-      return line;
+      let visible = '';
+      let offset = 0;
+      while (offset < line.length) {
+        if (comment) {
+          const end = line.indexOf('-->', offset);
+          if (end < 0) break;
+          comment = false;
+          offset = end + 3;
+        } else {
+          const start = line.indexOf('<!--', offset);
+          if (start < 0) {
+            visible += line.slice(offset);
+            break;
+          }
+          visible += line.slice(offset, start);
+          comment = true;
+          offset = start + 4;
+        }
+      }
+      fence = nextMarkdownFence(visible, null);
+      return fence === null ? visible : '';
     })
     .join('\n');
 }
 
 function mappingLines(content: string): string[] {
-  let fence: MarkdownFence | null = null;
-  let comment = false;
   let mapping = false;
   const lines: string[] = [];
-  for (const line of content.split('\n')) {
-    const prior = fence;
-    fence = nextMarkdownFence(line, fence);
-    if (prior !== null || fence !== null) continue;
-    if (line.trim() === '<!--/SECTION:FILE_STRUCTURE-->') mapping = false;
-    if (line.includes('<!--')) comment = true;
-    if (comment) {
-      if (line.includes('-->')) comment = false;
-      continue;
-    }
+  const visible = visibleMarkdown(
+    content.replace(/^[ \t]*<!--\/SECTION:FILE_STRUCTURE-->[ \t]*$/gm, '## End File Mapping')
+  );
+  for (const line of visible.split('\n')) {
     if (/^\s*(?:\*\*)?File Mapping:?\s*(?:\*\*)?:?\s*$/i.test(line)) {
       mapping = true;
       continue;
@@ -127,6 +137,68 @@ function mappingLines(content: string): string[] {
 
 type CoverageIssue = (code: string, path: string, detail: string) => void;
 type CoverageReader = (path: string, metadata: boolean) => string | null;
+
+/** @purpose Decode exact inline or nested path declarations, rejecting prose instead of proving empty output. */
+function phasePaths(
+  content: string,
+  label: 'Target Files' | 'Deleted Files',
+  fail: (detail: string) => void
+): string[] {
+  const lines = content.split('\n');
+  const field = new RegExp(`^\\s*-\\s+\\*\\*${label}:\\*\\*[ \\t]*(.*)$`);
+  const indexes = lines.flatMap((line, index) => (field.test(line) ? [index] : []));
+  if (indexes.length === 0) {
+    if (label === 'Target Files') fail('Missing canonical Target Files field');
+    return [];
+  }
+  if (indexes.length !== 1) {
+    fail(`Duplicate ${label} fields`);
+    return [];
+  }
+  const start = indexes[0]!;
+  const inline = field.exec(lines[start]!)![1]!.trim();
+  const nested: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (!line.trim()) continue;
+    if (/^\s*(?:-\s+)?\*\*[^*]+\*\*|^\s*#{1,6}\s/.test(line)) break;
+    const bullet = /^\s+-\s+(.+)$/.exec(line);
+    if (!bullet) {
+      fail(`${label} needs exact inline paths or nested path bullets`);
+      return [];
+    }
+    nested.push(bullet[1]!.trim());
+  }
+  if (inline && nested.length) {
+    fail(`${label} mixes inline and nested declarations`);
+    return [];
+  }
+  const entries = inline ? [inline] : nested;
+  if (entries.length === 1 && noWriteLabels.has(entries[0]!.toLowerCase())) return [];
+  const paths: string[] = [];
+  for (const entry of entries) {
+    let remaining = entry;
+    if (noWriteLabels.has(entry.toLowerCase()) || /[,;]\s*$/.test(entry)) {
+      fail(`${label} mixes a no-write label or empty entry with paths`);
+      return [];
+    }
+    while (remaining) {
+      const match =
+        /^(?:`([^`\r\n]+)`|([^\s`,;()]+))(?:[ \t]+\([^()\r\n]*\))?[ \t]*(?:[,;][ \t]*|$)/.exec(
+          remaining
+        );
+      const path = match?.[1] ?? match?.[2];
+      if (!match || !path || path.endsWith('/') || noWriteLabels.has(path.toLowerCase())) {
+        fail(
+          `${label} must list exact files; put unconditional removals in Deleted Files, not prose or directories`
+        );
+        return [];
+      }
+      paths.push(path);
+      remaining = remaining.slice(match[0].length);
+    }
+  }
+  return paths;
+}
 
 /** @purpose Enumerate only SDD metadata, preserving unsafe and failed observations. */
 function readMetadata(root: string, read: CoverageReader, issue: CoverageIssue): Metadata[] {
@@ -168,7 +240,11 @@ function readMetadata(root: string, read: CoverageReader, issue: CoverageIssue):
 }
 
 /** @purpose Adapt explicit in-memory declarations without filesystem reads or inferred ownership. */
-function parseMetadata(metadata: readonly Metadata[], issue: CoverageIssue) {
+function parseMetadata(
+  metadata: readonly Metadata[],
+  issue: CoverageIssue,
+  selection: CoverageSelection
+) {
   const specs: CoverageSpec[] = [];
   const byPath = new Map<string, string>();
   const contents = new Map<string, string>();
@@ -187,12 +263,16 @@ function parseMetadata(metadata: readonly Metadata[], issue: CoverageIssue) {
       contents.set(entry.path, entry.content);
     }
   }
-  const reference = (from: string, raw: string): string | null => {
+  const referencePath = (from: string, raw: string): string | null => {
     const pathPart = raw.replace(/^<|>$/g, '').split('#')[0] ?? '';
     if (!pathPart || /^(?:[a-z]+:|\/|[A-Za-z]:)/i.test(pathPart) || pathPart.includes('\\'))
       return null;
     const path = posix.normalize(posix.join(posix.dirname(from), pathPart));
-    return byPath.get(path) ?? null;
+    return byPath.has(path) ? path : null;
+  };
+  const reference = (from: string, raw: string): string | null => {
+    const path = referencePath(from, raw);
+    return path === null ? null : byPath.get(path)!;
   };
   for (const [path, content] of contents) {
     const id = byPath.get(path)!;
@@ -202,8 +282,9 @@ function parseMetadata(metadata: readonly Metadata[], issue: CoverageIssue) {
       path === 'specs/README.md' ? 'SCOPES' : 'MODULE_MAP',
       path === 'specs/README.md' ? 'scopes' : 'module map'
     );
-    if (structure === null) issue('INVALID_STRUCTURE', path, 'Malformed structural section');
-    else {
+    if (selection.kind !== 'phase' && structure === null)
+      issue('INVALID_STRUCTURE', path, 'Malformed structural section');
+    else if (selection.kind !== 'phase') {
       // Dependency prose/diagrams and arbitrary links outside membership rows are not child edges.
       const membership = visibleMarkdown(structure ?? '').split(
         /^###\s+.*(?:Dependencies|Dependency|Handoff)/im
@@ -248,10 +329,25 @@ function parseMetadata(metadata: readonly Metadata[], issue: CoverageIssue) {
       continue;
     }
     const parsed = parseMetaInfo(meta.content);
-    const owningLink = /\*\*Owning Spec:\*\*\s*\[[^\]]+\]\(([^)]+)\)/.exec(meta.content)?.[1];
-    const owner = owningLink ? reference(entry.path, owningLink) : null;
-    if (!parsed.taskId || !parsed.status || !owner) {
-      issue('INVALID_TASK', entry.path, 'Task identity/status or exact Owning Spec is unresolved');
+    const structuralOwner = ticketOwningSpecPath(entry.path);
+    const owner = structuralOwner ? byPath.get(structuralOwner) : null;
+    const owningFields = [
+      ...visibleMarkdown(meta.content).matchAll(/^\s*(?:-\s*)?\*\*Owning Spec:\*\*[ \t]*(.*)$/gm),
+    ];
+    const explicitOwner = owningFields[0]
+      ? /^\[[^\]]+\]\(([^)]+)\)$/.exec(owningFields[0][1]!.trim())
+      : null;
+    const ownerConflict =
+      owningFields.length > 1 ||
+      (owningFields.length === 1 &&
+        (explicitOwner === null ||
+          referencePath(entry.path, explicitOwner[1]!) !== structuralOwner));
+    if (!parsed.taskId || !parsed.status || !owner || ownerConflict) {
+      issue(
+        'INVALID_TASK',
+        entry.path,
+        'Task identity/status or filename-derived owner is unresolved; an explicit Owning Spec must agree with that exact spec path'
+      );
       continue;
     }
     const phases: ParsedTask['phases'] = [];
@@ -261,14 +357,14 @@ function parseMetadata(metadata: readonly Metadata[], issue: CoverageIssue) {
         issue('INVALID_PHASE', entry.path, `Missing exact phase ${phase.id}`);
         continue;
       }
-      const detail = parsePhaseDetail(section.content);
-      if (!/^\s*-\s+\*\*Target Files:\*\*/m.test(section.content))
-        issue('INVALID_PHASE', entry.path, `Phase ${phase.id} has no canonical Target Files field`);
+      const phaseBody = visibleMarkdown(section.content);
+      const fail = (detail: string) =>
+        issue('INVALID_PHASE', entry.path, `Phase ${phase.id}: ${detail}`);
       phases.push({
         id: phase.id,
         deps: phase.deps,
-        writes: detail.targetFiles,
-        deletes: detail.deletedFiles,
+        writes: phasePaths(phaseBody, 'Target Files', fail),
+        deletes: phasePaths(phaseBody, 'Deleted Files', fail),
       });
     }
     if (!phases.length) issue('INVALID_TASK', entry.path, 'No parseable phases in PHASES_OVERVIEW');
@@ -376,7 +472,26 @@ function observePaths(
   issue: CoverageIssue
 ): CoverageObservation[] {
   const observations: CoverageObservation[] = [];
+  const priorIndexes: number[] = [];
   for (const path of paths) {
+    if (path.split('/').some((part) => skipped.has(part.toLowerCase()))) {
+      issue(
+        'EXCLUDED_SOURCE_PATH',
+        path,
+        'Dependency, VCS and generated-output territory is outside coverage source reads'
+      );
+      observations.push({ path, state: 'unsafe', specIds: [] });
+      continue;
+    }
+    if (!isSddSourceFile(path) && !path.endsWith('.json')) {
+      issue(
+        'UNSUPPORTED_HEADER_FORMAT',
+        path,
+        'Declared artifact has no supported ownership representation; never insert invalid comments'
+      );
+      observations.push({ path, state: 'unsafe', specIds: [] });
+      continue;
+    }
     const safe = inspectRepoPath(root, path, 'potential', 'literal-brackets');
     let observation: CoverageObservation = { path, state: 'unsafe', specIds: [] };
     if (!safe.ok) issue('UNSAFE_PATH', path, safe.detail);
@@ -384,12 +499,6 @@ function observePaths(
       try {
         const stat = lstatSync(safe.absolute);
         if (!stat.isFile()) issue('UNSAFE_PATH', path, 'Expected a regular implementation file');
-        else if (!isSddSourceFile(path) && !path.endsWith('.json'))
-          issue(
-            'UNSUPPORTED_HEADER_FORMAT',
-            path,
-            'Declared artifact has no supported inline @spec format; never insert invalid comments'
-          );
         else {
           const content = read(path, false);
           if (content !== null) {
@@ -413,22 +522,23 @@ function observePaths(
         else issue('READ_FAILED', path, 'Cannot inspect declared implementation');
       }
     }
+    if (observation.state !== 'unsafe') priorIndexes.push(observations.length);
     observations.push(observation);
   }
-  if (paths.length && existsSync(resolve(root, '.git'))) {
+  if (priorIndexes.length && existsSync(resolve(root, '.git'))) {
     try {
       const prior = execFileSync(
         'git',
         ['--no-optional-locks', '-c', 'core.fsmonitor=false', 'cat-file', '--batch'],
         {
           cwd: root,
-          input: paths.map((path) => `HEAD:${path}\n`).join(''),
+          input: priorIndexes.map((index) => `HEAD:${observations[index]!.path}\n`).join(''),
           maxBuffer: 64 * 1024 * 1024,
         }
       );
       reads.priorBytes = prior.byteLength;
       let offset = 0;
-      for (let index = 0; index < observations.length; index++) {
+      for (const index of priorIndexes) {
         const observation = observations[index]!;
         const end = prior.indexOf(10, offset);
         if (end < 0) {
@@ -494,7 +604,7 @@ export function readSddCoverage(
     return result.content;
   };
   const metadata = readMetadata(root, read, issue);
-  const { specs, tasks, byPath } = parseMetadata(metadata, issue);
+  const { specs, tasks, byPath } = parseMetadata(metadata, issue, selection);
   const { selected, targets, phaseContexts } = projectTargets(tasks, selection, byPath, issue);
   const input = {
     stage,
