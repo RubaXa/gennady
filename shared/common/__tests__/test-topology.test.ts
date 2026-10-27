@@ -119,10 +119,13 @@ const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6,
 // REL-7: `deterministic` runs `local` as its own partition at a reduced, fixed concurrency —
 // independent of `availableParallelism()` — to cut IPC pressure from local's subprocess-heavy
 // suites (see R-REL-15.md / V-BATCH-03.md finding F6).
-const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=4';
+const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=2';
 const OWNED_FILE_TIMEOUTS: Readonly<Record<string, string>> = {
   'ai/flow-eval/__tests__/execution-autonomy-audit.test.ts': '--test-timeout=120000',
+  'ai/flow-eval/__tests__/execution-autonomy-fixture.test.ts': '--test-timeout=120000',
   'scripts/__tests__/declared-exports.test.ts': '--test-timeout=360000',
+  'scripts/__tests__/release-boundary.test.ts': '--test-timeout=120000',
+  'scripts/__tests__/main-carry-disposition.test.ts': '--test-timeout=120000',
   'ai/flow-eval/scripts/__tests__/release-migration-scopes.test.ts': '--test-timeout=120000',
   'plugins/swift/__tests__/swift-hardening.test.ts': '--test-timeout=120000',
 };
@@ -246,7 +249,11 @@ process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map((
   return JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
 }
 
-function probeFailingCommand(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental'): {
+function probeFailingCommand(
+  mode: 'unit' | 'deterministic' | 'coverage' | 'experimental',
+  failure: 'assertion' | 'cancelled' | 'missing' | 'incoherent' | 'unaccounted-exit' = 'assertion',
+  contradictoryExit = false
+): {
   status: number | null;
   stdout: string;
   stderr: string;
@@ -261,10 +268,18 @@ mock.module('node:child_process', {
       call += 1;
       const reporter = args.find((value) => value.startsWith('--test-reporter-destination=') && value !== '--test-reporter-destination=stdout');
       const failing = ${JSON.stringify(mode === 'deterministic' || mode === 'coverage')} ? call === 2 : true;
-      if (reporter) writeFileSync(reporter.slice('--test-reporter-destination='.length), failing
-        ? '# tests 3\\n# pass 2\\n# fail 1\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n'
-        : '# tests 2\\n# pass 2\\n# fail 0\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n');
-      return { status: failing ? 1 : 0 };
+      const kind = ${JSON.stringify(failure)};
+      const reports = {
+        assertion: '# tests 3\\n# pass 2\\n# fail 1\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n',
+        cancelled: 'not ok 3 - timed out\\n  ---\\n  failureType: testTimeoutFailure\\n  ...\\n# tests 3\\n# pass 2\\n# fail 0\\n# skipped 0\\n# todo 0\\n# cancelled 1\\n',
+        incoherent: '# tests 3\\n# pass 2\\n# fail 0\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n',
+        'unaccounted-exit': '# tests 3\\n# pass 3\\n# fail 0\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n',
+      };
+      if (reporter && !(failing && kind === 'missing'))
+        writeFileSync(reporter.slice('--test-reporter-destination='.length), failing
+          ? reports[kind]
+          : '# tests 2\\n# pass 2\\n# fail 0\\n# skipped 0\\n# todo 0\\n# cancelled 0\\n');
+      return { status: failing && !${JSON.stringify(contradictoryExit)} ? 1 : 0 };
     },
   },
 });
@@ -349,6 +364,7 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
       assert.ok(encoded, helper.stdout);
       const result = JSON.parse(encoded.slice(marker.length));
       assert.equal(result.ordinary.status, 1);
+      assert.ok(result.ordinary.stats === undefined || result.ordinary.stats.failed > 0);
       assert.equal(result.owned.status, 0);
       assert.deepEqual(result.owned.stats, { executed: 1, passed: 1, failed: 0, skipped: 0 });
       assert.deepEqual(result.observed, ['--test-timeout=30000', '--test-timeout=120000']);
@@ -411,6 +427,38 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
         ),
         mode
       );
+    }
+  });
+
+  it('counts cancelled/time-limited tests as unsuccessful, never as intentional skips', () => {
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
+      const result = probeFailingCommand(mode, 'cancelled');
+      assert.equal(result.status, 1, `${mode}: ${result.stderr}`);
+      const expected = mode === 'deterministic' || mode === 'coverage' ? 5 : 3;
+      assert.match(
+        result.stdout,
+        new RegExp(`"executed":${expected},"passed":${expected - 1},"failed":1,"skipped":0`)
+      );
+      assert.match(result.stderr, /testTimeoutFailure/);
+    }
+  });
+
+  it('never emits earlier passing-group totals as complete stats when the failing reporter is unusable', () => {
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
+      for (const failure of ['missing', 'incoherent', 'unaccounted-exit'] as const) {
+        const result = probeFailingCommand(mode, failure);
+        assert.equal(result.status, 1, `${mode}/${failure}: ${result.stderr}`);
+        assert.doesNotMatch(result.stdout, /\[gennady-test-topology-stats\]/, `${mode}/${failure}`);
+        assert.match(result.stderr, /reporter|statistics|unaccounted/, `${mode}/${failure}`);
+      }
+    }
+  });
+
+  it('a zero process exit cannot turn failed/cancelled TAP facts into a passing command', () => {
+    for (const failure of ['assertion', 'cancelled'] as const) {
+      const result = probeFailingCommand('unit', failure, true);
+      assert.equal(result.status, 1, failure);
+      assert.match(result.stdout, /"failed":1/);
     }
   });
 
@@ -582,7 +630,8 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
           (arg) => arg.startsWith('data:text/javascript,') && arg.includes('NODE_V8_COVERAGE')
         )
       );
-      assert.ok(spawn.args.includes(LOCAL_PARTITION_CONCURRENCY));
+      const owned = spawn.args.some((arg) => OWNED_FILE_TIMEOUTS[arg]);
+      assert.ok(spawn.args.includes(owned ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY));
     }
     assert.deepStrictEqual(
       coverageSpawns[1].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
@@ -594,6 +643,10 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
         assert.ok(topology.local.includes(file), `owned heavy test stays mandatory local: ${file}`);
         const [spawn] = mode.filter(({ args }) => args.includes(file));
         assert.ok(spawn.args.includes(timeout), `${file}: ${timeout}`);
+        assert.ok(
+          spawn.args.includes('--test-concurrency=1'),
+          `${file}: heavy fixtures are serial`
+        );
       }
     }
     assert.strictEqual(
@@ -644,7 +697,7 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
     }
   });
 
-  it('REL-7: deterministic runs the local layer at concurrency 4 as its own partition, the rest unchanged', () => {
+  it('deterministic bounds local subprocesses at two and serializes owned heavy fixtures, the rest unchanged', () => {
     const spawns = probeSpawns('deterministic');
     assert.strictEqual(spawns.length, 4, 'three local budget groups + rest partition');
     for (const { args } of spawns) {
@@ -655,8 +708,9 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
       );
     }
     for (const { args } of spawns.slice(0, 3)) {
+      const owned = args.some((arg) => OWNED_FILE_TIMEOUTS[arg]);
       assert.ok(
-        args.includes(LOCAL_PARTITION_CONCURRENCY),
+        args.includes(owned ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY),
         `local partition: ${JSON.stringify(args)}`
       );
       assert.ok(

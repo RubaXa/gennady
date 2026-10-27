@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
+  constants,
   cpSync,
   mkdirSync,
   mkdtempSync,
@@ -50,7 +51,9 @@ function save(root: string, value: FrozenManifest): void {
 function fixture(): string {
   const root = mkdtempSync(join(context.holder, 'case-'));
   context.roots.push(root);
-  cpSync(context.seed, root, { recursive: true });
+  // Prefer copy-on-write on supporting filesystems; Node falls back to a normal independent copy.
+  // Never hard-link: corruption tests must not mutate the seed or a sibling's Git objects.
+  cpSync(context.seed, root, { recursive: true, mode: constants.COPYFILE_FICLONE });
   return root;
 }
 function newCommit(root: string, parent: string): string {
@@ -84,7 +87,7 @@ before(() => {
   // home fixture, ancestor node_modules or mutation of source refs is used by the checker.
   const pack = git(
     ROOT,
-    ['pack-objects', '--stdout', '--revs'],
+    ['pack-objects', '--stdout', '--revs', '--threads=1'],
     `${FROZEN_PROOF_SOURCE}\n${FROZEN_REFS.main}\n${FROZEN_REFS.releaseAudit}\n${FROZEN_REFS.releaseBase}\n`
   );
   git(context.seed, ['index-pack', '--stdin'], pack);
@@ -112,6 +115,15 @@ it('reconstructs real 520 records, 521 rename identities and 117 commits in owne
   const result = checkFrozenMain(root, { preReconciliation: true });
   assert.equal(result.rows, 520);
   assert.equal(result.commits, 117);
+  const proofPath = manifest(root).currentProof[0].path;
+  const seedBytes = readFileSync(join(context.seed, proofPath));
+  write(root, proofPath, 'owned corruption probe\n');
+  assert.deepEqual(
+    readFileSync(join(context.seed, proofPath)),
+    seedBytes,
+    'seed is not hard-linked'
+  );
+  write(root, proofPath, seedBytes);
   const frozen = manifest(root);
   assert.equal(new Set(frozen.rows.flatMap(({ oldPath, path }) => [oldPath, path])).size, 521);
   const renamed = frozen.rows.find(({ status }) => status.startsWith('R'))!;
@@ -399,7 +411,7 @@ it('actual local npm pack applies unchanged package/ignore policy and excludes a
 
 it('the actual checker CLI derives a whitespace repository root from its file URL', () => {
   const root = join(fixture(), 'repository with spaces');
-  cpSync(context.seed, root, { recursive: true });
+  cpSync(context.seed, root, { recursive: true, mode: constants.COPYFILE_FICLONE });
   write(
     root,
     'scripts/main-carry-disposition.ts',

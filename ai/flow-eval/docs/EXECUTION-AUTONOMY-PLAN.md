@@ -145,6 +145,61 @@ prefix 2→14, а не нечётную границу 7→9 и не новые 
 
 ### Что пробовали и чему научились
 
+#### Итоговое review `60fbef81`: test-infra follow-up (без новых моделей)
+
+- Approve не разрешает merge: PR #130 остаётся Draft до исправления fixture deadline и проверки
+  точной команды счётчиков. EA-3 остаётся16/16, inconclusive; старые primary/replay не меняются.
+- `execution-autonomy-fixture.test.ts` получил такой же exact owned120s бюджет, как real-audit
+  test. Default30s, per-command30s, corpus и coverage obligations не меняются; ограничение
+  конкуренции после нагрузочного расследования описано ниже.
+- Подтверждён отдельный дефект отчётности: cancelled/timeout считались skipped; при неполном
+  failing TAP batch агрегатор мог отдать только предыдущие passing totals. Теперь cancellation
+  — unsuccessful, missing/incoherent/unaccounted-exit report не выдаёт aggregate stats, а нулевой
+  process exit не маскирует failed/cancelled TAP. Nonzero exit никогда не переходит в PASS.
+- Causal RED: topology suite15/21 PASS,6 FAIL до fix. GREEN:21/21 после; реальные timeout/failure
+  subprocesses плюс negative matrix всех четырёх runner modes, без нового live/judge/reflection.
+- Историческое `5097 passed` — один успешный `npm test`, alias
+  `node --import tsx scripts/test-topology.ts deterministic`, из pre-commit `60fbef81`:
+  5105 total /5097 passed /0 failed /8 skipped. Это сумма непересекающихся deterministic partitions
+  (local + contract/external/unit), не сумма двух повторов unit/coverage. Меньший счётчик после
+  timeout относится только к уже выполненной fail-fast части, не ко всему планируемому корпусу.
+- Новый direct `npm test`, exact source hashes/partition accounting, штатные hooks и cleanup
+  фиксируются ниже по факту. Новых primary попыток или ослаблений guard не запланировано.
+- Первый прямой `npm test` честно FAIL: отдельный real-Git `release-boundary.test.ts` превысил
+  старый30s whole-file deadline под sibling load. Новый нормализатор корректно выдал
+  1412 total /1405 passed /1 failed /6 skipped, только local fail-fast часть, не полный корпус.
+  [Первый immutable result](./EXECUTION-TEST-INFRA-RESULT.json) сохранён. Для этого exact owned
+  INFRA-BASE файла также введён120s бюджет; код release guard/ACK/npm denial не меняется.
+- Второй прямой `npm test` завершился exit0: **5108 total /5100 passed /0 failed /8 skipped**,
+  445 уникальных файлов =119 local +326 contract/external/unit, каждый ровно один раз.
+  [Новый PASS record](./EXECUTION-TEST-INFRA-RESULT-2.json) содержит exact command, Node version,
+  неизменные source hashes, exit/duration, partition announcements; raw output не архивируется,
+  его hash/size — только provenance, не обещание доступного файла. Разница с5097 — три новых
+  regression tests, не прибавленный coverage. Первый FAIL record и16 primary attempts сохранены.
+- После завершения timeout-процесса найден и удалён ровно один собственный orphan fixture
+  `gennady-uv27b-FBSlyP` (open files/writers отсутствовали). Shared dependencies и recovery
+  checkpoints не затрагиваются. Полные commit/push hooks и финальный head фиксируются в PR.
+- Первый follow-up pre-commit: unit PASS5108/5100/0/8; coverage FAIL из-за exact30s whole-file
+  timeout `main-carry-disposition.test.ts` (frozen-history/exhaustive Git checks). Guard корректно
+  освободился, мутаций refs/исходников нет. Добавлен120s owned budget только этому INFRA-BASE файлу,
+  checker/manifest не меняются. Report-2 предшествует этому deadline-entry и последующей
+  ресурсной доработке; Report-1 также предшествует release-boundary deadline-entry. Это записи
+  прежних source overlays, не доказательство финального дерева. Ни один результат не переписан.
+- Второй штатный hook снова FAIL: несколько несвязанных CLI/Verify/V1-audit suites превысили
+  30s; наблюдался host load average70. Это свидетельство конкуренции ресурсов, не доказательство
+  повреждения frozen history. Отдельный `audit:main-carry` PASS:520 rows/117 commits/542 objects,
+  wall0.76s; архив6.4MiB. История, policy, manifests, checker и обязательность gates сохранены.
+- Вместо дальнейшего увеличения deadlines: local subprocess pool4→2, owned heavy budget batches
+  выполняются с concurrency1 (в deterministic и black-box coverage); observed c8 invocation и
+  unit/contract pool не меняются. Black-box test проверяет полный corpus ровно один раз и serial
+  bound каждого heavy файла, а не только новое значение константы.
+- Historical regression setup: единственная Git-упаковка получает `--threads=1`; копии seed
+  используют `COPYFILE_FICLONE` (copy-on-write где поддерживается, иначе независимая копия).
+  Никаких hard links/alternates/shared mutable Git. Реальный mutation probe проверяет, что
+  изменение файла в case не меняет seed; проверки corruption/disposition/package isolation остаются.
+- Новых LLM calls нет; исходные16 попыток и inconclusive verdict не меняются. Финальный полный
+  штатный hook должен проверить именно итоговое дерево; промежуточный PASS не заменяет его.
+
 #### EA-3: остановка исходной серии и конечное продолжение
 
 - Runtime baseline — exact `7958ecb0`; candidate — exact `9d4057df`; общий harness
