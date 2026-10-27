@@ -278,3 +278,18 @@ cli/cmd/<name>/
 - `specs/cli/e2e/e2e.spec.md` — e2e-тестирование
 - `specs/cli/testcov/testcov.spec.md` — testcov
 - `specs/cli/yagni/yagni.spec.md` — yagni
+
+## Declared SDD coverage
+
+Read-only; no unclaimed-source scan:
+
+```bash
+npx gennady orient --coverage --spec specs/README.md --json
+npx gennady sdd-check --coverage --task CORE-work --phase P1 --stage preflight --format json
+```
+
+The same adapter supplies both commands. Omit the selection for project declarations, use an exact
+Spec-ID/path for a structural subtree, or a Task-ID/path plus phase for one phase. Default stage is
+`audit`; `authoring`/`preflight` permit visible pending ownership, not completed coverage.
+These queries execute no tests and produce no Verify receipts. `--coverage` does not combine with
+ordinary query/check flags. Existing lifecycle/default check behavior changes only in reviewed SC3.

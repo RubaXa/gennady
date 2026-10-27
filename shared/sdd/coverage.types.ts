@@ -61,6 +61,8 @@ export type CoverageInput = {
   readonly targets: readonly CoverageTarget[];
   /** @purpose Fresh observations for every selected declared path. */
   readonly observations: readonly CoverageObservation[];
+  /** @purpose Parsed phase identities also prove real no-write phases without inventing targets. */
+  readonly phaseContexts?: readonly { readonly task: string; readonly phase: string }[];
 };
 
 /** @purpose Stable diagnostic identity; pending is visible incompleteness, never successful verification. */

@@ -132,6 +132,9 @@ const OWNED_FILE_TIMEOUTS: Readonly<Record<string, string>> = {
 
 type Layer = (typeof TEST_LAYERS)[number];
 type RunnerProbe = { args: string[]; env: NodeJS.ProcessEnv };
+// Reuse identical read-only observations; causal mutation/failure probes below always run fresh.
+let topologySnapshot: Record<Layer, string[]> | undefined;
+const spawnProbeSnapshots = new Map<string, RunnerProbe[]>();
 
 function discoverUnder(dir: string): string[] {
   const files: string[] = [];
@@ -185,6 +188,7 @@ function runRunner(command: string) {
 }
 
 function listedTopology(): Record<Layer, string[]> {
+  if (topologySnapshot) return structuredClone(topologySnapshot);
   const result = runRunner('list');
   assert.strictEqual(result.status, 0, result.stderr);
   const topology: Record<Layer, string[]> = {
@@ -200,10 +204,13 @@ function listedTopology(): Record<Layer, string[]> {
     assert.ok(file && !extra, line);
     topology[layer as Layer].push(file);
   }
-  return topology;
+  topologySnapshot = topology;
+  return structuredClone(topology);
 }
 
 function probeSpawns(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental'): RunnerProbe[] {
+  const snapshot = spawnProbeSnapshots.get(mode);
+  if (snapshot) return structuredClone(snapshot);
   const probeMarker = '__TEST_TOPOLOGY_PROBE__';
   const source = `
 import { mock } from 'node:test';
@@ -246,7 +253,9 @@ process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map((
   assert.strictEqual(result.status, 0, result.stderr);
   const encoded = result.stdout.split('\n').find((line) => line.startsWith(probeMarker));
   assert.ok(encoded, result.stdout);
-  return JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
+  const probes = JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
+  spawnProbeSnapshots.set(mode, probes);
+  return structuredClone(probes);
 }
 
 function probeFailingCommand(

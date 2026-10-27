@@ -121,6 +121,7 @@ import {
 import { checkPhaseReceipts } from './phase-receipt-check.ts';
 import { validateCurrentSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
 import { extractHeader } from '../orient/core/extract-header.ts';
+import { runSddCoverageQuery } from '../_shared/sdd-coverage-query.ts';
 import {
   prepareOrientFileRelationsContext,
   resolveOrientFileRelations,
@@ -1118,6 +1119,8 @@ export async function run(
   rawArgs: string[],
   ticketProjectRoot = process.cwd()
 ): Promise<CheckResult> {
+  if (rawArgs.some((arg) => arg === '--coverage' || arg.startsWith('--coverage=')))
+    return runSddCoverageQuery(rawArgs, ticketProjectRoot);
   // The cache is one invocation's read-sharing only. A long-lived caller may run the command again
   // after repository bytes/identities changed; prior evidence must never authorize the next run.
   ruleDepsCache.clear();

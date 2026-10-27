@@ -34,10 +34,10 @@
 | sync              | [cmd/sync/](cmd/sync/)                           | Синхронизация ai/directives/ из npm-пакета в текущий проект                           |
 | sync-skills       | [cmd/sync-skills/](cmd/sync-skills/)             | Sync ai/directives/ (in full) then SDD skills from ai/skills/ to .claude/skills/      |
 | agent-mon         | [cmd/agent-mon/](cmd/agent-mon/)                 | Интерактивный терминальный дашборд для мониторинга AI-агентов                         |
-| orient            | [cmd/orient/](cmd/orient/)                       | Canonical owner/task relations; legacy headers — read-only migration evidence         |
+| orient            | [cmd/orient/](cmd/orient/)                       | Owner/task relations; --coverage: bounded declared SDD map, no source-tree scan       |
 | sdd-orient        | [cmd/sdd-orient/](cmd/sdd-orient/)               | SDD-граф; legacy numbered headings — labelled read-only migration context             |
 | sdd-state         | [cmd/sdd-state/](cmd/sdd-state/)                 | Детерминированный снимок SDD-состояния проекта                                        |
-| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | V2 ownership/checks; legacy diagnostics grandfathered, no header append-only gate     |
+| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | SDD checks; --coverage: shared declared ownership diagnosis, never Verify evidence    |
 | sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                        |
 | sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                      |
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Thin SDD task/phase facade over universal Verify                                      |

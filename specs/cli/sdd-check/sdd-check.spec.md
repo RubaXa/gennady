@@ -1,5 +1,13 @@
 # Module: `sdd-check`
 
+SC2 adds a separate read-only `--coverage` query shared with `orient --coverage`. Selection is
+project declarations, `--spec <ID|path>`, or `--task <ID|path> --phase <ID>`; ownership stage is
+`--stage authoring|preflight|phase-exit|audit` (default audit). `--format json` returns the same
+`sdd-coverage/1` document as orient. Exit 0 permits only the selected ownership boundary; pending
+is explicitly incomplete and never Verify PASS. Inconsistency exits 1, bad/mixed options exit 2
+before reads. No test execution, receipt creation, source-tree census or lifecycle mutation occurs.
+Existing default `--all`/`--changed`/authoring/lifecycle behavior stays unchanged until SC3 review.
+
 <!--SECTION:SPEC_ID-->
 
 CLI-SDD-CHECK

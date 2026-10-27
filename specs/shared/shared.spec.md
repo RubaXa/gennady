@@ -99,7 +99,14 @@ obligations. Missing observations, conflicting owners, unsafe paths, broken chil
 cycles cannot produce complete coverage. Removing a header does not withdraw a declaration.
 Explicit deletion differs from unexplained disappearance; a future declaration remains pending,
 not verified implementation. Phase claims may temporarily extend File Mapping but audit requires
-the mapping to catch up. These contracts do not change existing CLI behavior until reviewed SC2/SC3.
+the mapping to catch up. SC2 exposes explicit read-only `--coverage` projections; default/lifecycle
+cutover remains SC3. A parsed phase identity also supports a genuine no-write phase without a fake
+target; empty ownership coverage does not prove that its declared Verify gates ran.
+
+Repository path proof retains its existing pattern-free default. The coverage reader explicitly
+opts into literal brackets, never glob expansion; identity revalidation preserves that syntax while
+still rejecting traversal, symlink components and non-regular files. Prior Git headers are observed
+for selected paths in one batch, not stored in a separate source inventory.
 
 **File Mapping:**
 

@@ -11,6 +11,10 @@ export function printHelp(): void {
   );
   console.info('');
   console.info('Usage:');
+  console.info('  npx gennady sdd-check --coverage [--spec ID/path | --task ID/path --phase ID]');
+  console.info('    [--stage authoring|preflight|phase-exit|audit] [--format json]');
+  console.info('    Read-only declared ownership projection, not Verify; default stage audit.');
+  console.info('    Coverage mode is separate from existing --all/--changed/--authoring modes.');
   console.info('  npx gennady sdd-check --task <ticket>        # check one ticket');
   console.info(
     '  npx gennady sdd-check --spec <created-spec-path> --authoring [--format json]  # structural draft receipt + trivial auto-fix; hints never block'

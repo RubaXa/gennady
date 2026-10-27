@@ -352,6 +352,7 @@ switch (command) {
     break;
 
   case 'orient':
+    // --coverage routes to the shared bounded ownership query before ordinary source scanning.
     await import('./cmd/orient/index.ts');
     break;
 
@@ -424,6 +425,7 @@ switch (command) {
     break;
 
   case 'sdd-check':
+    // --coverage shares orient's read-only projection, without dispatching Verify or lifecycle writes.
     await import('./cmd/sdd-check/index.ts');
     break;
 

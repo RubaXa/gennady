@@ -202,7 +202,12 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
   else if (selection.kind === 'spec') visit(selection.id);
   else {
     const selected = input.targets.filter(inPhase);
-    if (selected.length === 0)
+    if (
+      selected.length === 0 &&
+      !input.phaseContexts?.some(
+        (context) => context.task === selection.task && context.phase === selection.phase
+      )
+    )
       add('PHASE_CONTEXT_MISSING', '', 'No declared target context for the selected task/phase');
     for (const target of selected) if (target.operation !== 'read') visit(target.specId);
   }
