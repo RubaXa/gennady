@@ -76,6 +76,37 @@ scenario/level and weaker checks remain unsupported.
 The replan-corpus lease coordinates replan CLI operations, not external editors or arbitrary authoring.
 Redispatch and fresh Verify use the existing rule resolver/facade, never a second runner.
 
+### 2.5 Declared SDD coverage
+
+| Name                  | Type     | Purpose                                                                                                                |
+| --------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `resolveSddCoverage`  | Function | Pure projection of structural spec/file/phase declarations and fresh observations into stage-aware ownership diagnosis |
+| `CoverageStage`       | Type     | Authoring, preflight, phase exit or selected audit                                                                     |
+| `CoverageSpec`        | Type     | Explicit spec identity, structural child IDs and exact owned file paths                                                |
+| `CoverageTarget`      | Type     | Read/write/delete phase claim; read inputs never assign ownership                                                      |
+| `CoverageObservation` | Type     | Fresh safe-file/missing/unsafe observation and current/prior headers                                                   |
+| `CoverageSelection`   | Type     | Project, structural spec subtree or exact task/phase                                                                   |
+| `CoverageInput`       | Type     | Explicit declarations and observations; no persistent source inventory                                                 |
+| `CoverageFinding`     | Type     | Error or visible pending obligation with exact origin/path                                                             |
+| `CoverageRow`         | Type     | One path, expected owners, declaration provenance and materialization state                                            |
+| `CoverageResult`      | Type     | Completeness and permission to proceed; never runner-owned Verify evidence                                             |
+
+The SC1 core has no filesystem/process/network writes or reads. Adapters supply validated structural
+edges and safe observations; the core never infers ownership from folders or arbitrary Markdown links.
+Ordinary undeclared files do not require headers. Preflight may proceed with pending ownership;
+phase exit requires its materialized targets, while selected audit still exposes all other declared
+obligations. Missing observations, conflicting owners, unsafe paths, broken child identities and
+cycles cannot produce complete coverage. Removing a header does not withdraw a declaration.
+Explicit deletion differs from unexplained disappearance; a future declaration remains pending,
+not verified implementation. Phase claims may temporarily extend File Mapping but audit requires
+the mapping to catch up. These contracts do not change existing CLI behavior until reviewed SC2/SC3.
+
+**File Mapping:**
+
+- `shared/sdd/coverage.ts`: stage-aware coverage projection
+- `shared/sdd/coverage.types.ts`: canonical input and result types
+- `shared/sdd/__tests__/coverage.test.ts`: deterministic ownership and scale controls
+
 ## 3. File Structure
 
 ```
