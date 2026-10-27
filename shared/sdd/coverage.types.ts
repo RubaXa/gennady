@@ -27,8 +27,8 @@ export type CoverageTarget = {
   readonly specId: string;
   /** @purpose Literal repo-relative target path. */
   readonly path: string;
-  /** @purpose Read context versus an implementation or deletion obligation. */
-  readonly operation: 'read' | 'write' | 'delete';
+  /** @purpose Read context, active write/delete duty, or read-only extant historical output membership. */
+  readonly operation: 'read' | 'write' | 'delete' | 'claim';
 };
 
 /** @purpose Fresh caller-owned observations; adapters must inspect paths without following symlinks. */
@@ -39,15 +39,16 @@ export type CoverageObservation = {
   readonly state: 'file' | 'missing' | 'unsafe';
   /** @purpose Every current header occurrence; duplicates remain visible. */
   readonly specIds: readonly string[];
-  /** @purpose Host-derived representation; JSON uses its exact declaration, never comment injection. */
+  /** @purpose Host-derived representation; supported non-source artifacts use exact declarations, never comment injection. */
   readonly ownershipFormat?: 'header' | 'declaration';
   /** @purpose Prior Git header claims for removal/disappearance detection. */
   readonly previousSpecIds?: readonly string[];
 };
 
-/** @purpose A bounded projection, not a request to enumerate every implementation file. */
+/** @purpose A bounded projection; task selects final phase-ordered outputs without unrelated future tickets. */
 export type CoverageSelection =
   | { readonly kind: 'project' }
+  | { readonly kind: 'task'; readonly task: string }
   | { readonly kind: 'spec'; readonly id: string }
   | { readonly kind: 'phase'; readonly task: string; readonly phase: string };
 

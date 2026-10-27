@@ -6,6 +6,7 @@ import { readFileSync, readdirSync, existsSync, lstatSync, realpathSync } from '
 import { spawnSync } from 'node:child_process';
 import { basename, isAbsolute, join, resolve, relative, dirname, sep } from 'node:path';
 import { logger } from '#logger';
+import { readSddCoverage } from '../../../shared/sdd/coverage-repository.ts';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import {
   proveRepoFile,
@@ -787,12 +788,63 @@ function checkFileOwnership(
   absPath: string,
   content: string,
   baselineContent: string | null = null,
-  prepared?: OrientFileRelationsContext
-): { flow: FlowVersion; findings: Finding[] } {
+  prepared?: OrientFileRelationsContext,
+  declaredPaths?: ReadonlyMap<string, readonly string[]>,
+  allowPending = false
+): { flow: FlowVersion; findings: Finding[]; claimed?: boolean } {
   if (!existsSync(join(repoRoot, 'specs'))) return { flow: 'v1', findings: [] };
   const relPath = relative(repoRoot, absPath).split(sep).join('/');
   const header = extractHeader(content);
   const baselineHeader = baselineContent === null ? null : extractHeader(baselineContent);
+  const declaredOwners = declaredPaths?.get(relPath);
+  const headerOwnerKnown =
+    prepared?.specEntries.filter((entry) => entry.id === header.spec).length === 1;
+  if (
+    declaredOwners &&
+    declaredOwners.length > 0 &&
+    (declaredOwners.length !== 1 ||
+      ((header.specCount ?? 0) === 1 &&
+        headerOwnerKnown &&
+        !declaredOwners.includes(header.spec ?? '')))
+  )
+    return {
+      flow: 'v2',
+      findings: [
+        {
+          severity: 'error',
+          code: 'SDD_FILE_DECLARED_OWNER_CONFLICT',
+          file: relPath,
+          message: `Declared owner(s) ${declaredOwners.join(', ')} disagree with one canonical source header (${header.spec ?? 'absent'}). Resolve the declaration/header conflict; do not infer a new owner.`,
+        },
+      ],
+    };
+  if (
+    declaredPaths &&
+    !declaredPaths.has(relPath) &&
+    (header.specCount ?? 0) === 0 &&
+    (baselineHeader?.specCount ?? 0) === 0 &&
+    header.tasks.length === 0
+  )
+    return { flow: prepared?.repositoryFlow ?? 'v2', findings: [], claimed: false };
+  if (
+    allowPending &&
+    declaredPaths?.has(relPath) &&
+    (header.specCount ?? 0) === 0 &&
+    (baselineHeader?.specCount ?? 0) === 0 &&
+    header.tasks.length === 0
+  )
+    return {
+      flow: 'v2',
+      findings: [
+        {
+          severity: 'warn',
+          code: 'SDD_FILE_OWNER_PENDING',
+          file: relPath,
+          message:
+            'Authoring only: this declared file needs its canonical @spec during implementation, before strict phase exit/audit. No execution proof is granted.',
+        },
+      ],
+    };
   const result = resolveOrientFileRelations(
     repoRoot,
     absPath,
@@ -811,6 +863,33 @@ function checkFileOwnership(
       message: finding.message,
     })),
   };
+}
+
+/** @purpose Collect valid declaration membership once, without observing any source or granting completion authority. */
+function prepareDeclaredPaths(
+  root: string,
+  findings: Finding[]
+): ReadonlyMap<string, readonly string[]> {
+  const plan = readSddCoverage(root, { kind: 'project' }, 'preflight', { observeSources: false });
+  for (const finding of plan.coverage.findings) {
+    if (finding.code === 'OBSERVATION_MISSING') continue; // This is deliberately a declaration plan, never completion proof.
+    const unsafeRead = ['READ_FAILED', 'UNSAFE_METADATA'].includes(finding.code);
+    if (!unsafeRead) continue; // Semantic completeness belongs to the selected strict ownership audit, not a global preparation plan.
+    findings.push({
+      severity: 'error',
+      code: ERR_CLI_SDD_CHECK_READ_FAILED,
+      file: resolve(root, finding.path || 'specs'),
+      message: `${finding.code}: ${finding.detail}. This structural check is not an ownership audit PASS; use orient --coverage --stage audit for the selected spec.`,
+    });
+  }
+  // Future ticket targets establish membership, not a global reparenting instruction.
+  // Exact phase dispatch validates its owner; existing File Mapping is authoritative here.
+  return new Map(
+    plan.coverage.rows.map((row) => [
+      row.path,
+      row.sources.some((source) => source.startsWith('mapping:')) ? row.owners : [],
+    ])
+  );
 }
 
 /**
@@ -1174,7 +1253,7 @@ export async function run(
   if (
     selectedModeCount !== 1 ||
     (taskSelected && positional.length > 0) ||
-    (authoring && !taskSelected && !specSelected) ||
+    (authoring && !taskSelected && !specSelected && !all) ||
     (specSelected && !authoring) ||
     (authoringPhase !== undefined && (!taskSelected || !authoring)) ||
     ((all || changed) && positional.length > 1)
@@ -1183,7 +1262,7 @@ export async function run(
       selectedModeCount !== 1
         ? 'choose exactly one mode'
         : authoring && !taskSelected
-          ? '--authoring requires --task <ticket> or --spec <path>'
+          ? '--authoring requires --task <ticket>, --spec <path>, or --all'
           : specSelected && !authoring
             ? '--spec requires --authoring'
             : authoringPhase !== undefined && (!taskSelected || !authoring)
@@ -1352,6 +1431,7 @@ export async function run(
         changedSources.stderr
       );
     const ownershipContext = prepareOrientFileRelationsContext(root);
+    const declaredPaths = prepareDeclaredPaths(root, findings);
     for (const rel of changedSources.files) {
       const abs = join(root, rel);
       const baseline = readHeadContent(root, rel);
@@ -1367,7 +1447,8 @@ export async function run(
             abs,
             baseline.content,
             baseline.content,
-            ownershipContext
+            ownershipContext,
+            declaredPaths
           );
           if (ownership.flow === 'v1') {
             if (!isLegacyChangedSource(rel)) continue;
@@ -1383,11 +1464,13 @@ export async function run(
         abs,
         content,
         baseline.status === 'ok' ? baseline.content : null,
-        ownershipContext
+        ownershipContext,
+        declaredPaths
       );
       if (ownership.flow === 'v1') {
         if (!isLegacyChangedSource(rel)) continue;
       }
+      if (ownership.flow === 'v2' && ownership.claimed === false) continue;
       findings.push(...ownership.findings);
       findings.push(...checkFileConsumersResolvable(rel, content, root, resolve(abs)));
       fileCount++;
@@ -1592,6 +1675,11 @@ export async function run(
     const sourceFiles: string[] = [];
     const sourceIssues: ReadIssue[] = [];
     const ownershipContext = prepareOrientFileRelationsContext(repoRoot);
+    const declaredPaths = prepareDeclaredPaths(repoRoot, findings);
+    const changed = existsSync(join(repoRoot, '.git')) ? getChangedSourceFiles(repoRoot) : null;
+    if (changed?.status === 'error')
+      return gitEvidenceError(changed.operation, changed.exitCode, changed.stderr);
+    const changedPaths = new Set(changed?.files ?? []);
     walkSources(root === repoRoot ? repoRoot : root, sourceFiles, sourceIssues);
     for (const issue of sourceIssues) addReadIssue(findings, issue);
     for (const source of sourceFiles.sort((left, right) =>
@@ -1600,14 +1688,26 @@ export async function run(
       const observed = readUtf8(source);
       if (!observed.ok) addReadIssue(findings, observed.issue);
       else {
+        let baselineContent: string | null = null;
+        if (
+          changedPaths.has(relative(repoRoot, source).split(sep).join('/')) &&
+          (extractHeader(observed.value).specCount ?? 0) === 0
+        ) {
+          const prior = readHeadContent(repoRoot, relative(repoRoot, source).split(sep).join('/'));
+          if (prior.status === 'error')
+            return gitEvidenceError(prior.operation, prior.exitCode, prior.stderr);
+          baselineContent = prior.status === 'ok' ? prior.content : null;
+        }
         const ownership = checkFileOwnership(
           repoRoot,
           source,
           observed.value,
-          null,
-          ownershipContext
+          baselineContent,
+          ownershipContext,
+          declaredPaths,
+          authoring
         );
-        if (ownership.flow === 'v2') {
+        if (ownership.flow === 'v2' && ownership.claimed !== false) {
           findings.push(...ownership.findings);
           fileCount++;
         }
@@ -1643,7 +1743,7 @@ export async function run(
   const result = formatFindings(
     findings,
     fileCount,
-    authoring
+    authoring && !all
       ? {
           maxFindings: 12,
           repairHint: specPath
@@ -1655,6 +1755,17 @@ export async function run(
       : { format: outputFormat }
   );
   if (noTicketsFound) result.exitCode = 2;
+  if (all || changed) {
+    const ownership = {
+      domain: 'declared-and-header-positive',
+      audit: 'not-run',
+      stage: authoring ? 'authoring' : 'coherence',
+    };
+    result.text =
+      outputFormat === 'json'
+        ? JSON.stringify({ ...JSON.parse(result.text), ownership }, null, 2)
+        : `${result.text}\nOwnership: declared/header-positive source coherence only; selected full coverage audit is not run (orient --coverage --stage audit).`;
+  }
   return taskBanner && outputFormat === 'text'
     ? { text: `${taskBanner}\n${result.text}`, exitCode: result.exitCode }
     : result;

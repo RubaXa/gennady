@@ -3,6 +3,7 @@
 // @consumers: future orient/check/phase adapters, coverage controls
 
 import { isCanonicalSpecId } from './spec-id.ts';
+import { isSddDeclaredArtifact } from './source-extensions.ts';
 import type {
   CoverageFinding,
   CoverageInput,
@@ -76,7 +77,7 @@ function diagnoseRow(
       add('MAPPING_REQUIRED', 'Header/phase claim is not present in the owning File Mapping');
     if (observed.ownershipFormat === 'declaration') {
       if (
-        !path.endsWith('.json') ||
+        !isSddDeclaredArtifact(path) ||
         observed.specIds.length > 0 ||
         (observed.previousSpecIds?.length ?? 0) > 0
       )
@@ -130,6 +131,7 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
   const add = (code: string, path: string, detail: string) =>
     findings.push({ code, path, detail, severity: 'error' });
   const specs = new Map<string, CoverageSpec>();
+  const metadataFindings: { id: string; code: string; path: string; detail: string }[] = [];
   const claims = new Map<string, Claim>();
   const claimFor = (path: string): Claim => {
     let claim = claims.get(path);
@@ -146,7 +148,12 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
     specs.set(spec.id, spec);
     for (const path of spec.files) {
       if (!exactPath(path)) {
-        add('INVALID_PATH', path, 'File Mapping needs an exact repo-relative path');
+        metadataFindings.push({
+          id: spec.id,
+          code: 'INVALID_PATH',
+          path,
+          detail: 'File Mapping needs an exact repo-relative path',
+        });
         continue;
       }
       const claim = claimFor(path);
@@ -191,16 +198,20 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
       for (const child of [...spec.children].reverse()) stack.push({ id: child, exit: false });
     }
   };
-  if (input.stage === 'phase-exit' && selection.kind !== 'phase')
+  if (input.stage === 'phase-exit' && selection.kind !== 'phase' && selection.kind !== 'task')
     add('PHASE_CONTEXT_REQUIRED', '', 'Phase exit requires an exact task and phase');
   if (selection.kind === 'project') for (const id of specs.keys()) visit(id);
   else if (selection.kind === 'spec') visit(selection.id);
   else {
-    const selected = input.targets.filter(inPhase);
+    const selected = input.targets.filter((target) =>
+      selection.kind === 'task' ? target.task === selection.task : inPhase(target)
+    );
     if (
       selected.length === 0 &&
       !input.phaseContexts?.some(
-        (context) => context.task === selection.task && context.phase === selection.phase
+        (context) =>
+          context.task === selection.task &&
+          (selection.kind === 'task' || context.phase === selection.phase)
       )
     )
       add('PHASE_CONTEXT_MISSING', '', 'No declared target context for the selected task/phase');
@@ -209,10 +220,14 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
     for (const target of selected)
       if (target.operation !== 'read' && specs.has(target.specId)) selectedSpecs.add(target.specId);
   }
+  for (const finding of metadataFindings)
+    if (selection.kind === 'project' || selectedSpecs.has(finding.id))
+      add(finding.code, finding.path, finding.detail);
   const targetMap = new Map<string, CoverageTarget[]>();
   for (const target of input.targets) {
     if (target.operation === 'read') continue;
     if (selection.kind === 'phase' && !inPhase(target)) continue;
+    if (selection.kind === 'task' && target.task !== selection.task) continue;
     if (selection.kind === 'spec' && !selectedSpecs.has(target.specId)) continue;
     if (!exactPath(target.path)) {
       add('INVALID_PATH', target.path, 'Target needs an exact repo-relative path');
@@ -223,7 +238,7 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
     targetMap.set(target.path, list);
   }
   const paths = new Set<string>();
-  if (selection.kind !== 'phase') {
+  if (selection.kind !== 'phase' && selection.kind !== 'task') {
     for (const [path, claim] of claims)
       if ([...claim.owners].some((id) => selectedSpecs.has(id))) paths.add(path);
   }
@@ -232,10 +247,14 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
       paths.add(path);
       const claim = claimFor(path);
       if (!claim.mapped) claim.owners.add(target.specId);
-      claim.sources.add(`target:${target.task}#${target.phase}:${target.operation}`);
+      claim.sources.add(
+        target.operation === 'claim'
+          ? `history:${target.task}#${target.phase}`
+          : `target:${target.task}#${target.phase}:${target.operation}`
+      );
     }
   }
-  if (selection.kind !== 'phase')
+  if (selection.kind !== 'phase' && selection.kind !== 'task')
     for (const observed of observations.values()) {
       for (const id of ordered(observed.specIds)) {
         if (selection.kind !== 'project' && !selectedSpecs.has(id)) continue;

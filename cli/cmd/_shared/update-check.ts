@@ -1,5 +1,5 @@
 // @file: Non-blocking update check — service orchestrator, cache value object, platform helpers.
-// @spec: CLI
+// @spec: CLI-UPDATE-CHECK
 // @consumers: cli/gennady.ts
 
 import { spawn } from 'node:child_process';

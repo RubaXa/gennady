@@ -28,6 +28,8 @@
         or group receipt transitions; the orchestrator owns them.
       - **May run:** `ls <dir>` for targeted recon (NOT `-la` or recursive); `tsc --noEmit` after code changes; `node --test <specific test file>` for test-kind phases; `date -u +%Y-%m-%dT%H:%M:%SZ` for timestamps.
       - **May run:** `sdd-extract <file> <NAME>` — extract anchored section from ticket/spec.
+      - **May run:** `orient --coverage --task <ticket> --phase <PhaseID> --stage preflight --json`
+        for this exact dispatched phase's declared ownership. This read-only query runs no gates.
       - **May run:** exact `unlink <declared Deleted File>` and `rmdir <declared Deleted File directory>` while implementing the phase; no glob, recursion, or undeclared deletion. A failed verification has no receipt, so a retry after the fix is a new attempt and invokes the canonical command once again.
       - **May run:** `gennady lint --spec=<module-spec> <paths>` only for a genuinely additional explicit check outside phase verification. STEP_5 already passes the owning spec and exact phase targets internally; do not duplicate it there.
       - **Bootstrap-only dependency addition:** ONLY when phase kind is `bootstrap`, its Objective names

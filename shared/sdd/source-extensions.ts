@@ -45,6 +45,21 @@ export function isSddSourceFile(path: string): boolean {
 }
 
 /**
+ * @purpose Recognize a closed set of non-source text artifacts whose ownership is an exact declaration, not an injected source header.
+ * @param path Exact repository-relative artifact path.
+ * @returns True for known document/config paths, never source, .env or arbitrary binary formats; contents remain unread.
+ */
+export function isSddDeclaredArtifact(path: string): boolean {
+  return (
+    !isSddSourceFile(path) &&
+    (['.json', '.md', '.xml', '.yaml', '.yml', '.toml', '.html', '.css', '.scss'].includes(
+      extname(path).toLowerCase()
+    ) ||
+      ['.gitignore', '.prettierignore', '.npmignore', '.nvmrc', '.npmrc'].includes(basename(path)))
+  );
+}
+
+/**
  * @purpose Name the proof precision available to language-aware consumers.
  * @param path Supported or unsupported source path.
  * @returns Exact for installed TypeScript grammars, approximate for other supported languages,

@@ -18,6 +18,7 @@ const GENNADY_ENTRY = join(REPO_ROOT, 'cli', 'gennady.ts');
 
 const CLEAN_TS = [
   '// @file: Repair adapter fixture.',
+  '// @spec: APP',
   '// @consumers: RepairAdapterMatrix',
   '',
   '/** @purpose A clean exported fixture value. */',
@@ -65,7 +66,7 @@ function installTicket(root: string, targets: readonly string[]): string[] {
   mkdirSync(dirname(spec), { recursive: true });
   mkdirSync(dirname(pass), { recursive: true });
   writeFileSync(pass, 'process.exit(0);\n', 'utf-8');
-  writeFileSync(spec, '# App\n', 'utf-8');
+  writeFileSync(spec, '# App\n<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n', 'utf-8');
   writeFileSync(
     ticket,
     [
@@ -166,7 +167,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
       scripts: scripts(`${ESLINT_BIN} --fix`),
       files: {
         'eslint.config.mjs': eslintConfig(),
-        'scripts/gates-smoke.mjs': 'export const smoke = true\n',
+        'scripts/gates-smoke.mjs': '// @spec: APP\nexport const smoke = true\n',
       },
     });
     try {
@@ -210,7 +211,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
     const { root } = buildRepoFixture({
       embeddedRules: true,
       scripts: scripts('gennady lint --autofix'),
-      files: { 'scripts/gates-smoke.mjs': 'export const smoke = true\n' },
+      files: { 'scripts/gates-smoke.mjs': '// @spec: APP\nexport const smoke = true\n' },
     });
     try {
       installRealGennady(root);

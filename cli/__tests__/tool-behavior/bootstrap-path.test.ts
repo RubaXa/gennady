@@ -125,13 +125,15 @@ function bootstrapFixture(scripts: Record<string, string>): string {
     files: {
       'specs/README.md': PORTAL,
       'specs/infra-core/infra-core.spec.md': [
+        '<!--SECTION:SPEC_ID-->\nINFRA\n<!--/SECTION:SPEC_ID-->',
         '<!--SECTION:BOOTSTRAP_REQUIREMENTS-->',
         '| Requirement | Kind | Owner | Resolution | Readiness Gates | Gate Artifacts |',
         '|---|---|---|---|---|---|',
         `| toolchain | tool | this-scope-task | create | ${Object.keys(STUB_SCRIPTS).join(', ')} | package.json, scripts/gates-smoke.mjs |`,
         '<!--/SECTION:BOOTSTRAP_REQUIREMENTS-->',
       ].join('\n'),
-      'specs/app/app.spec.md': '# App\n',
+      'specs/app/app.spec.md':
+        '# App\n<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n**File Mapping:**\n- `src/thing.ts`: product implementation\n- `src/thing.test.ts`: shared test fixture\n',
       // IN_PROGRESS on purpose: the orchestrator opens the Round before the first phase dispatch,
       // so this — not TODO — is the state the gate actually meets.
       'specs/infra-core/infra-core.task.INFRA-1.md': ticket(
@@ -140,10 +142,10 @@ function bootstrapFixture(scripts: Record<string, string>): string {
         '[~] IN_PROGRESS'
       ),
       'specs/app/app.task.APP-1.md': ticket('APP-1', 'app', '[ ] TODO'),
-      'src/thing.ts': '// @file: Thing.\n// @consumers: N/A\n// @tasks: N/A\n',
-      'src/thing.test.ts': '// verifies the synthetic bootstrap target\n',
+      'src/thing.ts': '// @file: Thing.\n// @spec: APP\n// @consumers: N/A\n',
+      'src/thing.test.ts': '// @spec: APP\n// verifies the synthetic bootstrap target\n',
       'scripts/verify-pass.mjs': 'process.exit(0);\n',
-      'scripts/gates-smoke.mjs': 'process.exit(0);\n',
+      'scripts/gates-smoke.mjs': '// @spec: INFRA\nprocess.exit(0);\n',
       'scripts/verify-coverage.mjs': [
         "import { mkdirSync, writeFileSync } from 'node:fs';",
         "mkdirSync('coverage', { recursive: true });",

@@ -56,12 +56,14 @@ export function runSddCoverageQuery(
       json = value === 'json';
     }
   }
-  if ((task && !phase) || (phase && !task) || (spec && task))
-    return invalid('Choose project, --spec ID/path, or both --task ID/path --phase ID');
-  if (stage === 'phase-exit' && !task) return invalid('phase-exit requires exact task and phase');
+  if ((phase && !task) || (spec && task))
+    return invalid('Choose project, --spec ID/path, or --task ID/path with optional --phase ID');
+  if (stage === 'phase-exit' && !task) return invalid('phase-exit requires exact task context');
   if (seen.has('--json') && seen.has('--format')) return invalid('Use either --json or --format');
   const selection: CoverageSelection = task
-    ? { kind: 'phase', task, phase }
+    ? phase
+      ? { kind: 'phase', task, phase }
+      : { kind: 'task', task }
     : spec
       ? { kind: 'spec', id: spec }
       : { kind: 'project' };

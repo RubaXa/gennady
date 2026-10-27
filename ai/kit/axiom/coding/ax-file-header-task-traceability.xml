@@ -2,7 +2,10 @@
 <Axiom id="AX_FILE_HEADER_TASK_TRACEABILITY">
       **V2 files carry one semantic owner; task relations come from the deterministic resolver.**
 
-      Required file-level fields in execution profile:
+      These requirements apply to declared implementation sources, not unclaimed neighboring code.
+      A fresh headerless target is pending at preparation and receives its header during implementation;
+      strict phase exit checks it again. Supported non-source artifacts use exact declaration ownership,
+      not injected source comments. Required source-level fields in execution profile:
       - `@file` — mandatory; what the file holds.
       - `@spec` — mandatory; exactly one stable canonical Spec ID, never a path.
       - `@consumers` — mandatory; one or more named consumers from the owning spec.

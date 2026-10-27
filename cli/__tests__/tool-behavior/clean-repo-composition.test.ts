@@ -57,6 +57,7 @@ function installRealGennady(root: string): void {
 function infraSpec(): string {
   return [
     '# Infrastructure: Toolchain',
+    '<!--SECTION:SPEC_ID-->\nIB\n<!--/SECTION:SPEC_ID-->',
     '<!--SECTION:SCOPE_TYPE-->',
     'infrastructure',
     '<!--/SECTION:SCOPE_TYPE-->',
@@ -406,13 +407,17 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       (pkg.scripts as Record<string, string>)['type-check'] = 'node scripts/pass.mjs';
       writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
       mkdirSync(join(root, 'scripts'), { recursive: true });
-      writeFileSync(join(root, 'scripts/pass.mjs'), 'process.exit(0);\n', 'utf8');
-      writeFileSync(join(root, 'scripts/fix.mjs'), 'process.exit(0);\n', 'utf8');
+      writeFileSync(join(root, 'scripts/pass.mjs'), '// @spec: IB\nprocess.exit(0);\n', 'utf8');
+      writeFileSync(join(root, 'scripts/fix.mjs'), '// @spec: IB\nprocess.exit(0);\n', 'utf8');
       mkdirSync(join(root, 'src'), { recursive: true });
-      writeFileSync(join(root, 'src/toolchain.ts'), 'export const toolchain = true;\n', 'utf8');
+      writeFileSync(
+        join(root, 'src/toolchain.ts'),
+        '// @spec: IB\nexport const toolchain = true;\n',
+        'utf8'
+      );
       writeFileSync(
         join(root, 'scripts/coverage.mjs'),
-        "import { mkdirSync, writeFileSync } from 'node:fs';\nmkdirSync('coverage', { recursive: true });\nwriteFileSync('coverage/coverage-final.json', '{}');\n",
+        "// @spec: IB\nimport { mkdirSync, writeFileSync } from 'node:fs';\nmkdirSync('coverage', { recursive: true });\nwriteFileSync('coverage/coverage-final.json', '{}');\n",
         'utf8'
       );
       verifyPhase(root, 'P1');
@@ -427,8 +432,16 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       assert.match(p2, /CREATE files:[^\n]*src\/config\.ts/);
       assert.match(p2, /CREATE files:[^\n]*tsconfig\.json/);
       writeFileSync(join(root, 'tsconfig.json'), '{"compilerOptions":{"noEmit":true}}\n', 'utf8');
-      writeFileSync(join(root, 'scripts/typecheck.mjs'), 'process.exit(0);\n', 'utf8');
-      writeFileSync(join(root, 'src/config.ts'), 'export const configured = true;\n', 'utf8');
+      writeFileSync(
+        join(root, 'scripts/typecheck.mjs'),
+        '// @spec: IB\nprocess.exit(0);\n',
+        'utf8'
+      );
+      writeFileSync(
+        join(root, 'src/config.ts'),
+        '// @spec: IB\nexport const configured = true;\n',
+        'utf8'
+      );
       verifyPhase(root, 'P2');
       completePhase(root, 'P2', 'tsconfig.json, scripts/typecheck.mjs, src/config.ts');
 
@@ -445,15 +458,20 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
       };
       writeFileSync(packagePath, `${JSON.stringify(withTest, null, 2)}\n`, 'utf8');
       mkdirSync(join(root, 'test'), { recursive: true });
-      writeFileSync(join(root, 'scripts/verify-extra.mjs'), 'process.exit(0);\n', 'utf8');
+      writeFileSync(
+        join(root, 'scripts/verify-extra.mjs'),
+        '// @spec: IB\nprocess.exit(0);\n',
+        'utf8'
+      );
       writeFileSync(
         join(root, 'src/test-support.ts'),
-        'export const testSupport = true;\n',
+        '// @spec: IB\nexport const testSupport = true;\n',
         'utf8'
       );
       writeFileSync(
         join(root, 'test/toolchain-smoke.test.js'),
         [
+          '// @spec: IB',
           "import assert from 'node:assert/strict';",
           "import { existsSync } from 'node:fs';",
           "import test from 'node:test';",

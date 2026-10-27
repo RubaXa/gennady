@@ -125,8 +125,9 @@
 
         Then run the complete structural check over actual specs, tickets, and indexes. It checks ID
         uniqueness, dependency resolution/acyclicity, tracker sync, and declared ownership/order.
-        <ToolCall owner="this-step" result="integrityGate">npx gennady sdd-check --all .</ToolCall>
-        Consume `integrityGate`; do not proceed to semantic review while it is red.
+        <ToolCall owner="this-step" result="integrityGate">npx gennady sdd-check --all --authoring .</ToolCall>
+        Consume `integrityGate`; do not proceed to semantic review while it is red. Fresh missing
+        headers are pending until implementation; removed/foreign ownership is still invalid.
       </Action>
     </Step>
 
@@ -185,7 +186,7 @@
       <Goal>Leave a directly executable durable queue.</Goal>
       <Action>
         Rerun the complete mechanical check after the approval marker is recorded.
-        <ToolCall owner="this-step" result="finalIntegrityGate">npx gennady sdd-check --all .</ToolCall>
+        <ToolCall owner="this-step" result="finalIntegrityGate">npx gennady sdd-check --all --authoring .</ToolCall>
         Consume `finalIntegrityGate`. Report exact ticket
         paths and the next command `/sdd-execute &lt;Task-ID|next|all&gt;`. Stopping here is safe because
         the whole continuation state lives in tickets, indexes, specs, Execution Logs, and Git.

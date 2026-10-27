@@ -44,13 +44,13 @@
         but whose build its own diff broke. When escalation is warranted instead — per
         `AX_BLOCKER_ESCALATION` — halt `H_BLOCKED` with typed evidence for the orchestrator; never
         improvise past it.
-        For every existing Target File or Deleted File call ownershipQuery and consume the shared
-        resolver result per `AX_TASK_RESOLUTION`. The selected ticket must appear as the applicable
-        `planned` or `active` relation and its `semantic-owner` must match the referenced spec; a
-        `blocked` relation stops with `H_BLOCKED`, while `history` alone grants no write authority.
-        A not-yet-created exact target takes its owner Spec ID from the ticket's resolved spec.
-        <ToolCall owner="phase-agent" result="ownershipQuery">npx gennady orient --file &lt;existing-target&gt; --json</ToolCall>
-        Inputs &lt;existing-target&gt;: one exact existing Target File or Deleted File. Use ownershipQuery.
+        Resolve declared ownership once for this exact task/phase per `AX_TASK_RESOLUTION`:
+        <ToolCall owner="phase-agent" result="ownershipQuery">npx gennady orient --coverage --task <ticket> --phase <PhaseID> --stage preflight --json</ToolCall>
+        Inputs <ticket>, <PhaseID>: the exact dispatched ticket and phase. Consume ownershipQuery's
+        rows, owners and findings. Pending headers or future files permit preparation, not completion:
+        create the required source headers during implementation. A foreign/removed/ambiguous owner
+        or unsafe path blocks. Unclaimed neighboring code needs no bulk adoption. Non-source artifact
+        declarations do not authorize injecting comments into JSON, documents or prompt markup.
       </Action>
     </Step>
     <Step id="STEP_2_IMPLEMENT">

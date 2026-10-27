@@ -126,7 +126,7 @@ describe('bootstrap ticket lifecycle', () => {
       files: {
         'package-lock.json': '{"lockfileVersion":3}\n',
         'specs/infra-base/infra-base.spec.md':
-          '# Infra base\n\n<!--SECTION:SCOPE_TYPE-->\ninfrastructure\n<!--/SECTION:SCOPE_TYPE-->\n\n#### Service: `Toolchain`\n\nOwns the compiler contract.\n',
+          '# Infra base\n<!--SECTION:SPEC_ID-->\nIB\n<!--/SECTION:SPEC_ID-->\n\n<!--SECTION:SCOPE_TYPE-->\ninfrastructure\n<!--/SECTION:SCOPE_TYPE-->\n\n#### Service: `Toolchain`\n\nOwns the compiler contract.\n',
         [TICKET_PATH]: TICKET,
       },
     });

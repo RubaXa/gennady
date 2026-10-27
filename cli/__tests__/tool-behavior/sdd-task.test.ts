@@ -144,11 +144,12 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       files: {
         'src/current.ts': 'export const current = 1;\n',
         'src/current.test.ts': 'export const currentTest = 1;\n',
-        'ticket.md': phaseTicket(),
+        'app.task.APP-1.md': phaseTicket(),
+        'app.spec.md': '<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n',
       },
     });
     try {
-      const result = runCli(['sdd-task', 'ticket.md', '--phase', 'P1'], root);
+      const result = runCli(['sdd-task', 'app.task.APP-1.md', '--phase', 'P1'], root);
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
       assert.match(result.stdout, /READ files:\s+src\/current\.ts/);
       assert.match(result.stdout, /worker contract \(copy verbatim into dispatch\):/);
@@ -156,7 +157,7 @@ describe('sdd-task — live gate-queue diagnostic', () => {
         result.stdout,
         /next: исполняй переданный worker contract без сокращений, запусти ровно unified Verify command above/
       );
-      assert.match(result.stdout, /npx gennady sdd-verify --task=ticket\.md --phase=P1/);
+      assert.match(result.stdout, /npx gennady sdd-verify --task=app\.task\.APP-1\.md --phase=P1/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -223,8 +224,9 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       embeddedRules: true,
       files: {
         [ticketPath]: ticket,
-        'specs/app space;safe/app.spec.md': '# App\n',
-        'src/current.ts': 'export const current = true;\n',
+        'specs/app space;safe/app.spec.md':
+          '# App\n<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n',
+        'src/current.ts': '// @spec: APP\nexport const current = true;\n',
         'verify-custom.mjs': 'process.exit(0);\n',
         'gennady.yaml': config,
       },
@@ -264,7 +266,7 @@ describe('sdd-task — live gate-queue diagnostic', () => {
       });
       assert.notStrictEqual(missing.status, 0, `${missing.stdout ?? ''}${missing.stderr ?? ''}`);
       assert.match(missing.stderr ?? '', /ERR_CLI_SDD_VERIFY_PHASE_CONTEXT/);
-      assert.match(missing.stderr ?? '', /Target File path is missing|path is missing/);
+      assert.match(missing.stderr ?? '', /UNEXPECTED_MISSING src\/current\.ts/);
       assert.doesNotMatch(missing.stdout ?? '', /PASS node:release-proof|VERDICT PASS/);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -328,8 +330,8 @@ describe('sdd-task — live gate-queue diagnostic', () => {
           '          timeout: 10s',
           '          onFailure: stop-phase',
         ].join('\n'),
-        'src/existing.ts': 'export const existing = true;\n',
-        'specs/app/app.spec.md': '# App\n',
+        'src/existing.ts': '// @spec: APP\nexport const existing = true;\n',
+        'specs/app/app.spec.md': '# App\n<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n',
         'specs/app/app.task.APP-create.md': ticket,
       },
     });
@@ -355,7 +357,11 @@ describe('sdd-task — live gate-queue diagnostic', () => {
         /declares invalid path "src\/new\.ts": Target File path is missing/
       );
 
-      writeFileSync(join(root, 'src', 'new.ts'), 'export const created = true;\n', 'utf-8');
+      writeFileSync(
+        join(root, 'src', 'new.ts'),
+        '// @spec: APP\nexport const created = true;\n',
+        'utf-8'
+      );
       const verified = runCli(verifyArgs, root);
       assert.strictEqual(verified.exitCode, 0, verified.stdout + verified.stderr);
       assert.match(verified.stdout, /VERDICT PASS/);

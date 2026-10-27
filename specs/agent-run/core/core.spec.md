@@ -297,12 +297,15 @@ services/agent-run/
 
 **File Mapping:**
 
-- `core/ports/agent-engine.port.ts`: `AgentEngine`.
-- `core/run.ts`: `run`, `listEngines`, `listModels`.
-- `core/registry.ts`: `registry`.
-- `core/run-options.type.ts`: `RunOptions`, `RunResult`, `EngineStatus`.
-- `core/agent-run-error.ts`: `AgentRunError`, `ErrorCode`.
-- `index.ts`: composition root — регистрирует `OpencodeEngine`, re-export публичной поверхности.
+- `services/agent-run/core/ports/agent-engine.port.ts`: `AgentEngine`.
+- `services/agent-run/core/run.ts`: `run`, `listEngines`, `listModels`.
+- `services/agent-run/core/registry.ts`: `registry`.
+- `services/agent-run/core/run-options.type.ts`: `RunOptions`, `RunResult`, `EngineStatus`.
+- `services/agent-run/core/agent-run-error.ts`: `AgentRunError`, `ErrorCode`.
+
+**Composition dependency:** `services/agent-run/index.ts` belongs to AGENT-RUN-OPENCODE;
+it registers the engine and re-exports the public surface. Repository-root `index.ts` is not this module.
+
 <!--/SECTION:FILE_STRUCTURE-->
 
 <!--SECTION:MODULE_DECISION_LOG-->

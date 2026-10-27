@@ -1,5 +1,5 @@
 // @file: Integration tests for UpdateCheckWorker — local HTTP server, real fs cache, fetch interception.
-// @spec: CLI
+// @spec: CLI-UPDATE-CHECK
 // @consumers: UC-tests
 
 import { describe, it, before, after } from 'node:test';

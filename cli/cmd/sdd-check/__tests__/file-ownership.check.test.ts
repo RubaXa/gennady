@@ -125,6 +125,68 @@ describe('sdd-check file ownership', () => {
     }
   });
 
+  it('ordinary headerless code is outside SDD, while exact mappings and prior headers remain mandatory', async () => {
+    for (const mode of ['--changed', '--all']) {
+      const unclaimed = fixture({ sourceHeader: '', tickets: [] });
+      try {
+        const result = await mod.run(argv(mode, unclaimed.root));
+        assert.doesNotMatch(result.text, /SDD_FILE_SPEC_OWNER_UNRESOLVED/);
+        if (mode === '--changed') assert.equal(result.exitCode, 0, result.text);
+        writeFileSync(
+          join(unclaimed.root, 'specs/app/app.spec.md'),
+          spec('APP') +
+            '\n<!--SECTION:FILE_STRUCTURE-->\n**File Mapping:**\n- `src/value.ts`: implementation\n<!--/SECTION:FILE_STRUCTURE-->'
+        );
+        const declared = await mod.run(argv(mode, unclaimed.root));
+        assert.equal(declared.exitCode, 1, declared.text);
+        assert.match(declared.text, /SDD_FILE_SPEC_OWNER_UNRESOLVED/);
+        if (mode === '--all') {
+          const authoring = await mod.run(argv('--all', '--authoring', unclaimed.root));
+          assert.doesNotMatch(authoring.text, /SDD_FILE_SPEC_OWNER_UNRESOLVED/);
+          assert.match(authoring.text, /SDD_FILE_OWNER_PENDING/);
+        }
+      } finally {
+        rmSync(unclaimed.root, { recursive: true, force: true });
+      }
+
+      const removed = fixture({
+        sourceHeader: '',
+        tickets: [],
+        baselineSource: '// @spec: APP\nexport const value = 1;\n',
+      });
+      try {
+        const result = await mod.run(argv(mode, removed.root));
+        assert.equal(result.exitCode, 1, result.text);
+        assert.match(result.text, /SDD_FILE_SPEC_OWNER_UNRESOLVED/);
+        if (mode === '--all')
+          assert.match(
+            (await mod.run(argv('--all', '--authoring', removed.root))).text,
+            /SDD_FILE_SPEC_OWNER_UNRESOLVED/
+          );
+      } finally {
+        rmSync(removed.root, { recursive: true, force: true });
+      }
+    }
+  });
+
+  it('File Mapping cannot be overridden by a different valid @spec even without an active writer', async () => {
+    const { root } = fixture({ sourceHeader: '// @spec: OTHER', tickets: [], otherSpec: true });
+    try {
+      writeFileSync(
+        join(root, 'specs/app/app.spec.md'),
+        spec('APP') +
+          '\n<!--SECTION:FILE_STRUCTURE-->\n**File Mapping:**\n- `src/value.ts`: implementation\n<!--/SECTION:FILE_STRUCTURE-->'
+      );
+      for (const args of [['--changed'], ['--all'], ['--all', '--authoring']]) {
+        const result = await mod.run(argv(...args, root));
+        assert.equal(result.exitCode, 1, result.text);
+        assert.match(result.text, /SDD_FILE_DECLARED_OWNER_CONFLICT/);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('fails closed for an orphan @spec and for forbidden V2 @tasks', async () => {
     for (const testCase of [
       {

@@ -18,7 +18,7 @@ export function printHelp(): void {
   console.info(
     '  --coverage          Query declared SDD coverage without scanning unclaimed sources'
   );
-  console.info('                      Optional --spec ID/path or --task ID/path --phase ID');
+  console.info('                      Optional --spec ID/path or --task ID/path [--phase ID]');
   console.info(
     '                      --stage authoring|preflight|phase-exit|audit (default audit)'
   );

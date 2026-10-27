@@ -162,7 +162,7 @@ function existingReviewPath(
   raw: string,
   required: boolean
 ): { ok: true; relative: string } | { ok: false; detail: string } {
-  const inspected = inspectRepoPath(root, raw, required ? 'file' : 'potential');
+  const inspected = inspectRepoPath(root, raw, required ? 'file' : 'potential', 'literal-brackets');
   if (!inspected.ok) return inspected;
   if (required) {
     try {
@@ -233,6 +233,10 @@ export function validateTicketReviewPaths(
       const section = extractSection(content, `PHASE_${phase.id}`);
       return section.status === 'ok' ? [parsePhaseDetail(section.content)] : [];
     });
+  for (const detail of [...phaseDetails, ...deletedPhaseDetails]) {
+    if (detail.pathIssues?.length)
+      return { ok: false, path: 'Target/Deleted Files', detail: detail.pathIssues.join('; ') };
+  }
   const targets: string[] = [];
   const createTargets: string[] = [];
   for (const detail of phaseDetails) {
@@ -256,6 +260,7 @@ export function validateTicketReviewPaths(
   }
 
   const deleted: string[] = [];
+  const currentDeletions = new Set(phaseDetails.flatMap((detail) => detail.deletedFiles));
   const deletedClaims: string[] = [];
   for (const detail of deletedPhaseDetails) {
     for (const file of detail.deletedFiles) {
@@ -263,8 +268,20 @@ export function validateTicketReviewPaths(
     }
   }
   for (const raw of deletedClaims) {
-    const inspected = inspectRepoPath(root, raw, 'missing');
+    const pendingDeletion =
+      selection?.targetExpectation === 'dispatch' && currentDeletions.has(raw);
+    const inspected = inspectRepoPath(
+      root,
+      raw,
+      pendingDeletion ? 'potential' : 'missing',
+      'literal-brackets'
+    );
     if (!inspected.ok) return { ok: false, path: raw, detail: `Deleted File ${inspected.detail}` };
+    if (pendingDeletion) {
+      const existing = existingReviewPath(root, raw, true);
+      if (!existing.ok && existing.detail !== 'path is missing')
+        return { ok: false, path: raw, detail: `Deleted File ${existing.detail}` };
+    }
     const baseline = readHeadContent(root, inspected.relative);
     if (baseline.status !== 'ok') {
       const detail =
@@ -288,12 +305,13 @@ export function validateTicketReviewPaths(
       })()
     : ticketHandoffArtifacts(content);
   for (const raw of handoffArtifacts) {
-    const lexical = inspectRepoPath(root, raw, 'potential');
+    const lexical = inspectRepoPath(root, raw, 'potential', 'literal-brackets');
     if (!lexical.ok) return { ok: false, path: raw, detail: `Handoff artifact ${lexical.detail}` };
     const inspected = inspectRepoPath(
       root,
       raw,
-      deleted.includes(lexical.relative) ? 'missing' : 'file'
+      deleted.includes(lexical.relative) ? 'missing' : 'file',
+      'literal-brackets'
     );
     if (!inspected.ok)
       return { ok: false, path: raw, detail: `Handoff artifact ${inspected.detail}` };

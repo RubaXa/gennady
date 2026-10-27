@@ -12,7 +12,9 @@ export function printHelp(): void {
   console.info('');
   console.info('Usage:');
   console.info('  npx gennady sdd-check --coverage [--spec ID/path | --task ID/path --phase ID]');
-  console.info('    [--stage authoring|preflight|phase-exit|audit] [--format json]');
+  console.info(
+    '    [--stage authoring|preflight|phase-exit|audit] [--format json]; --task may omit --phase for final ticket outputs'
+  );
   console.info('    Query, not a gate: read-only ownership projection, not Verify; default audit.');
   console.info('    Coverage mode is separate from existing --all/--changed/--authoring modes.');
   console.info('  npx gennady sdd-check --task <ticket>        # check one ticket');
@@ -29,9 +31,18 @@ export function printHelp(): void {
     '  npx gennady sdd-check --all [project-root]   # check every ticket + spec under specs/'
   );
   console.info(
+    '  npx gennady sdd-check --all --authoring [project-root]  # structural scaffold preflight; new headers may remain pending'
+  );
+  console.info(
     '  npx gennady sdd-check --changed [project-root]  # check V2 ownership and consumers of changed files'
   );
   console.info('  Choose exactly one mode: --task, --spec, --all, or --changed.');
+  console.info(
+    '  Ordinary code outside declarations/current or prior @spec is not adopted by these checks.'
+  );
+  console.info(
+    '  --all --authoring grants no completion proof; strict phase exit and selected-spec ownership audit still apply.'
+  );
   console.info('');
   console.info('Mechanical checks (per ticket):');
   console.info(

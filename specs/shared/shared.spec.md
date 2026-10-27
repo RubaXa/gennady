@@ -83,7 +83,7 @@ Redispatch and fresh Verify use the existing rule resolver/facade, never a secon
 | `resolveSddCoverage`  | Function | Pure projection of structural spec/file/phase declarations and fresh observations into stage-aware ownership diagnosis |
 | `CoverageStage`       | Type     | Authoring, preflight, phase exit or selected audit                                                                     |
 | `CoverageSpec`        | Type     | Explicit spec identity, structural child IDs and exact owned file paths                                                |
-| `CoverageTarget`      | Type     | Read/write/delete phase claim; read inputs never assign ownership                                                      |
+| `CoverageTarget`      | Type     | Read/write/delete phase duty or read-only extant historical membership; read inputs never assign ownership             |
 | `CoverageObservation` | Type     | Fresh safe-file/missing/unsafe observation and current/prior headers                                                   |
 | `CoverageSelection`   | Type     | Project, structural spec subtree or exact task/phase                                                                   |
 | `CoverageInput`       | Type     | Explicit declarations and observations; no persistent source inventory                                                 |
@@ -99,8 +99,8 @@ obligations. Missing observations, conflicting owners, unsafe paths, broken chil
 cycles cannot produce complete coverage. Removing a header does not withdraw a declaration.
 Explicit deletion differs from unexplained disappearance; a future declaration remains pending,
 not verified implementation. Phase claims may temporarily extend File Mapping but audit requires
-the mapping to catch up. SC2 exposes explicit read-only `--coverage` projections; default/lifecycle
-cutover remains SC3. A parsed phase identity also supports a genuine no-write phase without a fake
+the mapping to catch up. Explicit read-only `--coverage` projections do not replace SC3 lifecycle
+checks at dispatch, Verify terminal, complete, close and positive group audit. A parsed phase identity also supports a genuine no-write phase without a fake
 target; empty ownership coverage does not prove that its declared Verify gates ran.
 
 Repository path proof retains its existing pattern-free default. The coverage reader explicitly
@@ -114,6 +114,20 @@ at audit the owning File Mapping is also required. This representation is host-d
 cannot waive a code file's header, and does not replace the project's schema or functional gates.
 Source ownership is parsed only from the canonical leading comment region; an `@spec` inside a
 declaration body is not a file header.
+
+SC3 also supports declaration ownership for `.md`, `.xml`, `.yaml`, `.yml`, `.toml`, `.html`, `.css`,
+`.scss`, `.gitignore`, `.prettierignore`, `.npmignore`, `.nvmrc` and `.npmrc`. It proves only safe regular-file existence;
+it neither reads these artifact contents/Git blobs nor parses prompt markup as XML. Format/schema
+and behavior remain project-gate responsibilities. The closed list excludes secrets and unknown
+binary formats; it cannot waive a supported source's header. JSON still requires a real JSON parse.
+
+Task close projects only that ticket's dependency-ordered final write/delete claims, not its owner's
+entire future implementation. Exact task queries may omit `--phase`; phase queries still inspect
+only that phase. A closing-group audit checks the full selected File Mapping, including pending
+future outputs, and cannot record a PASS receipt while any ownership obligation remains incomplete.
+Extant exact outputs from completed tickets remain read-only membership, not renewed write authority;
+missing historical outputs do not become permanent execution obligations. Completing a ticket must
+not hide an unmapped existing output from the closing-group audit.
 
 Spec projections use the same selected target set for path inclusion, owner inference and row
 diagnostics. Foreign targets cannot add write/delete duties to a selected spec; the project view
@@ -131,6 +145,12 @@ such as conditional `remove …` are not write/delete declarations: list exact f
 Deleted Files instead. Visible text around HTML comments remains declarative; commented/fenced
 examples never add claims.
 
+A unique existing File Mapping determines the implementation owner of a target even when its ticket
+belongs to a different structural context; ticket context must not reparent that file. Only a new
+unmapped output defaults to its ticket owner. Bullet colon/dash and explicit File/Path table columns
+are accepted. Relative-looking names remain literal repository paths: no source-root guess or
+directory expansion is performed.
+
 Coverage source reads conservatively exclude the reserved segments `node_modules`, `.git`, `dist`,
 `coverage`, `build` and `out`, case-insensitively at any depth. This is an explicit coverage-reader
 boundary, not a claim that every directory called `build` is unsafe, and not a new Verify/write
@@ -140,6 +160,9 @@ and unexpected deletion. No repository-wide source scan or persistent exception 
 
 **File Mapping:**
 
+- `shared/common/sync/sync-core.shared.ts`: shared sync package resolution and byte comparison
+- `shared/common/sync/sync-formatter.shared.ts`: shared sync result formatting
+- `shared/common/sync/sync-deps.type.ts`: shared sync dependency port
 - `shared/sdd/coverage.ts`: stage-aware coverage projection
 - `shared/sdd/coverage.types.ts`: canonical input and result types
 - `shared/sdd/coverage-repository.ts`: read-only repository observations shared across SDD consumers

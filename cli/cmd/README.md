@@ -226,7 +226,7 @@ npx gennady yagni /path/to/repo
 | `orient`            | V2 resolver relations; legacy headers — read-only migration evidence                           |
 | `sdd-orient`        | SDD-граф; legacy headings — read-only migration context                                        |
 | `sdd-state`         | Детерминированный снимок SDD-состояния проекта                                                 |
-| `sdd-check`         | V2 checks; legacy diagnostics grandfathered, no append-only header gate                        |
+| `sdd-check`         | Declared ownership checks; --all --authoring permits pending headers, strict phase/audit exit  |
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                                                 |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                                                               |
 | `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine                                    |

@@ -100,6 +100,13 @@ test('normal reference closes a canonical ticket/group, broken code is red, and 
       mkdirSync(dirname(join(cwd, path)), { recursive: true });
       writeFileSync(join(cwd, path), body);
     }
+    writeFileSync(
+      join(cwd, c.module),
+      readFileSync(join(cwd, c.module), 'utf8').replace(
+        '<!--/SECTION:FILE_STRUCTURE-->',
+        '- `src/delay.test.ts`: scenario and rejection tests\n<!--/SECTION:FILE_STRUCTURE-->'
+      )
+    );
     mkdirSync(join(cwd, '.claude/tmp'), { recursive: true });
     for (const phase of ['P1', 'P2']) {
       ok('sdd-task', c.ticket, '--phase', phase);

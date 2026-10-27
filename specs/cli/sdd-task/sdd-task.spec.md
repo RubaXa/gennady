@@ -32,6 +32,12 @@ _Обзор пути от контракта к реализации и пров
 
 ## 1. Module Vision
 
+SC3: dispatch проверяет общую declaration-backed карту выбранной фазы на стадии `preflight`.
+Отсутствующий новый заголовок допускается как pending, но чужое/снятое владение и небезопасный путь
+блокируют выдачу контекста. Существующий tracked `Deleted File` текущей фазы доступен worker для
+удаления; отсутствие обязательно перед Verify, а удаления prerequisites уже должны быть выполнены.
+Manifest включает существующие точные delete-targets; остальные write/command/rule границы не меняются.
+
 Планировочная поверхность тикета для оркестратора `execute`. `sdd-task <ticket-path|Task-ID>` извлекает ТОЛЬКО планировочные секции (Meta + Phases Overview + тело каждой фазы + Verification), машинно поверхностит `[BLOCKERS]` и `[DEVIATIONS]` (`pending-operator` из ticket-local Decision Log) и собирает per-phase read-manifest (`AX_READ_PER_MANIFEST`): что фаза читает (rules / specs / ticket-секции / target-файлы / gates) и **что НЕ читает**. В `--phase` этот manifest становится lifecycle-aware: существующие targets остаются в `READ files`, а отсутствующие exact repo-local targets отделяются в `CREATE files`. Аргумент — путь ИЛИ голый Task-ID (резолвится сканом по Meta, `AX_TASK_RESOLUTION`, D-TK006). Оркестратор читает этот вывод вместо всего тикета и не лезет в тела фаз, BDD, спеки, код. **Без Task-ID** `sdd-task` отдаёт **карту исполнения** — детерминированный pickable-набор + заблокированные + строка `root:`. При `EXECUTION_READY=yes` pickable совпадает с graph-ready (`pickableTasks`); при `no` он включает dependency-ready exact active owners из `GATE_QUEUE` и graph-ready тикеты с project-authored selector именно первой незавершённой фазы (D-TK019/D-TK023). Последние явно помечаются `PROJECT_SELECTOR_QUEUE`: это отдельная маршрутизация, не Verify PASS и не разрешение пропустить выбранные фазовые проверки. Карта печатает все `GATE_QUEUE_DIAG`, включая отсутствующий/неоднозначный owner и неполный Bootstrap contract. Парсеры тикета вынесены в `shared/sdd/ticket.ts` (переиспользует `sdd-check`).
 
 Target dispatch дополнительно строит open-vocabulary `PhaseFacts`, до agent work разрешает и

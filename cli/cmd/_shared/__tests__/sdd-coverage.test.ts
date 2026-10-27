@@ -291,6 +291,25 @@ test('ordered write/delete lifecycle is projected to final obligation, not simul
     const result = readSddCoverage(root, { kind: 'project' }, 'audit');
     assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
     assert.equal(result.coverage.rows[0]?.state, 'deleted');
+    const taskProjection = runSddCoverageQuery(
+      [
+        'node',
+        'gennady',
+        'orient',
+        '--coverage',
+        '--task',
+        'CORE-work',
+        '--stage',
+        'phase-exit',
+        '--json',
+      ],
+      root
+    );
+    assert.equal(taskProjection.exitCode, 0, taskProjection.text);
+    assert.equal(
+      (JSON.parse(taskProjection.text) as CoverageDocument).coverage.rows[0]?.state,
+      'deleted'
+    );
     put(
       'specs/core/core.task.work.md',
       ticket([
@@ -299,6 +318,13 @@ test('ordered write/delete lifecycle is projected to final obligation, not simul
       ])
     );
     assert.equal(readSddCoverage(root, { kind: 'project' }, 'audit').coverage.canProceed, false);
+    assert.notEqual(
+      runSddCoverageQuery(
+        ['node', 'gennady', 'orient', '--coverage', '--task', 'CORE-work', '--stage', 'phase-exit'],
+        root
+      ).exitCode,
+      0
+    );
   }));
 
 test('Git prior headers catch removal and unexplained disappearance, not a persistent snapshot', () =>
@@ -362,7 +388,6 @@ test('JSON ownership is exact declaration-backed and syntax-checked, never corru
 test('strict argument failures precede filesystem reads and reject mixed query modes', () => {
   for (const args of [
     ['--stage', 'wrong'],
-    ['--task', 'CORE-work'],
     ['--phase', 'P1'],
     ['--spec', 'CORE', '--task', 'CORE-work', '--phase', 'P1'],
     ['--all'],
@@ -516,7 +541,7 @@ test('visible File Mapping declarations survive inline comments while commented/
 
 test('unsupported missing artifacts never bypass the worktree format policy through Git prior reads', () =>
   fixture((root, put) => {
-    const paths = ['settings.env', 'secret.bin', 'old.md'];
+    const paths = ['settings.env', 'secret.bin', 'old.dat'];
     put('specs/core/core.spec.md', spec('CORE', paths));
     for (const path of paths) put(path, 'synthetic unsupported-format control');
     const git = (...args: string[]) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
@@ -727,6 +752,79 @@ test('actual V2 no-write and conditional-directory forms are distinguished witho
     assert.equal(rejected.coverage.canProceed, false);
     assert.ok(rejected.coverage.findings.some((finding) => finding.code === 'INVALID_PHASE'));
     assert.equal(rejected.reads.sourceReads, 0);
+  }));
+
+test('a ticket context cannot reparent a file already owned by an implementation File Mapping', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE'));
+    put('specs/core/core.task.work.md', ticket());
+    put('specs/implementation/implementation.spec.md', spec('IMPL', ['src/value.ts']));
+    put('src/value.ts', '// @spec: IMPL\nexport const value = 7;');
+    const selection = { kind: 'phase' as const, task: 'CORE-work', phase: 'P1' };
+    const result = readSddCoverage(root, selection, 'phase-exit');
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+    assert.deepEqual(result.coverage.rows[0]?.owners, ['IMPL']);
+    put('src/value.ts', '// @spec: CORE\nexport const value = 7;');
+    assert.equal(readSddCoverage(root, selection, 'phase-exit').coverage.canProceed, false);
+  }));
+
+test('File Mapping supports exact bullet/dash/table forms without guessing a relative source root', () =>
+  fixture((root, put) => {
+    const content = spec('CORE').replace(
+      '**File Mapping:**',
+      '**File Mapping:**\n- `src/value.ts` — value\n\n| Component | File |\n|---|---|\n| data | `config.json` |\n\n**Registration points:**\nnot a declaration'
+    );
+    put('specs/core/core.spec.md', content);
+    put('src/value.ts', '// @spec: CORE\nexport const value = 7;');
+    put('config.json', '{}');
+    const result = readSddCoverage(root, { kind: 'project' }, 'audit');
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+    assert.deepEqual(
+      result.coverage.rows.map((row) => row.path),
+      ['config.json', 'src/value.ts']
+    );
+  }));
+
+test('non-source text artifacts use exact declarations without content/Git reads or injected headers', () =>
+  fixture((root, put) => {
+    const paths = [
+      'docs/README.md',
+      'ai/directive.xml',
+      'config/settings.yaml',
+      '.gitignore',
+      '.nvmrc',
+      '.npmrc',
+    ];
+    put('specs/core/core.spec.md', spec('CORE', paths));
+    for (const path of paths)
+      put(path, 'opaque content: not an XML document; @spec in prose is not authority');
+    const result = readSddCoverage(root, { kind: 'project' }, 'audit');
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+    assert.equal(result.reads.sourceReads, 0);
+    assert.equal(result.reads.priorBytes, 0);
+    assert.equal(result.coverage.rows.length, paths.length);
+  }));
+
+test('a phase and its owner audit ignore malformed foreign plans but project audit still reports them', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE', ['src/value.ts']));
+    put('specs/core/core.task.work.md', ticket());
+    put('src/value.ts', '// @spec: CORE\nexport const value = 7;');
+    put('specs/foreign/foreign.spec.md', spec('FOREIGN', ['src/*.ts']));
+    put('specs/foreign/foreign.task.work.md', ticket().replace('CORE-work', 'FOREIGN-work'));
+    for (const selection of [
+      { kind: 'phase' as const, task: 'CORE-work', phase: 'P1' },
+      { kind: 'spec' as const, id: 'CORE' },
+    ]) {
+      const result = readSddCoverage(
+        root,
+        selection,
+        selection.kind === 'phase' ? 'phase-exit' : 'audit'
+      );
+      assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
+      assert.equal(result.reads.sourceReads, 1);
+    }
+    assert.equal(readSddCoverage(root, { kind: 'project' }, 'audit').coverage.complete, false);
   }));
 
 test('header parser preserves conservative JSDoc and interleaved-comment semantics without body spoof', () =>

@@ -390,6 +390,9 @@ function downstreamOwnedFiles(
       throw new Error(`SDD_VERIFY_ATTEMPT_SCOPE_INVALID: PHASE_${phase.id}`);
     }
     const detail = parsePhaseDetail(section.content);
+    if (detail.pathIssues?.length) {
+      throw new Error(`SDD_VERIFY_ATTEMPT_SCOPE_INVALID: ${detail.pathIssues.join('; ')}`);
+    }
     for (const raw of [...detail.targetFiles, ...detail.deletedFiles]) {
       const absolute = path.resolve(root, raw);
       const relative = path.relative(root, absolute).split(path.sep).join('/');
@@ -400,7 +403,7 @@ function downstreamOwnedFiles(
         relative === '' ||
         relative === '..' ||
         relative.startsWith('../') ||
-        /[*?[\]{}]/.test(raw)
+        /[*?{}]/.test(raw)
       ) {
         throw new Error(
           `SDD_VERIFY_ATTEMPT_SCOPE_INVALID: phase ${phase.id} path ${JSON.stringify(raw)}`
@@ -1261,6 +1264,8 @@ export async function runWithSddAttemptJournal(input: {
   readonly sddPhase: string;
   /** @purpose Optional facade preflight bytes; a concurrent plan/log change must be reread, never executed from stale context. */
   readonly expectedTicketContent?: string;
+  /** @purpose SDD-owned post-run consistency check under the lease, after any repair. Never changes the universal report. */
+  readonly terminalIssue?: () => string | null;
   /** @internal Deterministic race seams used only by adversarial contract tests. */
   readonly runtime?: {
     readonly heartbeatMs?: number;
@@ -1356,6 +1361,12 @@ export async function runWithSddAttemptJournal(input: {
         stderr: `[sdd-verify] ${runnerFailure.message}\n`,
       };
     }
+    let terminalIssue: string | null = null;
+    try {
+      terminalIssue = outcome.exitCode === 0 ? (input.terminalIssue?.() ?? null) : null;
+    } catch (cause) {
+      terminalIssue = `SDD terminal consistency check failed: ${cause instanceof Error ? cause.message : String(cause)}`;
+    }
     // Repairs may change source files, but never the task that selected these gates.
     // Capture once: the final expected-byte write also rejects a later competing edit.
     const terminalTicket = fs.readFileSync(input.ticketPath, 'utf8');
@@ -1371,7 +1382,8 @@ export async function runWithSddAttemptJournal(input: {
       heartbeatFailure === undefined &&
       runnerFailure === undefined &&
       !remoteTrustUnproven &&
-      !ticketContextDrift
+      !ticketContextDrift &&
+      terminalIssue === null
         ? finished
         : {
             ...finished,
@@ -1380,6 +1392,7 @@ export async function runWithSddAttemptJournal(input: {
               level: 'pending' as const,
               source:
                 heartbeatFailure?.message ??
+                (terminalIssue === null ? undefined : 'sdd-coverage-invalid') ??
                 (ticketContextDrift ? 'ticket-context-drift' : undefined) ??
                 (remoteTrustUnproven
                   ? 'remote-provider exact-SHA pipeline proof is incomplete'
@@ -1394,11 +1407,16 @@ export async function runWithSddAttemptJournal(input: {
       input.runtime?.beforeTicketRename,
       terminalTicket
     );
-    if (terminal.state === 'VIOLATION' && outcome.exitCode === 0) {
+    if (terminal.state === 'VIOLATION' && (outcome.exitCode === 0 || terminalIssue !== null)) {
       return {
         ...outcome,
         exitCode: 1,
-        stderr: `${outcome.stderr}[sdd-verify] SDD_VERIFY_ATTEMPT_EVIDENCE_INVALID: ${ticketContextDrift ? 'task changed during verification; reread sdd-task and rerun the selected gates' : 'required runner evidence is incomplete'}\n`,
+        ...(terminalIssue === null
+          ? {}
+          : {
+              stdout: `${outcome.stdout}\nSDD PHASE VIOLATION: ownership consistency failed; the gate report alone is not phase completion.\n`,
+            }),
+        stderr: `${outcome.stderr}[sdd-verify] SDD_VERIFY_ATTEMPT_EVIDENCE_INVALID: ${terminalIssue ?? (ticketContextDrift ? 'task changed during verification; reread sdd-task and rerun the selected gates' : 'required runner evidence is incomplete')}\n`,
       };
     }
     return outcome;

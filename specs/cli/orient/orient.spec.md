@@ -24,7 +24,8 @@ guidance ведёт к `sdd-migrate bootstrap` и V1→V2 guide. Нет canonica
 
 `orient --coverage` is a read-only projection through the shared coverage filesystem adapter,
 also used by `sdd-check --coverage`. It accepts project declarations (default), an exact
-`--spec <ID|repo-relative-path>` including `specs/README.md`, or `--task <ID|path> --phase <ID>`.
+`--spec <ID|repo-relative-path>` including `specs/README.md`, or `--task <ID|path> [--phase <ID>]`.
+Without a phase, a task projects its dependency-ordered final outputs, including later tombstones.
 `--stage authoring|preflight|phase-exit|audit` selects the ownership boundary (default audit).
 `--json` returns `sdd-coverage/1`: selection, deterministic rows/findings, completeness,
 permission to proceed and explicit metadata/source/Git-byte reader counters.
@@ -34,8 +35,9 @@ not all source files declared by its module. Portal Scopes and Module Map member
 structural; arbitrary references, fenced examples and dependency prose do not create children.
 The reserved `PROJECT-PORTAL` query identity is not an implementation owner. File Mapping entries
 are literal repository-relative paths, including bracketed route names; unsafe/unreadable paths fail
-closed. Non-commentable artifacts produce an explicit unsupported-header diagnostic, never invalid
-comments or fabricated ownership evidence. Genuine no-write phases do not acquire fake targets.
+closed. A closed set of non-source documents/configuration uses exact declaration ownership and
+regular-file existence, without content/Git reads or injected comments; JSON additionally parses.
+Unsupported formats and secrets remain explicit errors. Genuine no-write phases acquire no fake targets.
 
 Pending preparation exits 0 but remains incomplete; blocking inconsistency exits 1; invalid/mixed
 coverage flags exit 2 before any reads. This mode executes no Verify gates, writes no tickets or

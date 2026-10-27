@@ -21,7 +21,11 @@ function installExecutable(root: string, name: string): void {
 function installFacadeTicket(root: string): void {
   const ticketDirectory = join(root, 'specs', 'app');
   mkdirSync(ticketDirectory, { recursive: true });
-  writeFileSync(join(ticketDirectory, 'app.spec.md'), '# App\n', 'utf8');
+  writeFileSync(
+    join(ticketDirectory, 'app.spec.md'),
+    '# App\n<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n',
+    'utf8'
+  );
   writeFileSync(
     join(ticketDirectory, 'app.task.TSK-1.md'),
     [
@@ -97,7 +101,7 @@ describe('sdd-verify thin facade', () => {
         format: 'node scripts/pass.mjs',
       },
       files: {
-        'src.ts': 'export const value = 1;\n',
+        'src.ts': '// @spec: APP\nexport const value = 1;\n',
         'scripts/pass.mjs': 'process.exit(0);\n',
       },
     });

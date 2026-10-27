@@ -18,12 +18,18 @@ import type {
   CoverageTarget,
 } from './coverage.types.ts';
 import { collectHeadings, extractSection } from './section.ts';
-import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
+import { lexMarkdownTableRow } from './markdown-table.ts';
 import { parseSpecId } from './spec-id.ts';
-import { parseMetaInfo, parsePhasesOverview } from './ticket.ts';
+import {
+  parseMetaInfo,
+  parsePhasesOverview,
+  parsePhasePaths,
+  visibleSddMarkdown,
+} from './ticket.ts';
 import { ticketOwningSpecPath } from './audit-group.ts';
-import { isSddSourceFile } from './source-extensions.ts';
+import { isSddSourceFile, isSddDeclaredArtifact } from './source-extensions.ts';
 import { parseSourceOwnershipHeader } from './source-ownership-header.ts';
+import { detectFlowVersion, detectScopeFlowVersion } from './flow.ts';
 
 /** @purpose Observable explicit adapter reads, not syscall accounting inside the host or Git. */
 export type CoverageReadStats = {
@@ -61,7 +67,11 @@ type ParsedTask = {
 };
 const PORTAL_ID = 'PROJECT-PORTAL';
 const skipped = new Set(['node_modules', '.git', 'dist', 'coverage', 'build', 'out']);
-const noWriteLabels = new Set(['none', '—', '(нет — проверочная фаза)']);
+
+/** @purpose Keep the canonical filename convention while representing metadata keys portably as repository paths. */
+function ownerPath(path: string): string | null {
+  return ticketOwningSpecPath(path)?.replaceAll('\\', '/') ?? null;
+}
 
 function body(content: string, section: string, heading: string): string | null {
   const anchored = extractSection(content, section);
@@ -83,45 +93,10 @@ function headerIds(content: string): string[] {
     .map((block) => block.value.trim());
 }
 
-function visibleMarkdown(content: string): string {
-  let fence: MarkdownFence | null = null;
-  let comment = false;
-  return content
-    .split('\n')
-    .map((line) => {
-      if (fence !== null) {
-        fence = nextMarkdownFence(line, fence);
-        return '';
-      }
-      let visible = '';
-      let offset = 0;
-      while (offset < line.length) {
-        if (comment) {
-          const end = line.indexOf('-->', offset);
-          if (end < 0) break;
-          comment = false;
-          offset = end + 3;
-        } else {
-          const start = line.indexOf('<!--', offset);
-          if (start < 0) {
-            visible += line.slice(offset);
-            break;
-          }
-          visible += line.slice(offset, start);
-          comment = true;
-          offset = start + 4;
-        }
-      }
-      fence = nextMarkdownFence(visible, null);
-      return fence === null ? visible : '';
-    })
-    .join('\n');
-}
-
 function mappingLines(content: string): string[] {
   let mapping = false;
   const lines: string[] = [];
-  const visible = visibleMarkdown(
+  const visible = visibleSddMarkdown(
     content.replace(/^[ \t]*<!--\/SECTION:FILE_STRUCTURE-->[ \t]*$/gm, '## End File Mapping')
   );
   for (const line of visible.split('\n')) {
@@ -129,7 +104,7 @@ function mappingLines(content: string): string[] {
       mapping = true;
       continue;
     }
-    if (/^\s*(?:#{1,6}\s|<\/?(?:details|summary)\b)/.test(line)) mapping = false;
+    if (/^\s*(?:#{1,6}\s|<\/?(?:details|summary)\b|\*\*[^*]+\*\*)/.test(line)) mapping = false;
     if (mapping && line.trim()) lines.push(line);
   }
   return lines;
@@ -138,71 +113,23 @@ function mappingLines(content: string): string[] {
 type CoverageIssue = (code: string, path: string, detail: string) => void;
 type CoverageReader = (path: string, metadata: boolean) => string | null;
 
-/** @purpose Decode exact inline or nested path declarations, rejecting prose instead of proving empty output. */
-function phasePaths(
-  content: string,
-  label: 'Target Files' | 'Deleted Files',
-  fail: (detail: string) => void
-): string[] {
-  const lines = content.split('\n');
-  const field = new RegExp(`^\\s*-\\s+\\*\\*${label}:\\*\\*[ \\t]*(.*)$`);
-  const indexes = lines.flatMap((line, index) => (field.test(line) ? [index] : []));
-  if (indexes.length === 0) {
-    if (label === 'Target Files') fail('Missing canonical Target Files field');
-    return [];
-  }
-  if (indexes.length !== 1) {
-    fail(`Duplicate ${label} fields`);
-    return [];
-  }
-  const start = indexes[0]!;
-  const inline = field.exec(lines[start]!)![1]!.trim();
-  const nested: string[] = [];
-  for (const line of lines.slice(start + 1)) {
-    if (!line.trim()) continue;
-    if (/^\s*(?:-\s+)?\*\*[^*]+\*\*|^\s*#{1,6}\s/.test(line)) break;
-    const bullet = /^\s+-\s+(.+)$/.exec(line);
-    if (!bullet) {
-      fail(`${label} needs exact inline paths or nested path bullets`);
-      return [];
-    }
-    nested.push(bullet[1]!.trim());
-  }
-  if (inline && nested.length) {
-    fail(`${label} mixes inline and nested declarations`);
-    return [];
-  }
-  const entries = inline ? [inline] : nested;
-  if (entries.length === 1 && noWriteLabels.has(entries[0]!.toLowerCase())) return [];
-  const paths: string[] = [];
-  for (const entry of entries) {
-    let remaining = entry;
-    if (noWriteLabels.has(entry.toLowerCase()) || /[,;]\s*$/.test(entry)) {
-      fail(`${label} mixes a no-write label or empty entry with paths`);
-      return [];
-    }
-    while (remaining) {
-      const match =
-        /^(?:`([^`\r\n]+)`|([^\s`,;()]+))(?:[ \t]+\([^()\r\n]*\))?[ \t]*(?:[,;][ \t]*|$)/.exec(
-          remaining
-        );
-      const path = match?.[1] ?? match?.[2];
-      if (!match || !path || path.endsWith('/') || noWriteLabels.has(path.toLowerCase())) {
-        fail(
-          `${label} must list exact files; put unconditional removals in Deleted Files, not prose or directories`
-        );
-        return [];
-      }
-      paths.push(path);
-      remaining = remaining.slice(match[0].length);
-    }
-  }
-  return paths;
-}
-
 /** @purpose Enumerate only SDD metadata, preserving unsafe and failed observations. */
-function readMetadata(root: string, read: CoverageReader, issue: CoverageIssue): Metadata[] {
+function readMetadata(
+  root: string,
+  read: CoverageReader,
+  issue: CoverageIssue,
+  selection: CoverageSelection
+): Metadata[] {
   const metadata: Metadata[] = [];
+  const generation = detectFlowVersion(root);
+  const scopes = new Map<string, boolean>();
+  const active = (path: string): boolean => {
+    if (generation === 'v2') return true;
+    const scope = /^specs\/([^/]+)\//.exec(path)?.[1];
+    if (!scope) return false;
+    if (!scopes.has(scope)) scopes.set(scope, detectScopeFlowVersion(root, scope) === 'v2');
+    return scopes.get(scope)!;
+  };
   const directories = ['specs'];
   while (directories.length > 0) {
     const directory = directories.pop()!;
@@ -230,9 +157,32 @@ function readMetadata(root: string, read: CoverageReader, issue: CoverageIssue):
         /\.task\.[^/]+\.md$/.test(entry.name) ||
         path === 'specs/README.md'
       ) {
+        if (!active(path)) continue; // Read-only migration inputs do not become active declarations.
         const content = read(path, true);
         if (content !== null) metadata.push({ path, content });
       }
+    }
+  }
+  // The execution resolver also accepts an exact canonical ticket outside specs/.
+  // Read only that explicit ticket and its co-located owner, never walk source directories.
+  if (
+    (selection.kind === 'phase' || selection.kind === 'task') &&
+    /\.task\.[^/]+\.md$/.test(selection.task)
+  ) {
+    const owner = ownerPath(selection.task);
+    for (const path of [selection.task, owner]) {
+      if (path === null || metadata.some((entry) => entry.path === path)) continue;
+      if (!active(path)) continue;
+      if (path.split('/').some((part) => skipped.has(part.toLowerCase()))) {
+        issue(
+          'UNSAFE_METADATA',
+          path,
+          'Explicit metadata is outside the permitted reader boundary'
+        );
+        continue;
+      }
+      const content = read(path, true);
+      if (content !== null) metadata.push({ path, content });
     }
   }
   metadata.sort((a, b) => a.path.localeCompare(b.path));
@@ -242,9 +192,12 @@ function readMetadata(root: string, read: CoverageReader, issue: CoverageIssue):
 /** @purpose Adapt explicit in-memory declarations without filesystem reads or inferred ownership. */
 function parseMetadata(
   metadata: readonly Metadata[],
-  issue: CoverageIssue,
+  emit: CoverageIssue,
   selection: CoverageSelection
 ) {
+  const metadataFindings: { code: string; path: string; detail: string }[] = [];
+  const issue: CoverageIssue = (code, path, detail) =>
+    metadataFindings.push({ code, path, detail });
   const specs: CoverageSpec[] = [];
   const byPath = new Map<string, string>();
   const contents = new Map<string, string>();
@@ -274,6 +227,20 @@ function parseMetadata(
     const path = referencePath(from, raw);
     return path === null ? null : byPath.get(path)!;
   };
+  const phaseTaskPaths = new Set(
+    selection.kind === 'phase' || selection.kind === 'task'
+      ? metadata
+          .filter((entry) => {
+            const meta = extractSection(entry.content, 'META');
+            return (
+              entry.path === selection.task ||
+              (meta.status === 'ok' && parseMetaInfo(meta.content).taskId === selection.task)
+            );
+          })
+          .map((entry) => entry.path)
+      : []
+  );
+  const phaseOwnerPaths = new Set([...phaseTaskPaths].map(ownerPath));
   for (const [path, content] of contents) {
     const id = byPath.get(path)!;
     const children: string[] = [];
@@ -282,11 +249,11 @@ function parseMetadata(
       path === 'specs/README.md' ? 'SCOPES' : 'MODULE_MAP',
       path === 'specs/README.md' ? 'scopes' : 'module map'
     );
-    if (selection.kind !== 'phase' && structure === null)
+    if (selection.kind !== 'phase' && selection.kind !== 'task' && structure === null)
       issue('INVALID_STRUCTURE', path, 'Malformed structural section');
-    else if (selection.kind !== 'phase') {
+    else if (selection.kind !== 'phase' && selection.kind !== 'task') {
       // Dependency prose/diagrams and arbitrary links outside membership rows are not child edges.
-      const membership = visibleMarkdown(structure ?? '').split(
+      const membership = visibleSddMarkdown(structure ?? '').split(
         /^###\s+.*(?:Dependencies|Dependency|Handoff)/im
       )[0]!;
       for (const line of membership.split('\n')) {
@@ -310,29 +277,100 @@ function parseMetadata(
     const fileSection = body(content, 'FILE_STRUCTURE', 'file structure');
     if (fileSection === null) issue('INVALID_MAPPING', path, 'Malformed FILE_STRUCTURE');
     else {
+      let tableFileColumn: number | null = null;
       for (const line of mappingLines(content)) {
-        const match = /^\s*[-*]\s+`([^`]+)`\s*:\s*\S/.exec(line);
-        if (!match)
-          issue('INVALID_MAPPING', path, 'File Mapping entries must be - `repo/path`: purpose');
-        else files.push(match[1]!);
+        let entry = line;
+        if (line.trimStart().startsWith('|')) {
+          const parsed = lexMarkdownTableRow(line);
+          if (!parsed.ok) {
+            issue('INVALID_MAPPING', path, parsed.issue);
+            continue;
+          }
+          if (parsed.cells.every((cell) => /^:?-+:?$/.test(cell))) continue;
+          if (tableFileColumn === null) {
+            const column = parsed.cells.findIndex((cell) =>
+              /^(?:file|path|путь|файл)$/i.test(cell)
+            );
+            if (column < 0)
+              issue(
+                'INVALID_MAPPING',
+                path,
+                'File Mapping table needs an explicit File/Path column'
+              );
+            else tableFileColumn = column;
+            continue;
+          }
+          const cell = parsed.cells[tableFileColumn] ?? '';
+          const purpose = parsed.cells
+            .filter((_, index) => index !== tableFileColumn)
+            .join(' ')
+            .trim();
+          entry = purpose ? `- ${cell}: ${purpose}` : line;
+        }
+        const match = /^\s*[-*]\s+`([^`]+)`\s*(?::|—|–)\s*\S/.exec(entry);
+        if (!match) {
+          if (
+            (selection.kind !== 'phase' && selection.kind !== 'task') ||
+            phaseOwnerPaths.has(path)
+          )
+            issue('INVALID_MAPPING', path, 'File Mapping entries must be - `repo/path`: purpose');
+        } else files.push(match[1]!);
       }
     }
     specs.push({ id, path, children: [...new Set(children)], files });
   }
+  const selectedIds = new Set<string>();
+  const selectedPaths = new Set<string>();
+  const specsById = new Map<string, CoverageSpec[]>();
+  for (const spec of specs) {
+    const entries = specsById.get(spec.id) ?? [];
+    entries.push(spec);
+    specsById.set(spec.id, entries);
+  }
+  if (selection.kind === 'phase' || selection.kind === 'task') {
+    for (const path of phaseOwnerPaths) {
+      if (path !== null) selectedPaths.add(path);
+      const id = path === null ? undefined : byPath.get(path);
+      if (id) selectedIds.add(id);
+    }
+    for (const path of phaseTaskPaths) selectedPaths.add(path);
+  } else if (selection.kind === 'spec') {
+    selectedPaths.add(selection.id);
+    const pending = [byPath.get(selection.id) ?? selection.id];
+    while (pending.length) {
+      const id = pending.pop()!;
+      if (selectedIds.has(id)) continue;
+      selectedIds.add(id);
+      for (const spec of specsById.get(id) ?? []) {
+        selectedPaths.add(spec.path);
+        pending.push(...spec.children);
+      }
+    }
+  }
   const tasks: ParsedTask[] = [];
   for (const entry of metadata.filter((item) => /\.task\.[^/]+\.md$/.test(item.path))) {
+    if (
+      (selection.kind === 'phase' || selection.kind === 'task') &&
+      !phaseTaskPaths.has(entry.path)
+    )
+      continue;
+    const owningPath = ownerPath(entry.path);
+    if (selection.kind === 'spec' && !selectedPaths.has(owningPath ?? '')) continue;
+    selectedPaths.add(entry.path);
     const meta = extractSection(entry.content, 'META');
     if (meta.status === 'not_found') continue; // Existing migration reader remains separate.
     const overview = extractSection(entry.content, 'PHASES_OVERVIEW');
-    if (meta.status !== 'ok' || overview.status !== 'ok') {
+    if (meta.status !== 'ok') {
       issue('INVALID_TASK', entry.path, 'Expected META and PHASES_OVERVIEW');
       continue;
     }
     const parsed = parseMetaInfo(meta.content);
-    const structuralOwner = ticketOwningSpecPath(entry.path);
+    const structuralOwner = ownerPath(entry.path);
     const owner = structuralOwner ? byPath.get(structuralOwner) : null;
     const owningFields = [
-      ...visibleMarkdown(meta.content).matchAll(/^\s*(?:-\s*)?\*\*Owning Spec:\*\*[ \t]*(.*)$/gm),
+      ...visibleSddMarkdown(meta.content).matchAll(
+        /^\s*(?:-\s*)?\*\*Owning Spec:\*\*[ \t]*(.*)$/gm
+      ),
     ];
     const explicitOwner = owningFields[0]
       ? /^\[[^\]]+\]\(([^)]+)\)$/.exec(owningFields[0][1]!.trim())
@@ -350,6 +388,27 @@ function parseMetadata(
       );
       continue;
     }
+    // Completed historical plans do not grant current write/delete authority.
+    // An explicit phase query still validates that exact historical phase.
+    if (selection.kind !== 'phase' && selection.kind !== 'task' && parsed.status.endsWith('DONE')) {
+      const phases: ParsedTask['phases'] = [];
+      if (overview.status === 'ok')
+        for (const phase of parsePhasesOverview(overview.content)) {
+          const section = extractSection(entry.content, `PHASE_${phase.id}`);
+          if (section.status !== 'ok') continue;
+          const invalid: string[] = [];
+          const writes = parsePhasePaths(section.content, 'Target Files', (detail) =>
+            invalid.push(detail)
+          );
+          if (invalid.length === 0) phases.push({ id: phase.id, deps: [], writes, deletes: [] });
+        }
+      tasks.push({ path: entry.path, task: parsed.taskId, done: true, owner, phases });
+      continue;
+    }
+    if (overview.status !== 'ok') {
+      issue('INVALID_TASK', entry.path, 'Expected PHASES_OVERVIEW for current phase obligations');
+      continue;
+    }
     const phases: ParsedTask['phases'] = [];
     for (const phase of parsePhasesOverview(overview.content)) {
       const section = extractSection(entry.content, `PHASE_${phase.id}`);
@@ -357,14 +416,15 @@ function parseMetadata(
         issue('INVALID_PHASE', entry.path, `Missing exact phase ${phase.id}`);
         continue;
       }
-      const phaseBody = visibleMarkdown(section.content);
+      const phaseBody = visibleSddMarkdown(section.content);
       const fail = (detail: string) =>
         issue('INVALID_PHASE', entry.path, `Phase ${phase.id}: ${detail}`);
+      const selected = selection.kind !== 'phase' || selection.phase === phase.id;
       phases.push({
         id: phase.id,
         deps: phase.deps,
-        writes: phasePaths(phaseBody, 'Target Files', fail),
-        deletes: phasePaths(phaseBody, 'Deleted Files', fail),
+        writes: selected ? parsePhasePaths(phaseBody, 'Target Files', fail) : [],
+        deletes: selected ? parsePhasePaths(phaseBody, 'Deleted Files', fail) : [],
       });
     }
     if (!phases.length) issue('INVALID_TASK', entry.path, 'No parseable phases in PHASES_OVERVIEW');
@@ -393,16 +453,28 @@ function parseMetadata(
       phases,
     });
   }
+  for (const finding of metadataFindings)
+    if (selection.kind === 'project' || selectedPaths.has(finding.path))
+      emit(finding.code, finding.path, finding.detail);
   return { specs, tasks, byPath };
 }
 
 /** @purpose Select current task obligations using proved phase dependency order, not ticket history union. */
 function projectTargets(
+  root: string,
   tasks: readonly ParsedTask[],
   selection: CoverageSelection,
   byPath: ReadonlyMap<string, string>,
+  specs: readonly CoverageSpec[],
   issue: CoverageIssue
 ) {
+  const mappedOwners = new Map<string, Set<string>>();
+  for (const spec of specs)
+    for (const path of spec.files) {
+      const owners = mappedOwners.get(path) ?? new Set<string>();
+      owners.add(spec.id);
+      mappedOwners.set(path, owners);
+    }
   let selected = selection;
   if (selection.kind === 'spec')
     selected = { kind: 'spec', id: byPath.get(selection.id) ?? selection.id };
@@ -413,38 +485,73 @@ function projectTargets(
     if (taskIds.has(task.task))
       issue('DUPLICATE_TASK_ID', task.path, `Duplicate task ${task.task}`);
     taskIds.add(task.task);
-    if (selected.kind === 'phase' && selected.task !== task.task && selected.task !== task.path)
+    if (
+      (selected.kind === 'phase' || selected.kind === 'task') &&
+      selected.task !== task.task &&
+      selected.task !== task.path
+    )
       continue;
-    if (selected.kind === 'phase') selected = { ...selected, task: task.task };
+    if (selected.kind === 'phase' || selected.kind === 'task')
+      selected = { ...selected, task: task.task };
     const claims = new Map<string, CoverageTarget[]>();
     for (const phase of task.phases) {
       phaseContexts.push({ task: task.task, phase: phase.id });
       if (selected.kind === 'phase' && selected.phase !== phase.id) continue;
-      if (selected.kind !== 'phase' && task.done) continue;
+      const historical = selected.kind !== 'phase' && selected.kind !== 'task' && task.done;
       for (const [operation, paths] of [
         ['write', phase.writes],
         ['delete', phase.deletes],
       ] as const) {
         for (const path of paths) {
+          if (historical) {
+            if (
+              operation === 'delete' ||
+              claims.has(path) ||
+              path.split('/').some((part) => skipped.has(part.toLowerCase()))
+            )
+              continue;
+            const inspected = inspectRepoPath(root, path, 'potential', 'literal-brackets');
+            if (inspected.ok) {
+              try {
+                lstatSync(inspected.absolute);
+              } catch (cause) {
+                if ((cause as NodeJS.ErrnoException).code === 'ENOENT') continue;
+              }
+            }
+          }
           const list = claims.get(path) ?? [];
-          list.push({ task: task.task, phase: phase.id, specId: task.owner, path, operation });
+          const owners = mappedOwners.get(path);
+          const specId = owners?.size === 1 ? [...owners][0]! : task.owner;
+          list.push({
+            task: task.task,
+            phase: phase.id,
+            specId,
+            path,
+            operation: historical ? 'claim' : operation,
+          });
           claims.set(path, list);
         }
       }
     }
+    const phaseById = new Map(task.phases.map((phase) => [phase.id, phase]));
+    const dependencyCache = new Map<string, Set<string>>();
     const dependsOn = (phase: string, dependency: string): boolean => {
+      const cached = dependencyCache.get(phase);
+      if (cached) return cached.has(dependency);
       const pending = [phase];
       const seen = new Set<string>();
+      const dependencies = new Set<string>();
       while (pending.length) {
         const id = pending.pop()!;
         if (seen.has(id)) continue;
         seen.add(id);
-        for (const dep of task.phases.find((item) => item.id === id)?.deps ?? []) {
-          if (dep === dependency) return true;
+        for (const dep of phaseById.get(id)?.deps ?? []) {
+          dependencies.add(dep);
           pending.push(dep);
         }
       }
-      return false;
+      dependencyCache.set(phase, dependencies);
+      return dependencies.has(dependency);
     };
     for (const [path, list] of claims) {
       const current = list.filter(
@@ -483,7 +590,7 @@ function observePaths(
       observations.push({ path, state: 'unsafe', specIds: [] });
       continue;
     }
-    if (!isSddSourceFile(path) && !path.endsWith('.json')) {
+    if (!isSddSourceFile(path) && !isSddDeclaredArtifact(path)) {
       issue(
         'UNSUPPORTED_HEADER_FORMAT',
         path,
@@ -499,7 +606,10 @@ function observePaths(
       try {
         const stat = lstatSync(safe.absolute);
         if (!stat.isFile()) issue('UNSAFE_PATH', path, 'Expected a regular implementation file');
-        else {
+        else if (isSddDeclaredArtifact(path) && !path.endsWith('.json')) {
+          // Existence/declaration only: never parse prompt markup as XML or read opaque configuration.
+          observation = { path, state: 'file', specIds: [], ownershipFormat: 'declaration' };
+        } else {
           const content = read(path, false);
           if (content !== null) {
             if (path.endsWith('.json')) {
@@ -522,7 +632,8 @@ function observePaths(
         else issue('READ_FAILED', path, 'Cannot inspect declared implementation');
       }
     }
-    if (observation.state !== 'unsafe') priorIndexes.push(observations.length);
+    if (observation.state !== 'unsafe' && !isSddDeclaredArtifact(path))
+      priorIndexes.push(observations.length);
     observations.push(observation);
   }
   if (priorIndexes.length && existsSync(resolve(root, '.git'))) {
@@ -575,12 +686,14 @@ function observePaths(
  * @param root Project checkout root; the original checkout is never changed.
  * @param selection Project, exact spec ID/path (portal path allowed), or exact task/phase.
  * @param stage Ownership boundary, independent of test/Verify execution.
+ * @param [options] Declaration-only membership mode never provides source observation or completion proof.
  * @returns Versioned diagnosis with deterministic findings and explicit reader counters.
  */
 export function readSddCoverage(
   root: string,
   selection: CoverageSelection,
-  stage: CoverageStage
+  stage: CoverageStage,
+  options: { readonly observeSources?: boolean } = {}
 ): CoverageDocument {
   const reads: CoverageReadStats = {
     metadataReads: 0,
@@ -603,9 +716,16 @@ export function readSddCoverage(
     reads[metadata ? 'metadataBytes' : 'sourceBytes'] += Buffer.byteLength(result.content);
     return result.content;
   };
-  const metadata = readMetadata(root, read, issue);
+  const metadata = readMetadata(root, read, issue, selection);
   const { specs, tasks, byPath } = parseMetadata(metadata, issue, selection);
-  const { selected, targets, phaseContexts } = projectTargets(tasks, selection, byPath, issue);
+  const { selected, targets, phaseContexts } = projectTargets(
+    root,
+    tasks,
+    selection,
+    byPath,
+    specs,
+    issue
+  );
   const input = {
     stage,
     selection: selected,
@@ -616,7 +736,8 @@ export function readSddCoverage(
   };
   // The pure core owns projection selection; the first pass requests paths, not successful evidence.
   const paths = resolveSddCoverage(input).rows.map((row) => row.path);
-  input.observations.push(...observePaths(root, paths, read, reads, issue));
+  if (options.observeSources !== false)
+    input.observations.push(...observePaths(root, paths, read, reads, issue));
   const result = resolveSddCoverage(input);
   const coverage: CoverageResult = issues.length
     ? {
@@ -632,4 +753,31 @@ export function readSddCoverage(
       }
     : result;
   return { schema: 'sdd-coverage/1', selection: selected, coverage, reads };
+}
+
+/**
+ * @purpose Teach a lifecycle boundary why its declared ownership is not ready, without granting Verify authority.
+ * @param root Canonical checkout root.
+ * @param selection Exact declared projection.
+ * @param stage Preparation or completion boundary.
+ * @returns Bounded actionable error, or null when the stage may proceed (pending remains visible in the query).
+ */
+export function sddCoverageIssue(
+  root: string,
+  selection: CoverageSelection,
+  stage: CoverageStage
+): string | null {
+  const document = readSddCoverage(root, selection, stage);
+  if (document.coverage.canProceed) return null;
+  const findings = document.coverage.findings;
+  return (
+    `SDD coverage ${stage}: ` +
+    findings
+      .slice(0, 8)
+      .map((finding) => `${finding.code} ${finding.path}: ${finding.detail}`)
+      .join('; ') +
+    (findings.length > 8
+      ? `; ${findings.length - 8} more (query orient --coverage for details)`
+      : '')
+  );
 }

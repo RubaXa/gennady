@@ -38,6 +38,13 @@ let origArgv: string[];
 let origCwd: string;
 let dir: string;
 let ticket: string;
+const TICKET_REL = 'specs/demo/demo.task.cli-foo.md';
+const PHASE_DETAILS = ['P1', 'P2']
+  .map(
+    (id) =>
+      `<!--SECTION:PHASE_${id}-->\n- **Target Files:**\n  - src/${id}.ts\n<!--/SECTION:PHASE_${id}-->`
+  )
+  .join('\n');
 
 const CLOCK = new Date('2026-06-21T10:00:00.000Z');
 
@@ -54,9 +61,11 @@ const BASE = [
   '# t',
   '<!--SECTION:META-->',
   '- **Task-ID:** cli-foo',
+  '- **Status:** [~] IN_PROGRESS',
   '<!--/SECTION:META-->',
   '',
   OVERVIEW,
+  PHASE_DETAILS,
   '',
   '<!--SECTION:EXECUTION_LOG-->',
   '## 7. Execution Log',
@@ -65,7 +74,7 @@ const BASE = [
 
 function receipt(phase: string): PhaseReceipt {
   const plan: PhaseReceiptPlan = {
-    ticket: 'ticket.md',
+    ticket: TICKET_REL,
     phase,
     profile: 'code',
     profileBasis: 'phase-kind',
@@ -99,6 +108,7 @@ function completableTicket(receiptPhase: string | null = 'P1'): string {
     '| P1 | impl | — | [ ] |',
     '| P2 | test | P1 | [ ] |',
     '<!--/SECTION:PHASES_OVERVIEW-->',
+    PHASE_DETAILS,
     '',
     '<!--SECTION:EXECUTION_LOG-->',
     '## Execution Log',
@@ -143,7 +153,8 @@ describe('SddLogCommand', () => {
       env: cleanTestChildEnv(process.env),
     });
     assert.equal(initialized.status, 0, initialized.stderr);
-    ticket = join(dir, 'ticket.md');
+    ticket = join(dir, TICKET_REL);
+    mkdirSync(join(dir, 'specs/demo'), { recursive: true });
     process.chdir(dir);
     const loaded = await import('../sdd-log.cmd.ts');
     mod = {
@@ -161,6 +172,13 @@ describe('SddLogCommand', () => {
 
   beforeEach(() => {
     process.chdir(dir);
+    writeFileSync(
+      join(dir, 'specs/demo/demo.spec.md'),
+      '<!--SECTION:SPEC_ID-->\nDEMO\n<!--/SECTION:SPEC_ID-->\n<!--SECTION:FILE_STRUCTURE-->\n**File Mapping:**\n- `src/P1.ts`: first\n- `src/P2.ts`: second\n<!--/SECTION:FILE_STRUCTURE-->'
+    );
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    for (const id of ['P1', 'P2'])
+      writeFileSync(join(dir, `src/${id}.ts`), '// @spec: DEMO\nexport {};\n');
     writeFileSync(ticket, BASE, 'utf-8');
   });
 
@@ -181,7 +199,7 @@ describe('SddLogCommand', () => {
     const invoke = () => {
       writeFileSync(join(dir, scratchPath), JSON.stringify(payload));
       return runCli(
-        ['sdd-log', 'ticket.md', 'decision', '--phase', 'P1', '--payload-file', scratchPath],
+        ['sdd-log', TICKET_REL, 'decision', '--phase', 'P1', '--payload-file', scratchPath],
         dir
       );
     };
@@ -198,7 +216,7 @@ describe('SddLogCommand', () => {
     assert.match(retry.stdout, /already recorded/);
     assert.equal(readFileSync(ticket, 'utf8'), persisted);
     const verdict = runCli(
-      ['sdd-log', 'ticket.md', 'deviation-verdict', payload.id, 'accepted'],
+      ['sdd-log', TICKET_REL, 'deviation-verdict', payload.id, 'accepted'],
       dir
     );
     assert.equal(verdict.exitCode, 0, verdict.stdout + verdict.stderr);
@@ -224,7 +242,7 @@ describe('SddLogCommand', () => {
     for (const rejected of ['rework', 'rolled-back']) {
       writeFileSync(ticket, persisted);
       const review = runCli(
-        ['sdd-log', 'ticket.md', 'deviation-verdict', payload.id, rejected],
+        ['sdd-log', TICKET_REL, 'deviation-verdict', payload.id, rejected],
         dir
       );
       assert.equal(review.exitCode, 0, review.stdout + review.stderr);
@@ -807,8 +825,8 @@ describe('SddLogCommand', () => {
 
   describe('META Status (round/close drive it; tolerant when Status line is absent)', () => {
     const withStatus = BASE.replace(
-      '- **Task-ID:** cli-foo',
-      '- **Task-ID:** cli-foo\n- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->'
+      '- **Status:** [~] IN_PROGRESS',
+      '- **Status:** [ ] TODO   <!-- [ ] TODO | [~] IN_PROGRESS | [x] DONE | [!] BLOCKED -->'
     );
 
     it('round sets Meta Status to IN_PROGRESS, keeping the hint comment', async () => {
@@ -835,18 +853,16 @@ describe('SddLogCommand', () => {
       );
     });
 
-    it('round/close on a V2 phase plan with no Status line — tolerant, no crash, honest note', async () => {
-      // BASE (the shared fixture) has META but no Status line.
+    it('round tolerates absent Status but strict close requires repair of V2 metadata', async () => {
+      writeFileSync(ticket, BASE.replace('- **Status:** [~] IN_PROGRESS\n', ''));
       const roundOutcome = await mod.run(argv(ticket, 'round', 'initial'), CLOCK);
       assert.strictEqual(roundOutcome.ok, true);
       if (roundOutcome.ok) {
         assert.match(roundOutcome.text, /META\/Status не найден — статус не обновлён/);
       }
       const closeOutcome = await mod.run(argv(ticket, 'close'), CLOCK);
-      assert.strictEqual(closeOutcome.ok, true);
-      if (closeOutcome.ok) {
-        assert.match(closeOutcome.text, /META\/Status не найден — статус не обновлён/);
-      }
+      assert.strictEqual(closeOutcome.ok, false);
+      if (!closeOutcome.ok) assert.match(closeOutcome.message, /INVALID_TASK/);
       const body = readFileSync(ticket, 'utf-8');
       assert.doesNotMatch(body, /\*\*Status:\*\*/);
     });
@@ -911,6 +927,7 @@ describe('SddLogCommand', () => {
         '| P1 | impl | [ ] | src/foo.ts | — |',
         '| P2 | test | [ ] | src/bar.ts | P1 |',
         '<!--/SECTION:PHASES_OVERVIEW-->',
+        PHASE_DETAILS,
         '',
         '<!--SECTION:EXECUTION_LOG-->',
         '## Execution Log',
@@ -953,6 +970,7 @@ describe('SddLogCommand', () => {
         '| P1 | fix  | —    | [ ] |',
         '| P2 | test | P1   | [ ] |',
         '<!--/SECTION:PHASES_OVERVIEW-->',
+        PHASE_DETAILS,
         '',
         '<!--SECTION:EXECUTION_LOG-->',
         '## Execution Log',
@@ -1051,9 +1069,13 @@ describe('SddLogCommand', () => {
   });
 
   it('is append-only — prior sections are untouched', async () => {
+    const beforeMeta = BASE.slice(
+      BASE.indexOf('<!--SECTION:META-->'),
+      BASE.indexOf('<!--/SECTION:META-->') + '<!--/SECTION:META-->'.length
+    );
     await mod.run(argv(ticket, 'line', 'DONE'), CLOCK);
     const body = readFileSync(ticket, 'utf-8');
-    assert.match(body, /<!--SECTION:META-->\n- \*\*Task-ID:\*\* cli-foo\n<!--\/SECTION:META-->/);
+    assert.ok(body.includes(beforeMeta));
     assert.match(body, /## 7\. Execution Log/);
   });
 
@@ -1356,7 +1378,7 @@ describe('SddLogCommand', () => {
       const content = '"quoted" $(touch .claude/tmp/PWNED) `touch .claude/tmp/PWNED`\nreal CLI';
       writeFileSync(payloadPath, content, 'utf-8');
       const result = runCli(
-        ['sdd-log', 'ticket.md', 'line', '--content-file', '.claude/tmp/real-cli.txt'],
+        ['sdd-log', TICKET_REL, 'line', '--content-file', '.claude/tmp/real-cli.txt'],
         dir
       );
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);

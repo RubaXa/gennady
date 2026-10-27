@@ -100,6 +100,11 @@ function writeExecutionReadyInfra(root: string): void {
 }
 
 function writeDeclaredPhaseTargets(root: string): void {
+  for (const name of ['core', 'custom'])
+    writeFileSync(
+      join(root, `${name}.spec.md`),
+      `<!--SECTION:SPEC_ID-->\n${name === 'core' ? 'CLI-CORE' : 'CUSTOM'}\n<!--/SECTION:SPEC_ID-->\n`
+    );
   mkdirSync(join(root, 'src'), { recursive: true });
   writeFileSync(join(root, 'src', 'foo.ts'), 'export const foo = true;\n', 'utf-8');
   writeFileSync(join(root, 'src', 'foo.test.ts'), "import './foo.ts';\n", 'utf-8');
@@ -247,7 +252,11 @@ function writeCrossSpecMapFixture(root: string, flow: 'v1' | 'v2', withAudit: bo
     if (built.ok) aSpec = upsertGroupReceipt(aSpec, built.receipt);
   }
   writeFileSync(join(aDir, 'a.spec.md'), aSpec, 'utf-8');
-  writeFileSync(join(bDir, 'b.spec.md'), '# B\n', 'utf-8');
+  writeFileSync(
+    join(bDir, 'b.spec.md'),
+    '<!--SECTION:SPEC_ID-->\nB\n<!--/SECTION:SPEC_ID-->\n',
+    'utf-8'
+  );
 }
 
 /** @purpose Reuse the audited dependency fixture with a project-owned first-phase selector and missing legacy npm gates. */
@@ -902,7 +911,7 @@ describe('SddTaskCommand', () => {
 
     it('resolves for --phase too — resolution line precedes the phase context', async () => {
       const idDir = mkdtempSync(join(tmpdir(), 'sdd-task-id-'));
-      writeFileSync(join(idDir, 'ticket.md'), idTicket('TSK-foo'), 'utf-8');
+      writeFileSync(join(idDir, 'core.task.TSK-foo.md'), idTicket('TSK-foo'), 'utf-8');
       writeExecutionReadyInfra(idDir); // P1 is impl — the phase gate must find real infra
       writeDeclaredPhaseTargets(idDir);
       const origCwd = process.cwd();
@@ -911,7 +920,7 @@ describe('SddTaskCommand', () => {
         const outcome = await mod.run(argv('TSK-foo', '--phase', 'P1'));
         assert.strictEqual(outcome.ok, true);
         if (!outcome.ok) return;
-        assert.match(outcome.text, /^\[sdd-task\] TSK-foo → ticket\.md\n/);
+        assert.match(outcome.text, /^\[sdd-task\] TSK-foo → core\.task\.TSK-foo\.md\n/);
         assert.match(outcome.text, /\[sdd-task\] TSK-foo — P1 impl/);
       } finally {
         process.chdir(origCwd);
@@ -1059,7 +1068,11 @@ describe('SddTaskCommand', () => {
         mkdirSync(join(goRoot, 'src'), { recursive: true });
         writeFileSync(join(goRoot, 'go.mod'), 'module example.com/fixture\n\ngo 1.22\n', 'utf-8');
         writeFileSync(join(goRoot, 'src', 'foo.go'), 'package fixture\n', 'utf-8');
-        writeFileSync(join(goRoot, 'specs', 'cli', 'core', 'core.spec.md'), '# Core\n', 'utf-8');
+        writeFileSync(
+          join(goRoot, 'specs', 'cli', 'core', 'core.spec.md'),
+          '<!--SECTION:SPEC_ID-->\nCLI-CORE\n<!--/SECTION:SPEC_ID-->\n',
+          'utf-8'
+        );
         writeFileSync(
           goTicket,
           PHASED_TICKET.replace('| P1 | impl | — | [x] |', '| P1 | impl | — | [ ] |').replace(
@@ -1446,7 +1459,10 @@ describe('SddTaskCommand', () => {
         writeExecutionReadyInfra(root);
         mkdirSync(join(root, 'specs/app'), { recursive: true });
         mkdirSync(join(root, 'src'), { recursive: true });
-        writeFileSync(join(root, 'specs/app/app.spec.md'), '# App');
+        writeFileSync(
+          join(root, 'specs/app/app.spec.md'),
+          '<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->'
+        );
         writeFileSync(join(root, 'src/foo.ts'), 'before');
         writeFileSync(join(root, 'src/foo.test.ts'), 'test');
         const environment = phaseVerificationEnvironmentState(root, 'code', false, []);
@@ -1544,7 +1560,10 @@ describe('SddTaskCommand', () => {
         writeExecutionReadyInfra(root);
         writeDeclaredPhaseTargets(root);
         mkdirSync(join(root, 'specs/cli/core'), { recursive: true });
-        writeFileSync(join(root, 'specs/cli/core/core.spec.md'), '# Core\n');
+        writeFileSync(
+          join(root, 'specs/cli/core/core.spec.md'),
+          '<!--SECTION:SPEC_ID-->\nCLI-CORE\n<!--/SECTION:SPEC_ID-->'
+        );
         const ticketPath = join(root, 'specs/cli/core/core.task.cli-foo.md');
         writeFileSync(
           ticketPath,
@@ -2351,7 +2370,7 @@ describe('SddTaskCommand', () => {
           '<!--/SECTION:PHASES_OVERVIEW-->',
           '<!--SECTION:PHASE_P1-->',
           '- **Target Files:**',
-          '  - src/my module.ts',
+          '  - `src/my module.ts`',
           '<!--/SECTION:PHASE_P1-->',
           '<!--SECTION:VERIFICATION-->',
           '<!--COVERAGE_POLICY:v1-->',
@@ -2557,9 +2576,11 @@ describe('SddTaskCommand', () => {
     it('impl phase on a bare project (no package.json) → refused with the not-ready cause', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
       writeDeclaredPhaseTargets(gateDir);
-      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(join(gateDir, 'core.task.cli-foo.md'), TICKET, 'utf-8');
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
@@ -2574,7 +2595,7 @@ describe('SddTaskCommand', () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
       writeDeclaredPhaseTargets(gateDir);
       writeFileSync(
-        join(gateDir, 'ticket.md'),
+        join(gateDir, 'core.task.cli-foo.md'),
         TICKET.replace('| P1 | impl | — | [ ] |', '| P1 | impl | — | [x] |'),
         'utf-8'
       );
@@ -2598,7 +2619,9 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P2')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P2'))
+        );
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
@@ -2612,10 +2635,12 @@ describe('SddTaskCommand', () => {
     it('impl phase on execution-ready infra → passes the gate, phase context is emitted', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-'));
       writeDeclaredPhaseTargets(gateDir);
-      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(join(gateDir, 'core.task.cli-foo.md'), TICKET, 'utf-8');
       writeExecutionReadyInfra(gateDir);
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
       } finally {
         rmSync(gateDir, { recursive: true, force: true });
@@ -2625,7 +2650,7 @@ describe('SddTaskCommand', () => {
     it('rejects removed anystack extraGates instead of dispatching the compatibility pipeline', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-anystack-'));
       writeDeclaredPhaseTargets(gateDir);
-      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(join(gateDir, 'core.task.cli-foo.md'), TICKET, 'utf-8');
       writeFileSync(
         join(gateDir, 'gennady.yaml'),
         'stack:\n  use: [anystack]\n  anystack:\n    extraGates:\n      - id: check\n        argv: [echo, ok]\n',
@@ -2633,7 +2658,9 @@ describe('SddTaskCommand', () => {
       );
       // Deliberately no package.json anywhere in this root.
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, false);
         if (!r.ok) {
           assert.match(r.message, /VERIFY_CONFIG_LEGACY_UNSUPPORTED/);
@@ -2647,10 +2674,12 @@ describe('SddTaskCommand', () => {
     it('V-06b: anystack repo with zero configured extraGates stays not-ready, same as before', async () => {
       const gateDir = mkdtempSync(join(tmpdir(), 'sdd-task-gate-anystack-empty-'));
       writeDeclaredPhaseTargets(gateDir);
-      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(join(gateDir, 'core.task.cli-foo.md'), TICKET, 'utf-8');
       writeFileSync(join(gateDir, 'gennady.yaml'), 'stack:\n  use: [anystack]\n', 'utf-8');
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
@@ -2682,7 +2711,7 @@ describe('SddTaskCommand', () => {
       // all, so readiness is not-ready — the harshest state the exemption must survive. The
       // EXECUTION_LOG anchor is what makes `collectTicketRefs` see the file as a ticket at all.
       writeFileSync(
-        join(gateDir, 'ticket.md'),
+        join(gateDir, 'core.task.cli-foo.md'),
         [
           claimAllReadinessGates(TICKET.replace('- **Scope:** cli', '- **Scope:** infra-core')),
           '<!--SECTION:EXECUTION_LOG-->',
@@ -2691,14 +2720,16 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
         if (!r.ok) return;
         assert.match(r.text, /INFRA_QUEUE_EXEMPTION/);
         assert.match(r.text, /Верификация здесь ЧАСТИЧНАЯ/);
 
         writeFileSync(
-          join(gateDir, 'ticket.md'),
+          join(gateDir, 'core.task.cli-foo.md'),
           [
             claimAllReadinessGates(
               TICKET.replace('- **Scope:** cli', '- **Scope:** infra-core').replace(
@@ -2711,12 +2742,14 @@ describe('SddTaskCommand', () => {
           ].join('\n'),
           'utf-8'
         );
-        const expired = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const expired = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(expired.ok, false);
         if (!expired.ok) assert.match(expired.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
 
         writeFileSync(
-          join(gateDir, 'ticket.md'),
+          join(gateDir, 'core.task.cli-foo.md'),
           [
             claimAllReadinessGates(TICKET.replace('- **Scope:** cli', '- **Scope:** product-app')),
             '<!--SECTION:EXECUTION_LOG-->',
@@ -2725,7 +2758,7 @@ describe('SddTaskCommand', () => {
           'utf-8'
         );
         const productClaim = await withCwd(gateDir, () =>
-          mod.run(argv('ticket.md', '--phase', 'P1'))
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
         );
         assert.strictEqual(productClaim.ok, false);
         if (!productClaim.ok)
@@ -2757,7 +2790,7 @@ describe('SddTaskCommand', () => {
       // Exactly the state the flow is really in at the first phase dispatch: the orchestrator has
       // already flipped Status to IN_PROGRESS via `sdd-log round`.
       writeFileSync(
-        join(gateDir, 'ticket.md'),
+        join(gateDir, 'core.task.cli-foo.md'),
         [
           claimAllReadinessGates(
             TICKET.replace('- **Scope:** cli', '- **Scope:** infra-core')
@@ -2768,7 +2801,9 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
         if (!r.ok) return;
         assert.match(r.text, /INFRA_QUEUE_EXEMPTION/);
@@ -2796,9 +2831,11 @@ describe('SddTaskCommand', () => {
         'utf-8'
       );
       // Scope `cli` is a product scope — not in the infra queue, so the gate still refuses.
-      writeFileSync(join(gateDir, 'ticket.md'), TICKET, 'utf-8');
+      writeFileSync(join(gateDir, 'core.task.cli-foo.md'), TICKET, 'utf-8');
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, false);
         if (r.ok) return;
         assert.match(r.message, /ERR_CLI_SDD_TASK_INFRA_NOT_READY/);
@@ -2814,9 +2851,11 @@ describe('SddTaskCommand', () => {
         '| P1 | impl | — | [ ] |',
         '| P1 | bootstrap | — | [ ] |'
       );
-      writeFileSync(join(gateDir, 'ticket.md'), bootstrapTicket, 'utf-8');
+      writeFileSync(join(gateDir, 'core.task.cli-foo.md'), bootstrapTicket, 'utf-8');
       try {
-        const r = await withCwd(gateDir, () => mod.run(argv('ticket.md', '--phase', 'P1')));
+        const r = await withCwd(gateDir, () =>
+          mod.run(argv('core.task.cli-foo.md', '--phase', 'P1'))
+        );
         assert.strictEqual(r.ok, true, r.ok ? '' : r.message);
       } finally {
         rmSync(gateDir, { recursive: true, force: true });

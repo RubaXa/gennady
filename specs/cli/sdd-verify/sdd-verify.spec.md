@@ -33,6 +33,12 @@ _Обзор пути от контракта к реализации и пров
 
 ## 1. Module Vision
 
+SC3: facade под ticket lease проверяет ownership на `preflight` и повторно на `phase-exit`
+после фактических гейтов/repair. Pending заголовок не мешает подготовке, но отсутствие/конфликт
+заголовка после гейтов даёт journal VIOLATION и exit 1, даже если universal gate report имеет PASS.
+Report не перекрашивается; итоговый вывод явно различает gate PASS и незавершённую SDD-фазу.
+Standalone Verify и область выполнения проектных гейтов этим ownership-контролем не меняются.
+
 Детерминированная task/phase facade. Вызов `--task ... --phase ...` замораживает ticket identity, exact Target/Deleted scope, composed selector и RuleSnapshot, открывает append-only attempt, затем вызывает universal Verify planner/runner ровно один раз. Его terminal `VerifyRunReport` атомарно завершает attempt. Whole-project/hook/audit verification вызывает `gennady verify --phase full` напрямую.
 
 > **U4 state:** UV-13 routes every task/phase kind through the unified `VerifyRunReport`; UV-14

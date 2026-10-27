@@ -7,12 +7,12 @@
 
 ## Конечные этапы
 
-| Этап | Изменение                                                                  | Приёмка                                                                                                                      | Статус                                 |
-| ---- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| SC1  | Общий pure-резолвер, контракт, негативные тесты и performance-квалификация | Предсказуемая карта и происхождение каждой строки; нулевые записи/процессы в core; независимое ревью                         | Approve SC1; переход к SC2 разрешён    |
-| SC2  | Один файловый адаптер и проекции orient/sdd-check                          | Портал/скоуп/модуль/фаза используют одну карту; точные структурные связи, безопасные пути, ошибки чтения не теряются         | Approve SC2 (`00631595`); SC3 разрешён |
-| SC3  | Подготовка и завершение фаз, аудит и инструкции                            | Без заголовка можно начать; без нужного заголовка нельзя закончить; удаление/чужой владелец/ослабление проверок не дают PASS | В работе; lifecycle ещё не переключён  |
-| SC4  | Реальный полигон, конечная парная серия и итоговый review                  | Честный результат baseline/candidate, функциональность и границы целы; performance измерен; cleanup выполнен                 | Не начат                               |
+| Этап | Изменение                                                                  | Приёмка                                                                                                                      | Статус                                                                  |
+| ---- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| SC1  | Общий pure-резолвер, контракт, негативные тесты и performance-квалификация | Предсказуемая карта и происхождение каждой строки; нулевые записи/процессы в core; независимое ревью                         | Approve SC1; переход к SC2 разрешён                                     |
+| SC2  | Один файловый адаптер и проекции orient/sdd-check                          | Портал/скоуп/модуль/фаза используют одну карту; точные структурные связи, безопасные пути, ошибки чтения не теряются         | Approve SC2 (`00631595`); SC3 разрешён                                  |
+| SC3  | Подготовка и завершение фаз, аудит и инструкции                            | Без заголовка можно начать; без нужного заголовка нельзя закончить; удаление/чужой владелец/ослабление проверок не дают PASS | Реализован; offline 686/686 + shell7/7; ожидает штатных гейтов и review |
+| SC4  | Реальный полигон, конечная парная серия и итоговый review                  | Честный результат baseline/candidate, функциональность и границы целы; performance измерен; cleanup выполнен                 | Не начат                                                                |
 
 Каждый этап передаётся на независимое ревью до начала следующего. Первый Draft PR создаётся
 с SC1; последующие этапы не считаются уже одобренными. Merge и публикация этим планом не разрешены.
@@ -206,3 +206,96 @@ header-only MAPPING_REQUIRED. На реальных телах AI-fasttest/AI-cu
 и реальное подключение stage-aware dispatch/Verify/complete/close/audit с причинными CLI-контролями
 и performance. Основной runtime, универсальный Verify и охранные границы не переключались этой
 коррекцией. SC4 не запущен (0/8), PR остаётся Draft, merge/npm publication не разрешены.
+
+### SC3 lifecycle — реализация и квалификация 2026-10-28
+
+После Approve corrective `82e031cc` карта подключена к dispatch (preflight), facade Verify
+(preflight и повторный phase-exit под lease после repair), complete, close и положительному
+group audit receipt. Это текущие локальные изменения, не уже одобренный следующий этап.
+Standalone Verify не читает SDD, реальные проектные гейты не сужаются по карте.
+
+- Один канонический parser Target/Deleted Files используется runtime и reader; inline и nested
+  формы не расходятся. Directory/условное `remove` prose по-прежнему не становятся authority.
+- File Mapping поддерживает точные repo-relative colon/dash bullets и таблицы с явной колонкой
+  File/Path. Source-root по ASCII-дереву не угадывается. Уникальный реализационный mapping имеет
+  приоритет перед структурным владельцем тикета; конфликт не исправляется автоматически.
+- Обычные `--all`/`--changed` проверяют coherence заявленных/header-positive исходников, не требуют
+  массово размечать остальной код и явно говорят, что полный ownership audit не выполнялся.
+  `--all --authoring` допускает новый pending заголовок; снятый/чужой остаётся ошибкой.
+- JSON проверяется синтаксически без комментариев. Поддержанный закрытый набор не-source артефактов
+  (Markdown/markup/config/style и перечисленные ignore-файлы) подтверждается точной декларацией и
+  безопасным существованием без чтения содержимого или Git blob. Неизвестный формат не получает PASS.
+- Close ограничен финальными выходами своего тикета; будущие outputs других тикетов проверяет
+  group audit. Существующий output DONE-тикета не исчезает из membership: отсутствие File Mapping
+  по-прежнему блокирует audit. Старые отсутствующие outputs не возвращаются как новые write duties.
+- Текущий tracked delete-target может существовать при dispatch, но обязан отсутствовать перед
+  Verify. Более позднее объявленное удаление не должно делать предыдущий attempt stale; прочие
+  изменения остаются identity-bearing. Literal bracket paths не являются glob.
+
+Причинный backend/CLI контроль проходит настоящие команды: 100 незаявленных файлов не мешают
+начать фазу; gate PASS без заголовка даёт phase VIOLATION; поломка функции даёт реальный gate FAIL;
+repair, снявший заголовок, также блокируется. После восстановления проходят Verify→complete→close.
+Будущий output не блокирует close, но блокирует положительный group audit; удаление File Mapping
+после DONE также блокирует audit. Первоначальный импорт self-executing CLI ошибочно завершал
+test-файл до assertions: стенд исправлен на subprocess, доказательством считаются только два
+реально зарегистрированных и исполненных brownfield subtests, не ранний суммарный счётчик.
+
+Первая полная offline-серия дала 680/686: выявлены host-фикстуры без canonical Spec-ID и лишнее
+новое глобальное предупреждение по историческим планам. Host-фикстуры приведены к V2-контракту,
+глобальное planner-warning убрано из coherence (strict selected audit сохранён). Frozen/raw
+corpora не менялись; отдельный повтор frozen acceptance — 9/9. Финальный полный повтор, performance
+и штатные commit-гейты ещё ожидаются; live SC4 остаётся 0/8. Общий выигрыш модели не заявляется.
+
+Проверка собранного runtime затем выявила дополнительные host-пробелы, скрытые старым `dist`:
+reference-controls не декларировали единственный сценарный test-file в File Mapping, а mutable
+slugify harness записывал реализацию и тест без canonical `@spec`. Исправлена только подготовка
+текущих host-контролей; frozen fixture inputs, 16 старых попыток и их verdict не менялись.
+Отдельная qualification execution-autonomy audit+fixture после исправления — 9/9.
+Промежуточный параллельный build сломал одну копию dist (entry/chunk mismatch); это ошибка порядка
+проверки, не feature PASS/FAIL. Дальнейшие повторы выполняются только на неподвижном bundle.
+
+Zero-new-error впервые честно выявил восемь declaration/header расхождений существующего проекта:
+четыре update-check заголовка ещё ссылались на CLI вместо CLI-UPDATE-CHECK; shared sync dependencies
+были ошибочно перечислены как ownership sync-skills; module-local `index.ts` в agent-run принимался
+за root entrypoint. Исправлены точные заголовки/декларации: shared-файлы принадлежат SHARED,
+agent-run paths явно repo-relative, composition root остаётся у AGENT-RUN-OPENCODE.
+Повтор `gate:sdd-check-baseline` — PASS без изменения baseline/архивов/guard policy.
+
+SC3 actual CLI performance: 36 no-model процессов; 3007 real declarations / one phase —
+median129.36ms, один source-read; 50k declarations — median226.85ms, один source-read.
+Собственная shared-копия удалена (`safeCleanup=true`), оригинал Octavius и общие зависимости целы.
+Это квалификация bounded I/O, не доказательство ускорения модели и не реализация частных кейсов Александра.
+
+Финальный повтор на неподвижном bundle: **686/686 + shell7/7 PASS**, TypeScript PASS,
+targeted production contract lint PASS, journal27/27 (включая позднее literal-bracket deletion),
+audit/fixture9/9 и harness23/23. Не складываем пересекающиеся suites в новый «общий» счётчик.
+Расширенный `lint --include-tests` дополнительно показал 12 старых thin-region замечаний в
+update-check tests (функционально изменён только owner header); не выдаём этот дополнительный
+эксперимент за PASS и не удаляем assertions/anchors ради него. Штатная lint-политика не изменена.
+
+Финальная source/hash-bound performance-серия после formatting/contracts сохранена отдельно
+(`cli-performance-final.json`): median117.51ms для3007/phase и222.23ms для50k, один source-read;
+первоначальные129.36/226.85ms не перезаписаны. В сумме72 no-model процесса, оба cleanup=true.
+Время относится к read-only query, не к полному Verify/работе модели. Перед отправкой выполняется
+обычный commit/push pipeline без bypass; его фактический результат и SHA передаются reviewer.
+Следующее разрешённое действие после отправки — независимый **SC3 review**, не merge и не SC4.
+
+Первый штатный pre-commit был RED на local unit-подмножестве: прежние black-box bootstrap/dispatch/
+repair стенды не содержали canonical Spec-ID и phase-output headers. Стенды обновлены явно, без
+универсальной авто-разметки/обхода production checks. Дополнительно bootstrap воспроизвёл реальный
+пробел форматов: `.nvmrc`/`.npmrc` теперь declaration/stat-only (содержимое, включая возможные npm
+credentials, не читается и не выводится). Позитивный adapter control утверждает sourceReads=0 и
+priorBytes=0. `.env`/unknown formats не разрешены; source-extension registry не расширен.
+Полный штатный гейт повторяется; первый RED не считается успешным коммитом.
+
+Следующий полный `npm test` исполнил5172:5161 passed,3 failed,8 skipped. Все три оставшихся отказа
+были статическими контрактами старых instruction calls (`orient --file` / grammar без --coverage /
+scaffold --all без --authoring). Контракты синхронизированы с действительным CLI; добавлен позитивный
+и негативный контроль coverage grammar (mixed selectors/output, duplicate flags, invalid stage).
+Узкий повтор core-consumers/Action-schema/coverage adapter — **84/84 PASS**. Негативы не удалены.
+
+Окончательная performance-квалификация после bootstrap поправки — `cli-performance-lifecycle.json`:
+real3007/phase103.44ms,50k267.19ms, один source-read. Список sourceHashes включает shared ticket
+parser, source-format policy и header parser. Все три серии сохранены (108 процессов,0 model calls,
+cleanup=true); различие noisy timing не объявляется выигрышем. Последний полный commit pipeline
+остаётся обязательным перед отправкой; его итог — в reviewer handoff.
