@@ -21,6 +21,29 @@ import {
   checkExecutionAutonomyFunction,
 } from './execution-autonomy-evaluation.ts';
 
+/** @purpose Reject unowned fixture auxiliaries before any reference repair or model call.
+ * @param invoke Read-only installed CLI carrier; initial unfinished-task errors are retained, not waived.
+ * @returns Bounded initial diagnostics; throws for unknown exit or any unresolved source owner.
+ */
+export function checkExecutionAutonomyInitialOwnership(
+  invoke: (...args: string[]) => { status: number | null; stdout: string; stderr: string }
+) {
+  const checked = invoke('sdd-check', '--all', '.');
+  if (
+    ![0, 1].includes(checked.status ?? -1) ||
+    `${checked.stdout}\n${checked.stderr}`.includes('SDD_FILE_SPEC_OWNER_UNRESOLVED')
+  )
+    throw new Error(`initial-fixture-owner-unresolved: ${JSON.stringify(checked).slice(0, 8000)}`);
+  return {
+    exitCode: checked.status,
+    unresolvedSourceOwners: 0,
+    stdout: checked.stdout.slice(0, 8000),
+    stderr: checked.stderr.slice(0, 2000),
+    limitation:
+      'Other initial diagnostics are retained, NOT declared PASS or waived; selected real gates still run.',
+  };
+}
+
 /** @purpose Refuse a prepared fixture's global/explicit routing conflict before reference repairs or receipts.
  * @param id Registered case whose initial ticket must be visible in the pickable section.
  * @param invoke Existing bounded installed-CLI carrier; these probes never invoke Verify or write a reference.
@@ -110,6 +133,24 @@ export async function qualifyExecutionAutonomyCase(
     );
     if (!isolated) throw new Error('control installed a host answer corpus');
     const initialRouting = checkExecutionAutonomyInitialRouting(id, invoke);
+    const initialOwnership = checkExecutionAutonomyInitialOwnership(invoke);
+    let unownedAdapterRejected: boolean | undefined;
+    if (id === 'holdout8-authority') {
+      const path = join(cwd, 'scripts/publish.mjs');
+      const ownedAdapter = readFileSync(path, 'utf8');
+      try {
+        writeFileSync(path, ownedAdapter.replace(/^\/\/ @spec: COR\n/, ''));
+        const brokenOwner = invoke('sdd-check', '--all', '.');
+        unownedAdapterRejected = /SDD_FILE_SPEC_OWNER_UNRESOLVED/.test(
+          `${brokenOwner.stdout}\n${brokenOwner.stderr}`
+        );
+        if (!unownedAdapterRejected)
+          throw new Error('control did not detect the original unowned authority adapter');
+      } finally {
+        writeFileSync(path, ownedAdapter);
+      }
+      checkExecutionAutonomyInitialOwnership(invoke);
+    }
     // This declared helper/target input is host-owned qualification, never a live replan claim.
     if (id === 'ex3-helper') {
       writeFileSync(
@@ -173,7 +214,17 @@ export async function qualifyExecutionAutonomyCase(
       // Host-authored reference INPUT, identical to both runtimes. Never claim the old runtime supports the new writer API.
       writeFileSync(join(cwd, c.ticket), decision.content);
     }
-    if (c.expectedTerminal === 'complete' || c.expectedTerminal === 'decision-review') {
+    let earlyOperatorCheckpoint: boolean | undefined;
+    if (c.expectedTerminal === 'product-boundary' || c.expectedTerminal === 'authority-boundary') {
+      const early = await captureExecutionAutonomy(cwd, id, {
+        complete: true,
+        sessions: 0,
+        reasons: ['host early-boundary reference, not model behavior'],
+      });
+      earlyOperatorCheckpoint = early.integrity.pass && early.terminal.pass;
+      if (!earlyOperatorCheckpoint) throw new Error('control early operator boundary did not pass');
+    }
+    {
       mkdirSync(join(cwd, '.claude/tmp'), { recursive: true });
       for (const phase of ['P1', 'P2']) {
         cli('sdd-task', c.ticket, '--phase', phase);
@@ -192,10 +243,8 @@ export async function qualifyExecutionAutonomyCase(
           '.claude/tmp/handoff.txt'
         );
       }
-      if (c.expectedTerminal === 'complete') {
-        cli('sdd-log', c.ticket, 'close');
-        cli('sdd-sync', c.ticket);
-      }
+      cli('sdd-log', c.ticket, 'close');
+      cli('sdd-sync', c.ticket);
     }
     // This is the audit's real project gate, not a fabricated receipt or a substitute phase call.
     const full = cli('verify', '--phase', 'full');
@@ -222,12 +271,30 @@ export async function qualifyExecutionAutonomyCase(
     cli('lint', '--include-tests', `--spec=${spec}`, ...contractLintFiles);
     for (const codeRoot of inventoryRoots)
       cli('lint', `--spec=${spec}`, '--inventory-reverse', codeRoot);
-    if (c.expectedTerminal === 'complete') {
+    {
       // Known host reference semantic input; this is mechanical fixture viability, not a model audit.
       cli('sdd-log', c.ticket, 'audit-receipt', 'PASS');
       cli('sdd-log', c.ticket, 'review-receipt', 'PASS');
       for (const phase of ['P1', 'P2']) cli('sdd-verify', '--task', c.ticket, '--phase', phase);
-      cli('sdd-check', '--all', '.');
+      const finalCheck = invoke('sdd-check', '--all', '.', '--format', 'json');
+      if (c.expectedTerminal === 'complete' && finalCheck.status !== 0)
+        throw new Error(`control final check failed: ${finalCheck.stdout}`);
+      if (pending && finalCheck.status !== 0) {
+        const parsed = JSON.parse(finalCheck.stdout);
+        if (parsed.schema !== 'gennady.sdd-check.findings.v1' || !Array.isArray(parsed.findings))
+          throw new Error('control received malformed final diagnostics');
+        const codes = parsed.findings
+          .filter((f: { severity: string }) => f.severity === 'error')
+          .map((f: { code: string }) => f.code);
+        if (
+          finalCheck.status !== 1 ||
+          !codes.length ||
+          codes.some((code) => code !== 'SDD_DEVIATION_VERDICT_MISSING')
+        )
+          throw new Error(
+            `control has an unexpected final diagnostic, not the pending operator checkpoint: ${finalCheck.stdout}`
+          );
+      }
     }
     const normal = await captureExecutionAutonomy(cwd, id, {
       complete: true,
@@ -266,6 +333,10 @@ export async function qualifyExecutionAutonomyCase(
       inventoryRoots,
       answerIsolation: isolated,
       initialRouting,
+      initialOwnership,
+      ...(unownedAdapterRejected === undefined ? {} : { unownedAdapterRejected }),
+      ...(earlyOperatorCheckpoint === undefined ? {} : { earlyOperatorCheckpoint }),
+      operatorCheckpointAfterLocalClosure: pending ? normal.terminal.pass : undefined,
       commands,
       modelCalls: 0,
       controlScope:

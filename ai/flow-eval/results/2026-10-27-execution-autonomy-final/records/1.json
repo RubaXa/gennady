@@ -1,0 +1,9 @@
+{
+  "caseId": "ex5-repeat",
+  "arm": "baseline",
+  "originalIndex": 8,
+  "exitCode": 1,
+  "status": "recorded",
+  "completedAt": "2026-10-27T11:26:50.479Z",
+  "remainingSandboxes": []
+}

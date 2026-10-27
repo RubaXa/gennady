@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { checkSpecAuthoringDraft, checkSpecHierarchy } from '../../shared/sdd/check.ts';
 import { extractSection } from '../../shared/sdd/section.ts';
+import { MARKED_DONE_LINE_RE, parseExecutionLog } from '../../shared/sdd/execution-log.ts';
 import { SCOPE_KINDS } from '../../shared/sdd/templates.ts';
 import { proveRepoFile, readProvenRepoFile } from '../../shared/common/repo-file-identity.ts';
 import {
@@ -338,23 +339,61 @@ type CompletionTargets = {
   spec: string;
 };
 
+/** @purpose Require the latest canonical round's real dated close, never a phase DONE or an older round. */
+function latestRoundClosed(ticket: string): boolean {
+  const round = parseExecutionLog(ticket)?.rounds.at(-1);
+  const done = round?.close?.done;
+  return Boolean(
+    done &&
+    MARKED_DONE_LINE_RE.test(done.raw) &&
+    done.ts &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(done.ts) &&
+    Number.isFinite(Date.parse(done.ts)) &&
+    round?.close?.extra.length === 0 &&
+    round.trailing.length === 0
+  );
+}
+
+/** @purpose Validate local ticket/round/group-receipt closure without claiming a produced artifact or operator approval.
+ * @param ticketFile Exact member ticket identity.
+ * @param ticket Ticket snapshot from the host-owned capture.
+ * @param spec Owning spec snapshot carrying signed group receipts.
+ * @returns Workflow metadata proof only; callers must separately require functional and actual phase proof. Never replaces R-COMPLETE for ordinary execute tasks.
+ */
+export function checkLocalWorkflowClosure(
+  ticketFile: string,
+  ticket: string,
+  spec: string
+): QualityRuleResult {
+  const result = parseCompletion({
+    artifactExists: true,
+    ticketDone: /\*\*Status:\*\*\s*\[[xX]\]/.test(ticket),
+    roundClosed: latestRoundClosed(ticket),
+    auditReceipt: checkReceipt(spec, 'audit', ticketFile, ticket),
+    reviewReceipt: checkReceipt(spec, 'review', ticketFile, ticket),
+  });
+  return {
+    rule: 'LOCAL-WORKFLOW-CLOSURE',
+    pass: result.pass,
+    detail: result.pass
+      ? 'local DONE/round/group receipt metadata valid; NOT produced-code, semantic review or operator approval proof'
+      : result.detail.replace('artifact built but ', 'local workflow incomplete: '),
+  };
+}
+
 /**
- * @purpose Run R-COMPLETE against a finished scenario sandbox by reading the declared target files from
- *   disk — the receipts are group-scoped on the spec, the DONE/round on the ticket. Read, not inferred.
- * @param sandboxDir Absolute path to the provisioned scenario sandbox.
- * @param t The declared completion targets (artifact/ticket/spec, repo-relative).
- * @returns The R-COMPLETE result.
+ * @purpose Run R-COMPLETE against a finished scenario sandbox; code production, ticket/round and real group receipts remain required.
+ * @param sandboxDir Absolute provisioned scenario sandbox.
+ * @param t Declared artifact/ticket/spec targets.
+ * @returns Existing objective completion proof, never replaced by the local metadata-only helper.
  */
 export function checkCompletion(sandboxDir: string, t: CompletionTargets): QualityRuleResult {
   const ticket = readRel(sandboxDir, t.ticket);
   const spec = readRel(sandboxDir, t.spec);
-  const logBlock = /<!--SECTION:EXECUTION_LOG-->([\s\S]*?)<!--\/SECTION:EXECUTION_LOG-->/.exec(
-    ticket
-  );
   return parseCompletion({
     artifactExists: artifactWasProduced(sandboxDir, t.artifact),
     ticketDone: /\*\*Status:\*\*\s*\[[xX]\]/.test(ticket),
-    roundClosed: /- \[[xX]\]\s*`[^`]*`\s*DONE/.test(logBlock ? logBlock[1]! : ''),
+    roundClosed: latestRoundClosed(ticket),
     auditReceipt: checkReceipt(spec, 'audit', t.ticket, ticket),
     reviewReceipt: checkReceipt(spec, 'review', t.ticket, ticket),
   });

@@ -121,6 +121,7 @@ const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6,
 // suites (see R-REL-15.md / V-BATCH-03.md finding F6).
 const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=4';
 const OWNED_FILE_TIMEOUTS: Readonly<Record<string, string>> = {
+  'ai/flow-eval/__tests__/execution-autonomy-audit.test.ts': '--test-timeout=120000',
   'scripts/__tests__/declared-exports.test.ts': '--test-timeout=360000',
   'ai/flow-eval/scripts/__tests__/release-migration-scopes.test.ts': '--test-timeout=120000',
   'plugins/swift/__tests__/swift-hardening.test.ts': '--test-timeout=120000',

@@ -10,7 +10,7 @@ import {
   checkR1Structure,
   checkCheckpointResults,
 } from '../quality-gate.ts';
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -127,7 +127,7 @@ describe('checkCompletion (R-COMPLETE, both outcomes, from disk)', () => {
       '<!--/SECTION:META-->',
       '<!--SECTION:EXECUTION_LOG-->',
       opts.round
-        ? '### Round 1 — 2026-09-07, initial\n- [x] `2026-09-07T00:00:00Z` DONE'
+        ? '### Round 1 — 2026-09-07, initial\n#### P1\n- [x] `2026-09-07T00:00:00Z` DONE\n#### Round close\n- [x] `2026-09-07T00:00:01Z` DONE'
         : '- [ ] `<ts>` DONE',
       '<!--/SECTION:EXECUTION_LOG-->',
     ].join('\n');
@@ -196,6 +196,19 @@ describe('checkCompletion (R-COMPLETE, both outcomes, from disk)', () => {
     assert.strictEqual(r.pass, false);
     assert.match(r.detail, /ticket not \[x\] DONE/);
     assert.match(r.detail, /no closed execution-log round/);
+  });
+  it('FAIL when phase DONE remains but the actual round close is unchecked', () => {
+    const dir = bed({ artifact: true, done: true, round: true, audit: true, review: true });
+    try {
+      const file = join(dir, T.ticket);
+      const before = readFileSync(file, 'utf8');
+      writeFileSync(file, before.replace('#### Round close\n- [x]', '#### Round close\n- [ ]'));
+      const result = checkCompletion(dir, T);
+      assert.equal(result.pass, false);
+      assert.match(result.detail, /no closed execution-log round/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
   it('FAIL when the group audit receipt is missing (skipped audit)', () => {
     const r = checkCompletion(

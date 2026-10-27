@@ -1,0 +1,99 @@
+{
+  "executionFailure": {
+    "detail": "forbidden CLI shell redirection: bash {\"command\":\"npx gennady orient --file src/delay.ts --json 2>/dev/null; echo \\\"---P2 CTX---\\\"; npx gennady sdd-task specs/delay/core/core.task.COR-work.md --phase P2 2>&1 | head -30"
+  },
+  "executionAutonomy": {
+    "schema": "gennady.execution-autonomy-evaluation.1",
+    "caseId": "ex5-repeat",
+    "quiescence": {
+      "complete": true,
+      "sessions": 2,
+      "reasons": []
+    },
+    "functional": {
+      "pass": true,
+      "exitCode": 0,
+      "detail": "independent public behavior assertions reached their host-owned terminal marker"
+    },
+    "integrity": {
+      "pass": true,
+      "issues": []
+    },
+    "terminal": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": false,
+      "detail": "0 sdd-check error(s), 1 warning(s) (warnings allowed); artifact built but ticket not [x] DONE; no group audit receipt on spec (no receipt recorded); no group code-review receipt on spec (no receipt recorded); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+    },
+    "attempts": [
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "84716e30-2d85-4757-a3d8-dae72e437984",
+        "tests": []
+      }
+    ],
+    "pendingDecisions": [],
+    "snapshotDigest": "4420ac00fe61827aad90714a7a33ffe34d7b5dd7a99e6ecadf4de554255628bd"
+  },
+  "scenarioId": "execution-autonomy-ex5-repeat-baseline",
+  "date": "2026-10-27",
+  "timestamp": "2026-10-27T11:26:50.096Z",
+  "sha": "7958ecb0a3cabcfd2ba923d272a65e00a981a0c6",
+  "source": {
+    "dirty": true,
+    "worktreeSha256": "e974a53e1d1788ff000bb720cff427389cec34a6ab861cdf58de4728c28c55ba",
+    "scenarioSha256": "899a3d1785c486a5f893ec5af39c5285520e67b5ce2f5607bbeb3f2d86eaff03",
+    "configSha256": "e6bca8b2d85586477d68d4b290746155143105c74ec980bc947f5d81d994ef32"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "worker-error",
+  "status": "error",
+  "outcome": "worker-error",
+  "actions": 53,
+  "durationMs": 136151,
+  "usage": {
+    "messages": 30,
+    "input": 89476,
+    "output": 6746,
+    "reasoning": 7483,
+    "cacheRead": 1162624,
+    "cacheWrite": 0,
+    "total": 103705,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 2,
+    "wallClockMs": 136525
+  },
+  "quality": {
+    "rule": "R-COMPLETE",
+    "pass": false,
+    "detail": "artifact built but ticket not [x] DONE; no group audit receipt on spec (no receipt recorded); no group code-review receipt on spec (no receipt recorded)"
+  },
+  "trajectory": {
+    "rule": "EXECUTION-PATH",
+    "pass": false,
+    "detail": "successful installed sdd-task dispatch not observed; successful real Verify invocation not observed; successful real full audit Verify invocation not observed"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delay/core/core.spec.md",
+    "specs/delay/delay.spec.md"
+  ]
+}

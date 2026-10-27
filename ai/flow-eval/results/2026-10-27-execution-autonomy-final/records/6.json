@@ -1,0 +1,9 @@
+{
+  "caseId": "holdout6-related",
+  "arm": "candidate",
+  "originalIndex": 13,
+  "exitCode": 0,
+  "status": "recorded",
+  "completedAt": "2026-10-27T12:02:45.308Z",
+  "remainingSandboxes": []
+}

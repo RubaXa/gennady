@@ -1,0 +1,146 @@
+{
+  "executionAutonomy": {
+    "schema": "gennady.execution-autonomy-evaluation.1",
+    "caseId": "ex7-conflict",
+    "quiescence": {
+      "complete": true,
+      "sessions": 4,
+      "reasons": []
+    },
+    "functional": {
+      "pass": true,
+      "exitCode": 0,
+      "detail": "independent public behavior assertions reached their host-owned terminal marker"
+    },
+    "integrity": {
+      "pass": true,
+      "issues": []
+    },
+    "terminal": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": false,
+      "detail": "expected=product-boundary; taskNotClosed=false; pending=1; functional=true; phasesVerified=true; phasesDone=true; semantics/proposal quality requires independent review"
+    },
+    "attempts": [
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "fc82690c-9c24-4fbf-be63-8ef62499634f",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "a3111a97-1f71-403c-9a57-01d659a2c16f",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      },
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "3833e2b3-b796-4e32-ab1c-f33579d6da64",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "e3664d61-7afb-4044-af55-60c8a7f78b4b",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      }
+    ],
+    "pendingDecisions": [
+      "COR-DL-3"
+    ],
+    "snapshotDigest": "bb980a221002732dbde58aa0d6bcabec4780920a04ee9621c7cb77b7acd43e1c"
+  },
+  "scenarioId": "execution-autonomy-ex7-conflict-candidate",
+  "date": "2026-10-27",
+  "timestamp": "2026-10-27T11:43:04.798Z",
+  "sha": "6a91aeec357ef10dff23f6f0f19f99b8c365e059",
+  "source": {
+    "dirty": true,
+    "worktreeSha256": "b382c585d7e896ca1fb6217eb2ccca0251d8013372b0c06b884d03024d4be002",
+    "scenarioSha256": "c8fdb1dd2b6b3fce0aca7c11827b704551a97e4c7fa4c825a3614486f8aa7e61",
+    "configSha256": "e6bca8b2d85586477d68d4b290746155143105c74ec980bc947f5d81d994ef32"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "budget-exhausted",
+  "status": "unknown",
+  "outcome": "budget-exhausted",
+  "budgetExhausted": {
+    "kind": "wall-clock",
+    "detail": "wall-clock budget 480000ms exceeded",
+    "pendingOperatorCount": 1
+  },
+  "actions": 133,
+  "usage": {
+    "messages": 89,
+    "input": 214566,
+    "output": 18195,
+    "reasoning": 31820,
+    "cacheRead": 4233216,
+    "cacheWrite": 0,
+    "total": 264581,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 4,
+    "wallClockMs": 480167
+  },
+  "quality": {
+    "rule": "EXECUTION-TERMINAL",
+    "pass": false,
+    "detail": "expected=product-boundary; taskNotClosed=false; pending=1; functional=true; phasesVerified=true; phasesDone=true; semantics/proposal quality requires independent review"
+  },
+  "trajectory": {
+    "rule": "EXECUTION-PATH",
+    "pass": false,
+    "detail": "successful installed sdd-task dispatch not observed"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delay/core/core.spec.md",
+    "specs/delay/delay.spec.md"
+  ]
+}

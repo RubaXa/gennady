@@ -28,19 +28,49 @@ import { qualifyExecutionAutonomyCase } from '../execution-autonomy-controls.ts'
 import { safeVerifyText } from '../../../shared/verify/reporting/report-safety.ts';
 import { createExecutionShellCarrier } from './execution-autonomy-shell-carrier.ts';
 import { readExecutionContinuation } from '../execution-campaign-continuation.ts';
+import { readExecutionHoldContinuation } from '../execution-hold-continuation.ts';
 
 const root = resolve(import.meta.dirname, '../../..');
 const mode = process.argv[2];
 if (!['--qualify-only', '--live'].includes(mode ?? ''))
   throw new Error('Require --qualify-only or --live and a new results path');
+if (
+  mode === '--live' &&
+  existsSync(join(root, 'ai/flow-eval/results/2026-10-27-execution-autonomy-final'))
+)
+  throw new Error(
+    'EA-3 finite live budget is already reserved/consumed; a new series needs a separately registered protocol'
+  );
 const predecessor = process.argv[4] === '--remaining-from' ? process.argv[5] : undefined;
-if (process.argv[4] && (!predecessor || mode !== '--live' || process.argv.length !== 6))
-  throw new Error('Only --live OUT --remaining-from PRIOR is supported; no arbitrary retries');
+const resumeHold = process.argv[4] === '--resume-routing-hold';
+if (
+  process.argv[4] &&
+  (resumeHold
+    ? process.argv.length !== 5
+    : !predecessor || mode !== '--live' || process.argv.length !== 6)
+)
+  throw new Error('Require --remaining-from PRIOR or --resume-routing-hold; no arbitrary retries');
 const out = resolve(root, process.argv[3] ?? 'ai/flow-eval/results/2026-10-26-execution-autonomy');
 if (!relative(root, out).startsWith('ai/flow-eval/results/') || existsSync(out))
   throw new Error(
     'Require a NEW repository-owned results directory; recorded attempts are never overwritten'
   );
+if (
+  resumeHold &&
+  mode === '--live' &&
+  out !== join(root, 'ai/flow-eval/results/2026-10-27-execution-autonomy-final')
+)
+  throw new Error(
+    'Routing hold has exactly one reserved live output; no alternate/replacement campaign'
+  );
+const originalSchedule = EXECUTION_AUTONOMY_CASE_IDS.flatMap((caseId, index) =>
+  (index % 2 ? (['candidate', 'baseline'] as const) : (['baseline', 'candidate'] as const)).map(
+    (arm) => ({ caseId, arm })
+  )
+);
+const held = resumeHold ? readExecutionHoldContinuation(root, originalSchedule) : undefined;
+mkdirSync(dirname(out), { recursive: true });
+mkdirSync(out); // Atomic dispatch reservation: a competing/repeated invocation cannot reuse this stage.
 const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 const git = (cwd: string, ...args: string[]) =>
   execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -51,7 +81,6 @@ const json = (path: string, value: unknown) => {
 const owned = realpathSync(mkdtempSync(join(tmpdir(), 'gennady-execution-campaign-')));
 const privateDir = join(owned, 'private');
 mkdirSync(privateDir, { mode: 0o700 });
-mkdirSync(out, { recursive: true });
 const records: unknown[] = [];
 const controls: unknown[] = [];
 let server: ReturnType<typeof spawn> | undefined;
@@ -116,7 +145,7 @@ async function runCli(args: string[], env: NodeJS.ProcessEnv): Promise<number> {
 }
 
 try {
-  const commits = {
+  const commits = held?.commits ?? {
     baseline: git(root, 'rev-parse', '7958ecb0^{commit}'),
     candidate: git(root, 'rev-parse', 'HEAD'),
   };
@@ -135,18 +164,17 @@ try {
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, readFileSync(join(root, file.path)));
   }
-  const originalSchedule = EXECUTION_AUTONOMY_CASE_IDS.flatMap((caseId, index) =>
-    (index % 2 ? (['candidate', 'baseline'] as const) : (['baseline', 'candidate'] as const)).map(
-      (arm) => ({ caseId, arm })
-    )
-  );
-  const continuation = predecessor
-    ? readExecutionContinuation(root, resolve(root, predecessor), originalSchedule, commits)
-    : undefined;
+  const continuation =
+    held ??
+    (predecessor
+      ? readExecutionContinuation(root, resolve(root, predecessor), originalSchedule, commits)
+      : undefined);
   const schedule = continuation?.remaining ?? originalSchedule;
   planned = mode === '--live' ? schedule.length : 0;
   const protocol = {
-    schema: 'gennady.execution-autonomy-campaign.1',
+    schema: held
+      ? 'gennady.execution-autonomy-campaign.2'
+      : 'gennady.execution-autonomy-campaign.1',
     mode,
     commits,
     toolchain: {
@@ -162,6 +190,17 @@ try {
     originalBudget: 16,
     ...(continuation
       ? { continuation: continuation.provenance, previouslySpent: continuation.spent }
+      : {}),
+    ...(held
+      ? {
+          baselineBackport: {
+            sha256: sha(held.baselinePatch),
+            source: 'EA-2c map/help ONLY; derived baseline, not original clean 7958',
+          },
+          expectedRuntimeDigests: held.expectedRuntimeDigests,
+          priorAttemptsPoolable: false,
+          maximumNewComparablePairs: 4,
+        }
       : {}),
     fixtureQualification:
       'explicit full pipeline plus real contract and closed-world inventory controls before any receipt',
@@ -179,6 +218,8 @@ try {
     limitation:
       'One sample per case/arm; SDK quiescence is not a sandbox security boundary or proof against arbitrary detached processes. No statistical non-inferiority or universal speed claim. EX4 stops at pending operator decision, not task DONE. Restart and dependency-edge recovery have deterministic controls, not live intervention claims. EX3/EX4 canonical-command path grades measure protocol capability plus observed use, NOT arm-neutral model autonomy: baseline lacks new replan/decision APIs. Terminal grades also depend on runtime support. Never infer worse model judgment solely from a missing new command or old Handoff parser; report functional behavior, semantic decisions, protocol conformance and completion separately.',
   };
+  if (held && JSON.stringify(protocol.toolchain) !== JSON.stringify(held.expectedToolchain))
+    throw new Error('Runtime toolchain changed after the reviewed hold; no model dispatch');
   json(join(out, 'protocol.json'), protocol);
   for (const arm of ['baseline', 'candidate'] as const) {
     stage = `build:${arm}`;
@@ -188,6 +229,18 @@ try {
       stdio: 'pipe',
     });
     git(runtimes[arm], 'checkout', '--quiet', '--detach', commits[arm]);
+    if (held && arm === 'baseline') {
+      execFileSync('git', ['apply', '--check', '-'], {
+        cwd: runtimes[arm],
+        input: held.baselinePatch,
+      });
+      execFileSync('git', ['apply', '-'], { cwd: runtimes[arm], input: held.baselinePatch });
+      const actual = execFileSync('git', ['diff', '--binary', 'HEAD'], {
+        cwd: runtimes[arm],
+        encoding: 'utf8',
+      });
+      if (sha(actual) !== sha(held.baselinePatch)) throw new Error('Baseline backport drift');
+    }
     symlinkSync(
       realpathSync(join(root, 'node_modules')),
       join(runtimes[arm], 'node_modules'),
@@ -198,10 +251,20 @@ try {
       encoding: 'utf8',
       maxBuffer: 20_000_000,
     });
+    const identity = runtimeIdentity(runtimes[arm]);
+    if (held && identity.digest !== held.expectedRuntimeDigests[arm])
+      throw new Error('Built runtime differs from shared-routing qualification; no model dispatch');
     json(join(out, `runtime-${arm}.json`), {
-      ...runtimeIdentity(runtimes[arm]),
+      ...identity,
       buildOutputSha256: sha(build),
       trackedClean: git(runtimes[arm], 'status', '--porcelain', '--untracked-files=no') === '',
+      ...(held && arm === 'baseline'
+        ? {
+            sourcePatch: held.baselinePatch,
+            sourcePatchSha256: sha(held.baselinePatch),
+            derivedBaseline: true,
+          }
+        : {}),
     });
     for (const caseId of EXECUTION_AUTONOMY_CASE_IDS) {
       stage = `qualification:${arm}:${caseId}`;

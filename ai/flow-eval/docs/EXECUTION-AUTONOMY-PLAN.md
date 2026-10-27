@@ -4,13 +4,17 @@
 Подсказка blocker исправлена; canonical decision writer, Handoff reference validation и единая
 writer model внедрены локально. Итоговая регрессия и повторное независимое review этой части прошли.
 EA-2 реализован и прошёл промежуточный внешний review на `e9021500` + `9d4057df`.
-EA-2 получил внешний **Approve только этапа**; PR остаётся Draft. EA-3 остановлен на
-**7/16 потраченных попытках; 9 не запущены, replacements=0**. Первые две попытки относятся
-к дефектному full-audit стенду; продолжение дало два budget outcome, два policy censorship
-и одну намеренно прерванную попытку. Улучшение поведения модели **не доказано**.
+EA-2 получил внешний **Approve только этапа**; PR остаётся Draft. **EA-3 закончен: 16/16 первичных
+попыток, replacements=0, результат inconclusive.** После остановки 7/16 были выполнены только
+9 не начатых позиций, на общей routing-qualified базе. Всего 9 budget, 4 policy censorship,
+2 interruption и 1 completed worker с judge fail. Первая пара и H8 имеют дефекты стенда;
+стадии не объединяются. Улучшение поведения модели/скорости **не доказано**.
 Найден общий routing/readiness conflict; **EA-2c** согласует карту с уже действующим
 project-selector phase dispatch (causal RED→GREEN, 93/93 suite PASS), без ослабления Verify.
-Эта дополнительная delta и квалификация EA-3 требуют отдельного review перед продолжением.
+EA-2c и измерительная часть EA-3 получили внешний **Approve этапа** на `6a91aeec`.
+Весь PR остаётся Draft; merge не разрешён. Исправления измерения проверены offline; новых
+model/judge/reflection вызовов после шестнадцатой попытки не было. Датированный controller и
+reader закрыты для дальнейшего live dispatch, subprocess negative control пройден.
 База: `7958ecb0a3cabcfd2ba923d272a65e00a981a0c6` (main после PR #129).
 Начат этап исходных проверок: [четыре воспроизведения и положительные controls](../results/2026-10-26-execution-autonomy/BASELINE.md).
 Независимое read-only review draft не оставило содержательных blockers. Работа организована как
@@ -24,7 +28,7 @@ project-selector phase dispatch (causal RED→GREEN, 93/93 suite PASS), без �
 
 ## 0. Текущая доска и журнал проверок
 
-Обновлено: 2026-10-26. Рабочая ветка `codex/execution-autonomy`; работа накапливается в
+Обновлено: 2026-10-27. Рабочая ветка `codex/execution-autonomy`; работа накапливается в
 [PR #130](https://github.com/RubaXa/gennady/pull/130) → `main`.
 Поправка оператора: **один накопительный PR для EA-1 → EA-2 → EA-3, review после каждого этапа**.
 Промежуточный Approve относится только к проверенному этапу/commit, не разрешает merge и не
@@ -34,16 +38,110 @@ reviewer каждый раз получает текущую стадию, scope
 Прежние архивы экспериментов не изменялись. Здесь отмечается фактический результат,
 а не обещанный эффект. Unit/CLI checks не заменяют проверку самостоятельности модели.
 
-| Этап                                 | Состояние                                          | Что получено / что остаётся                                                                                          |
-| ------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Исходная квалификация                | Выполнена детерминированная часть                  | Четыре воспроизведения + controls в BASELINE.md; live baseline ещё не снят                                           |
-| EA-1: blocker guidance               | Проверено локально                                 | Technical recovery отделён от product/authority boundary; исходные 4 RED assertions стали GREEN                      |
-| EA-1: decision / writer roles        | Детерминированно проверено                         | CLI-owned запись до применения, стабильный ID, Handoff-ссылка; удалены противоречащие worker-команды                 |
-| EA-1: race / freshness controls      | Новые controls прошли                              | Общий ticket/Verify lock; после решения P2 proof P1 остаётся текущим; смысловые изменения и rejection stale-ят proof |
-| EA-2: technical replan / no-progress | Промежуточный Approve (`e9021500` + `9d4057df`)    | Полные hooks PASS; механика проверена, эффект модели ещё не измерен                                                  |
-| EA-2c: project-selector routing      | Causal RED→GREEN, suite 93/93; review впереди      | Исправлено противоречие global map vs exact --phase; builtin/graph/audit protections сохранены                       |
-| EA-3: fixtures / live comparison     | HOLD после нового routing confound                 | 7/16 spent, 9 unstarted, 0 replacements; behavioral improvement NOT PROVEN                                           |
-| Independent review / PR              | EA-1 и EA-2 одобрены по отдельности; PR #130 Draft | EA-3 и итоговый review впереди; merge не разрешён                                                                    |
+| Этап                                 | Состояние                                       | Что получено / что остаётся                                                                                          |
+| ------------------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Исходная квалификация                | Выполнена и заморожена                          | Четыре воспроизведения + controls; live первичные данные сохранены отдельно, не перекрашены                          |
+| EA-1: blocker guidance               | Проверено локально                              | Technical recovery отделён от product/authority boundary; исходные 4 RED assertions стали GREEN                      |
+| EA-1: decision / writer roles        | Детерминированно проверено                      | CLI-owned запись до применения, стабильный ID, Handoff-ссылка; удалены противоречащие worker-команды                 |
+| EA-1: race / freshness controls      | Новые controls прошли                           | Общий ticket/Verify lock; после решения P2 proof P1 остаётся текущим; смысловые изменения и rejection stale-ят proof |
+| EA-2: technical replan / no-progress | Промежуточный Approve (`e9021500` + `9d4057df`) | Полные hooks PASS; механика проверена, эффект модели ещё не измерен                                                  |
+| EA-2c: project-selector routing      | Approve этапа на `6a91aeec`, suite 93/93        | Исправлено противоречие global map vs exact --phase; builtin/graph/audit protections сохранены                       |
+| EA-3: fixtures / live comparison     | 16/16; серия закрыта, inconclusive              | Canonical writer наблюдался; общий model/efficiency effect не доказан; stand/measurement defects исправлены offline  |
+| Independent review / PR              | EA-1, EA-2, EA-2c и измерение одобрены поэтапно | PR #130 Draft; поведение EA-3 и итоговый review впереди, merge не разрешён                                           |
+
+### Историческая пререгистрация продолжения после review 2026-10-27
+
+Ниже записано условие, при котором продолжалась серия; оно **уже исполнено**, не даёт нового
+live-бюджета. Конечный результат — в следующем разделе и итоговом отчёте.
+
+Упоминание «оставшихся 14» во внешнем review относится к первому продолжению и больше не актуально:
+2 исходных + 5 continued = **7 spent, 9 unstarted**. Эти семь не повторяются и не перекрашиваются.
+Старый reader `--remaining-from` намеренно не ослабляется: он описывает только исходный парный
+prefix 2→14, а не нечётную границу 7→9 и не новые runtime identities.
+
+- Отдельная no-model квалификация: **16/16, 256 actual CLI commands**, 0 model calls,
+  все initial map/P1, real full/contract/inventory, broken/tamper и cleanup controls прошли.
+  [Exact report и воспроизводимый source patch](../results/2026-10-27-execution-autonomy-routing-qualification.json).
+- Сравнимая новая база: original `7958ecb0` + **только** EA-2c map/help backport в двух файлах.
+  Patch SHA-256 `dd9ed6684949c5bfca2a0bf54b5dd53fce98f21b9ef3c7240a481c7436a5544a`.
+  Это явно **derived baseline**, не прежний clean runtime. EA-1/EA-2 туда не переносятся.
+  Candidate — exact clean `6a91aeec`, а не меняющийся HEAD harness. Оба distributed runtime
+  hash-bound и повторно сравниваются с qualification до модели; source patch не меняет гейты/цель.
+- Новый явный вход `--resume-routing-hold` привязывает оба прежних protocol/records и cleanup,
+  проверяет все 7 потраченных позиций и возвращает только исходные позиции **7..15**.
+  Для live разрешён ровно один atomically reserved output:
+  каталог `2026-10-27-execution-autonomy-final` в папке постоянных результатов (будет создан при старте).
+  Повторный запуск/другой output отвергается;
+  это не универсальное разрешение повторять invalid/censored cases. Qualification всех 16 controls
+  снова выполняется до dispatch. Модель/провайдер/budget/concurrency/observer-права прежние.
+- В остатке — **четыре новые пары** (EX5, EX7, H6, H8) и одиночный EX4 baseline. Последний — только
+  diagnostic, не пара к прерванному старому EX4 candidate. Новые записи не объединяются со старыми
+  семью; четыре пары не доказывают статистическое неухудшение. EX3 live replan остаётся NOT PROVEN,
+  потому что обе его попытки уже потрачены. Смена формы инструкций/новая модель/новые задачи сюда
+  не добавляются; экономия цензурированных попыток не объявляется улучшением.
+- Installed-internals probing отмечается отдельно на каждом arm как observed/censored/unknown;
+  не приписывать мотив «из-за автономии» без свидетельства и не менять observer ради зелёного.
+  Бюджет или policy stop остаются потраченными попытками, completion/semantic verdict не выдумывается.
+- Перед запуском: unit negatives continuation, полный offline suite/type-check и hash-bound
+  preregistration. После каждой попытки — прежний owned cleanup; unsafe cleanup останавливает очередь.
+  После лимита — конечный retain/reject/inconclusive вывод без автоматического следующего cohort.
+- Фактический старт: полный offline **673/673**, shell **7/7**, type-check и scoped contract lint PASS;
+  Node 22.19.0 / OpenCode 1.17.15 неизменны. Один прежний offline отказ был только на ссылке
+  документа на ещё не созданный output: формулировка исправлена, полный набор повторён. Контроллер
+  заново прошёл **16/16** controls до модели и начал исходную позицию 7 — EX4 baseline diagnostic.
+  Текущие primary [protocol](../results/2026-10-27-execution-autonomy-final/protocol.json) и
+  [records](../results/2026-10-27-execution-autonomy-final/records/) не переписывают прошлые кампании.
+
+### Конечный результат EA-3 и закрытие эксперимента
+
+[Итог по случаям, выгоде/отказам и ограничениям](../results/2026-10-27-execution-autonomy-final/EA3-FINAL.md),
+[16 hash-bound raw/derived проекций](../results/2026-10-27-execution-autonomy-final/OFFLINE-REPLAY-4.json).
+Новых попыток не осталось; нет назначения следующего cohort. В этой конечной выборке нет ни одной
+пары с двумя qualified completed-worker/semantic PASS, поэтому не объявляются улучшение,
+неухудшение или регрессия модели на основании цензурированных/недозавершённых прогонов.
+
+- Доказан узкий положительный факт: EX7 candidate вызвал `sdd-log decision` (exit0, event21),
+  сохранил `COR-DL-3`, не изменил подписанную цель и сам исправил отвергнутую foreign-phase
+  Handoff-ссылку. Общая автономность и live adoption bounded `replan` этим не доказаны.
+- EX5 candidate имел actual host terminal PASS к budget cutoff; worker/semantic completion
+  не объявляются. H6: −6.85% non-cache tokens, но +11.51% tools и обе задачи недозавершены — не win.
+- H8 выявил unowned protected adapter; оба старых H8 stand-invalid, не повторялись. Будущий
+  adapter получил существующего owner COR; initial ownership preflight и causal negative
+  проверяют это без исключений в checker. Первое предложение `@spec: none` реально отвергнуто
+  runtime, не принято по догадке; отрицательный report сохранён.
+- Task-ID matcher, native Reopens metadata и local-DONE/operator-checkpoint исправлены offline.
+  Для последнего требуются functional + actual phase proof + real group receipts + pending
+  canonical decision, не новая/внешняя authority. Обычный R-COMPLETE/production guards не ослаблены.
+  Более сильная correction qualification **16/16, 342 actual CLI commands, model0**, включает
+  ранний stop и closed-local/pending-review варианты на обоих runtime.
+- Raw summaries/judge/trajectories не менялись. Derived replays явно не являются fresh Git proof
+  replay или новым semantic verdict. Исправлены собственные промежуточные ошибки анализа
+  (nested judgeUsage, лишний Git/existence fallback); v1/v2/v3 отчёты сохранены, authoritative v4.
+- Независимая финальная проверка нашла phase-DONE/round-close false positive. Исправлены оба
+  completion helpers через канонический latest-round parser; negatives меняют только close
+  реального H8 capture. R-COMPLETE усилен, produced-code/receipt/authority требования не ослаблены.
+- Известный минимум primary usage 3035125 non-cache + 58101504 cache-read, 14/16 известных.
+  Judge 24907 и reflection 122723 non-cache отдельно. Цена AI Proxy неизвестна; cost=0 не free.
+- Final cleanup safe/rootRemoved=true, recorded9; все owned live/qualification roots удалены,
+  shared deps не копировались/не удалялись. Прежний guard recovery checkpoint не тронут.
+- После коррекций: oracle targets **19/19**, finite-budget controls **18/18**, full offline
+  **684/684 + shell 7/7** после cap и round-close negatives; type-check PASS. Финальные полные
+  pre-commit/pre-push и чистая checkout-проверка фиксируются по факту в PR, не подменяются этим числом.
+- Первый финальный pre-commit отвергнут: усиленный real-audit suite упёрся в прежний whole-file
+  timeout30s (один control в standalone offline занимал32s). Для exact owned файла введён120s
+  бюджет через существующую topology-группировку; default30s, набор тестов, gate/subprocess limits
+  и coverage obligations не ослаблены. Topology contract проверяет точную границу. Тот же hook
+  обнаружил добавленный Codex capture ref; 7470 entries/index/HEAD неизменны, refs не откатывались,
+  stale lock архивирован в собственном checkpoint после проверки dead owner. Красный не объявлен PASS.
+  Повторный полный commit/hook планируется в одноразовом ref-isolated clone с exact staged tree
+  и shared deps: host Codex capture refs не должны участвовать в проверяемом Git-dir. Guard/hooks
+  не меняются. Перенос commit обратно допустим только при parent==старый HEAD, tree==исходный
+  staged tree и unchanged index/worktree; обычный fast-forward своей PR-ветки, без reset/ref rollback.
+
+Решение передаётся на итоговое независимое review PR #130: сохраняем механические исправления,
+не внедряем непроверенные prompt optimizations и не выдаём исследование за доказанный model win.
+Это не merge authorization. Дальнейшие исследования потребуют нового вопроса/протокола, не retry
+этой серии ради удобного результата.
 
 ### Что пробовали и чему научились
 

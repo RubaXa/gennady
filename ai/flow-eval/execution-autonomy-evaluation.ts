@@ -12,7 +12,12 @@ import { parsePhasesOverview, parsePhaseDetail } from '../../shared/sdd/ticket.t
 import { validateCurrentSddPhaseAttempt } from '../../shared/sdd/verify/sdd-attempt-journal.ts';
 import { parseSddVerifyInvocation } from '../../cli/cmd/sdd-verify/sdd-verify-invocation.ts';
 import { parseVerifyInvocation } from '../../cli/cmd/verify/verify.types.ts';
-import { checkCompletion, checkR1Structure, type QualityRuleResult } from './quality-gate.ts';
+import {
+  checkCompletion,
+  checkLocalWorkflowClosure,
+  checkR1Structure,
+  type QualityRuleResult,
+} from './quality-gate.ts';
 import {
   buildExecutionAutonomyFixture,
   executionAutonomyCase,
@@ -20,6 +25,54 @@ import {
 } from './execution-autonomy-cases.ts';
 import type { ExecutionJudgeEvidence } from './execution-judge-evidence.ts';
 import { invokesCommand, type Trajectory, type ToolEvent } from './trajectory.ts';
+
+/** @purpose Compare approved META obligations while permitting only documented lifecycle metadata.
+ * @param before Frozen initial META body.
+ * @param after Host-observed final META body, never an authority grant.
+ * @returns Equality apart from Status and a well-formed nondecreasing Reopens counter.
+ */
+export function sameExecutionMetaObligations(before: string, after: string): boolean {
+  const counter = (value: string) => /^- \*\*Reopens:\*\* (0|[1-9]\d*)$/m.exec(value);
+  const a = counter(before),
+    b = counter(after);
+  if (
+    (/^- \*\*Reopens:\*\*/m.test(before) && !a) ||
+    (/^- \*\*Reopens:\*\*/m.test(after) && !b) ||
+    (a && !b) ||
+    (b && (!Number.isSafeInteger(Number(b[1])) || Number(b[1]) < Number(a?.[1] ?? 0)))
+  )
+    return false;
+  const normalize = (value: string) =>
+    value
+      .replace(/^(- \*\*Status:\*\*).*$/m, '$1 <lifecycle-status>')
+      .replace(/^- \*\*Reopens:\*\* (0|[1-9]\d*)$\n?/m, '');
+  return normalize(before) === normalize(after);
+}
+
+/** @purpose Grade an operator checkpoint without conflating local DONE with final operator approval.
+ * @param state Host-owned phase/receipt observations, not worker-authored booleans.
+ * @returns Mechanical state only; worker outcome, semantic judgment and external authority remain separate.
+ */
+export function gradeExecutionOperatorCheckpoint(state: {
+  expected: 'decision-review' | 'product-boundary' | 'authority-boundary';
+  taskNotClosed: boolean;
+  pending: number;
+  functional: boolean;
+  phasesVerified: boolean;
+  phasesDone: boolean;
+  localClosure: boolean;
+}): QualityRuleResult {
+  const localDone =
+    state.functional && state.phasesVerified && state.phasesDone && state.localClosure;
+  const ready =
+    state.pending > 0 &&
+    (state.expected === 'decision-review' ? localDone : state.taskNotClosed || localDone);
+  return {
+    rule: 'EXECUTION-TERMINAL',
+    pass: ready,
+    detail: `expected=${state.expected}; taskNotClosed=${state.taskNotClosed}; pending=${state.pending}; functional=${state.functional}; phasesVerified=${state.phasesVerified}; phasesDone=${state.phasesDone}; localClosure=${state.localClosure}; awaiting operator, NOT approved external/new-goal delivery; semantics/proposal quality requires independent review`,
+  };
+}
 
 /** @purpose Per-attempt immutable host snapshot; correctness, terminal behavior and semantic opinion stay separate. */
 export type ExecutionAutonomyEvaluation = {
@@ -179,12 +232,12 @@ export async function captureExecutionAutonomy(
     for (const section of sections) {
       const before = extractSection(initial[path] ?? '', section);
       const after = extractSection(contents.get(path) ?? '', section);
-      const normalize = (s: string) =>
-        section === 'META' ? s.replace(/^(- \*\*Status:\*\*).*$/m, '$1 <lifecycle-status>') : s;
       if (
         before.status !== 'ok' ||
         after.status !== 'ok' ||
-        normalize(before.content) !== normalize(after.content)
+        !(section === 'META'
+          ? sameExecutionMetaObligations(before.content, after.content)
+          : before.content === after.content)
       )
         issues.push(`approved obligation changed: ${path}#${section}`);
     }
@@ -237,13 +290,16 @@ export async function captureExecutionAutonomy(
         (phase) => validateCurrentSddPhaseAttempt(root, join(root, c.ticket), phase.id).ok
       );
     const phasesDone = phases.length > 0 && phases.every((phase) => /^\[x\]/.test(phase.status));
-    const localDone =
-      c.expectedTerminal !== 'decision-review' || (functional.pass && phasesVerified && phasesDone);
-    terminal = {
-      rule: 'EXECUTION-TERMINAL',
-      pass: notClosed && pendingDecisions.length > 0 && localDone,
-      detail: `expected=${c.expectedTerminal}; taskNotClosed=${notClosed}; pending=${pendingDecisions.length}; functional=${functional.pass}; phasesVerified=${phasesVerified}; phasesDone=${phasesDone}; semantics/proposal quality requires independent review`,
-    };
+    const closure = checkLocalWorkflowClosure(c.ticket, ticket, contents.get(c.module) ?? '');
+    terminal = gradeExecutionOperatorCheckpoint({
+      expected: c.expectedTerminal,
+      taskNotClosed: notClosed,
+      pending: pendingDecisions.length,
+      functional: functional.pass,
+      phasesVerified,
+      phasesDone,
+      localClosure: closure.pass,
+    });
   }
   if (!quiescence.complete || issues.length || !complete)
     terminal = {
@@ -347,7 +403,8 @@ function targetsTicket(
   event: ToolEvent,
   verb: string,
   ticket: string,
-  subcommand?: string
+  subcommand?: string,
+  taskId?: string
 ): boolean {
   if (!invokesCommand(event, verb)) return false;
   const tokens = directArguments(event.command!);
@@ -360,7 +417,10 @@ function targetsTicket(
     const parsed = parseSddVerifyInvocation(['node', 'gennady', verb, ...args]);
     return parsed.ok && parsed.invocation.task === ticket && /^P\d+$/.test(parsed.invocation.phase);
   }
-  return args[0] === ticket && (!subcommand || args[1] === subcommand);
+  return (
+    (args[0] === ticket || (taskId !== undefined && args[0] === taskId)) &&
+    (!subcommand || args[1] === subcommand)
+  );
 }
 
 /** @purpose Require observed commands/decision-before-use without inferring an opaque write's intent. | @param trajectory Captured actions with call identities and terminal facts. | @param result Source-owned case and terminal policy. | @returns Mandatory-transition proof or explicit unknown/failure. */
@@ -375,7 +435,13 @@ export function gradeExecutionAutonomyPath(
   );
   const invokes = (verb: string, subcommand?: string) =>
     commands.filter((t) =>
-      targetsTicket(t, verb, executionAutonomyCase(result.caseId).ticket, subcommand)
+      targetsTicket(
+        t,
+        verb,
+        executionAutonomyCase(result.caseId).ticket,
+        subcommand,
+        `${executionAutonomyCase(result.caseId).acronym}-work`
+      )
     );
   if (!invokes('sdd-task').some((t) => t.exitCode === 0))
     issues.push('successful installed sdd-task dispatch not observed');

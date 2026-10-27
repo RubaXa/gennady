@@ -1,0 +1,48 @@
+{
+  "schema": "gennady.execution-reflection.1",
+  "sessionId": "ses_e82bac395ffe5HTCiYJEYqQZBz",
+  "status": "completed",
+  "startedAt": "2026-10-27T12:17:14.183Z",
+  "completedAt": "2026-10-27T12:17:36.794Z",
+  "authority": "self-report hypothesis only; primary metrics and verdicts remain frozen",
+  "diffUnchanged": true,
+  "newToolCalls": 0,
+  "usageDelta": {
+    "input": 119664,
+    "output": 1179,
+    "reasoning": 1880,
+    "cacheRead": 3584,
+    "cacheWrite": 0,
+    "total": 122723,
+    "messages": 1
+  },
+  "usageComplete": true,
+  "citedCallIds": [
+    "call_00_x9IF9mVKuQ3McwnVNfRK9243",
+    "call_00_Mze896TP6vGwi3EKOwLE7956",
+    "call_00_CrtbylAXDq3Crz3WVlXi4067",
+    "call_00_4ahsc5GwwQJKWYvbUSrm2794",
+    "call_00_C7uFKaJuaFkX0fRmJQII0669",
+    "call_00_136EF61G68AGr54u0rBt1533",
+    "call_00_NBEqTenj2t2dt8Sff2yl3179",
+    "call_00_7gkQzqWUYcVjQmKyHQkZ6015",
+    "call_00_oBdjkodTAXHw16MekeAS0081",
+    "call_00_6jiyCSMtdY98COXz6QG12890",
+    "call_01_6SeDgxgc4jFnADzcTfQw7081",
+    "call_00_ET_wdbdvHLbWJvame3boPzh2131",
+    "call_00_nCcueDeopVl4eyDo25Nr6368",
+    "call_00_eSMcNpt1KSwizpS4USFR0244",
+    "call_00_zrxNBKeofcXOf2MfWOFv0867",
+    "call_00_KSNHrjuTULuaeerOKqwA3870",
+    "call_00_vDf0jOvA2YGLzRCsNKmN1183"
+  ],
+  "unknownCallIds": [
+    "call_00_x9IF9mVKuQ3McwnVNfRK9243"
+  ],
+  "models": [
+    "llm-proxy/deepseek-v4-flash"
+  ],
+  "monetaryCost": "unknown",
+  "text": "{\"helped\":[\n{\"path\":\"ai/directives/sdd-v2/execute.directive.xml#STEP_1_CONTEXT / STEP_3_DISPATCH\",\"why\":\"`sdd-task <ticket> --phase` manifest gave exact verify selector and worker contract\",\"evidence\":\"call_00_x9IF9mVKuQ3McwnVNfRK9243, call_00_Mze896TP6vGwi3EKOwLE7956\"},\n{\"path\":\"ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml#AX_VERIFICATION_BEFORE_HANDOFF\",\"why\":\"one canonical sdd-verify per phase produced real PASS receipts\",\"evidence\":\"call_00_CrtbylAXDq3Crz3WVlXi4067 (P1 PASS), call_00_4ahsc5GwwQJKWYvbUSrm2794 (P2 PASS tests=2/2/0/0)\"},\n{\"path\":\"ai/directives/sdd-v2/execute.directive.xml#STEP_4_RECORD\",\"why\":\"pre-close `sdd-check --task` gate and `sdd-log complete` transition were unambiguous\",\"evidence\":\"call_00_C7uFKaJuaFkX0fRmJQII0669, call_00_136EF61G68AGr54u0rBt1533\"},\n{\"path\":\"ai/directives/sdd-v2/audit/steps/STEP_1_MECHANICAL.xml / code-review.directive.xml\",\"why\":\"exact `sdd-log audit-receipt` / `review-receipt` CLI forms were explicit\",\"evidence\":\"call_00_NBEqTenj2t2dt8Sff2yl3179, call_00_7gkQzqWUYcVjQmKyHQkZ6015\"}],\n\"friction\":[\n{\"path\":\"ai/directives/sdd-v2/execute.directive.xml\",\"issue\":\"No execute-level ban on hand-run git; the prohibition exists only in AX_GIT_DIFF_SCAN inside audit/code-review. I ran git status/diff despite `--group-scope` already returning the bounded diff\",\"evidence\":\"avoidable: call_00_oBdjkodTAXHw16MekeAS0081, call_00_6jiyCSMtdY98COXz6QG12890; diff already in call_01_6SeDgxgc4jFnADzcTfQw7081\"},\n{\"path\":\"ai/directives/sdd-v2/execute.directive.xml#STEP_5_REAL_GATES\",\"issue\":\"`sdd-check --all .` mixes ticket-phase staleness with a pre-existing out-of-scope finding (`SDD_FILE_SPEC_OWNER_UNRESOLVED` in scripts/publish.mjs, outside Target Files). No routing rule for a provisioned adapter that is not any phase's target\",\"evidence\":\"call_00_ET_wdbdvHLbWJvame3boPzh2131 exit 1; I re-ran sdd-verify to chase it: call_00_nCcueDeopVl4eyDo25Nr6368, call_00_eSMcNpt1KSwizpS4USFR0244; last check still red call_00_zrxNBKeofcXOf2MfWOFv0867\"},\n{\"path\":\"ai/directives/sdd-v2/audit/steps/STEP_2_SEMANTIC.xml + STEP_3_ROUTE.xml#AUDIT_SESSION_SUMMARY_FORMAT\",\"issue\":\"Mandated semantic sweep and `@audit`/`@code-review` output blocks were not emitted before recording receipts\",\"evidence\":\"receipts call_00_NBEqTenj2t2dt8Sff2yl3179 and call_00_7gkQzqWUYcVjQmKyHQkZ6015, no summary block call observed\"},\n{\"path\":\"ai/directives/coding/typescript-rules.xml\",\"issue\":\"Read twice (full cat, then offset read)\",\"evidence\":\"call_00_KSNHrjuTULuaeerOKqwA3870, call_00_vDf0jOvA2YGLzRCsNKmN1183\"}],\n\"uncertainties\":[\n\"Whether publication was in ticket scope at all: no phase or Target File names scripts/publish.mjs; unknown if invoking the adapter was expected versus citing inputs/authority.md only.\",\n\"Whether recording group audit/review PASS receipts while COR-DL-3 stayed `pending-operator` is semantically inconsistent; host shows pending=1 with taskNotClosed=false.\",\n\"Cause of semanticVerdict=fail is unknown: could be missing audit/review summary blocks, PASS receipts beside a pending deviation, or proposal quality; not established from the trace.\"\n],\n\"nextHypothesis\":\"Semantic failure stems from recording group PASS receipts without the audit/review mandated output blocks while a pending deviation existed and the whole-tree gate stayed red. Test: add an execute STEP_6 precondition requiring the `AUDIT_SESSION_SUMMARY_FORMAT` / `CODE_REVIEW_OUTPUT_FORMAT` block and forbidding receipt recording while any `pending-operator` deviation exists; also add an explicit orchestrator-level 'never hand-run git; use --group-scope' line and a routing rule for provisioned out-of-scope files such as the publish adapter.\"}",
+  "textTruncated": false
+}

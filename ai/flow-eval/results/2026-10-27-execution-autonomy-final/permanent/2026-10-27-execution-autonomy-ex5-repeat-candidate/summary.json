@@ -1,0 +1,169 @@
+{
+  "executionAutonomy": {
+    "schema": "gennady.execution-autonomy-evaluation.1",
+    "caseId": "ex5-repeat",
+    "quiescence": {
+      "complete": true,
+      "sessions": 5,
+      "reasons": []
+    },
+    "functional": {
+      "pass": true,
+      "exitCode": 0,
+      "detail": "independent public behavior assertions reached their host-owned terminal marker"
+    },
+    "integrity": {
+      "pass": true,
+      "issues": []
+    },
+    "terminal": {
+      "rule": "EXECUTION-TERMINAL",
+      "pass": true,
+      "detail": "0 sdd-check error(s), 1 warning(s) (warnings allowed); artifact built + ticket DONE + round closed + receipts (verdict + provenance checked); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+    },
+    "attempts": [
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "0d98110c-f310-41c1-b154-07f1e0c3c4cb",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "d12d0ac2-4226-4906-9919-b70c80391002",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "9d8accfc-f5c8-4c9c-883f-8bfcc87a87aa",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      },
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "2703e6e6-5165-4ead-b5c1-adb68209283a",
+        "tests": []
+      },
+      {
+        "phase": "P2",
+        "state": "PASS",
+        "runId": "1d845ecf-441f-4691-a372-dce05795e912",
+        "tests": [
+          {
+            "executed": 2,
+            "failed": 0,
+            "passed": 2,
+            "policy": "required",
+            "protocol": "node-test-summary-v1",
+            "runner": "node:test",
+            "schema": "gennady.verify-test-stats.v1",
+            "skipped": 0,
+            "source": "gennady.yaml",
+            "stepId": "node:scenarios"
+          }
+        ]
+      },
+      {
+        "phase": "P1",
+        "state": "PASS",
+        "runId": "e0d96885-fc34-4a4e-988e-fcf00d286417",
+        "tests": []
+      }
+    ],
+    "pendingDecisions": [],
+    "snapshotDigest": "4dd2d0331f3045c5aaefe580cb44f9bd3e0572b5eaf306ba0d8d16e2142de0b2"
+  },
+  "scenarioId": "execution-autonomy-ex5-repeat-candidate",
+  "date": "2026-10-27",
+  "timestamp": "2026-10-27T11:34:54.846Z",
+  "sha": "6a91aeec357ef10dff23f6f0f19f99b8c365e059",
+  "source": {
+    "dirty": false,
+    "worktreeSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "scenarioSha256": "f80c3b5337989351d5144e926d2055d77babb43258cc03d9c82b64e03b3e2b0e",
+    "configSha256": "e6bca8b2d85586477d68d4b290746155143105c74ec980bc947f5d81d994ef32"
+  },
+  "model": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "judgeModel": {
+    "providerID": "llm-proxy",
+    "modelID": "deepseek-v4-flash"
+  },
+  "budget": {
+    "concurrency": 1,
+    "maxObservations": 40,
+    "observeEveryMs": 15000,
+    "stuckAfter": 8,
+    "tailLimit": 20
+  },
+  "verdict": "budget-exhausted",
+  "status": "unknown",
+  "outcome": "budget-exhausted",
+  "budgetExhausted": {
+    "kind": "wall-clock",
+    "detail": "wall-clock budget 480000ms exceeded",
+    "pendingOperatorCount": 0
+  },
+  "actions": 149,
+  "usage": {
+    "messages": 72,
+    "input": 228753,
+    "output": 23888,
+    "reasoning": 36064,
+    "cacheRead": 4523520,
+    "cacheWrite": 0,
+    "total": 288705,
+    "cost": 0,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "complete": true,
+    "sessions": 5,
+    "wallClockMs": 480006
+  },
+  "quality": {
+    "rule": "EXECUTION-TERMINAL",
+    "pass": true,
+    "detail": "0 sdd-check error(s), 1 warning(s) (warnings allowed); artifact built + ticket DONE + round closed + receipts (verdict + provenance checked); independent public behavior assertions reached their host-owned terminal marker; pending=0"
+  },
+  "trajectory": {
+    "rule": "TRAJECTORY",
+    "pass": true,
+    "detail": "149 tools; complete capture"
+  },
+  "hasJudge": false,
+  "specFiles": [
+    "specs/delay/core/core.spec.md",
+    "specs/delay/delay.spec.md"
+  ]
+}

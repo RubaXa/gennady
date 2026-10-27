@@ -1,0 +1,9 @@
+{
+  "caseId": "holdout8-authority",
+  "arm": "baseline",
+  "originalIndex": 15,
+  "exitCode": 1,
+  "status": "recorded",
+  "completedAt": "2026-10-27T12:17:37.216Z",
+  "remainingSandboxes": []
+}

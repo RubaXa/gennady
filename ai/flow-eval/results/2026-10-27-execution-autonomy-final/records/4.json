@@ -1,0 +1,9 @@
+{
+  "caseId": "ex7-conflict",
+  "arm": "baseline",
+  "originalIndex": 11,
+  "exitCode": 1,
+  "status": "recorded",
+  "completedAt": "2026-10-27T11:46:27.760Z",
+  "remainingSandboxes": []
+}

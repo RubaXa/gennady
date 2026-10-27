@@ -1,0 +1,9 @@
+{
+  "caseId": "ex7-conflict",
+  "arm": "candidate",
+  "originalIndex": 10,
+  "exitCode": 0,
+  "status": "recorded",
+  "completedAt": "2026-10-27T11:43:07.057Z",
+  "remainingSandboxes": []
+}

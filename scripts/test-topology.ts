@@ -99,6 +99,11 @@ const OWNED_FILE_BUDGETS: Readonly<
     }
   >
 > = {
+  'ai/flow-eval/__tests__/execution-autonomy-audit.test.ts': {
+    timeoutMs: 120_000,
+    owner: 'AI-SKILLS',
+    reason: 'real phase/full/audit/receipt and broken-source controls (~38s without sibling load)',
+  },
   'scripts/__tests__/declared-exports.test.ts': {
     timeoutMs: 360_000,
     owner: 'INFRA-NPM-PUBLISH',
