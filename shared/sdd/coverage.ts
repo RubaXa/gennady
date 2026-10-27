@@ -70,7 +70,16 @@ function diagnoseRow(
   } else {
     if (deletion)
       add('DELETE_TARGET_EXISTS', 'Declared deletion is not applied', strict ? 'error' : 'pending');
-    if (observed.specIds.length === 0) {
+    if (!claim.mapped && input.stage === 'audit')
+      add('MAPPING_REQUIRED', 'Header/phase claim is not present in the owning File Mapping');
+    if (observed.ownershipFormat === 'declaration') {
+      if (
+        !path.endsWith('.json') ||
+        observed.specIds.length > 0 ||
+        (observed.previousSpecIds?.length ?? 0) > 0
+      )
+        add('INVALID_OWNERSHIP_FORMAT', 'Declaration-only artifacts cannot replace source headers');
+    } else if (observed.specIds.length === 0) {
       const removed = (observed.previousSpecIds?.length ?? 0) > 0;
       add(
         removed ? 'REMOVED_OWNERSHIP' : 'MISSING_HEADER',
@@ -84,8 +93,6 @@ function diagnoseRow(
       if (!specs.has(actual)) add('UNRESOLVED_HEADER', `Unknown @spec ${actual}`);
       else if (!owners.includes(actual))
         add('HEADER_OWNER_CONFLICT', `Header ${actual} disagrees with declared owner`);
-      if (!claim.mapped && input.stage === 'audit')
-        add('MAPPING_REQUIRED', 'Header/phase claim is not present in the owning File Mapping');
     }
   }
   return {

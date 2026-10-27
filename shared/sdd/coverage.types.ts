@@ -39,6 +39,8 @@ export type CoverageObservation = {
   readonly state: 'file' | 'missing' | 'unsafe';
   /** @purpose Every current header occurrence; duplicates remain visible. */
   readonly specIds: readonly string[];
+  /** @purpose Host-derived representation; JSON uses its exact declaration, never comment injection. */
+  readonly ownershipFormat?: 'header' | 'declaration';
   /** @purpose Prior Git header claims for removal/disappearance detection. */
   readonly previousSpecIds?: readonly string[];
 };

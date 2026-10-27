@@ -108,10 +108,18 @@ opts into literal brackets, never glob expansion; identity revalidation preserve
 still rejecting traversal, symlink components and non-regular files. Prior Git headers are observed
 for selected paths in one batch, not stored in a separate source inventory.
 
+JSON artifacts use exact declaration ownership rather than inline comments: the adapter must prove a
+regular contained file and parse valid JSON. At phase exit one unambiguous target owner is required;
+at audit the owning File Mapping is also required. This representation is host-derived from `.json`,
+cannot waive a code file's header, and does not replace the project's schema or functional gates.
+Source ownership is parsed only from the canonical leading comment region; an `@spec` inside a
+declaration body is not a file header.
+
 **File Mapping:**
 
 - `shared/sdd/coverage.ts`: stage-aware coverage projection
 - `shared/sdd/coverage.types.ts`: canonical input and result types
+- `shared/sdd/coverage-repository.ts`: read-only repository observations shared across SDD consumers
 - `shared/sdd/__tests__/coverage.test.ts`: deterministic ownership and scale controls
 
 ## 3. File Structure

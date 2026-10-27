@@ -2,7 +2,7 @@
 // @spec: CLI
 // @consumers: orient, sdd-check
 
-import { readSddCoverage } from './sdd-coverage-repository.ts';
+import { readSddCoverage } from '../../../shared/sdd/coverage-repository.ts';
 import type { CoverageSelection, CoverageStage } from '../../../shared/sdd/coverage.types.ts';
 
 /**

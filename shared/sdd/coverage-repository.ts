@@ -1,13 +1,13 @@
 // @file: Invocation-local filesystem adapter for declaration-driven SDD coverage projections.
-// @spec: CLI
-// @consumers: orient coverage, sdd-check coverage
+// @spec: SHARED
+// @consumers: orient coverage, sdd-check coverage, future SDD lifecycle
 
 import { existsSync, lstatSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { posix, resolve } from 'node:path';
-import { inspectRepoPath } from '../../../shared/common/repo-path.ts';
-import { proveRepoFile, readProvenRepoFile } from '../../../shared/common/repo-file-identity.ts';
-import { resolveSddCoverage } from '../../../shared/sdd/coverage.ts';
+import { inspectRepoPath } from '../common/repo-path.ts';
+import { proveRepoFile, readProvenRepoFile } from '../common/repo-file-identity.ts';
+import { resolveSddCoverage } from './coverage.ts';
 import type {
   CoverageFinding,
   CoverageObservation,
@@ -16,17 +16,13 @@ import type {
   CoverageSpec,
   CoverageStage,
   CoverageTarget,
-} from '../../../shared/sdd/coverage.types.ts';
-import { collectHeadings, extractSection } from '../../../shared/sdd/section.ts';
-import { nextMarkdownFence, type MarkdownFence } from '../../../shared/sdd/markdown-fence.ts';
-import { parseSpecId } from '../../../shared/sdd/spec-id.ts';
-import {
-  parseMetaInfo,
-  parsePhaseDetail,
-  parsePhasesOverview,
-} from '../../../shared/sdd/ticket.ts';
-import { isSddSourceFile } from '../../../shared/sdd/source-extensions.ts';
-import { extractHeader } from '../orient/core/extract-header.ts';
+} from './coverage.types.ts';
+import { collectHeadings, extractSection } from './section.ts';
+import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
+import { parseSpecId } from './spec-id.ts';
+import { parseMetaInfo, parsePhaseDetail, parsePhasesOverview } from './ticket.ts';
+import { isSddSourceFile } from './source-extensions.ts';
+import { parseSourceOwnershipHeader } from './source-ownership-header.ts';
 
 /** @purpose Observable explicit adapter reads, not syscall accounting inside the host or Git. */
 export type CoverageReadStats = {
@@ -80,8 +76,9 @@ function body(content: string, section: string, heading: string): string | null 
 }
 
 function headerIds(content: string): string[] {
-  const header = extractHeader(content);
-  return Array.from({ length: header.specCount ?? 0 }, () => header.spec ?? '');
+  return parseSourceOwnershipHeader(content)
+    .blocks.filter((block) => block.tag === 'spec')
+    .map((block) => block.value.trim());
 }
 
 function visibleMarkdown(content: string): string {
@@ -387,7 +384,7 @@ function observePaths(
       try {
         const stat = lstatSync(safe.absolute);
         if (!stat.isFile()) issue('UNSAFE_PATH', path, 'Expected a regular implementation file');
-        else if (!isSddSourceFile(path))
+        else if (!isSddSourceFile(path) && !path.endsWith('.json'))
           issue(
             'UNSUPPORTED_HEADER_FORMAT',
             path,
@@ -395,7 +392,20 @@ function observePaths(
           );
         else {
           const content = read(path, false);
-          if (content !== null) observation = { path, state: 'file', specIds: headerIds(content) };
+          if (content !== null) {
+            if (path.endsWith('.json')) {
+              try {
+                JSON.parse(content);
+                observation = { path, state: 'file', specIds: [], ownershipFormat: 'declaration' };
+              } catch {
+                issue(
+                  'INVALID_JSON_ARTIFACT',
+                  path,
+                  'Expected valid JSON; do not add ownership comments'
+                );
+              }
+            } else observation = { path, state: 'file', specIds: headerIds(content) };
+          }
         }
       } catch (cause) {
         if ((cause as NodeJS.ErrnoException).code === 'ENOENT')

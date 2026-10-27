@@ -38,6 +38,36 @@ function fixture(): CoverageInput {
 const codes = (input: CoverageInput) =>
   resolveSddCoverage(input).findings.map((finding) => finding.code);
 
+test('a source cannot bypass header requirements through the declaration-only artifact representation', () => {
+  const input = fixture();
+  assert.ok(
+    codes({
+      ...input,
+      stage: 'phase-exit',
+      observations: [{ ...observed('src/main.ts'), ownershipFormat: 'declaration' }],
+    }).includes('INVALID_OWNERSHIP_FORMAT')
+  );
+});
+
+test('JSON declaration ownership still rejects conflicting owners and missing File Mapping at audit', () => {
+  const original = fixture();
+  const input: CoverageInput = {
+    ...original,
+    stage: 'phase-exit',
+    specs: original.specs.map((spec) => ({ ...spec, files: [] })),
+    targets: [{ ...original.targets[0]!, path: 'config.json' }],
+    observations: [{ ...observed('config.json'), ownershipFormat: 'declaration' }],
+  };
+  assert.equal(resolveSddCoverage(input).complete, true);
+  assert.ok(codes({ ...input, stage: 'audit' }).includes('MAPPING_REQUIRED'));
+  assert.ok(
+    codes({
+      ...input,
+      targets: [...input.targets, { ...input.targets[0]!, specId: 'PORTAL' }],
+    }).includes('OWNER_CONFLICT')
+  );
+});
+
 test('preflight permits a headerless phase target without claiming complete coverage or changing inputs', () => {
   const input = fixture();
   const bytes = JSON.stringify(input);

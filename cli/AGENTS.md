@@ -37,7 +37,7 @@
 | orient            | [cmd/orient/](cmd/orient/)                       | Owner/task relations; --coverage: bounded declared SDD map, no source-tree scan       |
 | sdd-orient        | [cmd/sdd-orient/](cmd/sdd-orient/)               | SDD-граф; legacy numbered headings — labelled read-only migration context             |
 | sdd-state         | [cmd/sdd-state/](cmd/sdd-state/)                 | Детерминированный снимок SDD-состояния проекта                                        |
-| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | SDD checks; --coverage: shared declared ownership diagnosis, never Verify evidence    |
+| sdd-check         | [cmd/sdd-check/](cmd/sdd-check/)                 | SDD checks; --coverage is a read-only query, not a gate or Verify evidence            |
 | sdd-extract       | [cmd/sdd-extract/](cmd/sdd-extract/)             | Извлечение одной anchored-секции SDD-артефакта                                        |
 | sdd-new           | [cmd/sdd-new/](cmd/sdd-new/)                     | Scaffold одного SDD v2 артефакта                                                      |
 | sdd-verify        | [cmd/sdd-verify/](cmd/sdd-verify/)               | Thin SDD task/phase facade over universal Verify                                      |

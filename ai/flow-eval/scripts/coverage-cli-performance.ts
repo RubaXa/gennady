@@ -17,7 +17,7 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { performance } from 'node:perf_hooks';
-import type { CoverageDocument } from '../../../cli/cmd/_shared/sdd-coverage-repository.ts';
+import type { CoverageDocument } from '../../../shared/sdd/coverage-repository.ts';
 
 const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 const ownRoot = resolve(import.meta.dirname, '../../..');
@@ -159,7 +159,7 @@ try {
 }
 assert.equal(cleaned, true);
 const sourceFiles = [
-  'cli/cmd/_shared/sdd-coverage-repository.ts',
+  'shared/sdd/coverage-repository.ts',
   'cli/cmd/_shared/sdd-coverage-query.ts',
   'shared/sdd/coverage.ts',
   'shared/sdd/coverage.types.ts',

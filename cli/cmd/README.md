@@ -291,5 +291,8 @@ npx gennady sdd-check --coverage --task CORE-work --phase P1 --stage preflight -
 The same adapter supplies both commands. Omit the selection for project declarations, use an exact
 Spec-ID/path for a structural subtree, or a Task-ID/path plus phase for one phase. Default stage is
 `audit`; `authoring`/`preflight` permit visible pending ownership, not completed coverage.
-These queries execute no tests and produce no Verify receipts. `--coverage` does not combine with
+This is a query, not a gate: exit 0 permits only the selected ownership boundary. These queries
+execute no tests and produce no Verify receipts. `--coverage` does not combine with
 ordinary query/check flags. Existing lifecycle/default check behavior changes only in reviewed SC3.
+JSON declarations are syntax-checked without inserting comments; source files still require a
+canonical leading `@spec` at the strict ownership boundary.

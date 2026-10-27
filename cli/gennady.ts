@@ -425,7 +425,7 @@ switch (command) {
     break;
 
   case 'sdd-check':
-    // --coverage shares orient's read-only projection, without dispatching Verify or lifecycle writes.
+    // --coverage is a query, not a gate; shares orient's projection without Verify or lifecycle writes.
     await import('./cmd/sdd-check/index.ts');
     break;
 

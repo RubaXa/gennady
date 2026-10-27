@@ -16,12 +16,20 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
-import { readSddCoverage } from '../sdd-coverage-repository.ts';
+import { readSddCoverage } from '../../../../shared/sdd/coverage-repository.ts';
 import { runSddCoverageQuery } from '../sdd-coverage-query.ts';
 import { inspectRepoPath } from '../../../../shared/common/repo-path.ts';
-import type { CoverageDocument } from '../sdd-coverage-repository.ts';
+import type { CoverageDocument } from '../../../../shared/sdd/coverage-repository.ts';
+import { printHelp as printSddCheckHelp } from '../../sdd-check/help.ts';
 
 const ownRoot = resolve(import.meta.dirname, '../../../..');
+
+test('sdd-check help explicitly distinguishes the coverage query from a gate', (context) => {
+  const lines: string[] = [];
+  context.mock.method(console, 'info', (line: string) => lines.push(line));
+  printSddCheckHelp();
+  assert.match(lines.join('\n'), /Query, not a gate/);
+});
 const section = (name: string, content: string) =>
   `<!--SECTION:${name}-->\n${content}\n<!--/SECTION:${name}-->\n`;
 const spec = (id: string, files: string[] = [], children: string[] = []) =>
@@ -178,6 +186,15 @@ test('missing/wrong/duplicate headers fail audit; preparation is pending, never 
     }
   }));
 
+test('ownership-shaped comments inside a declaration body cannot stand in for a leading header', () =>
+  fixture((root, put) => {
+    put('specs/core/core.spec.md', spec('CORE', ['src/value.ts']));
+    put('src/value.ts', 'export const value = 7;\n// @spec: CORE\n');
+    const result = readSddCoverage(root, { kind: 'project' }, 'audit');
+    assert.equal(result.coverage.canProceed, false);
+    assert.ok(result.coverage.findings.some((finding) => finding.code === 'MISSING_HEADER'));
+  }));
+
 test('literal route brackets are read exactly, never expanded; existing default path policy remains strict', () =>
   fixture((root, put) => {
     put('specs/core/core.spec.md', spec('CORE', ['pages/[...slug].tsx']));
@@ -313,16 +330,32 @@ test('Git prior headers catch removal and unexplained disappearance, not a persi
     );
   }));
 
-test('non-commentable artifacts are explicit unsupported evidence, never corrupted with comments', () =>
+test('JSON ownership is exact declaration-backed and syntax-checked, never corrupted with comments', () =>
   fixture((root, put) => {
     put('specs/core/core.spec.md', spec('CORE', ['config.json']));
     put('config.json', '{"value":7}\n');
     const result = readSddCoverage(root, { kind: 'project' }, 'audit');
-    assert.equal(result.coverage.canProceed, false);
-    assert.ok(
-      result.coverage.findings.some((finding) => finding.code === 'UNSUPPORTED_HEADER_FORMAT')
-    );
+    assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
     assert.equal(readFileSync(join(root, 'config.json'), 'utf8'), '{"value":7}\n');
+    put('config.json', '// @spec: CORE\n{"value":7}');
+    assert.ok(
+      readSddCoverage(root, { kind: 'project' }, 'audit').coverage.findings.some(
+        (finding) => finding.code === 'INVALID_JSON_ARTIFACT'
+      )
+    );
+    put('config.json', '{"value":7}');
+    put('specs/core/core.spec.md', spec('CORE'));
+    put('specs/core/core.task.work.md', ticket([{ id: 'P1', writes: ['config.json'] }]));
+    assert.equal(
+      readSddCoverage(root, { kind: 'phase', task: 'CORE-work', phase: 'P1' }, 'phase-exit')
+        .coverage.complete,
+      true
+    );
+    assert.ok(
+      readSddCoverage(root, { kind: 'project' }, 'audit').coverage.findings.some(
+        (finding) => finding.code === 'MAPPING_REQUIRED'
+      )
+    );
   }));
 
 test('strict argument failures precede filesystem reads and reject mixed query modes', () => {
