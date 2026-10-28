@@ -386,13 +386,11 @@ function downstreamOwnedFiles(
   const owned = new Set<string>();
   for (const phase of phases.slice(phaseIndex + 1)) {
     const section = extractSection(ticket, `PHASE_${phase.id}`);
-    if (section.status !== 'ok') {
-      throw new Error(`SDD_VERIFY_ATTEMPT_SCOPE_INVALID: PHASE_${phase.id}`);
-    }
+    // Future plans do not authorize today's attempt. Only a fully valid exact-file
+    // declaration may exclude downstream bytes from its freshness identity.
+    if (section.status !== 'ok') continue;
     const detail = parsePhaseDetail(section.content);
-    if (detail.pathIssues?.length) {
-      throw new Error(`SDD_VERIFY_ATTEMPT_SCOPE_INVALID: ${detail.pathIssues.join('; ')}`);
-    }
+    if (detail.pathIssues?.length) continue;
     for (const raw of [...detail.targetFiles, ...detail.deletedFiles]) {
       const absolute = path.resolve(root, raw);
       const relative = path.relative(root, absolute).split(path.sep).join('/');
@@ -405,9 +403,7 @@ function downstreamOwnedFiles(
         relative.startsWith('../') ||
         /[*?{}]/.test(raw)
       ) {
-        throw new Error(
-          `SDD_VERIFY_ATTEMPT_SCOPE_INVALID: phase ${phase.id} path ${JSON.stringify(raw)}`
-        );
+        continue;
       }
       owned.add(relative);
     }
@@ -1283,47 +1279,48 @@ export async function runWithSddAttemptJournal(input: {
     runId,
     input.runtime?.beforeStaleOwnerRecheck
   );
-  const startedAt = new Date().toISOString();
-  const initialHeadSha = headSha(input.root);
-  const initialWorktreeDigest = currentSddPhaseWorktreeDigest(
-    input.root,
-    input.ticketPath,
-    input.sddPhase
-  );
-  const running: AttemptRecord = {
-    schema: ATTEMPT_SCHEMA,
-    runId,
-    sddPhase: input.sddPhase,
-    selector: null,
-    state: 'RUNNING',
-    startedAt,
-    finishedAt: null,
-    durationMs: null,
-    steps: { completed: 0, total: 0 },
-    testStats: [],
-    processes: [],
-    projection: { complete: true, totalProcesses: 0 },
-    reportState: 'pending',
-    identity: {
-      headSha: initialHeadSha,
-      worktreeDigest: initialWorktreeDigest,
-      scopeDigest: null,
-      planDigest: null,
-      configDigest: null,
-      rulesDigest: null,
-    },
-    trust: { level: 'pending', source: 'planning', resolved: false },
-  };
-  let heartbeatFailure: Error | undefined;
-  const heartbeat = setInterval(() => {
-    try {
-      updateOwner(lock.ownerPath, lock.owner, input.runtime?.beforeOwnerRename);
-    } catch (cause) {
-      heartbeatFailure = cause instanceof Error ? cause : new Error(String(cause));
-    }
-  }, input.runtime?.heartbeatMs ?? HEARTBEAT_MS);
-  heartbeat.unref();
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
   try {
+    const startedAt = new Date().toISOString();
+    const initialHeadSha = headSha(input.root);
+    const initialWorktreeDigest = currentSddPhaseWorktreeDigest(
+      input.root,
+      input.ticketPath,
+      input.sddPhase
+    );
+    const running: AttemptRecord = {
+      schema: ATTEMPT_SCHEMA,
+      runId,
+      sddPhase: input.sddPhase,
+      selector: null,
+      state: 'RUNNING',
+      startedAt,
+      finishedAt: null,
+      durationMs: null,
+      steps: { completed: 0, total: 0 },
+      testStats: [],
+      processes: [],
+      projection: { complete: true, totalProcesses: 0 },
+      reportState: 'pending',
+      identity: {
+        headSha: initialHeadSha,
+        worktreeDigest: initialWorktreeDigest,
+        scopeDigest: null,
+        planDigest: null,
+        configDigest: null,
+        rulesDigest: null,
+      },
+      trust: { level: 'pending', source: 'planning', resolved: false },
+    };
+    let heartbeatFailure: Error | undefined;
+    heartbeat = setInterval(() => {
+      try {
+        updateOwner(lock.ownerPath, lock.owner, input.runtime?.beforeOwnerRename);
+      } catch (cause) {
+        heartbeatFailure = cause instanceof Error ? cause : new Error(String(cause));
+      }
+    }, input.runtime?.heartbeatMs ?? HEARTBEAT_MS);
+    heartbeat.unref();
     let ticket = fs.readFileSync(input.ticketPath, 'utf8');
     if (input.expectedTicketContent !== undefined && ticket !== input.expectedTicketContent)
       throw new Error(
@@ -1421,7 +1418,7 @@ export async function runWithSddAttemptJournal(input: {
     }
     return outcome;
   } finally {
-    clearInterval(heartbeat);
+    if (heartbeat !== undefined) clearInterval(heartbeat);
     try {
       const releaseMutation = acquireOwnerMutation(lock.directory);
       try {

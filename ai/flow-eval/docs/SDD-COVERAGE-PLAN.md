@@ -299,3 +299,32 @@ real3007/phase103.44ms,50k267.19ms, один source-read. Список sourceHas
 parser, source-format policy и header parser. Все три серии сохранены (108 процессов,0 model calls,
 cleanup=true); различие noisy timing не объявляется выигрышем. Последний полный commit pipeline
 остаётся обязательным перед отправкой; его итог — в reviewer handoff.
+
+### SC3 fix-forward после review `e4f44051` — 2026-10-28
+
+Оба finding подтверждены причинно; первый содержит два независимых механизма. Четыре новых
+контроля сначала дали RED (4/4), затем GREEN (4/4):
+
+1. Некорректная directory/prose-декларация будущей P2 и отсутствие её секции больше не обрывают
+   digest/Verify P1. Сомнительная downstream-декларация не даёт исключений из freshness: изменение
+   исходника по-прежнему меняет digest. Существующий контроль корректного позднего удаления сохранён.
+2. Исключение при начальном вычислении identity после acquire не оставляет lease. Gate не вызывался,
+   evidence не создано; после исправления тикета повтор успешно исполняет ровно один gate callback.
+3. Некорректный посторонний File Mapping path того же owner (`src/*.ts`) не блокирует точную
+   task/phase-проекцию. Spec/project audit всё ещё возвращает INVALID_PATH; собственный invalid target
+   по-прежнему отклоняется. Реальный файловый reader дополнительно проверяет P1 PASS / P2 INVALID_PHASE
+   / owner audit FAIL без раскрытия glob и без чтения незаявленных исходников.
+
+Расширенный узкий прогон journal/core/adapter/facade/brownfield: **100/100 PASS**, TypeScript PASS.
+Это backend/CLI-квалификация (0 новых model calls), не доказательство выигрыша агента. Предыдущие
+raw/live результаты, baseline и охранные политики не менялись; прежние performance-артефакты
+относятся к указанным в них sourceHashes, а не автоматически к этому corrective tree.
+Штатные commit/push-гейты ещё обязательны. SC4 остаётся **0/8** до финального SC3 review;
+PR #131 остаётся Draft, merge/npm publication не разрешены.
+
+Первый штатный corrective pre-commit остановился в local unit-подмножестве на несвязанном real-Git
+контроле `worktree-ops.concurrency.test.ts`: одновременный `worktree add` получил
+`failed to read .git/worktrees/wt-6/commondir`. Это RED, не успешный полный тест. Изолированный
+диагностический повтор того же файла — 2/2 PASS; product/test этой подсистемы не менялись.
+Допускается один полный повтор того же candidate: повторный отказ останавливает отправку,
+а успешный не отменяет зафиксированное наблюдение о race. Таймауты/concurrency не ослабляются.

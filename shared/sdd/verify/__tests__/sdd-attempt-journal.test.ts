@@ -248,6 +248,78 @@ function lockOwnerPath(root: string, ticket: string): string {
   return join(root, '.git', 'gennady', 'sdd-attempts', id, 'owner.json');
 }
 
+it('releases the lease when initial freshness calculation fails, allowing a corrected retry', async () => {
+  const f = fixture();
+  try {
+    const original = readFileSync(f.ticket, 'utf8');
+    writeFileSync(f.ticket, original.replace('SECTION:PHASES_OVERVIEW', 'SECTION:BROKEN_OVERVIEW'));
+    let calls = 0;
+    const verify = () =>
+      runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: 'P1',
+        run: async () => {
+          calls++;
+          return {
+            exitCode: 0,
+            stdout: '',
+            stderr: '',
+            report: report(f.root, [result('pass', true)]),
+          };
+        },
+      });
+    await assert.rejects(verify(), /SDD_VERIFY_ATTEMPT_SCOPE_INVALID/);
+    assert.equal(calls, 0);
+    assert.equal(existsSync(lockOwnerPath(f.root, f.ticket)), false);
+    assert.equal(readFileSync(f.ticket, 'utf8').includes('SDD_VERIFY_EVIDENCE:'), false);
+    writeFileSync(f.ticket, original);
+    assert.equal((await verify()).exitCode, 0);
+    assert.equal(calls, 1);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('does not block a current attempt or exclude files using malformed downstream declarations', async () => {
+  for (const later of [
+    '<!--SECTION:PHASE_P2-->\n- **Target Files:** `src/`, `source.ts`\n<!--/SECTION:PHASE_P2-->\n',
+    '',
+  ]) {
+    const f = fixture();
+    try {
+      writeFileSync(
+        f.ticket,
+        readFileSync(f.ticket, 'utf8')
+          .replace('| P1 | unit | — | [ ] |', '| P1 | unit | — | [ ] |\n| P2 | code | P1 | [ ] |')
+          .replace('<!--SECTION:EXECUTION_LOG-->', later + '<!--SECTION:EXECUTION_LOG-->')
+      );
+      const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+      const outcome = await runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: 'P1',
+        run: async () => ({
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          report: report(f.root, [result('pass', true)]),
+        }),
+      });
+      assert.equal(outcome.exitCode, 0);
+      assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+      writeFileSync(join(f.root, 'source.ts'), 'export const value = 2;\n');
+      assert.notEqual(
+        currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'),
+        before,
+        'a partially parsed future list must not suppress source freshness'
+      );
+    } finally {
+      f.cleanup();
+    }
+  }
+});
+
 it('replan stales old prerequisite proof and can recover by re-verifying DONE without erasing any attempt', async () => {
   const f = fixture(true);
   try {

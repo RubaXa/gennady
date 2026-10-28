@@ -133,6 +133,9 @@ Spec projections use the same selected target set for path inclusion, owner infe
 diagnostics. Foreign targets cannot add write/delete duties to a selected spec; the project view
 still diagnoses real collisions. Prior headers are historical provenance for removal/disappearance,
 not current owners. An exact phase checks its outputs without traversing its owner's child subtree.
+A malformed unrelated File Mapping path in that owner also belongs to spec/project audit, not to
+the exact task/phase projection. Selected target paths and owner identities remain fail-closed;
+this projection rule does not waive invalid spec IDs, conflicting ownership or malformed targets.
 A real no-write phase has no ownership rows; this is not execution or Verify evidence.
 
 Repository adapters use the same pure filename convention as audit groups to resolve the structural

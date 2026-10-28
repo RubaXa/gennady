@@ -221,7 +221,12 @@ export function resolveSddCoverage(input: CoverageInput): CoverageResult {
       if (target.operation !== 'read' && specs.has(target.specId)) selectedSpecs.add(target.specId);
   }
   for (const finding of metadataFindings)
-    if (selection.kind === 'project' || selectedSpecs.has(finding.id))
+    // Full declaration audits own malformed mappings. Exact execution projections
+    // validate their targets below; unrelated owner metadata must not block them.
+    if (
+      selection.kind === 'project' ||
+      (selection.kind === 'spec' && selectedSpecs.has(finding.id))
+    )
       add(finding.code, finding.path, finding.detail);
   const targetMap = new Map<string, CoverageTarget[]>();
   for (const target of input.targets) {

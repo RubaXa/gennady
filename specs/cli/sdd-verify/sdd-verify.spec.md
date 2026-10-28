@@ -395,10 +395,15 @@ marker validation and facade-owned attempt persistence remain after UV-24.
   VIOLATION (`ticket-context-drift`), preserves the new task, and cannot stamp old gates current.
   The final atomic write checks the same captured end snapshot; later competing edits refuse the
   write rather than overwriting them. Declared source-file repairs remain allowed.
+  All initialization after acquiring the lease, including initial HEAD/worktree identity, is inside
+  the same cleanup boundary. An initialization failure executes no gate, fabricates no attempt and
+  releases the owned lease so a corrected retry is not falsely blocked as already active.
 - **Freshness consumption:** every canonical-attempt consumer validates the latest state plus current
   phase-aware content/worktree identity. Local-runner freshness is content-addressed over present
   filesystem bytes (including an already-verified deletion as absence) and therefore survives
-  staging/committing that exact state. Paths owned only by later declared phases do not retroactively
+  staging/committing that exact state. Only valid exact downstream file declarations contribute
+  freshness exclusions. Missing/malformed future-phase path lists do not block the current phase
+  and grant no exclusions; their own selected-phase validation remains strict. Paths owned only by later declared phases do not retroactively
   stale an ancestor; modifying any other source/config/rule input does. Remote-provider PASS first
   proves the observed exact pushed SHA/pipeline and that local contents match that SHA except
   normalized SDD-owned ticket bytes and later-phase paths; immutable SHA/pipeline stay provenance,

@@ -38,6 +38,27 @@ function fixture(): CoverageInput {
 const codes = (input: CoverageInput) =>
   resolveSddCoverage(input).findings.map((finding) => finding.code);
 
+test('unrelated malformed mappings block full audits, not exact task or phase outputs', () => {
+  const original = fixture();
+  const input: CoverageInput = {
+    ...original,
+    specs: original.specs.map((spec) => ({ ...spec, files: [...spec.files, 'src/*.ts'] })),
+    observations: [observed('src/main.ts', ['CORE']), observed('src/untouched.ts', ['CORE'])],
+  };
+  for (const selection of [original.selection, { kind: 'task', task: 'CORE-work' }] as const) {
+    assert.equal(resolveSddCoverage({ ...input, selection, stage: 'phase-exit' }).complete, true);
+    assert.ok(
+      codes({
+        ...input,
+        selection,
+        targets: [{ ...input.targets[0]!, path: 'src/*.ts' }],
+      }).includes('INVALID_PATH')
+    );
+  }
+  for (const selection of [{ kind: 'project' }, { kind: 'spec', id: 'CORE' }] as const)
+    assert.ok(codes({ ...input, selection, stage: 'audit' }).includes('INVALID_PATH'));
+});
+
 test('a source cannot bypass header requirements through the declaration-only artifact representation', () => {
   const input = fixture();
   assert.ok(

@@ -97,6 +97,36 @@ test('no SDD and portal-only projects do not read or require ownership of ordina
     assert.equal(portal.reads.sourceReads, 0);
   }));
 
+test('phase query ignores unrelated invalid mappings but rejects its own malformed targets and full audit', () =>
+  fixture((root, put) => {
+    put('specs/core.spec.md', spec('CORE', ['src/value.ts', 'src/*.ts']));
+    put(
+      'specs/core.task.work.md',
+      ticket([
+        { id: 'P1', writes: ['src/value.ts'] },
+        { id: 'P2', writes: ['src/'], deps: 'P1' },
+      ])
+    );
+    put('src/value.ts', '// @spec: CORE\nexport const value = 7;');
+    const phase = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P1' },
+      'phase-exit'
+    );
+    assert.equal(phase.coverage.complete, true, JSON.stringify(phase.coverage.findings));
+    assert.equal(phase.reads.sourceReads, 1);
+    const later = readSddCoverage(
+      root,
+      { kind: 'phase', task: 'CORE-work', phase: 'P2' },
+      'preflight'
+    );
+    assert.equal(later.coverage.canProceed, false);
+    assert.ok(later.coverage.findings.some((finding) => finding.code === 'INVALID_PHASE'));
+    const audit = readSddCoverage(root, { kind: 'spec', id: 'CORE' }, 'audit');
+    assert.equal(audit.coverage.canProceed, false);
+    assert.ok(audit.coverage.findings.some((finding) => finding.code === 'INVALID_PATH'));
+  }));
+
 test('portal/scope/module projections use membership sections, not dependency prose', () =>
   fixture((root, put) => {
     put(
