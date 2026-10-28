@@ -1,0 +1,94 @@
+{
+  "modelCalls": 0,
+  "controls": [
+    {
+      "arm": "baseline",
+      "caseId": "small",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 0,
+      "foreign": 0,
+      "deletedAndFutureChecked": false,
+      "modelCalls": 0
+    },
+    {
+      "arm": "baseline",
+      "caseId": "large",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 0,
+      "foreign": 0,
+      "deletedAndFutureChecked": false,
+      "modelCalls": 0
+    },
+    {
+      "arm": "baseline",
+      "caseId": "foreign",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 0,
+      "foreign": 0,
+      "deletedAndFutureChecked": false,
+      "modelCalls": 0
+    },
+    {
+      "arm": "baseline",
+      "caseId": "paths",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 0,
+      "foreign": 0,
+      "deletedAndFutureChecked": true,
+      "modelCalls": 0
+    },
+    {
+      "arm": "candidate",
+      "caseId": "small",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 1,
+      "foreign": 1,
+      "deletedAndFutureChecked": false,
+      "modelCalls": 0
+    },
+    {
+      "arm": "candidate",
+      "caseId": "large",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 1,
+      "foreign": 1,
+      "deletedAndFutureChecked": false,
+      "modelCalls": 0
+    },
+    {
+      "arm": "candidate",
+      "caseId": "foreign",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 1,
+      "foreign": 1,
+      "deletedAndFutureChecked": false,
+      "modelCalls": 0
+    },
+    {
+      "arm": "candidate",
+      "caseId": "paths",
+      "normal": 0,
+      "complete": 0,
+      "broken": 1,
+      "missingHeader": 1,
+      "foreign": 1,
+      "deletedAndFutureChecked": true,
+      "modelCalls": 0
+    }
+  ],
+  "complete": true
+}

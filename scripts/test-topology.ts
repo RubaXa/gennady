@@ -364,10 +364,11 @@ function classifyTest(file: string): TestLayer[] {
   if (
     (file.startsWith('ai/kit/__tests__/') && !file.includes('.e2e.test.')) ||
     file.includes('/directive-tool-contract/') ||
-    basename(file).includes('contract') ||
-    file === 'shared/common/__tests__/test-topology.test.ts'
+    basename(file).includes('contract')
   )
     return ['contract'];
+  // The topology self-test probes real runner subprocesses. Let its child_process boundary
+  // classify it as local rather than forcing it into the high-concurrency contract pool.
   if (
     file.includes('/tool-behavior/') ||
     file.startsWith('services/remote-console/') ||

@@ -1,0 +1,378 @@
+{
+  "index": 0,
+  "arm": "baseline",
+  "caseId": "small",
+  "inputSha256": "18846dd1b48c732118b98efbf0f66b912884744d2151d3296a01a22e5d2a3ccf",
+  "primaryBudgetMs": 360000,
+  "terminal": "completed-worker",
+  "elapsedMs": 90657,
+  "usage": {
+    "messages": 11,
+    "input": 22117,
+    "output": 2521,
+    "reasoning": 2496,
+    "cacheRead": 208384,
+    "cacheWrite": 0,
+    "total": 27134,
+    "providerReportedCost": 0,
+    "complete": true,
+    "observedModelsValid": true,
+    "wallClockMs": 88110,
+    "costZeroIsNotFree": true
+  },
+  "toolCalls": 20,
+  "traceComplete": true,
+  "writeBoundary": true,
+  "runtimeIntact": true,
+  "providerError": false,
+  "trajectoryStatus": "not-proven",
+  "functional": true,
+  "ownerCorrect": true,
+  "artifactChanged": true,
+  "gatePassObserved": true,
+  "validPassJournal": true,
+  "foreignPreserved": false,
+  "domainPass": true,
+  "events": [
+    {
+      "i": 0,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "3baa30f0572c6b16003f1eb6263ce9060fea8e55e507ae9ff97aa8600a545fb3",
+      "argumentSha256": "99a118cc96ad5647d38612242c0fb186a2c9dc99ed2e547f34d18dbc2fe99f66",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173615158,
+      "finishedAt": 1793173615165
+    },
+    {
+      "i": 1,
+      "tool": "bash",
+      "category": "sdd-task",
+      "callIdentity": "b79a23da287314d69328cf16bcfd2f41cbacad77bb9e34a796d40d67c6563b96",
+      "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173618122,
+      "finishedAt": 1793173618210
+    },
+    {
+      "i": 2,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "9f53cbb03de6b63284472386fc5ff9ce631432231d6d35c0db03a0bc74ad83bf",
+      "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173620272,
+      "finishedAt": 1793173620282
+    },
+    {
+      "i": 3,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "63b6fe0c1e6691306b375aa136b88d05f7c7f899cd952d47099aab660a70977c",
+      "argumentSha256": "9cf3c90d30b3fb4faca4679d89e9295aaa67ceaab609f9255246f76a5216c02a",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173620565,
+      "finishedAt": 1793173620570
+    },
+    {
+      "i": 4,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "9b4bf408adae1c9d8e6e4e4d4b950fbb1ea3edaeaf755c086047dfc7cb075d83",
+      "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173620854,
+      "finishedAt": 1793173620858
+    },
+    {
+      "i": 5,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "c4516233d4fef8a6ee3f293c5696117ffdb2e7e5967805221e860240b0e3132d",
+      "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173621114,
+      "finishedAt": 1793173621118
+    },
+    {
+      "i": 6,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "80e3cf5a747eb1c91c594e975524f3deb1ade28dd5119ab8e853ca9e4cf44e6c",
+      "argumentSha256": "3ff48d2bed492cfbefbdddb10fd2707c4e1343fc07836fdcd3d72c950166c684",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173623643,
+      "finishedAt": 1793173623649
+    },
+    {
+      "i": 7,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "04c361586d555ba2ab601ab56533285e9844d55f6f91832d09ea69f4bb340673",
+      "argumentSha256": "937e29dcddf48f9c3379778b91736692e4de8c07dcae7b7d731766e656e05ede",
+      "status": "completed",
+      "exitCode": 2,
+      "startedAt": 1793173623829,
+      "finishedAt": 1793173623835
+    },
+    {
+      "i": 8,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "acc7acf92e305379f3aebd572ac4340026601e38001b24ccfb6031f3b3bee887",
+      "argumentSha256": "965760bf7908c03b26051047524d04ada2fe6775920d0c7d5921420444d54aaf",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173624129,
+      "finishedAt": 1793173624135
+    },
+    {
+      "i": 9,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "719c111f64776965e1e7d0344e2dcb78dbecaf19082d086caf7ae4da877b65f7",
+      "argumentSha256": "cf1166f189dbf620edbccb452169a118e12da073d7ab07327b6cc5b632d16ce2",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173626422,
+      "finishedAt": 1793173626425
+    },
+    {
+      "i": 10,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "0362a3d343bb20ee00d61dd6e3c1213d0ba40546063eecb630098f314c80a6f8",
+      "argumentSha256": "c7b68ac37f364473e922936708e7f43c293dd07b295171566c07ff5fe024fab9",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173626734,
+      "finishedAt": 1793173626736
+    },
+    {
+      "i": 11,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "a432e8484e957a06fac8cf43ffb5b89e8f4e83ae8034a9d4fb755e72750fbed7",
+      "argumentSha256": "c11b1c3369d9a5e8bfe87e3a00bcd4665e9a723724cbe93594787b6a9331361a",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173626955,
+      "finishedAt": 1793173626957
+    },
+    {
+      "i": 12,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "c7569597a533d16414978b3baf058f39803c7fbe87e72d0840d3ec03d5c1b77d",
+      "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173628948,
+      "finishedAt": 1793173628952
+    },
+    {
+      "i": 13,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "2c24eeef47d08a6abfb5dfb6d140256307dc1eab1bfc0e13f370147cea24476a",
+      "argumentSha256": "d841d09d85426aedbef5a607dbe479f7ba1c4e132ca7898768364107f0333a52",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173629181,
+      "finishedAt": 1793173629184
+    },
+    {
+      "i": 14,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "9eea63a661758e7760084a94170e6d476b1b0a33843be2f83ad8a754b4346d5d",
+      "argumentSha256": "17480ed61d117106b436a80b31fd6969e915983e3330a2893b5ff235a38a29bd",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173629417,
+      "finishedAt": 1793173629429
+    },
+    {
+      "i": 15,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "00df5c34dec3f93f1b658256fbba89b6c11afa4bc7c67e1e8d44f8ea156ee700",
+      "argumentSha256": "afc98019b94192886173eec667d53f54e97634b35db16726ce051913e20b8cf4",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173629651,
+      "finishedAt": 1793173629655
+    },
+    {
+      "i": 16,
+      "tool": "bash",
+      "category": "orient",
+      "callIdentity": "9db8cffccceba655c615fa691633c496ae63bff373f23fcfa7db4a4d1c2d204a",
+      "argumentSha256": "2f23f633faa74567d67f93d3d434af6b767a32da7dd98b64297c5b83b19b7aee",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173632552,
+      "finishedAt": 1793173632557
+    },
+    {
+      "i": 17,
+      "tool": "edit",
+      "category": "write",
+      "callIdentity": "5b43e5faf17bc2381326c8cba2a70ba2aa4fb60f0509de7066eab006989a77ba",
+      "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793173644857,
+      "finishedAt": 1793173644859
+    },
+    {
+      "i": 18,
+      "tool": "bash",
+      "category": "sdd-verify",
+      "callIdentity": "4bc5a96b053ec8d9344a865fd7237dc50132c2a1bccb7cf97ec3c880aa6bcb9c",
+      "argumentSha256": "9c38555c9e69aef47d0b5b3a0711a2e28574f2e9fba85f2606c405addda50f58",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173691583,
+      "finishedAt": 1793173691604
+    },
+    {
+      "i": 19,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "a9ec052f5b03b926636693790b761f11ba63ad401d4a3ee0221ea441acca1982",
+      "argumentSha256": "a5c9b7c47571e86ea92472e5e42ce1cc7ed37f7fa0669020805623aef5421fde",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793173696060,
+      "finishedAt": 1793173696065
+    }
+  ],
+  "observations": [
+    {
+      "elapsedMs": 5041,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 10065,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 15084,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 20104,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 25123,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 30149,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 35173,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 40201,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 45245,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 50267,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 55289,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 60314,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 65342,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 70358,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 75377,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 80403,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 85420,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 90508,
+      "state": "completed",
+      "forbidden": false
+    }
+  ],
+  "privateEvidenceSha256": "ab3b53f34eae77f05df8c9081aa828480648adae376ad3c698853e68f6ecb05a",
+  "judgeVerdict": "pass",
+  "judgeTextSha256": "51f3c6fd55884464c0be4f9ab27adb0d9c8cdc932463a717c752dcf83c4700fb",
+  "reflection": {
+    "textSha256": "650f84a5b1efb343aafc3f91d83cc027b4b3392b9bed662005b1103b49f5841d",
+    "tokens": 19190,
+    "messages": 1
+  },
+  "judgeUsage": {
+    "messages": 1,
+    "input": 4005,
+    "output": 58,
+    "reasoning": 200,
+    "cacheRead": 2048,
+    "cacheWrite": 0,
+    "total": 4263,
+    "providerReportedCost": 0,
+    "complete": true,
+    "observedModelsValid": true,
+    "wallClockMs": 2963,
+    "costZeroIsNotFree": true
+  },
+  "hostCompletionExit": 0,
+  "cleanup": {
+    "safeCleanup": true,
+    "rootRemoved": true,
+    "sharedDependenciesPreserved": true
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "gennady.sc4-predispatch-recovery.1",
+  "initialFailureRetained": true,
+  "serverConfigNeverCreated": true,
+  "serverStateNeverCreated": true,
+  "modelDispatches": 0,
+  "rootRemoved": true,
+  "sharedDependenciesPreserved": true,
+  "continuationScope": "Eight not-yet-dispatched primary positions; no model attempt is replaced. The failed reservation remains recorded.",
+  "cause": "Global OpenCode provider endpoint disagreed with approved eval environment; use explicit LLM_PROXY environment for transport, global config only for Flash model capabilities."
+}

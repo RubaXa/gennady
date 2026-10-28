@@ -7,12 +7,12 @@
 
 ## Конечные этапы
 
-| Этап | Изменение                                                                  | Приёмка                                                                                                                      | Статус                                                                  |
-| ---- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| SC1  | Общий pure-резолвер, контракт, негативные тесты и performance-квалификация | Предсказуемая карта и происхождение каждой строки; нулевые записи/процессы в core; независимое ревью                         | Approve SC1; переход к SC2 разрешён                                     |
-| SC2  | Один файловый адаптер и проекции orient/sdd-check                          | Портал/скоуп/модуль/фаза используют одну карту; точные структурные связи, безопасные пути, ошибки чтения не теряются         | Approve SC2 (`00631595`); SC3 разрешён                                  |
-| SC3  | Подготовка и завершение фаз, аудит и инструкции                            | Без заголовка можно начать; без нужного заголовка нельзя закончить; удаление/чужой владелец/ослабление проверок не дают PASS | Реализован; offline 686/686 + shell7/7; ожидает штатных гейтов и review |
-| SC4  | Реальный полигон, конечная парная серия и итоговый review                  | Честный результат baseline/candidate, функциональность и границы целы; performance измерен; cleanup выполнен                 | Не начат                                                                |
+| Этап | Изменение                                                                  | Приёмка                                                                                                                      | Статус                                                                     |
+| ---- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| SC1  | Общий pure-резолвер, контракт, негативные тесты и performance-квалификация | Предсказуемая карта и происхождение каждой строки; нулевые записи/процессы в core; независимое ревью                         | Approve SC1; переход к SC2 разрешён                                        |
+| SC2  | Один файловый адаптер и проекции orient/sdd-check                          | Портал/скоуп/модуль/фаза используют одну карту; точные структурные связи, безопасные пути, ошибки чтения не теряются         | Approve SC2 (`00631595`); SC3 разрешён                                     |
+| SC3  | Подготовка и завершение фаз, аудит и инструкции                            | Без заголовка можно начать; без нужного заголовка нельзя закончить; удаление/чужой владелец/ослабление проверок не дают PASS | Approve SC3 + corrective `55ac2143`; Q1 repair paths остаётся ограничением |
+| SC4  | Реальный полигон, конечная парная серия и итоговый review                  | Честный результат baseline/candidate, функциональность и границы целы; performance измерен; cleanup выполнен                 | 8/8 completed; candidate4/4 vs baseline3/4; final review pending           |
 
 Каждый этап передаётся на независимое ревью до начала следующего. Первый Draft PR создаётся
 с SC1; последующие этапы не считаются уже одобренными. Merge и публикация этим планом не разрешены.
@@ -328,3 +328,143 @@ PR #131 остаётся Draft, merge/npm publication не разрешены.
 диагностический повтор того же файла — 2/2 PASS; product/test этой подсистемы не менялись.
 Допускается один полный повтор того же candidate: повторный отказ останавливает отправку,
 а успешный не отменяет зафиксированное наблюдение о race. Таймауты/concurrency не ослабляются.
+
+### SC4 допуск и протокол — 2026-10-28
+
+Оператор отдельно разрешил передачу исходников Octavius через AI Proxy в `deepseek-v4-flash`.
+Публикация исходников не разрешена: public JSON содержит только заранее разрешённые метрики,
+классы действий и хеши. Тексты, diff, private source paths, judge/reflection сохраняются только
+в компактном локальном evidence вне Git. Конфиги/история исходного Git, symlinks и обнаруженные
+credentials исключаются из экспортируемого снимка; исходный checkout не меняется.
+
+Конечная серия — four cases small/large/foreign/paths × два exact runtime, 8 primary,
+replacements=0. Граница — disposable P1 worker и последующий host-owned complete, не закрытие
+всего тикета/модуля/проекта. Синтетическая маленькая реализация находится среди реальных исходников;
+large File Mapping использует реальные пути, а не 3007 искусственных файлов. Это не сборка Octavius.
+Первичный бюджет 360s; одинаковые prompt/fixture/oracle в обоих arms; независимый read-only judge
+и не более одной reflection учитываются отдельно от первичной траектории. Произвольный Bash
+остаётся not-proven; quiescence SDK не объявляется доказательством отсутствия detached writers.
+
+Первый no-model preflight остановлен до live: стенд ошибочно требовал, чтобы старый baseline
+отклонял отсутствие заголовка через project selector. Реальный baseline вернул exit0 — это
+наблюдаемое отсутствие нового ownership-контроля, не повод чинить baseline. Контроль исправлен:
+normal и broken functional причинны в обоих arms; candidate обязан отвергать missing/foreign;
+фактические baseline-выходы сохраняются как сравнительные данные. Первоначальный отказ сохранён,
+model calls=0, reservations=0; заменённых живых попыток нет. Фикстуры/privacy unit — 5/5.
+
+Дополнительный настоящий sandbox-exec canary сначала выявил чрезмерно широкий read-deny,
+ломавший системный runtime macOS. Opt-in ограничен пользовательскими/временными/volume данными
+вне checkout и точных read-only toolchain roots; системный runtime не объявлен пользовательскими
+данными. Повтор — 6/6, включая allowed checkout / denied unrelated temp, без настоящих credentials.
+Это bounded benchmark carrier, не универсальная security-система.
+
+Восемь no-model case/arm квалификаций пройдены: normal/complete и broken-function причинны;
+baseline missing/foreign header exits сохранены, candidate обязан reject. Полный offline harness
+также прошёл перед первым live dispatch. Далее первая reservation остановилась ещё ДО создания
+server config/session: global OpenCode transport отличался от LLM_PROXY env. Cleanup-finally
+первоначально замаскировал исходную ошибку; диагностический пробел исправлен, старый controller
+сохранён hash-bound. Recovery доказал отсутствие server config/state и **0 model dispatches**,
+удалил собственный root (284752KiB), shared dependencies и оригинал Octavius сохранены.
+
+`live-continued` — единственное продолжение восьми ещё НЕ отправленных primary-позиций, не
+повтор результата модели. Старые protocol/failure/reservation/cleanup не переписаны; recovery
+добавлен отдельно. Транспорт берётся из явно настроенных LLM_PROXY_BASE_URL/API_KEY; global
+конфиг используется только для Flash capabilities (внутреннего переназначения model ID нет).
+Непосредственно перед promptAsync фиксируется отдельный dispatch marker: неизвестный или
+ошибочный исход ПОСЛЕ него расходует позицию и не заменяется.
+
+### SC4 итог — конечная серия завершена
+
+8/8 model-dispatched primary, replacements=0, все completed-worker; 8/8 cleanup=true/rootRemoved=true,
+общий source/runtime root удалён, оригинал Octavius чист на исходном HEAD. Source snapshot содержит
+4030 файлов/3001 исходник после фильтра credentials/agent configs; маленькое изменение синтетическое,
+не сборка всего Octavius. Scope — phase worker и canonical host completion acceptance, не task/group
+DONE; отдельный terminal disk snapshot после host complete не сохранялся.
+
+Candidate: 4/4 ожидаемых исхода (три verified implementation и один правильный foreign-owner STOP).
+Baseline: 3/4. Large/baseline реализовал функцию и получил настоящий Verify/journal PASS, но оставил
+файл **без @spec**: host и judge отвергли, host complete не вызывался. Candidate на том же случае
+получил корректное владение, gate PASS и принятый canonical complete. Это доказанный в этом наборе
+фикс ложнозелёного ownership, не доказательство улучшения всей модели/всего приложения.
+
+Small: tools20→10, elapsed90.7→65.9s, tokens27134→35793 (без cacheRead).
+Foreign: tools19→12, elapsed96.1→40.5s, tokens36527→19286 при правильном STOP в обоих arms.
+Paths: tools21→23, elapsed99.3→101.6s, tokens23554→40381 при одинаковом принятом результате —
+реальная ресурсная деградация этого примера сохранена. Large не используется как чистая экономия,
+поскольку baseline не прошёл качество.
+
+На трёх сопоставимых принятых парах: calls−25%, elapsed−27.30%, uncached counters+9.45%,
+cacheRead−18.14%. Один пример на случай/arm — не статистическая non-inferiority и не обещание
+дешевизны. Full-trajectory qualification **0/8**, `not-proven` не повышен: в обоих arms остаются
+Bash/discovery/read действия, чья необходимость не доказана. Host postflight не обнаружил worker
+terminal-authority/native ticket writes; статические классификации не объявлены security proof.
+
+Primary counters281443 + judge34398 + reflection215791 = **531632** без cacheRead. Цена неизвестна,
+cost0 не означает бесплатно; полный cache overhead reflection не сохранён. Есть 8 bounded reflection,
+их тексты/primary traces/source diff — только компактное private evidence вне Git; public enum/hash
+проекция и открытый Gennady harness сохраняются в results. Полный offline harness перед серией:
+692/692 + shell7/7. Замены результатов/дополнительной серии нет.
+
+Решение: **принимать механическую declared coverage feature ради корректности**, не внедрять
+отдельную гипотезу универсальной token-оптимизации. История mixed performance сохранена; Q1 universal
+literal-bracket repair не закрыт этим экспериментом. После штатных гейтов — final SC4 review PR #131.
+Merge/npm этим решением не разрешены. [Полная таблица](../results/2026-10-28-sdd-coverage-sc4-live-continued/README.md).
+
+Postflight qualification: 12/12 fixture/privacy/immutable-record tests PASS. Точные исполнявшиеся
+TS-файлы harness архивированы с исходными SHA; градации primary не переписаны. Дополнительный
+обычный lint вне расширенного локального sandbox остановился на tsx IPC `listen EPERM` до
+проверки кода; штатные commit-гейты выполняются в разрешённой локальной среде, обхода нет.
+Eradication metadata обновляется только `historical-test-evidence 729→738` и digest:
+новый fixture со строкой версии stats-протокола, его инертная копия и семь runtime-manifest
+с именами миграционных файлов. Все девять записей отдельно проверены; активный код SDD не
+возвращается. Маркеры/constraints/forbidden/protected/classifiers, baseline/currentProof неизменны.
+
+Передача SC4: обычный full pre-commit в изолированном verification clone завершился exit1;
+hook сообщил `cannot create temp file for here document: No space left on device`.
+Это **не PASS полного гейта**; коммит не создан, hooks не обходились, push SC4 не выполнен.
+Причину внутреннего check до этой ошибки не приписываем конкретному тесту без его stdout.
+Временный clone удалён только после проверки: HEAD прежний, staged diff идентичен сохранённому
+оригиналу, PID lease завершён, общие зависимости сохранены. Удалено 287716 KiB; после cleanup
+доступно около 574 MiB. Модельные 8/8 и compact private evidence сохранены. Нужен запас места
+для повторного обычного pre-commit; новые model calls не нужны и не запланированы.
+
+Продолжение после освобождения места оператором: перед повтором на Data доступно 11 GiB.
+Сохранённые 8/8 primary results не меняются; повторяются только offline проверки и штатные
+commit/push hooks. Предыдущий ENOSPC остаётся в истории, а не переименовывается в PASS.
+
+Итог повтора: private raw replay побайтово воспроизвёл прежнюю public comparison; SC4 controls
+12/12, standalone type-check и V1 audit PASS. Full pre-commit: node:type-check PASS (11015ms),
+node:lint PASS (68884ms), node:format PASS (14861ms); node:unit TIMEOUT (1072334ms,
+`step node:unit exceeded 600000ms`). Полного unit/coverage PASS нет. Во время прогона свободное
+место снизилось с 11 GiB до 274 MiB, system swap достиг 27904 MiB used/free=0; подтверждены
+параллельные тяжёлые операции в других checkout. Это наблюдаемые условия, не доказательство
+причины каждого отдельного test delay. Новые проверки/модельные попытки не запускались.
+Зависший собственный Verify прерван SIGINT после проверки его cwd; чужие процессы не тронуты.
+Временный clone удалён после проверки прежнего HEAD, идентичного staged diff и завершения PID;
+на момент удаления 99368 KiB, shared dependencies и private evidence сохранены. Коммит/push
+SC4 не выполнены, hook не обходился. Продолжение — после снятия параллельной нагрузки на хосте,
+только обычные gates и отправка, без новых model calls. Запрошена координация с оператором.
+
+После завершения параллельного test runner ресурсы восстановились: 6.9 GiB, затем через 45 секунд
+14 GiB свободно, swap used снизился с 27904 до 14403.81 MiB. На этом изменившемся состоянии хоста
+разрешён новый обычный gate того же SC4 дерева (отличается только журналом продолжения плана).
+Лимиты/покрытие/наборы тестов не меняются; предыдущие ENOSPC/TIMEOUT и 8 primary остаются неизменны.
+
+Ранняя проверка инвентаря обнаружила ровно одну дополнительную запись от журнала восстановления:
+этот план, marker `v1-word`, classification `historical-test-evidence`. Сравнение полных entries
+показало 1 added / 0 changed, findings только count/digest drift; runtime-запреты не нарушены.
+Начатый повтор остановлен до продолжения заведомо красного gate, временный clone удалён
+(99368 KiB, staged diff сохранён). Исправлены только expected count 738→739 и digest
+`661d0cd5baf7d9139977c0dc39ce0d55c78af8098059cac7a9cf4149e7e7d902`.
+Остальные поля политики совпадают с reviewed HEAD; далее полный ordinary hook на исправленном
+дереве, без изменения лимитов, без новых live attempts и без перекраски первичных результатов.
+
+Следующий полный gate завершился обычным FAIL: node:unit exit1 за 493740ms; единственный
+runner failure — `shared/common/__tests__/test-topology.test.ts`, whole-file timeout 30000ms.
+Type-check/lint/format PASS. Изолированный тот же suite с прежним 30000ms: 21/21 PASS за
+21710ms. Выявлена специальная принудительная классификация self-test как contract, хотя он
+запускает настоящие child_process probes. Убрано только это исключение: стандартный детектор
+child_process теперь назначает local (пул 2, без c8), с прежним default deadline 30000ms.
+Независимая проверка topology требует local и запрещает contract для этого файла; existing
+exactly-once/corpus/deadline проверки сохранены. Число тестов не сокращается. Временный clone
+удалён после проверки идентичности staged diff; raw SC4 и все предыдущие исходы неизменны.

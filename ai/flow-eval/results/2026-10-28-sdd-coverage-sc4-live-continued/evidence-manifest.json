@@ -1,0 +1,189 @@
+{
+  "schema": "gennady.sc4-evidence-manifest.1",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "b2cbf54d74fb3c38c9705994b037884e1f937f86ddd0a9b0b90e131e8c8f1b0e"
+    },
+    {
+      "path": "cleanup.json",
+      "sha256": "9e0077f4b1d6b172c4e2042be5a536c2de8a0efcb1b48a4c1da6e4bf0e7448a9"
+    },
+    {
+      "path": "comparison.json",
+      "sha256": "aa44ac36f75838b7593144753e0b1f722cf17dcd24a2ba1adafb6276584df397"
+    },
+    {
+      "path": "dispatches/0.json",
+      "sha256": "beab4744a9777d17b477d9cac341ad276374ce33d8fb94c2352da36a45b44458"
+    },
+    {
+      "path": "dispatches/1.json",
+      "sha256": "3de44ae8318f64a9885942bfffbb524dcadca689792cde5f6ce94ca85c5ae7a1"
+    },
+    {
+      "path": "dispatches/2.json",
+      "sha256": "e95c6ff5500fe13863c51e202300e763de11ac766ffcd05a82be26c0f98315c0"
+    },
+    {
+      "path": "dispatches/3.json",
+      "sha256": "0c73932069d133bbfd1db17b1d46b4c0090879bbf6f4ffa225e9319e45af10e9"
+    },
+    {
+      "path": "dispatches/4.json",
+      "sha256": "f0d1ac50981eb26ab352d8e24a668ed90a9e2377043562ba79a10a2025d5247d"
+    },
+    {
+      "path": "dispatches/5.json",
+      "sha256": "2349b4ad74296af7ebb76dc9fca92a2dd3e5ea84eff58ae7e627d6bb7223ca27"
+    },
+    {
+      "path": "dispatches/6.json",
+      "sha256": "59eece8aac9a11a68a5ac914ff78c8c6117670b6d6e477e71d511464cc17e77c"
+    },
+    {
+      "path": "dispatches/7.json",
+      "sha256": "136c2a1a35343f1e25e31de6f9e89edb36d4ad0323b7809a4ea3dd0bc47e83a9"
+    },
+    {
+      "path": "evaluation-contract.json",
+      "sha256": "3b1565a230230c7f532233bfe87771af127c34d932ec81c9a08076a9c8897e7f"
+    },
+    {
+      "path": "harness-archive.json",
+      "sha256": "46e56d62d51a0676ee411faed872a638b8e08daad4aba81c2b1537c322724a31"
+    },
+    {
+      "path": "harness-tests.json",
+      "sha256": "ea922257ad9d75eff277847d60db65d686bc37c2357d6b59abd05a983af00316"
+    },
+    {
+      "path": "harness/ai/flow-eval/coverage-benchmark.ts.txt",
+      "sha256": "163472853bc147c2b611107a483fbd6a116745f4a3efef7f26142cb816bcc948"
+    },
+    {
+      "path": "harness/ai/flow-eval/dependency-store.ts.txt",
+      "sha256": "689959face5725fb5fb595c372fb33550ed6fc6e39c76c73c1e695d065831a17"
+    },
+    {
+      "path": "harness/ai/flow-eval/evidence.ts.txt",
+      "sha256": "960f74d955fe3df918203c30f0b5b4b7f0c79610845443fdfab08442077566d2"
+    },
+    {
+      "path": "harness/ai/flow-eval/opencode-client.ts.txt",
+      "sha256": "2a1506deadb87328778660a5c6c74d3c9538ea33c64915f11904b1f632f3bb27"
+    },
+    {
+      "path": "harness/ai/flow-eval/opencode-runtime.ts.txt",
+      "sha256": "140566cebcef5a02cc674c19f6e1f056c3fac72aab76f8076f2a7d89c904ef99"
+    },
+    {
+      "path": "harness/ai/flow-eval/scripts/coverage-benchmark-live.ts.txt",
+      "sha256": "e9b6520491d1e5cb5043d12828c1867f8961eb5d54a0d7dffab3718a723b6b14"
+    },
+    {
+      "path": "harness/ai/flow-eval/scripts/execution-autonomy-shell-carrier.ts.txt",
+      "sha256": "807a92af49da140931c6b3465ab59368f5ce5d90d7433dc855e49fe8fc00fe87"
+    },
+    {
+      "path": "harness/ai/flow-eval/session-directory.ts.txt",
+      "sha256": "c1b191c27dab6f912d9bcb89309690918597c4f4fdc28c819003046794cf866b"
+    },
+    {
+      "path": "harness/ai/flow-eval/trajectory.ts.txt",
+      "sha256": "027b8f564ce2d448d39e43f7f1c260bc8fabf1aeaf9d20a5344f3d530d6cd486"
+    },
+    {
+      "path": "privacy-audit.json",
+      "sha256": "63ea8cb577d4ad5500029d08f768b01d805162826ed070b056871c62f5a7e476"
+    },
+    {
+      "path": "progress.json",
+      "sha256": "b34d2f31ac2737cf99996195c2045c6fe4deae7fef93beb42c8ac0bca6689ee9"
+    },
+    {
+      "path": "protocol.json",
+      "sha256": "bb6f394d28ba4309c5cc2c02007cbccfb0109e655c69589cad87480b5f81056b"
+    },
+    {
+      "path": "qualification.json",
+      "sha256": "7eddccb8658f9964bf4239592be5052ebec401e68139ab6205ad2ac4b2342f58"
+    },
+    {
+      "path": "records/0.json",
+      "sha256": "beb0ab7ac8b0067133bbd1d49b605581874bb1d894ed61aa3b07138f4ec5b414"
+    },
+    {
+      "path": "records/1.json",
+      "sha256": "c6fe868295c2b4660a1909806a6638e4cbf4560903727d81f61d93f36728f618"
+    },
+    {
+      "path": "records/2.json",
+      "sha256": "d7092fc0efd5f2324d742f7ac67c7fa9ef7f852695c45fd1a342ad0730e3d0b5"
+    },
+    {
+      "path": "records/3.json",
+      "sha256": "b1b7bebffc94b7588c632abe19c8605b3ceecc714ce83257a7bb0d055fd5fe07"
+    },
+    {
+      "path": "records/4.json",
+      "sha256": "4e3c93f2af6ef9020eb0c70c6c35bcbd5bf35736543d436ea9f07816f3240b3f"
+    },
+    {
+      "path": "records/5.json",
+      "sha256": "b4cd5536c562a0c52c4c9ad1dc125a456a6285bd59fcd6281bd7d68a24adb578"
+    },
+    {
+      "path": "records/6.json",
+      "sha256": "8cfee67861b7fcef175722d93e2a5e69e08065d2211faac500d52b4fb3c09f3f"
+    },
+    {
+      "path": "records/7.json",
+      "sha256": "fceb5b5c734db787161d1ff5dcee2eae4ac6fc6b25af2b2f4333008bcdafb5a1"
+    },
+    {
+      "path": "report.json",
+      "sha256": "76e37861d128b5726a42a9ee8aa9670bf582d43cadf67a3b9eeec367c8d4932d"
+    },
+    {
+      "path": "reservations/0.json",
+      "sha256": "b4869f00d9e3a1369dfbb7b33c22d50d7e8cea8596c9c8c66ec366315975ac80"
+    },
+    {
+      "path": "reservations/1.json",
+      "sha256": "63c020a3223f2e11e0e0534f9e7cfe2724f9ae9914ce504d73e28c8fd074be48"
+    },
+    {
+      "path": "reservations/2.json",
+      "sha256": "4bfa3b44f6dcc5b5aa9986c3e65267b60651bd9ec94bcaa828b3391f8db33ec3"
+    },
+    {
+      "path": "reservations/3.json",
+      "sha256": "be185dd3bfef937c7532d29256d090501c14b021c3b869868fac46e891937ac5"
+    },
+    {
+      "path": "reservations/4.json",
+      "sha256": "3089db234c608bfc360b92b53fd66890c1a332d67e705cf73d714f7b9eea1539"
+    },
+    {
+      "path": "reservations/5.json",
+      "sha256": "fb31c7d3093e27c81108275de8cd1eede25b5b89bcc9f16206c09214212efba3"
+    },
+    {
+      "path": "reservations/6.json",
+      "sha256": "ddb62c424b69cc097eb347e37ff56ee1568095a91b2ce73638b5cf9ec2f6b152"
+    },
+    {
+      "path": "reservations/7.json",
+      "sha256": "40c38126767032513a30c933a683d397cbb9b1e79bcf6b93a5d3c310ae56b1a4"
+    },
+    {
+      "path": "runtime-baseline.json",
+      "sha256": "5fcd9996928502d9c85486b73d33cdc051309f5f215f828188c06504a085f62d"
+    },
+    {
+      "path": "runtime-candidate.json",
+      "sha256": "4caa5155bbe0c1f694e7f8ee5db30bbc4911c7250bcb51b95dbb295adf720957"
+    }
+  ]
+}

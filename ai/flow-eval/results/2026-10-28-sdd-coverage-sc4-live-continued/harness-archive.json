@@ -1,0 +1,51 @@
+{
+  "schema": "gennady.sc4-harness-archive.1",
+  "files": [
+    {
+      "path": "ai/flow-eval/coverage-benchmark.ts",
+      "sha256": "163472853bc147c2b611107a483fbd6a116745f4a3efef7f26142cb816bcc948",
+      "archive": "harness/ai/flow-eval/coverage-benchmark.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/scripts/coverage-benchmark-live.ts",
+      "sha256": "e9b6520491d1e5cb5043d12828c1867f8961eb5d54a0d7dffab3718a723b6b14",
+      "archive": "harness/ai/flow-eval/scripts/coverage-benchmark-live.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/scripts/execution-autonomy-shell-carrier.ts",
+      "sha256": "807a92af49da140931c6b3465ab59368f5ce5d90d7433dc855e49fe8fc00fe87",
+      "archive": "harness/ai/flow-eval/scripts/execution-autonomy-shell-carrier.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/dependency-store.ts",
+      "sha256": "689959face5725fb5fb595c372fb33550ed6fc6e39c76c73c1e695d065831a17",
+      "archive": "harness/ai/flow-eval/dependency-store.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/opencode-runtime.ts",
+      "sha256": "140566cebcef5a02cc674c19f6e1f056c3fac72aab76f8076f2a7d89c904ef99",
+      "archive": "harness/ai/flow-eval/opencode-runtime.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/evidence.ts",
+      "sha256": "960f74d955fe3df918203c30f0b5b4b7f0c79610845443fdfab08442077566d2",
+      "archive": "harness/ai/flow-eval/evidence.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/trajectory.ts",
+      "sha256": "027b8f564ce2d448d39e43f7f1c260bc8fabf1aeaf9d20a5344f3d530d6cd486",
+      "archive": "harness/ai/flow-eval/trajectory.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/opencode-client.ts",
+      "sha256": "2a1506deadb87328778660a5c6c74d3c9538ea33c64915f11904b1f632f3bb27",
+      "archive": "harness/ai/flow-eval/opencode-client.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/session-directory.ts",
+      "sha256": "c1b191c27dab6f912d9bcb89309690918597c4f4fdc28c819003046794cf866b",
+      "archive": "harness/ai/flow-eval/session-directory.ts.txt"
+    }
+  ],
+  "packageLock": "SHA-256 and candidate commit pinned in protocol; public repository dependency lock, no private source"
+}

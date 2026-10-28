@@ -15,6 +15,7 @@ const RUNNER = join(ROOT, 'scripts/test-topology.ts');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
 const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.ts';
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
+const TOPOLOGY_RUNNER_TEST = 'shared/common/__tests__/test-topology.test.ts';
 // D-60: agent-inbox/agent-mon test surface — independent mirror of the runner's own
 // `EXPERIMENTAL_ROOTS`. Kept as a separate constant (not imported) so this black-box contract can
 // catch drift between the runner and this test, same as EXCLUDED_NAMES/OPT_IN_KEYS below.
@@ -491,6 +492,11 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
       topology.unit.includes(YAGNI_SOURCE_POLICY_TEST),
       'the pure YAGNI source-selection policy belongs to the hermetic unit layer'
     );
+    assert.ok(
+      topology.local.includes(TOPOLOGY_RUNNER_TEST),
+      'real runner subprocess probes must use the bounded local pool, with the default deadline'
+    );
+    assert.ok(!topology.contract.includes(TOPOLOGY_RUNNER_TEST));
     for (const [layer, files] of Object.entries(INCIDENT_TEST_LAYERS) as [
       keyof typeof INCIDENT_TEST_LAYERS,
       readonly string[],
