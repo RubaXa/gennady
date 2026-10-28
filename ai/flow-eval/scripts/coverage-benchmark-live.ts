@@ -1,0 +1,1027 @@
+// @file: Finite private-repository SC4 controller; public evidence is scalar/hash-only, never source or raw model text.
+// @spec: AI-SKILLS
+// @consumers: declared coverage operator; eight primary attempts, no fallback/replacements
+
+import assert from 'node:assert/strict';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
+import { createServer } from 'node:net';
+import { randomUUID } from 'node:crypto';
+import { createSddEvalOpenCodeClient } from '../opencode-client.ts';
+import {
+  COVERAGE_BENCHMARK_CASES,
+  COVERAGE_BENCHMARK_SOURCE,
+  COVERAGE_BENCHMARK_TASK,
+  coverageBenchmarkFiles,
+  coverageBenchmarkHash as hash,
+  coverageBenchmarkPrompt,
+  publicCoverageEvent,
+  type CoverageBenchmarkCase,
+} from '../coverage-benchmark.ts';
+import {
+  prepareEvalDependencyStore,
+  bindEvalDependencies,
+  releaseEvalDependencyLease,
+} from '../dependency-store.ts';
+import { createExecutionShellCarrier } from './execution-autonomy-shell-carrier.ts';
+import { SddEvalOpenCodeRuntime } from '../opencode-runtime.ts';
+import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
+import { SddEvalSessionDirectoryMap } from '../session-directory.ts';
+import { toolEventsFrom, invokesCommand } from '../trajectory.ts';
+import type { SddEvalUsage } from '../types.ts';
+
+const root = resolve(import.meta.dirname, '../../..');
+const source = '/Users/k.lebedev/Developer/octavius';
+const sourceCommit = '2bb9a8039e5479634f8dfb5a6d234d0991278ace';
+const baselineCommit = 'b4e444164d217c13f880648fe0a6b9c9f0150775';
+const candidateCommit = '55ac2143fb3be2c608d214d05faab920ad331b42';
+const model = { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' };
+const modelName = 'llm-proxy/deepseek-v4-flash';
+const budgetMs = 360_000;
+const stop = new AbortController();
+const onSignal = () => stop.abort(new Error('SC4 interrupted; no replacements'));
+process.once('SIGINT', onSignal);
+process.once('SIGTERM', onSignal);
+const git = (cwd: string, ...args: string[]) =>
+  execFileSync('git', ['--no-optional-locks', '-c', 'core.fsmonitor=false', ...args], {
+    cwd,
+    encoding: 'utf8',
+    maxBuffer: 32_000_000,
+  }).trim();
+const put = (base: string, path: string, text: string | Buffer) => {
+  mkdirSync(dirname(join(base, path)), { recursive: true });
+  writeFileSync(join(base, path), text, { mode: 0o600 });
+};
+const json = (base: string, path: string, value: unknown) =>
+  put(base, path, JSON.stringify(value, null, 2) + '\n');
+const filesUnder = (base: string): string[] =>
+  readdirSync(base, { withFileTypes: true }).flatMap((entry): string[] =>
+    entry.isDirectory()
+      ? filesUnder(join(base, entry.name))
+      : entry.isFile()
+        ? [join(base, entry.name)]
+        : []
+  );
+const secretPath = (path: string) =>
+  /(?:^|\/)(?:\.env(?:\.|$)|\.npmrc$|\.netrc$|credentials[^/]*|id_(?:rsa|ed25519)[^/]*|application_default_credentials\.json$)|\.(?:pem|p12|keystore)$/i.test(
+    path
+  );
+const secretContent = (text: string) =>
+  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|\bAKIA[A-Z0-9]{16}\b|\b(?:gh[pousr]_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9_-]{32,})\b|(?:api[_-]?key|access[_-]?token|secret|password|private[_-]?key|auth[_-]?token)\s*[:=]\s*["'][^"'\r\n]{12,}["']/i.test(
+    text
+  );
+
+/** @purpose Check public usage by field allowlist; incomplete/missing metadata is not converted into a complete zero. */
+function publicUsage(usage: SddEvalUsage) {
+  return {
+    messages: usage.messages,
+    input: usage.input,
+    output: usage.output,
+    reasoning: usage.reasoning,
+    cacheRead: usage.cacheRead,
+    cacheWrite: usage.cacheWrite,
+    total: usage.total,
+    providerReportedCost: usage.cost,
+    complete: usage.complete === true,
+    observedModelsValid: usage.models?.length === 1 && usage.models[0] === modelName,
+    wallClockMs: usage.wallClockMs ?? null,
+    costZeroIsNotFree: true,
+  };
+}
+
+/** @purpose Isolate the real source tree without exposing its old Git objects or tracked credential files. */
+function snapshot(destination: string) {
+  assert.equal(git(source, 'rev-parse', 'HEAD'), sourceCommit);
+  assert.equal(git(source, 'status', '--porcelain'), '');
+  mkdirSync(destination);
+  const entries = git(source, 'ls-tree', '-r', '--full-tree', sourceCommit)
+    .split('\n')
+    .map((line) => {
+      const match = /^(100644|100755) blob ([a-f0-9]+)\t(.+)$/.exec(line);
+      return match ? { oid: match[2]!, path: match[3]! } : undefined;
+    })
+    .filter((entry): entry is { oid: string; path: string } => entry !== undefined);
+  const paths = entries.filter(
+    ({ path }) =>
+      !secretPath(path) &&
+      !/(?:^|\/)(?:\.claude|\.opencode|node_modules|dist|coverage)\//.test(path) &&
+      !/(?:^|\/)(?:AGENTS|CLAUDE)\.md$/.test(path)
+  );
+  for (let offset = 0; offset < paths.length; offset += 500) {
+    const archive = execFileSync(
+      'git',
+      [
+        '--literal-pathspecs',
+        '-C',
+        source,
+        'archive',
+        '--format=tar',
+        sourceCommit,
+        '--',
+        ...paths.slice(offset, offset + 500).map((item) => item.path),
+      ],
+      { maxBuffer: 80_000_000 }
+    );
+    execFileSync('tar', ['-xf', '-', '-C', destination], {
+      input: archive,
+      env: { ...process.env, LC_ALL: 'C' },
+    });
+  }
+  let excludedContent = 0;
+  const included = paths.filter((entry) => {
+    const data = readFileSync(join(destination, entry.path));
+    if (secretContent(data.toString('utf8'))) {
+      rmSync(join(destination, entry.path));
+      excludedContent++;
+      return false;
+    }
+    return true;
+  });
+  const sourcePaths = included
+    .map((entry) => entry.path)
+    .filter((path) => /\.(?:[cm]?[jt]sx?|swift|go|kt|java)$/.test(path));
+  assert.ok(sourcePaths.length > 1000);
+  return {
+    sourcePaths,
+    included,
+    identity: {
+      sourceCommit,
+      trackedRegularFiles: entries.length,
+      exportedFiles: included.length,
+      sourceFiles: sourcePaths.length,
+      excludedFiles: entries.length - included.length,
+      excludedContent,
+      manifestSha256: hash(JSON.stringify(included)),
+      historyExported: false,
+      originalCheckoutUnchanged: true,
+      limitation:
+        'Real source snapshot, secret/agent-config exclusions, synthetic phase overlay; not a whole-project build.',
+    },
+  };
+}
+
+/** @purpose Install only distributed flow/CLI and verified shared dependency links, never eval answers or private histories. */
+async function workspace(
+  base: string,
+  runtime: string,
+  real: ReturnType<typeof snapshot>,
+  snapshotRoot: string,
+  id: CoverageBenchmarkCase,
+  storeRoot: string
+) {
+  mkdirSync(base);
+  cpSync(snapshotRoot, base, { recursive: true });
+  const overlay = coverageBenchmarkFiles(id, real.sourcePaths);
+  for (const [path, text] of Object.entries(overlay)) put(base, path, text);
+  cpSync(join(runtime, 'ai/directives'), join(base, 'ai/directives'), { recursive: true });
+  const pkg = join(base, 'node_modules/gennady');
+  mkdirSync(pkg, { recursive: true });
+  cpSync(join(runtime, 'dist'), join(pkg, 'dist'), { recursive: true });
+  cpSync(join(runtime, 'package.json'), join(pkg, 'package.json'));
+  cpSync(join(runtime, 'ai/directives'), join(pkg, 'ai/directives'), { recursive: true });
+  const store = await prepareEvalDependencyStore({
+    sourceRoot: runtime,
+    storeRoot,
+    leaseId: randomUUID(),
+  });
+  try {
+    await bindEvalDependencies(base, store);
+  } catch (cause) {
+    if (store.lease) await releaseEvalDependencyLease(store.lease);
+    throw cause;
+  }
+  put(
+    base,
+    'node_modules/.bin/gennady',
+    '#!/bin/sh\nexec node "$(dirname "$0")/../gennady/dist/gennady.js" "$@"\n'
+  );
+  execFileSync('chmod', ['700', join(base, 'node_modules/.bin/gennady')]);
+  git(base, 'init', '-q', '-b', 'sc4-isolated');
+  git(base, 'add', '-f', '--', ...Object.keys(overlay), 'ai/directives');
+  // Stage the exported tree, excluding runtime/dependency links and the existing project's ignored assets.
+  git(base, 'add', '-A');
+  git(
+    base,
+    '-c',
+    'user.name=SC4 fixture',
+    '-c',
+    'user.email=sc4@localhost',
+    'commit',
+    '-qm',
+    'isolated exact source snapshot and phase inputs'
+  );
+  const initialFiles = filesUnder(base)
+    .filter((path) => !path.includes('/.git/') && !path.includes('/node_modules/'))
+    .map((path) => [relative(base, path), hash(readFileSync(path))] as const);
+  const installedRuntime = filesUnder(pkg).map(
+    (path) => [relative(pkg, path), hash(readFileSync(path))] as const
+  );
+  return {
+    store,
+    overlayHash: hash(
+      JSON.stringify(Object.entries(overlay).sort(([a], [b]) => a.localeCompare(b)))
+    ),
+    initialFiles,
+    installedRuntime,
+  };
+}
+
+const invoke = (runtime: string, cwd: string, ...args: string[]) => {
+  const result = spawnSync(process.execPath, [join(runtime, 'dist/gennady.js'), ...args], {
+    cwd,
+    env: { PATH: process.env.PATH, NO_COLOR: '1', GENNADY_NO_UPDATE_CHECK: '1' },
+    encoding: 'utf8',
+    timeout: 45_000,
+    maxBuffer: 2_000_000,
+  });
+  return { exit: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
+};
+
+/** @purpose Host-only independent functional check, not worker-declared proof or a replacement for Verify. */
+function functional(cwd: string, sandboxProfile?: string | null) {
+  if (sandboxProfile === null)
+    return { exit: null, outputSha256: hash('no safe host execution profile') };
+  const result = spawnSync(
+    sandboxProfile ? '/usr/bin/sandbox-exec' : process.execPath,
+    sandboxProfile
+      ? ['-f', sandboxProfile, process.execPath, '--test', 'sc4-work/value.test.cjs']
+      : ['--test', 'sc4-work/value.test.cjs'],
+    {
+      cwd,
+      env: { PATH: process.env.PATH, NO_COLOR: '1' },
+      encoding: 'utf8',
+      timeout: 15000,
+    }
+  );
+  return { exit: result.status, outputSha256: hash((result.stdout ?? '') + (result.stderr ?? '')) };
+}
+
+/** @purpose Prove causal installed-CLI controls before any live reservation is consumed. */
+async function qualify(
+  runtime: string,
+  arm: string,
+  real: ReturnType<typeof snapshot>,
+  snapshotRoot: string,
+  owned: string
+) {
+  const out: unknown[] = [];
+  for (const id of COVERAGE_BENCHMARK_CASES) {
+    const cwd = join(owned, `qualification-${arm}-${id}`);
+    const prepared = await workspace(
+      cwd,
+      runtime,
+      real,
+      snapshotRoot,
+      id,
+      join(owned, 'dependencies')
+    );
+    try {
+      put(cwd, COVERAGE_BENCHMARK_SOURCE, '// @spec: SC4\nmodule.exports = 7;\n');
+      if (id === 'paths') rmSync(join(cwd, 'sc4-work/old.cjs'));
+      const normal = invoke(
+        runtime,
+        cwd,
+        'sdd-verify',
+        '--task',
+        COVERAGE_BENCHMARK_TASK,
+        '--phase',
+        'P1'
+      );
+      assert.equal(normal.exit, 0, `normal ${arm}/${id} failed: ${normal.stderr.slice(-2000)}`);
+      assert.equal(functional(cwd).exit, 0);
+      const complete = invoke(
+        runtime,
+        cwd,
+        'sdd-log',
+        COVERAGE_BENCHMARK_TASK,
+        'complete',
+        `artifacts: [${COVERAGE_BENCHMARK_SOURCE}]; decisions: [none]; open: [none]; deviations: []`,
+        '--phase',
+        'P1'
+      );
+      assert.equal(
+        complete.exit,
+        0,
+        `complete ${arm}/${id} failed: ${complete.stderr.slice(-2000)}`
+      );
+      put(cwd, COVERAGE_BENCHMARK_SOURCE, '// @spec: SC4\nmodule.exports = 8;\n');
+      const broken = invoke(
+        runtime,
+        cwd,
+        'sdd-verify',
+        '--task',
+        COVERAGE_BENCHMARK_TASK,
+        '--phase',
+        'P1'
+      );
+      assert.notEqual(broken.exit, 0);
+      assert.notEqual(functional(cwd).exit, 0);
+      put(cwd, COVERAGE_BENCHMARK_SOURCE, 'module.exports = 7;\n');
+      const missingHeader = invoke(
+        runtime,
+        cwd,
+        'sdd-verify',
+        '--task',
+        COVERAGE_BENCHMARK_TASK,
+        '--phase',
+        'P1'
+      );
+      if (arm === 'candidate') assert.notEqual(missingHeader.exit, 0);
+      else
+        assert.ok([0, 1].includes(missingHeader.exit ?? -1), 'baseline must return a real verdict');
+      put(cwd, COVERAGE_BENCHMARK_SOURCE, '// @spec: OTHER\nmodule.exports = 7;\n');
+      const foreign = invoke(
+        runtime,
+        cwd,
+        'sdd-verify',
+        '--task',
+        COVERAGE_BENCHMARK_TASK,
+        '--phase',
+        'P1'
+      );
+      if (arm === 'candidate') assert.notEqual(foreign.exit, 0);
+      else assert.ok([0, 1].includes(foreign.exit ?? -1), 'baseline must return a real verdict');
+      out.push({
+        arm,
+        caseId: id,
+        normal: normal.exit,
+        complete: complete.exit,
+        broken: broken.exit,
+        missingHeader: missingHeader.exit,
+        foreign: foreign.exit,
+        deletedAndFutureChecked: id === 'paths',
+        modelCalls: 0,
+      });
+    } finally {
+      if (prepared.store.lease) await releaseEvalDependencyLease(prepared.store.lease);
+      rmSync(cwd, { recursive: true });
+    }
+  }
+  return out;
+}
+
+/** @purpose Run one owned private server/session and remove its source checkout after sanitized capture. */
+async function attempt(
+  owned: string,
+  privateEvidence: string,
+  runtimeRoot: string,
+  arm: string,
+  id: CoverageBenchmarkCase,
+  index: number,
+  real: ReturnType<typeof snapshot>,
+  snapshotRoot: string,
+  onDispatch: () => void
+) {
+  const home = join(owned, `attempt-${index}`);
+  const privateDir = join(home, 'private');
+  const workspaceRoot = join(home, 'workspaces');
+  const cwd = join(workspaceRoot, 'sdd-flow-eval-phase');
+  mkdirSync(privateDir, { recursive: true, mode: 0o700 });
+  mkdirSync(workspaceRoot);
+  const prepared = await workspace(
+    cwd,
+    runtimeRoot,
+    real,
+    snapshotRoot,
+    id,
+    join(owned, 'dependencies')
+  );
+  let server: ReturnType<typeof spawn> | undefined;
+  let closed: Promise<void> | undefined;
+  let safeCleanup = false;
+  let sessionId: string | undefined;
+  let runtime: SddEvalOpenCodeRuntime | undefined;
+  let evidence: SddEvalOpenCodeEvidenceSource | undefined;
+  const record: Record<string, unknown> = {
+    index,
+    arm,
+    caseId: id,
+    inputSha256: prepared.overlayHash,
+    primaryBudgetMs: budgetMs,
+  };
+  try {
+    const carrier = createExecutionShellCarrier({
+      directory: join(privateDir, 'shell'),
+      hostHome: homedir(),
+      allowedReadRoots: [
+        dirname(dirname(process.execPath)),
+        realpathSync(join(root, 'node_modules')),
+      ],
+      privateRoots: [
+        privateDir,
+        root,
+        join(owned, 'baseline'),
+        join(owned, 'candidate'),
+        privateEvidence,
+        snapshotRoot,
+        join(owned, 'dependencies'),
+      ],
+      workspaceRoot,
+      restrictReadsToWorkspace: true,
+      path: `${dirname(process.execPath)}:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`,
+    });
+    const provider = JSON.parse(
+      readFileSync(join(homedir(), '.config/opencode/opencode.json'), 'utf8')
+    ).provider?.['llm-proxy'];
+    assert.ok(provider?.models?.['deepseek-v4-flash']);
+    assert.ok(
+      ['https:', 'http:'].includes(new URL(process.env.LLM_PROXY_BASE_URL!).protocol),
+      'approved proxy URL invalid'
+    );
+    const config = {
+      model: modelName,
+      small_model: modelName,
+      enabled_providers: ['llm-proxy'],
+      share: 'disabled',
+      instructions: [],
+      plugin: [pathToFileURL(carrier.plugin).href],
+      shell: carrier.shell,
+      mcp: {},
+      compaction: { auto: false, prune: false },
+      permission: {
+        '*': 'allow',
+        external_directory: 'deny',
+        question: 'deny',
+        webfetch: 'deny',
+        websearch: 'deny',
+        codesearch: 'deny',
+      },
+      provider: {
+        'llm-proxy': {
+          ...provider,
+          options: {
+            ...provider.options,
+            baseURL: process.env.LLM_PROXY_BASE_URL,
+            apiKey: process.env.LLM_PROXY_API_KEY,
+          },
+          models: { 'deepseek-v4-flash': provider.models['deepseek-v4-flash'] },
+        },
+      },
+    };
+    json(privateDir, 'opencode.json', config);
+    const reservation = createServer();
+    await new Promise<void>((done, reject) =>
+      reservation.once('error', reject).listen(0, '127.0.0.1', done)
+    );
+    const port = (reservation.address() as import('node:net').AddressInfo).port;
+    await new Promise<void>((done) => reservation.close(() => done()));
+    assert.ok(port >= 4097);
+    const env = {
+      ...process.env,
+      OPENCODE_CONFIG: join(privateDir, 'opencode.json'),
+      OPENCODE_DISABLE_SHARE: 'true',
+      SHELL: carrier.shell,
+    };
+    for (const key of ['CONFIG', 'DATA', 'CACHE', 'STATE'])
+      Object.assign(env, { [`XDG_${key}_HOME`]: join(privateDir, key.toLowerCase()) });
+    server = spawn(
+      'opencode',
+      ['serve', '--hostname', '127.0.0.1', '--port', String(port), '--log-level', 'WARN'],
+      { cwd: home, env, detached: true, stdio: 'ignore' }
+    );
+    closed = new Promise<void>((done) => server!.once('close', () => done()));
+    const baseUrl = `http://127.0.0.1:${port}`;
+    let ready = false;
+    for (let i = 0; i < 60 && !ready; i++) {
+      ready = await fetch(`${baseUrl}/global/health`, { signal: AbortSignal.timeout(1000) })
+        .then((r) => r.ok)
+        .catch(() => false);
+      if (!ready) await delay(500);
+    }
+    assert.ok(ready, 'owned server unavailable');
+    const registry = new SddEvalSessionDirectoryMap();
+    const client = createSddEvalOpenCodeClient({ baseUrl, directory: cwd });
+    runtime = new SddEvalOpenCodeRuntime({ baseUrl, directory: cwd, registry });
+    const eventStop = new AbortController();
+    evidence = new SddEvalOpenCodeEvidenceSource({
+      baseUrl,
+      directory: cwd,
+      registry,
+      eventSignal: eventStop.signal,
+    });
+    sessionId = (await runtime.createSession({ title: `SC4-${index}`, directory: cwd })).id;
+    const started = performance.now();
+    onDispatch();
+    await runtime.prompt({ sessionId, directory: cwd, model, text: coverageBenchmarkPrompt(id) });
+    let state = 'running';
+    let forbidden = false;
+    let providerError = false;
+    const observations: unknown[] = [];
+    while (performance.now() - started < budgetMs) {
+      stop.signal.throwIfAborted();
+      await delay(5000);
+      state = await evidence.readStatus(sessionId);
+      const messages = await client.session.messages({
+        path: { id: sessionId },
+        query: { directory: cwd, limit: 2 },
+        signal: AbortSignal.timeout(10000),
+      });
+      providerError =
+        messages.data?.some((message) => Boolean((message.info as { error?: unknown }).error)) ??
+        false;
+      const tail = await evidence.readTail(sessionId, 6);
+      const actions = toolEventsFrom(tail);
+      forbidden = actions.some((event) => {
+        const value = `${event.command ?? ''} ${event.arg ?? ''}`;
+        return (
+          /(?:cat|sed|grep|rg|read|head|tail)\s+[^\n]*node_modules\/gennady|--no-verify|git\s+(?:commit|push|reset)|npm\s+(?:install|publish)/i.test(
+            value
+          ) ||
+          (event.tool === 'read' && /node_modules\/gennady|\/dist\//.test(value))
+        );
+      });
+      observations.push({ elapsedMs: Math.round(performance.now() - started), state, forbidden });
+      console.log(
+        `[SC4] ${index + 1}/8 ${arm}/${id} ${Math.round((performance.now() - started) / 1000)}s ${state}`
+      );
+      if (state === 'completed' || forbidden || providerError) break;
+    }
+    if (state !== 'completed' || forbidden) await runtime.abort(sessionId);
+    const quiescence = await evidence.readQuiescence(sessionId, {
+      timeoutMs: 10000,
+      stableIntervalMs: 100,
+    });
+    assert.ok(quiescence.complete, 'writer quiescence unproven; no deletion/next attempt');
+    const elapsedMs = Math.round(performance.now() - started);
+    const trace = await evidence.readTrajectory(sessionId);
+    const usage = await evidence.readUsage(sessionId);
+    assert.ok(
+      (usage.models ?? []).every((m) => m === modelName),
+      'observed model route mismatch'
+    );
+    const events = toolEventsFrom(trace.entries);
+    const hostProfile = join(carrier.profileDirectory, 'sdd-flow-eval-phase.sb');
+    const check = functional(cwd, existsSync(hostProfile) ? hostProfile : null);
+    const allowed = new Set([
+      COVERAGE_BENCHMARK_SOURCE,
+      ...(id === 'paths' ? ['sc4-work/old.cjs'] : []),
+      COVERAGE_BENCHMARK_TASK,
+    ]);
+    const changed = git(cwd, 'diff', '--name-only', 'HEAD').split('\n').filter(Boolean);
+    const newFiles = git(cwd, 'ls-files', '--others', '--exclude-standard')
+      .split('\n')
+      .filter(Boolean);
+    const unchangedBackground = prepared.initialFiles.every(
+      ([path, digest]) =>
+        allowed.has(path) ||
+        (existsSync(join(cwd, path)) && hash(readFileSync(join(cwd, path))) === digest)
+    );
+    const runtimeIntact = prepared.installedRuntime.every(
+      ([path, digest]) =>
+        existsSync(join(cwd, 'node_modules/gennady', path)) &&
+        hash(readFileSync(join(cwd, 'node_modules/gennady', path))) === digest
+    );
+    const writeBoundary =
+      unchangedBackground &&
+      runtimeIntact &&
+      [...changed, ...newFiles].every((path) => allowed.has(path));
+    const original = prepared.initialFiles.find(
+      ([path]) => path === COVERAGE_BENCHMARK_SOURCE
+    )?.[1];
+    const value = existsSync(join(cwd, COVERAGE_BENCHMARK_SOURCE))
+      ? readFileSync(join(cwd, COVERAGE_BENCHMARK_SOURCE), 'utf8')
+      : '';
+    const ownerCorrect = /^\/\/ @spec: SC4$/m.test(value);
+    const artifactChanged = hash(value) !== original;
+    const gatePassObserved = events.some(
+      (event) => invokesCommand(event, 'sdd-verify') && event.exitCode === 0
+    );
+    const ticket = readFileSync(join(cwd, COVERAGE_BENCHMARK_TASK), 'utf8');
+    const attempts = [...ticket.matchAll(/<!--SDD_VERIFY_EVIDENCE:([A-Za-z0-9_-]+)-->/g)]
+      .map((match) => JSON.parse(Buffer.from(match[1]!, 'base64url').toString('utf8')))
+      .filter((record) => record.sddPhase === 'P1');
+    const validPassJournal = attempts.at(-1)?.state === 'PASS';
+    const foreignPreserved = id === 'foreign' && hash(value) === original;
+    const domainPass =
+      id === 'foreign'
+        ? foreignPreserved && !gatePassObserved
+        : check.exit === 0 &&
+          ownerCorrect &&
+          artifactChanged &&
+          gatePassObserved &&
+          validPassJournal &&
+          (id !== 'paths' ||
+            (!existsSync(join(cwd, 'sc4-work/old.cjs')) &&
+              !existsSync(join(cwd, 'sc4-work/future.cjs'))));
+    const primary = {
+      terminal: providerError
+        ? 'worker-error'
+        : forbidden
+          ? 'policy-censored'
+          : state === 'completed'
+            ? 'completed-worker'
+            : 'budget-exhausted',
+      elapsedMs,
+      usage: publicUsage(usage),
+      toolCalls: events.length,
+      traceComplete: trace.coverage.complete,
+      writeBoundary,
+      runtimeIntact,
+      providerError,
+      trajectoryStatus:
+        forbidden || !writeBoundary
+          ? 'violated'
+          : events.some(
+                (event) =>
+                  event.tool === 'bash' &&
+                  !/^\s*(?:npx\s+(?:--no-install\s+)?gennady\s+|git\s+(?:status|diff)\b|pwd\s*$)/.test(
+                    event.command ?? ''
+                  )
+              )
+            ? 'not-proven'
+            : 'observed',
+      functional: check.exit === 0,
+      ownerCorrect,
+      artifactChanged,
+      gatePassObserved,
+      validPassJournal,
+      foreignPreserved,
+      domainPass,
+      events: events.map(publicCoverageEvent),
+      observations,
+    };
+    json(privateEvidence, `${index}-primary.json`, {
+      primary,
+      trace,
+      ticket,
+      value,
+      sourceDiff: git(cwd, 'diff', '--binary', 'HEAD'),
+      usage,
+    });
+    Object.assign(record, primary, {
+      privateEvidenceSha256: hash(readFileSync(join(privateEvidence, `${index}-primary.json`))),
+    });
+    let judgeSession: string | undefined;
+    const judge = await runtime
+      .judge({
+        directory: cwd,
+        model,
+        readOnly: true,
+        onSession: (id) => {
+          judgeSession = id;
+        },
+        signal: AbortSignal.timeout(60000),
+        prompt: `Independent read-only phase reviewer. This is ONE P1 worker, not whole-task/group completion. Host owns sdd-log complete. Case ${id}. For foreign, correct outcome is preserve foreign claim and factual blocker, no forged PASS. Otherwise require correct synthetic function, target ownership, actual canonical Verify, no unrelated writes. Pending unrelated declarations in large do not require whole-project adoption. Return JSON {verdict:"pass"|"fail"|"unknown",reason:"brief factual explanation"}. No tools. FACTS:\n${JSON.stringify({ ...primary, events: events.map(publicCoverageEvent) }).slice(0, 48000)}\nWORKER_PUBLIC_TAIL:\n${JSON.stringify(trace.entries.slice(-2)).slice(0, 12000)}`,
+      })
+      .catch(() => '{"verdict":"unknown","reason":"judge unavailable or timed out"}');
+    json(privateEvidence, `${index}-judge.json`, { text: judge });
+    const match = /"verdict"\s*:\s*"(pass|fail|unknown)"/.exec(judge);
+    record.judgeVerdict = match?.[1] ?? 'unknown';
+    record.judgeTextSha256 = hash(judge);
+    const reflectionBefore = await evidence.readUsage(sessionId);
+    const reflection = await runtime
+      .judge({
+        sessionId,
+        directory: cwd,
+        model,
+        readOnly: true,
+        signal: AbortSignal.timeout(45000),
+        prompt:
+          'The measured phase is finished and its primary evidence is frozen. Do not use tools or change files. Give short factual public diagnostic notes only, NOT hidden reasoning. Return JSON {helped:[],friction:[],uncertainties:[],nextHypothesis:""}. Identify instructions/tool outputs that helped or blocked you and unnecessary calls; use observed evidence and say unknown rather than invent causes. Maximum 350 words.',
+      })
+      .catch(() => '{"status":"unavailable-or-timeout"}');
+    const reflectionAfter = await evidence.readUsage(sessionId);
+    json(privateEvidence, `${index}-reflection.json`, { text: reflection });
+    record.reflection = {
+      textSha256: hash(reflection),
+      tokens: reflectionAfter.total - reflectionBefore.total,
+      messages: reflectionAfter.messages - reflectionBefore.messages,
+    };
+    record.judgeUsage = judgeSession ? publicUsage(await evidence.readUsage(judgeSession)) : null;
+    const complete =
+      id !== 'foreign' && domainPass && writeBoundary && !forbidden && trace.coverage.complete
+        ? invoke(
+            runtimeRoot,
+            cwd,
+            'sdd-log',
+            COVERAGE_BENCHMARK_TASK,
+            'complete',
+            `artifacts: [${COVERAGE_BENCHMARK_SOURCE}]; decisions: [none]; open: [none]; deviations: []`,
+            '--phase',
+            'P1'
+          )
+        : undefined;
+    record.hostCompletionExit = complete?.exit ?? null;
+    const terminalQuiet = await evidence.readQuiescence(sessionId, { timeoutMs: 10000 });
+    assert.ok(terminalQuiet.complete);
+    eventStop.abort();
+    safeCleanup = true;
+    return record;
+  } catch (cause) {
+    put(
+      privateEvidence,
+      `${index}-failure.txt`,
+      cause instanceof Error ? (cause.stack ?? cause.message) : String(cause)
+    );
+    throw cause;
+  } finally {
+    if (!server && !sessionId) safeCleanup = true;
+    if (server?.pid) {
+      if (!safeCleanup && sessionId && runtime && evidence) {
+        await runtime.abort(sessionId).catch(() => undefined);
+        safeCleanup = (
+          await evidence
+            .readQuiescence(sessionId, { timeoutMs: 10000 })
+            .catch(() => ({ complete: false }))
+        ).complete;
+      }
+      try {
+        process.kill(-server.pid, 'SIGTERM');
+      } catch {
+        /* owned group already gone */
+      }
+      await Promise.race([closed, delay(3000)]);
+      try {
+        process.kill(-server.pid, 0);
+        process.kill(-server.pid, 'SIGKILL');
+      } catch {
+        /* gone */
+      }
+      await Promise.race([closed, delay(3000)]);
+      try {
+        process.kill(-server.pid, 0);
+        safeCleanup = false;
+      } catch {
+        /* owned process group absent */
+      }
+    }
+    if (safeCleanup) {
+      if (prepared.store.lease) await releaseEvalDependencyLease(prepared.store.lease);
+      rmSync(home, { recursive: true });
+      record.cleanup = {
+        safeCleanup: true,
+        rootRemoved: !existsSync(home),
+        sharedDependenciesPreserved: existsSync(realpathSync(join(root, 'node_modules'))),
+      };
+    } else throw new Error(`SC4 cleanup unproven at attempt ${index}; recovery retained`);
+  }
+}
+
+/** @purpose Freeze two product runtimes and all inputs, then execute at most the eight registered positions. */
+async function main() {
+  const [mode, outArg] = process.argv.slice(2);
+  assert.ok(
+    ['--qualify-only', '--live'].includes(mode ?? '') && outArg && process.argv.length === 4,
+    'Require mode and NEW public output directory'
+  );
+  assert.ok(
+    process.env.LLM_PROXY_BASE_URL && process.env.LLM_PROXY_API_KEY,
+    'approved proxy environment missing'
+  );
+  assert.equal(git(root, 'rev-parse', 'HEAD'), candidateCommit);
+  const out = resolve(root, outArg);
+  assert.ok(
+    relative(root, out).startsWith('ai/flow-eval/results/') && !existsSync(out),
+    'new repository-owned output required'
+  );
+  const predecessor = join(root, 'ai/flow-eval/results/2026-10-28-sdd-coverage-sc4-live');
+  if (mode === '--live' && existsSync(predecessor)) {
+    assert.equal(out, predecessor + '-continued', 'one fixed continuation, no extra live campaign');
+    const recovery = JSON.parse(readFileSync(join(predecessor, 'cleanup-recovery.json'), 'utf8'));
+    assert.equal(recovery.modelDispatches, 0, 'no replacement of dispatched primary positions');
+    assert.equal(recovery.rootRemoved, true, 'prior cleanup must be proven');
+    assert.equal(recovery.serverConfigNeverCreated, true);
+  }
+  mkdirSync(out);
+  const owned = realpathSync(mkdtempSync(join(tmpdir(), 'gennady-sc4-')));
+  const privateEvidence = realpathSync(mkdtempSync(join(tmpdir(), 'gennady-sc4-evidence-')));
+  execFileSync('chmod', ['700', privateEvidence]);
+  const records: unknown[] = [];
+  let cleanup = true;
+  let stage = 'snapshot';
+  try {
+    const snapRoot = join(owned, 'snapshot');
+    const real = snapshot(snapRoot);
+    const schedule = COVERAGE_BENCHMARK_CASES.flatMap((caseId, index) =>
+      (index % 2 ? ['candidate', 'baseline'] : ['baseline', 'candidate']).map((arm) => ({
+        caseId,
+        arm,
+      }))
+    );
+    const harness = [
+      'ai/flow-eval/coverage-benchmark.ts',
+      'ai/flow-eval/scripts/coverage-benchmark-live.ts',
+      'ai/flow-eval/scripts/execution-autonomy-shell-carrier.ts',
+      'ai/flow-eval/dependency-store.ts',
+      'ai/flow-eval/opencode-runtime.ts',
+      'ai/flow-eval/evidence.ts',
+      'ai/flow-eval/trajectory.ts',
+      'ai/flow-eval/opencode-client.ts',
+      'ai/flow-eval/session-directory.ts',
+      'package-lock.json',
+    ].map((path) => ({ path, sha256: hash(readFileSync(join(root, path))) }));
+    json(out, 'protocol.json', {
+      schema: 'gennady.sdd-coverage-sc4.1',
+      commits: { baseline: baselineCommit, candidate: candidateCommit },
+      source: real.identity,
+      model: modelName,
+      primaryAttempts: mode === '--live' ? 8 : 0,
+      replacements: 0,
+      concurrency: 1,
+      budgetMs,
+      scope: 'phase worker plus host completion, not whole-task/group close',
+      publicSourcePolicy:
+        'No private source/paths/free text; numeric/enum/hash allowlist only. Private compact primary/semantic/reflection evidence is retained locally outside Git.',
+      proxyTransportSource:
+        'LLM_PROXY_BASE_URL and LLM_PROXY_API_KEY; global configuration supplies Flash capabilities only',
+      ...(mode === '--live' && existsSync(predecessor)
+        ? {
+            preDispatchContinuation: {
+              priorProtocolSha256: hash(readFileSync(join(predecessor, 'protocol.json'))),
+              recoverySha256: hash(readFileSync(join(predecessor, 'cleanup-recovery.json'))),
+              previousModelDispatches: 0,
+              previousFailedReservationRetained: true,
+            },
+          }
+        : {}),
+      harness,
+      schedule,
+      fixtureHashes: COVERAGE_BENCHMARK_CASES.map((caseId) => ({
+        caseId,
+        sha256: hash(
+          JSON.stringify(
+            Object.entries(coverageBenchmarkFiles(caseId, real.sourcePaths)).sort(([a], [b]) =>
+              a.localeCompare(b)
+            )
+          )
+        ),
+      })),
+      limitations: [
+        'One attempt per case/arm, no universal latency/non-inferiority claim.',
+        'Synthetic phase in exact real source snapshot; repository secrets/agent configs/history excluded, no whole-project build.',
+        'Q1 literal-bracket universal repair remains unverified.',
+        'SDK quiescence is not proof against arbitrary detached writers.',
+        'Token total excludes cache reads; cost zero is not free.',
+      ],
+    });
+    json(privateEvidence, 'manifest.json', { publicOutput: out, source: real.included });
+    const runtimes: Record<string, string> = {};
+    const controls: unknown[] = [];
+    for (const [arm, commit] of [
+      ['baseline', baselineCommit],
+      ['candidate', candidateCommit],
+    ]) {
+      stop.signal.throwIfAborted();
+      stage = `build-${arm}`;
+      const runtime = join(owned, arm!);
+      runtimes[arm!] = runtime;
+      execFileSync('git', ['clone', '--shared', '--quiet', '--no-checkout', root, runtime]);
+      git(runtime, 'checkout', '--quiet', '--detach', commit!);
+      symlinkSync(realpathSync(join(root, 'node_modules')), join(runtime, 'node_modules'));
+      execFileSync('npm', ['run', 'build', '--', '--configLoader', 'runner'], {
+        cwd: runtime,
+        env: process.env,
+        stdio: 'pipe',
+        maxBuffer: 20_000_000,
+      });
+      json(out, `runtime-${arm}.json`, {
+        commit,
+        tree: git(runtime, 'rev-parse', 'HEAD^{tree}'),
+        distributedFiles: [
+          ...filesUnder(join(runtime, 'dist')),
+          ...filesUnder(join(runtime, 'ai/directives')),
+        ].map((path) => ({
+          path: relative(runtime, path),
+          sha256: hash(readFileSync(path)),
+        })),
+        trackedClean: git(runtime, 'status', '--porcelain', '--untracked-files=no') === '',
+      });
+      stage = `qualify-${arm}`;
+      controls.push(...(await qualify(runtime, arm!, real, snapRoot, owned)));
+      json(out, 'qualification.json', { modelCalls: 0, controls, complete: controls.length === 8 });
+      console.log(
+        `[SC4] ${arm} four causal controls qualified; baseline ownership exits retained, candidate must reject missing/foreign headers`
+      );
+    }
+    stage = 'offline-harness-tests';
+    const tests = spawnSync('npm', ['run', 'test:sdd-flow-eval'], {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: 32_000_000,
+    });
+    put(privateEvidence, 'offline-tests.log', (tests.stdout ?? '') + '\n' + (tests.stderr ?? ''));
+    assert.equal(tests.status, 0, 'offline harness tests failed; private full diagnostic retained');
+    json(out, 'harness-tests.json', {
+      passed: true,
+      outputSha256: hash((tests.stdout ?? '') + (tests.stderr ?? '')),
+      modelCalls: 0,
+    });
+    if (mode === '--live')
+      for (const [index, entry] of schedule.entries()) {
+        stop.signal.throwIfAborted();
+        assert.ok(
+          harness.every((file) => hash(readFileSync(join(root, file.path))) === file.sha256),
+          'harness changed after preregistration'
+        );
+        stage = `attempt-${index}-${entry.arm}-${entry.caseId}`;
+        json(out, `reservations/${index}.json`, {
+          ...entry,
+          index,
+          status: 'started',
+          at: new Date().toISOString(),
+        });
+        const record = await attempt(
+          owned,
+          privateEvidence,
+          runtimes[entry.arm]!,
+          entry.arm,
+          entry.caseId,
+          index,
+          real,
+          snapRoot,
+          () => {
+            assert.equal(
+              existsSync(join(out, `dispatches/${index}.json`)),
+              false,
+              'primary position was already dispatched'
+            );
+            json(out, `dispatches/${index}.json`, {
+              index,
+              ...entry,
+              requestedModel: modelName,
+              at: new Date().toISOString(),
+            });
+          }
+        );
+        json(out, `records/${index}.json`, record);
+        records.push(record);
+        json(out, 'progress.json', {
+          planned: 8,
+          recorded: records.length,
+          replacements: 0,
+          records,
+        });
+        assert.ok(
+          (record.cleanup as { safeCleanup: boolean }).safeCleanup,
+          'cleanup failed; stop queue'
+        );
+        const usage = record.usage as { messages: number; observedModelsValid: boolean };
+        assert.ok(
+          usage.messages > 0 && usage.observedModelsValid && !record.providerError,
+          'proxy/model failed; no replacement or fallback'
+        );
+      }
+    json(out, 'report.json', {
+      planned: mode === '--live' ? 8 : 0,
+      recorded: records.length,
+      replacements: 0,
+      complete: mode === '--live' && records.length === 8,
+      records,
+      privateEvidenceDirectory: 'local-only; provided to operator, never committed',
+      modelBehaviorWinClaimed: false,
+    });
+  } catch (cause) {
+    put(
+      privateEvidence,
+      'failure.txt',
+      cause instanceof Error ? (cause.stack ?? cause.message) : String(cause)
+    );
+    json(out, 'failure.json', {
+      stage,
+      errorSha256: hash(readFileSync(join(privateEvidence, 'failure.txt'))),
+      recorded: records.length,
+      modelFallback: false,
+      replacements: 0,
+    });
+    console.error(`[SC4] STOP ${stage}; private diagnostic retained; no replacement`);
+    process.exitCode = 1;
+    cleanup = !readdirSync(owned).some((name) => name.startsWith('attempt-'));
+  } finally {
+    if (cleanup) rmSync(owned, { recursive: true });
+    json(out, 'cleanup.json', {
+      safeCleanup: cleanup,
+      rootRemoved: !existsSync(owned),
+      compactEvidencePrivate: true,
+      originalUnchanged:
+        git(source, 'rev-parse', 'HEAD') === sourceCommit &&
+        git(source, 'status', '--porcelain') === '',
+    });
+    console.log(
+      JSON.stringify({
+        privateEvidence,
+        publicOutput: out,
+        recorded: records.length,
+        safeCleanup: cleanup,
+      })
+    );
+    process.removeListener('SIGINT', onSignal);
+    process.removeListener('SIGTERM', onSignal);
+  }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) await main();

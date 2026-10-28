@@ -311,11 +311,12 @@ ai/skills/                            # 12 скилов (физические а
 | `cli/cmd/sync-skills/sync-skills-formatter.ts` | `SyncSkillsFormatter`                                          | `format(entries, opts)` — pure transformer с группировкой по скилам |
 | `cli/cmd/sync-skills/sync-skills.cmd.ts`       | `run()`, `SyncCmdDeps`                                         | CLI-обвязка: `parseArgs`, DI, вызов core + formatter, вывод         |
 | `cli/cmd/sync-skills/index.ts`                 | —                                                              | `import { run } from './sync-skills.cmd.ts'; run(process.argv)`     |
-| `shared/common/sync/sync-core.shared.ts`       | `resolvePackageDir`, `compareBytes`                            | Shared: `sync` + `sync-skills`                                      |
-| `shared/common/sync/sync-formatter.shared.ts`  | `formatSyncOutput`                                             | Shared: базовые маркеры `+`/`~`/`-`/`=`, dry-run, итоговая строка   |
-| `shared/common/sync/sync-deps.type.ts`         | `SyncCmdDeps`                                                  | Shared DI-порт, расширен `unlink`/`rmdir` для orphan-удаления       |
 
 **Namespace:** `sync-skills` — единый префикс.
+
+Shared dependencies, not ownership declarations: `shared/common/sync/sync-core.shared.ts`,
+`shared/common/sync/sync-formatter.shared.ts` and `shared/common/sync/sync-deps.type.ts`
+belong to [SHARED](../../shared/shared.spec.md); this module consumes them.
 
 **Limits:** Все файлы ≤ 150 строк. `SyncCmdDeps` — shared с `sync`.
 

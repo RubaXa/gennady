@@ -50,18 +50,18 @@ describe('FO-5 workflow consumers', () => {
   });
 
   it('uses the same resolver in execute, phase work, and audit without copying full file bodies', () => {
-    for (const path of [
-      'ai/kit/templates/sdd-v2/execute.directive.hbs',
-      'ai/kit/templates/sdd-v2/phase-execution-protocol.directive.hbs',
-    ]) {
+    for (const path of ['ai/kit/templates/sdd-v2/execute.directive.hbs']) {
       const template = source(path);
       assert.match(template, /gennady orient --file .* --json/, path);
       assert.match(template, /AX_TASK_RESOLUTION/, path);
       assert.doesNotMatch(template, /read (?:the )?full bod(?:y|ies).*ownership/i, path);
     }
+    const phase = source('ai/kit/templates/sdd-v2/phase-execution-protocol.directive.hbs');
+    assert.match(phase, /gennady orient --coverage --task <ticket> --phase <PhaseID> --stage preflight --json/);
+    assert.match(phase, /AX_TASK_RESOLUTION/);
+    assert.doesNotMatch(phase, /read (?:the )?full bod(?:y|ies).*ownership/i);
     const audit = source('ai/kit/templates/sdd-v2/audit.directive.hbs');
-    assert.match(audit, /gennady orient --file .* --json/);
-    assert.match(audit, /shared deterministic resolver/);
+    assert.match(audit, /gennady orient --coverage --spec <spec-path> --stage audit --json/);
   });
 
   it('keeps legacy header evidence inside migration and removes append-only from ordinary checks', () => {

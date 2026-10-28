@@ -154,6 +154,33 @@ function schema(
   return { flags, validate, repeatable };
 }
 
+function coverageShape(
+  p: readonly string[],
+  f: ReadonlyMap<string, readonly string[]>
+): string | null {
+  const allowed = new Set([
+    '--coverage',
+    '--spec',
+    '--task',
+    '--phase',
+    '--stage',
+    '--json',
+    '--format',
+  ]);
+  if (p.length || [...f.keys()].some((key) => !allowed.has(key)))
+    return 'coverage query accepts only exact query options';
+  if ([...f.values()].some((values) => values.length !== 1)) return 'coverage flags cannot repeat';
+  if (has(f, '--spec') && has(f, '--task')) return 'coverage spec/task conflict';
+  if (has(f, '--phase') && !has(f, '--task')) return 'coverage phase requires task';
+  if (has(f, '--json') && has(f, '--format')) return 'coverage output conflict';
+  const stage = f.get('--stage')?.[0];
+  if (stage && !['authoring', 'preflight', 'phase-exit', 'audit'].includes(stage))
+    return 'invalid coverage stage';
+  if (stage === 'phase-exit' && !has(f, '--task')) return 'phase-exit requires task';
+  const format = f.get('--format')?.[0];
+  return format && !['text', 'json'].includes(format) ? 'invalid coverage format' : null;
+}
+
 // Static shapes mirror the command help/types/dispatcher contracts. Values stay placeholders, but
 // unknown/repeated/missing flags cannot enter an Action unnoticed.
 const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
@@ -171,6 +198,10 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
   ),
   orient: schema(
     {
+      '--coverage': 'boolean',
+      '--phase': 'scalar',
+      '--stage': 'scalar',
+      '--format': 'scalar',
       '--file': 'scalar',
       '--dir': 'scalar',
       '--task': 'scalar',
@@ -188,6 +219,9 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       '--json': 'boolean',
     },
     (p, f) => {
+      if (has(f, '--coverage')) return coverageShape(p, f);
+      if (has(f, '--phase') || has(f, '--stage') || has(f, '--format'))
+        return 'coverage options require --coverage';
       if (has(f, '--file') && has(f, '--dir')) return '--file and --dir are mutually exclusive';
       if ((has(f, '--history') || has(f, '--json')) && !has(f, '--file'))
         return '--history/--json require --file';
@@ -214,6 +248,10 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
   ),
   'sdd-check': schema(
     {
+      '--coverage': 'boolean',
+      '--stage': 'scalar',
+      '--json': 'boolean',
+      '--format': 'scalar',
       '--task': 'scalar',
       '--spec': 'scalar',
       '--authoring': 'boolean',
@@ -222,10 +260,12 @@ const COMMAND_SCHEMAS: Readonly<Record<string, CommandSchema>> = {
       '--changed': 'boolean',
     },
     (p, f) => {
+      if (has(f, '--coverage')) return coverageShape(p, f);
+      if (has(f, '--stage') || has(f, '--json')) return 'coverage options require --coverage';
       const modes = ['--task', '--spec', '--all', '--changed'].filter((x) => has(f, x));
       if (modes.length !== 1) return 'requires exactly one mode';
-      if (has(f, '--authoring') && modes[0] !== '--task' && modes[0] !== '--spec')
-        return '--authoring requires --task or --spec';
+      if (has(f, '--authoring') && !['--task', '--spec', '--all'].includes(modes[0]!))
+        return '--authoring requires --task, --spec or --all';
       if (modes[0] === '--spec' && !has(f, '--authoring')) return '--spec requires --authoring';
       if (has(f, '--phase') && !has(f, '--authoring')) return '--phase requires --authoring';
       if (has(f, '--phase') && modes[0] !== '--task') return '--phase requires --task';

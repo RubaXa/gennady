@@ -20,6 +20,30 @@ guidance ведёт к `sdd-migrate bootstrap` и V1→V2 guide. Нет canonica
 
 → Parent scope: [../../cli/cli.spec.md](../../cli/cli.spec.md) (§3.5 orient DX).
 
+### Declared SDD coverage query
+
+`orient --coverage` is a read-only projection through the shared coverage filesystem adapter,
+also used by `sdd-check --coverage`. It accepts project declarations (default), an exact
+`--spec <ID|repo-relative-path>` including `specs/README.md`, or `--task <ID|path> [--phase <ID>]`.
+Without a phase, a task projects its dependency-ordered final outputs, including later tombstones.
+`--stage authoring|preflight|phase-exit|audit` selects the ownership boundary (default audit).
+`--json` returns `sdd-coverage/1`: selection, deterministic rows/findings, completeness,
+permission to proceed and explicit metadata/source/Git-byte reader counters.
+
+Metadata is read once per invocation; a phase query observes only its selected write/delete paths,
+not all source files declared by its module. Portal Scopes and Module Map membership edges are
+structural; arbitrary references, fenced examples and dependency prose do not create children.
+The reserved `PROJECT-PORTAL` query identity is not an implementation owner. File Mapping entries
+are literal repository-relative paths, including bracketed route names; unsafe/unreadable paths fail
+closed. A closed set of non-source documents/configuration uses exact declaration ownership and
+regular-file existence, without content/Git reads or injected comments; JSON additionally parses.
+Unsupported formats and secrets remain explicit errors. Genuine no-write phases acquire no fake targets.
+
+Pending preparation exits 0 but remains incomplete; blocking inconsistency exits 1; invalid/mixed
+coverage flags exit 2 before any reads. This mode executes no Verify gates, writes no tickets or
+receipts, does not describe the coverage of unclaimed repository files, and does not change ordinary
+orient/default check/lifecycle behavior in SC2. Implementation: `cli/cmd/_shared/sdd-coverage-*.ts`.
+
 ## 2. Entity Inventory (Closed-World)
 
 | Name                 | Type         | Purpose                                                               |

@@ -188,8 +188,9 @@ services/agent-run/
 
 **File Mapping:**
 
-- `engines/opencode/opencode-engine.ts`: `OpencodeEngine`.
-- `engines/opencode/opencode-error-map.ts`: `opencodeErrorMap`.
+- `services/agent-run/engines/opencode/opencode-engine.ts`: `OpencodeEngine`.
+- `services/agent-run/engines/opencode/opencode-error-map.ts`: `opencodeErrorMap`.
+- `services/agent-run/index.ts`: engine registration and public composition root.
 
 Namespace: файлы `opencode-*`, тип `OpencodeEngine` — `rg opencode` находит весь модуль.
 

@@ -8,6 +8,7 @@ import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { resolveAuditGroup } from '../../../shared/sdd/audit-group.ts';
 import { getHeadRef } from '../../../shared/common/changed-files.ts';
+import { sddCoverageIssue } from '../../../shared/sdd/coverage-repository.ts';
 import {
   buildGroupReceipt,
   upsertGroupReceipt,
@@ -401,6 +402,10 @@ async function runCommand(
     if (!proven.ok) return groupReceiptError(`owning spec ${specRel} (${proven.detail})`);
     const observed = readProvenRepoFile(proven.identity);
     if (!observed.ok) return groupReceiptError(`owning spec ${specRel} (${observed.detail})`);
+    if (kind === 'audit' && /^PASS(?:$|[_ :])/i.test(verdict)) {
+      const coverageIssue = sddCoverageIssue(root, { kind: 'spec', id: groupId }, 'audit');
+      if (coverageIssue) return groupReceiptError(coverageIssue);
+    }
     const nextSpec = upsertGroupReceipt(observed.content, built.receipt);
     const written = writeProvenRepoFile(proven.identity, nextSpec);
     if (!written.ok) return groupReceiptError(`owning spec ${specRel} (${written.detail})`);
@@ -610,6 +615,12 @@ async function runCommand(
       currentAttempt.ok
     );
     if (!completed.ok) return phaseCompletionError(completed.detail);
+    const coverageIssue = sddCoverageIssue(
+      root,
+      { kind: 'phase', task: resolved.identity.relative, phase: phaseFlag ?? '' },
+      'phase-exit'
+    );
+    if (coverageIssue) return phaseCompletionError(coverageIssue);
     const written = writeProvenRepoFile(resolved.identity, completed.content);
     if (!written.ok) return fileError(displayPath);
     const cleanupFailure = scratch?.consume() ?? null;
@@ -758,6 +769,12 @@ async function runCommand(
       return proof.ok ? null : proof.issue;
     });
     if (!closed.ok) return roundCloseError(closed.detail);
+    const coverageIssue = sddCoverageIssue(
+      root,
+      { kind: 'task', task: resolved.identity.relative },
+      'phase-exit'
+    );
+    if (coverageIssue) return roundCloseError(coverageIssue);
     const written = writeProvenRepoFile(resolved.identity, closed.content);
     if (!written.ok) return fileError(displayPath);
     logger.debug(`[SddLogCommand#run] closed current Round in ${ticket}`);

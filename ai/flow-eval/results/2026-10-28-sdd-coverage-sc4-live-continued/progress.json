@@ -1,0 +1,2856 @@
+{
+  "planned": 8,
+  "recorded": 8,
+  "replacements": 0,
+  "records": [
+    {
+      "index": 0,
+      "arm": "baseline",
+      "caseId": "small",
+      "inputSha256": "18846dd1b48c732118b98efbf0f66b912884744d2151d3296a01a22e5d2a3ccf",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 90657,
+      "usage": {
+        "messages": 11,
+        "input": 22117,
+        "output": 2521,
+        "reasoning": 2496,
+        "cacheRead": 208384,
+        "cacheWrite": 0,
+        "total": 27134,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 88110,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 20,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": true,
+      "ownerCorrect": true,
+      "artifactChanged": true,
+      "gatePassObserved": true,
+      "validPassJournal": true,
+      "foreignPreserved": false,
+      "domainPass": true,
+      "events": [
+        {
+          "i": 0,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "3baa30f0572c6b16003f1eb6263ce9060fea8e55e507ae9ff97aa8600a545fb3",
+          "argumentSha256": "99a118cc96ad5647d38612242c0fb186a2c9dc99ed2e547f34d18dbc2fe99f66",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173615158,
+          "finishedAt": 1793173615165
+        },
+        {
+          "i": 1,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "b79a23da287314d69328cf16bcfd2f41cbacad77bb9e34a796d40d67c6563b96",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173618122,
+          "finishedAt": 1793173618210
+        },
+        {
+          "i": 2,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "9f53cbb03de6b63284472386fc5ff9ce631432231d6d35c0db03a0bc74ad83bf",
+          "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173620272,
+          "finishedAt": 1793173620282
+        },
+        {
+          "i": 3,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "63b6fe0c1e6691306b375aa136b88d05f7c7f899cd952d47099aab660a70977c",
+          "argumentSha256": "9cf3c90d30b3fb4faca4679d89e9295aaa67ceaab609f9255246f76a5216c02a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173620565,
+          "finishedAt": 1793173620570
+        },
+        {
+          "i": 4,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "9b4bf408adae1c9d8e6e4e4d4b950fbb1ea3edaeaf755c086047dfc7cb075d83",
+          "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173620854,
+          "finishedAt": 1793173620858
+        },
+        {
+          "i": 5,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "c4516233d4fef8a6ee3f293c5696117ffdb2e7e5967805221e860240b0e3132d",
+          "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173621114,
+          "finishedAt": 1793173621118
+        },
+        {
+          "i": 6,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "80e3cf5a747eb1c91c594e975524f3deb1ade28dd5119ab8e853ca9e4cf44e6c",
+          "argumentSha256": "3ff48d2bed492cfbefbdddb10fd2707c4e1343fc07836fdcd3d72c950166c684",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173623643,
+          "finishedAt": 1793173623649
+        },
+        {
+          "i": 7,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "04c361586d555ba2ab601ab56533285e9844d55f6f91832d09ea69f4bb340673",
+          "argumentSha256": "937e29dcddf48f9c3379778b91736692e4de8c07dcae7b7d731766e656e05ede",
+          "status": "completed",
+          "exitCode": 2,
+          "startedAt": 1793173623829,
+          "finishedAt": 1793173623835
+        },
+        {
+          "i": 8,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "acc7acf92e305379f3aebd572ac4340026601e38001b24ccfb6031f3b3bee887",
+          "argumentSha256": "965760bf7908c03b26051047524d04ada2fe6775920d0c7d5921420444d54aaf",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173624129,
+          "finishedAt": 1793173624135
+        },
+        {
+          "i": 9,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "719c111f64776965e1e7d0344e2dcb78dbecaf19082d086caf7ae4da877b65f7",
+          "argumentSha256": "cf1166f189dbf620edbccb452169a118e12da073d7ab07327b6cc5b632d16ce2",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173626422,
+          "finishedAt": 1793173626425
+        },
+        {
+          "i": 10,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "0362a3d343bb20ee00d61dd6e3c1213d0ba40546063eecb630098f314c80a6f8",
+          "argumentSha256": "c7b68ac37f364473e922936708e7f43c293dd07b295171566c07ff5fe024fab9",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173626734,
+          "finishedAt": 1793173626736
+        },
+        {
+          "i": 11,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "a432e8484e957a06fac8cf43ffb5b89e8f4e83ae8034a9d4fb755e72750fbed7",
+          "argumentSha256": "c11b1c3369d9a5e8bfe87e3a00bcd4665e9a723724cbe93594787b6a9331361a",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173626955,
+          "finishedAt": 1793173626957
+        },
+        {
+          "i": 12,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "c7569597a533d16414978b3baf058f39803c7fbe87e72d0840d3ec03d5c1b77d",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173628948,
+          "finishedAt": 1793173628952
+        },
+        {
+          "i": 13,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "2c24eeef47d08a6abfb5dfb6d140256307dc1eab1bfc0e13f370147cea24476a",
+          "argumentSha256": "d841d09d85426aedbef5a607dbe479f7ba1c4e132ca7898768364107f0333a52",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173629181,
+          "finishedAt": 1793173629184
+        },
+        {
+          "i": 14,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "9eea63a661758e7760084a94170e6d476b1b0a33843be2f83ad8a754b4346d5d",
+          "argumentSha256": "17480ed61d117106b436a80b31fd6969e915983e3330a2893b5ff235a38a29bd",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173629417,
+          "finishedAt": 1793173629429
+        },
+        {
+          "i": 15,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "00df5c34dec3f93f1b658256fbba89b6c11afa4bc7c67e1e8d44f8ea156ee700",
+          "argumentSha256": "afc98019b94192886173eec667d53f54e97634b35db16726ce051913e20b8cf4",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173629651,
+          "finishedAt": 1793173629655
+        },
+        {
+          "i": 16,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "9db8cffccceba655c615fa691633c496ae63bff373f23fcfa7db4a4d1c2d204a",
+          "argumentSha256": "2f23f633faa74567d67f93d3d434af6b767a32da7dd98b64297c5b83b19b7aee",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173632552,
+          "finishedAt": 1793173632557
+        },
+        {
+          "i": 17,
+          "tool": "edit",
+          "category": "write",
+          "callIdentity": "5b43e5faf17bc2381326c8cba2a70ba2aa4fb60f0509de7066eab006989a77ba",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173644857,
+          "finishedAt": 1793173644859
+        },
+        {
+          "i": 18,
+          "tool": "bash",
+          "category": "sdd-verify",
+          "callIdentity": "4bc5a96b053ec8d9344a865fd7237dc50132c2a1bccb7cf97ec3c880aa6bcb9c",
+          "argumentSha256": "9c38555c9e69aef47d0b5b3a0711a2e28574f2e9fba85f2606c405addda50f58",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173691583,
+          "finishedAt": 1793173691604
+        },
+        {
+          "i": 19,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "a9ec052f5b03b926636693790b761f11ba63ad401d4a3ee0221ea441acca1982",
+          "argumentSha256": "a5c9b7c47571e86ea92472e5e42ce1cc7ed37f7fa0669020805623aef5421fde",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173696060,
+          "finishedAt": 1793173696065
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5041,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 10065,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 15084,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 20104,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 25123,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 30149,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 35173,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 40201,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 45245,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 50267,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 55289,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 60314,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 65342,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 70358,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 75377,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 80403,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 85420,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 90508,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "ab3b53f34eae77f05df8c9081aa828480648adae376ad3c698853e68f6ecb05a",
+      "judgeVerdict": "pass",
+      "judgeTextSha256": "51f3c6fd55884464c0be4f9ab27adb0d9c8cdc932463a717c752dcf83c4700fb",
+      "reflection": {
+        "textSha256": "650f84a5b1efb343aafc3f91d83cc027b4b3392b9bed662005b1103b49f5841d",
+        "tokens": 19190,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 4005,
+        "output": 58,
+        "reasoning": 200,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 4263,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 2963,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": 0,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    },
+    {
+      "index": 1,
+      "arm": "candidate",
+      "caseId": "small",
+      "inputSha256": "18846dd1b48c732118b98efbf0f66b912884744d2151d3296a01a22e5d2a3ccf",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 65895,
+      "usage": {
+        "messages": 7,
+        "input": 33850,
+        "output": 1050,
+        "reasoning": 893,
+        "cacheRead": 145408,
+        "cacheWrite": 0,
+        "total": 35793,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 64853,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 10,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": true,
+      "ownerCorrect": true,
+      "artifactChanged": true,
+      "gatePassObserved": true,
+      "validPassJournal": true,
+      "foreignPreserved": false,
+      "domainPass": true,
+      "events": [
+        {
+          "i": 0,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "839f23c1e4eab59ec44f11128c9e33ec44e88de8f083285031df716726737602",
+          "argumentSha256": "4fc8e21ce3802675bcc977bde0cceca65bc307328cede8dec1ac21e9956efc19",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173728591,
+          "finishedAt": 1793173728593
+        },
+        {
+          "i": 1,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "9139303de2f6a3dc4100cde7bab4e365b7f615e6a075a433c70640399008683b",
+          "argumentSha256": "6bade0bba0385918f4059441630f78642d3f36f479e7730540545ce1ad65c638",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173728586,
+          "finishedAt": 1793173728589
+        },
+        {
+          "i": 2,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "f2bf11276ec95a6b28ac9120de00bd6b64043a44c3f346d73747f095dbebc6b9",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173733019,
+          "finishedAt": 1793173733110
+        },
+        {
+          "i": 3,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "7e84bc4a2da3ee54fce1f96c3398051d6b15ebed92336b1f8c96ec5fc5319f7d",
+          "argumentSha256": "99257fc0a3239d0e5d68fc4f6ecb82b58e990c2fb1148f41c13e746e5671f1f6",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173734377,
+          "finishedAt": 1793173734379
+        },
+        {
+          "i": 4,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "6fdf53d79cf05e874ae4e8ecb09143b190c3014c44b1aa30afc6cccafbd95c7c",
+          "argumentSha256": "786df71066bd9f2b3c06cc46184def624714b6a891e5487b8bf6f0813dacff2b",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173734585,
+          "finishedAt": 1793173734586
+        },
+        {
+          "i": 5,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "9968a6bf14eff2b228080b019db7041165e8b3573d1fc56c2396719484e6412c",
+          "argumentSha256": "281b85468adf8219fdd12f1421c8128c7ef26d097868d82ac93d3758f62e876b",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173734764,
+          "finishedAt": 1793173734767
+        },
+        {
+          "i": 6,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "49be9edabf70d93e3e0234bc7028ae85f4b34397396c574c7d9f478238bcfbcb",
+          "argumentSha256": "007cc1397f4379c6b028f4e52ae29b4ef2b4836229114002dfb1e7f353f5da9a",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173738181,
+          "finishedAt": 1793173738189
+        },
+        {
+          "i": 7,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "6e929ed8daf02c7fbd3c0e1b6eb2555fa7febba7b1aa82c225b4ab98e7c7b7f6",
+          "argumentSha256": "2c21f2978db9f29109fed99f6032fc441a3b36c41d52321dd7538ecff4f5322d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173736749,
+          "finishedAt": 1793173736752
+        },
+        {
+          "i": 8,
+          "tool": "write",
+          "category": "write",
+          "callIdentity": "70bc163efdf1c18b295fa47923e61ad39839d94ba4eae95c1eb3c397bb69c4de",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173743210,
+          "finishedAt": 1793173743215
+        },
+        {
+          "i": 9,
+          "tool": "bash",
+          "category": "sdd-verify",
+          "callIdentity": "306a4cc92fea74b6a0102c501e746d7d527513f7336c13740f3a1a180c2cdf21",
+          "argumentSha256": "defe2e29b9818c22d2653e3d250f01bf28bb70a0aa57cfb51981c0c047ca0389",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173785534,
+          "finishedAt": 1793173785553
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5039,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 10063,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 15102,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 20120,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 25162,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 30321,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 35389,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 40426,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 45453,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 50514,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 55570,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 60698,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 65749,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "c23ca524d9f9953ab3ce0ceb3e86c8494c93b8fdc61720a926b950fe181746cf",
+      "judgeVerdict": "pass",
+      "judgeTextSha256": "86e13998a8d3c3596f146556e7e618c4b1691487fc54d82caeab290c98297c9f",
+      "reflection": {
+        "textSha256": "317d3f7250febf41ec3178e98b739516bb1cd11a8945ce1936fa3acb8980611e",
+        "tokens": 29631,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 2753,
+        "output": 42,
+        "reasoning": 235,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 3030,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 8700,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": 0,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    },
+    {
+      "index": 2,
+      "arm": "candidate",
+      "caseId": "large",
+      "inputSha256": "8c01e04aa4efd754aeda2ed1688baf1978f3160443d11bce4b13b85363a24c61",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 67659,
+      "usage": {
+        "messages": 7,
+        "input": 49295,
+        "output": 1921,
+        "reasoning": 1128,
+        "cacheRead": 216320,
+        "cacheWrite": 0,
+        "total": 52344,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 66674,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 17,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": true,
+      "ownerCorrect": true,
+      "artifactChanged": true,
+      "gatePassObserved": true,
+      "validPassJournal": true,
+      "foreignPreserved": false,
+      "domainPass": true,
+      "events": [
+        {
+          "i": 0,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "c221cab030f58bb30df12c9f4bdc7347d3f6b74ab15182485e0c9377d23f4ccd",
+          "argumentSha256": "99a118cc96ad5647d38612242c0fb186a2c9dc99ed2e547f34d18dbc2fe99f66",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173822586,
+          "finishedAt": 1793173822595
+        },
+        {
+          "i": 1,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "a4d8b40fdfa94a76f04fada41839049098b6b90e6ec4b182e92e5c7746141f03",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173826182,
+          "finishedAt": 1793173826287
+        },
+        {
+          "i": 2,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "199c799fcd489c36461894dc029d255f9d043a34152cf9060e5d3031cb499dad",
+          "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173828536,
+          "finishedAt": 1793173828540
+        },
+        {
+          "i": 3,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "b2235028534efbd0126aba5e39d994e240ae7399aa36abcdb8f402470962e88f",
+          "argumentSha256": "9cf3c90d30b3fb4faca4679d89e9295aaa67ceaab609f9255246f76a5216c02a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173828797,
+          "finishedAt": 1793173828801
+        },
+        {
+          "i": 4,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "6ede3495419cb4946b8f0d79580453c43effa953a797b312ee3f66a56adc1982",
+          "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173829089,
+          "finishedAt": 1793173831882
+        },
+        {
+          "i": 5,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "5b06ca381e0252ab79d6fe3a728baaa05d60c5136aec6637c23ccf9481d98178",
+          "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173831110,
+          "finishedAt": 1793173831912
+        },
+        {
+          "i": 6,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "0653b54ee7e1a29d0e506d748c95fe454439d6184f82ccadefc5202d90784784",
+          "argumentSha256": "cf1166f189dbf620edbccb452169a118e12da073d7ab07327b6cc5b632d16ce2",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173831694,
+          "finishedAt": 1793173831885
+        },
+        {
+          "i": 7,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "1a85d2434761dd5943d7a2e1d821d214b7837b1ce51f4ce57e8229aeb535abbb",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173831782,
+          "finishedAt": 1793173831880
+        },
+        {
+          "i": 8,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "7e1d02f92885eda7f4380580102eb57244dd270f26bd5ac6cfa53fd4d404eb63",
+          "argumentSha256": "109af3563ae1a5cac5c869755bb1d2b86e8ba66e4fe04ec1ac1b0d03a531afbf",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173831847,
+          "finishedAt": 1793173831887
+        },
+        {
+          "i": 9,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "2ba42896539038e03a04eaec935dfad1c0dc1864ee95172ff3dc5fa42aa009b9",
+          "argumentSha256": "1abed793c98d82e0b9b9d789ff780abc39ae927da778a3d2abd883d20b946215",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173831874,
+          "finishedAt": 1793173831889
+        },
+        {
+          "i": 10,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "7b2c0f39ab99aec07fbfd1449895debfdb7c80fcdb2f6ae6ee0ee56ca3705052",
+          "argumentSha256": "2355b229b08ec18abe75ba8eaa2be365dfb5a6ce7e96a4bf7ac83f058d630642",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173836257,
+          "finishedAt": 1793173836265
+        },
+        {
+          "i": 11,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "61a65958619a3840e7eda522fac9b1be7c284ffea18019a545a60a7a93a759a8",
+          "argumentSha256": "17480ed61d117106b436a80b31fd6969e915983e3330a2893b5ff235a38a29bd",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173834878,
+          "finishedAt": 1793173834882
+        },
+        {
+          "i": 12,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "36e6bfc2c2a3f21489a3477ef8ded318f5a7787a5063bf12e48c2dbd13e098fe",
+          "argumentSha256": "d841d09d85426aedbef5a607dbe479f7ba1c4e132ca7898768364107f0333a52",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173835135,
+          "finishedAt": 1793173835139
+        },
+        {
+          "i": 13,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "f90e7ef9df2a7f1d1aac1286fda71d925a1a09391739f8c275bbb7cff42684da",
+          "argumentSha256": "b8e4b05989aeab25b3a1d19b9c1bb63342b2f74c2bd19599c8fd88a3dab34455",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173840338,
+          "finishedAt": 1793173840340
+        },
+        {
+          "i": 14,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "e5169be384e2baf66faa73ef0ba3c285aed39804ab7a2aa11e9e4ef833bab2e9",
+          "argumentSha256": "89c182ccb549dcac8857da32bc15267311e9c6c67d14dcff84b39eba25f19a65",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173840465,
+          "finishedAt": 1793173840467
+        },
+        {
+          "i": 15,
+          "tool": "edit",
+          "category": "write",
+          "callIdentity": "34219c2a4676fd1c8c998bacfad9b91f8c0428738bd4053fe440568d36a03a51",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173844768,
+          "finishedAt": 1793173844770
+        },
+        {
+          "i": 16,
+          "tool": "bash",
+          "category": "sdd-verify",
+          "callIdentity": "0a3ef9c83fab203d7668d91fb7643677b15d17bcd9eda07b670770218dd1e99f",
+          "argumentSha256": "9c38555c9e69aef47d0b5b3a0711a2e28574f2e9fba85f2606c405addda50f58",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173881833,
+          "finishedAt": 1793173881844
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5029,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 12117,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 17145,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 22168,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 27191,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 32245,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 37270,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 42312,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 47339,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 52377,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 57463,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 62486,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 67513,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "676821cdb384268d42a178b9d5d4da59bc707dade87d6698952340784fa007b3",
+      "judgeVerdict": "pass",
+      "judgeTextSha256": "aefacce16e8f6371fd375b3a9a6fdb03e41244af8d10e2304c8b674946b223b9",
+      "reflection": {
+        "textSha256": "de07cb5c56413f3979899cd9979014adda83cc656313a94de82719205235b6fa",
+        "tokens": 46255,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 3719,
+        "output": 56,
+        "reasoning": 116,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 3891,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 2185,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": 0,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    },
+    {
+      "index": 3,
+      "arm": "baseline",
+      "caseId": "large",
+      "inputSha256": "8c01e04aa4efd754aeda2ed1688baf1978f3160443d11bce4b13b85363a24c61",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 105930,
+      "usage": {
+        "messages": 16,
+        "input": 40154,
+        "output": 2183,
+        "reasoning": 4087,
+        "cacheRead": 512768,
+        "cacheWrite": 0,
+        "total": 46424,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 104792,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 28,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": true,
+      "ownerCorrect": false,
+      "artifactChanged": true,
+      "gatePassObserved": true,
+      "validPassJournal": true,
+      "foreignPreserved": false,
+      "domainPass": false,
+      "events": [
+        {
+          "i": 0,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "2862367b0eb63575cbf566f7f13b6a189e63482e753bd6322e580444cfa0cabe",
+          "argumentSha256": "38a414a28a5538c8212a832cec852c975ee3be03d2e1db6234ff34cb152625d6",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173941126,
+          "finishedAt": 1793173941131
+        },
+        {
+          "i": 1,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "7694091d30739fcc03872caf38942e032bc7f5412faa2aa4f58fee9fd6099ae6",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173942001,
+          "finishedAt": 1793173942118
+        },
+        {
+          "i": 2,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "07a8725c69978653bcfe2eba6305bd9d3b139a8a42e864574d6d7eda7f5f3e0e",
+          "argumentSha256": "4a45bb93cfcd2248a6a3b90609a36156e97902b8aebfac1d9ea74e5b7d85139d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173943448,
+          "finishedAt": 1793173943450
+        },
+        {
+          "i": 3,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "65aa09aa084e569301cfaa1c4ecdb708bbf22ff7ece393043440ef1fccaddfcc",
+          "argumentSha256": "ecf4ee854106ce6b226042c3d570dc6a708a1072fb082729b10315ef68921238",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173943579,
+          "finishedAt": 1793173943582
+        },
+        {
+          "i": 4,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "5949514cbe4ee8e8dd4885e6794bb835e661647660dbb2b72904ff1ca050cee4",
+          "argumentSha256": "89514e3e9a5a6102211dc5caec1924c0c909479e3aab75ef20f9ea6827226652",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173943688,
+          "finishedAt": 1793173943690
+        },
+        {
+          "i": 5,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "7a0baff9465d09a2831276daa680149555e95782ad90f72c5162d26a9c826e5b",
+          "argumentSha256": "a8868879418aa9dff3d3965033cc66ce0702038202c0f1c682b4de77a8a87ac3",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173943840,
+          "finishedAt": 1793173943843
+        },
+        {
+          "i": 6,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "08c120d68a9690dad4b761efa71a8b15b288643f611f1c8e8c2f44736f228936",
+          "argumentSha256": "2ed84e9f70218ec228762ae7e7409a39b2a2a84fb39aba03e53c1da4b6dccd40",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173943971,
+          "finishedAt": 1793173943973
+        },
+        {
+          "i": 7,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "f129250567c066587a6287d43821e06ae5b5de789070d839929e8db9dd4ff266",
+          "argumentSha256": "a2ec01162bbe864462aae5b057d9f9a73dc8d5228859463b80b3029e02b30ad7",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173945585,
+          "finishedAt": 1793173945588
+        },
+        {
+          "i": 8,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "159fcc03fcad24a55f6309ff90699cae4a92ec04846e853a671e6e667c8bfc18",
+          "argumentSha256": "488e38a767339ee8d2cdad3f395f4c0b6373609a4730eb04ea0b7d0213265f40",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173945677,
+          "finishedAt": 1793173945703
+        },
+        {
+          "i": 9,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "8ccccecad96cff2fd9c555440686985e2f261cd46ed957d543ace38d00b69e5a",
+          "argumentSha256": "194e85ae26e8c17d31478c48d482901d461aec7e750a274af63876bf64569b28",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173945829,
+          "finishedAt": 1793173945831
+        },
+        {
+          "i": 10,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "c70f2605cbdabbbaa07d7adf7d9a1937b76c2ed40869be6e050192a09379fbd9",
+          "argumentSha256": "b15f2e47c4b69b95ecb454ce3031189e01320f00a84dc84bc37951bf1c885fd8",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173948413,
+          "finishedAt": 1793173948415
+        },
+        {
+          "i": 11,
+          "tool": "grep",
+          "category": "other",
+          "callIdentity": "879bbaa4b654c088a0738e8d337d717aec7996717bbc7ae92de0612f9ede6de7",
+          "argumentSha256": "3830709c0df72e90cf4317a0fae13d6eea02ae228346ca30f87581fb32ef86a4",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173948677,
+          "finishedAt": 1793173948767
+        },
+        {
+          "i": 12,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "76fb893f8d03371fdaade0f9496baa51eeaf3eef10a416a3bfe6a2dc747c4013",
+          "argumentSha256": "54b9c24fd0e3cccfc80afcab9850a7e9e063b53de88e40d57fa4c5a8133876c1",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173951232,
+          "finishedAt": 1793173951236
+        },
+        {
+          "i": 13,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "675c6ef7d4b641e982690f9e32ca53ae483a518e11fbb1b0e18e7cd94b7e7801",
+          "argumentSha256": "2f23f633faa74567d67f93d3d434af6b767a32da7dd98b64297c5b83b19b7aee",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173951769,
+          "finishedAt": 1793173951774
+        },
+        {
+          "i": 14,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "29c2fe2bd4096c4f5c9c5fd8789a0e96ce97707eab2414d536becaa4c0a7447f",
+          "argumentSha256": "3b229457aacc5cfb14a001f5676a6597c4ef38941d6a60dca756ae3f55496bfd",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173955055,
+          "finishedAt": 1793173955056
+        },
+        {
+          "i": 15,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "2223e8760926f969bd4669072bb54dacfa7404fd959b2272d3faee8032fa552a",
+          "argumentSha256": "a171b99b5e0fdc09054de120dbfa1a690def4ef4a54aa60168f84f66d24d6c0a",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173955570,
+          "finishedAt": 1793173955573
+        },
+        {
+          "i": 16,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "962dac0bd05064f2455f49e477c35c27a63ff428f5270f7651a2da8a95a32f7a",
+          "argumentSha256": "cf42ca84e431cfbe9fa6f4bdbcb366d2d3ff2b7aaeed92c91b4deaa83ab7d846",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173959712,
+          "finishedAt": 1793173959721
+        },
+        {
+          "i": 17,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "c1e8085443e4705624c106da915b074e1c365bf8816d40014005161400b0cfe8",
+          "argumentSha256": "f86314ab74cb087d12696b4ecc536cb33652ee24b4179693caa7e993c4888731",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173959892,
+          "finishedAt": 1793173959895
+        },
+        {
+          "i": 18,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "e3409a47ad5cf3fab3168565d7f97a608358d611ee9850f561cea54f41c785ea",
+          "argumentSha256": "fdbf22f8542cbe31391c99021c1fab88a4409a929655fb4a57f8ded507e816f6",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173974404,
+          "finishedAt": 1793173975225
+        },
+        {
+          "i": 19,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "6379e52dd2dca2eb45264223d860c3a5c82f3f02087489dd7f741dc705ce4ec8",
+          "argumentSha256": "bee503af22e7b1f141238ec4f28007541eccaedf648720204c19648701e6aeda",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173971885,
+          "finishedAt": 1793173971888
+        },
+        {
+          "i": 20,
+          "tool": "edit",
+          "category": "write",
+          "callIdentity": "f4d61fddc98099147f7227ee5cb7bf6bd6a7c41bbd580eea589e263ece5f12cd",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793173978273,
+          "finishedAt": 1793173978277
+        },
+        {
+          "i": 21,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "20df9426c2fc119a27181de925235c2c94bb11a4ab5337a139628af31ac5285a",
+          "argumentSha256": "40c8ab1d617f0f971e1532401a4210d95941e23b4d9813facdb803ce0fee241d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173981070,
+          "finishedAt": 1793173981072
+        },
+        {
+          "i": 22,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "97a7d570e1a5c96b444ae14154c65bc8614becaf4bfc452fefc28e7744650c2e",
+          "argumentSha256": "dc9a27cdb85424b70b1356ff4dcae281a99b91bcac4341f1b6bbb7e5bae9fdfb",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173981256,
+          "finishedAt": 1793173981258
+        },
+        {
+          "i": 23,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "b60bc12392eb4b9d607237b284a52741fb7828df8cccbb1a817c7096b98ba0cd",
+          "argumentSha256": "e02eda91a335b9e4798f64af26fecbc422deeaa708c01b62c74b0df5d65a3aff",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173983257,
+          "finishedAt": 1793173983259
+        },
+        {
+          "i": 24,
+          "tool": "bash",
+          "category": "sdd-log",
+          "callIdentity": "90cc5c9820150f87deaf4e9dd2be70ef55434122fb21698f63944aed792e8277",
+          "argumentSha256": "6e215aacdba22946c26959fdb18fb954f61fc3352ee11cf04b76ceeeb3dc427c",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793173991144,
+          "finishedAt": 1793173991153
+        },
+        {
+          "i": 25,
+          "tool": "bash",
+          "category": "sdd-verify",
+          "callIdentity": "d5d41b4520b8ace4defa6544837d0d36d0aa715adac9e236bcdb28e1b5283f70",
+          "argumentSha256": "defe2e29b9818c22d2653e3d250f01bf28bb70a0aa57cfb51981c0c047ca0389",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174025797,
+          "finishedAt": 1793174025808
+        },
+        {
+          "i": 26,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "58a585eab0f9331b84bc7751bca4a6f1ba9fded695cbd2c8410be042ea6643ca",
+          "argumentSha256": "87896e947c4c727df79e3b81d1cd82c296fb834ac258563eacc41701bea0e22d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174028343,
+          "finishedAt": 1793174028345
+        },
+        {
+          "i": 27,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "5277641c443076bc29e1a4fee90f0ee00813619fbe4708ee0b0d834c15d758aa",
+          "argumentSha256": "28ff9adbffa8028aa3607069e15b9cc65e8ef096a03301b7528d601489c4e2f0",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174032879,
+          "finishedAt": 1793174032881
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5035,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 10066,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 15092,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 20123,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 25140,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 30160,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 35180,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 40203,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 45220,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 50238,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 55252,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 60275,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 65308,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 70331,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 75349,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 80394,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 85421,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 90432,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 95498,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 100547,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 105583,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "8ded1b5ea2c6eff466f4117a821062f4fcca2d9365858c05b1ec5856e2c4edb2",
+      "judgeVerdict": "fail",
+      "judgeTextSha256": "39a470c29f50f7c6e3d2f944222164b9d98e6ba6b1c1c8016e4b3af582461f41",
+      "reflection": {
+        "textSha256": "4c5fba7908590fe0ca2ffdb58a847425a7a9e9a19ad09259b43442977f68c037",
+        "tokens": 36558,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 5250,
+        "output": 84,
+        "reasoning": 168,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 5502,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 2886,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": null,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    },
+    {
+      "index": 4,
+      "arm": "baseline",
+      "caseId": "foreign",
+      "inputSha256": "06570f3e5801b98ae91861c9bccaa84e3963f12fea08d31a30873e6432733b0a",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 96138,
+      "usage": {
+        "messages": 11,
+        "input": 24735,
+        "output": 1942,
+        "reasoning": 9850,
+        "cacheRead": 236800,
+        "cacheWrite": 0,
+        "total": 36527,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 91830,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 19,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": false,
+      "ownerCorrect": false,
+      "artifactChanged": false,
+      "gatePassObserved": false,
+      "validPassJournal": false,
+      "foreignPreserved": true,
+      "domainPass": true,
+      "events": [
+        {
+          "i": 0,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "0ee1b37844770e506483b31cd6689c74ccfab4713a6190a3428d58fda154a636",
+          "argumentSha256": "4257aacf73329ea8a72e4d77a3ad0da8e65160346ca877233630dfccb5ac23dc",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174076380,
+          "finishedAt": 1793174076384
+        },
+        {
+          "i": 1,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "e5c1f76a79d3b385a3beb4b54208673153f9de457d0fe501098d51b0ba8de6e4",
+          "argumentSha256": "99a118cc96ad5647d38612242c0fb186a2c9dc99ed2e547f34d18dbc2fe99f66",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174073265,
+          "finishedAt": 1793174073276
+        },
+        {
+          "i": 2,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "15e6b8077394ea808cdf91edc858f4f4311c2e506a5e8c0f1f53c86931542ede",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174078680,
+          "finishedAt": 1793174078796
+        },
+        {
+          "i": 3,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "d34e4b33be36e9fa062ecd4f8ccbae2c781a665e611017788d9cf194a45e9a66",
+          "argumentSha256": "6e33d8dc3dff9141c4dbc3b5057d21fc02fe84e136aedbb165f4d9f9860e2928",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174080770,
+          "finishedAt": 1793174080772
+        },
+        {
+          "i": 4,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "f11a04ba08cf87f89eb2be0471e9e5fc9f9e85c94d3dda4d9818e6c940d0061b",
+          "argumentSha256": "cf1166f189dbf620edbccb452169a118e12da073d7ab07327b6cc5b632d16ce2",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174081031,
+          "finishedAt": 1793174081037
+        },
+        {
+          "i": 5,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "a652bf7ec7ac19d1136ce9df63827f18854849209977826d343daaeafcf3b635",
+          "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174082673,
+          "finishedAt": 1793174082684
+        },
+        {
+          "i": 6,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "500998b6dede074593c0c1b0fcf9f6cd49952eb63307148f694a1115ab05450e",
+          "argumentSha256": "9cf3c90d30b3fb4faca4679d89e9295aaa67ceaab609f9255246f76a5216c02a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174082995,
+          "finishedAt": 1793174083001
+        },
+        {
+          "i": 7,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "8fede0096d090c84b29bc57435e21012815c4e0f0cbcdf135e02a0dae20b9b7e",
+          "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174083260,
+          "finishedAt": 1793174083273
+        },
+        {
+          "i": 8,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "e166fd01e26c74d6f2c8eaacd7753aeaff52914ea30628df7bc8f17985476d08",
+          "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174083539,
+          "finishedAt": 1793174083543
+        },
+        {
+          "i": 9,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "2749fd6306cc387af4b040f9eaa09f4405fa077f7f8e33af9c764f65868da907",
+          "argumentSha256": "b8fb03d081fb8058fb00afda2f02aa0a2c70cc47a4aeebc10418cbad12035050",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174085404,
+          "finishedAt": 1793174085406
+        },
+        {
+          "i": 10,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "c1e81189f4506db782ad1584173cec49c65e054c9e93e82859916eb343c41998",
+          "argumentSha256": "17480ed61d117106b436a80b31fd6969e915983e3330a2893b5ff235a38a29bd",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174085680,
+          "finishedAt": 1793174085690
+        },
+        {
+          "i": 11,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "15db150802670fb1abe49b45eeeb3aac9a8f550f6d6aa8f09e38488e84c0c13a",
+          "argumentSha256": "d841d09d85426aedbef5a607dbe479f7ba1c4e132ca7898768364107f0333a52",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174085903,
+          "finishedAt": 1793174085906
+        },
+        {
+          "i": 12,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "4e7f98064af5593ba2e45ed3ce00d38e3e7c4d0645d7df29d3f731738da78de0",
+          "argumentSha256": "afc98019b94192886173eec667d53f54e97634b35db16726ce051913e20b8cf4",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174086127,
+          "finishedAt": 1793174086135
+        },
+        {
+          "i": 13,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "9fe0854c5f7d03637f003b19d8a4993299bd74477abbaff99bb952a87ec486df",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174088195,
+          "finishedAt": 1793174088201
+        },
+        {
+          "i": 14,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "8c32b0e13acb5f5be32a53bd0c7cade9ca7edfcee36eca26436fbb3324050ff3",
+          "argumentSha256": "2f23f633faa74567d67f93d3d434af6b767a32da7dd98b64297c5b83b19b7aee",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174088857,
+          "finishedAt": 1793174088864
+        },
+        {
+          "i": 15,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "13021c606c1271dd2f142897255e221284181276a75c84f122cd72662901f17a",
+          "argumentSha256": "3cb9bb28208239d6777bbd7f784bce39c64053ca225a6bfce9e58df645e5d83f",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174114836,
+          "finishedAt": 1793174114838
+        },
+        {
+          "i": 16,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "7cbbe15e50fa661522abbf92791b9a3893d6f8442bc40f943baa6ae6ac3967c8",
+          "argumentSha256": "a1615f4e55a33357620883c47af91c5ebec8f6e314009c506b2c43e715143afe",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174117070,
+          "finishedAt": 1793174117072
+        },
+        {
+          "i": 17,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "f3ebc9db31b9eb402bedadd35235ca23ec3cb4821c00232092e45ea2e2ca37d6",
+          "argumentSha256": "bade97ad55a72afbca8bd900950bd27960f9fba32c5b9ecf8ac1065a56351896",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174125801,
+          "finishedAt": 1793174128140
+        },
+        {
+          "i": 18,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "3449603ae7466b5014d0ce5174e8452bb49b523a733204c049a5a5982017ed7f",
+          "argumentSha256": "2b9ad1ba2c8aacf5cf6daaa4cdd677f216d5212d7fd37fbf81b2625f75ccedef",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174146410,
+          "finishedAt": 1793174146558
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5037,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 10051,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 15077,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 20098,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 25118,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 30139,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 35155,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 40173,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 45190,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 50220,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 55317,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 60396,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 65453,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 70483,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 75518,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 80577,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 85803,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 90851,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 95955,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "6492b7723af40fd0f2ac57c19e4b56b8215b9a6c695c6209d4fd6c7d38131f3a",
+      "judgeVerdict": "pass",
+      "judgeTextSha256": "6c2541da3f2a4fc1f8e5124b285f0589df781a6d5036a354c4f4581ca3921007",
+      "reflection": {
+        "textSha256": "d9a8edc4a5607b3cbff33474b0390068f190f37fadd535431c2949f9b0852cfc",
+        "tokens": 21157,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 4071,
+        "output": 55,
+        "reasoning": 106,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 4232,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 3503,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": null,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    },
+    {
+      "index": 5,
+      "arm": "candidate",
+      "caseId": "foreign",
+      "inputSha256": "06570f3e5801b98ae91861c9bccaa84e3963f12fea08d31a30873e6432733b0a",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 40481,
+      "usage": {
+        "messages": 8,
+        "input": 16059,
+        "output": 1579,
+        "reasoning": 1648,
+        "cacheRead": 92288,
+        "cacheWrite": 0,
+        "total": 19286,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 38696,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 12,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": false,
+      "ownerCorrect": false,
+      "artifactChanged": false,
+      "gatePassObserved": false,
+      "validPassJournal": false,
+      "foreignPreserved": true,
+      "domainPass": true,
+      "events": [
+        {
+          "i": 0,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "0d666b3395d6f50458dca84898163ac14af2cc79d640adfc41e7aad5550dd896",
+          "argumentSha256": "99a118cc96ad5647d38612242c0fb186a2c9dc99ed2e547f34d18dbc2fe99f66",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174196303,
+          "finishedAt": 1793174196503
+        },
+        {
+          "i": 1,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "5b716978f7bb81aad03103a16a3a101346b9a31ea46cb3a6a725ac9ea194cdeb",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 1,
+          "startedAt": 1793174204966,
+          "finishedAt": 1793174205086
+        },
+        {
+          "i": 2,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "af995fcfa9430aa667f7babbfcbec3853076192808de985467a89216c1a73250",
+          "argumentSha256": "cf1166f189dbf620edbccb452169a118e12da073d7ab07327b6cc5b632d16ce2",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174207552,
+          "finishedAt": 1793174207556
+        },
+        {
+          "i": 3,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "15b0d04866227009adce9f2471f76b44a0bbbf2900118b4f01409bbfcdc30466",
+          "argumentSha256": "eea4baf11e01c4910f4c42d7688fa937488848e6bd90d15b6f367f81effea460",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174207683,
+          "finishedAt": 1793174207685
+        },
+        {
+          "i": 4,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "66e33a4c8e97516675d497ca4c5c99776e806f02cc05b0429139cf6e7feef0d7",
+          "argumentSha256": "ba9ba23cb8d3d40ec83c1cbd4bde5f7cb33027a11efead2fa07bc5ddbaa2c8bb",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174209438,
+          "finishedAt": 1793174209440
+        },
+        {
+          "i": 5,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "e7132fd3c2585c0da5f453032d405af65da9460d6e0d7f22e7bddd8c3bd52347",
+          "argumentSha256": "17480ed61d117106b436a80b31fd6969e915983e3330a2893b5ff235a38a29bd",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174209683,
+          "finishedAt": 1793174209692
+        },
+        {
+          "i": 6,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "0d7dbc9f368300be403c1986e0b38e5888a84201613ce94fb98741a3b499a304",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174211629,
+          "finishedAt": 1793174211632
+        },
+        {
+          "i": 7,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "fe5c7d08d320686e834e5a48cd61ae11ffac82f640b74def1d29bd19795c72f8",
+          "argumentSha256": "d841d09d85426aedbef5a607dbe479f7ba1c4e132ca7898768364107f0333a52",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174211875,
+          "finishedAt": 1793174211878
+        },
+        {
+          "i": 8,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "d4d534d8b9210303b2cada57e827d9afdb3b906bfa3936f69a3ecc3bc3b9e2bf",
+          "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174212202,
+          "finishedAt": 1793174212213
+        },
+        {
+          "i": 9,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "c20843fb8a1fa66e995e14439c39793527e5846021add83ce0c40b7a78033076",
+          "argumentSha256": "2355b229b08ec18abe75ba8eaa2be365dfb5a6ce7e96a4bf7ac83f058d630642",
+          "status": "completed",
+          "exitCode": 1,
+          "startedAt": 1793174218968,
+          "finishedAt": 1793174218975
+        },
+        {
+          "i": 10,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "a3c2c9b916636e7b2eb405251219407864e3d5fb8877ccd9153332e1768384a5",
+          "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174221727,
+          "finishedAt": 1793174221826
+        },
+        {
+          "i": 11,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "b599cdb3ed909c266663eb0ee668f74bf5d0fa686cec0751f1ee6145602bbdcc",
+          "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174221986,
+          "finishedAt": 1793174221995
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5093,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 10154,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 15185,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 20199,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 25224,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 30267,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 35310,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 40348,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "cf51b1b8897c9559a0c81b852d0b8be0bc82f1c39a1ff40e28e66a2b19754f74",
+      "judgeVerdict": "pass",
+      "judgeTextSha256": "f484a2e6a8ba07ad66aea03772951d4f89a18f2a38562b1b57e655dac76e2053",
+      "reflection": {
+        "textSha256": "b8027428d5ad5c044be4016b156bd3bef577b447621eb5641def88698b21e101",
+        "tokens": 12514,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 3344,
+        "output": 52,
+        "reasoning": 171,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 3567,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 2414,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": null,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    },
+    {
+      "index": 6,
+      "arm": "candidate",
+      "caseId": "paths",
+      "inputSha256": "1ac6dcde4ae94178f452e5f6de1311d699a749966b0ce3e79c2df3aa4c304527",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 101593,
+      "usage": {
+        "messages": 12,
+        "input": 37103,
+        "output": 2380,
+        "reasoning": 898,
+        "cacheRead": 314368,
+        "cacheWrite": 0,
+        "total": 40381,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 97608,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 23,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": true,
+      "ownerCorrect": true,
+      "artifactChanged": true,
+      "gatePassObserved": true,
+      "validPassJournal": true,
+      "foreignPreserved": false,
+      "domainPass": true,
+      "events": [
+        {
+          "i": 0,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "3f673ec5c402c8abb03d172b99e20b481601b32061ee5da9907086d7fbe6a7be",
+          "argumentSha256": "99a118cc96ad5647d38612242c0fb186a2c9dc99ed2e547f34d18dbc2fe99f66",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174275549,
+          "finishedAt": 1793174275564
+        },
+        {
+          "i": 1,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "ee3318c209c949ee9305ffa6e66bec70c2458ce1fbc4c888d227436372581607",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174289427,
+          "finishedAt": 1793174289541
+        },
+        {
+          "i": 2,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "9d0aaf0f0d7c1be3f3cb752c5a83ee98deae87d8ef20775ab530cadf15df8a4c",
+          "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174291270,
+          "finishedAt": 1793174291312
+        },
+        {
+          "i": 3,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "0757691fd71b57973edcfa7c10024a69f51e2a2ea6eed9092bd0e8f400a2848f",
+          "argumentSha256": "9cf3c90d30b3fb4faca4679d89e9295aaa67ceaab609f9255246f76a5216c02a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174291522,
+          "finishedAt": 1793174291542
+        },
+        {
+          "i": 4,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "122a16757b93548c29d9ddca3672499936c9f90f9ccc52c62b5703c01b44de75",
+          "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174291807,
+          "finishedAt": 1793174291813
+        },
+        {
+          "i": 5,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "d39b472f17542bd9ec2d4a44f66e58e5d4d61d867126fe403e7e44a0684df8df",
+          "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174292093,
+          "finishedAt": 1793174292112
+        },
+        {
+          "i": 6,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "6165b2642eec4345c83c1de8b707feabf554c20008ad138578420925c7601708",
+          "argumentSha256": "2355b229b08ec18abe75ba8eaa2be365dfb5a6ce7e96a4bf7ac83f058d630642",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174296737,
+          "finishedAt": 1793174296743
+        },
+        {
+          "i": 7,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "f0a3a4fb8d4cb91e5b7c96034075a8d4f51283a690bc1ba04964a2c93cf30695",
+          "argumentSha256": "3ff48d2bed492cfbefbdddb10fd2707c4e1343fc07836fdcd3d72c950166c684",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174295030,
+          "finishedAt": 1793174295038
+        },
+        {
+          "i": 8,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "1b531fab950180ef351b51f9c1d7d7097f0be4520577f18cb4cf9bf96b1c0011",
+          "argumentSha256": "937e29dcddf48f9c3379778b91736692e4de8c07dcae7b7d731766e656e05ede",
+          "status": "completed",
+          "exitCode": 2,
+          "startedAt": 1793174295196,
+          "finishedAt": 1793174295210
+        },
+        {
+          "i": 9,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "8b2b18c5a53d2e95d8ab5bda820f3d8d75a6e7163b0e0c487061de09da56f8cf",
+          "argumentSha256": "965760bf7908c03b26051047524d04ada2fe6775920d0c7d5921420444d54aaf",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174295313,
+          "finishedAt": 1793174295319
+        },
+        {
+          "i": 10,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "0ec7ba516ff107031af2d560f2b3d0a24165e9f719314d3dcc7d3d661151b311",
+          "argumentSha256": "cf1166f189dbf620edbccb452169a118e12da073d7ab07327b6cc5b632d16ce2",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174298827,
+          "finishedAt": 1793174298831
+        },
+        {
+          "i": 11,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "1c0f17bd877958036b1089b0925e780d7ba0ee29b8fb9403255d3d7901d96f01",
+          "argumentSha256": "109af3563ae1a5cac5c869755bb1d2b86e8ba66e4fe04ec1ac1b0d03a531afbf",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174299074,
+          "finishedAt": 1793174299082
+        },
+        {
+          "i": 12,
+          "tool": "read",
+          "category": "directive-read",
+          "callIdentity": "7ef0c55b1b175ec9a6537525dfc82bac6e3f4674b9d9c6be11e562cd5088d525",
+          "argumentSha256": "1abed793c98d82e0b9b9d789ff780abc39ae927da778a3d2abd883d20b946215",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174299332,
+          "finishedAt": 1793174299336
+        },
+        {
+          "i": 13,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "8b476bc1431e199112fb373180a2dbe1609d295000305af2fef8479157455131",
+          "argumentSha256": "c11b1c3369d9a5e8bfe87e3a00bcd4665e9a723724cbe93594787b6a9331361a",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174302044,
+          "finishedAt": 1793174302048
+        },
+        {
+          "i": 14,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "1e767cb57d3c98e0c6a1165b6472206935f9f1d947febf66010e291eec473af6",
+          "argumentSha256": "d841d09d85426aedbef5a607dbe479f7ba1c4e132ca7898768364107f0333a52",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174302190,
+          "finishedAt": 1793174302206
+        },
+        {
+          "i": 15,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "20a2b5ce4c837c31cc711a326a078bed594100454ef71a8582f75bccbc546756",
+          "argumentSha256": "891e87059d8f2bb6262ab296c9afb12d99931f49046c6aa892b18748fd9fa110",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174302428,
+          "finishedAt": 1793174302534
+        },
+        {
+          "i": 16,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "215bc73b9c814102494a3ed366fcdf973581fd1c769a817adaa3c9f950a4f527",
+          "argumentSha256": "17480ed61d117106b436a80b31fd6969e915983e3330a2893b5ff235a38a29bd",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174302667,
+          "finishedAt": 1793174302673
+        },
+        {
+          "i": 17,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "37000015a07cf44c3d39ab9af0562b92cff7e9a12a766b8c3a76fe08b73e758f",
+          "argumentSha256": "afc98019b94192886173eec667d53f54e97634b35db16726ce051913e20b8cf4",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174305955,
+          "finishedAt": 1793174305970
+        },
+        {
+          "i": 18,
+          "tool": "grep",
+          "category": "other",
+          "callIdentity": "ccd2c72706c49bb0ff5456f34ae9970c9f46274d53b44db37fbb44f685e83707",
+          "argumentSha256": "8c5382e6d12e0d614cbd719a0bb7e62e57ece600a04d0463695606f1dc0b0f8a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174306143,
+          "finishedAt": 1793174306267
+        },
+        {
+          "i": 19,
+          "tool": "write",
+          "category": "write",
+          "callIdentity": "5337a0d98fc8497e15f619206e2060abe468a6c2ac37e7c952722aa116c1d8c4",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174310127,
+          "finishedAt": 1793174310142
+        },
+        {
+          "i": 20,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "741659ae1a69c7d25990e68b832cd615dca6a220de2f4b5853ca2906fb0d0805",
+          "argumentSha256": "cc6b90bf52dfbfb0719bbb151aa3264127c5f63846d77f658115ad61253736f9",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174311964,
+          "finishedAt": 1793174311980
+        },
+        {
+          "i": 21,
+          "tool": "bash",
+          "category": "sdd-verify",
+          "callIdentity": "9cba9700698cefa02358c7bd138788f0d4e59b537e3f37da688948903a4cc574",
+          "argumentSha256": "9c38555c9e69aef47d0b5b3a0711a2e28574f2e9fba85f2606c405addda50f58",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174361861,
+          "finishedAt": 1793174361885
+        },
+        {
+          "i": 22,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "6c793f3772fa9d7b3d079353eb35cf9d3f8ceac064f2bde8a122693da9596caa",
+          "argumentSha256": "6c157c0312180abcd56e182bef3c73e11b20160432c0b4ff670f319f7ca26e5a",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174365466,
+          "finishedAt": 1793174365470
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5098,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 10177,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 15221,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 20263,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 25301,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 30345,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 35430,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 40452,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 45470,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 50545,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 55593,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 60634,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 66138,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 71239,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 76265,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 81371,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 86395,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 91413,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 96430,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 101453,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "b70f9f1bdde3e34a53c4930019a38e2b15882e4018e1a5ea49e720ee488de8db",
+      "judgeVerdict": "pass",
+      "judgeTextSha256": "94ed78e47b0849e52a7e269ed9cafe86c8d1598e9730284f9399d3d85ba8e121",
+      "reflection": {
+        "textSha256": "e83b2403b39ce4c7a1a8d388f7728bd6185cabab8b7a027d786bedf447a1013b",
+        "tokens": 34022,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 4577,
+        "output": 57,
+        "reasoning": 684,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 5318,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 5888,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": 0,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    },
+    {
+      "index": 7,
+      "arm": "baseline",
+      "caseId": "paths",
+      "inputSha256": "1ac6dcde4ae94178f452e5f6de1311d699a749966b0ce3e79c2df3aa4c304527",
+      "primaryBudgetMs": 360000,
+      "terminal": "completed-worker",
+      "elapsedMs": 99257,
+      "usage": {
+        "messages": 13,
+        "input": 20903,
+        "output": 1502,
+        "reasoning": 1149,
+        "cacheRead": 229248,
+        "cacheWrite": 0,
+        "total": 23554,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 97201,
+        "costZeroIsNotFree": true
+      },
+      "toolCalls": 21,
+      "traceComplete": true,
+      "writeBoundary": true,
+      "runtimeIntact": true,
+      "providerError": false,
+      "trajectoryStatus": "not-proven",
+      "functional": true,
+      "ownerCorrect": true,
+      "artifactChanged": true,
+      "gatePassObserved": true,
+      "validPassJournal": true,
+      "foreignPreserved": false,
+      "domainPass": true,
+      "events": [
+        {
+          "i": 0,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "735bb32146e5772304309d118b0108d00b932b1ba1b3316d20dac9d0e1c1f81d",
+          "argumentSha256": "38a414a28a5538c8212a832cec852c975ee3be03d2e1db6234ff34cb152625d6",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174406775,
+          "finishedAt": 1793174406779
+        },
+        {
+          "i": 1,
+          "tool": "bash",
+          "category": "sdd-task",
+          "callIdentity": "1195ff8b65082d37f7b68ca377f20ad0464c4c7ab6049abb832efc5d92b9947b",
+          "argumentSha256": "97f209dc2818ced27b76a73d2e7325f4282bdbc1ac590f7bfef4feb24ee7550d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174409596,
+          "finishedAt": 1793174409750
+        },
+        {
+          "i": 2,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "650dc3c10d0e3df19f40c83120371f2941f839705c6d6ba761c0b48281c11957",
+          "argumentSha256": "4a45bb93cfcd2248a6a3b90609a36156e97902b8aebfac1d9ea74e5b7d85139d",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174412200,
+          "finishedAt": 1793174412215
+        },
+        {
+          "i": 3,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "b051485300e153f10f35fd5070b6c97d03ec2c6c71aee3e52ee5a9978b128f56",
+          "argumentSha256": "ecf4ee854106ce6b226042c3d570dc6a708a1072fb082729b10315ef68921238",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174412925,
+          "finishedAt": 1793174412942
+        },
+        {
+          "i": 4,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "8d52546f3fe0e1acf3e967629079e445a169399960229f5dceec1722ae21282f",
+          "argumentSha256": "89514e3e9a5a6102211dc5caec1924c0c909479e3aab75ef20f9ea6827226652",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174412933,
+          "finishedAt": 1793174412953
+        },
+        {
+          "i": 5,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "03e3d2ff547c35255244e460a37b22680b03653a5eecf2daf6a445f5aa7044fb",
+          "argumentSha256": "a8868879418aa9dff3d3965033cc66ce0702038202c0f1c682b4de77a8a87ac3",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174412959,
+          "finishedAt": 1793174412965
+        },
+        {
+          "i": 6,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "117e5677fb9b3ff6a9208ad1f12f386c8dfe89a292cdec43906371a56ce875f1",
+          "argumentSha256": "3ff48d2bed492cfbefbdddb10fd2707c4e1343fc07836fdcd3d72c950166c684",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174416259,
+          "finishedAt": 1793174416270
+        },
+        {
+          "i": 7,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "b077b4121155f31ecfa4d467b45f2bc1a4da4853029c08e91621b53fe98e0d00",
+          "argumentSha256": "937e29dcddf48f9c3379778b91736692e4de8c07dcae7b7d731766e656e05ede",
+          "status": "completed",
+          "exitCode": 2,
+          "startedAt": 1793174416264,
+          "finishedAt": 1793174416272
+        },
+        {
+          "i": 8,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "021b125b97e3e407db0fb613eeb751f589c8dab4456fe3521148bb613e3c556b",
+          "argumentSha256": "965760bf7908c03b26051047524d04ada2fe6775920d0c7d5921420444d54aaf",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174416263,
+          "finishedAt": 1793174416268
+        },
+        {
+          "i": 9,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "d94b7e9d095ce0bb2c95542f9dbcf45e080f4d4f54677a64ba6ef38065ddb2e1",
+          "argumentSha256": "cf1166f189dbf620edbccb452169a118e12da073d7ab07327b6cc5b632d16ce2",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174418220,
+          "finishedAt": 1793174418232
+        },
+        {
+          "i": 10,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "924201bd0ac030afd32696dad70df16b83311de3c5e40f6e0879ec76dd7f5017",
+          "argumentSha256": "c11b1c3369d9a5e8bfe87e3a00bcd4665e9a723724cbe93594787b6a9331361a",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174422504,
+          "finishedAt": 1793174422507
+        },
+        {
+          "i": 11,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "52ad3c92845aa13a99836494cd279cb122b00afe768976b5d762bd3d774ca498",
+          "argumentSha256": "d841d09d85426aedbef5a607dbe479f7ba1c4e132ca7898768364107f0333a52",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174422437,
+          "finishedAt": 1793174422479
+        },
+        {
+          "i": 12,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "0d298524d8734aa658adbebcce8bb0571b60680c5e5f4d6062ce8232f30ba919",
+          "argumentSha256": "17480ed61d117106b436a80b31fd6969e915983e3330a2893b5ff235a38a29bd",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174422469,
+          "finishedAt": 1793174422488
+        },
+        {
+          "i": 13,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "7def6f68c953b69bdddfe1f3ddd7a8c73414bbb85df9c5441a6253ea9f3a8b58",
+          "argumentSha256": "462c09ace79ad14a90ce0959d1dc004d414670fdf4ce134bdb3c84cab1997aa5",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174425251,
+          "finishedAt": 1793174425257
+        },
+        {
+          "i": 14,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "7125f4ce5e115c160fca0081d6d2b5ae5c3c9a2368b57b11ce64c5f027391ecb",
+          "argumentSha256": "2f23f633faa74567d67f93d3d434af6b767a32da7dd98b64297c5b83b19b7aee",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174428341,
+          "finishedAt": 1793174428345
+        },
+        {
+          "i": 15,
+          "tool": "bash",
+          "category": "orient",
+          "callIdentity": "8a55f0367c737e11fcc10a8f909c921097ca6fdebef325e2836f357f46bec482",
+          "argumentSha256": "bff2a97f38f7c3b93ef596d64fab4aab7562297aaa3b1890f97b640c6762efc3",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174428468,
+          "finishedAt": 1793174428473
+        },
+        {
+          "i": 16,
+          "tool": "read",
+          "category": "project-read",
+          "callIdentity": "5ebf89db303e9e96b103130f3cf87ad0b2f3f689d921c366df75eb2a371ec56f",
+          "argumentSha256": "891e87059d8f2bb6262ab296c9afb12d99931f49046c6aa892b18748fd9fa110",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174431269,
+          "finishedAt": 1793174431272
+        },
+        {
+          "i": 17,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "b835f86a87bb3237a3734cb1e4ad71bc2104cd5d478c9952bfefaac1720f0de5",
+          "argumentSha256": "6c157c0312180abcd56e182bef3c73e11b20160432c0b4ff670f319f7ca26e5a",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174432963,
+          "finishedAt": 1793174433949
+        },
+        {
+          "i": 18,
+          "tool": "write",
+          "category": "write",
+          "callIdentity": "cad8786d07d9671fe0302948800d8ee185c431ffcce765cea75d28a6b43f242d",
+          "argumentSha256": "06c19ca430235b61113ef62b34b01525e72211d07591bc79d5f3f9c32b7dfc9a",
+          "status": "completed",
+          "exitCode": null,
+          "startedAt": 1793174436812,
+          "finishedAt": 1793174436819
+        },
+        {
+          "i": 19,
+          "tool": "bash",
+          "category": "other",
+          "callIdentity": "078a5bd848a8f0912ff4088b2cdfb22973d03cc6cdc8a98e47d3cbf13024abd9",
+          "argumentSha256": "cc6b90bf52dfbfb0719bbb151aa3264127c5f63846d77f658115ad61253736f9",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174438368,
+          "finishedAt": 1793174438391
+        },
+        {
+          "i": 20,
+          "tool": "bash",
+          "category": "sdd-verify",
+          "callIdentity": "2dc2f9641a0cc1f6b915138201ca629ce2ee384ba49085bb151b020265280201",
+          "argumentSha256": "9c38555c9e69aef47d0b5b3a0711a2e28574f2e9fba85f2606c405addda50f58",
+          "status": "completed",
+          "exitCode": 0,
+          "startedAt": 1793174496356,
+          "finishedAt": 1793174496378
+        }
+      ],
+      "observations": [
+        {
+          "elapsedMs": 5057,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 10589,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 15662,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 20680,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 25774,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 30792,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 35818,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 40842,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 45952,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 51026,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 58416,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 63804,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 68872,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 73925,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 78972,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 83997,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 89071,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 94085,
+          "state": "running",
+          "forbidden": false
+        },
+        {
+          "elapsedMs": 99110,
+          "state": "completed",
+          "forbidden": false
+        }
+      ],
+      "privateEvidenceSha256": "c046e093efb970ad75a769a659e150ad001d0c1745e234a5a9fdd5aa6dd7ab29",
+      "judgeVerdict": "pass",
+      "judgeTextSha256": "928d607caebef9ad11f3b9623d8c4f33fd5b7866e38cdffcf45bb101bacfb5da",
+      "reflection": {
+        "textSha256": "0fcd71f4e88ef4a816de791bf65ad5e86abf9fcbad83e4d3e17ffa5c47aa6e4f",
+        "tokens": 16464,
+        "messages": 1
+      },
+      "judgeUsage": {
+        "messages": 1,
+        "input": 3982,
+        "output": 110,
+        "reasoning": 503,
+        "cacheRead": 2048,
+        "cacheWrite": 0,
+        "total": 4595,
+        "providerReportedCost": 0,
+        "complete": true,
+        "observedModelsValid": true,
+        "wallClockMs": 4587,
+        "costZeroIsNotFree": true
+      },
+      "hostCompletionExit": 0,
+      "cleanup": {
+        "safeCleanup": true,
+        "rootRemoved": true,
+        "sharedDependenciesPreserved": true
+      }
+    }
+  ]
+}

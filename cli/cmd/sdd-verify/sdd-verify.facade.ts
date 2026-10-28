@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import { relative } from 'node:path';
 import { validateTicketReviewPaths } from '../../../shared/sdd/audit-group.ts';
+import { sddCoverageIssue } from '../../../shared/sdd/coverage-repository.ts';
 import { extractSection } from '../../../shared/sdd/section.ts';
 import { parsePhaseDetail, parsePhasesOverview } from '../../../shared/sdd/ticket.ts';
 import { resolveTicketArg } from '../../../shared/sdd/ticket-resolve.ts';
@@ -85,7 +86,19 @@ export async function runSddVerifyFacade(
       ticketPath: resolved.path,
       sddPhase: phase.id,
       expectedTicketContent: resolved.content,
+      terminalIssue: () =>
+        sddCoverageIssue(
+          canonicalRoot,
+          { kind: 'phase', task: resolved.identity.relative, phase: phase.id },
+          'phase-exit'
+        ),
       run: async () => {
+        const coverageIssue = sddCoverageIssue(
+          canonicalRoot,
+          { kind: 'phase', task: resolved.identity.relative, phase: phase.id },
+          'preflight'
+        );
+        if (coverageIssue) return failure(coverageIssue);
         const paths = validateTicketReviewPaths(canonicalRoot, resolved.content, {
           phaseIds: [phase.id],
           targetExpectation: 'existing',

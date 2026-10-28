@@ -15,6 +15,7 @@ const RUNNER = join(ROOT, 'scripts/test-topology.ts');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
 const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.ts';
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
+const TOPOLOGY_RUNNER_TEST = 'shared/common/__tests__/test-topology.test.ts';
 // D-60: agent-inbox/agent-mon test surface — independent mirror of the runner's own
 // `EXPERIMENTAL_ROOTS`. Kept as a separate constant (not imported) so this black-box contract can
 // catch drift between the runner and this test, same as EXCLUDED_NAMES/OPT_IN_KEYS below.
@@ -132,6 +133,9 @@ const OWNED_FILE_TIMEOUTS: Readonly<Record<string, string>> = {
 
 type Layer = (typeof TEST_LAYERS)[number];
 type RunnerProbe = { args: string[]; env: NodeJS.ProcessEnv };
+// Reuse identical read-only observations; causal mutation/failure probes below always run fresh.
+let topologySnapshot: Record<Layer, string[]> | undefined;
+const spawnProbeSnapshots = new Map<string, RunnerProbe[]>();
 
 function discoverUnder(dir: string): string[] {
   const files: string[] = [];
@@ -185,6 +189,7 @@ function runRunner(command: string) {
 }
 
 function listedTopology(): Record<Layer, string[]> {
+  if (topologySnapshot) return structuredClone(topologySnapshot);
   const result = runRunner('list');
   assert.strictEqual(result.status, 0, result.stderr);
   const topology: Record<Layer, string[]> = {
@@ -200,10 +205,13 @@ function listedTopology(): Record<Layer, string[]> {
     assert.ok(file && !extra, line);
     topology[layer as Layer].push(file);
   }
-  return topology;
+  topologySnapshot = topology;
+  return structuredClone(topology);
 }
 
 function probeSpawns(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental'): RunnerProbe[] {
+  const snapshot = spawnProbeSnapshots.get(mode);
+  if (snapshot) return structuredClone(snapshot);
   const probeMarker = '__TEST_TOPOLOGY_PROBE__';
   const source = `
 import { mock } from 'node:test';
@@ -246,7 +254,9 @@ process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map((
   assert.strictEqual(result.status, 0, result.stderr);
   const encoded = result.stdout.split('\n').find((line) => line.startsWith(probeMarker));
   assert.ok(encoded, result.stdout);
-  return JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
+  const probes = JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
+  spawnProbeSnapshots.set(mode, probes);
+  return structuredClone(probes);
 }
 
 function probeFailingCommand(
@@ -482,6 +492,11 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
       topology.unit.includes(YAGNI_SOURCE_POLICY_TEST),
       'the pure YAGNI source-selection policy belongs to the hermetic unit layer'
     );
+    assert.ok(
+      topology.local.includes(TOPOLOGY_RUNNER_TEST),
+      'real runner subprocess probes must use the bounded local pool, with the default deadline'
+    );
+    assert.ok(!topology.contract.includes(TOPOLOGY_RUNNER_TEST));
     for (const [layer, files] of Object.entries(INCIDENT_TEST_LAYERS) as [
       keyof typeof INCIDENT_TEST_LAYERS,
       readonly string[],

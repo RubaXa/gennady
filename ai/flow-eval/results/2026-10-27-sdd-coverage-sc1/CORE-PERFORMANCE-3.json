@@ -1,0 +1,99 @@
+{
+  "schema": "sdd-coverage-core-performance.1",
+  "modelCalls": 0,
+  "node": "v22.19.0",
+  "measuredAt": "2026-10-27T15:56:14.590Z",
+  "sourceCommit": "b4e444164d217c13f880648fe0a6b9c9f0150775",
+  "sourceHashes": [
+    {
+      "path": "shared/sdd/coverage.ts",
+      "sha256": "412d18f05385834520a107b5add0d166ed3ab8facc5921116fcea026204cc5b3"
+    },
+    {
+      "path": "shared/sdd/coverage.types.ts",
+      "sha256": "2b543a716cc4719df05ff1f2075a5958266de81fd23543dd0fbe3da8b114984f"
+    },
+    {
+      "path": "ai/flow-eval/scripts/coverage-performance.ts",
+      "sha256": "9a3ba606d5fa8099752dca088da38e67a9e4a17787c72a20bab65c7412fdcf67"
+    }
+  ],
+  "sourceOverlay": true,
+  "externalCommit": "2bb9a8039e5479634f8dfb5a6d234d0991278ace",
+  "trackedPaths": 4048,
+  "codePaths": 3007,
+  "inventoryMs": 8.915292000000022,
+  "externalSourceReads": 1,
+  "externalBytesRead": 7776,
+  "observationMs": 0.438541999999984,
+  "cases": {
+    "noSdd": {
+      "repetitions": 9,
+      "medianMs": 0.001207999999905951,
+      "maxMs": 0.002708999999867956,
+      "declaredFiles": 0,
+      "observedFiles": 0,
+      "rows": 0,
+      "complete": true,
+      "canProceed": true
+    },
+    "portalOnly": {
+      "repetitions": 9,
+      "medianMs": 0.0017080000000078144,
+      "maxMs": 0.0028750000001309672,
+      "declaredFiles": 0,
+      "observedFiles": 0,
+      "rows": 0,
+      "complete": true,
+      "canProceed": true
+    },
+    "moduleAndPhase": {
+      "repetitions": 9,
+      "medianMs": 1.2480840000000626,
+      "maxMs": 1.7590000000000146,
+      "declaredFiles": 3007,
+      "observedFiles": 1,
+      "rows": 1,
+      "complete": false,
+      "canProceed": true
+    }
+  },
+  "scaled": [
+    {
+      "size": 1000,
+      "repetitions": 9,
+      "medianMs": 1.6763750000000073,
+      "maxMs": 2.1676669999999945,
+      "declaredFiles": 1000,
+      "observedFiles": 1000,
+      "rows": 1000,
+      "complete": true,
+      "canProceed": true
+    },
+    {
+      "size": 10000,
+      "repetitions": 9,
+      "medianMs": 14.542916999999989,
+      "maxMs": 21.785708,
+      "declaredFiles": 10000,
+      "observedFiles": 10000,
+      "rows": 10000,
+      "complete": true,
+      "canProceed": true
+    },
+    {
+      "size": 50000,
+      "repetitions": 9,
+      "medianMs": 77.73116699999991,
+      "maxMs": 102.78933299999994,
+      "declaredFiles": 50000,
+      "observedFiles": 50000,
+      "rows": 50000,
+      "complete": true,
+      "canProceed": true
+    }
+  ],
+  "peakRssKiB": 342736,
+  "externalWorktreeUnchanged": true,
+  "limits": "SC1 measures Git path inventory, one actual source observation and pure projection over path-derived declarations. It does not install a portal, run the integrated CLI, prove model behavior, or isolate machine load. RSS is whole benchmark high-water mark."
+}

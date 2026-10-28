@@ -15,7 +15,12 @@ import {
 } from 'node:fs';
 import { realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { inspectRepoPath, type RepoPathExpectation, type RepoPathResult } from './repo-path.ts';
+import {
+  inspectRepoPath,
+  type RepoPathExpectation,
+  type RepoPathResult,
+  type RepoPathSyntax,
+} from './repo-path.ts';
 
 /** @purpose Stable identity of one exact regular non-symlink file below a canonical repository root. */
 export type RepoFileIdentity = {
@@ -29,6 +34,8 @@ export type RepoFileIdentity = {
   dev: number;
   /** @purpose Filesystem inode captured at proof time. */
   ino: number;
+  /** @purpose Preserve the explicitly proven literal syntax during identity revalidation. */
+  syntax?: RepoPathSyntax;
 };
 
 /** @purpose Typed success/failure for repository-file identity operations. */
@@ -40,10 +47,15 @@ export type RepoFileIdentityResult =
  * @purpose Prove one exact repository-relative regular file and capture its device/inode identity.
  * @param root Repository root.
  * @param raw Exact repository-relative file path.
+ * @param [syntax] Explicit literal bracket support; default retains existing path policy.
  * @returns Stable file evidence or one rejection reason.
  */
-export function proveRepoFile(root: string, raw: string): RepoFileIdentityResult {
-  const inspected = inspectRepoPath(root, raw, 'file');
+export function proveRepoFile(
+  root: string,
+  raw: string,
+  syntax: RepoPathSyntax = 'pattern-free'
+): RepoFileIdentityResult {
+  const inspected = inspectRepoPath(root, raw, 'file', syntax);
   if (!inspected.ok) return inspected;
   try {
     const stat = lstatSync(inspected.absolute);
@@ -58,6 +70,7 @@ export function proveRepoFile(root: string, raw: string): RepoFileIdentityResult
         relative: inspected.relative,
         dev: stat.dev,
         ino: stat.ino,
+        syntax,
       },
     };
   } catch (cause) {
@@ -91,7 +104,7 @@ export function proveRepoDestination(
 export function revalidateRepoFile(
   identity: RepoFileIdentity
 ): { ok: true } | { ok: false; detail: string } {
-  const current = proveRepoFile(identity.root, identity.relative);
+  const current = proveRepoFile(identity.root, identity.relative, identity.syntax);
   if (!current.ok) return current;
   if (current.identity.dev !== identity.dev || current.identity.ino !== identity.ino) {
     return { ok: false, detail: 'file identity changed after it was read' };

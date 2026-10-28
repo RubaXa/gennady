@@ -331,6 +331,9 @@ function writeTracker(root: string, rows: readonly { id: string; status?: string
 
 function cleanScopeSpec(): string {
   return [
+    '<!--SECTION:SPEC_ID-->',
+    'DEM',
+    '<!--/SECTION:SPEC_ID-->',
     '<!--SECTION:SCOPE_TYPE-->',
     'product',
     '<!--/SECTION:SCOPE_TYPE-->',

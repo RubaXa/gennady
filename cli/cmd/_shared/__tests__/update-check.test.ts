@@ -1,5 +1,5 @@
 // @file: Unit tests for UpdateCheck service orchestration — temp cache dirs, spawn tracking.
-// @spec: CLI
+// @spec: CLI-UPDATE-CHECK
 // @consumers: UC-tests
 
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';

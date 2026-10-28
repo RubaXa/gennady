@@ -59,6 +59,9 @@ function ticket(taskId: string, done: boolean, pendingDeviation = false): string
 
 const SPEC = [
   '# Core spec',
+  '<!--SECTION:SPEC_ID-->',
+  'CORE',
+  '<!--/SECTION:SPEC_ID-->',
   '<!--SECTION:SCOPE_TYPE-->',
   'product',
   '<!--/SECTION:SCOPE_TYPE-->',

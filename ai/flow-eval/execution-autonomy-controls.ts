@@ -27,7 +27,13 @@ import {
  */
 export function checkExecutionAutonomyInitialOwnership(
   invoke: (...args: string[]) => { status: number | null; stdout: string; stderr: string }
-) {
+): {
+  exitCode: number | null;
+  unresolvedSourceOwners: number;
+  stdout: string;
+  stderr: string;
+  limitation: string;
+} {
   const checked = invoke('sdd-check', '--all', '.');
   if (
     ![0, 1].includes(checked.status ?? -1) ||
@@ -179,6 +185,15 @@ export async function qualifyExecutionAutonomyCase(
       mkdirSync(dirname(join(cwd, path)), { recursive: true });
       writeFileSync(join(cwd, path), bytes);
     }
+    // Current-host qualification materializes the reference's test declarations too.
+    // Frozen fixture inputs and recorded campaigns remain unchanged.
+    writeFileSync(
+      join(cwd, c.module),
+      readFileSync(join(cwd, c.module), 'utf8').replace(
+        '<!--/SECTION:FILE_STRUCTURE-->',
+        `- \`src/${c.scope}.test.ts\`: scenario and rejection tests\n<!--/SECTION:FILE_STRUCTURE-->`
+      )
+    );
     if (id === 'ex2-config') {
       writeFileSync(join(cwd, 'config/runtime.json'), '{"maxWaitMs": 1000}\n');
       cli(

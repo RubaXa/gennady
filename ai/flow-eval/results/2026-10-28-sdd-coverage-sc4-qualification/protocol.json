@@ -1,0 +1,127 @@
+{
+  "schema": "gennady.sdd-coverage-sc4.1",
+  "commits": {
+    "baseline": "b4e444164d217c13f880648fe0a6b9c9f0150775",
+    "candidate": "55ac2143fb3be2c608d214d05faab920ad331b42"
+  },
+  "source": {
+    "sourceCommit": "2bb9a8039e5479634f8dfb5a6d234d0991278ace",
+    "trackedRegularFiles": 4043,
+    "exportedFiles": 4030,
+    "sourceFiles": 3001,
+    "excludedFiles": 13,
+    "excludedContent": 8,
+    "manifestSha256": "ffb454391c00d0b1abd093e1ecdf549dea8933e95be7d83103504f6818635245",
+    "historyExported": false,
+    "originalCheckoutUnchanged": true,
+    "limitation": "Real source snapshot, secret/agent-config exclusions, synthetic phase overlay; not a whole-project build."
+  },
+  "model": "llm-proxy/deepseek-v4-flash",
+  "primaryAttempts": 0,
+  "replacements": 0,
+  "concurrency": 1,
+  "budgetMs": 360000,
+  "scope": "phase worker plus host completion, not whole-task/group close",
+  "publicSourcePolicy": "No private source/paths/free text; numeric/enum/hash allowlist only. Private compact primary/semantic/reflection evidence is retained locally outside Git.",
+  "harness": [
+    {
+      "path": "ai/flow-eval/coverage-benchmark.ts",
+      "sha256": "163472853bc147c2b611107a483fbd6a116745f4a3efef7f26142cb816bcc948"
+    },
+    {
+      "path": "ai/flow-eval/scripts/coverage-benchmark-live.ts",
+      "sha256": "63a17cec853ab5a095dec4883b6c23e2f06b18418b4027391087ca5039b9f9d1"
+    },
+    {
+      "path": "ai/flow-eval/scripts/execution-autonomy-shell-carrier.ts",
+      "sha256": "7b179330bb6a8c4ea0620af5a564be6d1293ec9e0bb3710aae96fed9f414c2cc"
+    },
+    {
+      "path": "ai/flow-eval/dependency-store.ts",
+      "sha256": "689959face5725fb5fb595c372fb33550ed6fc6e39c76c73c1e695d065831a17"
+    },
+    {
+      "path": "ai/flow-eval/opencode-runtime.ts",
+      "sha256": "140566cebcef5a02cc674c19f6e1f056c3fac72aab76f8076f2a7d89c904ef99"
+    },
+    {
+      "path": "ai/flow-eval/evidence.ts",
+      "sha256": "960f74d955fe3df918203c30f0b5b4b7f0c79610845443fdfab08442077566d2"
+    },
+    {
+      "path": "ai/flow-eval/trajectory.ts",
+      "sha256": "027b8f564ce2d448d39e43f7f1c260bc8fabf1aeaf9d20a5344f3d530d6cd486"
+    },
+    {
+      "path": "ai/flow-eval/opencode-client.ts",
+      "sha256": "2a1506deadb87328778660a5c6c74d3c9538ea33c64915f11904b1f632f3bb27"
+    },
+    {
+      "path": "ai/flow-eval/session-directory.ts",
+      "sha256": "c1b191c27dab6f912d9bcb89309690918597c4f4fdc28c819003046794cf866b"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c"
+    }
+  ],
+  "schedule": [
+    {
+      "caseId": "small",
+      "arm": "baseline"
+    },
+    {
+      "caseId": "small",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "large",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "large",
+      "arm": "baseline"
+    },
+    {
+      "caseId": "foreign",
+      "arm": "baseline"
+    },
+    {
+      "caseId": "foreign",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "paths",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "paths",
+      "arm": "baseline"
+    }
+  ],
+  "fixtureHashes": [
+    {
+      "caseId": "small",
+      "sha256": "18846dd1b48c732118b98efbf0f66b912884744d2151d3296a01a22e5d2a3ccf"
+    },
+    {
+      "caseId": "large",
+      "sha256": "8c01e04aa4efd754aeda2ed1688baf1978f3160443d11bce4b13b85363a24c61"
+    },
+    {
+      "caseId": "foreign",
+      "sha256": "06570f3e5801b98ae91861c9bccaa84e3963f12fea08d31a30873e6432733b0a"
+    },
+    {
+      "caseId": "paths",
+      "sha256": "1ac6dcde4ae94178f452e5f6de1311d699a749966b0ce3e79c2df3aa4c304527"
+    }
+  ],
+  "limitations": [
+    "One attempt per case/arm, no universal latency/non-inferiority claim.",
+    "Synthetic phase in exact real source snapshot; repository secrets/agent configs/history excluded, no whole-project build.",
+    "Q1 literal-bracket universal repair remains unverified.",
+    "SDK quiescence is not proof against arbitrary detached writers.",
+    "Token total excludes cache reads; cost zero is not free."
+  ]
+}

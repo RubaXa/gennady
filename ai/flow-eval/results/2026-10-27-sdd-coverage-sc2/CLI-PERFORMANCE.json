@@ -1,0 +1,350 @@
+{
+  "schema": "sdd-coverage-cli-performance/1",
+  "sourceCommit": "b6a125a5f12b4d521b73cc42a741c3b24440434f",
+  "sourceOverlay": true,
+  "sourceHashes": {
+    "cli/cmd/_shared/sdd-coverage-repository.ts": "5cba2e6cca86b332cd722d306b824f085f0775861da6867f46ae7a6ce83bd24b",
+    "cli/cmd/_shared/sdd-coverage-query.ts": "2e48b2fa71f419aa5332389ffef7aa68d56b22a65549e9b0719ffe7aea8395c5",
+    "shared/sdd/coverage.ts": "53c567b9282468c71d0394f1f508baf1ee6999e7eb0ffa4ff84d42e772c71dc4",
+    "shared/sdd/coverage.types.ts": "0aa800e4c5bdf056ecc1f35d80f428c2d14229d61dbb1a672b2d3c0846a13ed5",
+    "shared/common/repo-path.ts": "7add8141441611d4f09b2d44909cb80ecea6880260b1986338e4207f0bb0d3ce",
+    "shared/common/repo-file-identity.ts": "8e6e9f3c4a5b124aa338a4c1dca80367a16c682f03f7b0a7a08bf94b2711767d",
+    "ai/flow-eval/scripts/coverage-cli-performance.ts": "2ec2e570eaccad0739b5505e8d5988352407994cc07f481e53cdf0f72d574f9d"
+  },
+  "compiledEntrypointSha256": "1ef20e176d54a8dd29a250d2ea081753df3358851459fe14ef5ffdc36421a9f1",
+  "realRepositoryCommit": "2bb9a8039e5479634f8dfb5a6d234d0991278ace",
+  "trackedPaths": 4048,
+  "sourcePaths": 3007,
+  "modelCalls": 0,
+  "firstProcessIsNotOsColdCache": true,
+  "countersScope": "explicit adapter reads; Git batch bytes separately; not host syscall accounting",
+  "originalCheckoutUnchanged": true,
+  "sharedDependenciesUntouched": true,
+  "safeCleanup": true,
+  "cases": [
+    {
+      "name": "no-sdd",
+      "firstProcess": {
+        "elapsedMs": 87.31870900000001,
+        "userSeconds": 0.07,
+        "systemSeconds": 0,
+        "peakRssBytes": 74940416,
+        "reads": {
+          "metadataReads": 0,
+          "metadataBytes": 0,
+          "sourceReads": 0,
+          "sourceBytes": 0,
+          "priorBytes": 0
+        },
+        "rows": 0,
+        "complete": true,
+        "canProceed": true,
+        "findings": []
+      },
+      "warmProcesses": [
+        {
+          "elapsedMs": 88.1221250000001,
+          "userSeconds": 0.07,
+          "systemSeconds": 0,
+          "peakRssBytes": 74711040,
+          "reads": {
+            "metadataReads": 0,
+            "metadataBytes": 0,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 88.20166700000004,
+          "userSeconds": 0.07,
+          "systemSeconds": 0,
+          "peakRssBytes": 75628544,
+          "reads": {
+            "metadataReads": 0,
+            "metadataBytes": 0,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 87.61300000000006,
+          "userSeconds": 0.07,
+          "systemSeconds": 0,
+          "peakRssBytes": 74530816,
+          "reads": {
+            "metadataReads": 0,
+            "metadataBytes": 0,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 86.64129200000002,
+          "userSeconds": 0.07,
+          "systemSeconds": 0,
+          "peakRssBytes": 75546624,
+          "reads": {
+            "metadataReads": 0,
+            "metadataBytes": 0,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 90.52300000000014,
+          "userSeconds": 0.07,
+          "systemSeconds": 0,
+          "peakRssBytes": 74629120,
+          "reads": {
+            "metadataReads": 0,
+            "metadataBytes": 0,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        }
+      ],
+      "medianWarmElapsedMs": 88.1221250000001
+    },
+    {
+      "name": "portal-only",
+      "firstProcess": {
+        "elapsedMs": 83.744459,
+        "userSeconds": 0.07,
+        "systemSeconds": 0,
+        "peakRssBytes": 75415552,
+        "reads": {
+          "metadataReads": 1,
+          "metadataBytes": 46,
+          "sourceReads": 0,
+          "sourceBytes": 0,
+          "priorBytes": 0
+        },
+        "rows": 0,
+        "complete": true,
+        "canProceed": true,
+        "findings": []
+      },
+      "warmProcesses": [
+        {
+          "elapsedMs": 80.33987500000012,
+          "userSeconds": 0.07,
+          "systemSeconds": 0,
+          "peakRssBytes": 74874880,
+          "reads": {
+            "metadataReads": 1,
+            "metadataBytes": 46,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 85.661791,
+          "userSeconds": 0.07,
+          "systemSeconds": 0,
+          "peakRssBytes": 73203712,
+          "reads": {
+            "metadataReads": 1,
+            "metadataBytes": 46,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 87.18895799999996,
+          "userSeconds": 0.08,
+          "systemSeconds": 0,
+          "peakRssBytes": 75464704,
+          "reads": {
+            "metadataReads": 1,
+            "metadataBytes": 46,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 88.17362500000013,
+          "userSeconds": 0.08,
+          "systemSeconds": 0,
+          "peakRssBytes": 76218368,
+          "reads": {
+            "metadataReads": 1,
+            "metadataBytes": 46,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        },
+        {
+          "elapsedMs": 88.13874999999985,
+          "userSeconds": 0.08,
+          "systemSeconds": 0,
+          "peakRssBytes": 74907648,
+          "reads": {
+            "metadataReads": 1,
+            "metadataBytes": 46,
+            "sourceReads": 0,
+            "sourceBytes": 0,
+            "priorBytes": 0
+          },
+          "rows": 0,
+          "complete": true,
+          "canProceed": true,
+          "findings": []
+        }
+      ],
+      "medianWarmElapsedMs": 87.18895799999996
+    },
+    {
+      "name": "large-mapping-one-phase",
+      "firstProcess": {
+        "elapsedMs": 112.3542910000001,
+        "userSeconds": 0.1,
+        "systemSeconds": 0.01,
+        "peakRssBytes": 82460672,
+        "reads": {
+          "metadataReads": 3,
+          "metadataBytes": 238662,
+          "sourceReads": 1,
+          "sourceBytes": 7776,
+          "priorBytes": 7828
+        },
+        "rows": 1,
+        "complete": false,
+        "canProceed": true,
+        "findings": ["MISSING_HEADER"]
+      },
+      "warmProcesses": [
+        {
+          "elapsedMs": 110.44029099999989,
+          "userSeconds": 0.1,
+          "systemSeconds": 0.01,
+          "peakRssBytes": 82280448,
+          "reads": {
+            "metadataReads": 3,
+            "metadataBytes": 238662,
+            "sourceReads": 1,
+            "sourceBytes": 7776,
+            "priorBytes": 7828
+          },
+          "rows": 1,
+          "complete": false,
+          "canProceed": true,
+          "findings": ["MISSING_HEADER"]
+        },
+        {
+          "elapsedMs": 111.59683399999994,
+          "userSeconds": 0.1,
+          "systemSeconds": 0.01,
+          "peakRssBytes": 83066880,
+          "reads": {
+            "metadataReads": 3,
+            "metadataBytes": 238662,
+            "sourceReads": 1,
+            "sourceBytes": 7776,
+            "priorBytes": 7828
+          },
+          "rows": 1,
+          "complete": false,
+          "canProceed": true,
+          "findings": ["MISSING_HEADER"]
+        },
+        {
+          "elapsedMs": 111.4975000000004,
+          "userSeconds": 0.1,
+          "systemSeconds": 0.01,
+          "peakRssBytes": 82165760,
+          "reads": {
+            "metadataReads": 3,
+            "metadataBytes": 238662,
+            "sourceReads": 1,
+            "sourceBytes": 7776,
+            "priorBytes": 7828
+          },
+          "rows": 1,
+          "complete": false,
+          "canProceed": true,
+          "findings": ["MISSING_HEADER"]
+        },
+        {
+          "elapsedMs": 115.09545899999966,
+          "userSeconds": 0.1,
+          "systemSeconds": 0.01,
+          "peakRssBytes": 81428480,
+          "reads": {
+            "metadataReads": 3,
+            "metadataBytes": 238662,
+            "sourceReads": 1,
+            "sourceBytes": 7776,
+            "priorBytes": 7828
+          },
+          "rows": 1,
+          "complete": false,
+          "canProceed": true,
+          "findings": ["MISSING_HEADER"]
+        },
+        {
+          "elapsedMs": 115.41266700000006,
+          "userSeconds": 0.1,
+          "systemSeconds": 0.01,
+          "peakRssBytes": 83214336,
+          "reads": {
+            "metadataReads": 3,
+            "metadataBytes": 238662,
+            "sourceReads": 1,
+            "sourceBytes": 7776,
+            "priorBytes": 7828
+          },
+          "rows": 1,
+          "complete": false,
+          "canProceed": true,
+          "findings": ["MISSING_HEADER"]
+        }
+      ],
+      "medianWarmElapsedMs": 111.59683399999994
+    }
+  ]
+}

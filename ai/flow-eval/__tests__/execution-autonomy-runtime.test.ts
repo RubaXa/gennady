@@ -34,6 +34,12 @@ function provision() {
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), bytes);
     }
+    // Qualify this host control for current ownership checks without changing frozen live inputs.
+    const owner = join(root, 'specs/autonomy/autonomy.spec.md');
+    writeFileSync(
+      owner,
+      '<!--SECTION:SPEC_ID-->\nAUT\n<!--/SECTION:SPEC_ID-->\n' + readFileSync(owner, 'utf8')
+    );
     for (const path of BUILTIN_RULE_SOURCES) {
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), readFileSync(join(repository, path), 'utf8'));

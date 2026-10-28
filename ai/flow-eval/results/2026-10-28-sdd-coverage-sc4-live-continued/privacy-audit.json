@@ -1,0 +1,18 @@
+{
+  "schema": "gennady.sc4-publication-privacy.1",
+  "passed": true,
+  "checkedPublicFiles": 66,
+  "configuredCredentialValuesChecked": 2,
+  "configuredCredentialMatches": 0,
+  "rawSourceExports": 0,
+  "rawModelFields": 0,
+  "modelIdentityMatches": 8,
+  "cleanedWorkspaces": 8,
+  "originalCheckoutClean": true,
+  "postflightToolchain": {
+    "node": "v22.19.0",
+    "opencode": "1.17.15",
+    "provenance": "Postflight observation; launcher toolchain also checked before dispatch, no per-attempt binary attestation"
+  },
+  "scope": "Structured-data/token-value/archive checks, not a universal secret detector"
+}

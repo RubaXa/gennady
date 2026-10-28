@@ -20,6 +20,7 @@ import { composeSddPhasePrompt } from '../prompts.ts';
 import { selectCoverageAdapter } from '../../../cli/cmd/testcov/coverage-adapter-registry.ts';
 import { createCoverageArtifactBoundary } from '../../../cli/cmd/testcov/coverage-artifact.ts';
 import { inspectSddPhaseAttempt } from '../../../shared/sdd/verify/sdd-attempt-journal.ts';
+import { parseSpecId } from '../../../shared/sdd/spec-id.ts';
 
 const execFileAsync = promisify(execFile);
 import type {
@@ -438,10 +439,14 @@ test(
         { cwd: executeDirectory, env: { ...process.env, NO_COLOR: '1' } }
       );
       assert.match(authoringCheck.stdout, /✅ clean/);
+      const executionOwner = parseSpecId(executionModule);
+      assert.equal(executionOwner.status, 'valid');
+      if (executionOwner.status !== 'valid') throw new Error('fixture owner is unresolved');
       await writeFile(
         join(executeDirectory ?? '', 'src/slugify.ts'),
         [
           '// @file: Deterministic slug normalization rule for the fixture.',
+          `// @spec: ${executionOwner.id}`,
           '// @consumers: fixture consumer',
           '',
           '/**',
@@ -541,6 +546,7 @@ test(
         slugifyTest,
         [
           '// @file: Contract tests for the slugify fixture.',
+          `// @spec: ${executionOwner.id}`,
           '// @consumers: fixture consumer',
           '// @tasks: SLG-slug',
           '',
@@ -579,6 +585,7 @@ test(
         slugifyTest,
         [
           '// @file: Contract tests for the slugify fixture.',
+          `// @spec: ${executionOwner.id}`,
           '// @consumers: fixture consumer',
           '// @tasks: SLG-slug',
           '',

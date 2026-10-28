@@ -4,7 +4,7 @@
       <Goal>Leave a directly executable durable queue.</Goal>
       <Action>
         Rerun the complete mechanical check after the approval marker is recorded.
-        <ToolCall owner="this-step" result="finalIntegrityGate">npx gennady sdd-check --all .</ToolCall>
+        <ToolCall owner="this-step" result="finalIntegrityGate">npx gennady sdd-check --all --authoring .</ToolCall>
         Consume `finalIntegrityGate`. Report exact ticket
         paths and the next command `/sdd-execute &lt;Task-ID|next|all&gt;`. Stopping here is safe because
         the whole continuation state lives in tickets, indexes, specs, Execution Logs, and Git.

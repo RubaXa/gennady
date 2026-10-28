@@ -226,7 +226,7 @@ npx gennady yagni /path/to/repo
 | `orient`            | V2 resolver relations; legacy headers — read-only migration evidence                           |
 | `sdd-orient`        | SDD-граф; legacy headings — read-only migration context                                        |
 | `sdd-state`         | Детерминированный снимок SDD-состояния проекта                                                 |
-| `sdd-check`         | V2 checks; legacy diagnostics grandfathered, no append-only header gate                        |
+| `sdd-check`         | Declared ownership checks; --all --authoring permits pending headers, strict phase/audit exit  |
 | `sdd-extract`       | Извлечение одной anchored-секции SDD-артефакта                                                 |
 | `sdd-new`           | Scaffold одного SDD v2 артефакта                                                               |
 | `sdd-verify`        | Thin SDD task/phase facade over the universal Verify engine                                    |
@@ -278,3 +278,21 @@ cli/cmd/<name>/
 - `specs/cli/e2e/e2e.spec.md` — e2e-тестирование
 - `specs/cli/testcov/testcov.spec.md` — testcov
 - `specs/cli/yagni/yagni.spec.md` — yagni
+
+## Declared SDD coverage
+
+Read-only; no unclaimed-source scan:
+
+```bash
+npx gennady orient --coverage --spec specs/README.md --json
+npx gennady sdd-check --coverage --task CORE-work --phase P1 --stage preflight --format json
+```
+
+The same adapter supplies both commands. Omit the selection for project declarations, use an exact
+Spec-ID/path for a structural subtree, or a Task-ID/path plus phase for one phase. Default stage is
+`audit`; `authoring`/`preflight` permit visible pending ownership, not completed coverage.
+This is a query, not a gate: exit 0 permits only the selected ownership boundary. These queries
+execute no tests and produce no Verify receipts. `--coverage` does not combine with
+ordinary query/check flags. Existing lifecycle/default check behavior changes only in reviewed SC3.
+JSON declarations are syntax-checked without inserting comments; source files still require a
+canonical leading `@spec` at the strict ownership boundary.

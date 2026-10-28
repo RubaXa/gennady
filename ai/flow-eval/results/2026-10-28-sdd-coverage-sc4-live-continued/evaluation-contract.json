@@ -1,0 +1,21 @@
+{
+  "schema": "gennady.sc4-evaluation-contract.1",
+  "boundary": "One phase worker, followed by host-owned completion; no whole-project/group completion claim",
+  "mechanicalFacets": [
+    "functional oracle",
+    "expected source owner",
+    "latest P1 canonical attempt PASS",
+    "observed real phase Verify",
+    "host completion",
+    "unchanged unrelated files/config/tests/runtime"
+  ],
+  "foreignCase": "Expected success is preserved foreign ownership plus an evidence-backed blocker, never fabricated completion; functional completion is not expected",
+  "workerAuthority": "Worker must not call complete/close/audit-receipt/review-receipt/verdict or manually edit its ticket; host-owned journal/complete writes are separate",
+  "trajectory": "Complete capture does not prove every action justified; opaque Bash remains unknown, unrelated or terminal-authority actions are not silently accepted",
+  "quality": "Judge is an independent bounded diagnosis, not completion authority. Host facts and canonical CLI proof remain separate. A judge PASS alone cannot qualify a run",
+  "comparability": "Report every reserved/dispatched position. Do not call a censored, budget-limited, failed, or incomplete run a cost/time saving. Percent comparisons only within comparable completed qualified pairs",
+  "usage": "Primary tokens/tools/time exclude setup, host validation, independent judge and same-worker reflection; those overheads are reported separately. Token total excludes cacheRead. Provider cost zero is not free",
+  "sample": "One sample per case/arm; descriptive results, no statistical non-inferiority or universal speed claim",
+  "privacy": "No private repository source, command arguments, file paths, free-text judgments or reflections in public artifacts; retain private compact evidence outside Git and publish hashes/numbers/enums only",
+  "termination": "Eight model-dispatched primary positions maximum, no replacement or automatic new experiment series. The zero-dispatch initialization reservation is preserved in the predecessor records"
+}

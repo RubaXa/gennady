@@ -1,5 +1,17 @@
 # Module: `sdd-check`
 
+SC2 adds a separate read-only `--coverage` query shared with `orient --coverage`. Selection is
+project declarations, `--spec <ID|path>`, or `--task <ID|path> --phase <ID>`; ownership stage is
+`--stage authoring|preflight|phase-exit|audit` (default audit). `--format json` returns the same
+`sdd-coverage/1` document as orient. Exit 0 permits only the selected ownership boundary; pending
+is explicitly incomplete and never Verify PASS. Inconsistency exits 1, bad/mixed options exit 2
+before reads. No test execution, receipt creation, source-tree census or lifecycle mutation occurs.
+SC3 applies declarations/current or prior headers to ordinary `--all`/`--changed`: unclaimed sources
+are not adopted. `--all --authoring` checks scaffold integrity while fresh source headers may remain
+pending; removed or foreign ownership still errors. Strict selected phase/group boundaries, not
+this preparation mode, decide completion. A declaration-only plan warning is not an ownership
+audit PASS. Standalone Verify and the scope of its project-authored commands are unchanged.
+
 <!--SECTION:SPEC_ID-->
 
 CLI-SDD-CHECK
@@ -49,7 +61,7 @@ append-only `@tasks`: сохранение и удаление старых head
 - `--task` на легаси-тикете классифицирует его как `--all` (`isTicket`/`isLegacyTicket`) прежде, чем гонять marker-зависимые v2-проверки: тот же файл даёт тот же набор находок и exit-код в `--task` и в `--all` (см. D-CK037)
 - exit `4`, если выбран не ровно один режим из `--task`/`--spec`/`--all`/`--changed`
 - `--changed` получает git evidence через argv-safe process call: proven unborn HEAD означает empty-tree scan по cached/index (включая intent-to-add) + untracked, а corrupt/unavailable git возвращает exit `1` с operation/status/stderr — никогда `clean — 0 files`
-- FO-4: `--all` и `--changed` передают source header в единый file-relations resolver. Полностью V2 repo строг независимо от наличия `@spec`; в mixed repo явный `@spec` — положительный V2 marker, а нетронутый `@tasks`-only source остаётся V1 без новых ownership error/warn. Для V2 проверяются owner resolution, active-writer collision, active spec mismatch и запрет legacy `@tasks`; append-only `@tasks` действует только в V1.
+- FO-4: `--all` и `--changed` проверяют заявленные точными путями исходники и файлы с текущим/прежним `@spec`, а не присваивают владельца всему репозиторию. Непокрытый исходник не обязан получать заголовок. Проверки разрешения owner, active-writer collision, active spec mismatch и запрет legacy `@tasks` сохраняются; прежняя read-only migration-семантика не расширяется.
 - B2-12: consumers, BDD test index, changed-source selection и YAGNI используют один закрытый `shared/sdd/source-extensions.ts`. Уровень доказательства `exact` только у `.ts/.tsx`, для остальных поддержанных языков — `approximate`; это различие не повышает приблизительное наблюдение до точного.
 - General `--task`/`--all`/`--changed` fail closed: выбранный тикет/source, referenced spec, reachable `<DependsOn>` rule или in-scope Markdown subtree, который нельзя прочитать, даёт единый `ERR_CLI_SDD_CHECK_READ_FAILED` с точным путём и причиной; непрочитанное правило никогда не считается dependency-free leaf; только действительно отсутствующие необязательные `specs/`/`tasks/` корни не являются ошибкой
 <!--/SECTION:MODULE_VISION-->

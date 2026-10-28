@@ -76,6 +76,101 @@ scenario/level and weaker checks remain unsupported.
 The replan-corpus lease coordinates replan CLI operations, not external editors or arbitrary authoring.
 Redispatch and fresh Verify use the existing rule resolver/facade, never a second runner.
 
+### 2.5 Declared SDD coverage
+
+| Name                  | Type     | Purpose                                                                                                                |
+| --------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `resolveSddCoverage`  | Function | Pure projection of structural spec/file/phase declarations and fresh observations into stage-aware ownership diagnosis |
+| `CoverageStage`       | Type     | Authoring, preflight, phase exit or selected audit                                                                     |
+| `CoverageSpec`        | Type     | Explicit spec identity, structural child IDs and exact owned file paths                                                |
+| `CoverageTarget`      | Type     | Read/write/delete phase duty or read-only extant historical membership; read inputs never assign ownership             |
+| `CoverageObservation` | Type     | Fresh safe-file/missing/unsafe observation and current/prior headers                                                   |
+| `CoverageSelection`   | Type     | Project, structural spec subtree or exact task/phase                                                                   |
+| `CoverageInput`       | Type     | Explicit declarations and observations; no persistent source inventory                                                 |
+| `CoverageFinding`     | Type     | Error or visible pending obligation with exact origin/path                                                             |
+| `CoverageRow`         | Type     | One path, expected owners, declaration provenance and materialization state                                            |
+| `CoverageResult`      | Type     | Completeness and permission to proceed; never runner-owned Verify evidence                                             |
+
+The SC1 core has no filesystem/process/network writes or reads. Adapters supply validated structural
+edges and safe observations; the core never infers ownership from folders or arbitrary Markdown links.
+Ordinary undeclared files do not require headers. Preflight may proceed with pending ownership;
+phase exit requires its materialized targets, while selected audit still exposes all other declared
+obligations. Missing observations, conflicting owners, unsafe paths, broken child identities and
+cycles cannot produce complete coverage. Removing a header does not withdraw a declaration.
+Explicit deletion differs from unexplained disappearance; a future declaration remains pending,
+not verified implementation. Phase claims may temporarily extend File Mapping but audit requires
+the mapping to catch up. Explicit read-only `--coverage` projections do not replace SC3 lifecycle
+checks at dispatch, Verify terminal, complete, close and positive group audit. A parsed phase identity also supports a genuine no-write phase without a fake
+target; empty ownership coverage does not prove that its declared Verify gates ran.
+
+Repository path proof retains its existing pattern-free default. The coverage reader explicitly
+opts into literal brackets, never glob expansion; identity revalidation preserves that syntax while
+still rejecting traversal, symlink components and non-regular files. Prior Git headers are observed
+for selected paths in one batch, not stored in a separate source inventory.
+
+JSON artifacts use exact declaration ownership rather than inline comments: the adapter must prove a
+regular contained file and parse valid JSON. At phase exit one unambiguous target owner is required;
+at audit the owning File Mapping is also required. This representation is host-derived from `.json`,
+cannot waive a code file's header, and does not replace the project's schema or functional gates.
+Source ownership is parsed only from the canonical leading comment region; an `@spec` inside a
+declaration body is not a file header.
+
+SC3 also supports declaration ownership for `.md`, `.xml`, `.yaml`, `.yml`, `.toml`, `.html`, `.css`,
+`.scss`, `.gitignore`, `.prettierignore`, `.npmignore`, `.nvmrc` and `.npmrc`. It proves only safe regular-file existence;
+it neither reads these artifact contents/Git blobs nor parses prompt markup as XML. Format/schema
+and behavior remain project-gate responsibilities. The closed list excludes secrets and unknown
+binary formats; it cannot waive a supported source's header. JSON still requires a real JSON parse.
+
+Task close projects only that ticket's dependency-ordered final write/delete claims, not its owner's
+entire future implementation. Exact task queries may omit `--phase`; phase queries still inspect
+only that phase. A closing-group audit checks the full selected File Mapping, including pending
+future outputs, and cannot record a PASS receipt while any ownership obligation remains incomplete.
+Extant exact outputs from completed tickets remain read-only membership, not renewed write authority;
+missing historical outputs do not become permanent execution obligations. Completing a ticket must
+not hide an unmapped existing output from the closing-group audit.
+
+Spec projections use the same selected target set for path inclusion, owner inference and row
+diagnostics. Foreign targets cannot add write/delete duties to a selected spec; the project view
+still diagnoses real collisions. Prior headers are historical provenance for removal/disappearance,
+not current owners. An exact phase checks its outputs without traversing its owner's child subtree.
+A malformed unrelated File Mapping path in that owner also belongs to spec/project audit, not to
+the exact task/phase projection. Selected target paths and owner identities remain fail-closed;
+this projection rule does not waive invalid spec IDs, conflicting ownership or malformed targets.
+A real no-write phase has no ownership rows; this is not execution or Verify evidence.
+
+Repository adapters use the same pure filename convention as audit groups to resolve the structural
+task owner (`<name>.task.<ID>.md` → co-located `<name>.spec.md`). An explicit Owning Spec must agree
+with that exact path; malformed, duplicate or foreign declarations fail closed. Scope and arbitrary
+Spec References do not assign ownership. Exact inline and nested phase path lists are supported;
+parenthesized annotations are labels, not extra paths. The closed no-write labels are `none`, `—`
+and `(нет — проверочная фаза)`; mixing a label and paths is invalid. Directory expansion and prose
+such as conditional `remove …` are not write/delete declarations: list exact files and explicit
+Deleted Files instead. Visible text around HTML comments remains declarative; commented/fenced
+examples never add claims.
+
+A unique existing File Mapping determines the implementation owner of a target even when its ticket
+belongs to a different structural context; ticket context must not reparent that file. Only a new
+unmapped output defaults to its ticket owner. Bullet colon/dash and explicit File/Path table columns
+are accepted. Relative-looking names remain literal repository paths: no source-root guess or
+directory expansion is performed.
+
+Coverage source reads conservatively exclude the reserved segments `node_modules`, `.git`, `dist`,
+`coverage`, `build` and `out`, case-insensitively at any depth. This is an explicit coverage-reader
+boundary, not a claim that every directory called `build` is unsafe, and not a new Verify/write
+permission. Excluded, unsafe, unreadable and unsupported-format paths cannot enter either worktree
+reads or Git prior-content batches. Supported missing files retain prior evidence for tombstones
+and unexpected deletion. No repository-wide source scan or persistent exception list is introduced.
+
+**File Mapping:**
+
+- `shared/common/sync/sync-core.shared.ts`: shared sync package resolution and byte comparison
+- `shared/common/sync/sync-formatter.shared.ts`: shared sync result formatting
+- `shared/common/sync/sync-deps.type.ts`: shared sync dependency port
+- `shared/sdd/coverage.ts`: stage-aware coverage projection
+- `shared/sdd/coverage.types.ts`: canonical input and result types
+- `shared/sdd/coverage-repository.ts`: read-only repository observations shared across SDD consumers
+- `shared/sdd/__tests__/coverage.test.ts`: deterministic ownership and scale controls
+
 ## 3. File Structure
 
 ```

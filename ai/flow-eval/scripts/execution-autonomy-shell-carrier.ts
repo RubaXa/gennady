@@ -4,6 +4,7 @@
 
 import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 
 /** @purpose Materialize a host-owned shell boundary outside worker write zones; not a general OS sandbox framework.
  * @param options Exact host-owned paths and a minimal executable search path, never provider credentials.
@@ -22,6 +23,8 @@ export function createExecutionShellCarrier(options: {
   workspaceRoot: string;
   /** @purpose Host-selected executable directories; no inherited environment is copied. */
   path: string;
+  /** @purpose Opt-in benchmark: deny other user/temp/volume contents while retaining OS runtime reads. */
+  restrictReadsToWorkspace?: boolean;
 }): {
   /** @purpose Absolute host-owned bash wrapper selected by the OpenCode config. */
   shell: string;
@@ -105,7 +108,10 @@ export const CleanExecutionEnvironment = async () => ({
     mkdirSync(home,{recursive:true,mode:0o700}); mkdirSync(tmp,{recursive:true,mode:0o700});
     const profile=join(${JSON.stringify(profileDirectory)},name+'.sb');
     const writes='(deny file-write* (require-all (require-not (subpath '+JSON.stringify(checkout)+')) (require-not (literal "/dev/null"))))\\n';
-    writeFileSync(profile,${JSON.stringify(profileBase)}+writes,{mode:0o600});
+    const allowedReads=${JSON.stringify(reads)};
+    const privateDataRoots=${JSON.stringify([...new Set([home, '/Users', '/Volumes', '/private/tmp', realpathSync(tmpdir())])])};
+    const readBoundary=${options.restrictReadsToWorkspace === true} ? '(deny file-read-data (require-all (require-any '+privateDataRoots.map(p=>'(subpath '+JSON.stringify(p)+')').join(' ')+') (require-not (subpath '+JSON.stringify(checkout)+')) '+allowedReads.map(p=>'(require-not (subpath '+JSON.stringify(p)+'))').join(' ')+'))\\n' : '';
+    writeFileSync(profile,${JSON.stringify(profileBase)}+writes+readBoundary,{mode:0o600});
     for (const key of Object.keys(process.env)) output.env[key] = undefined;
     Object.assign(output.env, ${JSON.stringify(env)}, {HOME:home,TMPDIR:tmp,GENNADY_EXECUTION_PROFILE:profile,GENNADY_EXECUTION_HOME:home,GENNADY_EXECUTION_TMP:tmp});
   }

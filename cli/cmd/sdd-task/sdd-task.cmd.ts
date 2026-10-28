@@ -7,6 +7,7 @@ import { resolve, relative, join, dirname } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { extractSection, extractHeadingSection } from '../../../shared/sdd/section.ts';
+import { sddCoverageIssue } from '../../../shared/sdd/coverage-repository.ts';
 import {
   parseMetaInfo,
   parsePhasesOverview,
@@ -715,6 +716,12 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         `phase '${phaseId}' verification plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
       );
     }
+    const coverageIssue = sddCoverageIssue(
+      root,
+      { kind: 'phase', task: resolved.identity.relative, phase: phaseId },
+      'preflight'
+    );
+    if (coverageIssue) return phaseEvidenceError(coverageIssue);
     const phaseOutcome = formatPhase(
       meta,
       phases,
@@ -724,9 +731,12 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
       phaseId,
       auditRounds,
       {
-        readFiles: phasePaths.paths.targets.filter(
-          (target) => !phasePaths.paths.createTargets.includes(target)
-        ),
+        readFiles: [
+          ...phasePaths.paths.targets.filter(
+            (target) => !phasePaths.paths.createTargets.includes(target)
+          ),
+          ...phasePaths.paths.deleted.filter((path) => existsSync(join(root, path))),
+        ],
         createFiles: phasePaths.paths.createTargets,
       },
       verificationPlan ?? undefined,

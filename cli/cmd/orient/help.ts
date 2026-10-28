@@ -15,6 +15,16 @@ export function printHelp(): void {
   console.info('  npx gennady orient [options] [keyword]');
   console.info('');
   console.info('Options:');
+  console.info(
+    '  --coverage          Query declared SDD coverage without scanning unclaimed sources'
+  );
+  console.info('                      Optional --spec ID/path or --task ID/path [--phase ID]');
+  console.info(
+    '                      --stage authoring|preflight|phase-exit|audit (default audit)'
+  );
+  console.info(
+    '                      --json: versioned map + explicit read counters, not Verify PASS'
+  );
   console.info('  --file=<path>       Show detailed view of a specific file (repeatable)');
   console.info('  --dir=<path>        Limit scanning to a directory');
   console.info('  --task=<ACR-slug>   Find canonical resolver relations (repeatable)');
@@ -35,6 +45,8 @@ export function printHelp(): void {
   console.info('  --json              Emit versioned relations JSON for one --file');
   console.info('');
   console.info('Examples:');
+  console.info('  npx gennady orient --coverage --spec specs/README.md --json');
+  console.info('  npx gennady orient --coverage --task CORE-work --phase P1 --stage preflight');
   console.info('  npx gennady orient                        Project map (S1)');
   console.info('  npx gennady orient --file=index.ts        Detailed file view (S5)');
   console.info('  npx gennady orient --file=index.ts --history  Expand ownership history');

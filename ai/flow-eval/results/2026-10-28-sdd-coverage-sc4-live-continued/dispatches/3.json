@@ -1,0 +1,7 @@
+{
+  "index": 3,
+  "caseId": "large",
+  "arm": "baseline",
+  "requestedModel": "llm-proxy/deepseek-v4-flash",
+  "at": "2026-10-28T07:52:18.262Z"
+}

@@ -22,6 +22,7 @@ import { BUILTIN_RULE_SOURCES } from '../../../../shared/rules/builtin-rule-sour
 import { resolveSddRuleSnapshot } from '../../../../shared/rules/sdd-rule-snapshot.ts';
 import type { RemotePipelineObserver } from '../../../../shared/verify/execution/remote-watcher.ts';
 import { runSddVerifyFacade } from '../sdd-verify.facade.ts';
+import { runCli } from '../../../__tests__/tool-behavior/run-cli.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..', '..');
 
@@ -108,7 +109,11 @@ function fixture(ruleSource = 'ai/directives/coding/typescript-rules.xml'): {
     join(root, 'package.json'),
     JSON.stringify({ name: 'sdd-rules-fixture', private: true, scripts: {} })
   );
-  writeFileSync(join(root, 'src', 'app.ts'), 'export const app = true;\n');
+  writeFileSync(join(root, 'src', 'app.ts'), '// @spec: APP\nexport const app = true;\n');
+  writeFileSync(
+    join(root, 'specs', 'app', 'app.spec.md'),
+    '<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n'
+  );
   for (const source of BUILTIN_RULE_SOURCES) {
     mkdirSync(dirname(join(root, source)), { recursive: true });
     writeFileSync(join(root, source), readFileSync(join(REPO_ROOT, source), 'utf8'));
@@ -175,7 +180,10 @@ function fixture(ruleSource = 'ai/directives/coding/typescript-rules.xml'): {
       '',
     ].join('\n')
   );
-  writeFileSync(join(root, 'specs', 'app', 'app.spec.md'), '# App\n');
+  writeFileSync(
+    join(root, 'specs', 'app', 'app.spec.md'),
+    '<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n'
+  );
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'add', '.');
   git(root, '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'fixture');
@@ -238,7 +246,6 @@ describe('runSddVerifyFacade RuleSnapshot integration', () => {
   it('keeps a deletion-only phase as exact tombstone scope instead of widening to all-scope', async () => {
     const { root, ticket, cleanup } = fixture();
     try {
-      unlinkSync(join(root, 'src', 'app.ts'));
       writeFileSync(
         ticket,
         readFileSync(ticket, 'utf8').replace(
@@ -246,6 +253,18 @@ describe('runSddVerifyFacade RuleSnapshot integration', () => {
           '- **Deleted Files:**\n  - src/app.ts'
         )
       );
+      const dispatch = runCli(
+        ['sdd-task', 'specs/app/app.task.APP-rules.md', '--phase', 'P1'],
+        root
+      );
+      assert.equal(dispatch.exitCode, 0, dispatch.stdout + dispatch.stderr);
+      assert.match(dispatch.stdout, /READ files:\s+src\/app\.ts/);
+      const notDeleted = await runSddVerifyFacade(root, 'specs/app/app.task.APP-rules.md', 'P1', {
+        homeDirectory: root,
+      });
+      assert.notEqual(notDeleted.exitCode, 0);
+      assert.equal(notDeleted.report, undefined);
+      unlinkSync(join(root, 'src', 'app.ts'));
       const result = await runSddVerifyFacade(root, 'specs/app/app.task.APP-rules.md', 'P1', {
         homeDirectory: root,
       });

@@ -31,6 +31,7 @@ import { fileRelationsDocument, renderFileRelations } from './render/render-file
 import type { OrientArgs, ScannedFile, ExportedEntity } from './orient.types.ts';
 
 import { parseOrientArgs } from './orient.types.ts';
+import { runSddCoverageQuery } from '../_shared/sdd-coverage-query.ts';
 
 /**
  * @purpose CLI entry point for gennady orient: routes to S1-S9 handlers based on parsed args.
@@ -39,6 +40,12 @@ import { parseOrientArgs } from './orient.types.ts';
  * @sideEffect File system: reads .ts files via scanFiles; console output via render functions.
  */
 export async function run(rawArgs: string[]): Promise<void> {
+  if (rawArgs.some((arg) => arg === '--coverage' || arg.startsWith('--coverage='))) {
+    const result = runSddCoverageQuery(rawArgs, process.cwd());
+    console.log(result.text);
+    process.exitCode = result.exitCode;
+    return;
+  }
   logger.debug('[OrientCommand#run] [idle → parsing]');
   const args = parseOrientArgs(rawArgs);
   const projectRoot = resolve('.');

@@ -17,7 +17,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import os from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { it } from 'node:test';
 import { appendExecutionDecision } from '../../deviation.ts';
 import { technicalReplanBase } from '../../technical-replan.ts';
@@ -31,6 +31,7 @@ import {
   createRepositoryRootCommandIdentity,
 } from '../../../verify/reporting/command-identity.ts';
 import {
+  currentSddPhaseWorktreeDigest,
   inspectSddPhaseAttempt,
   runWithSddAttemptJournal,
   validateCurrentSddPhaseAttempt,
@@ -159,14 +160,20 @@ function git(root: string, ...args: string[]): string {
   }).trim();
 }
 
-function fixture(): {
+function fixture(canonicalOwner = false): {
   readonly root: string;
   readonly ticket: string;
   readonly cleanup: () => void;
 } {
   const root = mkdtempSync(join(tmpdir(), 'sdd-attempt-journal-'));
   mkdirSync(join(root, 'specs'));
-  const ticket = join(root, 'specs', 'task.md');
+  const ticket = join(root, 'specs', canonicalOwner ? 'demo.task.work.md' : 'task.md');
+  if (canonicalOwner) {
+    writeFileSync(
+      join(root, 'specs/demo.spec.md'),
+      '<!--SECTION:SPEC_ID-->\nDEM\n<!--/SECTION:SPEC_ID-->\n'
+    );
+  }
   writeFileSync(
     ticket,
     [
@@ -188,12 +195,41 @@ function fixture(): {
       '',
     ].join('\n')
   );
-  writeFileSync(join(root, 'source.ts'), 'export const value = 1;\n');
+  writeFileSync(
+    join(root, 'source.ts'),
+    `${canonicalOwner ? '// @spec: DEM\n' : ''}export const value = 1;\n`
+  );
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'add', '.');
   git(root, 'commit', '-qm', 'fixture');
   return { root, ticket, cleanup: () => rmSync(root, { recursive: true, force: true }) };
 }
+
+it('keeps an earlier phase identity stable across a declared later literal-bracket deletion', () => {
+  const f = fixture();
+  try {
+    const later = join(f.root, '[old].ts');
+    writeFileSync(later, 'export const old = 1;\n');
+    writeFileSync(
+      f.ticket,
+      readFileSync(f.ticket, 'utf8')
+        .replace('| P1 | unit | — | [ ] |', '| P1 | unit | — | [ ] |\n| P2 | code | P1 | [ ] |')
+        .replace(
+          '<!--SECTION:EXECUTION_LOG-->',
+          '<!--SECTION:PHASE_P2-->\n- **Target Files:** none\n- **Deleted Files:** `[old].ts`\n<!--/SECTION:PHASE_P2-->\n<!--SECTION:EXECUTION_LOG-->'
+        )
+    );
+    git(f.root, 'add', '.');
+    git(f.root, 'commit', '-qm', 'declare later deletion');
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+    unlinkSync(later);
+    assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+    writeFileSync(join(f.root, 'source.ts'), 'export const value = 2;\n');
+    assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+  } finally {
+    f.cleanup();
+  }
+});
 
 function evidence(ticket: string): Record<string, unknown> {
   const match = /<!--SDD_VERIFY_EVIDENCE:([A-Za-z0-9_-]+)-->/.exec(readFileSync(ticket, 'utf8'));
@@ -212,11 +248,83 @@ function lockOwnerPath(root: string, ticket: string): string {
   return join(root, '.git', 'gennady', 'sdd-attempts', id, 'owner.json');
 }
 
-it('replan stales old prerequisite proof and can recover by re-verifying DONE without erasing any attempt', async () => {
+it('releases the lease when initial freshness calculation fails, allowing a corrected retry', async () => {
   const f = fixture();
   try {
+    const original = readFileSync(f.ticket, 'utf8');
+    writeFileSync(f.ticket, original.replace('SECTION:PHASES_OVERVIEW', 'SECTION:BROKEN_OVERVIEW'));
+    let calls = 0;
+    const verify = () =>
+      runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: 'P1',
+        run: async () => {
+          calls++;
+          return {
+            exitCode: 0,
+            stdout: '',
+            stderr: '',
+            report: report(f.root, [result('pass', true)]),
+          };
+        },
+      });
+    await assert.rejects(verify(), /SDD_VERIFY_ATTEMPT_SCOPE_INVALID/);
+    assert.equal(calls, 0);
+    assert.equal(existsSync(lockOwnerPath(f.root, f.ticket)), false);
+    assert.equal(readFileSync(f.ticket, 'utf8').includes('SDD_VERIFY_EVIDENCE:'), false);
+    writeFileSync(f.ticket, original);
+    assert.equal((await verify()).exitCode, 0);
+    assert.equal(calls, 1);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('does not block a current attempt or exclude files using malformed downstream declarations', async () => {
+  for (const later of [
+    '<!--SECTION:PHASE_P2-->\n- **Target Files:** `src/`, `source.ts`\n<!--/SECTION:PHASE_P2-->\n',
+    '',
+  ]) {
+    const f = fixture();
+    try {
+      writeFileSync(
+        f.ticket,
+        readFileSync(f.ticket, 'utf8')
+          .replace('| P1 | unit | — | [ ] |', '| P1 | unit | — | [ ] |\n| P2 | code | P1 | [ ] |')
+          .replace('<!--SECTION:EXECUTION_LOG-->', later + '<!--SECTION:EXECUTION_LOG-->')
+      );
+      const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+      const outcome = await runWithSddAttemptJournal({
+        root: f.root,
+        ticketPath: f.ticket,
+        sddPhase: 'P1',
+        run: async () => ({
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+          report: report(f.root, [result('pass', true)]),
+        }),
+      });
+      assert.equal(outcome.exitCode, 0);
+      assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+      writeFileSync(join(f.root, 'source.ts'), 'export const value = 2;\n');
+      assert.notEqual(
+        currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'),
+        before,
+        'a partially parsed future list must not suppress source freshness'
+      );
+    } finally {
+      f.cleanup();
+    }
+  }
+});
+
+it('replan stales old prerequisite proof and can recover by re-verifying DONE without erasing any attempt', async () => {
+  const f = fixture(true);
+  try {
     mkdirSync(join(f.root, 'src'));
-    writeFileSync(join(f.root, 'src/source.ts'), 'export const value = 1;\n');
+    writeFileSync(join(f.root, 'src/source.ts'), '// @spec: DEM\nexport const value = 1;\n');
     const initial = readFileSync(f.ticket, 'utf8')
       .replace(
         '# Task',
@@ -245,7 +353,7 @@ it('replan stales old prerequisite proof and can recover by re-verifying DONE wi
     const done = runCli(
       [
         'sdd-log',
-        'specs/task.md',
+        relative(f.root, f.ticket),
         'complete',
         'artifacts: [src/source.ts]; decisions: []; open: []; deviations: []',
         '--phase',
@@ -271,7 +379,7 @@ it('replan stales old prerequisite proof and can recover by re-verifying DONE wi
     const replan = runCli(
       [
         'sdd-log',
-        'specs/task.md',
+        relative(f.root, f.ticket),
         'replan',
         '--phase',
         'P2',
@@ -308,7 +416,7 @@ it('replan stales old prerequisite proof and can recover by re-verifying DONE wi
 });
 
 it('keeps P1 proof current after a downstream decision and operator verdict, but not semantic decision or plan edits', async () => {
-  const f = fixture();
+  const f = fixture(true);
   try {
     const decision = {
       id: 'DEM-DL-1',
@@ -348,7 +456,7 @@ it('keeps P1 proof current after a downstream decision and operator verdict, but
     const complete = runCli(
       [
         'sdd-log',
-        'specs/task.md',
+        relative(f.root, f.ticket),
         'complete',
         'artifacts: [source.ts]; decisions: [bounded retry]; open: []; deviations: [DEM-DL-1]',
         '--phase',
@@ -366,7 +474,7 @@ it('keeps P1 proof current after a downstream decision and operator verdict, but
     const downstream = runCli(
       [
         'sdd-log',
-        'specs/task.md',
+        relative(f.root, f.ticket),
         'decision',
         '--phase',
         'P2',
@@ -381,7 +489,7 @@ it('keeps P1 proof current after a downstream decision and operator verdict, but
       { ok: true },
       'a downstream choice must not stale P1'
     );
-    writeFileSync(join(f.root, 'later.ts'), 'export const later = 2;\n');
+    writeFileSync(join(f.root, 'later.ts'), '// @spec: DEM\nexport const later = 2;\n');
     await runWithSddAttemptJournal({
       root: f.root,
       ticketPath: f.ticket,
@@ -396,7 +504,7 @@ it('keeps P1 proof current after a downstream decision and operator verdict, but
     const completeP2 = runCli(
       [
         'sdd-log',
-        'specs/task.md',
+        relative(f.root, f.ticket),
         'complete',
         'artifacts: [later.ts]; decisions: [downstream]; open: []; deviations: [DEM-DL-2]',
         '--phase',
@@ -407,7 +515,7 @@ it('keeps P1 proof current after a downstream decision and operator verdict, but
     assert.equal(completeP2.exitCode, 0, completeP2.stdout + completeP2.stderr);
     assert.deepEqual(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P2'), { ok: true });
     const verdict = runCli(
-      ['sdd-log', 'specs/task.md', 'deviation-verdict', 'DEM-DL-1', 'accepted'],
+      ['sdd-log', relative(f.root, f.ticket), 'deviation-verdict', 'DEM-DL-1', 'accepted'],
       f.root
     );
     assert.equal(verdict.exitCode, 0, verdict.stdout + verdict.stderr);

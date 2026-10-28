@@ -232,6 +232,26 @@ describe('callable SDD-v2 action-call inventory', () => {
     );
   });
 
+  it('coverage Action schemas accept exact queries and reject mixed, duplicate and invalid contexts', () => {
+    for (const cmd of ['orient', 'sdd-check']) {
+      const check = (argsRaw: string) =>
+        validateToolCallSyntax({ cmd, argsRaw, raw: `npx gennady ${cmd} ${argsRaw}` });
+      assert.equal(check('--coverage --spec specs/app/app.spec.md --stage audit --json'), null);
+      assert.equal(check('--coverage --task APP-work --phase P1 --stage phase-exit --json'), null);
+      for (const args of [
+        '--coverage --spec APP --task APP-work',
+        '--coverage --phase P1',
+        '--coverage --stage phase-exit',
+        '--coverage --stage magic',
+        '--coverage --json --format json',
+        '--coverage --task APP-work --task APP-other',
+        '--coverage --file src/app.ts',
+        '--coverage=true',
+      ])
+        assert.notEqual(check(args), null, `${cmd} ${args}`);
+    }
+  });
+
   it('registers scaffold feasibility and rejects an unmarked Action call or invalid flags', () => {
     assert.deepStrictEqual(
       unclassifiedActionCommands(
@@ -667,7 +687,10 @@ describe('historical SDD agent-confusion regressions', () => {
     assert.match(mechanical, /return to STEP_1_DERIVE/);
     assert.match(mechanical, /do not\s+patch the failed ticket locally/i);
     assert.match(mechanical, /H_TICKET_AUTHORING_INVALID/);
-    assert.match(mechanical, /result="integrityGate">npx gennady sdd-check --all \.<\/ToolCall>/);
+    assert.match(
+      mechanical,
+      /result="integrityGate">npx gennady sdd-check --all --authoring \.<\/ToolCall>/
+    );
   });
 
   it('skills advertise only implemented audit/review modes', () => {

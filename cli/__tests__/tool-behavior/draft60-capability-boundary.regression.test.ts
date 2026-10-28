@@ -137,6 +137,7 @@ function draft60Repo(): { root: string } {
       [LATE_RUNTIME_TICKET]: TA_DEPS,
       'specs/infra/infra.spec.md': [
         '# Infra',
+        '<!--SECTION:SPEC_ID-->\nINF\n<!--/SECTION:SPEC_ID-->',
         '<!--SECTION:SCOPE_TYPE-->',
         'infrastructure',
         '<!--/SECTION:SCOPE_TYPE-->',

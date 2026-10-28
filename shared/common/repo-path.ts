@@ -8,12 +8,13 @@ import { isAbsolute, relative, resolve, sep } from 'node:path';
 /** @purpose Filesystem state required at the final path component. */
 export type RepoPathExpectation = 'file' | 'missing' | 'potential';
 
+/** @purpose Explicit literal-route handling; existing callers retain rejection of bracket patterns. */
+export type RepoPathSyntax = 'pattern-free' | 'literal-brackets';
+
 /** @purpose A normalized, proven repo-local path or one actionable rejection reason. */
 export type RepoPathResult =
   | { ok: true; absolute: string; relative: string }
   | { ok: false; detail: string };
-
-const GLOB_META = /[*?\[\]{}]/;
 
 function slash(path: string): string {
   return path.split(sep).join('/');
@@ -26,12 +27,14 @@ function slash(path: string): string {
  * @param root Repository root; it must already exist.
  * @param raw Operator- or ticket-supplied repo-relative path.
  * @param expectation Required final filesystem state.
+ * @param [syntax] Literal brackets are opt-in; no expansion occurs in either mode.
  * @returns Normalized path evidence, or a teaching rejection.
  */
 export function inspectRepoPath(
   root: string,
   raw: string,
-  expectation: RepoPathExpectation
+  expectation: RepoPathExpectation,
+  syntax: RepoPathSyntax = 'pattern-free'
 ): RepoPathResult {
   if (!raw || raw === 'none') return { ok: false, detail: 'path is empty or a placeholder' };
   if (raw !== raw.trim() || /[\0\r\n]/.test(raw)) {
@@ -40,7 +43,8 @@ export function inspectRepoPath(
   if (isAbsolute(raw) || /^[A-Za-z]:[\\/]/.test(raw)) {
     return { ok: false, detail: 'absolute paths are forbidden' };
   }
-  if (GLOB_META.test(raw)) return { ok: false, detail: 'path must be exact, not a glob' };
+  if ((syntax === 'literal-brackets' ? /[*?{}]/ : /[*?\[\]{}]/).test(raw))
+    return { ok: false, detail: 'path must be exact, not a glob' };
   const rawSegments = raw.split(/[\\/]/);
   if (rawSegments.includes('..')) return { ok: false, detail: '`..` path segments are forbidden' };
 

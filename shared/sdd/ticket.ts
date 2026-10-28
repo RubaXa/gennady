@@ -2,7 +2,118 @@
 // @spec: SHARED
 // @consumers: sdd-task.cmd
 
+import { nextMarkdownFence, type MarkdownFence } from './markdown-fence.ts';
 import { lexMarkdownTableRow, unescapeMarkdownTablePipes } from './markdown-table.ts';
+
+/**
+ * @purpose Visible declaration text only; code fences and HTML comments cannot add authority.
+ * @param content Raw ticket/spec Markdown.
+ * @returns Visible prose with hidden regions blanked, preserving line separation.
+ */
+export function visibleSddMarkdown(content: string): string {
+  let fence: MarkdownFence | null = null;
+  let comment = false;
+  return content
+    .split('\n')
+    .map((line) => {
+      if (fence !== null) {
+        fence = nextMarkdownFence(line, fence);
+        return '';
+      }
+      let visible = '';
+      let offset = 0;
+      while (offset < line.length) {
+        if (comment) {
+          const end = line.indexOf('-->', offset);
+          if (end < 0) break;
+          comment = false;
+          offset = end + 3;
+        } else {
+          const start = line.indexOf('<!--', offset);
+          if (start < 0) {
+            visible += line.slice(offset);
+            break;
+          }
+          visible += line.slice(offset, start);
+          comment = true;
+          offset = start + 4;
+        }
+      }
+      fence = nextMarkdownFence(visible, null);
+      return fence === null ? visible : '';
+    })
+    .join('\n');
+}
+
+const noWriteLabels = new Set(['none', '—', '(нет — проверочная фаза)']);
+
+/**
+ * @purpose Decode exact inline or nested path declarations, rejecting prose instead of proving empty output.
+ * @param content Raw phase declaration body.
+ * @param label Canonical write or delete path field.
+ * @param fail Receives every malformed or ambiguous declaration without inventing authority.
+ * @returns Exact literal paths; no-write labels produce an empty list, not Verify proof.
+ */
+export function parsePhasePaths(
+  content: string,
+  label: 'Target Files' | 'Deleted Files',
+  fail: (detail: string) => void
+): string[] {
+  const lines = visibleSddMarkdown(content).split('\n');
+  const field = new RegExp(`^\\s*-\\s+\\*\\*${label}:\\*\\*[ \\t]*(.*)$`);
+  const indexes = lines.flatMap((line, index) => (field.test(line) ? [index] : []));
+  if (indexes.length === 0) {
+    if (label === 'Target Files') fail('Missing canonical Target Files field');
+    return [];
+  }
+  if (indexes.length !== 1) {
+    fail(`Duplicate ${label} fields`);
+    return [];
+  }
+  const start = indexes[0]!;
+  const inline = field.exec(lines[start]!)![1]!.trim();
+  const nested: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (!line.trim()) continue;
+    if (/^\s*(?:-\s+)?\*\*[^*]+\*\*|^\s*#{1,6}\s/.test(line)) break;
+    const bullet = /^\s+-\s+(.+)$/.exec(line);
+    if (!bullet) {
+      fail(`${label} needs exact inline paths or nested path bullets`);
+      return [];
+    }
+    nested.push(bullet[1]!.trim());
+  }
+  if (inline && nested.length) {
+    fail(`${label} mixes inline and nested declarations`);
+    return [];
+  }
+  const entries = inline ? [inline] : nested;
+  if (entries.length === 1 && noWriteLabels.has(entries[0]!.toLowerCase())) return [];
+  const paths: string[] = [];
+  for (const entry of entries) {
+    let remaining = entry;
+    if (noWriteLabels.has(entry.toLowerCase()) || /[,;]\s*$/.test(entry)) {
+      fail(`${label} mixes a no-write label or empty entry with paths`);
+      return [];
+    }
+    while (remaining) {
+      const match =
+        /^(?:`([^`\r\n]+)`|([^\s`,;()]+))(?:[ \t]+\([^()\r\n]*\))?[ \t]*(?:[,;][ \t]*|$)/.exec(
+          remaining
+        );
+      const path = match?.[1] ?? match?.[2];
+      if (!match || !path || path.endsWith('/') || noWriteLabels.has(path.toLowerCase())) {
+        fail(
+          `${label} must list exact files; put unconditional removals in Deleted Files, not prose or directories`
+        );
+        return [];
+      }
+      paths.push(path);
+      remaining = remaining.slice(match[0].length);
+    }
+  }
+  return paths;
+}
 
 /** @purpose One Spec Reference entry from Meta. */
 export type SpecRef = {
@@ -52,6 +163,8 @@ export type PhaseDetail = {
   rules: string[];
   /** @purpose Target file paths the phase may write. */
   targetFiles: string[];
+  /** @purpose Malformed declarations must block path/phase authority, never become an empty plan. */
+  pathIssues?: string[];
   /** @purpose Repo-local tracked paths this phase intentionally removes. */
   deletedFiles: string[];
   /** @purpose Missing readiness gates this phase structurally creates; absent for ordinary phases. */
@@ -282,15 +395,16 @@ export function parsePhasesOverview(body: string): PhaseOverview[] {
  * @returns The PhaseDetail (objective, rule links, target files, inputs, exit).
  */
 export function parsePhaseDetail(phaseBody: string): PhaseDetail {
+  const pathIssues: string[] = [];
+  const note = (detail: string) => pathIssues.push(detail);
+  const targetFiles = parsePhasePaths(phaseBody, 'Target Files', note);
+  const deletedFiles = parsePhasePaths(phaseBody, 'Deleted Files', note);
   return {
+    ...(pathIssues.length ? { pathIssues } : {}),
     objective: inlineField(phaseBody, 'Objective'),
     rules: bulletsUnder(phaseBody, 'Rules').map((b) => parseLink(b).anchor || parseLink(b).name),
-    // Backticks are presentation. `*` is path syntax (glob) and must survive so strict consumers
-    // such as sdd-verify can reject it instead of silently turning `src/*.ts` into `src/.ts`.
-    targetFiles: bulletsUnder(phaseBody, 'Target Files').map((b) => b.replace(/`/g, '').trim()),
-    deletedFiles: bulletsUnder(phaseBody, 'Deleted Files')
-      .map((b) => b.replace(/`/g, '').trim())
-      .filter((path) => path !== 'none' && path !== '—'),
+    targetFiles,
+    deletedFiles,
     readinessGates: bulletsUnder(phaseBody, 'Readiness Gates').map((b) =>
       b.replace(/`/g, '').trim()
     ),
