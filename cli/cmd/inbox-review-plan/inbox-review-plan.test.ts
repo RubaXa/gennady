@@ -57,8 +57,9 @@ function commitAll(dir: string, message: string): void {
 
 // #region START_VALIDATE_TEST_HELPERS — hand-built report-dir fixtures for --validate schema gate
 
-const CANDIDATES_HEADER = '| ID | Файл | Строка | Проблема | Ось | Вид | Важность |';
-const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- |';
+const CANDIDATES_HEADER =
+  '| ID | Файл | Строка | Проблема | Ось | Вид | Важность | Разбор | Локус |';
+const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- | --- | --- |';
 
 function taskContent(
   opts: {
@@ -77,7 +78,7 @@ function taskContent(
     context = 'Контекст задачи.',
     findings = 'Найдено N проблем.',
     verdict = 'Одобрено.',
-    candidatesRow = '| C1 | foo.ts | 10 | пример проблемы | NAT | suggestion | minor |',
+    candidatesRow = '| C1 | foo.ts | 10 | пример проблемы | NAT | suggestion | minor | point-fix | — |',
     mermaidBlock = '',
   } = opts;
 
@@ -697,7 +698,7 @@ describe('inbox-review-plan --validate', () => {
 
   it('Candidates row with unknown Kind token → invalid Kind token error', () => {
     const { dir } = setupReportDir({
-      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | typo-fix | minor |',
+      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | typo-fix | minor | point-fix | — |',
     });
     try {
       const r = runValidate(dir);
@@ -711,7 +712,7 @@ describe('inbox-review-plan --validate', () => {
   });
 
   it('dash-only placeholder candidate row → no invalid-token error (means "no candidates")', () => {
-    const { dir } = setupReportDir({ candidatesRow: '| — | — | — | — | — | — | — |' });
+    const { dir } = setupReportDir({ candidatesRow: '| — | — | — | — | — | — | — | — | — |' });
     try {
       const r = runValidate(dir);
       const result = JSON.parse(r.stdout.trim());
@@ -728,7 +729,7 @@ describe('inbox-review-plan --validate', () => {
 
   it('Candidates row with unknown Ось token → invalid Ось token error', () => {
     const { dir } = setupReportDir({
-      candidatesRow: '| C1 | foo.ts | 10 | issue | ZZZ | suggestion | minor |',
+      candidatesRow: '| C1 | foo.ts | 10 | issue | ZZZ | suggestion | minor | point-fix | — |',
     });
     try {
       const r = runValidate(dir);
@@ -736,6 +737,71 @@ describe('inbox-review-plan --validate', () => {
       const result = JSON.parse(r.stdout.trim());
       assert.strictEqual(result.ok, false);
       assert.ok(result.errors.some((e: { error: string }) => /invalid Ось token/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('Candidates row with unknown Разбор token → invalid Разбор token error', () => {
+    const { dir } = setupReportDir({
+      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | maybe | — |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /invalid Разбор token/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('Candidates row with empty Разбор → required error', () => {
+    const { dir } = setupReportDir({
+      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | — | — |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(result.errors.some((e: { error: string }) => /Разбор is required/.test(e.error)));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('arch-suspect without Локус → requires non-empty Локус error', () => {
+    const { dir } = setupReportDir({
+      candidatesRow: '| C1 | foo.ts | 10 | issue | LAYER | suggestion | major | arch-suspect | — |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.strictEqual(result.ok, false);
+      assert.ok(
+        result.errors.some((e: { error: string }) =>
+          /arch-suspect requires a non-empty Локус/.test(e.error)
+        )
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('arch-suspect with Локус → valid', () => {
+    const { dir } = setupReportDir({
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | LAYER | suggestion | major | arch-suspect | src/boundary.ts |',
+    });
+    try {
+      const r = runValidate(dir);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        !(result.errors ?? []).some((e: { error: string }) => /Разбор|Локус/.test(e.error))
+      );
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

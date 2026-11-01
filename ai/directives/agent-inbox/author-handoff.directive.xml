@@ -1,0 +1,183 @@
+<AuthorHandoff keywords="agent-inbox author self-review handoff dev-agent artifacts rounds delta findings response mr-description" type="directive" ver="1.0">
+  <Mission>
+    Loaded when `myRole=author`. AuthorMode analysis is unchanged (same battery, ladder, depth). The
+    OUTPUT contract changes: never print the fix-task, reply drafts, or MR-description body into chat.
+    Write artifacts, then give a short digest. The development agent is a separate session — it reads
+    ONLY the artifact file, never this chat.
+
+    The artifacts are ROUND-BASED, not one-shot: reviewer comments arrive over time, findings grow,
+    the development agent answers, the head SHA moves. Every run appends a round; nothing is
+    rewritten or renumbered. The whole history stays readable in the same two files.
+  </Mission>
+
+  <ArtifactLocation>
+    `&lt;reportsDir&gt;/handoff/&lt;ref&gt;/` — the same per-MR report directory that holds
+    `PLAN.md`/`README.md` (`mrReportsDir` = `&lt;state-dir&gt;/agent-inbox/mrs/&lt;group__proj-iid&gt;/report/`),
+    wiped by `inbox --reset` (HardRule 8). Never write into the operator's repo or arbitrary paths.
+    Check for an existing dir first; create it when absent.
+
+    | File | Owner | Rule |
+    |---|---|---|
+    | `findings.md` | me (author side) | append-only; heading + round journal + canonical tables |
+    | `response.md` | development agent | append-only; I create the template in round 1, it appends per-round sections |
+    | `descriptions.md` | me | regenerated per round per MR (bodies are full replacements, history in git/GitLab) |
+
+    If a file from a previous round exists — read it FIRST and continue from it (never start from
+    scratch). Same head SHA and no new threads since the last round → say «дельты нет» and stop
+    (`H_NO_DELTA`).
+  </ArtifactLocation>
+
+  <FindingsContract>
+    `findings.md` structure (top → bottom):
+
+    ```
+    # Handoff: <ref> — <title>
+    webUrl · source→target · head SHA at last round · updated <date> · myRole=author
+    Ответ разработчика: ./response.md (append a new round, never edit old rounds)
+
+    ## Журнал раундов
+    | Round | Дата | head SHA | Дельта |
+    | R1 | 2026-10-29 | abc1234 | +3 F, +5 T, +2 P (базлайн) |
+    | R2 | 2026-10-30 | def5678 | +1 F, +1 T; 2 F закрыты по response.md R1 |
+
+    ## 1. Связанные MR
+    | MR | webUrl | relation | head SHA |
+    | !238 | … | same branch chain / linked issue / operator-named | abc1234 |
+
+    ## 2. Пайплайны (append-only: каждый прогон — новая строка, статусы не перезаписываются)
+    | P-ID | Round | MR | status | failing stage/job | job webUrl | head SHA |
+    | P-01 | R1 | !241 | failed | test:unit | … | abc1234 |
+
+    ## 3. Треды (ALL, `vcs-discussions --all --json`, not `--my`)
+    | T-ID | Round | MR | discussionId | file:line | author | resolved | gist | disposition |
+    | T-01 | R1 | !241 | abc123 | src/x.ts:42 | @peer | no | краткая суть | fix |
+
+    ## 4. Мои находки (same battery as reviewer)
+    | F-ID | Round | file:line | axis | severity | problem | proposed action | triage | locus | source |
+    | F-01 | R1 | src/y.ts:15 | NAT | blocker | … | … | point-fix | — | mine |
+    | F-02 | R1 | src/z.ts:7 | SEC | major | … | … | arch-suspect | src/boundary/x.ts | T-02 |
+
+    ## 5. Гипотезы (per AX_ROOT_CAUSE_TRIAGE; TYPO/trivial — одна строка)
+    **[F-02] — arch-suspect → `src/boundary/x.ts`**
+    - A (точечно): добавить проверку в `z.ts:7` — закрывает симптом, но оставляет второй источник истины.
+    - B (выше): граница владения не определена; точечная правка замаскирует причину.
+    - Проверить: есть ли второй writer/дубль контракта, кто владеет состоянием.
+
+    **[F-01] — point-fix** — причина локальна: один потребитель, рядом нет альтернативного пути; правка ничего не маскирует.
+
+    ## 6. История статусов (append-only; статус меняется только новой строкой)
+    | ID | Round | status | основание |
+    | F-01 | R2 | closed | fixed in def5678, checked in code |
+    | T-01 | R2 | waiting-author | reply received, fix not in diff |
+
+    ## 7. Задание агенту разработки (живёт ЗДЕСЬ, не в чате)
+    …contract of response.md below…
+
+    ## 8. Переписанные описания MR
+    → ./descriptions.md (per MR: product first, tech + diagrams after, AX_MR_BODY_STRUCTURE)
+    ```
+
+    Rules: one problem = one ID; IDs are permanent (a closed `F-04` is never reused or renumbered);
+    `Round` = the round the row was FIRST emitted; current status is derived from §6 (latest row per
+    ID wins); a finding re-raised by a reviewer after closure → NEW row in §6
+    (`reopened`, referencing the reviewer T-ID), same F-ID. `triage`/`locus` are set from
+    `AX_ROOT_CAUSE_TRIAGE`; they are not changed retroactively — a re-classification is a new §6 row
+    (`reclassified`, with the new token and reason).
+  </FindingsContract>
+
+  <ResponseContract>
+    `response.md` template I create in round 1 (development agent appends, never rewrites):
+
+    ```
+    # Ответ на findings.md — <ref>
+    Источник: ./findings.md (round history inside). Append a NEW round; do not edit previous rounds.
+
+    ## Как работать (обязательно)
+    1. НЕ использовать sdd-fix для этих находок. Исключение — только явная команда оператора.
+    2. Цикл на каждую находку: RED (падающий тест или воспроизведение) → CODE → GREEN → SYNC SPECS
+       (спека/ADR/контракт обновлены, если поведение или граница изменились).
+    3. Не считать находку «просто локальной правкой»: сначала проверить гипотезу из findings.md §5.
+       Точечная правка, маскирующая причину уровнем выше, — запрещённый результат.
+       Нашёл причину выше — исправляй её (или верни `needs decision` с планом и локусом).
+
+    ## R1 — <date> — head SHA <sha>
+    | ID | hypothesis | status | how (files, commit SHA) | why not | notes |
+    | F-01 | agree point-fix | fixed | src/y.ts:15, commit abc1234 | — | RED: test/x.test.ts:88 |
+    | F-02 | agree arch-suspect, cause found | fixed | src/boundary/x.ts, commit def5678 | — | местную правку не делал — исправлял границу |
+    | F-03 | disagree point-fix (я считаю: локально) | needs decision | — | причина локальна: один потребитель | почему: … |
+    ### Итог раунда
+    root-cause summary · changed files · tests run · specs synced · remaining risks · scope changes
+    ```
+
+    `hypothesis` — agree / disagree + краткое «почему» (обязательно при disagree).
+    Accepted statuses: `fixed` / `not fixed` / `needs decision` / `unresolved` (could not verify —
+    never guess). The dev agent must keep every ID from `findings.md`, must not drop or renumber, and
+    must reference the F/T/P-ID it answers. It never edits `findings.md` itself.
+  </ResponseContract>
+
+  <RoundProcedure>
+    1. **Resume.** Previous round exists → read `findings.md` + `response.md`. New round's baseline =
+       last `head SHA`; delta = new/changed threads (`vcs-discussions --all`), new pipeline runs
+       (`vcs-pipeline --all --json` per related MR), and whether `response.md` answers check out
+       against the actual code and commits.
+    2. **Reconcile answers.** For every ID in the latest `response.md` round: `fixed` → verify in code
+       (diff/worktree, commit exists) → append §6 row `closed` or `reopened` (with reason: claim not
+       backed by code). `not fixed` / `needs decision` → append §6 row with that status. Never trust
+       the dev agent's word (`AX_GROUNDED_IN_REPO`). A fix visible in the code with NO corresponding
+       `response.md` round is still recorded in §6 (`closed-by-diff`) — history must not depend on the
+       dev agent's discipline. **Triage check:** the dev agent disagreed with the classification →
+       judge it on the code, not on rhetoric; an `arch-suspect` closed by a purely local patch with
+       the higher-level cause untouched → `reopened` with reason `masked symptom` and the locus
+       restated. A `point-fix` where the agent found a real higher-level cause is accepted only if it
+       says where and shows the check.
+    3. **Extend.** Append new threads (T-IDs), new findings (F-IDs, only if not a duplicate of an open
+       or closed one — closed duplicates go to §6 as `reopened`), new pipeline rows (P-IDs).
+       Every new F-ID gets its triage per `AX_ROOT_CAUSE_TRIAGE` (§4/§5). Related MRs discovered in
+       round N → add rows with `Round = RN`.
+    4. **Journal.** Append one `Журнал раундов` row with the delta counts and the new head SHA.
+    5. **Descriptions.** Rewrite `descriptions.md` per current state (`IX_DescriptionRewrite`). If it
+       already exists, treat it as the base (the operator may have edited a body) and carry those
+       edits over unless they contradict the current diff.
+    6. **Report.** Chat digest — delta-oriented (see `IX_ChatOutput`), never the full task.
+  </RoundProcedure>
+
+  <DescriptionRewrite id="IX_DescriptionRewrite">
+    For EACH related MR: read the CURRENT description first, extract its essence (goal, decisions,
+    constraints worth keeping) and reuse it — do not rewrite from scratch, do not lose author intent.
+    Structure per `AX_MR_BODY_STRUCTURE`: product first (problem, who is affected, behaviour/UX
+    change, why now), THEN technical (one change-map Mermaid, architecture, scenarios, entities),
+    heavy parts folded into `&lt;details&gt;`; no static diffstat (`AX_MR_BODY_NO_STATIC_DIFFSTAT`).
+    One fenced block per MR in `descriptions.md`, headed by its ref. Apply via
+    `vcs-mr-edit --description …` as soon as the operator asks — apply the body, do NOT show it
+    first. `--dry-run` only when the operator explicitly asks to see the body before it goes live.
+    `--description` REPLACES the body: carry over the useful parts of the current text, never drop
+    content silently (a long operational log becomes a `<details>` block, it is not deleted).
+  </DescriptionRewrite>
+
+  <ChatOutput id="IX_ChatOutput">
+    Max ~10 lines, delta-first. First round — baseline counts; later rounds — what changed:
+
+    ```
+    MR !241 — R2 (delta): +1 находка · +1 тред · закрыто 2 · пайплайн 🟢 passed
+    Разбор открытых: 2 point-fix · 1 arch-suspect (src/boundary/x.ts) · 0 undecided
+    Связанные: !238 🟢 · !240 🔴 test:unit
+
+    findings:      …/handoff/!241/findings.md      (§6 = история статусов)
+    response:      …/handoff/!241/response.md      (R2 заполнен, проверено 2/3)
+    descriptions:  …/handoff/!241/descriptions.md
+
+    Передай агенту разработки: «continue ./findings.md → append R3 to ./response.md».
+    ```
+
+    Forbidden in chat: the fix-task text, reply drafts, description bodies, per-finding retelling.
+    Finalization Ask offers: ☑ передать findings.md агенту разработки · ☑ применить описания
+    (apply live, no preview) · ☐ опубликовать ответы/реакции (posting-rules) · ☐ skip.
+  </ChatOutput>
+
+  <HaltConditions>
+    H_AUTHOR_NOTHING — no diff and no reviewer comments and no `response.md` → nothing to hand off.
+    H_NO_DELTA — same head SHA, no new threads/pipelines, no new `response.md` round → «дельты нет».
+    H_RELATED_MR_AMBIGUOUS — related MRs not named and not derivable (branch chain / links) → ONE Ask
+    with a candidate checkbox list; never invent related MRs.
+  </HaltConditions>
+</AuthorHandoff>

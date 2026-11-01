@@ -520,7 +520,17 @@ function hasClosedMermaidBlock(body: string): boolean {
 // purpose: механика создаёт структуру и словари; смысл (## Context) заполняет оркестратор,
 // находки/вердикт — сабагент. Validate (below) enforces the same schema at read time.
 
-const CANDIDATES_COLUMNS = ['ID', 'Файл', 'Строка', 'Проблема', 'Ось', 'Вид', 'Важность'];
+const CANDIDATES_COLUMNS = [
+  'ID',
+  'Файл',
+  'Строка',
+  'Проблема',
+  'Ось',
+  'Вид',
+  'Важность',
+  'Разбор',
+  'Локус',
+];
 const CANDIDATES_HEADER = `| ${CANDIDATES_COLUMNS.join(' | ')} |`;
 const CANDIDATES_SEPARATOR = `| ${CANDIDATES_COLUMNS.map(() => '---').join(' | ')} |`;
 
@@ -614,7 +624,9 @@ ${contextMarkdown ?? '<!-- FILL: orchestrator — смысл, сущности, 
 
 <!-- FILL: agent — одна строка на замечание. Нет замечаний → оставь только шапку, placeholder-строку из «—» НЕ добавляй.
      «Ось» = тип находки: архитектурная A–G или код-проба (NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO).
-     «Вид» = КАК постим (не тип проблемы!): new-line-comment / reply-to-thread / correction-reply / awaiting-my-reply / suggestion. -->
+     «Вид» = КАК постим (не тип проблемы!): new-line-comment / reply-to-thread / correction-reply / awaiting-my-reply / suggestion.
+     «Разбор» = AX_ROOT_CAUSE_TRIAGE: point-fix / arch-suspect / undecided (обязателен в каждой строке); «Локус» обязателен для arch-suspect (где предполагается причина выше), иначе «—».
+     Обоснование двух гипотез (A — точечно / B — выше) — компактным блоком под таблицей; TYPO/trivial — одной строкой. -->
 
 ${CANDIDATES_HEADER}
 ${CANDIDATES_SEPARATOR}
@@ -891,6 +903,9 @@ const VALID_AXES = new Set([
   'INJ',
 ]);
 
+/** @purpose Root-cause triage verdicts (AX_ROOT_CAUSE_TRIAGE) — machine vocabulary, English tokens. */
+const VALID_TRIAGE = new Set(['point-fix', 'arch-suspect', 'undecided']);
+
 function validateSectionFilled(
   taskPath: string,
   body: string,
@@ -940,12 +955,23 @@ function validateCandidatesTable(taskPath: string, body: string, errors: Validat
       .slice(1, -1)
       .map((c) => c.trim());
     if (cells.every(isEmptyCell)) continue;
-    const [, , , , axis, kind] = cells;
+    const [, , , , axis, kind, , triage, locus] = cells;
     if (kind && !isEmptyCell(kind) && !VALID_KINDS.has(kind)) {
       errors.push({ file: taskPath, error: `invalid Kind token: ${kind}` });
     }
     if (axis && !isEmptyCell(axis) && !VALID_AXES.has(axis)) {
       errors.push({ file: taskPath, error: `invalid Ось token: ${axis}` });
+    }
+    if (triage === undefined || isEmptyCell(triage)) {
+      errors.push({ file: taskPath, error: 'Разбор is required for every candidate row' });
+    } else if (!VALID_TRIAGE.has(triage)) {
+      errors.push({ file: taskPath, error: `invalid Разбор token: ${triage}` });
+    }
+    if (triage === 'arch-suspect' && (locus === undefined || isEmptyCell(locus))) {
+      errors.push({
+        file: taskPath,
+        error: 'Разбор arch-suspect requires a non-empty Локус',
+      });
     }
   }
 }

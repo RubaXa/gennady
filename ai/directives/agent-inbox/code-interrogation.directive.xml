@@ -17,6 +17,9 @@
     the parent directive — never a parallel report. If a probe is inconclusive, say so; do not invent.
     When `security-interrogation.directive.xml` participates in the same review, security findings
     are raised THERE — the `SEC` probe below defers to that battery (no double-flagging).
+    Every flag carries `AX_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` + locus): a local code
+    smell may be a symptom of a boundary or contract one level up; never present it as an obvious
+    local patch.
   </ScopeGuard>
 
   <Probes>

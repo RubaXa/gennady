@@ -81,7 +81,9 @@
     Findings into the track file's `## Находки` / `## Кандидаты` (the review pipeline's task schema),
     one row per changed contract with a verdict on the three axes and a concrete rewrite. Clean
     surface → explicit no-findings, never a placeholder. The lens proposes; posting is gated by the
-    operator elsewhere in the flow.
+    operator elsewhere in the flow. Every finding carries `AX_ROOT_CAUSE_TRIAGE` (`point-fix` /
+    `arch-suspect` + locus): a bloated or changelog-y contract block is usually a symptom of a
+    process/spec problem one level up, not a local wording fix.
 
     Candidate-table token mapping. The `Ось`/`Вид` columns are the STANDARD pipeline vocabulary —
     the axis names `spec`/`bloat`/`changelog` are ANALYSIS lenses, NOT valid `Ось` tokens (the

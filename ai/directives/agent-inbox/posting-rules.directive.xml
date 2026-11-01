@@ -240,6 +240,15 @@
     | `suggestion` | TYPO probe found a typo or style issue | Post as line-comment with ```suggestion:-0+0 fenced block containing new text (see §suggestion) |
   </CandidateTagging>
 
+  <Axiom id="AX_POSTING_ROOT_CAUSE_TAG">
+    The root-cause triage (`AX_ROOT_CAUSE_TRIAGE`, arch-interrogation §9) is NOT restated in full in a
+    posted comment. Only `arch-suspect` gets ONE closing line after the finding:
+    «Похоже, корень выше этого места: `<locus>`. Проверить: <одна проверка>.» — so the author knows a
+    local patch may mask the cause. `point-fix` posts WITHOUT any triage line (silence means local);
+    `undecided` posts with «Не уверен, локально ли: <чего не хватает>.» TYPO/suggestion never carries
+    a tag. The full two-hypothesis argument stays in README/findings.md, not in the thread.
+  </Axiom>
+
   <VcsReplySyntax>
     <Command>
       # Post live — the operator's checkbox approval in the skill's action menu IS the

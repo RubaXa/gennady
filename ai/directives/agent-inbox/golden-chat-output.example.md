@@ -162,12 +162,19 @@ src/
 
 ### Кандидаты в замечания
 
-| ID   | Файл                   | Строка | Проблема                                                     | Ось  | Вид              |
-| ---- | ---------------------- | ------ | ------------------------------------------------------------ | ---- | ---------------- |
-| [E2] | `src/config/redis.ts`  | L1     | Redis-конфиг вынесен в отдельный файл вместо `app.config.ts` | D    | new-line-comment |
-| [R2] | `src/session/store.ts` | L45    | Нет отката к хранилищу в памяти при недоступности Redis      | F    | new-line-comment |
-| [R3] | `package.json`         | L12    | Зависимость `ioredis` не указана в `devDependencies`         | SEC  | new-line-comment |
-| —    | `src/config/redis.ts`  | L3     | Опечатка: `REDIS_URL` vs `REDDIS_URL` в сообщении ошибки     | TYPO | suggestion       |
+| ID   | Файл                   | Строка | Проблема                                                     | Ось  | Вид              | Разбор       | Локус                    |
+| ---- | ---------------------- | ------ | ------------------------------------------------------------ | ---- | ---------------- | ------------ | ------------------------ |
+| [E2] | `src/config/redis.ts`  | L1     | Redis-конфиг вынесен в отдельный файл вместо `app.config.ts` | D    | new-line-comment | point-fix    | —                        |
+| [R2] | `src/session/store.ts` | L45    | Нет отката к хранилищу в памяти при недоступности Redis      | F    | new-line-comment | arch-suspect | `src/session/session.ts` |
+| [R3] | `package.json`         | L12    | Зависимость `ioredis` не указана в `devDependencies`         | SEC  | new-line-comment | point-fix    | —                        |
+| —    | `src/config/redis.ts`  | L3     | Опечатка: `REDIS_URL` vs `REDDIS_URL` в сообщении ошибки     | TYPO | suggestion       | point-fix    | —                        |
+
+**Гипотезы по [R2] — arch-suspect → `src/session/session.ts`**
+
+- A (точечно): добавить fallback прямо в `store.ts:45` — закроет один путь, но оставит двух владельцев сессии.
+- B (выше): владение сессией не определено; следующий вызов снова раздвоит состояние. Проверить: второй writer (`grep SessionWriter`), единый источник истины.
+
+Разбор остальных: `point-fix` — причина локальна, альтернативного потребителя рядом нет; опечатка изолирована.
 
 ---
 

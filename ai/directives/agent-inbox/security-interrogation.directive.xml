@@ -54,7 +54,9 @@
   </BeliefState>
 
   <Probes>
-    Report only flags; codes appear in the «Ось» column of the shared candidate table.
+    Report only flags; codes appear in the «Ось» column of the shared candidate table. Every flag
+    also carries `AX_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` + locus): a missing check at a
+    call site is often a missing boundary one level up, and a local guard would mask it.
 
     | Code     | Проба (один вопрос) | Flag когда |
     |----------|---------------------|------------|

@@ -23,9 +23,10 @@ import {
 // hand-built report-dir fixtures — the pipeline only ever reads back documents it generated
 // itself, so a small hand-written fixture is enough to drive validateReviewReports' gate). ───────
 
-const CANDIDATES_HEADER = '| ID | Файл | Строка | Проблема | Ось | Вид | Важность |';
-const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- |';
-const EMPTY_CANDIDATES_ROW = '| - | - | - | - | - | - | - |';
+const CANDIDATES_HEADER =
+  '| ID | Файл | Строка | Проблема | Ось | Вид | Важность | Разбор | Локус |';
+const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- | --- | --- |';
+const EMPTY_CANDIDATES_ROW = '| - | - | - | - | - | - | - | - | - |';
 
 function taskContent(
   opts: {
@@ -317,8 +318,8 @@ describe('ArtifactValidator — injection-coverage grounding (TSK-137, D-86 over
       files: ['src/foo.ts'],
       findings: 'В файле src/foo.ts обнаружена находка.',
       candidateRows: [
-        '| C1 | `src/foo.ts` | 10 | Ошибка обработки | NAT | new-line-comment | low |',
-        '| C2 | `src/missing.ts` | 5 | Утечка данных | SEC | new-line-comment | high |',
+        '| C1 | `src/foo.ts` | 10 | Ошибка обработки | NAT | new-line-comment | low | point-fix | — |',
+        '| C2 | `src/missing.ts` | 5 | Утечка данных | SEC | new-line-comment | high | point-fix | — |',
       ],
     });
     const injectedEntities: InjectedEntity[] = [{ file: 'src/foo.ts', line: 10, symbol: 'foo' }];
@@ -351,7 +352,9 @@ describe('ArtifactValidator — injection-coverage grounding (TSK-137, D-86 over
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'В файле src/foo.ts обнаружена находка.',
-      candidateRows: ['| C1 | `src/other.ts` | 3 | Проблема | NAT | new-line-comment | low |'],
+      candidateRows: [
+        '| C1 | `src/other.ts` | 3 | Проблема | NAT | new-line-comment | low | point-fix | — |',
+      ],
     });
 
     const result = await validator.validate(dir, 'filled', {
@@ -377,7 +380,9 @@ describe('ArtifactValidator — injection-coverage grounding (TSK-137, D-86 over
     const dir = setupReportDir({
       files: ['src/foo.ts'],
       findings: 'В файле src/foo.ts обнаружена находка.',
-      candidateRows: ['| C1 | `src/foo.ts` | 10 | Проблема | NAT | new-line-comment | low |'],
+      candidateRows: [
+        '| C1 | `src/foo.ts` | 10 | Проблема | NAT | new-line-comment | low | point-fix | — |',
+      ],
     });
     const injectedEntities: InjectedEntity[] = [{ file: 'src/other.ts' }];
 
@@ -487,9 +492,9 @@ describe('ArtifactValidator — injection-coverage grounding (TSK-137, D-86 over
       // problem cell intentionally omits the symbol name — grounding here must come from the
       // file reference alone, not fall back to the symbol-substring match path.
       const goodRow =
-        '| C1 | `src.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | low |';
+        '| C1 | `src.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | low | point-fix | — |';
       const badRow =
-        '| C1 | `does-not-exist.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | low |';
+        '| C1 | `does-not-exist.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | low | point-fix | — |';
 
       const filled = scaffolded
         .replace('status: scaffolded', 'status: filled')

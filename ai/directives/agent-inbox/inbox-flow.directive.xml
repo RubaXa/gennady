@@ -201,10 +201,14 @@
        gave it via tick) — do NOT re-ask. Straight to: context → analysis (what changed / what is
        required of me), and ONLY after analysis propose actions. Ask before analysis is forbidden
        (except task choice when I did not name it).
-    8. **Nothing to the operator's repo or arbitrary paths.** Output to the operator — chat only. The
-       review pipeline artifacts (`PLAN.md`, task files, `README.md`, `HISTORY.md`) live ONLY under
-       `<state-dir>/agent-inbox/reports/…` — created by `inbox-review-plan --scaffold` (AI-36), wiped
-       by `inbox --reset`. `inbox-registry.json` is internal command state — do not touch it.
+    8. **Nothing to the operator's repo or arbitrary paths.** Output to the operator — chat only, with
+       ONE exception: `myRole=author` writes handoff artifacts to
+       `&lt;reportsDir&gt;/handoff/&lt;ref&gt;/` (`findings.md`, `response.md`, `descriptions.md`) per
+       `author-handoff.directive.xml`, where `&lt;reportsDir&gt;` is the per-MR report directory
+       (`mrReportsDir` = `&lt;state-dir&gt;/agent-inbox/mrs/&lt;group__proj-iid&gt;/report/`) that also holds
+       the review pipeline artifacts (`PLAN.md`, task files, `README.md`, `HISTORY.md`) — created by
+       `inbox-review-plan --scaffold` (AI-36), wiped by `inbox --reset`. `inbox-registry.json` is
+       internal command state — do not touch it.
   </HardRules>
 
   <VcsTools>
@@ -220,7 +224,7 @@
     | React | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-react --url <webUrl> --comment <noteId> --emoji <name>` | emoji reaction on a note (👍 `thumbsup` · 🚀 `rocket` · ❤️ `heart` · 🎉 `hooray` · 👀 `eyes`). This is the ONLY way to react — never type an emoji into a comment body. `noteId` = `vcs-discussions --json` → `notes[].id` (a NOTE id, not `discussionId`) |
     | Drafts | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-draft-note --url <webUrl> [--list\|--create --body\|--update <id>\|--delete <id>\|--publish <id>\|--delete-all]` | drafts on the MR |
     | Approve | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-approve --url <webUrl> [--revoke]` | approve / `--revoke` |
-    | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, append, `--dry-run`, apply on consent. Structure — `AX_MR_BODY_STRUCTURE` |
+    | MR body | `npx tsx ~/Developer/gennady/cli/gennady.ts vcs-mr-edit --url <webUrl> --description <body> [--title <t>] [--dry-run]` | AuthorMode, optional ("запускаем как есть"): write the architecture overview into the MR body. `--description` REPLACES the whole body — read current, carry its essence over, then apply LIVE on the operator's instruction (no dry-run preview unless explicitly asked). Structure — `AX_MR_BODY_STRUCTURE` |
 
     ### `context.json` (produced by `inbox-context --json-file`)
 
@@ -270,7 +274,7 @@
     |---|---|
     | `reply_needed` | `INCLUDE_ONCE("posting-rules.directive.xml")` `ThreadModel` + ReactionMatrix → fact-check ALL discussions (`vcs-discussions --all --json`, not just `--my`) → per thread owner/goal/nextActor/status. Reactions are `vcs-react` tool calls, NEVER emoji in a body; mere agreement is a reaction with NO text (`AX_REACTION_IS_A_TOOL_CALL`) → my thread + fixed-in-code → 👍 + resolve silently; my thread + not-fixed → reply (author silent → PING_POLICY: no auto-resolve, no auto-ping); peer thread + agree → 👍 WITHOUT resolve (owner closes); my duplicate of a peer → resolve MINE + 👍 theirs; disagree → reply with position; partial author replies → skipped threads `waiting-author`, action NONE ("ждут автора: N"). all-fixed-no-new → approve |
     | `review_needed` (first review) | context → DISPATCH independent subagents (`AX_INDEPENDENT_ANALYSIS`: `arch-interrogation` per track + a subagent with its own code-review skills; never analyze in this session) → read filled files → helicopter report + verdicts → posting (spec = 1 comment on line 1; code = line, exact fixes = suggestion; already raised = reply into thread; resolved = resolve) → finalization Ask (step 7) with approve + non-blocking comments as checkboxes; `vcs-approve` only after operator consent — never a bare "recommend approve" |
-    | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode. Read BOTH: reviewer comments already on the MR (`vcs-discussions --url <webUrl> --all --json`, check each against the code) + my own review (same battery/ladder/depth). For each point decide: needs a fix / needs an answer / agree. Give me three: **Сводка** (что написали ревьюверы + мой вывод), **Задание на исправление** (one copyable block for my development agent), **Черновики ответов** (reply text for disagree/question · 👍 reaction for agree). Finalization Ask: approve replies and reactions to publish; I take the fix-task away. No comments → only the self-review as a fix-task (+ optional architecture overview → MR body via `vcs-mr-edit --description`) |
+    | `author` (my own MR) | `RE_READ("arch-interrogation.directive.xml")` AuthorMode + `INCLUDE_ONCE("author-handoff.directive.xml")`. Read BOTH: reviewer comments already on the MR (`vcs-discussions --url <webUrl> --all --json`, check each against the code) + my own review (same battery/ladder/depth) + pipeline status per related MR (`vcs-pipeline --all --json`). For each point decide: needs a fix / needs an answer / agree. Deliver ARTIFACTS: `findings.md` (round-based, append-only; every finding carries `AX_ROOT_CAUSE_TRIAGE` — `point-fix`/`arch-suspect` + locus, not just the symptom), `response.md` (template for the development agent: no `sdd-fix`, mandatory RED→CODE→GREEN→SYNC SPECS, hypothesis agree/disagree per ID), `descriptions.md` (product-first descriptions of all related MRs). Chat = delta digest + one handoff line + Ask (передать findings.md · применить описания — сразу, без показа · опубликовать ответы/реакции). No fix-task text, no reply drafts in chat. No comments → the self-review feeds `findings.md` the same way |
     | `awaiting_reply` / `idle` | nothing — hidden by the CLI, not in the actionable list (visible under `--all`) |
   </ActionMap>
 
@@ -351,9 +355,12 @@
        verdicts from the directive; kinds — `INCLUDE_ONCE("posting-rules.directive.xml")`
        CandidateTagging. `author` (AuthorMode): read reviewer comments (`--all`, checked against the
        code) + my own review (`reviewPlanRequired == true` → document pipeline runs, same depth). For
-       each point decide: needs a fix / needs an answer / agree. Step 7 delivers three: Сводка · Задание
-       на исправление (one copyable block for my development agent) · Черновики ответов (reply for
-       disagree/question · 👍 reaction for agree). Findings are NOT written to threads on my own MR.
+       each point decide: needs a fix / needs an answer / agree, and classify it per
+       `AX_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` / `undecided` + locus when suspected one
+       level up). Then `INCLUDE_ONCE("author-handoff.directive.xml")`: append a round to
+       `<reportsDir>/handoff/&lt;ref&gt;/findings.md`, keep `response.md` as the dev agent's append-only
+       log, reconcile its latest round against the code, regenerate `descriptions.md`. Findings are NOT
+       written to threads on my own MR, and the task is NOT printed in chat — chat is a delta digest.
     6. **Decision (co-reviewer digest, invariant 4).** Without asking, show the ready decision as one
        block: per thread/candidate — the action (👍 react/resolve/reply/line-comment/suggestion/approve)
        and the ready text next to it; a separate line "ждут автора: N (не пинговать)" and "пропущено:
@@ -369,6 +376,10 @@
        "approve + post the 3 comments" as separate checkboxes, not a prose recommendation. On
        "drill/question" — answer and show the (updated) package again. Skip only by an explicit check.
        No separate "controller" before the package — decision and menu come together.
+       **`author` variant:** the package is the artifacts, not comment text — Ask options are
+       ☑ передать `findings.md` агенту разработки · ☑ применить `descriptions.md` (сразу, без preview) ·
+       ☐ опубликовать N ответов/реакций (`vcs-reply`/`vcs-react`) · ☐ skip. Never offer "post the
+       fix-task as a comment".
      8. **Post live** — `INCLUDE_ONCE("posting-rules.directive.xml")` (PreFlight → JSON forms → posting
          STOP-CHECK there). Via `vcs-reply` (reply/line/discussion/suggestion/edit/delete/resolve) as one
          JSON array; approve — `vcs-approve [--revoke]`. Command unavailable — tell me.

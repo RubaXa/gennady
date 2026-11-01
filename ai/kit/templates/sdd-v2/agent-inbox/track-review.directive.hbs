@@ -38,6 +38,27 @@
       For each entity, first harvest the author's stated rationale. If none exists, reconstruct the *implied* decision as a one-line ADR (context → decision → rejected alternative) and test that. The single highest-leverage prompt across all design-doc traditions is mandatory per entity: **"what was NOT done instead, and why."** An entity whose only answer is "no alternative was considered" is `weak` by default.
     </Axiom>
 
+    <Axiom id="AX_ROOT_CAUSE_TRIAGE">
+      Every finding — reviewer's or author's, on my MR or a peer's — is classified BEFORE it becomes a
+      candidate: is it fixed right here, or is it a symptom of something one level up (design,
+      boundary, contract, data ownership, process, spec)? The finding itself is NEVER assumed to be a
+      point fix. Two hypotheses are formed and argued in words (never scores):
+      **A — точечно:** the defect is local; the fix at this file:line leaves the surrounding design
+      intact. State WHY the local fix does not mask anything.
+      **B — уровнем выше:** the defect is a consequence of a higher-level cause; a local fix would
+      hide it. Name the suspected locus (module / boundary / contract / spec / process) and what must
+      be checked to confirm.
+      Verdict tokens (machine vocabulary, kept in English): `point-fix` · `arch-suspect` ·
+      `undecided` (insufficient evidence — say what is missing). `arch-suspect` REQUIRES a locus and
+      an explicit "как проверить" line; `point-fix` requires the reason the cause is local.
+      **Depth scales with severity, the classify step does not disappear:** for `TYPO` and trivial
+      mechanical findings the argument is ONE line («точечно: изолированная опечатка, причина
+      локальна») — no full two-hypothesis essay, but the token is still emitted.
+      This axiom governs both `&lt;OutputFormat&gt;` §9 and `&lt;AuthorMode&gt;`; in AuthorMode the
+      triage is part of the handoff (the development agent must see the hypothesis, not only the
+      symptom).
+    </Axiom>
+
     <Axiom id="AX_REVERSIBILITY_MODULATES_SCRUTINY">
       Scrutiny depth scales with cost-to-undo (one-way vs two-way door). One-way doors — shared-package extraction, data-ownership / source-of-truth choice, public contract or bridge event, persisted schema — get the full battery and the strictest verdict bar. Two-way doors — a local helper, a private method, an in-app type — get a light pass. Spend interrogation budget where reversal is expensive.
     </Axiom>
@@ -390,10 +411,12 @@
     ---
     9. **Кандидаты в замечания [comment candidates].** Per `AX_PRIOR_DISCUSSION_AWARENESS`. Compact table per `AX_SCANNABLE_OUTPUT`:
 
-       | ID | Файл | Строка | Проблема | Ось | Вид |
-       |----|------|--------|-----------|-----|------|
-       | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment |
-       | [E5] | path/to/file.ts | L15 | краткая суть | GLOBAL | reply-to-thread (discussionId: abc123) |
+       | ID | Файл | Строка | Проблема | Ось | Вид | Разбор | Локус |
+       |----|------|--------|-----------|-----|------|-------|-------|
+       | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment | point-fix | — |
+       | [E5] | path/to/file.ts | L15 | краткая суть | GLOBAL | reply-to-thread (discussionId: abc123) | arch-suspect | src/boundary/… |
+
+       «Разбор» — `point-fix` / `arch-suspect` / `undecided`, per `AX_ROOT_CAUSE_TRIAGE`; «Локус» — where the higher-level cause is suspected (`—` for `point-fix`). Below the table — the triage argument, one compact block per candidate (TYPO/trivial: one line).
 
        «Ось» — либо архитектурная ось `A`–`G`, либо код-проба из `code-interrogation.directive.xml` (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`/`TYPO`).
        Kind values: `new-line-comment` / `reply-to-thread` (discussionId) / `correction-reply` / `awaiting-my-reply` (per `AX_PRIOR_DISCUSSION_AWARENESS`) / `suggestion` (точная механическая правка — apply-able ```suggestion-блок, posting-rules).
@@ -420,22 +443,32 @@
     - **needs an answer** — the reviewer is wrong, or it is a question / needs discussion → reply with text;
     - **agree** — the reviewer is right and the fix is clear → a 👍 reaction (`vcs-react`), no text.
 
-    Give me three things, Russian per `AX_OPERATOR_LANGUAGE` (the README artifact stays the standard
-    review report; this is the chat output):
-    1. **Сводка** — what the reviewers wrote and my conclusion on each (согласен / не согласен /
-       вопрос), plus the self-review headline (change map + ladder).
-    2. **Задание на исправление** — ONE copyable block my development agent can act on without this
-       session: per item — `файл:строка`, что не так, почему, предлагаемая правка, кто сказал. Nothing
-       to fix → «править нечего».
-    3. **Черновики ответов** — for each reviewer comment that needs a response: the reply text
-       (disagreement with reasoning / answer to a question) or the 👍 reaction for agreement. Grounded,
-       never invented; agreement carries no text (`AX_REACTION_IS_A_TOOL_CALL`).
+    Every point also carries `AX_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` + locus; two
+    hypotheses in words). The handoff must tell the development agent the hypothesis, not just the
+    symptom.
 
-    Finalization — ONE Ask (co-reviewer contract, invariant 4): approve the replies and reactions to
-    publish (`vcs-reply` / `vcs-react` only after consent — never automatic); I take the fix-task to my
-    development agent. No reviewer comments yet → only the self-review as a fix-task remains, plus an
-    optional offer to write the architecture overview into the MR description via `vcs-mr-edit --url
-    &lt;webUrl&gt; --description &lt;body&gt;` (replaces the body → read, append, `--dry-run`, on consent).
+    Output — artifacts, not chat (Russian per `AX_OPERATOR_LANGUAGE`). Never print the fix-task,
+    reply drafts, or description bodies into chat.
+    1. The README artifact stays the standard review report (files).
+    2. Write `&lt;reportsDir&gt;/handoff/&lt;ref&gt;/{findings,response,descriptions}.md` (the per-MR report
+       dir `mrReportsDir` = `&lt;state-dir&gt;/agent-inbox/mrs/&lt;group__proj-iid&gt;/report/`, wiped by
+       `inbox --reset`; contract detail — `INCLUDE_ONCE("author-handoff.directive.xml")`):
+       - `findings.md` — append-only rounds: round journal, related MRs, pipelines (`vcs-pipeline
+         --all --json`), threads (T-IDs), my findings (F-IDs), status history (status changes only as
+         new rows), permanent IDs, cross-link to `response.md`;
+       - `response.md` — template the development agent appends per round. It must state: HEAD
+         hypotheses are answered (agree / disagree + why), NO `sdd-fix`, and the cycle
+         RED→CODE→GREEN→SYNC SPECS per finding; then fixed / not fixed / needs decision /
+         unresolved + how, commit, why not. Reconcile its claims against the code;
+       - `descriptions.md` — product-first rewrite of every related MR's description (reuse the
+         current description's essence, then tech + one change-map Mermaid, `AX_MR_BODY_STRUCTURE`).
+       Resume an existing round, append a new one; same head SHA and no new input → «дельты нет».
+    3. Chat = delta digest (counts, worst pipeline status, three paths) + ONE handoff line («передай
+       агенту разработки: findings.md → ответить в response.md») + finalization Ask: ☑ передать
+       findings.md · ☑ применить описания (сразу, без preview; `--dry-run` только по явной
+       просьбе) · ☐ опубликовать ответы/реакции per
+       `posting-rules` (`vcs-reply`/`vcs-react` only after consent) · ☐ skip.
+    No reviewer comments yet → the self-review feeds `findings.md` the same way.
 
     HaltCondition: `H_AUTHOR_NOTHING` — no diff and no reviewer comments → nothing to assist with.
   </AuthorMode>

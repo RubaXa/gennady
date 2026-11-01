@@ -18,6 +18,12 @@
       This directive only re-verifies my prior findings and scans new commits for new issues. It does NOT re-run axes A–G from arch-interrogation. If `headChanged.kind == "rewritten"` — the MR history was rewritten; this is a full re-review, delegate to `arch-interrogation`. If `headChanged.kind == "none"` — this directive should not have been loaded; halt.
     </Axiom>
 
+    <Axiom id="AX_NEW_FINDINGS_TRIAGE">
+      Any NEW issue found in the delta follows `AX_ROOT_CAUSE_TRIAGE` from `arch-interrogation`
+      (`point-fix` / `arch-suspect` + locus). A fix that closes a remark by patching the symptom while
+      the higher-level cause remains is reported as `arch-suspect`, not as resolved.
+    </Axiom>
+
     <Axiom id="AX_CHANGESET_AS_TRUTH">
       The changeset (`base..HEAD` diff from inbox-context) is the ground truth for file presence. My prior remark's file path is checked against `changeset.files`. File absent → code was removed from the MR. File present → verify the fix in the diff.
     </Axiom>

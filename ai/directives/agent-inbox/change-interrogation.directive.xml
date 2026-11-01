@@ -57,7 +57,9 @@
 
   <Probes>
     Applied to modified hunks (new files belong to arch-interrogation). Report only flags;
-    codes appear in the «Ось» column of the shared candidate table.
+    codes appear in the «Ось» column of the shared candidate table. Every flag carries
+    `AX_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` + locus); `LAYER` and `RIPPLE` default to
+    `arch-suspect` unless the evidence shows the cause is local.
 
     | Code    | Проба (один вопрос) | Flag когда |
     |---------|---------------------|------------|
