@@ -159,3 +159,9 @@ ai/flow-eval/results/2026-10-27-execution-autonomy-final/transient/**
 # Exact machine-generated post-review run records; keep the original result bytes.
 ai/flow-eval/docs/EXECUTION-TEST-INFRA-RESULT.json
 ai/flow-eval/docs/EXECUTION-TEST-INFRA-RESULT-2.json
+
+# Byte-preserved imported pilot measurements; authored new integration notes remain checked.
+ai/flow-eval/results/2026-10-30-pilot-verify-red/**
+
+# Exact installed-runner qualification bytes, verified by sourceSha256.
+ai/flow-eval/results/2026-11-02-brownfield-bf1/installed-vitest-stream.json

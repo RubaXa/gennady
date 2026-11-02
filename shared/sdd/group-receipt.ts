@@ -174,7 +174,7 @@ export function buildGroupReceipt(
  * @param kind The kind the surrounding block claims.
  * @returns True when the value carries every required receipt field.
  */
-function isGroupReceipt(value: unknown, kind: GroupReceiptKind): value is GroupReceipt {
+export function isGroupReceipt(value: unknown, kind: GroupReceiptKind): value is GroupReceipt {
   if (typeof value !== 'object' || value === null) return false;
   const r = value as Record<string, unknown>;
   return (

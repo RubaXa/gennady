@@ -17,6 +17,8 @@ import type { VerifyRunReport, VerifyStepResult } from '../../verify/model/verif
 import { extractSection } from '../section.ts';
 import { parsePhaseDetail, parsePhasesOverview } from '../ticket.ts';
 import { decisionReferenceIssue, parseDeviationRecords } from '../deviation.ts';
+import { GROUP_RECEIPT_MARKER, isGroupReceipt } from '../group-receipt.ts';
+import { maskTrackerBookkeeping } from '../tracker.ts';
 
 const ATTEMPT_SCHEMA = 'gennady.sdd-verify-attempt.v1';
 const LOCK_SCHEMA = 'gennady.sdd-verify-attempt-lock.v1';
@@ -369,6 +371,73 @@ function withoutAttemptJournal(content: Buffer): Buffer {
   return Buffer.from(normalized.replace(new RegExp(`(?:\\n?${marker}\\n?)+`, 'g'), '\n'));
 }
 
+/** @purpose Paired group receipt blocks that `sdd-log … audit-receipt | review-receipt` appends to a spec. */
+const GROUP_RECEIPT_BLOCK_RE =
+  /^<!--(SDD_AUDIT_RECEIPT|SDD_REVIEW_RECEIPT)-->\n```json\n([\s\S]*?)\n```\n<!--\/\1-->\n?/gm;
+
+/**
+ * @purpose Classify a repository file by the bookkeeping the SDD flow itself writes into it.
+ * @param file Repository-relative path.
+ * @returns `task-index` for tracker indexes, `spec` for other spec markdown, `other` otherwise.
+ */
+function flowBookkeepingKind(file: string): 'task-index' | 'spec' | 'other' {
+  if (!file.startsWith('specs/') || !file.endsWith('.md')) return 'other';
+  return file === 'specs/3-tasks.md' || file.endsWith('.3-tasks.md') ? 'task-index' : 'spec';
+}
+
+/**
+ * @purpose Drop the tracker status and rollup ratio cells that `sdd-sync` rewrites, keeping every
+ *   other byte of a task index (rows, Task-IDs, titles, dependencies, task counts) identity-bearing.
+ * @param content Task index markdown.
+ * @returns Normalized bytes.
+ */
+function normalizedTaskIndexForFreshness(content: Buffer): Buffer {
+  return Buffer.from(maskTrackerBookkeeping(content.toString('utf8')));
+}
+
+/**
+ * @purpose Drop receipt blocks whose JSON is a valid receipt of the marker's kind; any other block stays hashed.
+ * @param content Spec markdown.
+ * @returns Normalized bytes; trailing whitespace is canonical because the receipt writer rewrites it.
+ */
+function specWithoutGroupReceipts(content: Buffer): Buffer {
+  const source = content
+    .toString('utf8')
+    .replace(GROUP_RECEIPT_BLOCK_RE, (block: string, marker: string, body: string) => {
+      const kind = marker === GROUP_RECEIPT_MARKER.audit ? 'audit' : 'review';
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        return block;
+      }
+      return isGroupReceipt(parsed, kind) ? '' : block;
+    });
+  // The receipt writer rewrites end-of-file whitespace when it appends a block.
+  return Buffer.from(`${source.replace(/\s*$/, '')}\n`);
+}
+
+/**
+ * @purpose Normalize one file's bytes for the phase freshness digest.
+ * @param file Repository-relative path.
+ * @param content Raw file bytes.
+ * @param ticketRelative The phase ticket path.
+ * @param sddPhase Phase whose freshness is computed.
+ * @returns Bytes that change only when product, config, rules or plan meaning changes.
+ */
+function freshnessBytes(
+  file: string,
+  content: Buffer,
+  ticketRelative: string,
+  sddPhase: string
+): Buffer {
+  if (file === ticketRelative) return normalizedTicketForFreshness(content, sddPhase);
+  const kind = flowBookkeepingKind(file);
+  if (kind === 'task-index') return normalizedTaskIndexForFreshness(content);
+  if (kind === 'spec') return specWithoutGroupReceipts(content);
+  return content;
+}
+
 function downstreamOwnedFiles(
   root: string,
   ticketPath: string,
@@ -413,6 +482,8 @@ function downstreamOwnedFiles(
 
 /**
  * @purpose Bind current product/config/rules bytes with the same journal-independent freshness identity used by Verify attempts.
+ * @invariant Flow bookkeeping — tracker status/rollup cells written by `sdd-sync` and well-formed group
+ *   receipt blocks — does not stale a phase; every other spec, index and ticket byte stays hashed.
  * @param root Canonical repository root.
  * @param ticketPath Exact phase ticket, whose runner journal and owned completion metadata are normalized.
  * @param sddPhase Phase defining the verified scope and downstream exclusions.
@@ -452,10 +523,7 @@ export function currentSddPhaseWorktreeDigest(
     hash.update(`path\0${file}\0${entry.mode}\0`);
     if (entry.isSymbolicLink()) hash.update(fs.readlinkSync(absolute));
     else if (entry.isFile()) {
-      const content = fs.readFileSync(absolute);
-      hash.update(
-        file === ticketRelative ? normalizedTicketForFreshness(content, sddPhase) : content
-      );
+      hash.update(freshnessBytes(file, fs.readFileSync(absolute), ticketRelative, sddPhase));
     } else hash.update('non-file');
   }
   return `sha256:${hash.digest('hex')}`;

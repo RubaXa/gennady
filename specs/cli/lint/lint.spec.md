@@ -28,16 +28,19 @@ _Это полный список сущностей модуля. Любое в
 | `LintOptions`          | Value Object | Опции запуска: `files` (абсолютные пути после `resolveTargets`), `autofix`, `gitMode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `LintReport`           | Value Object | Результат линтинга: `errors`, `autoFixed`, `taskPaths`, `specPaths`, `exitCode`, `format()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `FileHeaderCheck`      | Service      | Проверка `// @file:` и `// @consumers:` в начале файла                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `LanguageCheck`        | Service      | Проверка языка: JSDoc-контракты и file headers (`@file:`, `@consumers:`) — только английский. Кириллица → `ERR_CLI_LINT_NON_ENGLISH`.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `LanguageCheck`        | Service      | Проверка языка JSDoc-контрактов и file headers (`@file:`, `@consumers:`) по `lint.commentLanguage`: `en` (по умолчанию) — кириллица → `ERR_CLI_LINT_NON_ENGLISH`; `ru`, `any` — без ошибок.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `LintConfig`           | Service      | Секция `lint` в `gennady.yaml` / `.gennadyrc`: строгая схема (`commentLanguage: en \| ru \| any`, `scope: all \| owned`), по умолчанию `en` / `all`; неизвестный ключ или значение → `ERR_CLI_LINT_BAD_CONFIG`, exit 4 до линтинга.                                                                                                                                                                                                                                                                                                                                                             |
+| `LintScope`            | Service      | `lint.scope: owned`: оставляет в выборке только файлы, которыми владеет SDD — заголовок `@spec`, запись File Mapping или Target File тикета; остальные пропускаются с одной строкой-счётчиком. Экспорт `selectOwnedLintFiles`, `OwnedLintSelection`, `LINT_SCOPES`, `LintScope`.                                                                                                                                                                                                                                                                                                                |
 | `AnchorCheck`          | Service      | Проверка парности и вложенности `// #region START/END`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `DbcContractCheck`     | Service      | Адаптер к `DbcTsLinter`: вызов `lint()` / `lintAndFix()` с контентом                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `DisablesCheck`        | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`.                                                                                                                                                                                                                                                           |
+| `DisablesCheck`        | Service      | Проверка дисциплины отключений TypeScript / линтера (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`, `gennady-lint-disable`): каждый маркер обязан в той же строке нести (a) ссылку `D-\d+` на Decision Log, (b) purpose (≥ 8 непробельных символов после удаления маркера и токена `D-NNN`). Реализация политики D-007 из `cli.spec.md`.                                                                                                                                                                                                                                   |
+| `FileLintDisable`      | Service      | Файловый маркер `// gennady-lint-disable: <ACR>-DL-N <причина>` в ведущем блоке `//`-комментариев: предлагает исключение; только уникальное accepted решение декларационного владельца с exact file/checks разрешает соответствующие `DbcContractCheck`/`InventorySyncCheck`; остальные проверки, заголовок и `sdd-check` остаются. Экспорт `findFileLintDisable`, `FILE_LINT_DISABLE_MARKER`, `DECISION_LOG_REF_RE`, `MIN_DISABLE_PURPOSE_CHARS`.                                                                                                                                              |
 | `InvariantCountCheck`  | Service      | Проверка лимита инвариантов: подсчитывает `@invariant` в JSDoc-контрактах и `invariant:` в регион-комментариях на каждую экспортируемую сущность. Превышение порога → `ERR_CLI_LINT_TOO_MANY_INVARIANTS`.                                                                                                                                                                                                                                                                                                                                                                                       |
 | `AnchorClassBodyCheck` | Service      | Проверка, что `// #region START` / `// #endregion END` не находятся на уровне тела класса (между декларациями методов). Допустимы только внутри тел методов/функций/геттеров/сеттеров. Нарушение → `ERR_CLI_LINT_ANCHOR_AT_CLASS_BODY`.                                                                                                                                                                                                                                                                                                                                                         |
 | `AnchorThinCheck`      | Service      | Проверка минимальной наполненности регионов: внутри `#region START` / `#endregion END` должно быть ≥ 2 meaningful строк кода (не пустых, не комментариев, не маркеров региона). Регионы, оборачивающие только комментарии — ошибка с предложением оставить комментарий и убрать обёртку. Нарушение → `ERR_CLI_LINT_ANCHOR_TOO_THIN`.                                                                                                                                                                                                                                                            |
 | `WordCountCheck`       | Service      | Два семантических prose-budget: file headers (24) и JSDoc contracts (30). Синтаксис тега/параметра/типа и голые URL/path/reference/identifier не считаются прозой; multiline-описание принадлежит тегу до следующего тега/`*/`. Typed override имеет приоритет над legacy `--max-words`.                                                                                                                                                                                                                                                                                                        |
 | `RegionCommentCheck`   | Service      | Проверка количества комментариев в теле региона и длины START-аннотации. Считает любые `//` и `/*` строки внутри региона (исключая маркеры `#region`/`#endregion`). Аннотация на START-строке проверяется на лимит слов (по умолчанию 30, не настраивается). Комментарии в теле — абсолютный лимит (по умолчанию 3), настраивается через `--max-region-comments <n>`. Нарушения → `ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS`, `ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG`. Вложенные регионы: комментарии внутренних регионов засчитываются внешним. Дополняет `AnchorThinCheck`, не заменяет. |
-| `InventorySyncCheck`   | Service      | Активируется с `--spec=<module-spec>` только для production targets. Recognized test targets продолжают обычный lint, но не участвуют в production Entity Inventory. Прямое направление: production-экспорт вне inventory → `ERR_CLI_LINT_INVENTORY_UNDECLARED`. Обратное: каждая сущность обязана иметь production-реализацию → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED`; test-only export её не удовлетворяет. Deferral — только валидный active same-scope structural owner (D-018, D-019).                                                                                                    |
+| `InventorySyncCheck`   | Service      | Активируется с `--spec=<module-spec>` только для production targets. Recognized test targets продолжают обычный lint, но не участвуют в production Entity Inventory. Прямое направление: production-экспорт вне inventory → `ERR_CLI_LINT_INVENTORY_UNDECLARED`. Обратное: каждая сущность обязана иметь production-реализацию → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED`; test-only export её не удовлетворяет. Deferral — только валидный active same-scope structural owner (D-018, D-019). Учитываются все формы ES-экспорта (D-027).                                                         |
 
 ## 3. Entity Surfaces
 
@@ -140,11 +143,36 @@ _Это полный список сущностей модуля. Любое в
 ### `LanguageCheck`
 
 - **Type:** Service
-- **Purpose:** Проверка языка: JSDoc-контракты (DbC: `@purpose`, `@implements`, `@invariant`, `@param`, `@returns`, `@consumer`, `@sideEffect`) и file headers (`// @file:`, `// @consumers:`) — только английский. Кириллица → ошибка.
+- **Purpose:** Проверка языка: JSDoc-контракты (DbC: `@purpose`, `@implements`, `@invariant`, `@param`, `@returns`, `@consumer`, `@sideEffect`) и file headers (`// @file:`, `// @consumers:`) по языку комментариев проекта `lint.commentLanguage`. При `en` (по умолчанию) кириллица → ошибка; при `ru` разрешены русский и английский; при `any` проверка не выполняется.
 - **Public Operations:**
-  - `check(content: string, filePath: string) → LintError[]` — проверить контент файла на наличие кириллицы
+  - `check(content: string, filePath: string, commentLanguage?: CommentLanguage) → LintError[]` — проверить контент файла; `commentLanguage` по умолчанию `en`
 - **Lifecycle:** stateless; pure function
-- **Errors & Degradation:** Не кидает исключений. Каждый кириллический символ в JSDoc-блоке или file header → `ERR_CLI_LINT_NON_ENGLISH`. Обычные `//` комментарии и строковые литералы не проверяются.
+- **Errors & Degradation:** Не кидает исключений. При `en` каждый кириллический символ в file header и первый кириллический символ в каждой строке JSDoc-блока → `ERR_CLI_LINT_NON_ENGLISH`; при `ru` и `any` ошибок нет. Обычные `//` комментарии и строковые литералы не проверяются.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+
+### `LintConfig`
+
+- **Type:** Service
+- **Purpose:** Читает секцию `lint` проектного конфига через общий `loadConfigSection` (те же источники и приоритет, что у остальных секций: repo `.gennadyrc` > `gennady.yaml` > `~/.gennadyrc`) и строго её валидирует.
+- **Public Operations:**
+  - `loadLintConfig(root: string, homeDirectory?: string) → { commentLanguage, scope, errors, sources }`
+  - `COMMENT_LANGUAGES = ['en', 'ru', 'any']`, тип `CommentLanguage`; `LINT_SCOPES = ['all', 'owned']`, тип `LintScope`
+- **Lifecycle:** stateless; читает до трёх файлов конфига
+- **Errors & Degradation:** Нет секции или ключа → `commentLanguage: 'en'`, `scope: 'all'`, поведение lint не меняется. Неизвестный ключ → ошибка со списком известных ключей и подсказкой «did you mean» для близкой опечатки; значение вне допустимых → `must be one of: <значения> — received <value>`. `LintCommand` превращает каждую ошибку в `ERR_CLI_LINT_BAD_CONFIG` (`file` — конфиг с наивысшим приоритетом) и завершается с exit 4 до линтинга. Остальные секции конфига (`verify` и др.) секцию `lint` не валидируют и не отвергают.
+- **Consumers:**
+  - Internal: `LintCommand`
+  - External: N/A
+
+### `LintScope`
+
+- **Type:** Service
+- **Purpose:** Внедрение SDD в большой существующий проект без разметки всего кода: при `lint.scope: owned` lint проверяет только файлы, которыми уже владеет SDD.
+- **Public Operations:**
+  - `selectOwnedLintFiles(root: string, files: string[]) → { files, skipped }`
+- **Lifecycle:** stateless; одно declaration-only чтение `readSddCoverage(root, { kind: 'project' }, 'audit', { observeSources: false })` и чтение начала невладеемых файлов
+- **Errors & Degradation:** Файл остаётся в выборке, если у него есть строка `// @spec:` в ведущем блоке `//`-комментариев, или он указан в File Mapping какой-либо спеки, или в Target Files тикета. Поэтому новый код с заголовком не пропускается, а удаление заголовка не прячет файл, который спека или тикет по-прежнему объявляет. `// @spec:` внутри кода владельца не задаёт. Непрочитанный файл остаётся в выборке (lint сообщит `ERR_CLI_LINT_READ_FAILED`). Если чтение деклараций дало ошибку (`READ_FAILED`, `GIT_READ_FAILED`, `INVALID_*`, `UNSAFE_*`, `DUPLICATE_TASK_ID`), часть владельцев неизвестна: фильтр на этот запуск выключается, проверяются все файлы, а `LintCommand` печатает предупреждение с первой ошибкой. Пропуск по неполным данным невозможен. Пропущенные файлы не дают ошибок; `LintCommand` печатает одну строку `lint.scope=owned: skipped N file(s) …`.
 - **Consumers:**
   - Internal: `LintCommand`
   - External: N/A
@@ -159,19 +187,33 @@ _Это полный список сущностей модуля. Любое в
 - **Errors & Degradation:** Не кидает исключений.
   - Маркер без `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`
   - Маркер с `D-\d+` но без достаточного purpose-обоснования → `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE`
+  - Файловый `gennady-lint-disable` подчиняется тем же двум правилам; без них он не действует (см. `FileLintDisable`)
 - **Consumers:**
   - Internal: `LintCommand`
   - External: N/A
 
+### `FileLintDisable`
+
+- **Type:** Service
+- **Purpose:** Исключение для файла, который нельзя и не нужно приводить к модульной описи и контрактам: исторический реестр (сотни констант с `//`-описаниями), сгенерированный код. Пишется в ведущем блоке `//`-комментариев файла: `// gennady-lint-disable: AC-DL-14 исторический реестр флагов, закрыт для новых записей`.
+- **Public Operations:**
+  - `findFileLintDisable(content: string) → { line, ref } | null` — найти синтаксически корректный маркер
+  - `FILE_LINT_DISABLE_MARKER`, `DECISION_LOG_REF_RE`, `MIN_DISABLE_PURPOSE_CHARS` — общие с `DisablesCheck` правила ссылки и обоснования
+- **Lifecycle:** stateless; pure function
+- **Errors & Degradation:** Не кидает исключений. Действует только каноническая строка `// gennady-lint-disable: <ссылка> <обоснование>`: маркер открывает комментарий, за ним `:`; строка стоит в ведущем блоке `//`-строк (до первой строки кода), со ссылкой `<ACR>-DL-N` / `D-N` и обоснованием ≥ 8 непробельных символов. Упоминание маркера в тексте комментария, более длинное слово (`gennady-lint-disablement`) или форма без `:` файл не исключают. Иначе — `null`, файл проверяется полностью, а `DisablesCheck` сообщает о нарушении. После отдельной canonical authorization: `DbcContractCheck` возвращает `[]` и не делает autofix, `InventorySyncCheck.check` (прямая сверка) возвращает `[]`; `collectExports` по-прежнему отдаёт экспорты файла, поэтому обратная сверка не объявляет его сущности нереализованными. `FileHeaderCheck`, `LanguageCheck`, `AnchorCheck`, `DisablesCheck` и прочие проверки, а также `sdd-check` и ownership-заголовок файла продолжают работать.
+- **Consumers:**
+  - Internal: `DisablesCheck`, `DbcContractCheck`, `InventorySyncCheck`
+  - External: N/A
+
 ### Value Objects
 
-| Name                      | Key Properties                                                                                                                                             |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `LintError`               | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                                                      |
-| `LintOptions`             | `files: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                                                |
-| `LintReport`              | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1 \| 4`, `guidance?: string`, `format(): string` |
-| `ReverseSweepResult`      | `errors: LintError[]`, `deferred: DeferredInventoryEntity[]` — результат обратной сверки `--inventory-reverse` (D-016)                                     |
-| `DeferredInventoryEntity` | `name: string`, `taskId: string` — declared-сущность с маркером `Deferred Implementation: <TSK-id>`                                                        |
+| Name                      | Key Properties                                                                                                                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LintError`               | `file: string`, `line: number`, `col: number`, `severity: 'error'`, `code: string`, `message: string`                                                          |
+| `LintOptions`             | `files: string[]`, `autofix: boolean`, `gitMode?: 'staged'`                                                                                                    |
+| `LintReport`              | `errors: LintError[]`, `autoFixed: number`, `taskPaths: string[]`, `specPaths: string[]`, `exitCode: 0 \| 1 \| 4`, `guidance?: string`, `format(): string`     |
+| `ReverseSweepResult`      | `errors: LintError[]`, `deferred: DeferredInventoryEntity[]`, `unverifiable: {name, files}[]` — результат обратной сверки `--inventory-reverse` (D-016, D-027) |
+| `DeferredInventoryEntity` | `name: string`, `taskId: string` — declared-сущность с маркером `Deferred Implementation: <TSK-id>`                                                            |
 
 ### Error Codes
 
@@ -285,7 +327,7 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 
 #### Service: `LanguageCheck`
 
-- **Purpose:** Проверка языка контрактов и хедеров: в JSDoc-блоках и `// @file:` / `// @consumers:` допустим только английский. Кириллица → ошибка.
+- **Purpose:** Проверка языка контрактов и хедеров по `lint.commentLanguage`: при `en` в JSDoc-блоках и `// @file:` / `// @consumers:` допустим только английский, кириллица → ошибка; при `ru` и `any` ошибок нет.
 - **Consumers:**
   - Internal: `LintCommand`
   - External: N/A
@@ -298,10 +340,12 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 - Preconditions:
   - `content` — непустая строка
   - `filePath` — путь к файлу (для сообщений об ошибках)
+  - `commentLanguage` — `en | ru | any`, по умолчанию `en`
 - Postconditions:
-  - Возвращает `LintError[]` (пустой — кириллицы нет)
-  - Каждый кириллический символ в file header (`// @file:`, `// @consumers:`) → `ERR_CLI_LINT_NON_ENGLISH`
-  - Каждый кириллический символ в JSDoc-блоке (`/** ... */`) → `ERR_CLI_LINT_NON_ENGLISH`
+  - `ru` или `any` → `[]`
+  - `en`: возвращает `LintError[]` (пустой — кириллицы нет)
+  - `en`: каждый кириллический символ в file header (`// @file:`, `// @consumers:`) → `ERR_CLI_LINT_NON_ENGLISH`
+  - `en`: кириллица в строке JSDoc-блока (`/** ... */`) → `ERR_CLI_LINT_NON_ENGLISH` (одна ошибка на строку)
 - Invariants:
   - Проверяет ТОЛЬКО строки file header (до первого `import`) и строки внутри `/** ... */` блоков
   - Обычные `//` комментарии и строковые литералы — вне зоны проверки
@@ -325,7 +369,7 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
   - `filePath` — путь к файлу (для сообщений об ошибках)
 - Postconditions:
   - Возвращает `LintError[]` (пустой — все отключения корректно оформлены, либо отключений нет)
-  - Маркер (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable[*]`) в комментарии БЕЗ `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`. Сообщение содержит маркер и инструкцию добавить `D-NNN` со ссылкой на Decision Log.
+  - Маркер (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable[*]`, `gennady-lint-disable`) в комментарии БЕЗ `D-\d+` в той же строке → `ERR_CLI_LINT_UNAUTHORIZED_DISABLE`. Сообщение содержит маркер и инструкцию добавить `D-NNN` со ссылкой на Decision Log.
   - Маркер С `D-\d+`, НО purpose-text после удаления маркера и токена `D-NNN` короче 8 непробельных символов → `ERR_CLI_LINT_DISABLE_MISSING_PURPOSE`. Сообщение содержит маркер, обнаруженный D-NNN, и инструкцию добавить purpose (≥ 8 символов).
 - Invariants:
   - Маркер засчитывается ТОЛЬКО если предшествует комментарий-открывашка (`//` или `/*`) на той же строке (защита от ложноположительных в строковых литералах с похожим текстом)
@@ -517,20 +561,49 @@ ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC = 'ERR_CLI_LINT_INVENTORY_REVERSE_NEED
 
 ## 5. Public Options & Policies
 
-| Option                  | Bound to                                    | Status        |
-| ----------------------- | ------------------------------------------- | ------------- |
-| `--autofix`             | `LintCommand.run()` → `DbcContractCheck`    | active (v1)   |
-| `--include-tests`       | `LintCommand.run()` → file filtering        | active (v2)   |
-| `--staged`              | `LintCommand.run()` → git scan              | active (v1)   |
-| `--max-invariants`      | `LintCommand.run()` → `InvariantCountCheck` | active (v1)   |
-| `--exclude`             | `LintCommand.run()` → file filtering        | active (v1)   |
-| `--max-words`           | `LintCommand.run()` → `WordCountCheck`      | active (v1)   |
-| `--max-header-words`    | `LintCommand.run()` → `WordCountCheck`      | active (v2)   |
-| `--max-contract-words`  | `LintCommand.run()` → `WordCountCheck`      | active (v2)   |
-| `--max-region-comments` | `LintCommand.run()` → `RegionCommentCheck`  | active (v1)   |
-| `--spec`                | `LintCommand.run()` → `InventorySyncCheck`  | active (v2)   |
-| `--inventory-reverse`   | `LintCommand.run()` → `InventorySyncCheck`  | active (v2)   |
-| `--changed`             | —                                           | deferred (v2) |
+| Option                  | Bound to                                        | Status        |
+| ----------------------- | ----------------------------------------------- | ------------- |
+| `--autofix`             | `LintCommand.run()` → `DbcContractCheck`        | active (v1)   |
+| `--include-tests`       | `LintCommand.run()` → file filtering            | active (v2)   |
+| `--staged`              | `LintCommand.run()` → git scan                  | active (v1)   |
+| `--max-invariants`      | `LintCommand.run()` → `InvariantCountCheck`     | active (v1)   |
+| `--exclude`             | `LintCommand.run()` → file filtering            | active (v1)   |
+| `--max-words`           | `LintCommand.run()` → `WordCountCheck`          | active (v1)   |
+| `--max-header-words`    | `LintCommand.run()` → `WordCountCheck`          | active (v2)   |
+| `--max-contract-words`  | `LintCommand.run()` → `WordCountCheck`          | active (v2)   |
+| `--max-region-comments` | `LintCommand.run()` → `RegionCommentCheck`      | active (v1)   |
+| `--spec`                | `LintCommand.run()` → `InventorySyncCheck`      | active (v2)   |
+| `--inventory-reverse`   | `LintCommand.run()` → `InventorySyncCheck`      | active (v2)   |
+| `--changed`             | —                                               | deferred (v2) |
+| `lint.commentLanguage`  | `gennady.yaml` → `LintConfig` → `LanguageCheck` | active (v2)   |
+| `lint.scope`            | `gennady.yaml` → `LintConfig` → `LintScope`     | active (v2)   |
+
+**`lint.scope` contract (проектный конфиг, не флаг):**
+
+```yaml
+lint:
+  scope: all # all (по умолчанию) | owned
+```
+
+- `all` — прежнее поведение: проверяется каждый выбранный файл.
+- `owned` — проверяются только файлы с `// @spec:`, из File Mapping какой-либо спеки или из Target
+  Files тикета; остальные пропускаются, lint печатает их число. Для существующего проекта это
+  убирает массовую разметку чужого легаси-кода из первого внедрения SDD.
+- Нет конфига или ключа → `all`. Неизвестное значение → `ERR_CLI_LINT_BAD_CONFIG`, exit 4.
+
+**`lint.commentLanguage` contract (проектный конфиг, не флаг):**
+
+```yaml
+lint:
+  commentLanguage: en # en (по умолчанию) | ru | any
+```
+
+- `en` — прежнее поведение: кириллица в JSDoc и `// @file:` / `// @consumers:` → `ERR_CLI_LINT_NON_ENGLISH`.
+- `ru` — русский и английский текст в этих местах разрешён; остальные проверки lint не меняются.
+  Агенты пишут новые JSDoc и заголовки по-русски и не переводят существующие.
+- `any` — проверка языка не выполняется; язык не предписан, агенты следуют языку окружающего кода.
+- Нет конфига или ключа → `en`. Неизвестный ключ или значение → `ERR_CLI_LINT_BAD_CONFIG`, exit 4
+  до линтинга.
 
 **`--max-invariants` contract:**
 
@@ -604,12 +677,16 @@ staged deletion не является lint target. Пользовательск�
 - Тип: `string` — директория модуля для полного обратного обхода
 - Требует `--spec`; без него — `ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC`, canonical usage и exit 4 до lint
 - Без явных позиционных целей директория из `--inventory-reverse` используется и как цель обхода (обычные чеки + прямой инвентарь), и как корень обратного обхода
+- Явно переданный JS-файл (`.js`, `.mjs`, `.cjs`, `.jsx`) только добавляет свои экспорты в реализованное (D-028); ошибка чтения — `lintReadError`
 - После обхода: инвентарные сущности, не экспортированные ни одним просканированным файлом → `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` (ошибка на файле спеки)
 - Сущность, помеченная маркером `Deferred Implementation: <TSK-id>`, исключается из ошибок ТОЛЬКО когда цитируемый тикет ВАЛИДНО ей владеет (D-016); иначе маркер — это drift, а не исключение. Валидность (`checkDeferral` + `ticketOwnsEntity`, D-018) требует: тикет существует в графе; его статус АКТИВНЫЙ — строго `TODO`/`IN_PROGRESS` (DONE/CANCELLED/BLOCKED/нераспознанный → drift); его скоуп совпадает со скоупом спеки, когда тот известен; и он СТРУКТУРНО владеет сущностью — её имя есть в поле `Entities:`/`Provides:`/`Implements:`/`Entity:` тикета ИЛИ в пути его Target Files (не в произвольной прозе). Валидно отложенная сущность собирается в `ReverseSweepResult.deferred` и печатается info-строкой; невалидная — `ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` с конкретной причиной. Отдельно: сущность, которая УЖЕ реализована, но всё ещё несёт маркер, — устаревший маркер → `ERR_CLI_LINT_INVENTORY_STALE_DEFERRAL`
+- Имена экспорта (D-027): `export const/let/function/class/type/interface/enum` (все деклараторы), `export { a, b as c }`, `export default <идентификатор>` и `export { x as default }` (засчитывается локальное имя), `export default` именованной декларации, реэкспорты `export { x } from` и `export * as ns from`. Обёртки `as`/`satisfies`/скобки/`!` вокруг default-идентификатора снимаются. Прямая сверка (`UNDECLARED`) смотрит только на локальные имена, реэкспорты на ней не учитываются
+- Безымянный default (`export default new X()`, литерал) засчитывается сущности, у которой в строке Entity Inventory стоит пометка `Default Export: <repo-relative путь>` (`parseDefaultExportEntities`), и только если этот файл действительно имеет default-экспорт
+- Если сущность не найдена, но среди просканированных есть файл, чьи имена перечислить нельзя (`export * from`, ошибка разбора), — это не `UNIMPLEMENTED`, а предупреждение `ERR_CLI_LINT_INVENTORY_UNVERIFIABLE` с перечнем таких файлов; на код выхода оно не влияет
 
 ### Supported Extensions
 
-Линтер объявляет поддерживаемые расширения: `.ts`, `.tsx`. При обходе директорий и явной передаче файлов — линтер собирает ТОЛЬКО файлы этих расширений. Файлы с другими расширениями молча игнорируются — это не ошибка, а штатная фильтрация. Линтер линтит только то, что умеет.
+Линтер объявляет поддерживаемые расширения: `.ts`, `.tsx`. При обходе директорий и явной передаче файлов — линтер собирает ТОЛЬКО файлы этих расширений. Файлы с другими расширениями молча игнорируются — это не ошибка, а штатная фильтрация. Линтер линтит только то, что умеет. Исключение — `--inventory-reverse` (D-028): явно переданные файлы `.js`, `.mjs`, `.cjs`, `.jsx` принимаются только как источники экспорта для обратной сверки описи, контрактные и прочие проверки к ним не применяются. Без `--inventory-reverse` такой файл по-прежнему даёт `ERR_CLI_LINT_UNSUPPORTED_TARGET`.
 
 Сравнение расширений — **регистро-независимое** (`.TS` ≡ `.ts`, `.Tsx` ≡ `.tsx`).
 
@@ -655,6 +732,8 @@ cli/cmd/lint/
 ├── index.ts                    # import './lint.cmd.ts'
 ├── lint.cmd.ts                 # LintCommand.run()
 ├── lint.types.ts               # LintError, LintOptions, LintReport, константы ошибок
+├── lint-config.ts              # LintConfig: loadLintConfig(), COMMENT_LANGUAGES
+├── lint-scope.ts               # LintScope: selectOwnedLintFiles()
 ├── checks/
 │   ├── file-header.check.ts    # FileHeaderCheck.check()
 │   ├── language.check.ts       # LanguageCheck.check()
@@ -666,14 +745,18 @@ cli/cmd/lint/
 │   └── anchor-thin.check.ts       # AnchorThinCheck.check()
 │   ├── word-count.check.ts        # WordCountCheck.check()
 │   └── region-comment.check.ts    # RegionCommentCheck.check()
+│   └── utils/
+│       └── file-lint-disable.ts   # FileLintDisable: findFileLintDisable()
 ├── utils/
 │   └── resolve-references.fn.ts # loadTaskReferences(), extractTaskIdsFromHeader(), resolveReferencesForTasks()
 └── __tests__/
     ├── lint.cmd.test.ts
     ├── file-header.check.test.ts
     ├── language.check.test.ts
+    ├── lint-config.test.ts
     ├── anchor.check.test.ts
     ├── disables.check.test.ts
+    ├── file-lint-disable.test.ts
     ├── dbc-contract.check.test.ts
     ├── invariant-count.check.test.ts
     ├── anchor-class-body.check.test.ts
@@ -686,8 +769,11 @@ cli/cmd/lint/
 - `lint.types.ts`: `LintError`, `LintOptions`, `LintReport`, 10 × `ERR_CLI_LINT_*`
 - `checks/file-header.check.ts`: `FileHeaderCheck`
 - `checks/language.check.ts`: `LanguageCheck`
+- `lint-config.ts`: `LintConfig`
+- `lint-scope.ts`: `LintScope`
 - `checks/anchor.check.ts`: `AnchorCheck`
 - `checks/disables.check.ts`: `DisablesCheck`
+- `checks/utils/file-lint-disable.ts`: `FileLintDisable`
 - `checks/dbc-contract.check.ts`: `DbcContractCheck`
 - `checks/invariant-count.check.ts`: `InvariantCountCheck`
 - `checks/anchor-class-body.check.ts`: `AnchorClassBodyCheck`
@@ -993,6 +1079,11 @@ cli/cmd/lint/
 - D-021 (module) — CLI cardinality is fail-closed. Все scalar/boolean options принимаются не более одного раза и scalar требует непустое значение; только `--exclude` repeatable. Numeric options разбираются целиком как safe integers в документированном домене, без `parseInt`-усечения. Malformed argv, включая `--inventory-reverse` без `--spec` и `--staged` вместе с targets, возвращает exit 4 с canonical usage до filesystem/lint work; lint findings сохраняют exit 1.
 - D-022 (module) — Standalone lint selection is fail-closed at symlink boundaries. Явно выбранные symlink file/dir и symlink `.ts`/`.tsx`, найденные внутри выбранной директории, больше не превращаются в ноль файлов и clean: shared `inspectRepoPath` даёт `ERR_CLI_LINT_READ_FAILED` с teaching fix. Вложенные symlink-директории и unsupported-extension symlink не обходятся и могут быть проигнорированы только потому, что не входят в реализованный `.ts`/`.tsx` source-set.
 - D-023 (module) — `--staged` соответствует публичному staged+untracked контракту: argv-safe Git + NUL-delimited paths, staged `ACMR` и untracked неignored `.ts/.tsx`; staged deletions исключаются до чтения. Имена с whitespace/newline не дробятся shell/string parsing.
+- D-024 (module) — Язык комментариев — настройка проекта, а не жёсткое правило. **Was:** `LanguageCheck` всегда требовал английский в JSDoc и `// @file:` / `// @consumers:`. В проекте с русскими комментариями по конвенции механика аудита (`lint --include-tests --spec=<module> <files>`) отклоняла правку одной строки в старом файле из-за всех его русских JSDoc, и агент переводил чужие комментарии. **Now:** `lint.commentLanguage: en | ru | any` в `gennady.yaml`; по умолчанию `en`, без конфига поведение не меняется. Значение читает `LintCommand` и передаёт в `LanguageCheck`, которая остаётся чистой функцией. **Rejected:** CLI-флаг — `lint` вызывают механика аудита и pre-commit, они не знают проектных флагов, а конвенция должна жить в проекте; чтение конфига внутри `LanguageCheck` — ломает её контракт без I/O. Для lint `ru` и `any` сейчас дают одинаковый результат; разница в указании агентам (`AX_OPERATOR_LANGUAGE`, `typescript-rules.xml`): `ru` предписывает русский, `any` не предписывает язык.
+- D-025 (module) — Файловое исключение из контрактов и описи. **Was:** файл-реестр (например, ~1800 констант фича-флагов с `//`-описаниями) нельзя было довести до зелёного lint: каждая константа требовала JSDoc-контракт и строку Entity Inventory, `@see DEMO-123` без фигурных скобок давал `SEE_FORMAT_INVALID`; любая правка такого файла краснела на аудите. **Now:** маркер `// gennady-lint-disable: <ACR>-DL-N <причина>` в ведущем блоке `//`-комментариев ссылается на уникальное accepted решение декларационного владельца; JSON `lint-exemption` обязан назвать exact file и разрешённые checks. Только названные `DbcContractCheck`/`InventorySyncCheck` могут быть исключены, синтаксис остаётся обязательным. Маркер подчиняется дисциплине D-007 (ссылка на Decision Log и обоснование в той же строке), без неё не действует; заголовок файла, язык, якоря, `sdd-check` и ownership не выключаются. **Rejected:** исключение через конфиг или CLI-флаг — решение невидимо в самом файле и не требует записи в Decision Log; выключение всего lint для файла — потеряли бы проверку заголовка и дисциплины отключений; маркер в любом месте файла — легко потерять при правке, и исключение переставало бы быть явным решением о файле.
+- D-026 (module) — Проверка только файлов, которыми владеет SDD. **Was:** lint проверял каждый выбранный файл, поэтому в существующем большом проекте `gennady lint <каталог>` (и `npm run check`) краснел на сотнях неразмеченных файлов, которые ещё никто не взял в SDD; внедрение начиналось с огромного диффа с заголовками и контрактами чужого кода. **Now:** `lint.scope: owned` в `gennady.yaml` оставляет только файлы с `// @spec:`, из File Mapping или из Target Files тикета; по умолчанию `all`, без конфига поведение не меняется. **Rejected:** пропускать файл просто по отсутствию `@spec` — удаление одной строки выключало бы lint для файла, который спека по-прежнему объявляет, а новый файл без заголовка молча выпадал бы; делать `owned` поведением по умолчанию — самому gennady и новым проектам нужна строгая проверка. Файл, который уже принадлежит модулю, но слишком дорог для полной разметки, по-прежнему исключается явным маркером `gennady-lint-disable` с ссылкой на Decision Log.
+- D-027 (module) — Обратная сверка понимает все формы ES-экспорта. **Was:** экспорты брались из сущностей DbC-адаптера, поэтому `export { a }`, `export default x`, реэкспорты, второй декларатор `export const a = 1, b = 2` и безымянный default не попадали в реализованное; сверка требовала удалить из Entity Inventory реально существующие сущности, а агент удалял строки. **Now:** `DbcTsAstAdapter.parseExportNames` перечисляет имена всех форм; безымянный default сопоставляется по пометке `Default Export: <path>`; файл с `export *` или ошибкой разбора даёт предупреждение `INVENTORY_UNVERIFIABLE` вместо ошибки; текст `UNIMPLEMENTED` прямо говорит проверить формы экспорта до удаления строки. **Rejected:** разрешать `export *` по графу модулей — нужен резолвер путей и алиасов, а цель сверки — расхождение спеки, а не сборка; сопоставлять безымянный default по имени файла — неоднозначно и молча засчитывает чужое. **Risk accepted:** сущность, которую может реэкспортировать `export *`, не проверяется, пока файл с `export *` в сканировании.
+- D-028 (module) — JS-файлы модуля участвуют в обратной сверке описи. **Was:** lint принимал только `.ts`/`.tsx`, поэтому сущности из `.js`-файлов File Mapping (легаси-хелперы в смешанном проекте) никогда не считались реализованными, и `--inventory-reverse` требовал удалить их строки из Entity Inventory. **Now:** при `--inventory-reverse` явно переданные `.js`/`.mjs`/`.cjs`/`.jsx` читаются только ради имён экспорта; заголовок, контракты и прочие проверки к ним не применяются, поэтому легаси-код не нужно размечать. **Rejected:** линтить JS как TS — контракты и заголовки в легаси-JS никто не писал, сверка стала бы красной на каждом файле; убирать JS-строки из Entity Inventory — опись перестала бы описывать модуль. **Risk accepted:** JS-файл, переданный без `--inventory-reverse`, остаётся неподдерживаемой целью.
 - Все архитектурные решения — на уровне scope (D-001, D-002 в `cli.spec.md`).
 
 ## 8. Inter-Module Dependencies
@@ -1048,3 +1139,24 @@ graph TD
   - `--max-invariants`: параметр нужно зарегистрировать в `parseArgs` (`lint.cmd.ts`) и в help-сообщении `gennady.ts`
   - Интеграционные тесты `lint.cmd.test.ts` должны покрыть новые чеки в общем пайплайне
   - `--staged` + позиционные цели: запрет должен быть реализован на уровне парсинга аргументов
+
+## Интеграция существующих проектов: общий контракт
+
+- Поддержанные исходники: `.js/.jsx/.mjs/.cjs/.ts/.tsx/.mts/.cts`. ES exports и статические CommonJS
+  assignments участвуют в inventory; динамическая неоднозначность не даёт полного reverse PASS.
+  Inventory-only sweep не равен contract lint. В JS типы JSDoc не избыточны и autofix их сохраняет;
+  в TypeScript прежняя проверка избыточных типов сохраняется.
+- `lintConfigRoot` находит Git root для политики; сами выбранные пути остаются относительными cwd.
+  `loadLintConfig` возвращает effective value и provenance, `lintLanguageGuidance` предлагает точную
+  правку эффективного источника с согласованием и повторной проверкой. CLI сам config не меняет.
+- Owned header-probe использует канонический parser, включая shebang/license, читает максимум
+  4096 bytes на файл; неизвестность после длинного пролога означает keep, а не skip.
+- `findFileLintDisable` проверяет только синтаксис; `authorizeFileLintDisable` разрешает исключение
+  только через один accepted record в MODULE_DECISION_LOG владельца. Формат payload:
+  `lint-exemption: {"file":"src/registry.ts","checks":["dbc","inventory"],"why":"обоснование"}`.
+  Поля closed, file точный, checks из dbc/inventory. Pending/rejected/foreign/fake record не действует.
+  EXEMPTED показывает проверяемую область и ID решения. Сам marker не является operator ACK.
+  Header/ownership, syntax, compiler и project tests остаются обязательными; reverse inventory
+  продолжает видеть существующие экспорты. Component APIs получают authorization явно от caller.
+- Ошибки config указывают фактический источник, в том числе malformed нижеприоритетную секцию.
+  Неверная настройка не лечится безусловным переводом комментариев или молчаливым отключением lint.

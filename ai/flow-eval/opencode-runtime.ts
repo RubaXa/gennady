@@ -3,7 +3,7 @@
 // @consumers: SddEvalRunner, SddEvalJudge; no subprocess or codex binary is used.
 
 import type { OpencodeClient } from '@opencode-ai/sdk';
-import { createSddEvalOpenCodeClient } from './opencode-client.ts';
+import { createSddEvalOpenCodeClient, DEFAULT_SDD_EVAL_BASE_URL } from './opencode-client.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import type { OpenCodeModel, SddEvalRuntime, SddEvalSessionDirectoryRegistry } from './types.ts';
 import { resolve } from 'node:path';
@@ -60,7 +60,7 @@ export class SddEvalOpenCodeRuntime implements SddEvalRuntime {
     this.#client =
       options.client ??
       createSddEvalOpenCodeClient({
-        baseUrl: options.baseUrl ?? 'http://localhost:4096',
+        baseUrl: options.baseUrl ?? DEFAULT_SDD_EVAL_BASE_URL,
         directory: options.directory,
       });
   }

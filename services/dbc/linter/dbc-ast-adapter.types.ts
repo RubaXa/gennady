@@ -20,6 +20,10 @@ export type DbcSignatureInfo = {
   params: DbcParamInfo[];
   /** @purpose Return type annotation as written in source, or 'void' */
   returnType: string;
+  /** @purpose Callable has no return annotation: `@returns` is optional, never required or unexpected */
+  implicitReturn?: boolean;
+  /** @purpose Signature of the function stored in an exported `const`: `@param`/`@returns` optional */
+  valueFunction?: boolean;
 };
 
 /**
@@ -85,3 +89,15 @@ export interface DbcAstAdapter {
    */
   parseFile(filePath: string, content?: string): Promise<DbcParseResult>;
 }
+
+/** @purpose Every ES export a file exposes, for inventory sync rather than contract checks. */
+export type DbcExportNames = {
+  /** @purpose Names declared or exported from this file (`export const a`, `export {a, b as c}`, `export default x`). */
+  readonly local: readonly string[];
+  /** @purpose Names re-exported from another module (`export {z} from`, `export * as ns from`). */
+  readonly reexported: readonly string[];
+  /** @purpose Whether the file has a default export of any form. */
+  readonly hasDefault: boolean;
+  /** @purpose Whether the file has `export * from …`, whose names cannot be listed without resolving the module. */
+  readonly starReexport: boolean;
+};

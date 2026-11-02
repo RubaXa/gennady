@@ -55,10 +55,10 @@
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
       This directive's prose is English (prompt language). Findings the OPERATOR reads are in Russian.
-      But the code contracts themselves stay in the language the governing rules require — for this
-      repo's TS rules, that is English (`typescript-rules.xml`: «JSDoc … strictly in English»). Never
-      recommend a Russian rewrite of a contract the rules say must be English; propose the concentrated
-      replacement in the contract's own language.
+      Code contracts follow the effective project lint.commentLanguage (repo .gennadyrc > project
+      gennady.yaml > HOME .gennadyrc): en/default requires English; ru permits Russian and English;
+      any preserves the surrounding convention. Do not translate existing contracts or contradict
+      tool-reported policy. Propose policy changes for operator consent, never silently apply them.
     </Axiom>
   </BeliefState>
 

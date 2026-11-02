@@ -1455,3 +1455,70 @@ it('persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA 
     cleanup();
   }
 });
+
+it('masks only the tracker Status and rollup ratio columns that sdd-sync rewrites', () => {
+  const f = fixture();
+  try {
+    const index = join(f.root, 'specs', 'demo.3-tasks.md');
+    const tracker = (status: string, title: string, deps: string, done: string) =>
+      [
+        '| Task-ID | Title | Deps | Status |',
+        '|---|---|---|---|',
+        `| TSK-1 | ${title} | ${deps} | ${status} |`,
+        '',
+        '| Index | Tasks | Done |',
+        '|---|---|---|',
+        `| [3-tasks](./demo.3-tasks.md) | 1 | ${done} |`,
+        '',
+      ].join('\n');
+    writeFileSync(index, tracker('[ ] TODO', 'Build it', '—', '0/1'));
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+    writeFileSync(index, tracker('[x] DONE', 'Build it', '—', '1/1'));
+    assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'sync bookkeeping');
+    writeFileSync(index, tracker('[x] DONE', '[x] DONE', '—', '1/1'));
+    assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'title cell');
+    writeFileSync(index, tracker('[x] DONE', 'Build it', '1/2', '1/1'));
+    assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'deps cell');
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('drops only receipt blocks whose JSON is a valid receipt of the marker kind', () => {
+  const f = fixture();
+  try {
+    const spec = join(f.root, 'specs', 'demo.spec.md');
+    writeFileSync(spec, '# Demo\n\nRequirement A.\n');
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+    const block = (marker: string, body: string) =>
+      `\n\n<!--${marker}-->\n\`\`\`json\n${body}\n\`\`\`\n<!--/${marker}-->\n`;
+    const receipt = (kind: string) =>
+      JSON.stringify(
+        {
+          schema: 1,
+          kind,
+          group: 'specs/demo.spec.md',
+          members: ['task.md'],
+          gitRef: 'no-head',
+          verdict: 'PASS',
+          ts: '2026-11-02T00:00:00.000Z',
+          signature: 'sha256:x',
+        },
+        null,
+        2
+      );
+    const base = '# Demo\n\nRequirement A.';
+    writeFileSync(spec, base + block('SDD_AUDIT_RECEIPT', receipt('audit')));
+    assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'valid receipt');
+    for (const [label, forged] of [
+      ['invalid JSON', block('SDD_AUDIT_RECEIPT', 'Requirement B replaces A.')],
+      ['wrong kind', block('SDD_AUDIT_RECEIPT', receipt('review'))],
+      ['text in a receipt shell', block('SDD_REVIEW_RECEIPT', '{"note": "Requirement B"}')],
+    ] as const) {
+      writeFileSync(spec, base + forged);
+      assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, label);
+    }
+  } finally {
+    f.cleanup();
+  }
+});

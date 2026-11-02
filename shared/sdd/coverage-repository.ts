@@ -49,6 +49,8 @@ export type CoverageReadStats = {
 export type CoverageDocument = {
   /** @purpose Stable document schema identity. */
   schema: 'sdd-coverage/1';
+  /** @purpose Safe canonical owner paths for selected declaration rows; no extra filesystem reads. */
+  specifications: readonly { readonly id: string; readonly path: string }[];
   /** @purpose Exact requested query, with spec paths resolved to canonical identities. */
   selection: CoverageSelection;
   /** @purpose Diagnosis of declared coverage, not a census of unclaimed repository code. */
@@ -752,7 +754,16 @@ export function readSddCoverage(
         canProceed: false,
       }
     : result;
-  return { schema: 'sdd-coverage/1', selection: selected, coverage, reads };
+  const ownerIds = new Set(coverage.rows.flatMap((row) => row.owners));
+  return {
+    schema: 'sdd-coverage/1',
+    selection: selected,
+    coverage,
+    reads,
+    specifications: specs
+      .filter((spec) => ownerIds.has(spec.id))
+      .map(({ id, path }) => ({ id, path })),
+  };
 }
 
 /**

@@ -1,0 +1,68 @@
+{
+  "schema": "source-import-ledger/1",
+  "sourceCommit": "0d527a652694f08da4237a9ee45b583f80c1b66a",
+  "paths": [
+    {
+      "path": "ai/flow-eval/opencode-client.ts",
+      "sourceSha256": "d01910a02bba7d7467e211f72b17a0d5cbb4189a07c6e78ba756aaec6040203f",
+      "currentSha256": "d01910a02bba7d7467e211f72b17a0d5cbb4189a07c6e78ba756aaec6040203f",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/runner.ts",
+      "sourceSha256": "a40925bc4a6c5b8dc41784700a26f8e3eeff3d5ab89c95c469e1f36d2d53dea0",
+      "currentSha256": "a40925bc4a6c5b8dc41784700a26f8e3eeff3d5ab89c95c469e1f36d2d53dea0",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/opencode-runtime.ts",
+      "sourceSha256": "cfa3ceb41a6ea9e4bef5bbd72a03aa875f7a691d4e1676fee69b15f27e8e9ddc",
+      "currentSha256": "cfa3ceb41a6ea9e4bef5bbd72a03aa875f7a691d4e1676fee69b15f27e8e9ddc",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/evidence.ts",
+      "sourceSha256": "d1def1fdffdece35ca457ae28e4659b74d50858fa8fa887f8f3aef2da5dc7b34",
+      "currentSha256": "d1def1fdffdece35ca457ae28e4659b74d50858fa8fa887f8f3aef2da5dc7b34",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/observer.ts",
+      "sourceSha256": "05083640c36ddd753aadd1a34dde4753d1beb2a2b80dfccf027962397deaae81",
+      "currentSha256": "05083640c36ddd753aadd1a34dde4753d1beb2a2b80dfccf027962397deaae81",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/cli.ts",
+      "sourceSha256": "e821e3592fce07a177b57bfc45c95386ad8ddfe3d7276c932e95efb0b7d1b8ea",
+      "currentSha256": "e821e3592fce07a177b57bfc45c95386ad8ddfe3d7276c932e95efb0b7d1b8ea",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/sandbox-lifecycle.ts",
+      "sourceSha256": "7f7993c21959b7e2fcf8920879dd4b59143e0cb0cda082e99317a655df8737cd",
+      "currentSha256": "7f7993c21959b7e2fcf8920879dd4b59143e0cb0cda082e99317a655df8737cd",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/__tests__/results-archive.test.ts",
+      "sourceSha256": "f9ca1eb42ac1330dc62312222511c1430e2fbf2876a92e3dadd2c0a563963226",
+      "currentSha256": "f9ca1eb42ac1330dc62312222511c1430e2fbf2876a92e3dadd2c0a563963226",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/__tests__/default-model-family.test.ts",
+      "sourceSha256": "c5796583c920b86e8751882fdc92bd6ed250dae04e3fc08e862ce851d815bd39",
+      "currentSha256": "c5796583c920b86e8751882fdc92bd6ed250dae04e3fc08e862ce851d815bd39",
+      "delta": "exact source copied via reviewed diff"
+    },
+    {
+      "path": "ai/flow-eval/__tests__/execution-autonomy-boundaries.test.ts",
+      "sourceSha256": "161c22d834e3a4bd2295989d39fad78b21ab0110848f5f8ead36714b808c3e34",
+      "currentSha256": "fa0cb3e676353de0d71aa00b3925644ae26c9dbb9074bbe8d7fb98cf186147c1",
+      "delta": "observer regression additions only; timeout migration excluded"
+    }
+  ],
+  "oldResultsChanged": false,
+  "modelCalls": 0
+}

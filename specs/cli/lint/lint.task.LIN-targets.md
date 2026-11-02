@@ -100,11 +100,11 @@ Contract: see Spec References.
 - **When** `gennady lint --staged src/foo.ts`
 - **Then** ошибка: флаги взаимоисключающие; exit 1
 
-**Scenario:** Фильтрация: `.js` в директории молча игнорируется [`unit`]
+**Scenario:** Выбор поддержанного JS/TS-семейства в смешанной директории [`unit`]
 
 - **Given** директория содержит `a.ts`, `b.js`, `c.tsx`
 - **When** `resolveTargets(['dir/'])`
-- **Then** `files` = [`abs/a.ts`, `abs/c.tsx`]; `errors` = `[]`
+- **Then** `files` = [`abs/a.ts`, `abs/b.js`, `abs/c.tsx`]; `errors` = `[]`
 
 **Scenario:** `node_modules/` исключается [`unit`]
 
@@ -134,7 +134,7 @@ Contract: see Spec References.
 - Scenario «Несуществующий путь» → `cli/cmd/lint/__tests__/resolve-targets.test.ts` :: `should return ERR_CLI_LINT_RESOLVE_FAILED for non-existent path`
 - Scenario «Частичный сбой» → `cli/cmd/lint/__tests__/resolve-targets.test.ts` :: `should handle mixed valid, non-existent, and permission-denied targets`
 - Scenario «--staged + позиционные» → `cli/cmd/lint/__tests__/lint.cmd.test.ts` :: `--staged with a positional target is a bad invocation before linting`
-- Scenario «Фильтрация .js» → `cli/cmd/lint/__tests__/resolve-targets.test.ts` :: `should collect only .ts/.tsx from a mixed directory`
+- Scenario «Поддержанное JS/TS-семейство» → `cli/cmd/lint/__tests__/resolve-targets.test.ts` :: `should collect supported JS/TS sources from a mixed directory`
 - Scenario «явный node_modules обрабатывается» → `cli/cmd/lint/__tests__/resolve-targets.test.ts` :: `should traverse node_modules content when passed explicitly as a target`
 
 **Deferred Test Ownership:** none — все сценарии покрываются в LIN-dir-test

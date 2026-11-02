@@ -7,7 +7,8 @@ import { resolve, relative, join, dirname } from 'node:path';
 import { logger } from '#logger';
 import { parseArgs } from '../../../shared/common/parse-args.ts';
 import { extractSection, extractHeadingSection } from '../../../shared/sdd/section.ts';
-import { sddCoverageIssue } from '../../../shared/sdd/coverage-repository.ts';
+import { readSddCoverage } from '../../../shared/sdd/coverage-repository.ts';
+import { isSddSourceFile } from '../../../shared/sdd/source-extensions.ts';
 import {
   parseMetaInfo,
   parsePhasesOverview,
@@ -88,7 +89,75 @@ import {
   type TaskOutcome,
   type GroupScopeGit,
   type CoverageGate,
+  type InventoryFiles,
 } from './sdd-task.types.ts';
+
+/** @purpose Coverage codes raised while reading declarations: the mapped file set cannot be trusted. */
+const INVENTORY_METADATA_FAILURES: ReadonlySet<string> = new Set([
+  'READ_FAILED',
+  'GIT_READ_FAILED',
+  'INVALID_MAPPING',
+  'INVALID_SPEC',
+  'INVALID_STRUCTURE',
+  'UNSAFE_METADATA',
+  'UNSAFE_PATH',
+]);
+
+/** @purpose JavaScript sources: not contract-linted, but their exports count for the reverse inventory sweep. */
+const INVENTORY_ONLY_SOURCE_RE = /\.(?:[cm]?js|jsx)$/i;
+
+/** @purpose A File Mapping row that is not an exact path (a mask such as `src/*`) — the mapped set is incomplete. */
+function isMappingPathFailure(finding: { code: string; detail: string }): boolean {
+  return finding.code === 'INVALID_PATH' && finding.detail.startsWith('File Mapping');
+}
+
+/**
+ * @purpose The module's own lint-target files from its File Mapping — the exact reverse-inventory set.
+ * @invariant Declaration-only read, no directory walk. Only `absent` permits the directory fallback;
+ *   an unreadable, unsafe, masked or file-less mapping is `invalid`. JavaScript files count (D-TK024).
+ * @param root Canonical project root.
+ * @param specPath Owning module spec of the audited group.
+ * @returns `absent` (no mapping), `valid` sorted repo-relative files, or `invalid` with a reason.
+ */
+function moduleInventoryFiles(root: string, specPath: string): InventoryFiles {
+  const id = relative(root, resolve(root, specPath)).split('\\').join('/');
+  const document = readSddCoverage(root, { kind: 'spec', id }, 'audit', { observeSources: false });
+  const failure = document.coverage.findings.find(
+    (f) => INVENTORY_METADATA_FAILURES.has(f.code) || isMappingPathFailure(f)
+  );
+  if (failure)
+    return { kind: 'invalid', reason: `${failure.code} ${failure.path}: ${failure.detail}` };
+  // Only the spec's own File Mapping defines the module; ticket Target Files alone do not.
+  const declared = [
+    ...new Set(
+      document.coverage.rows
+        .filter((row) => row.sources.some((source) => source.startsWith('mapping:')))
+        .map((row) => row.path)
+    ),
+  ];
+  if (declared.length === 0) return { kind: 'absent' };
+  const missing = declared.find((file) => !existsSync(resolve(root, file)));
+  if (missing)
+    return { kind: 'invalid', reason: `File Mapping is incomplete: ${missing} does not exist` };
+  const unsupportedSource = declared.find(
+    (file) => isSddSourceFile(file) && !isGennadyLintTarget(file)
+  );
+  if (unsupportedSource)
+    return {
+      kind: 'invalid',
+      reason: `Inventory capability is incomplete: ${unsupportedSource} requires a language adapter; no directory fallback or full symbol proof is available`,
+    };
+  const files = declared
+    .filter(
+      (file) =>
+        existsSync(resolve(root, file)) &&
+        (isGennadyLintTarget(file) || INVENTORY_ONLY_SOURCE_RE.test(file))
+    )
+    .sort();
+  if (files.length === 0)
+    return { kind: 'invalid', reason: 'File Mapping declares no existing lint target' };
+  return { kind: 'valid', files };
+}
 
 function shellToken(value: string): string {
   return /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
@@ -485,6 +554,7 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
       (root, index) =>
         !candidateRoots.slice(0, index).some((parent) => root.startsWith(`${parent}/`))
     );
+    const inventoryFiles = moduleInventoryFiles(defaultRoot, resolution.specPath);
     return formatGroupScope(
       resolution.specPath,
       selectedGroup,
@@ -495,7 +565,8 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
       contractAnchors,
       lintFiles,
       codeRoots,
-      coverageGates
+      coverageGates,
+      inventoryFiles
     );
   }
 
@@ -716,13 +787,24 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
         `phase '${phaseId}' verification plan cannot be resolved: ${cause instanceof Error ? cause.message : String(cause)}`
       );
     }
-    const coverageIssue = sddCoverageIssue(
+    const coverage = readSddCoverage(
       root,
       { kind: 'phase', task: resolved.identity.relative, phase: phaseId },
       'preflight'
+    ).coverage;
+    if (!coverage.canProceed)
+      return phaseEvidenceError(
+        'SDD coverage preflight: ' +
+          coverage.findings
+            .filter((finding) => finding.severity === 'error')
+            .slice(0, 8)
+            .map((finding) => `${finding.code} ${finding.path}: ${finding.detail}`)
+            .join('; ')
+      );
+    const mappingNotices = coverage.findings.filter(
+      (finding) => finding.code === 'MAPPING_REQUIRED'
     );
-    if (coverageIssue) return phaseEvidenceError(coverageIssue);
-    const phaseOutcome = formatPhase(
+    let phaseOutcome = formatPhase(
       meta,
       phases,
       detailsById,
@@ -747,6 +829,20 @@ async function runCommand(rawArgs: string[], projectRoot: string): Promise<TaskO
       },
       ruleDispatch.snapshot
     );
+    if (phaseOutcome.ok && mappingNotices.length > 0)
+      phaseOutcome = {
+        ...phaseOutcome,
+        text: [
+          'COVERAGE_PREFLIGHT: pending mapping; not an audit PASS and grants no new write authority.',
+          ...mappingNotices
+            .slice(0, 8)
+            .map((finding) => `${finding.code} ${finding.path}: ${finding.detail}`),
+          ...(mappingNotices.length > 8
+            ? [`${mappingNotices.length - 8} more; query orient --coverage for details`]
+            : []),
+          phaseOutcome.text,
+        ].join('\n'),
+      };
     return withResolutionLine(
       infraExemptionNote && phaseOutcome.ok
         ? {

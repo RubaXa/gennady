@@ -542,6 +542,81 @@ describe('scope-aware multistack target planner', () => {
     });
   });
 
+  it('keeps exact SDD bracket tombstones while rejecting authored absent masks and unsafe tombstones', () => {
+    withRepo((root, home) => {
+      const file = 'pages/[id].tsx';
+      const result = resolveMultistackVerifyPlan(root, 'code', {
+        homeDirectory: home,
+        scope: { mode: 'files', files: [file] },
+        knownDeletedFiles: [file],
+      });
+      assert.deepEqual(result.scope.files, [file]);
+      assert.equal(
+        result.stacks.find((stack) => stack.plugin === 'node')?.participation,
+        'affected'
+      );
+      assert.throws(() => resolve(root, home, [file]), VerifyConfigError);
+      for (const invalid of ['src/*.ts', '../escape.ts', '/tmp/escape.ts']) {
+        assert.throws(
+          () =>
+            resolveMultistackVerifyPlan(root, 'code', {
+              homeDirectory: home,
+              scope: { mode: 'files', files: [invalid] },
+              knownDeletedFiles: [invalid],
+            }),
+          VerifyConfigError,
+          invalid
+        );
+      }
+      fs.mkdirSync(path.join(root, 'real'));
+      fs.symlinkSync(path.join(root, 'real'), path.join(root, 'alias'));
+      const alias = 'alias/[id].tsx';
+      assert.throws(
+        () =>
+          resolveMultistackVerifyPlan(root, 'code', {
+            homeDirectory: home,
+            scope: { mode: 'files', files: [alias] },
+            knownDeletedFiles: [alias],
+          }),
+        VerifyConfigError
+      );
+    });
+  });
+
+  it('plans existing files whose names hold glob metacharacters as exact Target Files', () => {
+    withRepo((root, home) => {
+      fs.mkdirSync(path.join(root, 'pages'));
+      fs.mkdirSync(path.join(root, 'a'));
+      fs.writeFileSync(path.join(root, 'pages', '[...slug].tsx'), 'export {};\n');
+      fs.writeFileSync(path.join(root, 'a', '{b}.ts'), 'export {};\n');
+      assert.doesNotThrow(() => resolve(root, home, [], 'all'));
+      const result = resolve(root, home, ['pages/[...slug].tsx', 'a/{b}.ts']);
+      assert.deepStrictEqual(result.scope.files, ['a/{b}.ts', 'pages/[...slug].tsx']);
+      assert.strictEqual(
+        result.stacks.find((stack) => stack.plugin === 'node')?.participation,
+        'affected'
+      );
+    });
+  });
+
+  it('keeps a VCS-reported deleted path literal but rejects an absent authored mask', () => {
+    withRepo((root, home) => {
+      const changed = resolve(root, home, ['pages/[id].tsx'], 'changed', 'origin/main');
+      assert.deepStrictEqual(changed.scope.files, ['pages/[id].tsx']);
+      for (const mask of ['pages/[id].tsx', 'src/*.ts', 'a/{b}.ts']) {
+        assert.throws(
+          () => resolve(root, home, [mask]),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_INVALID_TYPE');
+            assert.match(error.message, /is not repo-relative|is not an exact repo-relative path/);
+            return true;
+          }
+        );
+      }
+    });
+  });
+
   it('canonicalizes deleted-file paths before scope ownership and reporting', () => {
     withRepo((root, home) => {
       const result = resolve(

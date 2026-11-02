@@ -240,6 +240,29 @@ describe('gennady rules', () => {
     }
   });
 
+  it('reads an existing bracketed route file literally instead of expanding it as a mask', () => {
+    const built = fixture();
+    try {
+      fs.mkdirSync(path.join(built.root, 'pages'));
+      fs.writeFileSync(path.join(built.root, 'pages', '[...slug].tsx'), 'export {};\n');
+      fs.writeFileSync(path.join(built.root, 'pages', 's.tsx'), 'export {};\n');
+      const result = run(built.root, [
+        'resolve',
+        '--phase',
+        'code',
+        '--files',
+        'pages/[...slug].tsx',
+        '--format',
+        'json',
+      ]);
+      assert.equal(result.status, 0, result.stderr);
+      const report = JSON.parse(result.stdout) as { scope: { files: string[] } };
+      assert.deepEqual(report.scope.files, ['pages/[...slug].tsx']);
+    } finally {
+      built.cleanup();
+    }
+  });
+
   it('uses one selector-matched ticket phase and leaves dirty files, ticket and sentinel unchanged', () => {
     const built = fixture();
     try {

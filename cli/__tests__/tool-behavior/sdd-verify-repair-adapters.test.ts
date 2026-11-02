@@ -65,7 +65,11 @@ function installTicket(root: string, targets: readonly string[]): string[] {
   const pass = join(root, 'scripts', 'pass.mjs');
   mkdirSync(dirname(spec), { recursive: true });
   mkdirSync(dirname(pass), { recursive: true });
-  writeFileSync(pass, 'process.exit(0);\n', 'utf-8');
+  writeFileSync(
+    pass,
+    '// @file: Successful mechanical gate runner.\n// @spec: APP\n// @consumers: RepairAdapterMatrix\nprocess.exit(0);\n',
+    'utf-8'
+  );
   writeFileSync(spec, '# App\n<!--SECTION:SPEC_ID-->\nAPP\n<!--/SECTION:SPEC_ID-->\n', 'utf-8');
   writeFileSync(
     ticket,
@@ -153,7 +157,8 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
       assert.strictEqual(
         attemptProcesses(root).filter(({ stepId }) => stepId === 'node:lint-fix').length,
-        1
+        1,
+        result.stdout + result.stderr
       );
       assert.match(readFileSync(join(root, 'src/value.ts'), 'utf-8'), /VALUE = 1;/);
     } finally {
@@ -167,7 +172,7 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
       scripts: scripts(`${ESLINT_BIN} --fix`),
       files: {
         'eslint.config.mjs': eslintConfig(),
-        'scripts/gates-smoke.mjs': '// @spec: APP\nexport const smoke = true\n',
+        'scripts/gates-smoke.mjs': CLEAN_TS.replace('VALUE = 1', 'smoke = true'),
       },
     });
     try {
@@ -179,7 +184,8 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
       assert.strictEqual(
         attemptProcesses(root).filter(({ stepId }) => stepId === 'node:lint-fix').length,
-        1
+        1,
+        result.stdout + result.stderr
       );
       assert.match(readFileSync(join(root, 'scripts/gates-smoke.mjs'), 'utf-8'), /true;/);
     } finally {
@@ -199,7 +205,8 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
       assert.strictEqual(
         attemptProcesses(root).filter(({ stepId }) => stepId === 'node:lint-fix').length,
-        1
+        1,
+        result.stdout + result.stderr
       );
       assert.match(readFileSync(join(root, 'src/value.ts'), 'utf-8'), /VALUE = 1;/);
     } finally {
@@ -207,11 +214,11 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
     }
   });
 
-  it('a Gennady-only non-TS target set is an honest named skip, not unsupported-target failure', async () => {
+  it('a Gennady project leaf repairs supported MJS targets instead of silently skipping them', async () => {
     const { root } = buildRepoFixture({
       embeddedRules: true,
       scripts: scripts('gennady lint --autofix'),
-      files: { 'scripts/gates-smoke.mjs': '// @spec: APP\nexport const smoke = true\n' },
+      files: { 'scripts/gates-smoke.mjs': CLEAN_TS.replace('VALUE = 1', 'smoke = true') },
     });
     try {
       installRealGennady(root);
@@ -220,7 +227,14 @@ describe('sdd-verify — real repair adapter matrix', { concurrency: 1 }, () => 
         root
       );
       assert.strictEqual(result.exitCode, 0, result.stdout + result.stderr);
-      assert.match(result.stdout, /WAIVED node:lint-fix/);
+      assert.strictEqual(
+        attemptProcesses(root).filter(({ stepId }) => stepId === 'node:lint-fix').length,
+        1,
+        result.stdout + result.stderr
+      );
+      assert.match(result.stdout, /PASS node:lint-fix/);
+      assert.doesNotMatch(result.stdout, /WAIVED node:lint-fix/);
+      assert.match(readFileSync(join(root, 'scripts/gates-smoke.mjs'), 'utf-8'), /smoke = true;/);
       assert.doesNotMatch(result.stdout + result.stderr, /ERR_CLI_LINT_UNSUPPORTED_TARGET/);
     } finally {
       rmSync(root, { recursive: true, force: true });

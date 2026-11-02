@@ -61,6 +61,9 @@
         Create and preserve V2 file headers per `AX_FILE_HEADER_TASK_TRACEABILITY` and
         `AX_FILE_HEADER_APPEND_ONLY`: semantic ownership is `@spec`; never copy ticket history into
         the source header.
+        Write JSDoc, header and intent comment text in the project comment language
+        (effective `lint.commentLanguage` reported by the tool: absent or `en` → English, `ru` → Russian, `any` →
+        the surrounding file's language); never translate comments the phase does not change.
         The phase protocol defines the permitted command list per `AX_PERMITTED_BASH_COMMANDS`; every
         bash invocation while implementing stays within it.
         Record real progress as it happens — one `PHASE_BLOCK_FORMAT` event line per

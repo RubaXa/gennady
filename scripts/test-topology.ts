@@ -88,6 +88,13 @@ const OUTER_TEST_CONCURRENCY = Math.min(10, Math.max(6, availableParallelism()))
 // EA follow-up: each file may fan out into several real CLI/Git processes. Bound the ordinary
 // local pool to two; long-budget build/history/fixture suites below run serially, not beside peers.
 const LOCAL_PARTITION_CONCURRENCY = 2;
+// These full-flow suites each compose several real CLI/Git operations. Isolate their bounded
+// workloads from sibling suites while keeping the ordinary 30s file deadline and local pool.
+const SERIAL_LOCAL_FILES = new Set([
+  'cli/__tests__/tool-behavior/bootstrap-path.test.ts',
+  'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
+  'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
+]);
 const DEFAULT_FILE_TIMEOUT_MS = 30_000;
 // Owned whole-file budgets, not describe/test timeouts. These mandatory local suites cross real
 // build/install or historical Git/Swift process boundaries and exceed 30s under sibling load.
@@ -402,10 +409,10 @@ function assertTopology(): TestTopology {
   if (issues.length > 0)
     throw new Error(`[test-topology] invalid classification:\n${issues.join('\n')}`);
   for (const layer of TEST_LAYERS) topology[layer].sort();
-  for (const file of Object.keys(OWNED_FILE_BUDGETS)) {
+  for (const file of [...Object.keys(OWNED_FILE_BUDGETS), ...SERIAL_LOCAL_FILES]) {
     if (!topology.local.includes(file))
       throw new Error(
-        `[test-topology] owned file budget must remain mandatory local/noncoverage: ${file}`
+        `[test-topology] isolated file must remain mandatory local/noncoverage: ${file}`
       );
   }
   return topology;
@@ -544,23 +551,31 @@ export function runNodeTests(
   files: string[],
   options: { coverage: boolean; networkGuard: boolean; concurrency: number }
 ): TestRunResult {
-  if (options.coverage && files.some((file) => OWNED_FILE_BUDGETS[file]))
-    throw new Error('[test-topology] owned local file budgets cannot split c8 observed coverage');
-  const groups = new Map<number, string[]>();
+  if (
+    options.coverage &&
+    files.some((file) => OWNED_FILE_BUDGETS[file] || SERIAL_LOCAL_FILES.has(file))
+  )
+    throw new Error('[test-topology] isolated local files cannot split c8 observed coverage');
+  const groups = new Map<string, { timeoutMs: number; serial: boolean; files: string[] }>();
   for (const file of files) {
     const timeoutMs = OWNED_FILE_BUDGETS[file]?.timeoutMs ?? DEFAULT_FILE_TIMEOUT_MS;
-    const group = groups.get(timeoutMs) ?? [];
-    group.push(file);
-    groups.set(timeoutMs, group);
+    const serial = !!OWNED_FILE_BUDGETS[file] || SERIAL_LOCAL_FILES.has(file);
+    const key = `${timeoutMs}:${serial}`;
+    const group = groups.get(key) ?? { timeoutMs, serial, files: [] };
+    group.files.push(file);
+    groups.set(key, group);
   }
   const stats: TestRunStats[] = [];
-  // Only noncoverage has multiple budgets. The observed corpus stays one c8 invocation so later
-  // spawns cannot overwrite its report; no file is omitted or repeated by this grouping.
-  for (const [timeoutMs, targets] of [...groups].sort(([left], [right]) => left - right)) {
-    const result = runNodeTestBatch(targets, {
+  // Only noncoverage has isolated local groups. Deadline and serial scheduling are separate keys:
+  // a serial 30s suite must not serialize every other default-deadline file. The observed corpus
+  // stays one c8 invocation; no file is omitted or repeated by this grouping.
+  for (const group of [...groups.values()].sort(
+    (left, right) => left.timeoutMs - right.timeoutMs || Number(left.serial) - Number(right.serial)
+  )) {
+    const result = runNodeTestBatch(group.files, {
       ...options,
-      concurrency: targets.some((file) => OWNED_FILE_BUDGETS[file]) ? 1 : options.concurrency,
-      timeoutMs,
+      concurrency: group.serial ? 1 : options.concurrency,
+      timeoutMs: group.timeoutMs,
     });
     if (result.stats !== undefined) stats.push(result.stats);
     if (result.status !== 0)

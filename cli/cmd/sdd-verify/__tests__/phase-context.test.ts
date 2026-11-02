@@ -14,6 +14,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { resolvePhaseContext } from '../phase-context.ts';
 
@@ -477,6 +478,104 @@ describe('resolvePhaseContext', () => {
         const result = resolvePhaseContext(f.ticket, phase, f.root);
         assert.strictEqual(result.ok, false);
         if (!result.ok) assert.match(result.message, expected);
+      } finally {
+        rmSync(f.root, { recursive: true, force: true });
+      }
+    }
+  });
+
+  it('accepts an existing Target File whose name holds glob metacharacters as an exact path', () => {
+    const targets = ['pages/[...slug].tsx', 'a/{b}.ts'];
+    const f = fixture('impl', targets);
+    for (const target of targets) {
+      mkdirSync(join(f.root, target, '..'), { recursive: true });
+      writeFileSync(join(f.root, target), 'x', 'utf-8');
+    }
+    try {
+      const result = resolvePhaseContext(f.ticket, 'P1', f.root);
+      assert.strictEqual(result.ok, true, result.ok ? '' : result.message);
+      if (result.ok) assert.deepStrictEqual(result.context.targets, targets);
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts literal bracket tombstones from HEAD after unstaged and staged deletion', () => {
+    for (const staged of [false, true]) {
+      const f = fixture('impl', ['src/live.ts']);
+      const route = 'pages/[id].tsx';
+      try {
+        mkdirSync(join(f.root, 'pages'));
+        writeFileSync(join(f.root, route), 'export {};\n');
+        execFileSync('git', ['init', '-q'], { cwd: f.root });
+        execFileSync('git', ['add', '-A'], { cwd: f.root });
+        execFileSync(
+          'git',
+          [
+            '-c',
+            'user.name=Test',
+            '-c',
+            'user.email=test@example.com',
+            'commit',
+            '-qm',
+            'baseline',
+          ],
+          { cwd: f.root }
+        );
+        rmSync(join(f.root, route));
+        if (staged) execFileSync('git', ['add', '-A'], { cwd: f.root });
+        const path = join(f.root, f.ticket);
+        writeFileSync(
+          path,
+          readFileSync(path, 'utf8').replace(
+            '<!--/SECTION:PHASE_P1-->',
+            `- **Deleted Files:**\n  - ${route}\n<!--/SECTION:PHASE_P1-->`
+          )
+        );
+        const result = resolvePhaseContext(f.ticket, 'P1', f.root);
+        assert.equal(result.ok, true, result.ok ? '' : result.message);
+        if (result.ok) assert.deepEqual(result.context.deletedFiles, [route]);
+      } finally {
+        rmSync(f.root, { recursive: true, force: true });
+      }
+    }
+  });
+
+  it('does not use a glob-matching neighbour as a bracket tombstone baseline', () => {
+    const f = fixture('impl', ['src/live.ts']);
+    try {
+      mkdirSync(join(f.root, 'pages'));
+      writeFileSync(join(f.root, 'pages/i.tsx'), 'export {};\n');
+      execFileSync('git', ['init', '-q'], { cwd: f.root });
+      execFileSync('git', ['add', '-A'], { cwd: f.root });
+      execFileSync(
+        'git',
+        ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', 'baseline'],
+        { cwd: f.root }
+      );
+      const path = join(f.root, f.ticket);
+      writeFileSync(
+        path,
+        readFileSync(path, 'utf8').replace(
+          '<!--/SECTION:PHASE_P1-->',
+          '- **Deleted Files:**\n  - pages/[id].tsx\n<!--/SECTION:PHASE_P1-->'
+        )
+      );
+      const result = resolvePhaseContext(f.ticket, 'P1', f.root);
+      assert.equal(result.ok, false);
+      if (!result.ok) assert.match(result.message, /no tracked VCS baseline/);
+    } finally {
+      rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
+  it('still rejects an absent Target File with glob metacharacters as a mask', () => {
+    for (const target of ['pages/[...slug].tsx', 'a/{b}.ts']) {
+      const f = fixture('impl', [target]);
+      try {
+        const result = resolvePhaseContext(f.ticket, 'P1', f.root);
+        assert.strictEqual(result.ok, false);
+        if (!result.ok) assert.match(result.message, /not a glob/);
       } finally {
         rmSync(f.root, { recursive: true, force: true });
       }

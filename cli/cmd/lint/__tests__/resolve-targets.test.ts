@@ -85,18 +85,18 @@ describe('resolveTargets', () => {
   });
 
   // ── UT-04: explicit unsupported source fails rather than creating vacuous evidence ──
-  it('should reject an explicitly requested .js file with a teaching diagnostic', () => {
-    const filePath = writeFile('script.js');
+  it('should reject an explicitly requested .py file with a teaching diagnostic', () => {
+    const filePath = writeFile('script.py');
     const result = mod.resolveTargets([filePath]);
     assert.strictEqual(result.errors.length, 1);
     assert.strictEqual(result.errors[0]?.code, ERR_CLI_LINT_UNSUPPORTED_TARGET);
-    assert.match(result.errors[0]?.message ?? '', /only \.ts and \.tsx/);
+    assert.match(result.errors[0]?.message ?? '', /JS\/TS source family/);
     assert.match(result.errors[0]?.message ?? '', /containing directory/);
     assert.strictEqual(result.files.length, 0);
   });
 
   // ── UT-05: directory with mixed extensions ──
-  it('should collect only .ts/.tsx from a mixed directory', () => {
+  it('should collect supported JS/TS sources from a mixed directory', () => {
     const dirPath = mkdir('mixed');
     writeFile('mixed/a.ts');
     writeFile('mixed/b.tsx');
@@ -104,8 +104,12 @@ describe('resolveTargets', () => {
     writeFile('mixed/d.json');
     const result = mod.resolveTargets([dirPath]);
     assert.strictEqual(result.errors.length, 0);
-    assert.strictEqual(result.files.length, 2);
-    assert.deepStrictEqual(result.files, [abs('mixed/a.ts'), abs('mixed/b.tsx')]);
+    assert.strictEqual(result.files.length, 3);
+    assert.deepStrictEqual(result.files, [
+      abs('mixed/a.ts'),
+      abs('mixed/b.tsx'),
+      abs('mixed/c.js'),
+    ]);
   });
 
   // ── UT-06: nested directories (2 levels) ──
@@ -117,8 +121,12 @@ describe('resolveTargets', () => {
     writeFile('nested/inner/skip.js');
     const result = mod.resolveTargets([abs('nested')]);
     assert.strictEqual(result.errors.length, 0);
-    assert.strictEqual(result.files.length, 2);
-    assert.deepStrictEqual(result.files, [abs('nested/inner/leaf.tsx'), abs('nested/root.ts')]);
+    assert.strictEqual(result.files.length, 3);
+    assert.deepStrictEqual(result.files, [
+      abs('nested/inner/leaf.tsx'),
+      abs('nested/inner/skip.js'),
+      abs('nested/root.ts'),
+    ]);
   });
 
   // ── UT-07: case-insensitive extensions ──
@@ -325,10 +333,10 @@ describe('resolveTargets', () => {
 
   // ── UT-17: directory only with unsupported extensions ──
   it('should return empty for a directory with only unsupported extensions', () => {
-    mkdir('js-only');
-    writeFile('js-only/app.js');
-    writeFile('js-only/style.css');
-    const result = mod.resolveTargets([abs('js-only')]);
+    mkdir('unsupported-only');
+    writeFile('unsupported-only/app.py');
+    writeFile('unsupported-only/style.css');
+    const result = mod.resolveTargets([abs('unsupported-only')]);
     assert.strictEqual(result.errors.length, 0);
     assert.strictEqual(result.files.length, 0);
   });

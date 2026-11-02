@@ -44,6 +44,7 @@ import {
 import type { StackConfig } from '../verify.types.ts';
 import { composePresets, resolveSddVerifySelector } from './compose-presets.ts';
 import { normalizeTargetFiles } from './normalize-target-files.ts';
+import { inspectRepoPath } from '../../common/repo-path.ts';
 import { selectPhase } from './select-phase.ts';
 
 type PreparedStack = {
@@ -134,11 +135,29 @@ function normalizeScope(
       ...(changedFrom === undefined ? {} : { changedFrom }),
     };
   }
+  // SDD tombstones are explicit declarations, not authored glob operands. Their bracket
+  // spelling stays literal, and the same path proof still rejects unsafe parents and masks.
+  const normalizedKnownDeleted = new Set(
+    knownDeletedFiles.map((value) => {
+      const inspected = inspectRepoPath(root, value, 'missing', 'literal-brackets');
+      if (!inspected.ok)
+        throw new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          'scope.deletedFiles',
+          `deleted scope path ${JSON.stringify(value)} is invalid: ${inspected.detail}`,
+          'use exact normalized repo-local tombstones from the resolved SDD phase'
+        );
+      return inspected.relative;
+    })
+  );
   const values = [...new Set(scope.files)].sort(compareText);
   const existing = values.filter((value) => fs.existsSync(path.resolve(root, value)));
   const normalizedExisting = normalizeTargetFiles(root, existing);
   const missing = values.filter((value) => !fs.existsSync(path.resolve(root, value)));
   const normalizedMissing: string[] = [];
+  // A changed-mode deletion comes from the VCS diff, so its name is literal: `pages/[...slug].tsx`
+  // deleted upstream is an exact path, not a mask. Authored `files` scope keeps the glob ban.
+  const missingFromVcs = scope.mode === 'changed';
   for (const value of missing) {
     const absolute = path.resolve(root, value);
     const relative = path.relative(root, absolute);
@@ -147,7 +166,9 @@ function normalizeScope(
       value !== value.trim() ||
       value.includes('\\') ||
       value.includes('\0') ||
-      /[*?\[\]{}]/.test(value) ||
+      (!missingFromVcs &&
+        !normalizedKnownDeleted.has(relative.split(path.sep).join('/')) &&
+        /[*?\[\]{}]/.test(value)) ||
       path.isAbsolute(value) ||
       relative === '..' ||
       relative.startsWith(`..${path.sep}`) ||
@@ -162,31 +183,7 @@ function normalizeScope(
     }
     normalizedMissing.push(relative.split(path.sep).join('/'));
   }
-  const normalizedKnownDeleted = new Set(
-    knownDeletedFiles.map((value) => {
-      const absolute = path.resolve(root, value);
-      const relative = path.relative(root, absolute);
-      if (
-        value.length === 0 ||
-        value !== value.trim() ||
-        value.includes('\\') ||
-        value.includes('\0') ||
-        /[*?\[\]{}]/.test(value) ||
-        path.isAbsolute(value) ||
-        relative === '..' ||
-        relative.startsWith(`..${path.sep}`) ||
-        path.isAbsolute(relative)
-      ) {
-        throw new VerifyConfigError(
-          'VERIFY_CONFIG_INVALID_TYPE',
-          'scope.deletedFiles',
-          `deleted scope path ${JSON.stringify(value)} is not repo-relative`,
-          'use exact normalized tombstones from the resolved SDD phase'
-        );
-      }
-      return relative.split(path.sep).join('/');
-    })
-  );
+
   if (
     scope.mode === 'files' &&
     normalizedMissing.some((value) => !normalizedKnownDeleted.has(value))

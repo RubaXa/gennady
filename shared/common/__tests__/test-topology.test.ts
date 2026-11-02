@@ -121,6 +121,12 @@ const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6,
 // independent of `availableParallelism()` — to cut IPC pressure from local's subprocess-heavy
 // suites (see R-REL-15.md / V-BATCH-03.md finding F6).
 const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=2';
+const SERIAL_LOCAL_FILES = [
+  'cli/__tests__/tool-behavior/bootstrap-path.test.ts',
+  'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
+  'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
+] as const;
+const SERIAL_LOCAL_FILE_SET = new Set<string>(SERIAL_LOCAL_FILES);
 const OWNED_FILE_TIMEOUTS: Readonly<Record<string, string>> = {
   'ai/flow-eval/__tests__/execution-autonomy-audit.test.ts': '--test-timeout=120000',
   'ai/flow-eval/__tests__/execution-autonomy-fixture.test.ts': '--test-timeout=120000',
@@ -312,6 +318,27 @@ await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?failure-proof-${mod
 }
 
 describe('test topology contract', () => {
+  it('isolates full-flow CLI suites serially without changing their 30s deadlines or the ordinary pool', () => {
+    for (const mode of ['deterministic', 'coverage'] as const) {
+      const spawns = probeSpawns(mode);
+      const serial = spawns.filter(({ args }) =>
+        SERIAL_LOCAL_FILES.some((file) => args.includes(file))
+      );
+      assert.equal(serial.length, 1, `${mode}: one serial full-flow group`);
+      const args = serial[0].args;
+      assert.ok(args.includes('--test-concurrency=1'), `${mode}: full-flow suites are serial`);
+      assert.ok(args.includes('--test-timeout=30000'), `${mode}: no wider deadline`);
+      assert.deepEqual(
+        args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)).sort(),
+        [...SERIAL_LOCAL_FILES].sort(),
+        `${mode}: serial isolation must not change the ordinary local pool`
+      );
+      const ordinary = spawns.find(({ args }) => args.includes(LOCAL_PARTITION_CONCURRENCY));
+      assert.ok(ordinary, `${mode}: ordinary local pool stays at two`);
+      assert.ok(ordinary.args.includes('--test-timeout=30000'));
+    }
+  });
+
   it('keeps default deadlines at 30s and scopes every larger budget to its exact owned file', () => {
     for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
       for (const { args } of probeSpawns(mode)) {
@@ -603,25 +630,27 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
     // Set identity + exactly-once are still asserted below and by the sorted comparison here.
     assert.deepStrictEqual([...deterministic].sort(), expected);
     assert.strictEqual(new Set(deterministic).size, deterministic.length);
-    // REL-7 local partition keeps its concurrency, subdivided only by explicit owned file deadline.
-    assert.strictEqual(deterministicSpawns.length, 4, 'three local budget groups + rest partition');
+    // Local scheduling separates ordinary, serial-default and the two owned deadline groups.
+    assert.strictEqual(deterministicSpawns.length, 5, 'four local groups + rest partition');
     assert.deepStrictEqual(
       deterministicSpawns[0].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
-      topology.local.filter((file) => !OWNED_FILE_TIMEOUTS[file])
+      topology.local.filter(
+        (file) => !OWNED_FILE_TIMEOUTS[file] && !SERIAL_LOCAL_FILE_SET.has(file)
+      )
     );
     assert.ok(deterministicSpawns[0].args.includes(LOCAL_PARTITION_CONCURRENCY));
     assert.deepStrictEqual(
-      deterministicSpawns[3].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
+      deterministicSpawns[4].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
       [...topology.contract, ...topology.external, ...topology.unit]
     );
-    assert.ok(deterministicSpawns[3].args.includes(BOUNDED_OUTER_CONCURRENCY));
+    assert.ok(deterministicSpawns[4].args.includes(BOUNDED_OUTER_CONCURRENCY));
     assert.deepStrictEqual([...coverage].sort(), expected);
     assert.strictEqual(new Set(coverage).size, coverage.length);
     // D-60: neither mode may ever touch the experimental layer.
     assert.ok(topology.experimental.length > 0);
     assert.ok(!deterministic.some((file) => topology.experimental.includes(file)));
     assert.ok(!coverage.some((file) => topology.experimental.includes(file)));
-    assert.strictEqual(coverageSpawns.length, 4);
+    assert.strictEqual(coverageSpawns.length, 5);
     assert.strictEqual(
       coverageSpawns.filter(({ args }) => args.some((arg) => arg.endsWith('/c8/bin/c8.js'))).length,
       1,
@@ -645,12 +674,16 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
           (arg) => arg.startsWith('data:text/javascript,') && arg.includes('NODE_V8_COVERAGE')
         )
       );
-      const owned = spawn.args.some((arg) => OWNED_FILE_TIMEOUTS[arg]);
-      assert.ok(spawn.args.includes(owned ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY));
+      const serial = spawn.args.some(
+        (arg) => OWNED_FILE_TIMEOUTS[arg] || SERIAL_LOCAL_FILE_SET.has(arg)
+      );
+      assert.ok(spawn.args.includes(serial ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY));
     }
     assert.deepStrictEqual(
       coverageSpawns[1].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
-      [...topology.local, ...topology.external].sort().filter((file) => !OWNED_FILE_TIMEOUTS[file])
+      [...topology.local, ...topology.external]
+        .sort()
+        .filter((file) => !OWNED_FILE_TIMEOUTS[file] && !SERIAL_LOCAL_FILE_SET.has(file))
     );
     assert.ok(coverageSpawns[0].args.includes(BOUNDED_OUTER_CONCURRENCY));
     for (const mode of [deterministicSpawns, coverageSpawns]) {
@@ -714,7 +747,7 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
 
   it('deterministic bounds local subprocesses at two and serializes owned heavy fixtures, the rest unchanged', () => {
     const spawns = probeSpawns('deterministic');
-    assert.strictEqual(spawns.length, 4, 'three local budget groups + rest partition');
+    assert.strictEqual(spawns.length, 5, 'four local groups + rest partition');
     for (const { args } of spawns) {
       assert.strictEqual(
         args.filter((arg) => arg.startsWith('--test-concurrency=')).length,
@@ -722,10 +755,10 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
         JSON.stringify(args)
       );
     }
-    for (const { args } of spawns.slice(0, 3)) {
-      const owned = args.some((arg) => OWNED_FILE_TIMEOUTS[arg]);
+    for (const { args } of spawns.slice(0, 4)) {
+      const serial = args.some((arg) => OWNED_FILE_TIMEOUTS[arg] || SERIAL_LOCAL_FILE_SET.has(arg));
       assert.ok(
-        args.includes(owned ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY),
+        args.includes(serial ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY),
         `local partition: ${JSON.stringify(args)}`
       );
       assert.ok(
@@ -734,8 +767,8 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
       );
     }
     assert.ok(
-      spawns[3].args.includes(BOUNDED_OUTER_CONCURRENCY),
-      `rest partition: ${JSON.stringify(spawns[3].args)}`
+      spawns[4].args.includes(BOUNDED_OUTER_CONCURRENCY),
+      `rest partition: ${JSON.stringify(spawns[4].args)}`
     );
   });
 

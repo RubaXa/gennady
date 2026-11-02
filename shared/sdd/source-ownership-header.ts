@@ -49,18 +49,8 @@ function consumeBlockComment(lines: readonly string[], start: number): number {
   return lines.length;
 }
 
-/**
- * @purpose Parse only the canonical leading ownership header, never ownership-shaped prose in a
- *   declaration body.
- * @invariant Shebang, blanks and license comments may precede the first tag; declaration JSDoc,
- *   block comments, blanks or source statements after ownership starts terminate the header.
- * @invariant Tag lines outside the canonical region are reported but never interpreted as header
- *   evidence. Original continuation bytes and `//`/`#` prefixes are preserved in each block.
- * @param content Full source-file text.
- * @returns Parsed leading blocks plus body/ambiguous line indexes for fail-closed callers.
- */
-export function parseSourceOwnershipHeader(content: string): ParsedSourceOwnershipHeader {
-  const lines = content.split(/\r?\n/);
+/** @purpose Find the first declaration/header boundary using the canonical prelude grammar. */
+function leadingContentStart(lines: readonly string[]): number {
   let index = 0;
   if ((lines[0] ?? '').trim().startsWith('#!')) index = 1;
 
@@ -80,6 +70,33 @@ export function parseSourceOwnershipHeader(content: string): ParsedSourceOwnersh
     }
     break;
   }
+
+  return index;
+}
+
+/**
+ * @purpose Distinguish a proven header boundary from an incomplete bounded comment prefix.
+ * @param content A complete prefix of source lines.
+ * @returns False when more prelude bytes may still contain the canonical ownership header.
+ */
+export function sourceOwnershipPreludeComplete(content: string): boolean {
+  const lines = content.split(/\r?\n/);
+  return leadingContentStart(lines) < lines.length;
+}
+
+/**
+ * @purpose Parse only the canonical leading ownership header, never ownership-shaped prose in a
+ *   declaration body.
+ * @invariant Shebang, blanks and license comments may precede the first tag; declaration JSDoc,
+ *   block comments, blanks or source statements after ownership starts terminate the header.
+ * @invariant Tag lines outside the canonical region are reported but never interpreted as header
+ *   evidence. Original continuation bytes and `//`/`#` prefixes are preserved in each block.
+ * @param content Full source-file text.
+ * @returns Parsed leading blocks plus body/ambiguous line indexes for fail-closed callers.
+ */
+export function parseSourceOwnershipHeader(content: string): ParsedSourceOwnershipHeader {
+  const lines = content.split(/\r?\n/);
+  let index = leadingContentStart(lines);
 
   const blocks: SourceOwnershipBlock[] = [];
   const ambiguousHeaderIndexes: number[] = [];

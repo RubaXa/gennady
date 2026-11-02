@@ -333,6 +333,29 @@ function reviewTicket(targets: string[], deleted: string[] = [], handoffs: strin
 }
 
 describe('validateTicketReviewPaths', () => {
+  it('dispatches a not-yet-created exact bracket route without accepting an authored wildcard', () => {
+    const root = tmp('audit-create-route-');
+    const route = 'pages/[...slug].tsx';
+    const selection = {
+      phaseIds: ['P1'],
+      targetExpectation: 'dispatch' as const,
+      handoffPhaseIds: [],
+    };
+    const result = validateTicketReviewPaths(root, reviewTicket([route]), selection);
+    assert.deepEqual(result, {
+      ok: true,
+      paths: {
+        targets: [route],
+        createTargets: [route],
+        deleted: [],
+        handoffs: [],
+      },
+    });
+    const wildcard = validateTicketReviewPaths(root, reviewTicket(['pages/*.tsx']), selection);
+    assert.equal(wildcard.ok, false);
+    if (!wildcard.ok) assert.match(wildcard.detail, /glob/);
+  });
+
   it('accepts ordinary exact files and a tracked deleted tombstone', () => {
     const root = tmp('audit-path-valid-');
     mkdirSync(join(root, 'src'), { recursive: true });

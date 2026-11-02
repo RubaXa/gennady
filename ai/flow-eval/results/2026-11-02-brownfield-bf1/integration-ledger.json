@@ -1,0 +1,358 @@
+{
+  "schema": "brownfield-integration-ledger/1",
+  "githubBase": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+  "gitlabBase": "0d527a652694f08da4237a9ee45b583f80c1b66a",
+  "imports": [
+    {
+      "path": "ai/directives/coding/typescript-rules.xml",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "3cca38679d88d0681a7d77689c54160c8095b9f8c886c8aee892a5c2fb829888",
+      "importSha256": "3cca38679d88d0681a7d77689c54160c8095b9f8c886c8aee892a5c2fb829888",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "ai/directives/sdd-v2/audit.directive.xml",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "cf19bd581064c4817d0273c36517d8092f71a0f6db659598fb2b91e868a9ecd2",
+      "importSha256": "0f19a9a1d76af3406fd109d5086a3035d653b4138f1eba47b3e488f5ee086a38",
+      "disposition": "applied general patch onto GitHub base; base delta requires review"
+    },
+    {
+      "path": "ai/directives/sdd-v2/audit/steps/STEP_1_MECHANICAL.xml",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "93fa9e66f562f8d93a33c1cfb9583fd1d8a335195dc005e8575d5644b28ad6d8",
+      "importSha256": "7a9b768f8468fadfb5ffbb00d05c88ac911c178ed89a391ea518ef174538297b",
+      "disposition": "applied general patch onto GitHub base; base delta requires review"
+    },
+    {
+      "path": "ai/directives/sdd-v2/code-review.directive.xml",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "a7b2b6b25349e67f37303c41c9478bc01ed736172865418a345326e12a6424de",
+      "importSha256": "a7b2b6b25349e67f37303c41c9478bc01ed736172865418a345326e12a6424de",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "6e917708c93e903176599eaaf3236a993d96270933d5b1e176ac51b6eb61a936",
+      "importSha256": "5985f49b6108d66691fd650408526146b71c799814cbd0f3689bcd44b6cc99fd",
+      "disposition": "applied general patch onto GitHub base; base delta requires review"
+    },
+    {
+      "path": "ai/directives/sdd-v2/router.directive.xml",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "21676787a51c9f767c741aa0b5af3158a716656131563fa02740a07044ca411b",
+      "importSha256": "21676787a51c9f767c741aa0b5af3158a716656131563fa02740a07044ca411b",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "ai/kit/axiom/process/ax-operator-language.xml",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "53a28bba6897e8d047c7c68ca6909ac8b06432d02cfeb0ffa5283fac9067a3c8",
+      "importSha256": "53a28bba6897e8d047c7c68ca6909ac8b06432d02cfeb0ffa5283fac9067a3c8",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "ai/kit/templates/sdd-v2/audit.directive.hbs",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "e7d568ed98c8bb2c108552e7ccaafed011a96329b2ba6fd6cf8a3b73df48287d",
+      "importSha256": "e7d568ed98c8bb2c108552e7ccaafed011a96329b2ba6fd6cf8a3b73df48287d",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "ai/kit/templates/sdd-v2/phase-execution-protocol.directive.hbs",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "4e05244d81b19935df04168a60409cb5fa277eea770541d3f983aa7f7cf4871b",
+      "importSha256": "4e05244d81b19935df04168a60409cb5fa277eea770541d3f983aa7f7cf4871b",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/__tests__/directive-tool-contract/directive-tool-contract.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "45f4f65682b69ee214f50c601e343bab1335418b1f85cce77f5a68885f5b572a",
+      "importSha256": "d80619a04229e0bd5f5a4f8b6bd2abad95de659ef0d34d4ff5f08e7c538b0b8f",
+      "disposition": "applied general patch onto GitHub base; base delta requires review"
+    },
+    {
+      "path": "cli/__tests__/tool-behavior/rules.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "8bd54be10b8c609454a73a71ca0b62d28946d26b16ee5ee3444ea441ec71f50c",
+      "importSha256": "a3b7847fd9efaeee99d8d5cd32183b699383a13b3d17f28d6d59cf0af9652599",
+      "disposition": "applied general patch onto GitHub base; base delta requires review"
+    },
+    {
+      "path": "cli/cmd/_shared/__tests__/sdd-coverage.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "318e0e7e40d1e81d79716e7d7036af7772aec6642a4d7f633ebea27c8bede973",
+      "importSha256": "48e2c8625befa49b7adb5283a17735c07add1b2749dbfa3452f7c7db558b937c",
+      "disposition": "applied general patch onto GitHub base; base delta requires review"
+    },
+    {
+      "path": "cli/cmd/lint/__tests__/file-lint-disable.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "b7d589a7ed13fdc20711f20919e53ce2214907197403fda6656f28983031dfc3",
+      "importSha256": "b7d589a7ed13fdc20711f20919e53ce2214907197403fda6656f28983031dfc3",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/__tests__/inventory-export-forms.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "c203daca3e30022b74f12141ea01884c8fbff3c6a283a3053a97ac7e0bcab6d8",
+      "importSha256": "c203daca3e30022b74f12141ea01884c8fbff3c6a283a3053a97ac7e0bcab6d8",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/__tests__/language.check.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "ad12d337262ff2522c82e1aad7d9e3249921a5017d2144651acb639246db5b12",
+      "importSha256": "ad12d337262ff2522c82e1aad7d9e3249921a5017d2144651acb639246db5b12",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/__tests__/lint-config.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "fc9840b222e9087d84a89e3f97b98dcb939c2bb7736fcfeb40b5bb08d802dab4",
+      "importSha256": "fc9840b222e9087d84a89e3f97b98dcb939c2bb7736fcfeb40b5bb08d802dab4",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/checks/dbc-contract.check.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "4308d16780d5a3133b034c79138fa46369fe15238cd8d5bb490af06ed6bddb31",
+      "importSha256": "4308d16780d5a3133b034c79138fa46369fe15238cd8d5bb490af06ed6bddb31",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/checks/disables.check.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "ee3b2142f26d616bed56414ca9eb75c5322bd87c60939754569d38a322fcebfb",
+      "importSha256": "ee3b2142f26d616bed56414ca9eb75c5322bd87c60939754569d38a322fcebfb",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/checks/inventory-sync.check.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "16287f364abd8f4b891444862bb4e56a899542856d80180c50b62a8626ceb128",
+      "importSha256": "16287f364abd8f4b891444862bb4e56a899542856d80180c50b62a8626ceb128",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/checks/language.check.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "cced472a169b96b43a4bca8eae84afa998a547ccaa9bcc6ead32c7d6ab6e78a3",
+      "importSha256": "cced472a169b96b43a4bca8eae84afa998a547ccaa9bcc6ead32c7d6ab6e78a3",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/checks/utils/file-lint-disable.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "0d1cebb38997d37d25f0db386e04f442580c8b5d403d131f0761778b72666ef7",
+      "importSha256": "0d1cebb38997d37d25f0db386e04f442580c8b5d403d131f0761778b72666ef7",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/help.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "a621434f0369c4e1647da08068ab9b9b54f03f1e8d06d23365cf2371d9b6d7f0",
+      "importSha256": "a621434f0369c4e1647da08068ab9b9b54f03f1e8d06d23365cf2371d9b6d7f0",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/lint-config.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "0b86368ea748a0533342caec3412ff365ff186daa21e608ca3afb08844a56b5d",
+      "importSha256": "0b86368ea748a0533342caec3412ff365ff186daa21e608ca3afb08844a56b5d",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/lint-scope.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "787f51f1ae8884c596f09c4de3a670c875532cd3593c4372eeaae877cb82cc3f",
+      "importSha256": "787f51f1ae8884c596f09c4de3a670c875532cd3593c4372eeaae877cb82cc3f",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/lint.cmd.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "598612927e3f4f8c746e6cd0b1fea003a98a5e1a592e60c483340898c981737c",
+      "importSha256": "598612927e3f4f8c746e6cd0b1fea003a98a5e1a592e60c483340898c981737c",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/lint/lint.types.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "a878d961c8fab3fb88004a4702fc86d37cef3bc76450a664bcd5fe29da29d671",
+      "importSha256": "a878d961c8fab3fb88004a4702fc86d37cef3bc76450a664bcd5fe29da29d671",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/rules/rules-resolve.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "91cf973cf57ffe49a048ce1fe3cdb3771155e88843061a34769ac7e196110b8d",
+      "importSha256": "91cf973cf57ffe49a048ce1fe3cdb3771155e88843061a34769ac7e196110b8d",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/sdd-task/sdd-task.cmd.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "26fcb357a227ea3acda4a0a98895362e88b67f730019b49e4fb43da4ebeb0e87",
+      "importSha256": "26fcb357a227ea3acda4a0a98895362e88b67f730019b49e4fb43da4ebeb0e87",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "cli/cmd/sdd-task/sdd-task.types.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "16873cb3e414a5b373b6ace48aab92e70e0ebb848d7b28aa354f2ac7d7329345",
+      "importSha256": "ec0906a60acf70b0f5e4fbaf9c69ea550a6be58ee1820c8f656c548a038d5364",
+      "disposition": "applied general patch onto GitHub base; base delta requires review"
+    },
+    {
+      "path": "cli/cmd/sdd-verify/__tests__/phase-context.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "fdf49cb8e64def81b8cfcb6059544675572b088e7be5f3438882599c918e6d39",
+      "importSha256": "fdf49cb8e64def81b8cfcb6059544675572b088e7be5f3438882599c918e6d39",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "services/dbc/linter/dbc-ast-adapter.types.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "c0b319c8e24ca184eee621d1d0868c16604e887a67ddaddb8275346df226e629",
+      "importSha256": "c0b319c8e24ca184eee621d1d0868c16604e887a67ddaddb8275346df226e629",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "services/dbc/linter/implementations/ts/dbc-ts-ast-adapter.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "0fb9dd7377e17cec22fd11c3f4a5cbd456f417e1d05b7ae8d15a94e00fd0dfc0",
+      "importSha256": "0fb9dd7377e17cec22fd11c3f4a5cbd456f417e1d05b7ae8d15a94e00fd0dfc0",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "services/dbc/linter/implementations/ts/dbc-ts-linter.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "e7d6939d1615dda3c15d87ce64b9e2cf7ce057de608f387b1f543773ed6f9d80",
+      "importSha256": "e7d6939d1615dda3c15d87ce64b9e2cf7ce057de608f387b1f543773ed6f9d80",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/common/repo-path.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "cc1ee9ad9cd32cc329169b0aecbe90463028db652b2a0635602a6b8d4b7a6066",
+      "importSha256": "cc1ee9ad9cd32cc329169b0aecbe90463028db652b2a0635602a6b8d4b7a6066",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/rules/__tests__/fixtures/rule-migration-equivalence.json",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "b696f41b4adf40c37569febe77fdcc3f0c3fc2a2e72cd2e58c1ab77f6762bf63",
+      "importSha256": "b696f41b4adf40c37569febe77fdcc3f0c3fc2a2e72cd2e58c1ab77f6762bf63",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/rules/__tests__/rule-migration-equivalence.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "51d33f6527f6d2d66b30157f06c219f4d9b1e0525bf64405759c2b8b9ee7c3c2",
+      "importSha256": "51d33f6527f6d2d66b30157f06c219f4d9b1e0525bf64405759c2b8b9ee7c3c2",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/sdd/group-receipt.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "ff5a375ad6217a85cd0d24762a3e1eb24230f780ce355346075b6a36bded6c66",
+      "importSha256": "ff5a375ad6217a85cd0d24762a3e1eb24230f780ce355346075b6a36bded6c66",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/sdd/tracker.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "c6eadf76a3fabee754c024373af25c327493f53c8f13dd70aa75d5f8e173a013",
+      "importSha256": "c6eadf76a3fabee754c024373af25c327493f53c8f13dd70aa75d5f8e173a013",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "5579ec2c1f14613e65b5f558816c0adcb59375581c321a91d5febb2a4ef70b2d",
+      "importSha256": "5579ec2c1f14613e65b5f558816c0adcb59375581c321a91d5febb2a4ef70b2d",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/sdd/verify/sdd-attempt-journal.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "3d5664e97adb8d9fdba4023a195fc460f19c2768dbe11d900274cf98134f808f",
+      "importSha256": "3d5664e97adb8d9fdba4023a195fc460f19c2768dbe11d900274cf98134f808f",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/verify/__tests__/multistack-planner.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "02b9e0f019410b00a5956b59683d5a144d11bf2f715bb5855b6c42607b30278c",
+      "importSha256": "02b9e0f019410b00a5956b59683d5a144d11bf2f715bb5855b6c42607b30278c",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/verify/planning/normalize-target-files.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "206551172b0fb98a719df6dc92ee72e97f27a26881ed75d98063fb32f0c4d882",
+      "importSha256": "206551172b0fb98a719df6dc92ee72e97f27a26881ed75d98063fb32f0c4d882",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "shared/verify/planning/resolve-multistack.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "bdfee05626d1bbacafc79f6ceeeb4d105a14bf93d28cb4ce9739379e5e05da57",
+      "importSha256": "bdfee05626d1bbacafc79f6ceeeb4d105a14bf93d28cb4ce9739379e5e05da57",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "specs/cli/lint/lint.spec.md",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "0cbc348700fe9d4d2e9bbc08155cf4df11741e3ca84942e07a7486b02ad805df",
+      "importSha256": "0cbc348700fe9d4d2e9bbc08155cf4df11741e3ca84942e07a7486b02ad805df",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "specs/cli/rules/rules-cli.spec.md",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "dc74b87d119499ddbd488d6e673ca89c32efc12db6e78d32904c17eb3ef92105",
+      "importSha256": "dc74b87d119499ddbd488d6e673ca89c32efc12db6e78d32904c17eb3ef92105",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "specs/cli/sdd-task/sdd-task.spec.md",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "e1dd444bf88a6b264a82f4cc0aa5581df6cf13a4da8b5802f94b52de0d9911d4",
+      "importSha256": "e1dd444bf88a6b264a82f4cc0aa5581df6cf13a4da8b5802f94b52de0d9911d4",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "specs/cli/sdd-verify/sdd-verify.spec.md",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "d8468e2a63d11142581787d96b34d45e7e84c2d603d38587dbc57383f202653f",
+      "importSha256": "d8468e2a63d11142581787d96b34d45e7e84c2d603d38587dbc57383f202653f",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "specs/dbc/dbc-linter/dbc-linter.spec.md",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "01331553a3ee2cf484997634c5e348c90caafcb9667a9cda82e2d917bae3a49b",
+      "importSha256": "01331553a3ee2cf484997634c5e348c90caafcb9667a9cda82e2d917bae3a49b",
+      "disposition": "exact source bytes"
+    },
+    {
+      "path": "specs/shared/repo-path-literal-names.adr.md",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sourceSha256": "7af58b6ce8e6fe76ea284210c301327e2a426c8aa1b6bb6e5901fb4a73082f81",
+      "importSha256": "7af58b6ce8e6fe76ea284210c301327e2a426c8aa1b6bb6e5901fb4a73082f81",
+      "disposition": "exact source bytes"
+    }
+  ],
+  "excluded": [
+    "package.json",
+    "package-lock.json",
+    "CHANGELOG.md",
+    "migration/frozen-main/manifest.json",
+    "scripts/v1-eradication.policy.json"
+  ],
+  "reason": "platform/release and protected proof metadata are reviewed separately"
+}

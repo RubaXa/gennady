@@ -1,0 +1,30 @@
+{
+  "schema": "brownfield-baseline/1",
+  "baselineCommit": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+  "productChanged": false,
+  "modelCalls": 0,
+  "runs": [
+    {
+      "id": "red",
+      "exitCode": 1,
+      "counters": {
+        "tests": 13,
+        "pass": 1,
+        "fail": 12
+      },
+      "rawSha256": "655fac1354d27a086c3a68e9d0fbd18300bf37d8ce337ab6175536cc54a35066",
+      "classification": "first import qualification; 3 module-loading errors not product findings"
+    },
+    {
+      "id": "red-qualified",
+      "exitCode": 1,
+      "counters": {
+        "tests": 8,
+        "pass": 0,
+        "fail": 8
+      },
+      "rawSha256": "2abd0f069d968e4ba1072da547c7f0b3528e3a9dd51fcf000741d2395f6725d4",
+      "classification": "only the 3 previously unstarted suites; runtime assertions now reached"
+    }
+  ]
+}

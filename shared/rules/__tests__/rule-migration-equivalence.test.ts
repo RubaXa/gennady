@@ -47,6 +47,7 @@ describe('embedded rule migration equivalence', () => {
     assert.deepEqual(FIXTURE.operatorApprovedChanges, [
       'typescript-rules: Unless role=test',
       'UV-14: eslint-setup, git-setup, and nodejs-npm-setup replace the retired whole-project runner with universal Verify',
+      'typescript-rules: JSDoc and intent comments follow lint.commentLanguage',
     ]);
     assert.equal(
       FIXTURE.entries.every(({ intent }) => intent.trim() !== ''),

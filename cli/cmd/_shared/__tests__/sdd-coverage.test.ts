@@ -226,12 +226,25 @@ test('ownership-shaped comments inside a declaration body cannot stand in for a 
     assert.ok(result.coverage.findings.some((finding) => finding.code === 'MISSING_HEADER'));
   }));
 
-test('literal route brackets are read exactly, never expanded; existing default path policy remains strict', () =>
+test('literal route brackets are read exactly, never expanded; absent masks stay rejected', () =>
   fixture((root, put) => {
     put('specs/core/core.spec.md', spec('CORE', ['pages/[...slug].tsx']));
     put('pages/[...slug].tsx', '// @spec: CORE\nexport const value = 7;');
     put('pages/s.tsx', '// @spec: WRONG');
-    assert.equal(inspectRepoPath(root, 'pages/[...slug].tsx', 'file').ok, false);
+    put('a/{b}.ts', 'export {};');
+    assert.equal(inspectRepoPath(root, 'pages/[...slug].tsx', 'file').ok, true);
+    assert.equal(inspectRepoPath(root, 'a/{b}.ts', 'file').ok, true);
+    for (const [path, syntax] of [
+      ['pages/[id].tsx', 'pattern-free'],
+      ['pages/{a,b}.tsx', 'literal-brackets'],
+      ['pages/*.tsx', 'literal-brackets'],
+    ] as const) {
+      assert.deepEqual(inspectRepoPath(root, path, 'potential', syntax), {
+        ok: false,
+        detail: 'path must be exact, not a glob',
+      });
+    }
+    assert.equal(inspectRepoPath(root, 'pages/[id].tsx', 'potential', 'literal-brackets').ok, true);
     const result = readSddCoverage(root, { kind: 'project' }, 'audit');
     assert.equal(result.coverage.complete, true, JSON.stringify(result.coverage.findings));
     assert.equal(result.reads.sourceReads, 1);

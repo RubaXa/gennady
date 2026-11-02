@@ -42,8 +42,12 @@ function fail(code: string, detail: string): never {
   throw new Error(`${code}: ${detail}`);
 }
 
-function globInput(value: string): boolean {
-  return /[*?[\]{}]/.test(value);
+// An existing regular file is literal even when its name holds glob metacharacters
+// (`pages/[...slug].tsx`); only an absent path with them is expanded as a mask.
+function globInput(root: string, value: string): boolean {
+  if (!/[*?[\]{}]/.test(value)) return false;
+  const entry = fs.lstatSync(path.resolve(root, value), { throwIfNoEntry: false });
+  return entry?.isFile() !== true;
 }
 
 function validateInput(value: string): void {
@@ -65,7 +69,7 @@ function filesScope(root: string, inputs: readonly string[], phase: string): Res
   const selected: string[] = [];
   for (const input of inputs) {
     validateInput(input);
-    const matches = globInput(input)
+    const matches = globInput(root, input)
       ? fg.sync(input, {
           cwd: root,
           dot: true,

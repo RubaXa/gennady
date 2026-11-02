@@ -40,6 +40,34 @@ const EXECUTION_DECISION_KEYS = [
 ] as const;
 
 /**
+ * @purpose Resolve exactly one canonical Decision Log record, counting even untyped same-ID entries.
+ * @param content Owning artifact bytes.
+ * @param id Exact decision identity.
+ * @param target Canonical log owner kind.
+ * @returns One well-formed record, or null for missing/duplicate/invalid evidence.
+ */
+export function canonicalDecisionRecord(
+  content: string,
+  id: string,
+  target: DeviationLogTarget
+): DeviationRecord | null {
+  if (!DL_ID_GRAMMAR.test(id)) return null;
+  const entries =
+    decisionLines(content, target)?.filter(
+      ({ text }) => DECISION_LOG_LINE_ID_RE.exec(text)?.[1] === id
+    ) ?? [];
+  const records = parseDeviationRecords(content, target).filter((record) => record.id === id);
+  if (
+    entries.length !== 1 ||
+    (entries[0]?.text.match(/\[verdict:/g)?.length ?? 0) !== 1 ||
+    records.length !== 1 ||
+    records[0]?.verdict === 'invalid'
+  )
+    return null;
+  return records[0]!;
+}
+
+/**
  * @purpose Validate Handoff references against one canonical log, without treating prose as a decision store.
  * @param content Full ticket including its canonical Decision Log.
  * @param text Comma-separated Handoff deviation references.
@@ -54,21 +82,11 @@ export function decisionReferenceIssue(
   const refs = text.trim()
     ? text.split(',').map((entry) => entry.split(':', 1)[0]?.trim() ?? '')
     : [];
-  const records = parseDeviationRecords(content);
-  const selected = decisionLines(content, 'ticket');
   for (const id of refs) {
-    const matches = records.filter((record) => record.id === id);
-    const entries =
-      selected?.filter(({ text: line }) => DECISION_LOG_LINE_ID_RE.exec(line)?.[1] === id) ?? [];
-    if (
-      !DL_ID_GRAMMAR.test(id) ||
-      entries.length !== 1 ||
-      (entries[0]?.text.match(/\[verdict:/g)?.length ?? 0) !== 1 ||
-      matches.length !== 1 ||
-      matches[0]?.verdict === 'invalid'
-    )
+    const record = canonicalDecisionRecord(content, id, 'ticket');
+    if (!record)
       return `Handoff deviation ${id || '(empty)'} must reference exactly one canonical Decision Log entry; record it with sdd-log decision before use`;
-    const ownerPhase = / — phase: (P[0-9]+);/.exec(matches[0]?.text ?? '')?.[1];
+    const ownerPhase = / — phase: (P[0-9]+);/.exec(record.text)?.[1];
     if (phase && ownerPhase && ownerPhase !== phase)
       return `Handoff deviation ${id} belongs to ${ownerPhase}, not ${phase}`;
   }

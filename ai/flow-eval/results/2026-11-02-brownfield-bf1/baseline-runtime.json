@@ -1,0 +1,175 @@
+{
+  "baselineCommit": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+  "sourceHashes": [
+    {
+      "path": "ai/directives/coding/typescript-rules.xml",
+      "sha256": "cf5a85bb6c3e284a01de6c7cc12a3ec4c141e25fa0412ca59e5ab6e64ed02f8b"
+    },
+    {
+      "path": "ai/directives/sdd-v2/audit.directive.xml",
+      "sha256": "7c35f345b36574ba2ea03dd78ec0f3f0dc8009c516a6e2797c19bc3fa1391b82"
+    },
+    {
+      "path": "ai/directives/sdd-v2/audit/steps/STEP_1_MECHANICAL.xml",
+      "sha256": "8a7d16261b19f3808170c3271310c9f5cff839b4782341e9a25c67372986cd86"
+    },
+    {
+      "path": "ai/directives/sdd-v2/code-review.directive.xml",
+      "sha256": "2d9892bfbf7f2cef2f51e22553b8852329105dd83ae0cd06bb83ad64ef9b853d"
+    },
+    {
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml",
+      "sha256": "48aed81cca42c5a1068ef5278f59c7afd5ced5e4a0f04f86975d62d97ff52dc4"
+    },
+    {
+      "path": "ai/directives/sdd-v2/router.directive.xml",
+      "sha256": "bf528bb99d68b5ebd43adbc7e5e61733258135223e7bb2083a62d44c8bf9b1e4"
+    },
+    {
+      "path": "ai/kit/axiom/process/ax-operator-language.xml",
+      "sha256": "e239f78481929a85c3e328f27160cfded97cd625422262a56e58e12d613e8387"
+    },
+    {
+      "path": "ai/kit/templates/sdd-v2/audit.directive.hbs",
+      "sha256": "362619951cad120e30118e2370705e23f1401c0456fe90c4b4929badf6789acc"
+    },
+    {
+      "path": "ai/kit/templates/sdd-v2/phase-execution-protocol.directive.hbs",
+      "sha256": "c456ff6885d8957266fc50edba2e34f5bda7488988c47e8b46d2e2e718326b35"
+    },
+    {
+      "path": "cli/__tests__/directive-tool-contract/directive-tool-contract.test.ts",
+      "sha256": "0eafcef7bad55b2dc4750909e9310de9cf6709ebc4e7f338e357e1071f8c76d3"
+    },
+    {
+      "path": "cli/__tests__/tool-behavior/rules.test.ts",
+      "sha256": "b3c5a7bb59483745d7372bf20fe7176d42ae7d64c8681773812843a26f3e5e86"
+    },
+    {
+      "path": "cli/cmd/_shared/__tests__/sdd-coverage.test.ts",
+      "sha256": "ee192d96f7e28bb993658ce72ac5f423af9beed3e18f131ed570ee9be381b30f"
+    },
+    {
+      "path": "cli/cmd/lint/__tests__/language.check.test.ts",
+      "sha256": "c378d27b76057970e8db2c15ae8a226110ec156b5694645c0b9cff96f8b78c86"
+    },
+    {
+      "path": "cli/cmd/lint/checks/dbc-contract.check.ts",
+      "sha256": "75ca87baccccf93aea686595a0b7042bd893c2953f7f8427931e2eab27c4d299"
+    },
+    {
+      "path": "cli/cmd/lint/checks/disables.check.ts",
+      "sha256": "ac05e04492772ab987914335b8f23599a232947a162c97c29d7e7eb87aadb8dd"
+    },
+    {
+      "path": "cli/cmd/lint/checks/inventory-sync.check.ts",
+      "sha256": "4eb93ce8a1790b4825ee28046038b27dbf8613aba606a64bf3831d9e8daf1d11"
+    },
+    {
+      "path": "cli/cmd/lint/checks/language.check.ts",
+      "sha256": "778eab7763891002aa2f5a5f58455a24a8f437be9d288ca2bafd60b482472a65"
+    },
+    {
+      "path": "cli/cmd/lint/help.ts",
+      "sha256": "59c84bd0ce373e56a0b786144c1578f54444fd7e8df3f6fd1feea80ddaee298c"
+    },
+    {
+      "path": "cli/cmd/lint/lint.cmd.ts",
+      "sha256": "89226e37c9e8f06cd4449d3fe57163364ec62226b426293db0de129df31aa3a6"
+    },
+    {
+      "path": "cli/cmd/lint/lint.types.ts",
+      "sha256": "cac6aca0c42f3127abe6f49490077d45792226bec66faaaee99b5d6de6a93348"
+    },
+    {
+      "path": "cli/cmd/rules/rules-resolve.ts",
+      "sha256": "ca094b2befb8904d3ab25f2410eaac6d7355927f60c30dc1b04c6e9b195c8578"
+    },
+    {
+      "path": "cli/cmd/sdd-task/sdd-task.cmd.ts",
+      "sha256": "a33af50a8ed66c9fc9752b6fca9dc36620290f04481eb928bf760cb1d2af4436"
+    },
+    {
+      "path": "cli/cmd/sdd-task/sdd-task.types.ts",
+      "sha256": "9e5c6b71ffc26d49c1be432771925bc045934ad15970844b01a633f1b6a9be30"
+    },
+    {
+      "path": "cli/cmd/sdd-verify/__tests__/phase-context.test.ts",
+      "sha256": "0f0babb50091d31c329ea4b30793d7cbe9c60019dd9fd9e98b4db4b3001ff638"
+    },
+    {
+      "path": "services/dbc/linter/dbc-ast-adapter.types.ts",
+      "sha256": "8cd9bf43e20339289314e070e0db344cd913329f6590a75a7a462995fc36e78b"
+    },
+    {
+      "path": "services/dbc/linter/implementations/ts/dbc-ts-ast-adapter.ts",
+      "sha256": "23ce4044adc65caf30e7326ced1b8c263a43f1064c011c463244771dcfa52fac"
+    },
+    {
+      "path": "services/dbc/linter/implementations/ts/dbc-ts-linter.ts",
+      "sha256": "06ca02f3cf6469f8434d5cbcbd1b35cbdd1cba274331c26bac63b711398a240b"
+    },
+    {
+      "path": "shared/common/repo-path.ts",
+      "sha256": "7add8141441611d4f09b2d44909cb80ecea6880260b1986338e4207f0bb0d3ce"
+    },
+    {
+      "path": "shared/rules/__tests__/fixtures/rule-migration-equivalence.json",
+      "sha256": "d4c6d894604f7bf211f83a839543061cb50df289a2a7b9f3ef903624fc6f9ba1"
+    },
+    {
+      "path": "shared/rules/__tests__/rule-migration-equivalence.test.ts",
+      "sha256": "617e4a6896379c44204986c307837c5d5d1a94d2b4559298b925fffa69466162"
+    },
+    {
+      "path": "shared/sdd/group-receipt.ts",
+      "sha256": "c616fbf319980d0cfebcb586e9fd8fc5ab41389b335ed577b91c813327a1d119"
+    },
+    {
+      "path": "shared/sdd/tracker.ts",
+      "sha256": "249cfddc70e30ae0be85e6ab6b49e98ebcb0e8710768861c2f7f6e04f28601f3"
+    },
+    {
+      "path": "shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts",
+      "sha256": "97b332027560d7332eb5b725072875663ff308c0ee79ab0d040b8b90f571b90b"
+    },
+    {
+      "path": "shared/sdd/verify/sdd-attempt-journal.ts",
+      "sha256": "49e0ad1ce649a23bb67355eab5acf11081ccf1c07b5bdfc8e76c952d3abd514a"
+    },
+    {
+      "path": "shared/verify/__tests__/multistack-planner.test.ts",
+      "sha256": "a6865467724b8fb037918e929597956a123b2567eb33cc5938ede1085223a18c"
+    },
+    {
+      "path": "shared/verify/planning/normalize-target-files.ts",
+      "sha256": "f328489c626042de16a11b61852447e4d70cf839f8ffe8b3a0afc143b0dfa3d9"
+    },
+    {
+      "path": "shared/verify/planning/resolve-multistack.ts",
+      "sha256": "e0547628eeef4991f621c4a5b44fa593caab73dd0e6f62924ea9a383005e22ab"
+    },
+    {
+      "path": "specs/cli/lint/lint.spec.md",
+      "sha256": "29bc08783e210b4a615121a16eff19a24f3075ba684682ae1614d75b70803bcb"
+    },
+    {
+      "path": "specs/cli/rules/rules-cli.spec.md",
+      "sha256": "7819f7452c042f2117a20ae0596cde8772bf0846515c2e54a6ea435535bdf1ad"
+    },
+    {
+      "path": "specs/cli/sdd-task/sdd-task.spec.md",
+      "sha256": "ae5b789a2fa1dfb5c4c887931007390e278f0d6b1b96fb9f1ab40e776ef491ed"
+    },
+    {
+      "path": "specs/cli/sdd-verify/sdd-verify.spec.md",
+      "sha256": "8ed0d63a53499efb58758003f99bab4bb53d7946fcd98e6fb750192a60d6d06b"
+    },
+    {
+      "path": "specs/dbc/dbc-linter/dbc-linter.spec.md",
+      "sha256": "614feaf3d80bc7bf60a67e6f8f576c7e85d83e66b22963e58ebb4aa9f6ed0a75"
+    }
+  ],
+  "compiledEntrypointSha256": "972f5157fc5faf06c5c420e92b811add8b610ba94454f558d07d394e0bc56690",
+  "modelCalls": 0
+}

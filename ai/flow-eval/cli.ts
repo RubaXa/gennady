@@ -885,7 +885,12 @@ export async function runAndReportBody(
         judgeFile,
         trajectoryFile,
         ...(executionFile ? { executionFile } : {}),
-        specs: { root: directory, files: artifact.specFiles },
+        // Lifecycle snapshots retain partial/scratch evidence; only canonical specs are
+        // publishable as specification outputs. The exporter still validates each exact path.
+        specs: {
+          root: directory,
+          files: await collectSpecFiles(directory, { canonicalOnly: true }),
+        },
         ...(benchmarkTargetProof?.ok
           ? { artifacts: { root: directory, files: [benchmarkTarget!] } }
           : {}),

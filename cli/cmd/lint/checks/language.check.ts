@@ -4,19 +4,26 @@
 
 import type { LintError } from '../lint.types.ts';
 import { ERR_CLI_LINT_NON_ENGLISH } from '../lint.types.ts';
+import type { CommentLanguage } from '../lint-config.ts';
 
 const CYRILLIC_RE = /\p{Script=Cyrillic}/u;
 
 /**
- * @purpose Validates that JSDoc contracts and file headers use English, not Russian/Cyrillic.
+ * @purpose Validates JSDoc contracts and file headers against the project comment language.
  * @implements {LanguageCheck} in specs/cli/lint/lint.spec.md
- * @invariant Scans JSDoc blocks and file header lines (// @file:, // @consumers:).
+ * @invariant `en` flags Cyrillic in JSDoc and `// @file:` / `// @consumers:`; `ru`, `any` flag nothing.
  * @invariant Pure function — no I/O, no exceptions.
  * @param content Source text to validate.
  * @param filePath File path for error messages.
- * @returns List of lint errors in ascending line order, empty when no Cyrillic found.
+ * @param [commentLanguage] Project `lint.commentLanguage`; defaults to `en`.
+ * @returns List of lint errors in ascending line order, empty when the language is allowed.
  */
-export function check(content: string, filePath: string): LintError[] {
+export function check(
+  content: string,
+  filePath: string,
+  commentLanguage: CommentLanguage = 'en'
+): LintError[] {
+  if (commentLanguage !== 'en') return [];
   const errors: LintError[] = [];
   const lines = content.split('\n');
 

@@ -502,6 +502,17 @@ const CASES: FixtureCase[] = [
       assert.match(r.stdout, /clean|no errors/);
     },
   },
+  {
+    id: 'lint --spec=<module-spec> --inventory-reverse <code-root> <inventory-file...>',
+    directive: 'audit',
+    raw: 'npx gennady lint --spec=<spec-path> --inventory-reverse <code-root> <inventory-file> [inventory-file...]',
+    cmd: 'lint',
+    args: (fx) => [`--spec=${fx.specPath}`, '--inventory-reverse', 'src', 'src/greeter.ts'],
+    check: (r) => {
+      assert.strictEqual(r.exitCode, 0, r.stdout + r.stderr);
+      assert.match(r.stdout, /clean|no errors/);
+    },
+  },
 ];
 
 describe('command existence — every documented command is a real gennady dispatch case', () => {

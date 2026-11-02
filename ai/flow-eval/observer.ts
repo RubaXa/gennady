@@ -46,6 +46,69 @@ function implementationArchaeology(tail: readonly SddEvalTailEntry[]): string | 
   return null;
 }
 
+/** @purpose Separate proven top-level shell commands; opaque/nested shell remains conservative.
+ * This is an observation heuristic, not a shell authorization parser. */
+function cliCommandSegments(input: string): string[] {
+  let command = input;
+  try {
+    const parsed: unknown = JSON.parse(input);
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      'command' in parsed &&
+      typeof parsed.command === 'string'
+    )
+      command = parsed.command;
+  } catch {
+    // Truncated/opaque input retains the old conservative whole-input check.
+    return [input];
+  }
+  // Do not infer redirection scope across shell control syntax, substitutions or heredocs.
+  // Those inputs retain the existing conservative whole-command policy.
+  if (
+    /[\x60{}]|\$\(|<<|\\\n/.test(command) ||
+    /(?:^|[\s;&|])(?:if|then|else|elif|fi|case|esac|for|while|until|do|done|function)\b/.test(
+      command
+    )
+  )
+    return [command];
+  const segments: string[] = [];
+  let quote = '';
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i]!;
+    if (ch === '\\' && quote !== "'") {
+      i++;
+      continue;
+    }
+    if (quote) {
+      if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      continue;
+    }
+    if (ch === '(') {
+      depth++;
+      continue;
+    }
+    if (ch === ')') {
+      if (!depth) return [command];
+      depth--;
+      continue;
+    }
+    if (depth || !/[;|&\n]/.test(ch) || (ch === '&' && command[i + 1] === '>')) continue;
+    segments.push(command.slice(start, i));
+    if ((ch === '&' || ch === '|') && command[i + 1] === ch) i++;
+    start = i + 1;
+  }
+  if (quote || depth) return [command];
+  segments.push(command.slice(start));
+  return segments;
+}
+
 /** @purpose Detect interface probing or deliberately discarded SDD CLI diagnostics. */
 function cliInvocationViolation(
   tail: readonly SddEvalTailEntry[],
@@ -55,7 +118,13 @@ function cliInvocationViolation(
     for (const call of entry.toolCalls) {
       const input = call.inputSummary ?? '';
       if (!/npx\s+(?:--no-install\s+)?gennady\b/i.test(input)) continue;
-      if (/(?:^|\s)2>\/dev\/null(?:\s|[;"'}]|$)/.test(input)) {
+      if (
+        cliCommandSegments(input).some(
+          (segment) =>
+            /npx\s+(?:--no-install\s+)?gennady\b/i.test(segment) &&
+            /(?:^|\s)2>\/dev\/null(?:\s|[;"'}]|$)/.test(segment)
+        )
+      ) {
         return `forbidden CLI shell redirection: ${call.tool} ${input.slice(0, 180)}`;
       }
       if (

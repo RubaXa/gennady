@@ -51,7 +51,8 @@ engine и владеет SDD journal/receipt sinks; standalone `gennady verify` 
 `--group-scope <Task-ID>` выдаёт готовый review-context всей sibling-группы (ровно тикеты одного
 owning spec, а не все тикеты его каталога), а
 `--task-scope <Task-ID>` — те же поля для одного тикета: `spec`, tickets, bounded `files`,
-`contract-anchors`, source-only `lint-files`, `code-roots`, git provenance, Handoff artifacts и
+`contract-anchors`, source-only `lint-files`, `code-roots`, `inventory-files` (существующие lint-цели
+и JS-источники из File Mapping owning spec — файлы модуля для обратной сверки описи, D-TK024), git provenance, Handoff artifacts и
 `coverage-gates`. Блок `coverage-gates:` переносит по одной структурной политике на тикет прямо из
 §Verification: `required — <verbatim command>`, `not-applicable — <reason>`, `legacy-unset` либо
 `INVALID`. Инструмент не выводит применимость из kind/path/extension, не придумывает платформу,
@@ -406,6 +407,47 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
   rules-layer compatibility mode. The thin facade passes the same frozen snapshot directly to
   Verify; standalone Verify never reads these sources.
 
+### D-TK023 — Reverse inventory sweeps the module File Mapping, not its directory
+
+- **Status:** active, 2026-11-02 (issue #1, P4).
+- **Why:** audit ran `lint --spec=<module> --inventory-reverse <code-root>`, which lints every file
+  of the directory. A module that lives in a shared directory (`app/helpers` holds files of dozens
+  of modules) got other modules' exports as `ERR_CLI_LINT_INVENTORY_UNDECLARED` and their unmarked
+  headers as `MISSING_FILE` / `MISSING_CONSUMERS`, so every audit there was red. Moving each module
+  into its own directory just to satisfy the tool is not acceptable.
+- **Decision:** `--group-scope` / `--task-scope` print `inventory-files:` — the existing lint targets
+  of the owning spec's File Mapping, read declaration-only through `readSddCoverage` (no source
+  observation, no directory walk). Audit passes them positionally:
+  `lint --spec=<spec> --inventory-reverse <code-root> <inventory-file...>`; with positional files
+  lint never scans the directory, so both the forward undeclared check and the reverse
+  unimplemented sweep cover exactly the module. The set comes only from rows whose source is the
+  spec's File Mapping; ticket Target Files alone do not define the module. Three states: a spec
+  without File Mapping prints `—`, and audit keeps the per-`code-root` directory form for modules
+  that own their directory; a readable mapping prints its existing lint targets; a declaration-read
+  failure (`READ_FAILED`, `INVALID_MAPPING`, `UNSAFE_PATH`, …) or a mapping with no existing lint
+  target prints `inventory-files: INVALID — <reason>`, and audit records a FAIL instead of widening
+  the sweep to the directory.
+- **Rejected alternatives:** a lint flag such as `--inventory-reverse=mapping` — the same effect
+  with a second File Mapping reader inside `lint`; relocating modules into private directories.
+- **Evidence:** `cli/__tests__/tool-behavior/inventory-file-mapping.test.ts` — a foreign unmarked file
+  in the module's directory is absent from `inventory-files`, the mapped sweep is clean, and the
+  directory form still reports it.
+
+### D-TK024 — inventory-files keeps JavaScript sources and rejects masks
+
+- **Status:** active, 2026-11-02. **Extends:** D-TK023.
+- **Why:** `inventory-files` kept only lint targets (`.ts`/`.tsx`), so a mixed module lost its `.js`
+  files from the sweep and their entities were reported as unimplemented. A File Mapping row with a
+  mask (`src/radars/*`) was dropped by the declaration read as `INVALID_PATH` while the other rows
+  still made a `valid` set — the module was swept partially and stayed green.
+- **Decision:** existing `.js`/`.mjs`/`.cjs`/`.jsx` mapping files are listed with the lint targets;
+  lint reads them only for export names (CLI-LINT D-028). A File Mapping `INVALID_PATH` finding makes
+  the set `INVALID — <reason>`, like any other declaration-read failure.
+- **Rejected alternatives:** expanding masks against the file system — File Mapping is the exact
+  declaration of the module, and a mask silently takes in files added later.
+- **Evidence:** `cli/__tests__/tool-behavior/inventory-file-mapping.test.ts` (JS listed, mask → INVALID),
+  `cli/__tests__/tool-behavior/inventory-js-sources.test.ts` (the sweep counts JS exports).
+
 </details>
 <!--/SECTION:MODULE_DECISION_LOG-->
 
@@ -416,3 +458,12 @@ shared/sdd/ticket.ts     # parseMetaInfo / parsePhasesOverview / parsePhaseDetai
 - **Depends on:** `shared/common/parse-args.ts`, `shared/sdd/section.ts`, `shared/sdd/ticket.ts`, `#logger`
 - **Provides to:** `gennady.ts`; вызывается из `execute` (STEP_1)
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+### Ранний mapping preflight
+
+Для каждого write/create target до исполнения возвращается pending MAPPING_REQUIRED с владельцем,
+если File Mapping ещё не содержит путь. Это относится и к пока отсутствующему тесту. Подготовка
+может продолжаться; запрос не изменяет spec, не расширяет write-authority и не даёт audit PASS.
+`sdd-task --phase` выводит первые восемь таких действий и число остальных. Полный audit остаётся
+строгим; смысловая правка mapping по-прежнему влияет на freshness. Невалидный или отсутствующий
+элемент полного inventory набора не должен превращаться в directory fallback.

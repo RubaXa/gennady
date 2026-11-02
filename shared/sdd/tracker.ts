@@ -180,6 +180,41 @@ function findRollupHeader(
   return null;
 }
 
+/**
+ * @purpose Replace one column's data cells of the table whose header row is `headerIdx`.
+ * @param lines Index file lines, rewritten in place.
+ * @param headerIdx Header row index.
+ * @param column Content-cell column index.
+ * @param token Placeholder written into every data cell of that column.
+ */
+function maskColumn(lines: string[], headerIdx: number, column: number, token: string): void {
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || !line.trimStart().startsWith('|')) break;
+    if (/^\|?\s*-+\s*\|/.test(line)) continue;
+    const raw = line.split('|');
+    if (raw[column + 1] === undefined) continue;
+    raw[column + 1] = ` ${token} `;
+    lines[i] = raw.join('|');
+  }
+}
+
+/**
+ * @purpose Mask exactly the cells `sdd-sync` rewrites: the tracker Status column and the rollup ratio column.
+ * @invariant Tables are located by the same header rules as `updateTrackerStatus` and
+ *   `recomputeRollupProgress`; every other cell, row and line is returned byte-identical.
+ * @param content Full markdown of an index file.
+ * @returns The index text with flow-owned bookkeeping replaced by placeholders.
+ */
+export function maskTrackerBookkeeping(content: string): string {
+  const lines = content.split('\n');
+  const status = findTaskStatusHeader(lines);
+  if (status) maskColumn(lines, status.headerIdx, status.statusCol, '<STATUS>');
+  const rollup = findRollupHeader(lines);
+  if (rollup) maskColumn(lines, rollup.headerIdx, rollup.doneCol, '<DONE>');
+  return lines.join('\n');
+}
+
 /** @purpose Extract the link target from a markdown-link cell (`[3-tasks](./x.3-tasks.md)` → `./x.3-tasks.md`), or null if the cell carries no link. */
 function linkTarget(cell: string): string | null {
   return cell.match(/\[[^\]]*\]\(([^)]+)\)/)?.[1] ?? null;

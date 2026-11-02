@@ -1,0 +1,386 @@
+{
+  "schema": "gennady.pilot-verify-red/1",
+  "baselineCommit": "f18829b030eb0616d5d27f111b5565e899615dac",
+  "sourceHead": "f18829b030eb0616d5d27f111b5565e899615dac",
+  "sourceDirty": true,
+  "nodeVersion": "v22.19.0",
+  "sourceHashes": {
+    "shared/verify/planning/normalize-target-files.ts": "f328489c626042de16a11b61852447e4d70cf839f8ffe8b3a0afc143b0dfa3d9",
+    "shared/verify/planning/resolve-multistack.ts": "e0547628eeef4991f621c4a5b44fa593caab73dd0e6f62924ea9a383005e22ab",
+    "shared/sdd/verify/sdd-attempt-journal.ts": "49e0ad1ce649a23bb67355eab5acf11081ccf1c07b5bdfc8e76c952d3abd514a",
+    "shared/sdd/coverage.ts": "b578d6b201b62ce5ea131736bf3585ae0cd185c922d86b2c23b7a06fc361fd5f",
+    "cli/cmd/sdd-log/sdd-log.cmd.ts": "ad8d28cbf97d0fdfae9cf54e41d83699bcdd84f6641944b18613223988a5ff05",
+    "cli/cmd/sdd-sync/sdd-sync.cmd.ts": "fc73fec94033c56718b7362e30896bb0b87e4edad6ad6d2125b3d9e0775d6015",
+    "ai/flow-eval/pilot-verify-probe.ts": "8ee1f40d2f84d4ce3b75e0bb28d144022f1d78793717bb65bda2d6eab9cfedbc",
+    "ai/flow-eval/scripts/pilot-verify-red.ts": "c34016d808d777c4b0de36edcf68b8ced35db4fce080555fde2bef6e491e0afa"
+  },
+  "modelCalls": 0,
+  "meaning": "Current defects observed, not post-fix GREEN or model behavior evidence",
+  "route": {
+    "ordinary": {
+      "stdout": "VERIFY phase=full\nscope=all files=<all>\nplugins=node\ntrust=local-runner source=builtin:node.phases.full\nhead=d420185a667677627af1bd72c502777f0794925a\nrules=pre-resolver sha256:1074b0e025469d43e2eca314371291b6fe56dcbc3f3c7d72f9f9562958d9502d\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:route-proof [observe/local] needs=- source=gennady.yaml\nresults:\n  PASS node:route-proof exit=0 durationMs=104\nmutations:\n  <none>\nevidence:\n  command local:node:route-proof:command:3cc3d90b462aa6267289c349c33d95ff2f1d13e8c09f6d060c6fb748d93e94b7:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+      "stderr": "[verify] START node:route-proof attempt=1\n[verify] PASS node:route-proof attempt=1 elapsed=0.1s\n",
+      "exitCode": 0
+    },
+    "bracket": {
+      "stdout": "",
+      "stderr": "[verify] [VerifyConfigError:VERIFY_CONFIG_INVALID_TYPE] scope.targetFiles[2]: Target File \"pages/[...slug].tsx\" is not an exact repo-relative path; pass a non-empty relative file path with forward slashes and no glob syntax\n",
+      "exitCode": 4
+    },
+    "fixtureKind": "synthetic-exact-tracked-route",
+    "rootRemoved": true,
+    "modelCalls": 0
+  },
+  "freshness": {
+    "initial": {
+      "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": true,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 0,\n    \"warnings\": 0\n  },\n  \"findings\": [],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+      "stderr": "",
+      "exitCode": 0
+    },
+    "beforeSync": [
+      {
+        "phase": "P1",
+        "ok": true
+      },
+      {
+        "phase": "P2",
+        "ok": true
+      }
+    ],
+    "afterSync": [
+      {
+        "phase": "P1",
+        "ok": false,
+        "issue": "phase P1 PASS is stale after worktree changed"
+      },
+      {
+        "phase": "P2",
+        "ok": false,
+        "issue": "phase P2 PASS is stale after worktree changed"
+      }
+    ],
+    "indexChanged": true,
+    "beforeSyncFiles": {
+      "src/delay.ts": "abb5c50199edb9de358ab647fb93685116e8e100188a7c80d2d2e7d8a6316988",
+      "src/delay.test.ts": "399f8e78993ad185f3702879946f733079fa47199448e427ce272cdf413f8515",
+      "gennady.yaml": "f487723d27b0957714b718557505d8e69d2573d89b1ac7dc891785566851d6ea",
+      "config/runtime.json": "a862c99b56003e40c67c748d19734fa64d6993249bbd4001991a4bee325e97fc",
+      "specs/delay/core/core.spec.md": "c97069b6ed15aacfaaf617cdfe055686446fbc3e896bd8b5313af796b6b0f421",
+      "specs/delay/core/core.task.COR-work.md": "9b86eee0a71c3e1dd1197fd09c56b87e0058d96818e0bd03423a37422febf624"
+    },
+    "afterSyncFiles": {
+      "src/delay.ts": "abb5c50199edb9de358ab647fb93685116e8e100188a7c80d2d2e7d8a6316988",
+      "src/delay.test.ts": "399f8e78993ad185f3702879946f733079fa47199448e427ce272cdf413f8515",
+      "gennady.yaml": "f487723d27b0957714b718557505d8e69d2573d89b1ac7dc891785566851d6ea",
+      "config/runtime.json": "a862c99b56003e40c67c748d19734fa64d6993249bbd4001991a4bee325e97fc",
+      "specs/delay/core/core.spec.md": "c97069b6ed15aacfaaf617cdfe055686446fbc3e896bd8b5313af796b6b0f421",
+      "specs/delay/core/core.task.COR-work.md": "9b86eee0a71c3e1dd1197fd09c56b87e0058d96818e0bd03423a37422febf624"
+    },
+    "coherenceAfterSync": {
+      "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": false,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 4,\n    \"warnings\": 3\n  },\n  \"findings\": [\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_DONE_WITH_PLACEHOLDERS\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Status is DONE but unreplaced <…> scaffold placeholders remain.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P1 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P1 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P2 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P2 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has no current canonical Verify proof: phase P1 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P1\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has no current canonical Verify proof: phase P2 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P2\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_GROUP_AUDIT_MISSING\",\n      \"file\": \"specs/delay/core/core.spec.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Group of 1 DONE ticket(s) for this spec has no valid audit receipt (no receipt recorded). Run `gennady sdd-log <group> audit-receipt <verdict>` after the read-only audit returns.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.spec.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_GROUP_REVIEW_MISSING\",\n      \"file\": \"specs/delay/core/core.spec.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Group of 1 DONE ticket(s) for this spec has no valid code-review receipt (no receipt recorded). Run `gennady sdd-log <group> review-receipt <verdict>` after the read-only code-review returns.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.spec.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    }\n  ],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+      "stderr": "",
+      "exitCode": 1
+    },
+    "beforeAudit": [
+      {
+        "phase": "P1",
+        "ok": true
+      },
+      {
+        "phase": "P2",
+        "ok": true
+      }
+    ],
+    "afterAudit": [
+      {
+        "phase": "P1",
+        "ok": false,
+        "issue": "phase P1 PASS is stale after worktree changed"
+      },
+      {
+        "phase": "P2",
+        "ok": false,
+        "issue": "phase P2 PASS is stale after worktree changed"
+      }
+    ],
+    "beforeReview": [
+      {
+        "phase": "P1",
+        "ok": true
+      },
+      {
+        "phase": "P2",
+        "ok": true
+      }
+    ],
+    "afterReview": [
+      {
+        "phase": "P1",
+        "ok": false,
+        "issue": "phase P1 PASS is stale after worktree changed"
+      },
+      {
+        "phase": "P2",
+        "ok": false,
+        "issue": "phase P2 PASS is stale after worktree changed"
+      }
+    ],
+    "finalWithoutWorkaround": {
+      "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": false,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 2,\n    \"warnings\": 3\n  },\n  \"findings\": [\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_DONE_WITH_PLACEHOLDERS\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Status is DONE but unreplaced <…> scaffold placeholders remain.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P1 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P1 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P2 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P2 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has no current canonical Verify proof: phase P1 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P1\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has no current canonical Verify proof: phase P2 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P2\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    }\n  ],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+      "stderr": "",
+      "exitCode": 1
+    },
+    "finalWithWorkaround": {
+      "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": true,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 0,\n    \"warnings\": 1\n  },\n  \"findings\": [\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_DONE_WITH_PLACEHOLDERS\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Status is DONE but unreplaced <…> scaffold placeholders remain.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    }\n  ],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+      "stderr": "",
+      "exitCode": 0
+    },
+    "controls": [
+      {
+        "path": "src/delay.ts",
+        "current": [
+          {
+            "phase": "P1",
+            "ok": false,
+            "issue": "phase P1 PASS is stale after worktree changed"
+          },
+          {
+            "phase": "P2",
+            "ok": false,
+            "issue": "phase P2 PASS is stale after worktree changed"
+          }
+        ]
+      },
+      {
+        "path": "src/delay.test.ts",
+        "current": [
+          {
+            "phase": "P1",
+            "ok": true
+          },
+          {
+            "phase": "P2",
+            "ok": false,
+            "issue": "phase P2 PASS is stale after worktree changed"
+          }
+        ]
+      },
+      {
+        "path": "gennady.yaml",
+        "current": [
+          {
+            "phase": "P1",
+            "ok": false,
+            "issue": "phase P1 PASS is stale after worktree changed"
+          },
+          {
+            "phase": "P2",
+            "ok": false,
+            "issue": "phase P2 PASS is stale after worktree changed"
+          }
+        ]
+      },
+      {
+        "path": "config/runtime.json",
+        "current": [
+          {
+            "phase": "P1",
+            "ok": false,
+            "issue": "phase P1 PASS is stale after worktree changed"
+          },
+          {
+            "phase": "P2",
+            "ok": false,
+            "issue": "phase P2 PASS is stale after worktree changed"
+          }
+        ]
+      },
+      {
+        "path": "specs/delay/core/core.spec.md",
+        "current": [
+          {
+            "phase": "P1",
+            "ok": false,
+            "issue": "phase P1 PASS is stale after worktree changed"
+          },
+          {
+            "phase": "P2",
+            "ok": false,
+            "issue": "phase P2 PASS is stale after worktree changed"
+          }
+        ]
+      },
+      {
+        "path": "specs/delay/core/core.3-tasks.md",
+        "current": [
+          {
+            "phase": "P1",
+            "ok": false,
+            "issue": "phase P1 PASS is stale after worktree changed"
+          },
+          {
+            "phase": "P2",
+            "ok": false,
+            "issue": "phase P2 PASS is stale after worktree changed"
+          }
+        ]
+      },
+      {
+        "path": "ai/directives/testing/node-test.xml",
+        "current": [
+          {
+            "phase": "P1",
+            "ok": false,
+            "issue": "phase P1 PASS is stale after worktree changed"
+          },
+          {
+            "phase": "P2",
+            "ok": false,
+            "issue": "phase P2 PASS is stale after worktree changed"
+          }
+        ]
+      }
+    ],
+    "restoredCurrent": [
+      {
+        "phase": "P1",
+        "ok": true
+      },
+      {
+        "phase": "P2",
+        "ok": true
+      }
+    ],
+    "commands": [
+      {
+        "args": ["sdd-check", "--all", ".", "--format", "json"],
+        "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": true,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 0,\n    \"warnings\": 0\n  },\n  \"findings\": [],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P1"],
+        "stdout": "VERIFY phase=autonomy-code\nscope=files files=src/delay.ts\nsdd=specs/delay/core/core.task.COR-work.md#P1\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-code\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:80215544c6ba7efaa47583533c982bd8e04576474ddfb6b21e8df2cae4edbb5e\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=646\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": [
+          "sdd-log",
+          "specs/delay/core/core.task.COR-work.md",
+          "complete",
+          "artifacts: [src/delay.ts]; decisions: []; open: []; deviations: []",
+          "--phase",
+          "P1"
+        ],
+        "stdout": "[sdd-log] completed P1:\n- [x] `2026-10-30T08:31:44.558Z` DONE\n**Handoff →** artifacts: [src/delay.ts]; decisions: []; open: []; deviations: []\n[sdd-log] phase status → [x]\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P2"],
+        "stdout": "VERIFY phase=autonomy-test\nscope=files files=src/delay.test.ts\nsdd=specs/delay/core/core.task.COR-work.md#P2\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-test\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:0f00149f2da879ee5f7184c7b783ea9d19428ea8bbadb2c78e3b2fa7d8f5b35c\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\n  node:scenarios [observe/local] needs=node:syntax source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=554\n  PASS node:scenarios exit=0 durationMs=256\n    tests=2/2/0/0 protocol=node-test-summary-v1 runner=node:test\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\n  command local:node:scenarios:command:19cab76effe7b4d7d0500212d3576f67ff1ce924ede50599f07274ae4e33493d:attempt-2: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": [
+          "sdd-log",
+          "specs/delay/core/core.task.COR-work.md",
+          "complete",
+          "artifacts: [src/delay.test.ts]; decisions: []; open: []; deviations: []",
+          "--phase",
+          "P2"
+        ],
+        "stdout": "[sdd-log] completed P2:\n- [x] `2026-10-30T08:31:46.162Z` DONE\n**Handoff →** artifacts: [src/delay.test.ts]; decisions: []; open: []; deviations: []\n[sdd-log] phase status → [x]\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-log", "specs/delay/core/core.task.COR-work.md", "close"],
+        "stdout": "[sdd-log] closed current Round:\n#### Round close\n- [x] `2026-10-30T08:31:46.453Z` DONE\n[sdd-log] status → DONE\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-sync", "specs/delay/core/core.task.COR-work.md"],
+        "stdout": "[sdd-sync] COR-work → [x] DONE\n  updated:    specs/delay/core/core.3-tasks.md\n  no-table:   specs/3-tasks.md\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-check", "--all", ".", "--format", "json"],
+        "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": false,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 4,\n    \"warnings\": 3\n  },\n  \"findings\": [\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_DONE_WITH_PLACEHOLDERS\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Status is DONE but unreplaced <…> scaffold placeholders remain.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P1 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P1 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P2 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P2 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has no current canonical Verify proof: phase P1 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P1\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has no current canonical Verify proof: phase P2 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P2\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_GROUP_AUDIT_MISSING\",\n      \"file\": \"specs/delay/core/core.spec.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Group of 1 DONE ticket(s) for this spec has no valid audit receipt (no receipt recorded). Run `gennady sdd-log <group> audit-receipt <verdict>` after the read-only audit returns.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.spec.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_GROUP_REVIEW_MISSING\",\n      \"file\": \"specs/delay/core/core.spec.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Group of 1 DONE ticket(s) for this spec has no valid code-review receipt (no receipt recorded). Run `gennady sdd-log <group> review-receipt <verdict>` after the read-only code-review returns.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.spec.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    }\n  ],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+        "stderr": "",
+        "exitCode": 1
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P1"],
+        "stdout": "VERIFY phase=autonomy-code\nscope=files files=src/delay.ts\nsdd=specs/delay/core/core.task.COR-work.md#P1\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-code\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:80215544c6ba7efaa47583533c982bd8e04576474ddfb6b21e8df2cae4edbb5e\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=514\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P2"],
+        "stdout": "VERIFY phase=autonomy-test\nscope=files files=src/delay.test.ts\nsdd=specs/delay/core/core.task.COR-work.md#P2\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-test\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:0f00149f2da879ee5f7184c7b783ea9d19428ea8bbadb2c78e3b2fa7d8f5b35c\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\n  node:scenarios [observe/local] needs=node:syntax source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=505\n  PASS node:scenarios exit=0 durationMs=247\n    tests=2/2/0/0 protocol=node-test-summary-v1 runner=node:test\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\n  command local:node:scenarios:command:19cab76effe7b4d7d0500212d3576f67ff1ce924ede50599f07274ae4e33493d:attempt-2: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-log", "specs/delay/core/core.task.COR-work.md", "audit-receipt", "PASS"],
+        "stdout": "[sdd-log] audit receipt recorded on specs/delay/core/core.spec.md:\n  group: specs/delay/core/core.spec.md (1 DONE ticket(s))\n  verdict: PASS\n  git-ref: 36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P1"],
+        "stdout": "VERIFY phase=autonomy-code\nscope=files files=src/delay.ts\nsdd=specs/delay/core/core.task.COR-work.md#P1\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-code\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:80215544c6ba7efaa47583533c982bd8e04576474ddfb6b21e8df2cae4edbb5e\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=484\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P2"],
+        "stdout": "VERIFY phase=autonomy-test\nscope=files files=src/delay.test.ts\nsdd=specs/delay/core/core.task.COR-work.md#P2\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-test\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:0f00149f2da879ee5f7184c7b783ea9d19428ea8bbadb2c78e3b2fa7d8f5b35c\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\n  node:scenarios [observe/local] needs=node:syntax source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=523\n  PASS node:scenarios exit=0 durationMs=251\n    tests=2/2/0/0 protocol=node-test-summary-v1 runner=node:test\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\n  command local:node:scenarios:command:19cab76effe7b4d7d0500212d3576f67ff1ce924ede50599f07274ae4e33493d:attempt-2: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-log", "specs/delay/core/core.task.COR-work.md", "review-receipt", "PASS"],
+        "stdout": "[sdd-log] review receipt recorded on specs/delay/core/core.spec.md:\n  group: specs/delay/core/core.spec.md (1 DONE ticket(s))\n  verdict: PASS\n  git-ref: 36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-check", "--all", ".", "--format", "json"],
+        "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": false,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 2,\n    \"warnings\": 3\n  },\n  \"findings\": [\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_DONE_WITH_PLACEHOLDERS\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Status is DONE but unreplaced <…> scaffold placeholders remain.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P1 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P1 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_EXECUTION_LOG_PHASE_UNRECEIPTED_DONE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has a checked DONE line but neither a CLI-owned phase receipt nor a current PASS Verify attempt (phase P2 PASS is stale after worktree changed). Run: npx gennady sdd-log <ticket> complete \\\"…\\\" --phase P2 (via sdd-verify + sdd-log complete, never a bare \\\"line DONE\\\").\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P1 has no current canonical Verify proof: phase P1 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P1\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    },\n    {\n      \"severity\": \"error\",\n      \"code\": \"SDD_PHASE_ATTEMPT_STALE\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Phase P2 has no current canonical Verify proof: phase P2 PASS is stale after worktree changed. Rerun: npx gennady sdd-verify --task specs/delay/core/core.task.COR-work.md --phase P2\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    }\n  ],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+        "stderr": "",
+        "exitCode": 1
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P1"],
+        "stdout": "VERIFY phase=autonomy-code\nscope=files files=src/delay.ts\nsdd=specs/delay/core/core.task.COR-work.md#P1\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-code\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:80215544c6ba7efaa47583533c982bd8e04576474ddfb6b21e8df2cae4edbb5e\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=499\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-verify", "--task", "specs/delay/core/core.task.COR-work.md", "--phase", "P2"],
+        "stdout": "VERIFY phase=autonomy-test\nscope=files files=src/delay.test.ts\nsdd=specs/delay/core/core.task.COR-work.md#P2\nplugins=node\ntrust=local-runner source=builtin:node.phases.autonomy-test\nhead=36beda24b25ea4b7f3b1ea11658b6d7bbe48045a\nrules=resolved sha256:0f00149f2da879ee5f7184c7b783ea9d19428ea8bbadb2c78e3b2fa7d8f5b35c\nreadiness=READY\n  READY: every selected capability is available\nplan:\n  node:syntax [observe/local] needs=- source=gennady.yaml\n  node:scenarios [observe/local] needs=node:syntax source=gennady.yaml\nresults:\n  PASS node:syntax exit=0 durationMs=513\n  PASS node:scenarios exit=0 durationMs=254\n    tests=2/2/0/0 protocol=node-test-summary-v1 runner=node:test\nmutations:\n  <none>\nevidence:\n  command local:node:syntax:command:0d2be87d85f471e7da487291332429e287f6cb62fef4a9a7542eeb050d9fc7d4:attempt-1: direct command with 2 argument(s); cwd bound to workspace; status pass\n  command local:node:scenarios:command:19cab76effe7b4d7d0500212d3576f67ff1ce924ede50599f07274ae4e33493d:attempt-2: direct command with 2 argument(s); cwd bound to workspace; status pass\nVERDICT PASS\n",
+        "stderr": "",
+        "exitCode": 0
+      },
+      {
+        "args": ["sdd-check", "--all", ".", "--format", "json"],
+        "stdout": "{\n  \"schema\": \"gennady.sdd-check.findings.v1\",\n  \"ok\": true,\n  \"fileCount\": 8,\n  \"summary\": {\n    \"errors\": 0,\n    \"warnings\": 1\n  },\n  \"findings\": [\n    {\n      \"severity\": \"warn\",\n      \"code\": \"SDD_DONE_WITH_PLACEHOLDERS\",\n      \"file\": \"specs/delay/core/core.task.COR-work.md\",\n      \"line\": null,\n      \"section\": \"DOCUMENT\",\n      \"reason\": \"Status is DONE but unreplaced <…> scaffold placeholders remain.\",\n      \"next\": \"Repair DOCUMENT in specs/delay/core/core.task.COR-work.md, then rerun the same sdd-check command.\",\n      \"example\": \"Apply the reported repair at the named file and section.\"\n    }\n  ],\n  \"ownership\": {\n    \"domain\": \"declared-and-header-positive\",\n    \"audit\": \"not-run\",\n    \"stage\": \"coherence\"\n  }\n}\n",
+        "stderr": "",
+        "exitCode": 0
+      }
+    ],
+    "semanticReview": "host-provided fixture verdicts; no independent model audit was performed",
+    "limitations": [
+      "source CLI, not a packed installation",
+      "synthetic task, not the original Octavius diff"
+    ],
+    "rootRemoved": true,
+    "modelCalls": 0
+  }
+}

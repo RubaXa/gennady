@@ -3,20 +3,21 @@
 // @consumers: LintCommand
 
 import type { LintError } from '../lint.types.ts';
+import { DECISION_LOG_REF_RE, MIN_DISABLE_PURPOSE_CHARS } from './utils/file-lint-disable.ts';
 import {
   ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
   ERR_CLI_LINT_DISABLE_MISSING_PURPOSE,
 } from '../lint.types.ts';
 
 /** @purpose Minimum non-whitespace chars of purpose text after stripping marker and Decision Log token. Set to 8 — filters trivial placeholders (`fix`/`todo`/`.`) while accepting real rationales. */
-const MIN_PURPOSE_NON_WS_CHARS = 8;
+const MIN_PURPOSE_NON_WS_CHARS = MIN_DISABLE_PURPOSE_CHARS;
 
 /** @purpose Regex matching one disable marker name (without comment opener). The opener is detected separately via a string-aware state machine. */
 const MARKER_RE =
-  /@ts-ignore|@ts-nocheck|@ts-expect-error|eslint-disable(?:-next-line|-line)?(?:-[a-z-]+)?\b/;
+  /@ts-ignore|@ts-nocheck|@ts-expect-error|gennady-lint-disable\b|eslint-disable(?:-next-line|-line)?(?:-[a-z-]+)?\b/;
 
 /** @purpose Match the active `<ACR>-DL-N` reference while retaining immutable legacy `D-N` citations. */
-const D_REF_RE = /\b(?:[A-Z][A-Z0-9]*-DL-\d+|D-\d+)\b/i;
+const D_REF_RE = DECISION_LOG_REF_RE;
 
 /**
  * @purpose Find the column where a `//` or `/*` comment opens on the given line, ignoring openers inside string literals.
