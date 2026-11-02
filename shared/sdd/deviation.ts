@@ -137,15 +137,36 @@ export function appendExecutionDecision(
     !/^\d{4}-\d{2}-\d{2}$/.test(date)
   )
     return { ok: false, detail: 'decision needs a canonical DL ID, P<digits> phase and CLI date' };
-  const selected = decisionLines(content, 'ticket');
-  const bounds = findSectionBounds(content, 'DECISION_LOG');
-  if (!selected || !bounds) return { ok: false, detail: 'ticket needs one canonical Decision Log' };
   const body = `phase: ${phase}; what: ${decision.what}; why: ${decision.why}; where: ${decision.where}; evidence: ${decision.evidence}; alternative: ${decision.alternative}; verify: ${decision.verify}`;
-  const entries = selected.filter(
-    ({ text }) => DECISION_LOG_LINE_ID_RE.exec(text)?.[1] === decision.id
+  return appendCanonicalDecision(content, decision.id, body, date, 'ticket');
+}
+
+/**
+ * @purpose Append one pending proposal idempotently to the existing canonical Decision Log.
+ * @param content Current owner bytes.
+ * @param id Exact decision ID.
+ * @param body Validated decision body without verdict markup.
+ * @param date CLI-owned date.
+ * @param target Ticket or module log boundary.
+ * @returns Candidate bytes or conflict; terminal rejected decisions cannot be replayed.
+ */
+function appendCanonicalDecision(
+  content: string,
+  id: string,
+  body: string,
+  date: string,
+  target: 'ticket' | 'module'
+): ReturnType<typeof appendExecutionDecision> {
+  const selected = decisionLines(content, target);
+  const bounds = findSectionBounds(
+    content,
+    target === 'module' ? 'MODULE_DECISION_LOG' : 'DECISION_LOG'
   );
+  if (!selected || !bounds)
+    return { ok: false, detail: 'artifact needs one canonical Decision Log' };
+  const entries = selected.filter(({ text }) => DECISION_LOG_LINE_ID_RE.exec(text)?.[1] === id);
   if (entries.length) {
-    const records = parseDeviationRecords(content).filter((record) => record.id === decision.id);
+    const records = parseDeviationRecords(content, target).filter((record) => record.id === id);
     const record = records[0];
     if (
       entries.length !== 1 ||
@@ -157,29 +178,135 @@ export function appendExecutionDecision(
     )
       return {
         ok: false,
-        detail: `decision ${decision.id} conflicts with an existing entry; do not overwrite it`,
+        detail: `decision ${id} conflicts with an existing entry; do not overwrite it`,
       };
     if (record.verdict === 'rework' || record.verdict === 'rolled-back')
       return {
         ok: false,
-        detail: `decision ${decision.id} is ${record.verdict}; do not apply this rejected choice`,
+        detail: `decision ${id} is ${record.verdict}; do not apply this rejected choice`,
       };
-    return { ok: true, content, id: decision.id, created: false };
+    return { ok: true, content, id, created: false };
   }
   const lines = content.split('\n');
   const cr = content.includes('\r\n') ? '\r' : '';
-  lines.splice(
-    bounds.closeLine,
-    0,
-    `${decision.id} ${date} — ${body} [verdict: pending-operator]${cr}`
-  );
+  lines.splice(bounds.closeLine, 0, `${id} ${date} — ${body} [verdict: pending-operator]${cr}`);
   const candidate = lines.join('\n');
-  if (parseDeviationRecords(candidate).filter((record) => record.id === decision.id).length !== 1)
+  if (parseDeviationRecords(candidate, target).filter((record) => record.id === id).length !== 1)
     return {
       ok: false,
       detail: 'decision would be hidden by a fence/comment; repair the canonical log first',
     };
-  return { ok: true, content: candidate, id: decision.id, created: true };
+  return { ok: true, content: candidate, id, created: true };
+}
+
+/** @purpose Machine-readable scope attached to a module decision; never a caller-selected verdict. */
+type ModuleLintDecision = ExecutionDecision & {
+  lintExemption: { file: string; checks: Array<'dbc' | 'inventory'> };
+};
+
+/** @purpose Validate a closed proposal schema before writing or consuming its scoped permissions. */
+function moduleLintDecision(raw: unknown): ModuleLintDecision | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  if (
+    Object.keys(value).sort().join(',') !==
+    [...EXECUTION_DECISION_KEYS, 'lintExemption'].sort().join(',')
+  )
+    return null;
+  for (const key of EXECUTION_DECISION_KEYS) {
+    const field = value[key];
+    if (
+      typeof field !== 'string' ||
+      !field.trim() ||
+      /[\x00-\x1f\x7f\u2028\u2029]|\[verdict:|<!--|-->/i.test(field)
+    )
+      return null;
+  }
+  if (
+    !DL_ID_GRAMMAR.test(value.id as string) ||
+    (value.why as string).replace(/\s/g, '').length < 8
+  )
+    return null;
+  const exemption = value.lintExemption;
+  if (!exemption || typeof exemption !== 'object' || Array.isArray(exemption)) return null;
+  const scope = exemption as Record<string, unknown>;
+  if (
+    Object.keys(scope).sort().join(',') !== 'checks,file' ||
+    typeof scope.file !== 'string' ||
+    scope.file !== value.where ||
+    scope.file.trim() !== scope.file ||
+    /[\\*?{}:]/.test(scope.file) ||
+    scope.file.split('/').some((part) => !part || part === '.' || part === '..') ||
+    !Array.isArray(scope.checks) ||
+    scope.checks.length === 0 ||
+    scope.checks.some((check) => check !== 'dbc' && check !== 'inventory') ||
+    new Set(scope.checks).size !== scope.checks.length
+  )
+    return null;
+  const decision = value as ModuleLintDecision;
+  return {
+    id: decision.id,
+    what: decision.what,
+    why: decision.why,
+    where: decision.where,
+    evidence: decision.evidence,
+    alternative: decision.alternative,
+    verify: decision.verify,
+    lintExemption: {
+      file: decision.lintExemption.file,
+      checks: [...decision.lintExemption.checks].sort(),
+    },
+  };
+}
+
+/**
+ * @purpose Propose a scoped module lint exception through the same pending-to-terminal decision mechanism.
+ * @invariant The proposal cannot supply a verdict; operator review is a role, not authenticated identity.
+ * @param content Module spec with one canonical MODULE_DECISION_LOG.
+ * @param raw Untrusted JSON containing seven decision fields and lintExemption file/checks.
+ * @param date CLI-owned calendar date.
+ * @returns Pending candidate or rejection; retry never changes an existing decision's scope.
+ */
+export function appendModuleLintExemptionDecision(
+  content: string,
+  raw: unknown,
+  date: string
+): ReturnType<typeof appendExecutionDecision> {
+  const decision = moduleLintDecision(raw);
+  if (!decision || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+    return {
+      ok: false,
+      detail:
+        'module decision requires id, what, why, where, evidence, alternative, verify and lintExemption {file, checks}; where must be the exact file, checks only dbc/inventory, no verdict field',
+    };
+  return appendCanonicalDecision(
+    content,
+    decision.id,
+    `decision: ${JSON.stringify(decision)}`,
+    date,
+    'module'
+  );
+}
+
+/**
+ * @purpose Read the scoped binding of one canonical module proposal after separate operator acceptance.
+ * @param record Unique module record resolved by canonicalDecisionRecord.
+ * @returns Validated binding or null; ordinary/bare accepted prose is not a scoped proposal.
+ */
+export function acceptedModuleLintExemption(
+  record: DeviationRecord
+): ModuleLintDecision['lintExemption'] | null {
+  if (record.verdict !== 'accepted') return null;
+  const match = /^\S+ \d{4}-\d{2}-\d{2} — decision: (.+) \[verdict: accepted\]\r?$/.exec(
+    record.text
+  );
+  if (!match) return null;
+  try {
+    const decision = moduleLintDecision(JSON.parse(match[1]!));
+    return decision?.id === record.id ? decision.lintExemption : null;
+  } catch {
+    return null;
+  }
 }
 
 /** @purpose Select one unambiguous owner boundary and ignore fenced/example entries. */

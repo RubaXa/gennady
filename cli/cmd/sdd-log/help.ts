@@ -59,6 +59,15 @@ export function printHelp(): void {
     '  npx gennady sdd-log <ticket> decision --phase P<N> --payload-file .claude/tmp/<name>.json'
   );
   console.info(
+    '  npx gennady sdd-log <module.spec.md> decision --payload-file .claude/tmp/<name>.json  # scoped lint proposal, no --phase'
+  );
+  console.info(
+    '  Module JSON adds lintExemption: {file, checks}; where equals file; checks: dbc/inventory only. No verdict field.'
+  );
+  console.info(
+    '  Module proposal grants no exception until an explicit operator deviation-verdict; role/review model, no identity authentication.'
+  );
+  console.info(
     '  decision JSON keys: id, what, why, where, evidence, alternative, verify (single-line strings).'
   );
   console.info(

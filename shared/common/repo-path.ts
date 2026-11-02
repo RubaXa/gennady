@@ -25,10 +25,9 @@ function slash(path: string): string {
 }
 
 /**
- * @purpose Prove an exact repository path without dereferencing any symlink component.
- * @invariant Absolute, traversal, root and symlink paths fail. Glob metacharacters are literal only
- *   in an existing regular file name (`pages/[...slug].tsx`), else a rejected mask. Missing suffixes
- *   pass only `missing`/`potential`.
+ * @purpose Inspect an exact repository path and detect component replacement during this inspection.
+ * @invariant Reject escapes, symlinks and nonliteral paths. Missing suffixes require missing/potential.
+ *   This is point-in-time evidence; readers must pin descriptors separately.
  * @param root Repository root; it must already exist.
  * @param raw Operator- or ticket-supplied repo-relative path.
  * @param expectation Required final filesystem state.
@@ -66,6 +65,15 @@ export function inspectRepoPath(
   }
 
   const segments = rel.split(sep);
+  const identities: { absolute: string; dev: number; ino: number }[] = [];
+  try {
+    const rootStat = lstatSync(canonicalRoot);
+    if (!rootStat.isDirectory() || rootStat.isSymbolicLink())
+      return { ok: false, detail: 'repository root changed during inspection' };
+    identities.push({ absolute: canonicalRoot, dev: rootStat.dev, ino: rootStat.ino });
+  } catch {
+    return { ok: false, detail: 'repository root changed during inspection' };
+  }
   let cursor = canonicalRoot;
   let missing = false;
   let regularFile = false;
@@ -91,6 +99,7 @@ export function inspectRepoPath(
         detail: `path contains a symlink component: ${slash(relative(canonicalRoot, cursor))}`,
       };
     }
+    identities.push({ absolute: cursor, dev: stat.dev, ino: stat.ino });
     if (index < segments.length - 1 && !stat.isDirectory()) {
       return {
         ok: false,
@@ -110,5 +119,22 @@ export function inspectRepoPath(
   if (patterned && !regularFile) return globRejection;
   if (expectation === 'file' && missing) return { ok: false, detail: 'path is missing' };
   if (expectation === 'missing' && !missing) return { ok: false, detail: 'path still exists' };
+  try {
+    for (const identity of identities) {
+      const current = lstatSync(identity.absolute);
+      if (current.isSymbolicLink() || current.dev !== identity.dev || current.ino !== identity.ino)
+        return { ok: false, detail: 'path component changed during inspection' };
+    }
+    const physical = realpathSync(identities.at(-1)!.absolute);
+    const physicalRelative = relative(canonicalRoot, physical);
+    if (
+      physicalRelative === '..' ||
+      physicalRelative.startsWith(`..${sep}`) ||
+      isAbsolute(physicalRelative)
+    )
+      return { ok: false, detail: 'path resolved outside the repository during inspection' };
+  } catch {
+    return { ok: false, detail: 'path changed during inspection' };
+  }
   return { ok: true, absolute, relative: slash(rel) };
 }

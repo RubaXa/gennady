@@ -13,6 +13,12 @@ export function printHelp(): void {
   console.info('Options:');
   console.info('  --autofix           Auto-fix DbC contract issues where possible');
   console.info(
+    '  --scope all         Strengthen this run to lint every selected file even when project lint.scope=owned; never changes config'
+  );
+  console.info(
+    '                      Only all is accepted; --scope owned is rejected. Excludes and explicitly accepted scoped exceptions still apply.'
+  );
+  console.info(
     '  --include-tests     Include __tests__ files; fixtures/mocks/configs stay excluded'
   );
   console.info(
@@ -72,6 +78,9 @@ export function printHelp(): void {
   console.info('    scope: all            # all (default) | owned');
   console.info(
     '  owned — lint only files with // @spec:, a File Mapping entry or a ticket Target File; others are skipped'
+  );
+  console.info(
+    '  Scope provenance is printed on each valid run: CLI --scope all > project lint.scope > default all. An explicit all override never proposes narrowing to owned.'
   );
   console.info(
     '  An unknown key or value stops before linting with exit 4 and ERR_CLI_LINT_BAD_CONFIG.'

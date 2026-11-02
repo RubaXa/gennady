@@ -2,7 +2,10 @@
 // @spec: CLI-LINT
 // @consumers: DisablesCheck, DbcContractCheck, InventorySyncCheck
 
-import { canonicalDecisionRecord } from '../../../../../shared/sdd/deviation.ts';
+import {
+  canonicalDecisionRecord,
+  acceptedModuleLintExemption,
+} from '../../../../../shared/sdd/deviation.ts';
 
 /** @purpose Marker token of a file-level lint exemption. */
 export const FILE_LINT_DISABLE_MARKER = 'gennady-lint-disable';
@@ -71,35 +74,12 @@ export function authorizeFileLintDisable(
       ok: false,
       detail: `${marker.ref} must resolve uniquely to an accepted owning-module Decision Log entry`,
     };
-  const match = / — lint-exemption: (.+) \[verdict: accepted\]\s*$/.exec(entry.text);
-  if (!match)
-    return {
-      ok: false,
-      detail: 'Expected lint-exemption JSON with file, checks and why in the canonical decision',
-    };
-  let payload: unknown;
-  try {
-    payload = JSON.parse(match[1]!);
-  } catch {
-    return { ok: false, detail: 'Invalid lint-exemption JSON' };
-  }
-  if (!payload || typeof payload !== 'object' || Array.isArray(payload))
-    return { ok: false, detail: 'Expected lint-exemption object' };
-  const value = payload as Record<string, unknown>;
-  if (
-    Object.keys(value).sort().join(',') !== 'checks,file,why' ||
-    value.file !== file ||
-    typeof value.why !== 'string' ||
-    value.why.replace(/\s/g, '').length < 8 ||
-    !Array.isArray(value.checks) ||
-    value.checks.length === 0 ||
-    value.checks.some((check) => check !== 'dbc' && check !== 'inventory') ||
-    new Set(value.checks).size !== value.checks.length
-  )
+  const scope = acceptedModuleLintExemption(entry);
+  if (!scope || scope.file !== file)
     return {
       ok: false,
       detail:
-        'Exception must name this exact file, a nonempty closed check set (dbc/inventory), and a meaningful why',
+        'Expected a scoped module decision proposed with sdd-log decision and separately accepted by the operator; file/checks must match this exact file',
     };
-  return { ok: true, checks: new Set(value.checks as ('dbc' | 'inventory')[]), ref: marker.ref };
+  return { ok: true, checks: new Set(scope.checks), ref: marker.ref };
 }

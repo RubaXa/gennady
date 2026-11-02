@@ -1152,11 +1152,20 @@ graph TD
 - Owned header-probe использует канонический parser, включая shebang/license, читает максимум
   4096 bytes на файл; неизвестность после длинного пролога означает keep, а не skip.
 - `findFileLintDisable` проверяет только синтаксис; `authorizeFileLintDisable` разрешает исключение
-  только через один accepted record в MODULE_DECISION_LOG владельца. Формат payload:
-  `lint-exemption: {"file":"src/registry.ts","checks":["dbc","inventory"],"why":"обоснование"}`.
+  только через один accepted record в MODULE_DECISION_LOG владельца. Предложение записывается `sdd-log <module.spec.md> decision --payload-file .claude/tmp/exception.json`
+  без `--phase`: семь полей решения `id/what/why/where/evidence/alternative/verify` плюс
+  `lintExemption: {"file":"src/registry.ts","checks":["dbc","inventory"]}`, `where` равен file.
+  CLI всегда ставит `pending-operator`; отдельный операторский `deviation-verdict` меняет verdict.
+  Исполнитель сам не принимает исключение. Старый bare `lint-exemption`-текст не является proposal.
+  Это ролевая модель без удостоверения личности: идентичный canonical JSON можно написать вручную,
+  поэтому формат не доказывает авторство и не заменяет независимое review.
   Поля closed, file точный, checks из dbc/inventory. Pending/rejected/foreign/fake record не действует.
   EXEMPTED показывает проверяемую область и ID решения. Сам marker не является operator ACK.
   Header/ownership, syntax, compiler и project tests остаются обязательными; reverse inventory
   продолжает видеть существующие экспорты. Component APIs получают authorization явно от caller.
 - Ошибки config указывают фактический источник, в том числе malformed нижеприоритетную секцию.
   Неверная настройка не лечится безусловным переводом комментариев или молчаливым отключением lint.
+
+- Явный `lint --scope all` усиливает проектную `lint.scope: owned` для выбранных positional/`--spec`/`--staged` целей.
+  `--scope owned` не поддерживается: CLI не ослабляет project policy. Effective scope/source выводятся явно;
+  config не переписывается, при явном all не предлагается противоречащее переключение на owned.

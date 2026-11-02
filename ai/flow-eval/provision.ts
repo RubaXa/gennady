@@ -17,6 +17,7 @@ import {
 } from './canonical-fixture.ts';
 import { fixtureToolchainSpec } from './fixture-toolchain-spec.ts';
 import { BROWNFIELD_ROUTING_FILES } from './fixtures/brownfield-routing.ts';
+import { BROWNFIELD_LINT_REVIEW_FILES } from './fixtures/brownfield-lint-review.ts';
 import {
   bindEvalDependencies,
   prepareEvalDependencyStore,
@@ -715,6 +716,7 @@ export const FIXTURE_FILES: Record<SddEvalFixtureId, Record<string, string>> = {
   'execution-autonomy': {},
   'authoring-benchmark': {},
   'v2-brownfield-routing': BROWNFIELD_ROUTING_FILES,
+  'brownfield-lint-review': BROWNFIELD_LINT_REVIEW_FILES,
   'deviation-verdict': DEVIATION_VERDICT_FILES,
   'fibonacci-library': {
     '.gitignore': REAL_GITIGNORE,
@@ -1357,7 +1359,9 @@ export async function provisionScenarioDirectories(
         sourceRoot,
         dependencyStore,
         options?.signal,
-        scenario.fixture === 'authoring-benchmark' || scenario.fixture === 'execution-autonomy'
+        scenario.fixture === 'authoring-benchmark' ||
+          scenario.fixture === 'execution-autonomy' ||
+          scenario.fixture === 'brownfield-lint-review'
       );
       if (generatedDirectory) await commitFixtureBaseline(directory);
       provisioned.push({ ...scenario, directory });

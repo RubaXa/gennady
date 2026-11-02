@@ -122,6 +122,8 @@ const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6,
 // suites (see R-REL-15.md / V-BATCH-03.md finding F6).
 const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=2';
 const SERIAL_LOCAL_FILES = [
+  'ai/flow-eval/__tests__/pilot-verify-probe.test.ts',
+  'cli/__tests__/tool-behavior/verify.test.ts',
   'cli/__tests__/tool-behavior/bootstrap-path.test.ts',
   'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
   'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
@@ -215,8 +217,11 @@ function listedTopology(): Record<Layer, string[]> {
   return structuredClone(topology);
 }
 
-function probeSpawns(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental'): RunnerProbe[] {
-  const snapshot = spawnProbeSnapshots.get(mode);
+function probeSpawns(
+  mode: 'unit' | 'deterministic' | 'coverage' | 'experimental',
+  timeoutFloor?: string
+): RunnerProbe[] {
+  const snapshot = timeoutFloor === undefined ? spawnProbeSnapshots.get(mode) : undefined;
   if (snapshot) return structuredClone(snapshot);
   const probeMarker = '__TEST_TOPOLOGY_PROBE__';
   const source = `
@@ -243,6 +248,8 @@ process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map((
     UNLISTED_PROVIDER_API_KEY: 'secret-dynamic-provider',
     NPM_CONFIG_REGISTRY_AUTHTOKEN: 'secret-npm',
   };
+  delete env.GENNADY_TEST_FILE_TIMEOUT_MS;
+  if (timeoutFloor !== undefined) env.GENNADY_TEST_FILE_TIMEOUT_MS = timeoutFloor;
   for (const key of OPT_IN_KEYS) env[key] = '1';
   for (const key of CREDENTIAL_KEYS) env[key] = `secret-${key}`;
   const result = spawnSync(
@@ -261,7 +268,7 @@ process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map((
   const encoded = result.stdout.split('\n').find((line) => line.startsWith(probeMarker));
   assert.ok(encoded, result.stdout);
   const probes = JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
-  spawnProbeSnapshots.set(mode, probes);
+  if (timeoutFloor === undefined) spawnProbeSnapshots.set(mode, probes);
   return structuredClone(probes);
 }
 
@@ -318,6 +325,57 @@ await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?failure-proof-${mod
 }
 
 describe('test topology contract', () => {
+  it('temporary env deadline floor preserves exactly-once, owned budgets, concurrency and child isolation', () => {
+    for (const mode of ['deterministic', 'coverage'] as const) {
+      const ordinary = probeSpawns(mode);
+      const raised = probeSpawns(mode, '120000');
+      const files = (calls: RunnerProbe[]) =>
+        calls.flatMap(({ args }) => args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg))).sort();
+      assert.deepEqual(files(raised), files(ordinary));
+      assert.equal(new Set(files(raised)).size, files(raised).length);
+      for (const { args, env } of raised) {
+        assert.equal(
+          env.GENNADY_TEST_FILE_TIMEOUT_MS,
+          undefined,
+          'parent override must not leak into nested fixtures'
+        );
+        const deadline = args.find((arg) => arg.startsWith('--test-timeout='));
+        for (const file of args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg))) {
+          const owned = Number((OWNED_FILE_TIMEOUTS[file] ?? '--test-timeout=30000').split('=')[1]);
+          assert.equal(deadline, `--test-timeout=${Math.max(120000, owned)}`, file);
+          const previous = ordinary.find((call) => call.args.includes(file))!;
+          assert.equal(
+            args.find((arg) => arg.startsWith('--test-concurrency=')),
+            previous.args.find((arg) => arg.startsWith('--test-concurrency='))
+          );
+        }
+      }
+    }
+  });
+
+  it('rejects invalid temporary deadlines before launching tests', () => {
+    for (const value of [
+      '',
+      '0',
+      '29999',
+      '-1',
+      '120000ms',
+      'NaN',
+      '600001',
+      '999999999999999999999',
+    ]) {
+      const result = spawnSync(process.execPath, ['--import', 'tsx', RUNNER, 'deterministic'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        timeout: 5000,
+        env: { ...process.env, GENNADY_TEST_FILE_TIMEOUT_MS: value },
+      });
+      assert.equal(result.status, 2, value + result.stderr);
+      assert.match(result.stderr, /GENNADY_TEST_FILE_TIMEOUT_MS.*30000.*600000/);
+      assert.doesNotMatch(result.stdout, /deterministic:|TAP version/);
+    }
+  });
+
   it('isolates full-flow CLI suites serially without changing their 30s deadlines or the ordinary pool', () => {
     for (const mode of ['deterministic', 'coverage'] as const) {
       const spawns = probeSpawns(mode);

@@ -76,7 +76,7 @@ import { gennadyLintSourcePolicy } from '../../../shared/common/gennady-lint-sou
 import { isGennadyLintTarget } from './lint-source-policy.ts';
 
 const LINT_USAGE =
-  'usage: gennady lint [paths...] [--staged] [--autofix] [--include-all] [--include-tests] [--verbose] [--max-invariants=N] [--exclude=GLOB] [--max-words=N] [--max-header-words=N] [--max-contract-words=N] [--max-region-comments=N] [--spec=PATH] [--inventory-reverse=DIR]';
+  'usage: gennady lint [paths...] [--staged] [--scope=all] [--autofix] [--include-all] [--include-tests] [--verbose] [--max-invariants=N] [--exclude=GLOB] [--max-words=N] [--max-header-words=N] [--max-contract-words=N] [--max-region-comments=N] [--spec=PATH] [--inventory-reverse=DIR]';
 
 /** @purpose Sources lint accepts only as reverse-inventory export providers, never for contract checks. */
 const INVENTORY_ONLY_SOURCE_RE = /\.(?:[cm]?js|jsx)$/i;
@@ -128,6 +128,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
         includeAll: ['include-all'],
         includeTests: ['include-tests'],
         verbose: ['verbose', 'v'],
+        scope: { aliases: ['scope'], takesValue: true },
         maxInvariants: { aliases: ['max-invariants'], takesValue: true },
         exclude: { aliases: ['exclude'], takesValue: true },
         maxWords: { aliases: ['max-words'], takesValue: true },
@@ -167,12 +168,18 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     ['--max-region-comments', args.maxRegionComments],
     ['--spec', args.spec],
     ['--inventory-reverse', args.inventoryReverse],
+    ['--scope', args.scope],
   ];
   const malformedScalar = scalarOptions.find(
     ([, value]) => value !== undefined && (typeof value !== 'string' || value.length === 0)
   );
   if (malformedScalar) {
     return badInvocation(`${malformedScalar[0]} requires exactly one non-empty value`);
+  }
+  if (args.scope !== undefined && args.scope !== 'all') {
+    return badInvocation(
+      '--scope accepts only all to strengthen this run; owned is a consent-bound project lint.scope setting, not a CLI override'
+    );
   }
 
   const rawExclude = args.exclude;
@@ -246,6 +253,10 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       4
     );
   }
+  const scopeOverride = args.scope === 'all';
+  const configuredScopeSource = lintConfig.provenance.get('scope') ?? 'default';
+  let effectiveScope = scopeOverride ? 'all' : lintConfig.scope;
+  let effectiveScopeSource = scopeOverride ? 'CLI --scope all' : configuredScopeSource;
   const specPath = typeof args.spec === 'string' ? args.spec : null;
   const inventoryReverseDir =
     typeof args.inventoryReverse === 'string' ? args.inventoryReverse : null;
@@ -377,13 +388,15 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   // #endregion END_EXCLUDE_FILTER
 
   // `lint.scope: owned` — legacy files no SDD spec or ticket owns are skipped, not reported.
-  if (lintConfig.scope === 'owned' && files.length > 0) {
+  if (effectiveScope === 'owned' && files.length > 0) {
     const owned = selectOwnedLintFiles(
       configRoot,
       files.map((file) => resolve(file))
     );
     files = owned.files;
     if (owned.degraded) {
+      effectiveScope = 'all';
+      effectiveScopeSource = 'SDD declaration fallback';
       console.log(
         `⚠️  [LintCommand#run] lint.scope=owned disabled for this run: ${owned.degraded}; every selected file is checked. Fix the declarations (npx gennady sdd-check --all .) to re-enable skipping.`
       );
@@ -394,6 +407,15 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       );
     }
   }
+
+  // Preserve the existing default CLI response; report policy provenance when it changes the run.
+  if (scopeOverride || configuredScopeSource !== 'default' || lintConfig.scope !== 'all')
+    console.log(
+      `Effective lint.scope=${effectiveScope} (source=${effectiveScopeSource}).` +
+        (scopeOverride || effectiveScopeSource !== configuredScopeSource
+          ? ` Project lint.scope=${lintConfig.scope} (source=${configuredScopeSource}); configuration unchanged.`
+          : '')
+    );
 
   if (files.length === 0 && inventoryOnlyFiles.length === 0) {
     logger.debug('[LintCommand#run] [collecting → done] no files to lint');
@@ -483,7 +505,10 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
           code: ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
           message:
             permission.detail +
-            '. Propose a scoped canonical decision for operator approval; do not self-approve or disable other gates.',
+            '. Propose a scoped canonical decision for operator approval; do not self-approve or disable other gates.' +
+            (valid
+              ? ` Proposal through the orchestrator: npx gennady sdd-log ${candidates[0]!.path} decision --payload-file .claude/tmp/lint-exemption.json (no --phase). JSON: id, what, why, where, evidence, alternative, verify, lintExemption: {file, checks}; where=file=${relativeFile}, checks only dbc/inventory. Pending keeps checks active; only an explicit operator decision permits deviation-verdict.`
+              : ''),
         });
     }
     if (autofix) {
@@ -655,7 +680,8 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const guidance =
     [
       buildGuidance(allErrors),
-      ...(lintConfig.scope === 'all' &&
+      ...(!scopeOverride &&
+      lintConfig.scope === 'all' &&
       allErrors.some((error) => error.code === 'ERR_CLI_LINT_MISSING_FILE')
         ? [lintScopeGuidance(lintConfig)]
         : []),

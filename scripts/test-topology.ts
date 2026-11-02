@@ -91,11 +91,31 @@ const LOCAL_PARTITION_CONCURRENCY = 2;
 // These full-flow suites each compose several real CLI/Git operations. Isolate their bounded
 // workloads from sibling suites while keeping the ordinary 30s file deadline and local pool.
 const SERIAL_LOCAL_FILES = new Set([
+  'ai/flow-eval/__tests__/pilot-verify-probe.test.ts',
+  'cli/__tests__/tool-behavior/verify.test.ts',
   'cli/__tests__/tool-behavior/bootstrap-path.test.ts',
   'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
   'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
 ]);
 const DEFAULT_FILE_TIMEOUT_MS = 30_000;
+const FILE_TIMEOUT_OVERRIDE_ENV = 'GENNADY_TEST_FILE_TIMEOUT_MS';
+
+/** @purpose Resolve an explicit temporary deadline floor; defaults and owned budgets are never reduced. */
+function testFileTimeoutFloor(): number {
+  const value = process.env[FILE_TIMEOUT_OVERRIDE_ENV];
+  if (value === undefined) return DEFAULT_FILE_TIMEOUT_MS;
+  if (
+    !/^[0-9]+$/.test(value) ||
+    !Number.isSafeInteger(Number(value)) ||
+    Number(value) < DEFAULT_FILE_TIMEOUT_MS ||
+    Number(value) > 600_000
+  )
+    throw new Error(
+      `${FILE_TIMEOUT_OVERRIDE_ENV} must be an integer from 30000 to 600000 milliseconds`
+    );
+  return Number(value);
+}
+
 // Owned whole-file budgets, not describe/test timeouts. These mandatory local suites cross real
 // build/install or historical Git/Swift process boundaries and exceed 30s under sibling load.
 const OWNED_FILE_BUDGETS: Readonly<
@@ -544,6 +564,8 @@ function createTestEnvironment(): NodeJS.ProcessEnv {
     )
       delete env[key];
   }
+  // The parent runner owns this deadline; nested test/CLI fixtures retain their own policies.
+  delete env[FILE_TIMEOUT_OVERRIDE_ENV];
   return env;
 }
 
@@ -556,9 +578,13 @@ export function runNodeTests(
     files.some((file) => OWNED_FILE_BUDGETS[file] || SERIAL_LOCAL_FILES.has(file))
   )
     throw new Error('[test-topology] isolated local files cannot split c8 observed coverage');
+  const timeoutFloor = testFileTimeoutFloor();
   const groups = new Map<string, { timeoutMs: number; serial: boolean; files: string[] }>();
   for (const file of files) {
-    const timeoutMs = OWNED_FILE_BUDGETS[file]?.timeoutMs ?? DEFAULT_FILE_TIMEOUT_MS;
+    const timeoutMs = Math.max(
+      OWNED_FILE_BUDGETS[file]?.timeoutMs ?? DEFAULT_FILE_TIMEOUT_MS,
+      timeoutFloor
+    );
     const serial = !!OWNED_FILE_BUDGETS[file] || SERIAL_LOCAL_FILES.has(file);
     const key = `${timeoutMs}:${serial}`;
     const group = groups.get(key) ?? { timeoutMs, serial, files: [] };
@@ -734,6 +760,8 @@ function help(): string {
     `  deterministic runs local as its own partition at concurrency=${LOCAL_PARTITION_CONCURRENCY} (REL-7),`,
     `  then contract+external+unit at bounded outer concurrency=${OUTER_TEST_CONCURRENCY}. Subprocess-heavy suites own inner bounds.`,
     '  File deadlines: default 30s; owned local Git/Swift suites 120s; offline package acceptance 360s.',
+    '  GENNADY_TEST_FILE_TIMEOUT_MS=120000: temporary deadline floor (30000..600000 ms); never lowers owned budgets.',
+    '  The override is reported and removed from child-test environments; concurrency and assertions are unchanged.',
     '  --help    Show this help.',
   ].join('\n');
 }
@@ -744,6 +772,17 @@ function main(argv: string[]): number {
     process.stdout.write(`${help()}\n`);
     return 0;
   }
+  let timeoutFloor: number;
+  try {
+    timeoutFloor = testFileTimeoutFloor();
+  } catch (cause) {
+    process.stderr.write(`[test-topology] ${String((cause as Error).message)}\n`);
+    return 2;
+  }
+  if (process.env[FILE_TIMEOUT_OVERRIDE_ENV] !== undefined)
+    process.stdout.write(
+      `[test-topology] explicit ${FILE_TIMEOUT_OVERRIDE_ENV}=${timeoutFloor}; deadline floor only; owned budgets are not reduced\n`
+    );
   const topology = assertTopology();
   // GAP-2: enforced before every command dispatches (same fail-fast placement as assertTopology()
   // above) — a repo test file nobody classified or explicitly excluded must stop every mode, not just

@@ -1,0 +1,426 @@
+{
+  "schemaVersion": "gennady.brownfield-review-corrections.v1",
+  "baseCommit": "0ddd3508df85aff08f33e02aebed418a0dee0230",
+  "reviewInputSha256": "7fe8dcba0b06322bb6349b6362852e6a2e087bfc6a2ba5c78b94475fbc24d573",
+  "scope": "F1-F7 and targeted H1/H2/H7/H10-H13 qualification; BF2 review point, not campaign completion",
+  "operatorAuthorityModel": "existing roles/review, no identity authentication; canonical accepted text is not unforgeable provenance",
+  "livePrimaryAttempts": 0,
+  "livePrimaryLimit": 8,
+  "replacements": 0,
+  "modelBehaviorWinClaimed": false,
+  "fixture": "brownfield-lint-review",
+  "fixtureQualification": "source CLI + source-bound oracle; not installed-package or live model proof",
+  "baselineCompatibility": "6e19167e lacks module-decision API; capability preflight is mandatory before BF-E3; no extra calls to demonstrate a missing method",
+  "finalWorkingTreeSourceHashes": {
+    "ai/flow-eval/__tests__/brownfield-lint-review.test.ts": "b038d802d6bcef484b38860ab082d437b64b5c6c07cf26780a792fc776ca01b7",
+    "ai/flow-eval/docs/BROWNFIELD-V2-INTEGRATION-PLAN.md": "a5a621650ddb1d8d3f566e8c966efd57895b2f8f6137151e10f33fe15ef3274c",
+    "ai/flow-eval/fixtures/brownfield-lint-review.ts": "243892201db7b681f4aa70e2db0bf72848be330296295d054b4fc060077358cc",
+    "ai/flow-eval/provision.ts": "dbbfc73c98186291c8cbb29e7a8df4a1c26b04bc1e8b409261b9279377ec26fc",
+    "ai/flow-eval/scenarios-brownfield-lint-review.json": "4e620bfeed9fe681f56318673ec077f6f83e08ba3c43b1c5f42ead6f70e04205",
+    "ai/flow-eval/types.ts": "3d6db54c7af744e39816f6717c30938cee04948e89e04d071c7fea32b277d646",
+    "cli/AGENTS.md": "c2610c03c64c9b4652030b4d010dc5c0fb63dfc26cedbcebdd37dd55b950afa0",
+    "cli/__tests__/tool-behavior/clean-repo-composition.test.ts": "7ba039640f47be78b25af76340c234d1e00775e1c861ad8b3c3881c2b0f8cbde",
+    "cli/__tests__/tool-behavior/lint-exemption-authority.test.ts": "384bcbfed79f293ca62a5e49753efc6174ad73f35cc43fa8ffa618588ce3ac0a",
+    "cli/__tests__/tool-behavior/lint-scope-owned.test.ts": "85be350369201b9eb0e8034d152885eb51539484edc6ea9b538c268b4465efaf",
+    "cli/__tests__/tool-behavior/rules.test.ts": "721d7c625c42a26271559a33d9164a4e169eb9968785ff7f3134e18905a04764",
+    "cli/cmd/README.md": "56ff62cecb936168087c969863414dc4b3d5690a7ff70906f734733cbe7c6ce0",
+    "cli/cmd/help/help.cmd.ts": "75d8d160aa92ccfaf8a67518f056699a20c41bbfb50104a83773d1b88f385d42",
+    "cli/cmd/lint/checks/utils/file-lint-disable.ts": "2e2284938bd705f408d30c406d36c4d46b6dfcf2c00fab93dce95264e4e0ab03",
+    "cli/cmd/lint/help.ts": "791dfcb5f33f39b79142dff92c954c948b78bde5d9e4e28c3b858e7c0d87d764",
+    "cli/cmd/lint/lint.cmd.ts": "3e2497e6f46ee4230130dd18de9db42c5434e815c6aea4bcc6c73a8d97feb736",
+    "cli/cmd/rules/rules-resolve.ts": "74547aa8fc0e74867d7888a76f64ff6dc24b319b713932e227c714b01924b830",
+    "cli/cmd/sdd-log/help.ts": "940374b64735abe0546c380d1f721e113aaf18da7497ca58cb23f8ade6e0c7d7",
+    "cli/cmd/sdd-log/sdd-log.cmd.ts": "7b77a6436313863d777d287a42788df9aee443128b2b746db65d5d1cf1e76e8c",
+    "cli/cmd/sdd-log/sdd-log.types.ts": "de5cbc80cc2d7e22c17f7b953ca40fc0f7047a980e43010e00c6ee268962ac47",
+    "scripts/test-topology.ts": "7f3eea623e9c22ecee7574e5e79d25b4cdbc0b43b096ec2dd41e15727dcecc01",
+    "shared/common/__tests__/repo-path-races.test.ts": "29b07539da1cda86f5950b34e294ca449821ea2c2d4b9bc51d2d64f9cc5aab02",
+    "shared/common/__tests__/test-topology.test.ts": "223693e60fd7d96778d808d6eba224d05f9112a74a3dc91caf15b2abf850cbb6",
+    "shared/common/repo-path.ts": "463ecd25b9c6c8acfebb5628b0a34d64e464af859382acf279aed3885d7a5d93",
+    "shared/rules/builtin-rule-sources.ts": "b55c9af5358d693b515e7c6b3d7f82f35a1a75c2da297f5a5e1cc109bd5c71c9",
+    "shared/rules/project-rule-facts.ts": "06aee97d66ff303b87f994af26d127852b1ae1cab39020fa8835cd511a52b27a",
+    "shared/sdd/__tests__/deviation.test.ts": "5e42e00b04fa5c393c0ac5642b96e048431402b687690762a5aa13c697b894c5",
+    "shared/sdd/__tests__/tracker.test.ts": "6f3d5cff34e5f7355988944c3b04571d6631f2bc5477ef10d5f664a3150f29a4",
+    "shared/sdd/deviation.ts": "ea5ae8994b7bb3601e8204994c2a8aeec1f3f63b59c18c9013296611837be840",
+    "shared/sdd/tracker.ts": "01501f274f10788ceaefc53450e7227246f05c67d0c5a6af1a7bcf1d1b2af93c",
+    "shared/sdd/verify/__tests__/sdd-attempt-journal.test.ts": "9ec84af227be4c12574f8a34b3f35055ffe05120b7713db47a37eb49ee0fc602",
+    "shared/sdd/verify/sdd-attempt-journal.ts": "58001e4c6676ebb719fe5ef3f3b89871a66f4e24a0df9cbff9bb18ea1ad68044",
+    "shared/verify/__tests__/multistack-planner.test.ts": "991ec220338ea054f332fe1f2f8956783a31751d1ddcaadd78c03480f922a00c",
+    "shared/verify/planning/resolve-multistack.ts": "f80ab362dcad7e2bffdfcb213ce90c5175994d7b1a3663d246d4e0d745f99a25",
+    "specs/cli/lint/lint.spec.md": "6a0e3bd056d786a380a5ac5ae5ee8aa642869f08e14dec0f920b345d613ef2af",
+    "specs/cli/sdd-log/sdd-log.spec.md": "0fc944a69f3d1e6aced727548347e7018ffe4da0e493646d566a19a08c487d45"
+  },
+  "runs": [
+    {
+      "label": "F1/F3 RED",
+      "retainedLocalLog": "gennady-bf1-f1-f3-red.log",
+      "sha256": "62f20a28f1d925f3fb45f6794fffba5d354134be921f715952a9300a12ad2607",
+      "counters": {
+        "tests": 6,
+        "pass": 0,
+        "fail": 6,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F1/F3 GREEN",
+      "retainedLocalLog": "gennady-bf1-f1-f3-green-final.log",
+      "sha256": "12e9e6759a99548e05388d499b929c1e52da4fd350cc416eb6257fd6f262242d",
+      "counters": {
+        "tests": 58,
+        "pass": 58,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F1 aliases RED",
+      "retainedLocalLog": "gennady-bf1-h1-h2-freshness-red.log",
+      "sha256": "4e1f230789d966101c19e017785c8b188abf716636d1155288c57b020e79eb10",
+      "counters": {
+        "tests": 2,
+        "pass": 0,
+        "fail": 2,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F1 aliases GREEN",
+      "retainedLocalLog": "gennady-bf1-h1-h2-freshness-full-green.log",
+      "sha256": "9c9e04dd6006cd25b4ba298d3e3d3ef46c1eabc23136c8dbfe54f70ba3bfd4bc",
+      "counters": {
+        "tests": 60,
+        "pass": 60,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F2 RED",
+      "retainedLocalLog": "gennady-bf-f2-red.tap",
+      "sha256": "f50a01ef0a89b5953e9f6ce83c0f9210f1c017e3448694ef570a765d47783756",
+      "counters": {
+        "tests": 2,
+        "pass": 0,
+        "fail": 2,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F2 GREEN",
+      "retainedLocalLog": "gennady-bf-f2-final-green.tap",
+      "sha256": "66bca8a0983bf9fd3847c7dd14a7ba6d4044df20c17ffe32837aa73b9f105fe3",
+      "counters": {
+        "tests": 34,
+        "pass": 34,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F4 RED",
+      "retainedLocalLog": "gennady-bf2-scope-all-red.tap",
+      "sha256": "08e9f1b2c4d316a664af3ee50ae9879c9aed9548d5f2998484b214702be407d6",
+      "counters": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F4 GREEN",
+      "retainedLocalLog": "gennady-bf2-scope-all-green.tap",
+      "sha256": "25187ce38779d1e9b178a9853b8e91640828d95a8872090e47e138d8f7b8f920",
+      "counters": {
+        "tests": 48,
+        "pass": 48,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F5/F6 RED",
+      "retainedLocalLog": "gennady-bf2-paths-f5-f6-red.tap",
+      "sha256": "f38595b0666c3bc63f04cffca7a0dc81d5183b2bf41e14993af9422a175df7de",
+      "counters": {
+        "tests": 4,
+        "pass": 0,
+        "fail": 4,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F7 RED",
+      "retainedLocalLog": "gennady-bf2-paths-f7-red.tap",
+      "sha256": "661f0b7c0ef398e66ff8c5c52ac461f24904196be2532d6d7d13379ae85ac16c",
+      "counters": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F5/F6/F7 GREEN",
+      "retainedLocalLog": "gennady-bf2-paths-f5-f6-f7-green-qualified.tap",
+      "sha256": "83086cc549b1f7fe3fb0d78688c8aa404f45909e8f30443bfe2b1c6496bac784",
+      "counters": {
+        "tests": 96,
+        "pass": 96,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "First full offline eval, external sandbox restrictions",
+      "retainedLocalLog": "gennady-bf-review-flow-eval.tap",
+      "sha256": "d1b148d4a6dddb80a457ea333e499c9dd216e22c980886d4e54c1febbac2bd9c",
+      "counters": {
+        "tests": 713,
+        "pass": 707,
+        "fail": 6,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Affected sandbox controls qualified",
+      "retainedLocalLog": "gennady-bf-review-env-qualified.tap",
+      "sha256": "32a1033c83560917657e8accc4acb79eed89eb464248d04bbdc91b6b662a82a3",
+      "counters": {
+        "tests": 11,
+        "pass": 11,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Second full offline eval, new fixture classification defect",
+      "retainedLocalLog": "gennady-bf-review-flow-eval-qualified.tap",
+      "sha256": "48defe2fa5cac8cbb4038b57fe8a568da73a99a146d41942d81afa6d7fcb572d",
+      "counters": {
+        "tests": 716,
+        "pass": 715,
+        "fail": 1,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "F2 fixture qualification after classification fix",
+      "retainedLocalLog": "gennady-bf2-lint-review-final.tap",
+      "sha256": "61d827492ec7e08b250a21341778b2f19ff542c5e6e3a648dc7c9915a4ef8b69",
+      "counters": {
+        "tests": 38,
+        "pass": 38,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Full offline eval before stdout compatibility correction",
+      "retainedLocalLog": "gennady-bf-review-flow-eval-final.tap",
+      "sha256": "d3d727c5d013599870081a4684aeaf6eb258aefb9f437fc9c8c1d468922000a4",
+      "counters": {
+        "tests": 715,
+        "pass": 715,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Ordinary gate RED default stdout regression",
+      "retainedLocalLog": "gennady-bf-review-commit-default-stdout.log",
+      "sha256": "5ab13ecd82aeb3eda163e23cf759455af55b4eebf4128dd5b9d01c28b2886dd5",
+      "counters": {
+        "tests": 1556,
+        "pass": 1549,
+        "fail": 1,
+        "skipped": 6
+      }
+    },
+    {
+      "label": "Default stdout compatibility GREEN",
+      "retainedLocalLog": "gennady-bf-review-default-stdout-green.tap",
+      "sha256": "05d505e6b312e328f0255c0e54135b102cc8ba16a46fa55a662b8977bd745f84",
+      "counters": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Final full offline eval after stdout compatibility correction",
+      "retainedLocalLog": "gennady-bf-review-flow-eval-accepted.tap",
+      "sha256": "f20d03a079715e9d58da88b4e9dfa02c29cdf80816dd142c4cac4d2764aca0f0",
+      "counters": {
+        "tests": 715,
+        "pass": 715,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Ordinary gate RED heavy local file timeouts",
+      "retainedLocalLog": "gennady-bf-review-commit-local-contention.log",
+      "sha256": "507cd3d9f9c6327965363bcabfb27fba6dd8a51f54fa99748d59392050eafc0f",
+      "counters": {
+        "tests": 1550,
+        "pass": 1542,
+        "fail": 2,
+        "skipped": 6
+      }
+    },
+    {
+      "label": "Same-deadline sequential heavy suite control",
+      "retainedLocalLog": "gennady-bf-review-heavy-serial-control.tap",
+      "sha256": "fee2453e1fa36465f5157d95cc382d68d077bb49584e355b1ddc8a415db96b58",
+      "counters": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Topology isolation GREEN",
+      "retainedLocalLog": "gennady-bf-review-topology-green.tap",
+      "sha256": "aa6838f8c3df718251d8fe71ea06612bf155a5fb54fb8ca30c915bf6d426d80f",
+      "counters": {
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Integration RED shared manifest really invalidates earlier proof",
+      "retainedLocalLog": "gennady-bf-review-commit-shared-package-red.log",
+      "sha256": "f1afc2f621ee84a04d2089b91d16addc78ef7d55135b677b7c647084601f5579",
+      "counters": {
+        "tests": 1574,
+        "pass": 1567,
+        "fail": 1,
+        "skipped": 6
+      }
+    },
+    {
+      "label": "Integration GREEN dependency-order real revalidation",
+      "retainedLocalLog": "gennady-bf-review-shared-package-green.tap",
+      "sha256": "354bb185c2933e696f9d2911269e250784482041e59926e913f45a5c81db30a0",
+      "counters": {
+        "tests": 1,
+        "pass": 1,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Gate RED acceptance file timeout",
+      "retainedLocalLog": "gennady-bf-review-commit-acceptance-timeout.log",
+      "sha256": "87d85f5a9370d0c1c732d93a9d6d97ea50627e69f126698aa3e562be09edc30a",
+      "counters": {
+        "tests": 1536,
+        "pass": 1529,
+        "fail": 1,
+        "skipped": 6
+      }
+    },
+    {
+      "label": "Resource policy singleton topology only",
+      "retainedLocalLog": "gennady-bf-review-bounded-layer-topology.tap",
+      "sha256": "ed8fec7bf91bb397d67e454aa6f450bf1366c0eb131b863e66954834284cb384",
+      "counters": {
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Resource qualification cancelled under current host conditions",
+      "retainedLocalLog": "gennady-bf-review-bounded-compositions.tap",
+      "sha256": "7dfce10f7245350095c30a0f9061b58c8a0fc76c2bd9dd488343f7b3de7315fd",
+      "counters": {
+        "tests": 7,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 4
+      }
+    },
+    {
+      "label": "Same-deadline control after observed host resource recovery",
+      "retainedLocalLog": "gennady-bf-review-resource-recovery-control.tap",
+      "sha256": "121958690792678c7738d373b73535241da04f359433e8412b8c240cfb789396",
+      "counters": {
+        "tests": 9,
+        "pass": 9,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    },
+    {
+      "label": "Ordinary gate after resource recovery still timed out",
+      "retainedLocalLog": "gennady-bf-review-commit-resource-recovery-failed.log",
+      "sha256": "419e0ce53d1bc4e37f9c3471f0b03859f6a6fd60807fad3a9a8e2a98d9d36d90",
+      "counters": {
+        "tests": 1536,
+        "pass": 1529,
+        "fail": 1,
+        "skipped": 6
+      }
+    },
+    {
+      "label": "Operator-authorized temporary env deadline regression qualification",
+      "retainedLocalLog": "gennady-bf-env-topology.tap",
+      "sha256": "fe1c5d9aefe81afd900e58b22d17f590b1ea55d8ca3b56b787cf47811ee82b32",
+      "counters": {
+        "tests": 24,
+        "pass": 24,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      }
+    }
+  ],
+  "temporaryGateDeadlineOverride": {
+    "variable": "GENNADY_TEST_FILE_TIMEOUT_MS",
+    "valueMs": 120000,
+    "defaultMs": 30000,
+    "ownedBudgetsNeverReduced": true,
+    "operatorAuthorized": "2026-11-03",
+    "modelCalls": 0
+  },
+  "ordinaryCommitHook": "mandatory; actual result is reported against the resulting commit in PR #132; not predeclared PASS here",
+  "preserved": [
+    "existing model raw campaigns",
+    "SDD baseline",
+    "frozen-main archive and manifest",
+    "V1 markers/classifiers/constraints/protected/forbidden paths",
+    "package and lockfiles"
+  ],
+  "cleanup": "new fixture test roots removed in finally; shared dependency cohort reused; compact logs retained"
+}

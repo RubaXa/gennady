@@ -47,7 +47,10 @@ function fail(code: string, detail: string): never {
 function globInput(root: string, value: string): boolean {
   if (!/[*?[\]{}]/.test(value)) return false;
   const entry = fs.lstatSync(path.resolve(root, value), { throwIfNoEntry: false });
-  return entry?.isFile() !== true;
+  if (!entry) return true;
+  const inspected = inspectRepoPath(root, value, 'file');
+  if (!inspected.ok) fail('RULES_SCOPE_UNSAFE', `${value}: ${inspected.detail}`);
+  return false;
 }
 
 function validateInput(value: string): void {

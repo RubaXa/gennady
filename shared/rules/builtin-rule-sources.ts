@@ -2,8 +2,7 @@
 // @consumers: SDD dispatch, sdd-new, sdd-check
 // @spec: CLI-RULES
 
-import { readFileSync } from 'node:fs';
-import { inspectRepoPath } from '../common/repo-path.ts';
+import { proveRepoFile, readProvenRepoFile } from '../common/repo-file-identity.ts';
 import { createRuleRegistry, type RuleRegistry } from './rule-registry.ts';
 
 /** @purpose Enumerate required built-in prompt locations without duplicating their embedded metadata. */
@@ -42,13 +41,14 @@ export function loadRuleRegistry(
   const sources = [...new Set([...BUILTIN_RULE_SOURCES, ...additionalSources])].sort();
   return createRuleRegistry(
     sources.map((source) => {
-      const inspected = inspectRepoPath(root, source, 'file');
-      if (!inspected.ok) {
-        throw new Error(`RULE_REGISTRY_SOURCE_UNAVAILABLE: ${source}: ${inspected.detail}`);
-      }
+      const proof = proveRepoFile(root, source);
+      if (!proof.ok)
+        throw new Error(`RULE_REGISTRY_SOURCE_UNAVAILABLE: ${source}: ${proof.detail}`);
+      const read = readProvenRepoFile(proof.identity);
+      if (!read.ok) throw new Error(`RULE_REGISTRY_SOURCE_UNAVAILABLE: ${source}: ${read.detail}`);
       return {
-        source: inspected.relative,
-        content: readFileSync(inspected.absolute, 'utf8'),
+        source: proof.identity.relative,
+        content: read.content,
       };
     })
   );

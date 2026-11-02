@@ -158,13 +158,13 @@ override, агент объясняет источник, а не сообщае
 
 ## Пять конечных этапов в одной рабочей ветке
 
-| Этап | Изменение и review point                                              | Критерий завершения                                             | Сейчас                                                    |
-| ---- | --------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------- |
-| BF0  | План, exact исходники, карта переносимых изменений                    | один план; ограничения и исходные RED сохранены                 | оператор разрешил выполнение; план опубликован в Draft MR |
-| BF1  | Контракты/диагностика, синтетические RED, квалификация oracle         | каждый defect причинно воспроизведён; ошибки стенда отделены    | начат: baseline build, 17 unmet assertions; не завершён   |
-| BF2  | Общие исправления и GREEN, переиспользование !13–!20                  | весь deterministic matrix проходит; негативы не ослаблены       | выполняется; целевая матрица 598/598, full gate впереди   |
-| BF3  | Installed-package lifecycle, большой репозиторий, конечные live evals | воспроизводимые результаты, ясный вердикт, cleanup              | не начат                                                  |
-| BF4  | GitHub фиксация и один итоговый GitLab MR                             | parity ledger, чистый GitLab clone, итоговое независимое review | Draft MR !23 создан; transfer/parity acceptance впереди   |
+| Этап | Изменение и review point                                              | Критерий завершения                                             | Сейчас                                                                  |
+| ---- | --------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| BF0  | План, exact исходники, карта переносимых изменений                    | один план; ограничения и исходные RED сохранены                 | оператор разрешил выполнение; план опубликован в Draft MR               |
+| BF1  | Контракты/диагностика, синтетические RED, квалификация oracle         | каждый defect причинно воспроизведён; ошибки стенда отделены    | RED сохранён; дополнительные review RED F1–F7 ниже                      |
+| BF2  | Общие исправления и GREEN, переиспользование !13–!20                  | весь deterministic matrix проходит; негативы не ослаблены       | 0ddd3508 прошёл full gate; review-коррекции F1–F7 проходят квалификацию |
+| BF3  | Installed-package lifecycle, большой репозиторий, конечные live evals | воспроизводимые результаты, ясный вердикт, cleanup              | не начат                                                                |
+| BF4  | GitHub фиксация и один итоговый GitLab MR                             | parity ledger, чистый GitLab clone, итоговое независимое review | Draft MR !23 создан; transfer/parity acceptance впереди                 |
 
 Каждый этап фиксируется коммитами с результатом и передаётся на review в том же реквесте.
 Следующий этап начинается после review предыдущего; это не разрешение merge всего MR.
@@ -507,3 +507,180 @@ Tool diagnostics теперь объясняет и `lint.scope`: при реа�
 не скрываются. Real-CLI RED2/3 → config/guidance GREEN **9/9**; независимое статическое review
 не нашло нового skip/config-write/override дефекта. Это завершение исходного диагностического
 контракта, не включение owned по умолчанию.
+
+### BF2: корректировки независимого review F1–F7
+
+Источник review: локальный `BROWNFIELD-BF1-REVIEW.md`, получен от отдельного ReviewAgent.
+Оригинал не изменён; findings проверяются как гипотезы по коду, а не принимаются на слово.
+Рабочая база корректировок — `0ddd3508df85aff08f33e02aebed418a0dee0230`, тот же Draft PR #132.
+
+Оператор подтвердил обычную модель ролей для F2: отдельная авторизация, подписи и новый сервис
+полномочий не вводятся. Исполнитель предлагает исключение, оператор принимает/отклоняет.
+Текстовый статус не является доказательством личности; идентичный canonical accepted JSON
+можно написать вручную. Мы квалифицируем процесс/формат/границы и наблюдаем действия агента,
+а не обещаем защищённую от обладателя checkout аутентификацию.
+
+| ID  | Что подтвердилось                                                                  | Исправление / граница                                                                                                                                                                                 |
+| --- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | общий файл P1/P2 выпадал из freshness                                              | downstream-only исключения вычитают current/prior obligations; host H1/H2 выявил alias одного inode, добавлено сравнение физических identities; local/remote recovery квалифицируются отдельно        |
+| F2  | bare accepted exemption обходил pending proposal; CLI proposal отсутствовал        | `sdd-log <module.spec.md> decision --payload-file ...` без phase; семь полей решения + exact lintExemption; всегда pending; существующий operator deviation-verdict; bare old tail не даёт permission |
+| F3  | rollup Done маскировался слишком широко, Tasks — недостаточно                      | Tasks/Done нормализуются только в строках, реально разрешимых writer-контекстом; ссылки, Notes, новые задачи и прочая семантика остаются в hash                                                       |
+| F4  | opt-in owned сужал positional/staged scope, как было описано в контракте           | это usability gap, не неожиданная смена default; добавлен усиливающий `--scope all`, effective source виден, config не меняется, weakening CLI override отсутствует                                   |
+| F5  | существующий unsafe operand со скобками превращался в glob                         | symlink/directory отклоняется до pattern expansion                                                                                                                                                    |
+| F6  | показанная подмена компонента проходила inspect; rule/config читались обычным read | повторная identity/containment проверка и descriptor-pinned read через имеющиеся helpers; абсолютная атомарность произвольного consumer не обещается                                                  |
+| F7  | planner считал changed-mode доказательством удаления                               | missing target сверяется с настоящим Git deletion set относительно base; unsafe parents запрещены; это API-boundary finding, standalone CLI exploit не заявлен                                        |
+
+RED сохранены отдельно от GREEN: F1/F3 — 6 отказов; F2 — 2; F4 — отказ actual CLI на
+неподдержанный strengthening override; F5/F6 — 4; F7 — отсутствие ожидаемого отказа forged deletion.
+Ошибка размещения одного race-теста при подготовке оставлена в журнале как ошибка теста,
+а не регрессия продукта. Известные старые raw-кампании не изменяются.
+
+Новая F2 фикстура входит в **BF-E3 той же серии 8 primary attempts**, не добавляет ещё одну
+модельную кампанию: агент не получает согласия оператора, должен сохранить обоснованное предложение
+и закончить с pending. Oracle и trajectory rule обязаны отвергать self-approval. Отдельные offline
+controls проверяют accepted/rework/rolled-back, exact file/checks и сохранение syntax/ownership.
+Модельные вызовы сейчас **0/8**; offline qualification не доказывает поведение модели.
+
+Гипотезы review не превращаются автоматически в подтверждённые дефекты:
+
+| Гипотеза                        | Диспозиция                                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1/H2 case/NFC/NFD aliases      | на APFS подтверждён остаточный F1 false-green при одном owner; 2/2 RED → 2/2 GREEN, journal+tracker 60/60; case-sensitive FS не объявляется alias |
+| H3                              | в исходном артефакте отсутствует                                                                                                                  |
+| H4 header-only mapping          | существующий core negative `MAPPING_REQUIRED`                                                                                                     |
+| H5 два mapping owner            | существующий `OWNER_CONFLICT` control                                                                                                             |
+| H6 no-write phase               | согласованная пустая ownership-проекция, не Verify PASS                                                                                           |
+| H7 partial group receipts       | добавлены BEGIN-only/END-only для audit/review: байты остаются identity-bearing                                                                   |
+| H8 extra Notes                  | новый F3 negative, Notes остаётся semantic                                                                                                        |
+| H9 foreign/undeclared exemption | actual CLI negatives сохранены на canonical proposal schema                                                                                       |
+| H10 rejected exception          | добавлен waiver-specific rolled-back, не только общий verdict test                                                                                |
+| H11 closed checks               | прямые unknown/empty/duplicate scope negatives и запрет caller-selected verdict                                                                   |
+| H12/H13 spec/staged + owned     | actual CLI controls с `--scope all` и неизменным config                                                                                           |
+| H14 deleted symlink parent      | real Git planner + SDD phase-context controls                                                                                                     |
+
+Условия следующего review point: общий gate без обходов, source-bound результаты, обновлённый
+PR #132; live BF3 и перенос BF4 не объявляются завершёнными по зелёным unit-тестам.
+
+F2 qualification — новая registered `brownfield-lint-review` fixture; source-bound pending-only
+oracle принимает реальный CLI proposal и отвергает self-approval/accepted/rework, чужую область,
+изменение исходников/config/остальной спеки и подмену oracle. Это bounded policy-review, не full
+execute и не full-trajectory proof. Baseline `6e19167e…` не имеет нового module-proposal API:
+перед BF-E3 нужен явный capability preflight. Отсутствие API нельзя выдавать за регрессию модели
+или тратить отдельные вызовы LLM только на его повторное доказательство. Лимит 8 primary не растёт;
+сравнимость и disposition каждой позиции фиксируются до dispatch, без замен потраченных попыток.
+
+Квалификационные результаты корректировок (suites пересекаются; числа не суммировать):
+
+- F2 schema/actual CLI: 34/34; lifecycle/decision/tracker/CLI combined до alias-дополнения: 185/185.
+- F4/config/guidance: 48/48; независимое read-only review не нашло новых существенных дефектов.
+- F5/F6/F7 + SDD phase-context: 96/96; финальные race controls отдельно 4/4.
+- F1 alias-дополнение: journal+tracker 60/60, 0 skipped на данном host.
+- Первый полный offline eval запуск: 707/713, 6 отказов из-за внешнего sandbox EPERM;
+  affected suites вне внешнего ограничения: 11/11, без изменения проверок.
+- Второй полный offline eval: 715/716; выявлено несогласование новой bounded policy-review fixture
+  с coverage-classifier, который считает любой seed package.json full execution-проектом.
+  Это ошибка новой фикстуры/квалификации, не регрессия модели; исправление и повтор ниже/в PR.
+
+Все новые временные фикстуры удаляются в finally; модельных вызовов не было. Полный commit hook
+остаётся обязательным: успешный коммит и итоговый PR-отчёт фиксируют его фактический результат,
+данный журнал не объявляет ещё не выполненный hook зелёным.
+
+Финальный offline повтор после исправления fixture: **715/715 PASS + shell 7/7**.
+Из bounded seed удалён ненужный package.json: это proposal-only task, не Node execution-проект;
+все прежние coverage assertions для четырёх execution fixtures сохранены, oracle hash пересчитан.
+Новый fixture+coverage+provision/schema/trajectory набор: **38/38 PASS**. Финальный lifecycle набор
+после alias-коррекции: **180/180 PASS**. Скриншоты к этим backend/CLI controls неприменимы.
+
+Следующий шаг — штатный commit hook и независимая сверка inventory metadata, затем тот же PR #132
+на review корректировок BF2. Модельная серия BF3 и clean GitLab BF4 остаются отдельными этапами.
+
+Независимый staged inventory audit: 1064→1065 entries; added=1 (только новый review report),
+removed=0, reclassified=0. Разрешённая metadata-правка: historical-test-evidence 743→744 и
+expectedInventoryDigest `86edf9a2d8873a3afc7319e373c0ef0f7c6e90414cae92816a05b7b4dce6eba6`.
+PolicyDigest и все classifiers/markers/constraints/forbidden/protected неизменны. Frozen-main,
+manifest/objects, SDD baseline, package/lockfiles не затронуты. Независимо сверены source hashes
+review report; это проверка staged-среза до обязательного commit hook, не ложный PASS будущего hook.
+
+Первый запуск commit hook остановлен самим агентом до результата: обнаружена лишняя форматная
+перезапись policy JSON. Исходное оформление восстановлено, diff оставлен ровно на двух разрешённых
+полях; interrupted hook не считается PASS. Повтор выполняется обычным git commit без обходов.
+
+Обычный hook обнаружил реальную F4 compatibility-регрессию: default lint начал печатать новую
+строку scope, а сохранённый main-carry-safety control требует прежний exact clean stdout.
+Unit остановился на local-срезе: 1556 executed / 1549 passed / 1 failed / 6 skipped; это не полный
+unit PASS и не timeout. Тест не изменён; provenance выводится только для явной project policy,
+CLI override или owned fallback. Независимое review guard пройдено; соседние actual CLI/oracle
+controls — 17/17. Повтор полного offline flow-eval на этом исправлении: 715/715 + shell 7/7.
+
+После остановки собственного первого hook остался dead staged-candidate WorkspaceGuard.
+Проверены конкретный owner PID, отсутствие живого процесса, корень и checkpoint ID; сохранён
+компактный metadata-протокол. Удалены только этот собственный lock/checkpoint (80 113 726 bytes),
+без восстановления старого snapshot поверх исправлений. Staged tree до/после совпал.
+Это штатное explicit recovery, которое требует сам guard; проверки и права не обходились.
+
+Следующий ordinary hook остановился на двух file timeouts по 30s: pilot-verify-probe и verify CLI.
+Partial local counter: 1550 executed / 1542 passed / 2 failed / 6 skipped. CPU starvation конкретными
+соседями не доказан. Независимо проверен состав: pilot probe выполняет 2 full + 8 phase Verify,
+Git и lifecycle; verify CLI suite — 12 CLI запусков и 9 Git fixtures. Последовательный контроль
+с прежним deadline: 12/12, файлы ~21s и ~11s. Ровно эти два файла переведены в существующий
+SERIAL_LOCAL_FILES pool; default 30s, обычная local concurrency=2 и все mandatory assertions
+сохранены. Topology/exactly-once regression: 22/22. Это изоляция составной нагрузки, не повышение
+лимита, не исключение проверки и не утверждение о доказанной причине системной нагрузки.
+
+Полный hook затем выявил интеграционное ожидание, противоречащее исправленному F1: clean-repo
+harness разрешал close после P3, изменившей общий с P1 package.json. Partial unit: 1574 executed /
+1567 passed / 1 failed / 6 skipped; это actual stale rejection, не timeout. Независимый review
+подтвердил ошибку ожидания. Изменение P3 и production F1 сохранены; harness теперь доказывает
+атомарный отказ close, затем выполняет реальные Verify P1→P2→P3 на конечном дереве без повторного
+complete или ручных receipts. После этого close/check/sync проходят. Target GREEN 1/1 за 16,16s,
+с прежним file deadline 30s. Свойства и требования проверки не ослаблены.
+
+Следующий full hook: acceptance-corpora получил 30s file timeout; partial local counter
+1536 executed / 1529 passed / 1 failed / 6 skipped. Рассмотрено общее local concurrency=1
+вместо растущего списка файловых исключений; topology 22/22. В runtime qualification четырёх
+составных suites при concurrency=1 тот же 30s deadline всё равно дал file cancellations.
+Это не квалифицированное улучшение resource policy; экспериментальная смена default на 1
+не сохраняется. Остаётся ранее проверенная local=2 и изоляция двух full-flow suites.
+
+Наблюдение окружения после отказов: load averages 27.06/18.07/14.47, swap used ~11,7 GiB;
+собственных Node/Git процессов с путём этой рабочей копии не найдено. У основных CPU consumers
+по cwd/ownership marker принадлежность этому checkout не подтверждена; их не останавливали.
+Эти метрики не доказывают единственную причину timeout, но серия не годится для заявления PASS.
+Оператору направлен вопрос о приостановке других тяжёлых прогонов. Новые тяжёлые проверки
+до устранения этого условия не запускаются, сроки и assertions не повышаются/не ослабляются.
+Остальная подготовка/cleanup продолжается. PR пока на 0ddd3508; локальные исправления ещё
+не опубликованы, так как обычный hook не пройден. Live по-прежнему 0/8.
+
+После завершения всех failed runs независимо подтверждены и повторно проверены на liveness
+четыре собственных orphan fixture roots. Удалены только они: 2 039 808 allocated bytes; чужие
+процессы/данные не затронуты. Компактный cleanup evidence оставлен локально.
+
+Условия изменились без нового кода: load average снизился примерно до 9,93, swap used до ~8,1 GiB.
+Один заранее выбранный recovery-control acceptance-corpora с тем же file deadline 30s прошёл:
+9/9 за 20,23s. Это позволяет возобновить обычный gate; не доказывает единственную причину прошлых
+таймаутов. Общая сериализация local=1 не сохраняется. Новые модельные попытки не создаются.
+
+Возобновлённый обычный hook снова завершился file timeout acceptance-corpora after 30000ms:
+partial unit 1536 executed / 1529 passed / 1 failed / 6 skipped, unit step 267512ms.
+На момент окончания load averages ~16,18/17,80/16,83. Один успешный recovery-control не доказал
+стабильность полного прогона. Новых тяжёлых повторов при тех же условиях не запускаем.
+Текущая точка: F1–F7 исправлены и target/offline qualified; полный gate НЕ PASS, нового commit/push
+нет. Опубликован только честный статус в PR #132; его head остаётся 0ddd3508. Полный staged diff
+сохранён отдельно локально для review, источник и source hashes не потеряны. Операторский вопрос
+о тихом ресурсном окне остаётся открытым. Следующее действие после изменения условий — обычный
+hook, push и финальный отчёт; live и transfer по-прежнему не объявляются выполненными.
+
+### 2026-11-03: разрешённый оператором временный deadline override
+
+Оператор явно разрешил поднять прежние 30s временно через env на перегруженном окружении.
+Добавлен `GENNADY_TEST_FILE_TIMEOUT_MS=120000`: это deadline floor только outer test runner,
+не постоянная правка DEFAULT_FILE_TIMEOUT_MS. Без env остаётся 30000; owned 120000/360000 не
+уменьшаются. Допустимый integer range 30000..600000; пустое/нечисловое/нулевое/понижающее значение
+отклоняется до discovery/spawn. Override явно виден в выводе и удаляется из окружения test children,
+чтобы вложенные causal fixtures сохраняли собственные deadlines. Concurrency, corpus, assertions,
+ошибки/cancellations и one-c8/exactly-once не меняются. Это не proxy timeout и не новая live попытка.
+
+Regression qualification: topology 24/24; прежние default tests сохранены, отдельно проверены
+explicit floor, owned budgets, exactly-once, unchanged concurrency, child env isolation и invalid
+values. Type-check выполнен отдельно. Следующий запуск ordinary commit hook получает env=120000;
+PASS объявляется только по его фактическому исходу, без bypass. Старые timeout-записи сохранены.

@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isRowDone,
+  maskTrackerBookkeeping,
   parseMeta,
   parseTrackerRows,
   recomputeRollupProgress,
@@ -218,5 +219,37 @@ describe('sumRollupProgress', () => {
 
   it('returns null when the content carries no rollup table', () => {
     assert.strictEqual(sumRollupProgress('# no tables here\n'), null);
+  });
+});
+
+describe('writer-owned rollup bookkeeping identity', () => {
+  it('masks both derived rollup counts that a real recompute rewrites', () => {
+    const resolveRows = () => [{ taskId: 'APP-one', status: '[x] DONE' }];
+    const after = recomputeRollupProgress(ROLLUP, resolveRows).text;
+    assert.notEqual(after, ROLLUP);
+    assert.equal(
+      maskTrackerBookkeeping(after, resolveRows),
+      maskTrackerBookkeeping(ROLLUP, resolveRows)
+    );
+  });
+
+  it('does not mask an unlinked rollup row that the writer cannot update', () => {
+    const before = ROLLUP.replace(
+      '[3-tasks](./infra-base/infra-base.3-tasks.md)',
+      'semantic index'
+    );
+    const after = before.replace('| 6 | 0/6 |', '| 6 | 1/6 |');
+    assert.notEqual(
+      maskTrackerBookkeeping(before, () => []),
+      maskTrackerBookkeeping(after, () => [])
+    );
+  });
+
+  it('does not mask an unresolvable rollup row that the writer leaves unchanged', () => {
+    const after = ROLLUP.replace('| 6 | 0/6 |', '| 6 | 1/6 |');
+    assert.notEqual(
+      maskTrackerBookkeeping(ROLLUP, () => null),
+      maskTrackerBookkeeping(after, () => null)
+    );
   });
 });

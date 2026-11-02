@@ -818,6 +818,8 @@ export function badInvocation(detail: string): LogOutcome {
       '  agent free text: replace the quoted content with --content-file .claude/tmp/<safe-name>;',
       '  blocker uses --payload-file .claude/tmp/<safe-name>.json with reason/axiom/unblock keys.',
       '  decision JSON keys: id, what, why, where, evidence, alternative, verify; no verdict field.',
+      '  module *.spec.md decision uses --payload-file without --phase; adds lintExemption: {file, checks}.',
+      '  Module where=file; checks only dbc/inventory. Pending grants no exception; operator uses deviation-verdict.',
       '  replan JSON keys: id, base, reason, evidence, addTargets, dependencies; base is the exact REPLAN_BASE from sdd-task.',
       '  Optional pair: insertPhase {id, objective, targets, dependencies} and moveTests []; inherits selected kind/rules/exit/inputs, preserves scenario/check obligations.',
       '  --phase P<N> is only valid on line | handoff | blocker | resolved | complete | decision | replan.',

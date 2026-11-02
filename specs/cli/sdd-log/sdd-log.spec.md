@@ -65,6 +65,12 @@ SC3: `complete` дополнительно перечитывает ownership в
 - `authoring-complete` требует exact `*.spec.md` путь (не Task-ID), чистый `checkSpecAuthoringDraft` и записывает draft/final authoring receipt на саму спеку — `sdd-log` для тикетов и этот режим для спек делят одну команду, не парсер журнала
 - `audit-receipt`/`review-receipt` требуют single-line `<verdict>` (≤120 символов, без плейсхолдера) и группу, где каждый член резолвится и стоит `[x]` DONE; пишут group-completion receipt на владеющую спеку, не в `EXECUTION_LOG` тикета
 - `deviation-verdict <D-id> <accepted|rework|rolled-back>` переводит ровно одну существующую Decision Log запись из `pending-operator` в terminal verdict (повтор того же terminal — byte-no-op; другой terminal не переписывает историю); sidecar/новую запись не создаёт. Владельцы: ticket `DECISION_LOG`, module-spec `MODULE_DECISION_LOG`, canonical `specs/3-tasks.md` или `specs/<scope>/<module...>/<name>.3-tasks.md` с `## Decision Log (project task level|scope task level|module-task level)`. Audit/review receipt фиксирует уже полученный реальный verdict до финального deviation review, а окончательное закрытие группы блокирует `sdd-check --all`, пока остаётся `SDD_DEVIATION_VERDICT_MISSING`.
+- `decision` для implementation module `*.spec.md` принимает file-backed JSON без `--phase`: семь полей
+  решения плюс `lintExemption: {file, checks}` (`where=file`, checks только `dbc/inventory`). Под тем же
+  artifact lease создаёт canonical `MODULE_DECISION_LOG` proposal со статусом `pending-operator`;
+  retry идемпотентен, payload не может задать verdict или изменить scope существующего ID.
+  Согласование идёт отдельным существующим `deviation-verdict`; pending/rework/rolled-back не выключают lint.
+  Это обычное разделение ролей, не техническое подтверждение личности оператора.
 - Round-номер авто-инкремент по числу `### Round N`
 - exit `0` записано · `1` файл · `2` нет секции / receipt / согласованного phase-state / group-receipt state · `4` плохой вызов / обязательный флаг / authoring state
 <!--/SECTION:MODULE_VISION-->

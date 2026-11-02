@@ -18,7 +18,7 @@ import { extractSection } from '../section.ts';
 import { parsePhaseDetail, parsePhasesOverview } from '../ticket.ts';
 import { decisionReferenceIssue, parseDeviationRecords } from '../deviation.ts';
 import { GROUP_RECEIPT_MARKER, isGroupReceipt } from '../group-receipt.ts';
-import { maskTrackerBookkeeping } from '../tracker.ts';
+import { maskTrackerBookkeeping, parseTrackerRows, type TrackerRow } from '../tracker.ts';
 
 const ATTEMPT_SCHEMA = 'gennady.sdd-verify-attempt.v1';
 const LOCK_SCHEMA = 'gennady.sdd-verify-attempt-lock.v1';
@@ -386,13 +386,36 @@ function flowBookkeepingKind(file: string): 'task-index' | 'spec' | 'other' {
 }
 
 /**
- * @purpose Drop the tracker status and rollup ratio cells that `sdd-sync` rewrites, keeping every
- *   other byte of a task index (rows, Task-IDs, titles, dependencies, task counts) identity-bearing.
+ * @purpose Drop tracker status and resolved rollup Tasks/Done cells written by sdd-sync; keep
+ *   Task-IDs, titles, dependencies, links and every semantic cell identity-bearing.
+ * @param root Canonical project root used to prove linked tracker metadata.
+ * @param file Repository-relative task-index path.
  * @param content Task index markdown.
+ * @param digestPaths Exact tracked/untracked paths already included in this digest.
  * @returns Normalized bytes.
  */
-function normalizedTaskIndexForFreshness(content: Buffer): Buffer {
-  return Buffer.from(maskTrackerBookkeeping(content.toString('utf8')));
+function normalizedTaskIndexForFreshness(
+  root: string,
+  file: string,
+  content: Buffer,
+  digestPaths: ReadonlySet<string>
+): Buffer {
+  const linkedRows = new Map<string, readonly TrackerRow[] | null>();
+  return Buffer.from(
+    maskTrackerBookkeeping(content.toString('utf8'), (link) => {
+      if (linkedRows.has(link)) return linkedRows.get(link)!;
+      const linked = path
+        .relative(root, path.resolve(root, path.dirname(file), link))
+        .split(path.sep)
+        .join('/');
+      // Mirror the writer's safe readable-file context without adding ignored/outside source reads.
+      const proof = digestPaths.has(linked) ? proveRepoFile(root, linked) : null;
+      const observed = proof?.ok ? readProvenRepoFile(proof.identity) : null;
+      const rows = observed?.ok ? parseTrackerRows(observed.content) : null;
+      linkedRows.set(link, rows);
+      return rows;
+    })
+  );
 }
 
 /**
@@ -419,21 +442,26 @@ function specWithoutGroupReceipts(content: Buffer): Buffer {
 
 /**
  * @purpose Normalize one file's bytes for the phase freshness digest.
+ * @param root Canonical project root used for explicit bookkeeping derivation context.
  * @param file Repository-relative path.
  * @param content Raw file bytes.
  * @param ticketRelative The phase ticket path.
  * @param sddPhase Phase whose freshness is computed.
+ * @param digestPaths Exact paths already included in this digest, never new read authority.
  * @returns Bytes that change only when product, config, rules or plan meaning changes.
  */
 function freshnessBytes(
+  root: string,
   file: string,
   content: Buffer,
   ticketRelative: string,
-  sddPhase: string
+  sddPhase: string,
+  digestPaths: ReadonlySet<string>
 ): Buffer {
   if (file === ticketRelative) return normalizedTicketForFreshness(content, sddPhase);
   const kind = flowBookkeepingKind(file);
-  if (kind === 'task-index') return normalizedTaskIndexForFreshness(content);
+  if (kind === 'task-index')
+    return normalizedTaskIndexForFreshness(root, file, content, digestPaths);
   if (kind === 'spec') return specWithoutGroupReceipts(content);
   return content;
 }
@@ -452,6 +480,44 @@ function downstreamOwnedFiles(
   if (phaseIndex < 0) {
     throw new Error(`SDD_VERIFY_ATTEMPT_SCOPE_INVALID: phase ${sddPhase} is absent`);
   }
+  const normalizedPath = (raw: string): string | null => {
+    const absolute = path.resolve(root, raw);
+    const relative = path.relative(root, absolute).split(path.sep).join('/');
+    return raw === raw.trim() &&
+      raw !== '' &&
+      !path.isAbsolute(raw) &&
+      !/^[A-Za-z]:/.test(raw) &&
+      !/[\\\0\r\n*?{}]/.test(raw) &&
+      !raw.split('/').some((part) => part === '' || part === '.' || part === '..') &&
+      relative !== '' &&
+      relative !== '..' &&
+      !relative.startsWith('../')
+      ? relative
+      : null;
+  };
+  // A later declaration cannot erase bytes already owned by this phase or its prefix.
+  // Inputs is an opaque handoff description in the current schema, not a read-path allowlist.
+  const protectedPaths = new Set<string>([
+    path.relative(root, ticketPath).split(path.sep).join('/'),
+  ]);
+  for (const phase of phases.slice(0, phaseIndex + 1)) {
+    const section = extractSection(ticket, `PHASE_${phase.id}`);
+    if (section.status !== 'ok') return new Set();
+    const detail = parsePhaseDetail(section.content);
+    if (detail.pathIssues?.length) return new Set();
+    for (const raw of [...detail.targetFiles, ...detail.deletedFiles]) {
+      const normalized = normalizedPath(raw);
+      if (normalized === null) return new Set();
+      protectedPaths.add(normalized);
+    }
+  }
+  // Lexical paths alone are insufficient on filesystems that alias case or Unicode
+  // spellings: a downstream spelling may name the current phase's physical source.
+  const protectedIdentities = new Set<string>();
+  for (const protectedPath of protectedPaths) {
+    const proof = proveRepoFile(root, protectedPath, 'literal-brackets');
+    if (proof.ok) protectedIdentities.add(`${proof.identity.dev}:${proof.identity.ino}`);
+  }
   const owned = new Set<string>();
   for (const phase of phases.slice(phaseIndex + 1)) {
     const section = extractSection(ticket, `PHASE_${phase.id}`);
@@ -461,20 +527,13 @@ function downstreamOwnedFiles(
     const detail = parsePhaseDetail(section.content);
     if (detail.pathIssues?.length) continue;
     for (const raw of [...detail.targetFiles, ...detail.deletedFiles]) {
-      const absolute = path.resolve(root, raw);
-      const relative = path.relative(root, absolute).split(path.sep).join('/');
-      if (
-        raw.trim() !== raw ||
-        raw === '' ||
-        path.isAbsolute(raw) ||
-        relative === '' ||
-        relative === '..' ||
-        relative.startsWith('../') ||
-        /[*?{}]/.test(raw)
-      ) {
-        continue;
-      }
-      owned.add(relative);
+      const normalized = normalizedPath(raw);
+      if (normalized === null || protectedPaths.has(normalized)) continue;
+      // Exclusion requires a safe existing identity. Missing future files do not
+      // contribute bytes yet; unknown or unsafe identities never justify omission.
+      const proof = proveRepoFile(root, normalized, 'literal-brackets');
+      if (proof.ok && !protectedIdentities.has(`${proof.identity.dev}:${proof.identity.ino}`))
+        owned.add(normalized);
     }
   }
   return owned;
@@ -482,7 +541,7 @@ function downstreamOwnedFiles(
 
 /**
  * @purpose Bind current product/config/rules bytes with the same journal-independent freshness identity used by Verify attempts.
- * @invariant Flow bookkeeping — tracker status/rollup cells written by `sdd-sync` and well-formed group
+ * @invariant Flow bookkeeping — tracker status/resolved rollup counts written by `sdd-sync` and well-formed group
  *   receipt blocks — does not stale a phase; every other spec, index and ticket byte stays hashed.
  * @param root Canonical repository root.
  * @param ticketPath Exact phase ticket, whose runner journal and owned completion metadata are normalized.
@@ -505,10 +564,11 @@ export function currentSddPhaseWorktreeDigest(
     .toString('utf8')
     .split('\0')
     .filter(Boolean);
-  for (const file of [...new Set([...tracked, ...untracked])].sort((left, right) =>
-    left.localeCompare(right)
-  )) {
-    if (file !== ticketRelative && downstream.has(file)) continue;
+  const files = [...new Set([...tracked, ...untracked])]
+    .filter((file) => file === ticketRelative || !downstream.has(file))
+    .sort((left, right) => left.localeCompare(right));
+  const digestPaths = new Set(files);
+  for (const file of files) {
     const absolute = path.join(root, file);
     let entry: fs.Stats;
     try {
@@ -523,7 +583,9 @@ export function currentSddPhaseWorktreeDigest(
     hash.update(`path\0${file}\0${entry.mode}\0`);
     if (entry.isSymbolicLink()) hash.update(fs.readlinkSync(absolute));
     else if (entry.isFile()) {
-      hash.update(freshnessBytes(file, fs.readFileSync(absolute), ticketRelative, sddPhase));
+      hash.update(
+        freshnessBytes(root, file, fs.readFileSync(absolute), ticketRelative, sddPhase, digestPaths)
+      );
     } else hash.update('non-file');
   }
   return `sha256:${hash.digest('hex')}`;

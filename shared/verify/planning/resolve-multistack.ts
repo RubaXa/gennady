@@ -155,9 +155,9 @@ function normalizeScope(
   const normalizedExisting = normalizeTargetFiles(root, existing);
   const missing = values.filter((value) => !fs.existsSync(path.resolve(root, value)));
   const normalizedMissing: string[] = [];
-  // A changed-mode deletion comes from the VCS diff, so its name is literal: `pages/[...slug].tsx`
-  // deleted upstream is an exact path, not a mask. Authored `files` scope keeps the glob ban.
-  const missingFromVcs = scope.mode === 'changed';
+  // A mode label is not deletion evidence. Resolve missing changed targets against the exact
+  // base once; SDD callers retain their separately proved knownDeletedFiles boundary.
+  let vcsDeleted: Set<string> | undefined;
   for (const value of missing) {
     const absolute = path.resolve(root, value);
     const relative = path.relative(root, absolute);
@@ -166,7 +166,7 @@ function normalizeScope(
       value !== value.trim() ||
       value.includes('\\') ||
       value.includes('\0') ||
-      (!missingFromVcs &&
+      (scope.mode !== 'changed' &&
         !normalizedKnownDeleted.has(relative.split(path.sep).join('/')) &&
         /[*?\[\]{}]/.test(value)) ||
       path.isAbsolute(value) ||
@@ -181,7 +181,53 @@ function normalizeScope(
         'use normalized repository-relative paths from the resolved diff scope'
       );
     }
-    normalizedMissing.push(relative.split(path.sep).join('/'));
+    const normalized = relative.split(path.sep).join('/');
+    const inspected = inspectRepoPath(root, normalized, 'missing', 'literal-brackets');
+    if (!inspected.ok)
+      throw new VerifyConfigError(
+        'VERIFY_CONFIG_INVALID_TYPE',
+        'scope.files',
+        `deleted scope path ${JSON.stringify(value)} is unsafe: ${inspected.detail}`,
+        'use exact absent files with safe repository-local parents'
+      );
+    if (scope.mode === 'changed' && !normalizedKnownDeleted.has(normalized)) {
+      if (!vcsDeleted) {
+        try {
+          const output = execFileSync(
+            'git',
+            [
+              '--literal-pathspecs',
+              '-C',
+              root,
+              'diff',
+              '--name-only',
+              '--diff-filter=D',
+              '--no-renames',
+              '-z',
+              changedFrom!,
+              '--',
+            ],
+            { encoding: 'buffer', stdio: ['ignore', 'pipe', 'pipe'] }
+          );
+          vcsDeleted = new Set(output.toString('utf8').split('\0').filter(Boolean));
+        } catch {
+          throw new VerifyConfigError(
+            'VERIFY_CONFIG_INVALID_TYPE',
+            'scope.changedFrom',
+            'Cannot prove VCS deletions against the requested changed base',
+            'use an available exact base ref or commit in this repository'
+          );
+        }
+      }
+      if (!vcsDeleted.has(normalized))
+        throw new VerifyConfigError(
+          'VERIFY_CONFIG_INVALID_TYPE',
+          'scope.files',
+          `missing scope path ${JSON.stringify(value)} has no tracked VCS deletion evidence`,
+          'pass a file deleted relative to the exact changed base, not an authored absent path'
+        );
+    }
+    normalizedMissing.push(normalized);
   }
 
   if (

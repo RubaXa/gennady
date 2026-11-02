@@ -181,37 +181,65 @@ function findRollupHeader(
 }
 
 /**
- * @purpose Replace one column's data cells of the table whose header row is `headerIdx`.
- * @param lines Index file lines, rewritten in place.
+ * @purpose Mask explicit writer-owned columns only for rows the same writer can address.
+ * @param lines Index lines, rewritten in place.
  * @param headerIdx Header row index.
- * @param column Content-cell column index.
- * @param token Placeholder written into every data cell of that column.
+ * @param columns Derived columns and their canonical placeholders.
+ * @param eligible Whether the writer owns this exact row.
  */
-function maskColumn(lines: string[], headerIdx: number, column: number, token: string): void {
+function maskColumns(
+  lines: string[],
+  headerIdx: number,
+  columns: readonly { column: number; token: string }[],
+  eligible: (cells: readonly string[]) => boolean
+): void {
   for (let i = headerIdx + 1; i < lines.length; i++) {
     const line = lines[i];
     if (line === undefined || !line.trimStart().startsWith('|')) break;
-    if (/^\|?\s*-+\s*\|/.test(line)) continue;
+    if (/^\|?\s*-+\s*\|/.test(line) || !eligible(contentCells(line))) continue;
     const raw = line.split('|');
-    if (raw[column + 1] === undefined) continue;
-    raw[column + 1] = ` ${token} `;
+    for (const { column, token } of columns) {
+      if (raw[column + 1] !== undefined) raw[column + 1] = ` ${token} `;
+    }
     lines[i] = raw.join('|');
   }
 }
 
 /**
- * @purpose Mask exactly the cells `sdd-sync` rewrites: the tracker Status column and the rollup ratio column.
- * @invariant Tables are located by the same header rules as `updateTrackerStatus` and
- *   `recomputeRollupProgress`; every other cell, row and line is returned byte-identical.
- * @param content Full markdown of an index file.
- * @returns The index text with flow-owned bookkeeping replaced by placeholders.
+ * @purpose Mask only tracker status and resolved rollup Tasks/Done cells written by sdd-sync.
+ * @invariant Same header and row eligibility rules as the writers; unresolved/unlinked rows,
+ *   Task-ID/title/dependency/link cells and all other text remain byte-identical. No filesystem I/O.
+ * @param content Full index markdown.
+ * @param [resolveRows] Explicit readable linked-tracker context; absent context grants no rollup mask.
+ * @returns Text with only proven derived bookkeeping replaced by placeholders.
  */
-export function maskTrackerBookkeeping(content: string): string {
+export function maskTrackerBookkeeping(
+  content: string,
+  resolveRows: (indexLink: string) => readonly TrackerRow[] | null = () => null
+): string {
   const lines = content.split('\n');
   const status = findTaskStatusHeader(lines);
-  if (status) maskColumn(lines, status.headerIdx, status.statusCol, '<STATUS>');
+  if (status)
+    maskColumns(
+      lines,
+      status.headerIdx,
+      [{ column: status.statusCol, token: '<STATUS>' }],
+      (cells) => cellText(cells[status.idCol] ?? '') !== ''
+    );
   const rollup = findRollupHeader(lines);
-  if (rollup) maskColumn(lines, rollup.headerIdx, rollup.doneCol, '<DONE>');
+  if (rollup)
+    maskColumns(
+      lines,
+      rollup.headerIdx,
+      [
+        { column: rollup.tasksCol, token: '<TASKS>' },
+        { column: rollup.doneCol, token: '<DONE>' },
+      ],
+      (cells) => {
+        const link = linkTarget(cells[rollup.indexCol] ?? '');
+        return link !== null && resolveRows(link) !== null;
+      }
+    );
   return lines.join('\n');
 }
 

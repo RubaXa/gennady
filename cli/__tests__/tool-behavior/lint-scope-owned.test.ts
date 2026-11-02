@@ -3,7 +3,7 @@
 // @consumers: CI
 
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
@@ -14,10 +14,10 @@ const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const GENNADY_ENTRY = join(REPO_ROOT, 'cli', 'gennady.ts');
 const TSX_LOADER = join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'loader.mjs');
 
-function lint(cwd: string) {
+function lint(cwd: string, args: readonly string[] = ['src']) {
   const result = spawnSync(
     process.execPath,
-    ['--import', TSX_LOADER, GENNADY_ENTRY, 'lint', 'src'],
+    ['--import', TSX_LOADER, GENNADY_ENTRY, 'lint', ...args],
     {
       cwd,
       encoding: 'utf-8',
@@ -29,6 +29,97 @@ function lint(cwd: string) {
 }
 
 describe('lint.scope', () => {
+  it('--scope all strengthens owned policy for positional, spec and staged targets without rewriting config', () => {
+    const fx = buildFixture();
+    try {
+      writeFileSync(join(fx.root, 'src/legacy.ts'), 'export const legacy = 1;\n');
+      const config = 'lint:\n  scope: owned\n';
+      writeFileSync(join(fx.root, 'gennady.yaml'), config);
+      execFileSync('git', ['add', 'src/legacy.ts'], { cwd: fx.root });
+      const selections = [
+        ['src/legacy.ts'],
+        ['src/legacy.ts', `--spec=${fx.specPath}`],
+        ['--staged'],
+      ];
+      for (const args of selections) {
+        const owned = lint(fx.root, args);
+        assert.equal(owned.exitCode, 0, owned.output);
+        const strict = lint(fx.root, [...args, '--scope', 'all']);
+        assert.equal(strict.exitCode, 1, strict.output);
+        assert.match(strict.output, /src\/legacy\.ts:\d+:\d+: error: ERR_CLI_LINT_MISSING_FILE/);
+        assert.match(strict.output, /Effective lint\.scope=all \(source=CLI --scope all\)/);
+        assert.match(strict.output, /Project lint\.scope=owned \(source=gennady\.yaml\)/);
+        assert.doesNotMatch(strict.output, /scope: owned|lint\.scope=owned: skipped/);
+        assert.equal(readFileSync(join(fx.root, 'gennady.yaml'), 'utf8'), config);
+      }
+    } finally {
+      rmSync(fx.root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects weakening, malformed and repeated --scope before config/spec/target reads or autofix', () => {
+    const fx = buildFixture();
+    try {
+      const config = 'lint: [malformed project policy\n';
+      writeFileSync(join(fx.root, 'gennady.yaml'), config);
+      const target = join(fx.root, 'src/legacy.ts');
+      const before = 'export const legacy = 1;\n';
+      writeFileSync(target, before);
+      for (const flags of [
+        ['--scope', 'owned'],
+        ['--scope=changed'],
+        ['--scope'],
+        ['--scope='],
+        ['--scope=all', '--scope=all'],
+        ['--scope', 'all', '--scope', 'owned'],
+      ]) {
+        const result = lint(fx.root, [
+          'src/legacy.ts',
+          '--autofix',
+          '--spec=missing.spec.md',
+          ...flags,
+        ]);
+        assert.equal(result.exitCode, 4, result.output);
+        assert.match(result.output, /--scope|Unknown flag/);
+        assert.doesNotMatch(
+          result.output,
+          /ERR_CLI_LINT_BAD_CONFIG|ERR_CLI_LINT_SPEC_NOT_FOUND|ERR_CLI_LINT_MISSING_FILE/
+        );
+        assert.equal(readFileSync(target, 'utf8'), before);
+        assert.equal(readFileSync(join(fx.root, 'gennady.yaml'), 'utf8'), config);
+      }
+    } finally {
+      rmSync(fx.root, { recursive: true, force: true });
+    }
+  });
+
+  it('reports the effective CLI override above repo rc while preserving project settings and help semantics', () => {
+    const fx = buildFixture();
+    try {
+      writeFileSync(join(fx.root, 'src/legacy.ts'), 'export const legacy = 1;\n');
+      const yaml = 'lint:\n  scope: all\n';
+      const rc = '{"lint":{"scope":"owned"}}';
+      writeFileSync(join(fx.root, 'gennady.yaml'), yaml);
+      writeFileSync(join(fx.root, '.gennadyrc'), rc);
+      const configured = lint(fx.root, ['src/legacy.ts']);
+      assert.equal(configured.exitCode, 0, configured.output);
+      assert.match(configured.output, /Effective lint\.scope=owned \(source=\.gennadyrc\)/);
+      const strict = lint(fx.root, ['src/legacy.ts', '--scope=all']);
+      assert.equal(strict.exitCode, 1, strict.output);
+      assert.match(strict.output, /Effective lint\.scope=all \(source=CLI --scope all\)/);
+      assert.match(strict.output, /Project lint\.scope=owned \(source=\.gennadyrc\)/);
+      assert.doesNotMatch(strict.output, /scope: owned/);
+      assert.equal(readFileSync(join(fx.root, 'gennady.yaml'), 'utf8'), yaml);
+      assert.equal(readFileSync(join(fx.root, '.gennadyrc'), 'utf8'), rc);
+      const help = lint(fx.root, ['--help']);
+      assert.equal(help.exitCode, 0, help.output);
+      assert.match(help.output, /--scope all.*Strengthen/);
+      assert.match(help.output, /--scope owned is rejected/);
+    } finally {
+      rmSync(fx.root, { recursive: true, force: true });
+    }
+  });
+
   it('owned skips unowned legacy files but keeps headed and spec-declared files', () => {
     const fx = buildFixture();
     try {
@@ -89,6 +180,7 @@ describe('lint.scope', () => {
         result.output,
         /lint\.scope=owned disabled for this run: \d+ SDD declaration error/
       );
+      assert.match(result.output, /Effective lint\.scope=all \(source=SDD declaration fallback\)/);
       assert.match(result.output, /src\/legacy\.ts:\d+:\d+: error/);
       assert.doesNotMatch(result.output, /skipped \d+ file/);
     } finally {
