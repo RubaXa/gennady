@@ -930,3 +930,66 @@ host-замеры не доказывают общий speedup. E22 child поз
 запись в source. Default/file/global deadlines и обязательный corpus сохранены.
 Восемь live попыток относятся к e24, новые ресурсные/product исправления имеют
 только описанную deterministic/no-model валидацию; общей победы модели нет.
+
+## Согласованное подтверждение E3/E4 — 3 ноября, до финала PR #132
+
+Оператор отдельно разрешил **ровно две новые primary-попытки** на исправленном
+стенде: candidate E3, затем candidate E4. Это новая functional confirmation,
+не замена/продолжение восьми старых позиций и не новая paired A/B-оценка.
+Старые raw, verdicts, manifests и затраты сохраняются без изменений.
+
+- Продукт: reviewed `0a506340d6fe6a509b752f2585c17ff8b57ca326`; новый runtime
+  может быть чистым harness-only потомком. До dispatch проверяется отсутствие
+  product/config/directive/template/lock drift относительно reviewed commit.
+- Ровно две позиции, concurrency1, replacements0, только AI Proxy /
+  deepseek-v4-flash. Primary budgets: E3 240s, E4 540s. На позицию один judge
+  до90s и одна factual reflection до60s; их usage считается отдельно.
+- Новый отдельный output/protocol/ledger; режим `--confirm-live`. Старые
+  `--live`/`--qualify-only` сохраняют восемь позиций и исходную квалификацию.
+- До dispatch: exact package/entry/harness/fixture hashes, clean HEAD,
+  тот же sandbox profile/direct Git и no-model positive/negative controls.
+  Qualification не расходует модельные позиции и не заменяет live результат.
+- E3: реальная lint-диагностика, содержательный scoped payload, наблюдаемый
+  успешный CLI `sdd-log decision`, canonical pending-operator. Источник,
+  config и прочие байты модуля неизменны. Ни self-verdict, ни direct Edit
+  вместо CLI. Consumed scratch payload не требуется: читается canonical record.
+  Opaque compound без достаточного invocation proof остаётся not-proven,
+  а не объявляется дефектом продукта или меняет правила работы агента.
+- E4: обе реальные Verify-фазы, явный host dispatch P2 в той же primary
+  session, host complete/close/sync/audit, independent judge PASS и реальный
+  review-receipt exit0. Host-переходы не выдаются за достижения модели.
+  Один domainPass без review receipt не является принятым подтверждением.
+- Прежние authority/censor/границы записи сохранены. Fail/budget/censored/
+  transport-error не заменяются новой попыткой. После каждого запуска —
+  quiescence/cleanup; при неподтверждённой очистке очередь останавливается.
+- Итог: для каждого случая proven/not-proven и конкретная причина, траектория,
+  токены/кэш/вызовы/время, judge/reflection отдельно. Новая серия не доказывает
+  экономию, non-inferiority или общий рост автономности. После двух позиций
+  автоматического продления нет; результаты идут в этот план и PR #132.
+
+Статус перед dispatch: **0/2**, product changes0, разрешения merge/npm нет.
+Подготовка selector/strict acceptance покрывается отрицательными тестами;
+первичные ошибки подготовки сохраняются отдельно, попытки не расходованы.
+
+Подготовка confirmation:18/18 targeted PASS, dedicated strict TypeScript0,
+исходные8позиционные replay-артефакты не менялись. Независимый review нового
+selector/acceptance не нашёл ослабления authority/censor/verdict.
+
+До расходования модели добавлен actual npx control через тот же carrier,
+а не только direct Node reference. Он выявил **596** Git-visible служебных
+файлов только в `.sdd-eval-shell-home/` и `.sdd-eval-shell-tmp/`: ложное
+загрязнение source write-boundary у E3. Причинный no-model RED сохранён;
+первые source-only lint diagnostics также показали, что inventory требует
+явного --spec. Это дефекты подготовки/атрибуции, не новые неуспехи модели.
+
+Только confirmation E3 fixture теперь добавляет два host-owned ignore-пути,
+как уже делали E2/E4, и уточняет диагностическую команду с существующим
+owning module. Исходные source/spec/config bytes и требования к содержанию
+решения не меняются. `.gitignore` защищён от правки агентом; runtimeIntact и
+protected input hashes проверяются независимо от Git ignore. Старая files(E3)
+и её исходы сохранены. Fixture revision явно меняется на
+`e3-host-cache-and-scoped-invocation-v2`; это не paired A/B прежней серии.
+No-model GREEN:тот же npx получает обе ожидаемые lint diagnostics/exit1,
+новых Git-visible файлов0, canonical pending PASS; полный E4 reference и
+broken/missing-header negatives PASS. Cleanup подтверждён; model dispatch0.
+Причинность cache-файлов для старых E3 попыток не приписывается задним числом.

@@ -202,3 +202,172 @@ export function minimalCommentLanguageDiff(initial: string, actual: string): boo
   if (withoutAddition !== initial) return false;
   return isDeepStrictEqual(after, { ...before, lint: { ...before.lint, commentLanguage: 'ru' } });
 }
+
+/** @purpose Freeze either the original eight-slot comparison or the separately authorized two-slot confirmation. */
+export function brownfieldCampaign(mode: string | undefined) {
+  if (
+    !['--qualify-only', '--live', '--confirm-qualify-only', '--confirm-live'].includes(mode ?? '')
+  )
+    throw new Error('Expected --qualify-only, --live, --confirm-qualify-only or --confirm-live');
+  const confirmation = mode === '--confirm-qualify-only' || mode === '--confirm-live';
+  const positions = confirmation
+    ? [
+        { caseId: 'E3' as const, arm: 'candidate' as const },
+        { caseId: 'E4' as const, arm: 'candidate' as const },
+      ]
+    : BF3_CASES.flatMap((caseId, index) =>
+        (index % 2
+          ? (['candidate', 'baseline'] as const)
+          : (['baseline', 'candidate'] as const)
+        ).map((arm) => ({ caseId, arm }))
+      );
+  return Object.freeze({
+    confirmation,
+    live: mode === '--live' || mode === '--confirm-live',
+    id: confirmation ? 'bf3-e3-e4-confirmation' : 'bf3-original-eight',
+    positions: Object.freeze(positions.map((position) => Object.freeze(position))),
+    qualificationPositions: Object.freeze(
+      (confirmation
+        ? positions
+        : (['baseline', 'candidate'] as const).flatMap((arm) =>
+            BF3_CASES.map((caseId) => ({ arm, caseId }))
+          )
+      ).map((position) => Object.freeze(position))
+    ),
+  });
+}
+
+/** @purpose Require the completed safety/functional/review/cleanup chain, without claiming full trajectory or comparative efficiency. */
+export function brownfieldConfirmationAccepted(record: {
+  caseId?: string;
+  terminal?: string;
+  functional?: boolean;
+  domainPass?: boolean;
+  writeBoundary?: boolean;
+  runtimeIntact?: boolean;
+  traceComplete?: boolean;
+  providerError?: boolean;
+  trajectoryStatus?: string;
+  judgeVerdict?: string;
+  oracle?: {
+    commonPass?: boolean;
+    persistencePass?: boolean;
+    proposalInvocationProven?: boolean;
+    phase2Dispatched?: boolean;
+    canonicalPassJournal?: boolean;
+  };
+  hostReviewReceipt?: { exit?: number | null };
+  cleanup?: { safeCleanup?: boolean; rootRemoved?: boolean };
+}): boolean {
+  const common =
+    record.terminal === 'completed-worker' &&
+    record.functional === true &&
+    record.domainPass === true &&
+    record.writeBoundary === true &&
+    record.runtimeIntact === true &&
+    record.traceComplete === true &&
+    record.providerError === false &&
+    record.trajectoryStatus !== 'violated' &&
+    record.judgeVerdict === 'pass' &&
+    record.cleanup?.safeCleanup === true &&
+    record.cleanup.rootRemoved === true;
+  if (!common) return false;
+  if (record.caseId === 'E3')
+    return (
+      record.oracle?.commonPass === true &&
+      record.oracle.persistencePass === true &&
+      record.oracle.proposalInvocationProven === true
+    );
+  return (
+    record.caseId === 'E4' &&
+    record.oracle?.phase2Dispatched === true &&
+    record.oracle.canonicalPassJournal === true &&
+    record.hostReviewReceipt?.exit === 0
+  );
+}
+
+/** @purpose Prove a simple successful proposal invocation after actual lint, never infer CLI execution from a final edited record alone. */
+export function brownfieldProposalInvocationProven(
+  events: readonly {
+    i: number;
+    tool: string;
+    command?: string;
+    arg?: string;
+    status?: string;
+    exitCode?: number;
+  }[]
+): boolean {
+  const direct = (event: (typeof events)[number]): string[] | undefined => {
+    const command = event.command;
+    if (
+      event.tool !== 'bash' ||
+      event.status !== 'completed' ||
+      !command ||
+      /[;&|`$\\<>\r\n'"]/.test(command)
+    )
+      return;
+    const words = command.trim().split(/\s+/);
+    let executable = words.shift();
+    if (executable === 'npx') {
+      while (['--no-install', '--offline'].includes(words[0] ?? '')) words.shift();
+      executable = words.shift();
+    }
+    if (
+      !['gennady', './node_modules/.bin/gennady', 'node_modules/.bin/gennady'].includes(
+        executable ?? ''
+      )
+    )
+      return;
+    return words;
+  };
+  if (
+    events.some(
+      (event) =>
+        ['write', 'edit', 'apply_patch'].includes(event.tool) &&
+        `${event.arg ?? ''} ${event.command ?? ''}`.includes(registry.module)
+    )
+  )
+    return false;
+  return events.some((event) => {
+    const words = direct(event);
+    if (
+      event.exitCode !== 0 ||
+      JSON.stringify(words) !==
+        JSON.stringify([
+          'sdd-log',
+          registry.module,
+          'decision',
+          '--payload-file',
+          '.claude/tmp/lint-proposal.json',
+        ])
+    )
+      return false;
+    return events.some((earlier) => {
+      const lint = direct(earlier);
+      return (
+        earlier.i < event.i &&
+        earlier.exitCode === 1 &&
+        lint?.[0] === 'lint' &&
+        lint.includes(registry.source) &&
+        !lint.includes('--autofix')
+      );
+    });
+  });
+}
+
+/** @purpose Attribute only host-owned shell caches correctly in the new confirmation fixture; preserve every original fixture byte by default. */
+export function brownfieldCampaignFiles(
+  id: CaseId,
+  realPaths: readonly string[],
+  confirmation: boolean
+): Record<string, string> {
+  const original = files(id, realPaths);
+  if (!confirmation || id !== 'E3') return original;
+  return {
+    ...original,
+    '.gitignore': original['.gitignore'] + '.sdd-eval-shell-home/\n.sdd-eval-shell-tmp/\n',
+    'inputs/brief.md':
+      original['inputs/brief.md'] +
+      `\nUse the owning-module diagnostic command (only the named file):\n\nnpx --no-install gennady lint --spec=${registry.module} ${registry.source}\n\nThe explicit --spec selects the existing module inventory; it does not accept an exception or change policy. Preserve its real diagnostics as evidence.\n`,
+  };
+}

@@ -1,6 +1,6 @@
 // @file: Finite local installed-package brownfield benchmark with private evidence and mandatory per-run cleanup.
 // @spec: AI-SKILLS
-// @consumers: BF3 operator; exactly eight primary attempts, no replacements or model fallback
+// @consumers: BF3 operator; explicit original-eight or authorized E3/E4 confirmation; no replacements or model fallback
 
 import assert from 'node:assert/strict';
 import { spawn, spawnSync, execFileSync } from 'node:child_process';
@@ -25,8 +25,10 @@ import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
-  BF3_CASES,
-  files,
+  brownfieldCampaign,
+  brownfieldConfirmationAccepted,
+  brownfieldProposalInvocationProven,
+  brownfieldCampaignFiles,
   SOURCE,
   TEST,
   EXTRA,
@@ -222,11 +224,12 @@ async function workspace(
   id: CaseId,
   owned: string,
   snapshotRoot?: string,
-  realPaths: readonly string[] = []
+  realPaths: readonly string[] = [],
+  confirmation = false
 ) {
   mkdirSync(cwd, { recursive: true });
   if (snapshotRoot && id === 'E2') cpSync(snapshotRoot, cwd, { recursive: true });
-  const overlay = files(id, id === 'E2' ? realPaths : []);
+  const overlay = brownfieldCampaignFiles(id, id === 'E2' ? realPaths : [], confirmation);
   for (const [path, v] of Object.entries(overlay)) put(cwd, path, v);
   const packageInfo = JSON.parse(readFileSync(join(runtime, 'package.json'), 'utf8'));
   const name = packageInfo.name;
@@ -484,108 +487,171 @@ async function qualify(
   runtimes: Record<string, string>,
   snapshotRoot: string,
   realPaths: readonly string[],
-  privateEvidence: string
+  privateEvidence: string,
+  schedule: ReturnType<typeof brownfieldCampaign>['positions'],
+  confirmation: boolean
 ) {
   const controls: any[] = [];
-  for (const arm of ['baseline', 'candidate'])
-    for (const id of BF3_CASES) {
-      const qualificationRoot = join(owned, `qualification-${arm}-${id}`);
-      const cwd = join(qualificationRoot, 'workspaces', 'sdd-flow-eval-qualification');
-      const p = await workspace(cwd, runtimes[arm]!, id, owned, snapshotRoot, realPaths);
-      const results: any = { arm, caseId: id, modelCalls: 0 };
-      try {
-        const profile = await qualificationProfile(
-          cwd,
-          join(qualificationRoot, 'private'),
-          owned,
-          privateEvidence,
-          snapshotRoot
-        );
-        if (id === 'E1' || id === 'E4') {
-          noModelSolution(cwd, id);
-          const good = lifecycle(cwd, id, profile);
-          results.correct = good;
-          if (arm === 'candidate' || id === 'E1')
-            assert.ok(
-              good.pass,
-              `${arm}/${id} reference lifecycle blocked: ${JSON.stringify(good).slice(-9000)}`
-            );
-          else results.knownBaselineCapabilityBlocked = !good.pass;
-          const hostCorrect = nodeCommand(cwd, ['--test', TEST], profile);
-          assert.equal(hostCorrect.exit, 0, hostCorrect.stdout + hostCorrect.stderr);
-          results.hostCorrect = {
-            exit: hostCorrect.exit,
-            outputSha256: sha(hostCorrect.stdout + hostCorrect.stderr),
-          };
-          put(cwd, SOURCE(id), '// @spec: BF\nmodule.exports = 8;\n');
-          const bad = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1'], profile);
-          assert.notEqual(bad.exit, 0);
-          const hostBroken = nodeCommand(cwd, ['--test', TEST], profile);
-          assert.notEqual(hostBroken.exit, 0);
-          results.hostBroken = {
-            exit: hostBroken.exit,
-            outputSha256: sha(hostBroken.stdout + hostBroken.stderr),
-          };
-          results.broken = { exit: bad.exit, sha256: sha(bad.stdout + bad.stderr) };
-          if (arm === 'candidate') {
-            put(cwd, SOURCE(id), 'module.exports = 7;\n');
-            const unowned = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1'], profile);
-            assert.notEqual(unowned.exit, 0);
-            results.missingHeader = {
-              exit: unowned.exit,
-              sha256: sha(unowned.stdout + unowned.stderr),
-            };
-          }
-        } else if (id === 'E2') {
-          const before = command(cwd, ['lint', E2SOURCE], profile);
-          results.before = { exit: before.exit, outputSha256: sha(before.stdout + before.stderr) };
-          assert.equal(before.exit, 1);
-          noModelSolution(cwd, id);
-          const after = command(cwd, ['lint', E2SOURCE], profile);
-          results.after = { exit: after.exit, outputSha256: sha(after.stdout + after.stderr) };
-          if (arm === 'candidate') assert.equal(after.exit, 0, after.stdout + after.stderr);
-          else results.baselineConfiguredCapability = after.exit === 0;
-        } else {
-          const initial = readFileSync(join(cwd, registry.module), 'utf8');
-          noModelSolution(cwd, id);
-          const proposal = command(
+  for (const { arm, caseId: id } of schedule) {
+    const qualificationRoot = join(owned, `qualification-${arm}-${id}`);
+    const cwd = join(qualificationRoot, 'workspaces', 'sdd-flow-eval-qualification');
+    const p = await workspace(
+      cwd,
+      runtimes[arm]!,
+      id,
+      owned,
+      snapshotRoot,
+      realPaths,
+      confirmation
+    );
+    const results: any = { arm, caseId: id, modelCalls: 0 };
+    try {
+      const profile = await qualificationProfile(
+        cwd,
+        join(qualificationRoot, 'private'),
+        owned,
+        privateEvidence,
+        snapshotRoot
+      );
+      if (confirmation && id === 'E3') {
+        const before = git(cwd, 'ls-files', '--others', '--exclude-standard');
+        const shell = join(dirname(dirname(profile)), 'bash');
+        const invocation = spawnSync(
+          shell,
+          ['-c', `npx --no-install gennady lint --spec=${registry.module} ${registry.source}`],
+          {
             cwd,
-            [
-              'sdd-log',
-              registry.module,
-              'decision',
-              '--payload-file',
-              '.claude/tmp/lint-proposal.json',
-            ],
-            profile
-          );
-          results.proposal = {
-            exit: proposal.exit,
-            outputSha256: sha(proposal.stdout + proposal.stderr),
-          };
-          if (arm === 'candidate')
-            assert.equal(proposal.exit, 0, proposal.stdout + proposal.stderr);
-          else assert.notEqual(proposal.exit, 0, 'frozen baseline expected unsupported');
-          results.reference = proposalCheck(cwd, arm, initial, profile);
-          if (arm === 'candidate')
-            assert.ok(
-              results.reference.commonPass && results.reference.persistencePass,
-              JSON.stringify(results.reference)
-            );
-          else assert.equal(readFileSync(join(cwd, registry.module), 'utf8'), initial);
-        }
-        json(privateEvidence, `qualification-${arm}-${id}.json`, results);
-        controls.push(publicQualification(results));
-        json(out, 'qualification.json', {
-          complete: controls.length === 8,
-          modelCalls: 0,
-          controls,
-        });
-      } finally {
-        if (p.store.lease) await releaseEvalDependencyLease(p.store.lease);
-        rmSync(qualificationRoot, { recursive: true, force: true });
+            encoding: 'utf8',
+            timeout: 60000,
+            maxBuffer: 3000000,
+            env: {
+              GENNADY_EXECUTION_PROFILE: profile,
+              GENNADY_EXECUTION_HOME: join(cwd, '.sdd-eval-shell-home'),
+              GENNADY_EXECUTION_TMP: join(cwd, '.sdd-eval-shell-tmp'),
+            },
+          }
+        );
+        const after = git(cwd, 'ls-files', '--others', '--exclude-standard');
+        const text = (invocation.stdout ?? '') + (invocation.stderr ?? '');
+        results.before = { exit: invocation.status, outputSha256: sha(text) };
+        results.workerInvocation = {
+          before,
+          after,
+          exit: invocation.status,
+          error: invocation.error?.message ?? null,
+          stdout: invocation.stdout,
+          stderr: invocation.stderr,
+        };
+        json(privateEvidence, `qualification-${arm}-${id}-npx.json`, results.workerInvocation);
+        assert.equal(invocation.status, 1, text);
+        assert.ok(
+          text.includes('ERR_DBC_LINT_MISSING_CONTRACT') &&
+            text.includes('ERR_CLI_LINT_INVENTORY_UNDECLARED'),
+          'actual worker invocation must report expected lint diagnostics'
+        );
+        assert.equal(
+          after,
+          before,
+          'host worker HOME/TMP artifacts must not pollute the source write boundary'
+        );
+        assert.ok(
+          p.initial.every(
+            ([path, digest]) =>
+              existsSync(join(cwd, path)) && sha(readFileSync(join(cwd, path))) === digest
+          ),
+          'actual npx diagnostics must preserve every protected input'
+        );
+        assert.ok(
+          p.runtimeHashes.every(
+            ([path, digest]) => sha(readFileSync(join(p.installed, path))) === digest
+          ),
+          'actual npx diagnostics must preserve installed runtime bytes'
+        );
       }
+      if (id === 'E1' || id === 'E4') {
+        noModelSolution(cwd, id);
+        const good = lifecycle(cwd, id, profile);
+        results.correct = good;
+        if (arm === 'candidate' || id === 'E1')
+          assert.ok(
+            good.pass,
+            `${arm}/${id} reference lifecycle blocked: ${JSON.stringify(good).slice(-9000)}`
+          );
+        else results.knownBaselineCapabilityBlocked = !good.pass;
+        const hostCorrect = nodeCommand(cwd, ['--test', TEST], profile);
+        assert.equal(hostCorrect.exit, 0, hostCorrect.stdout + hostCorrect.stderr);
+        results.hostCorrect = {
+          exit: hostCorrect.exit,
+          outputSha256: sha(hostCorrect.stdout + hostCorrect.stderr),
+        };
+        put(cwd, SOURCE(id), '// @spec: BF\nmodule.exports = 8;\n');
+        const bad = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1'], profile);
+        assert.notEqual(bad.exit, 0);
+        const hostBroken = nodeCommand(cwd, ['--test', TEST], profile);
+        assert.notEqual(hostBroken.exit, 0);
+        results.hostBroken = {
+          exit: hostBroken.exit,
+          outputSha256: sha(hostBroken.stdout + hostBroken.stderr),
+        };
+        results.broken = { exit: bad.exit, sha256: sha(bad.stdout + bad.stderr) };
+        if (arm === 'candidate') {
+          put(cwd, SOURCE(id), 'module.exports = 7;\n');
+          const unowned = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1'], profile);
+          assert.notEqual(unowned.exit, 0);
+          results.missingHeader = {
+            exit: unowned.exit,
+            sha256: sha(unowned.stdout + unowned.stderr),
+          };
+        }
+      } else if (id === 'E2') {
+        const before = command(cwd, ['lint', E2SOURCE], profile);
+        results.before = { exit: before.exit, outputSha256: sha(before.stdout + before.stderr) };
+        assert.equal(before.exit, 1);
+        noModelSolution(cwd, id);
+        const after = command(cwd, ['lint', E2SOURCE], profile);
+        results.after = { exit: after.exit, outputSha256: sha(after.stdout + after.stderr) };
+        if (arm === 'candidate') assert.equal(after.exit, 0, after.stdout + after.stderr);
+        else results.baselineConfiguredCapability = after.exit === 0;
+      } else {
+        const initial = readFileSync(join(cwd, registry.module), 'utf8');
+        noModelSolution(cwd, id);
+        const proposal = command(
+          cwd,
+          [
+            'sdd-log',
+            registry.module,
+            'decision',
+            '--payload-file',
+            '.claude/tmp/lint-proposal.json',
+          ],
+          profile
+        );
+        results.proposal = {
+          exit: proposal.exit,
+          outputSha256: sha(proposal.stdout + proposal.stderr),
+        };
+        if (arm === 'candidate') assert.equal(proposal.exit, 0, proposal.stdout + proposal.stderr);
+        else assert.notEqual(proposal.exit, 0, 'frozen baseline expected unsupported');
+        results.reference = proposalCheck(cwd, arm, initial, profile);
+        if (arm === 'candidate')
+          assert.ok(
+            results.reference.commonPass && results.reference.persistencePass,
+            JSON.stringify(results.reference)
+          );
+        else assert.equal(readFileSync(join(cwd, registry.module), 'utf8'), initial);
+      }
+      json(privateEvidence, `qualification-${arm}-${id}.json`, results);
+      controls.push(publicQualification(results));
+      json(out, 'qualification.json', {
+        complete: controls.length === schedule.length,
+        modelCalls: 0,
+        controls,
+      });
+    } finally {
+      if (p.store.lease) await releaseEvalDependencyLease(p.store.lease);
+      rmSync(qualificationRoot, { recursive: true, force: true });
     }
+  }
   return controls;
 }
 /** @purpose Publish allowlisted usage fields without interpreting provider-reported zero as free. */
@@ -644,7 +710,9 @@ async function attempt(
   privateEvidence: string,
   runtimeRoot: string,
   snapshotRoot: string,
-  realPaths: readonly string[]
+  realPaths: readonly string[],
+  planned: number,
+  confirmation: boolean
 ) {
   const home = join(owned, `attempt-${index}`),
     privateDir = join(home, 'private'),
@@ -652,7 +720,7 @@ async function attempt(
     cwd = join(workspaceRoot, 'sdd-flow-eval-phase');
   mkdirSync(privateDir, { recursive: true, mode: 0o700 });
   mkdirSync(workspaceRoot);
-  const p = await workspace(cwd, runtimeRoot, id, owned, snapshotRoot, realPaths);
+  const p = await workspace(cwd, runtimeRoot, id, owned, snapshotRoot, realPaths, confirmation);
   const initialModule = id === 'E3' ? readFileSync(join(cwd, registry.module), 'utf8') : '';
   let server: ReturnType<typeof spawn> | undefined,
     closed: Promise<void> | undefined,
@@ -823,7 +891,7 @@ async function attempt(
       });
       observations.push({ elapsedMs: Math.round(performance.now() - start), state, forbidden });
       console.log(
-        `[BF3] ${index + 1}/8 ${arm}/${id} ${Math.round((performance.now() - start) / 1000)}s ${state}`
+        `[BF3] ${index + 1}/${planned} ${arm}/${id} ${Math.round((performance.now() - start) / 1000)}s ${state}`
       );
       if (providerError || forbidden) break;
       if (state === 'completed' && id === 'E2' && !consentSent) {
@@ -984,6 +1052,8 @@ async function attempt(
       oracle = existsSync(profile)
         ? proposalCheck(cwd, arm, initialModule, profile)
         : { commonPass: false, persistencePass: false, reason: 'profile unavailable' };
+      if (confirmation)
+        oracle.proposalInvocationProven = brownfieldProposalInvocationProven(events);
       functional = oracle.commonPass;
       domainPass = oracle.commonPass && oracle.persistencePass;
     } else if (id === 'E2') {
@@ -1270,13 +1340,13 @@ async function attempt(
     } else throw new Error(`BF3 cleanup unproven at position${index}; stop queue`);
   }
 }
-/** @purpose Freeze exact inputs and execute at most the eight preregistered primary positions. */
+/** @purpose Freeze exact inputs and execute only the explicitly selected finite campaign, without replacements. */
 async function main() {
   const [mode, outArg] = process.argv.slice(2);
-  assert.ok(
-    ['--qualify-only', '--live'].includes(mode ?? '') && outArg && process.argv.length === 4,
-    'mode and NEW output directory required'
-  );
+  const campaign = brownfieldCampaign(mode);
+  assert.ok(outArg && process.argv.length === 4, 'mode and NEW output directory required');
+  const schedule = campaign.positions;
+  const arms = [...new Set(schedule.map((position) => position.arm))];
   const out = resolve(outArg);
   assert.ok(!existsSync(out), 'new output required; no replacement');
   mkdirSync(out, { recursive: true });
@@ -1311,8 +1381,33 @@ async function main() {
       commits.candidate,
       'candidate runtime must bind current reviewed HEAD'
     );
+    if (campaign.confirmation)
+      assert.equal(
+        git(
+          root,
+          'diff',
+          '--name-only',
+          '0a506340d6fe6a509b752f2585c17ff8b57ca326',
+          commits.candidate,
+          '--',
+          'cli',
+          'shared',
+          'services',
+          'plugins',
+          'utils',
+          'ai/directives',
+          'ai/skills',
+          'ai/kit',
+          'package.json',
+          'package-lock.json',
+          'vite.config.ts',
+          'gennady.yaml'
+        ),
+        '',
+        'confirmation permits harness-only changes after the reviewed product commit'
+      );
     const sourceOverlay = git(root, 'status', '--porcelain') !== '';
-    if (mode === '--live') {
+    if (campaign.live) {
       assert.equal(sourceOverlay, false, 'clean candidate required before live dispatch');
       assert.notEqual(
         manifest.candidate.sourceOverlay,
@@ -1330,19 +1425,14 @@ async function main() {
       baseline: resolve(defaultPackages, manifest.baseline.runtime),
       candidate: resolve(defaultPackages, manifest.candidate.runtime),
     };
-    for (const arm of ['baseline', 'candidate'] as const) {
+    for (const arm of arms) {
       assert.equal(
         sha(readFileSync(join(runtimes[arm], 'dist/gennady.js'))),
         manifest[arm].entrySha256,
         'installed entry bytes must match package manifest'
       );
     }
-    const schedule = BF3_CASES.flatMap((caseId, index) =>
-      (index % 2 ? ['candidate', 'baseline'] : ['baseline', 'candidate']).map((arm) => ({
-        caseId,
-        arm,
-      }))
-    );
+
     const pendingHarness = [import.meta.filename];
     const harnessPaths = new Set<string>([join(root, 'package-lock.json')]);
     while (pendingHarness.length) {
@@ -1362,6 +1452,16 @@ async function main() {
     json(out, 'protocol.json', {
       schema: 'gennady.brownfield-bf3.2',
       measurementRevision: 'post-eight-attempt-campaign; no old outcome replay',
+      campaign: campaign.id,
+      fixtureRevision: campaign.confirmation
+        ? 'e3-host-cache-and-scoped-invocation-v2'
+        : 'original',
+      comparison: campaign.confirmation
+        ? 'candidate-only functional confirmation; not A/B'
+        : 'original paired eight',
+      reviewedProductCommit: '0a506340d6fe6a509b752f2585c17ff8b57ca326',
+      independentJudgeBudgetMs: 90000,
+      reflectionBudgetMs: 60000,
       gitToolchain: {
         selection: 'host xcrun --find git before sandbox',
         binarySha256: gitToolchainSha256,
@@ -1373,12 +1473,11 @@ async function main() {
       runtimeSourceOverlay: manifest.candidate.sourceOverlay === true,
       nodeVersion: process.version,
       nodeAbi: process.versions.modules,
-      packageEntrypointHashes: {
-        baseline: manifest.baseline.entrySha256,
-        candidate: manifest.candidate.entrySha256,
-      },
+      packageEntrypointHashes: Object.fromEntries(
+        arms.map((arm) => [arm, manifest[arm].entrySha256])
+      ),
       model: modelName,
-      primaryAttempts: mode === '--live' ? 8 : 0,
+      primaryAttempts: campaign.live ? schedule.length : 0,
       replacements: 0,
       concurrency: 1,
       budgetMs: budget,
@@ -1386,18 +1485,30 @@ async function main() {
       harness: hashes,
       source: real.identity,
       packageManifestSha256: sha(readFileSync(packageManifestPath)),
-      fixtureHashes: BF3_CASES.map((id) => ({
+      fixtureHashes: [...new Set(schedule.map((position) => position.caseId))].map((id) => ({
         caseId: id,
         sha256: sha(
           JSON.stringify(
-            Object.entries(files(id, id === 'E2' ? real.sourcePaths : [])).sort(([a], [b]) =>
-              a.localeCompare(b)
-            )
+            Object.entries(
+              brownfieldCampaignFiles(
+                id,
+                id === 'E2' ? real.sourcePaths : [],
+                campaign.confirmation
+              )
+            ).sort(([a], [b]) => a.localeCompare(b))
           )
         ),
       })),
-      E3Comparison:
-        'Common evidence-backed proposal/safety; baseline persistence unsupported known before dispatch; candidate pending persistence is product capability, not behavioral superiority.',
+      E3Comparison: campaign.confirmation
+        ? 'Candidate-only: actual lint then observed successful canonical CLI proposal, unchanged other bytes and pending record; no baseline comparison.'
+        : 'Common evidence-backed proposal/safety; baseline persistence unsupported known before dispatch; candidate pending persistence is product capability, not behavioral superiority.',
+      confirmationCriteria: campaign.confirmation
+        ? {
+            E3: 'Actual lint failure, observed successful direct proposal CLI, canonical pending and untouched source/config/other module bytes; independent judge PASS; no self acceptance.',
+            E4: 'Actual P1/P2 Verify and host transitions, complete/close/sync/audit then independent judge PASS and actual review receipt exit0.',
+            noFullTrajectoryOrComparativeWin: true,
+          }
+        : undefined,
       E4Scope:
         'Two phase workers in one primary session; host completes phases/close/sync/audit/review after checking actual evidence. Host validations are not agent achievements.',
       publicPolicy:
@@ -1412,8 +1523,17 @@ async function main() {
       ],
     });
     stage = 'qualification';
-    await qualify(out, owned, runtimes, snapshotRoot, real.sourcePaths, privateEvidence);
-    if (mode === '--live') {
+    await qualify(
+      out,
+      owned,
+      runtimes,
+      snapshotRoot,
+      real.sourcePaths,
+      privateEvidence,
+      campaign.qualificationPositions,
+      campaign.confirmation
+    );
+    if (campaign.live) {
       assert.ok(
         process.env.LLM_PROXY_BASE_URL && process.env.LLM_PROXY_API_KEY,
         'approved proxy environment missing'
@@ -1445,12 +1565,18 @@ async function main() {
           privateEvidence,
           runtimes[entry.arm as keyof typeof runtimes],
           snapshotRoot,
-          real.sourcePaths
+          real.sourcePaths,
+          schedule.length,
+          campaign.confirmation
         );
+        if (campaign.confirmation) {
+          r.confirmationAccepted = brownfieldConfirmationAccepted(r);
+          r.confirmationStatus = r.confirmationAccepted ? 'proven' : 'not-proven';
+        }
         records.push(r);
         json(out, `records/${index}.json`, r);
         json(out, 'progress.json', {
-          planned: 8,
+          planned: schedule.length,
           recorded: records.length,
           replacements: 0,
           records,
@@ -1465,10 +1591,14 @@ async function main() {
       }
     }
     json(out, 'report.json', {
-      planned: mode === '--live' ? 8 : 0,
+      planned: campaign.live ? schedule.length : 0,
       recorded: records.length,
       replacements: 0,
-      complete: mode === '--live' && records.length === 8,
+      complete: campaign.live && records.length === schedule.length,
+      campaign: campaign.id,
+      ...(campaign.confirmation
+        ? { accepted: records.filter((record) => record.confirmationAccepted === true).length }
+        : {}),
       modelBehaviorWinClaimed: false,
       records,
     });

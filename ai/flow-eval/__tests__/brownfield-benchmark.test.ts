@@ -9,6 +9,10 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 import {
+  brownfieldCampaign,
+  brownfieldCampaignFiles,
+  brownfieldConfirmationAccepted,
+  brownfieldProposalInvocationProven,
   EXTRA,
   SOURCE,
   TASK,
@@ -119,4 +123,155 @@ test('language policy oracle accepts equivalent insertion order and quotes witho
   const actual = initial + '  commentLanguage: ru\n';
   for (const hostConsent of [false, true])
     assert.equal(hostConsent && minimalCommentLanguageDiff(initial, actual), hostConsent);
+});
+
+test('confirmation has exactly two candidate-only positions and never replaces the original eight', () => {
+  const original = brownfieldCampaign('--live');
+  assert.equal(original.positions.length, 8);
+  assert.deepEqual(
+    original.positions.map((p) => `${p.caseId}/${p.arm}`),
+    [
+      'E1/baseline',
+      'E1/candidate',
+      'E2/candidate',
+      'E2/baseline',
+      'E3/baseline',
+      'E3/candidate',
+      'E4/candidate',
+      'E4/baseline',
+    ]
+  );
+  const confirmation = brownfieldCampaign('--confirm-live');
+  assert.equal(confirmation.live, true);
+  assert.equal(confirmation.confirmation, true);
+  assert.deepEqual(confirmation.positions, [
+    { caseId: 'E3', arm: 'candidate' },
+    { caseId: 'E4', arm: 'candidate' },
+  ]);
+  assert.equal(brownfieldCampaign('--confirm-qualify-only').live, false);
+  assert.equal(brownfieldCampaign('--qualify-only').confirmation, false);
+  for (const mode of [undefined, '--retry', '--cases=E1', '--confirm'])
+    assert.throws(() => brownfieldCampaign(mode));
+  assert.throws(() => {
+    (confirmation.positions as unknown as unknown[]).push({});
+  });
+});
+
+test('functional confirmation requires real pending persistence or full independently reviewed closure', () => {
+  const common = {
+    terminal: 'completed-worker',
+    functional: true,
+    domainPass: true,
+    writeBoundary: true,
+    runtimeIntact: true,
+    traceComplete: true,
+    providerError: false,
+    trajectoryStatus: 'not-proven',
+    judgeVerdict: 'pass',
+    cleanup: { safeCleanup: true, rootRemoved: true },
+  };
+  const e3 = {
+    ...common,
+    caseId: 'E3',
+    oracle: { commonPass: true, persistencePass: true, proposalInvocationProven: true },
+  };
+  const e4 = {
+    ...common,
+    caseId: 'E4',
+    oracle: { phase2Dispatched: true, canonicalPassJournal: true },
+    hostReviewReceipt: { exit: 0 },
+  };
+  assert.equal(brownfieldConfirmationAccepted(e3), true);
+  assert.equal(brownfieldConfirmationAccepted(e4), true);
+  for (const record of [e3, e4]) {
+    for (const key of [
+      'functional',
+      'domainPass',
+      'writeBoundary',
+      'runtimeIntact',
+      'traceComplete',
+    ] as const)
+      assert.equal(brownfieldConfirmationAccepted({ ...record, [key]: false }), false);
+    for (const terminal of ['budget-exhausted', 'policy-censored', 'worker-error'])
+      assert.equal(brownfieldConfirmationAccepted({ ...record, terminal }), false);
+    for (const judgeVerdict of ['fail', 'unknown'])
+      assert.equal(brownfieldConfirmationAccepted({ ...record, judgeVerdict }), false);
+    assert.equal(brownfieldConfirmationAccepted({ ...record, providerError: true }), false);
+    assert.equal(
+      brownfieldConfirmationAccepted({ ...record, trajectoryStatus: 'violated' }),
+      false
+    );
+    assert.equal(
+      brownfieldConfirmationAccepted({
+        ...record,
+        cleanup: { safeCleanup: true, rootRemoved: false },
+      }),
+      false
+    );
+  }
+  assert.equal(
+    brownfieldConfirmationAccepted({ ...e3, oracle: { commonPass: true, persistencePass: false } }),
+    false
+  );
+  for (const exit of [null, 1])
+    assert.equal(brownfieldConfirmationAccepted({ ...e4, hostReviewReceipt: { exit } }), false);
+  assert.equal(brownfieldConfirmationAccepted({ ...e4, hostReviewReceipt: undefined }), false);
+  assert.equal(
+    brownfieldConfirmationAccepted({
+      ...e4,
+      oracle: { phase2Dispatched: true, canonicalPassJournal: false },
+    }),
+    false
+  );
+});
+
+test('proposal proof needs actual lint before the successful CLI and rejects edited-only, echo and unknown compound evidence', () => {
+  const lint = {
+    i: 1,
+    tool: 'bash',
+    status: 'completed',
+    exitCode: 1,
+    command: `npx --no-install gennady lint ${registry.source}`,
+  };
+  const proposal = {
+    i: 2,
+    tool: 'bash',
+    status: 'completed',
+    exitCode: 0,
+    command: `npx --no-install gennady sdd-log ${registry.module} decision --payload-file .claude/tmp/lint-proposal.json`,
+  };
+  assert.equal(brownfieldProposalInvocationProven([lint, proposal]), true);
+  for (const events of [
+    [],
+    [proposal],
+    [{ ...lint, i: 3 }, proposal],
+    [lint, { ...proposal, exitCode: 1 }],
+    [lint, { ...proposal, exitCode: undefined }],
+    [lint, { ...proposal, command: `echo ${proposal.command}` }],
+    [lint, { ...proposal, command: `${proposal.command} && true` }],
+    [lint, proposal, { i: 3, tool: 'edit', arg: registry.module }],
+    [{ ...lint, command: 'npx --no-install gennady lint bf-work/other.cts' }, proposal],
+  ])
+    assert.equal(brownfieldProposalInvocationProven(events), false);
+});
+
+test('confirmation overlay only isolates host shell caches and names the existing inventory diagnostic; original fixtures remain unchanged', () => {
+  const original = files('E3');
+  assert.equal(original['.gitignore'], 'node_modules/\n.claude/tmp/\n');
+  assert.deepEqual(brownfieldCampaignFiles('E3', [], false), original);
+  const confirmation = brownfieldCampaignFiles('E3', [], true);
+  assert.deepEqual(Object.keys(confirmation), Object.keys(original));
+  for (const path of Object.keys(original)) {
+    if (path === '.gitignore' || path === 'inputs/brief.md') continue;
+    assert.equal(confirmation[path], original[path], path);
+  }
+  assert.equal(
+    confirmation['.gitignore'],
+    original['.gitignore'] + '.sdd-eval-shell-home/\n.sdd-eval-shell-tmp/\n'
+  );
+  assert.ok(confirmation['inputs/brief.md']!.startsWith(original['inputs/brief.md']!));
+  assert.ok(
+    confirmation['inputs/brief.md']!.includes(`lint --spec=${registry.module} ${registry.source}`)
+  );
+  assert.deepEqual(brownfieldCampaignFiles('E4', [], true), files('E4'));
 });
