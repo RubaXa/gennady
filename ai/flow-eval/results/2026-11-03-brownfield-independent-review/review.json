@@ -1,0 +1,202 @@
+{
+  "schema": "gennady.brownfield-independent-review.1",
+  "reviewedHead": "8317c1687a4241bee51362aba7b64bcfc760222d",
+  "baseline": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+  "independentReviewers": 2,
+  "originalFindings": "F1-F7 confirmed with ordinary-role and point-in-time limitations",
+  "additionalFindings": [
+    {
+      "id": "BF-R8",
+      "problem": "destructured export bindings absent from inventory",
+      "qualifiedRed": {
+        "passed": 17,
+        "failed": 6
+      },
+      "green": {
+        "passed": 23,
+        "failed": 0
+      },
+      "limitation": "reverse-only JS deliberately does not run forward checks; initial CLI clean interpretation corrected; actual CLI defect is false UNIMPLEMENTED"
+    },
+    {
+      "id": "BF-R9",
+      "problem": "TypeScript-only syntax accepted in JavaScript by TSX grammar",
+      "red": {
+        "passed": 5,
+        "failed": 5
+      },
+      "green": {
+        "passed": 10,
+        "failed": 0
+      },
+      "dependencyChanges": false
+    },
+    {
+      "id": "BF-R10",
+      "problem": "explicit empty File Mapping confused with absent mapping",
+      "red": {
+        "passed": 5,
+        "failed": 2
+      },
+      "green": {
+        "passed": 7,
+        "failed": 0
+      }
+    },
+    {
+      "id": "BF-R11",
+      "problem": "literal bracket artifact truncated and bracket-only route mistaken for placeholder",
+      "red": {
+        "passed": 58,
+        "failed": 5
+      },
+      "green": {
+        "passed": 149,
+        "failed": 0
+      }
+    }
+  ],
+  "crossReview": {
+    "grammarAndBindings": {
+      "passed": 40,
+      "failed": 0
+    },
+    "coverageOwnedExemptions": {
+      "passed": 62,
+      "failed": 0
+    },
+    "handoff": "independent reader probes and cross-review; no blocker"
+  },
+  "typeCheck": "PASS",
+  "fullGate": "not predeclared; ordinary hook outcome will be published after commit",
+  "live": {
+    "planned": 8,
+    "recorded": 0,
+    "replacements": 0,
+    "behaviorWinClaimed": false
+  },
+  "qualification": {
+    "sha256": "44ed138047c3312373e632818276ea66a3bed4380d7510af3b1dfd742daebe72",
+    "modelCalls": 0,
+    "controls": 8,
+    "candidateWorkflow": "all four reference scenarios passed; E4 real two-phase close/audit/review lifecycle",
+    "baselineLimitations": [
+      "E2 comment language policy absent",
+      "E3 module pending persistence absent",
+      "E4 exact bracket path rejected"
+    ],
+    "cleanup": true
+  },
+  "logs": [
+    {
+      "name": "pr132-independent-f1-f7-review.log",
+      "sha256": "3e73b49e4f37ec57f2f5ca0559177413938bb7298766d029e8188d4a9b3e6945",
+      "bytes": 28517
+    },
+    {
+      "name": "pr132-independent-topology-escalated.log",
+      "sha256": "170cfb92581646a8a7efddde1510ad7ee50e476f25ff0bd66bc2ef175a11014f",
+      "bytes": 6394
+    },
+    {
+      "name": "pr132-independent-rules-glob-review.log",
+      "sha256": "87d45790a1ea34d6de4ea19978927d1b065952c5bd0f97cc40ab60b10fb3c49e",
+      "bytes": 493
+    },
+    {
+      "name": "gennady-independent-f2-f4-review.log",
+      "sha256": "9730674ccbf31d0378746b29974f450f93500a7d4a25b2221486d92c026d4127",
+      "bytes": 10455
+    },
+    {
+      "name": "pr132-independent-broad-review.log",
+      "sha256": "649dd7e520d721b29570bc3371bb64d8f13f754b47a669e4417d7afb34c8fc09",
+      "bytes": 28712
+    },
+    {
+      "name": "pr132-destructuring-red-qualified.log",
+      "sha256": "21ceb13ed45738180853a49b83298755cf1b3c614be5fd7ed5667fc0dcf2a6e3",
+      "bytes": 13017
+    },
+    {
+      "name": "pr132-destructuring-green.log",
+      "sha256": "ca35612d1c842048da3d55b820c314264b37ea0ab38057df3ec15c93f9b625b2",
+      "bytes": 6114
+    },
+    {
+      "name": "gennady-js-grammar-red.log",
+      "sha256": "d3b089439710b52503fa19b725d57f7e96cde7ac6c1d51ebb687ac69b1ff564f",
+      "bytes": 5466
+    },
+    {
+      "name": "gennady-js-grammar-green.log",
+      "sha256": "263b72bfa2bb844778acb8828b28ab012e7dce7404f07d358ea3f681986b9f02",
+      "bytes": 2766
+    },
+    {
+      "name": "gennady-empty-mapping-red.log",
+      "sha256": "700d86cb4ffa8ec62b18a1bbee1eeece530aeeb22a98b0e3f83dadf8f61e8890",
+      "bytes": 11634
+    },
+    {
+      "name": "gennady-empty-mapping-green.log",
+      "sha256": "55fea28c04a437d3942f589f3b883da98d86d7557c723c004efe8e1843d8a497",
+      "bytes": 1939
+    },
+    {
+      "name": "gennady-empty-mapping-neighbors.log",
+      "sha256": "e674a551ddf1c3c47aaa1133254be69b8f6218e01578b99c7ed72b4e6c0a98db",
+      "bytes": 15192
+    },
+    {
+      "name": "pr132-handoff-literal-red.log",
+      "sha256": "bf1121266f3ae47728a8d4131561317e2341484bb3f57c6a923b3f1b7bfb4806",
+      "bytes": 23897
+    },
+    {
+      "name": "pr132-handoff-literal-green.log",
+      "sha256": "48f622dd29b59d135134c55e30937e3a1b52498f004636eadf9c72bdfef73bdf",
+      "bytes": 43949
+    },
+    {
+      "name": "pr132-independent-grammar-destructuring-green.log",
+      "sha256": "47e6b9df8282f3b0f57a606e6286ad5e43b4d7ea08b1b39479370e3123039823",
+      "bytes": 11276
+    }
+  ],
+  "historicalEvidenceRewritten": false,
+  "privacy": "Only synthetic findings, scalar counters and hashes are public; original logs and real-repository content remain local",
+  "harnessIndependentReview": {
+    "verdict": "approve",
+    "fixtureTests": {
+      "passed": 5,
+      "failed": 0
+    },
+    "limits": [
+      "qualified success requires completed worker, boundaries, domain and semantic review",
+      "budget/censored runs excluded from savings comparisons",
+      "known product capability gaps are not model regressions"
+    ]
+  },
+  "harnessReviewLogSha256": "06e1bc0af96a7d753b4688c893b4a8eaf26fed4189f91a7e8ff61fe28173a8cd",
+  "installedPerformance": {
+    "modelCalls": 0,
+    "processes": 72,
+    "record": "installed-performance-precommit.json",
+    "candidateSourceOverlay": true,
+    "universalSpeedWinClaimed": false,
+    "boundedPhaseSourceReads": 1,
+    "maximumDeclarations": 50000
+  },
+  "precommitAttempts": [
+    {
+      "attempt": 1,
+      "outcome": "failed",
+      "reason": "New plan used an incorrect relative evidence path; docs verifier rejected it",
+      "logSha256": "c39ae96461b1b7067f76b6677d68e59948788c2dda20aaef9df7dd9d019cfac5",
+      "correction": "Use actual repository-relative ai/flow-eval/results path",
+      "focusedDocsCheck": "PASS",
+      "modelCalls": 0
+    }
+  ]
+}

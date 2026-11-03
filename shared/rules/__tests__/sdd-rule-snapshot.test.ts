@@ -37,6 +37,25 @@ const declared = [
 ] as const;
 
 describe('resolveSddRuleSnapshot', () => {
+  it('classifies an absent literal bracket route before creation and its later tombstone', () => {
+    const { root, cleanup } = fixture();
+    const route = 'pages/[...slug].tsx';
+    try {
+      const create = resolveSddRuleSnapshot({ root, targetFiles: [route], plannedFiles: [route] });
+      assert.deepEqual(create.facts.plannedFiles, [route]);
+      assert.deepEqual(create.facts.targetFiles, [route]);
+      const remove = resolveSddRuleSnapshot({
+        root,
+        targetFiles: [],
+        plannedFiles: [],
+        tombstoneFiles: [route],
+      });
+      assert.deepEqual(remove.facts.tombstoneFiles, [route]);
+    } finally {
+      cleanup();
+    }
+  });
+
   it('loads the complete registry and freezes exact declared bodies, facts and provenance', () => {
     const { root, cleanup } = fixture();
     try {

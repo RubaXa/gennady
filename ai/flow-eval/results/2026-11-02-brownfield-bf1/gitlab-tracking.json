@@ -1,0 +1,64 @@
+{
+  "draftMr": {
+    "iid": 23,
+    "web_url": "https://gitlab.corp.mail.ru/mail-core/gennady/-/merge_requests/23",
+    "sha": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+    "source_branch": "codex/v2-brownfield-integration",
+    "target_branch": "master",
+    "draft": true
+  },
+  "crossReferences": [
+    {
+      "mr": 12,
+      "noteId": 66035092,
+      "verified": true
+    },
+    {
+      "mr": 13,
+      "noteId": 66035096,
+      "verified": true
+    },
+    {
+      "mr": 14,
+      "noteId": 66035100,
+      "verified": true
+    },
+    {
+      "mr": 15,
+      "noteId": 66035102,
+      "verified": true
+    },
+    {
+      "mr": 16,
+      "noteId": 66035106,
+      "verified": true
+    },
+    {
+      "mr": 17,
+      "noteId": 66035109,
+      "verified": true
+    },
+    {
+      "mr": 18,
+      "noteId": 66035112,
+      "verified": true
+    },
+    {
+      "mr": 19,
+      "noteId": 66035114,
+      "verified": true
+    },
+    {
+      "mr": 20,
+      "noteId": 66035117,
+      "verified": true
+    },
+    {
+      "issue": 1,
+      "noteId": 66035120,
+      "verified": true
+    }
+  ],
+  "noteScope": "plan/progress only; no approve/merge/resolve",
+  "sourceChangesCommittedByThisWork": false
+}

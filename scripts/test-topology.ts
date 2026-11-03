@@ -13,6 +13,13 @@ import { spawnSync } from 'node:child_process';
 import { availableParallelism, tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { safeVerifyText } from '../shared/verify/reporting/report-safety.ts';
+import {
+  prepareTestCliBundle,
+  verifyTestCliBundle,
+  releaseTestCliBundle,
+  TEST_CLI_BUNDLE_ENV,
+  type TestCliBundle,
+} from './test-cli-bundle.ts';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '..');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
@@ -88,7 +95,34 @@ const OUTER_TEST_CONCURRENCY = Math.min(10, Math.max(6, availableParallelism()))
 // EA follow-up: each file may fan out into several real CLI/Git processes. Bound the ordinary
 // local pool to two; long-budget build/history/fixture suites below run serially, not beside peers.
 const LOCAL_PARTITION_CONCURRENCY = 2;
+// These full-flow suites each compose several real CLI/Git operations. Isolate their bounded
+// workloads from sibling suites while keeping the ordinary 30s file deadline and local pool.
+const SERIAL_LOCAL_FILES = new Set([
+  'ai/flow-eval/__tests__/pilot-verify-probe.test.ts',
+  'cli/__tests__/tool-behavior/verify.test.ts',
+  'cli/__tests__/tool-behavior/bootstrap-path.test.ts',
+  'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
+  'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
+]);
 const DEFAULT_FILE_TIMEOUT_MS = 30_000;
+const FILE_TIMEOUT_OVERRIDE_ENV = 'GENNADY_TEST_FILE_TIMEOUT_MS';
+
+/** @purpose Resolve an explicit temporary deadline floor; defaults and owned budgets are never reduced. */
+function testFileTimeoutFloor(): number {
+  const value = process.env[FILE_TIMEOUT_OVERRIDE_ENV];
+  if (value === undefined) return DEFAULT_FILE_TIMEOUT_MS;
+  if (
+    !/^[0-9]+$/.test(value) ||
+    !Number.isSafeInteger(Number(value)) ||
+    Number(value) < DEFAULT_FILE_TIMEOUT_MS ||
+    Number(value) > 600_000
+  )
+    throw new Error(
+      `${FILE_TIMEOUT_OVERRIDE_ENV} must be an integer from 30000 to 600000 milliseconds`
+    );
+  return Number(value);
+}
+
 // Owned whole-file budgets, not describe/test timeouts. These mandatory local suites cross real
 // build/install or historical Git/Swift process boundaries and exceed 30s under sibling load.
 const OWNED_FILE_BUDGETS: Readonly<
@@ -402,10 +436,10 @@ function assertTopology(): TestTopology {
   if (issues.length > 0)
     throw new Error(`[test-topology] invalid classification:\n${issues.join('\n')}`);
   for (const layer of TEST_LAYERS) topology[layer].sort();
-  for (const file of Object.keys(OWNED_FILE_BUDGETS)) {
+  for (const file of [...Object.keys(OWNED_FILE_BUDGETS), ...SERIAL_LOCAL_FILES]) {
     if (!topology.local.includes(file))
       throw new Error(
-        `[test-topology] owned file budget must remain mandatory local/noncoverage: ${file}`
+        `[test-topology] isolated file must remain mandatory local/noncoverage: ${file}`
       );
   }
   return topology;
@@ -537,30 +571,50 @@ function createTestEnvironment(): NodeJS.ProcessEnv {
     )
       delete env[key];
   }
+  // The parent runner owns this deadline; nested test/CLI fixtures retain their own policies.
+  delete env[FILE_TIMEOUT_OVERRIDE_ENV];
+  delete env[TEST_CLI_BUNDLE_ENV];
   return env;
 }
 
 export function runNodeTests(
   files: string[],
-  options: { coverage: boolean; networkGuard: boolean; concurrency: number }
+  options: {
+    coverage: boolean;
+    networkGuard: boolean;
+    concurrency: number;
+    cliBundle?: TestCliBundle;
+  }
 ): TestRunResult {
-  if (options.coverage && files.some((file) => OWNED_FILE_BUDGETS[file]))
-    throw new Error('[test-topology] owned local file budgets cannot split c8 observed coverage');
-  const groups = new Map<number, string[]>();
+  if (
+    options.coverage &&
+    files.some((file) => OWNED_FILE_BUDGETS[file] || SERIAL_LOCAL_FILES.has(file))
+  )
+    throw new Error('[test-topology] isolated local files cannot split c8 observed coverage');
+  const timeoutFloor = testFileTimeoutFloor();
+  const groups = new Map<string, { timeoutMs: number; serial: boolean; files: string[] }>();
   for (const file of files) {
-    const timeoutMs = OWNED_FILE_BUDGETS[file]?.timeoutMs ?? DEFAULT_FILE_TIMEOUT_MS;
-    const group = groups.get(timeoutMs) ?? [];
-    group.push(file);
-    groups.set(timeoutMs, group);
+    const timeoutMs = Math.max(
+      OWNED_FILE_BUDGETS[file]?.timeoutMs ?? DEFAULT_FILE_TIMEOUT_MS,
+      timeoutFloor
+    );
+    const serial = !!OWNED_FILE_BUDGETS[file] || SERIAL_LOCAL_FILES.has(file);
+    const key = `${timeoutMs}:${serial}`;
+    const group = groups.get(key) ?? { timeoutMs, serial, files: [] };
+    group.files.push(file);
+    groups.set(key, group);
   }
   const stats: TestRunStats[] = [];
-  // Only noncoverage has multiple budgets. The observed corpus stays one c8 invocation so later
-  // spawns cannot overwrite its report; no file is omitted or repeated by this grouping.
-  for (const [timeoutMs, targets] of [...groups].sort(([left], [right]) => left - right)) {
-    const result = runNodeTestBatch(targets, {
+  // Only noncoverage has isolated local groups. Deadline and serial scheduling are separate keys:
+  // a serial 30s suite must not serialize every other default-deadline file. The observed corpus
+  // stays one c8 invocation; no file is omitted or repeated by this grouping.
+  for (const group of [...groups.values()].sort(
+    (left, right) => left.timeoutMs - right.timeoutMs || Number(left.serial) - Number(right.serial)
+  )) {
+    const result = runNodeTestBatch(group.files, {
       ...options,
-      concurrency: targets.some((file) => OWNED_FILE_BUDGETS[file]) ? 1 : options.concurrency,
-      timeoutMs,
+      concurrency: group.serial ? 1 : options.concurrency,
+      timeoutMs: group.timeoutMs,
     });
     if (result.stats !== undefined) stats.push(result.stats);
     if (result.status !== 0)
@@ -574,7 +628,13 @@ export function runNodeTests(
 
 function runNodeTestBatch(
   files: string[],
-  options: { coverage: boolean; networkGuard: boolean; concurrency: number; timeoutMs: number }
+  options: {
+    coverage: boolean;
+    networkGuard: boolean;
+    concurrency: number;
+    timeoutMs: number;
+    cliBundle?: TestCliBundle;
+  }
 ): TestRunResult {
   const reporterDirectory = mkdtempSync(join(tmpdir(), 'gennady-test-topology-'));
   const reporterPath = join(reporterDirectory, 'runner.tap');
@@ -606,7 +666,12 @@ function runNodeTestBatch(
     const result = spawnSync(process.execPath, args, {
       cwd: PROJECT_ROOT,
       stdio: 'inherit',
-      env: createTestEnvironment(),
+      env: {
+        ...createTestEnvironment(),
+        ...(!options.coverage && options.cliBundle
+          ? { [TEST_CLI_BUNDLE_ENV]: options.cliBundle.manifestPath }
+          : {}),
+      },
     });
     if (result.error) {
       process.stderr.write(`[test-topology] cannot start test runner: ${result.error.message}\n`);
@@ -719,8 +784,51 @@ function help(): string {
     `  deterministic runs local as its own partition at concurrency=${LOCAL_PARTITION_CONCURRENCY} (REL-7),`,
     `  then contract+external+unit at bounded outer concurrency=${OUTER_TEST_CONCURRENCY}. Subprocess-heavy suites own inner bounds.`,
     '  File deadlines: default 30s; owned local Git/Swift suites 120s; offline package acceptance 360s.',
+    '  GENNADY_TEST_FILE_TIMEOUT_MS=120000: temporary deadline floor (30000..600000 ms); never lowers owned budgets.',
+    '  The override is reported and removed from child-test environments; concurrency and assertions are unchanged.',
+    '  Local black-box partitions build one fresh source-bound CLI; observed coverage and standalone suites keep source execution.',
     '  --help    Show this help.',
   ].join('\n');
+}
+
+/** @purpose Run every existing partition, building one fresh CLI only for noncoverage local boundaries. */
+function runPartitions(partitions: TestPartition[], coverageMode: boolean): number {
+  let bundle: TestCliBundle | undefined;
+  const stats: TestRunStats[] = [];
+  try {
+    for (const partition of partitions) {
+      process.stdout.write(
+        `[test-topology] ${partition.name}: ${partition.files.length} files ` +
+          (coverageMode
+            ? `(${partition.layers.join('+')}; ${partition.coverage ? 'c8 observes production code' : 'no c8: subprocess boundary'})\n`
+            : `(${partition.layers.join('+')}; concurrency=${partition.concurrency})\n`)
+      );
+      const blackBox = !partition.coverage && partition.layers.includes('local');
+      if (blackBox && !bundle) {
+        bundle = prepareTestCliBundle(PROJECT_ROOT, { env: createTestEnvironment() });
+        process.stdout.write(`[test-topology] fresh CLI bundle source=${bundle.sourceDigest}\n`);
+      }
+      const result = runNodeTests(partition.files, {
+        coverage: partition.coverage,
+        networkGuard: false,
+        concurrency: partition.concurrency,
+        ...(blackBox && bundle ? { cliBundle: bundle } : {}),
+      });
+      if (result.stats !== undefined) stats.push(result.stats);
+      if (result.status !== 0) {
+        if (result.stats !== undefined) writeStats(stats);
+        return result.status;
+      }
+    }
+    if (bundle) verifyTestCliBundle(bundle);
+    writeStats(stats);
+    return 0;
+  } catch (cause) {
+    process.stderr.write(`[test-topology] fresh CLI qualification failed: ${String(cause)}\n`);
+    return 1;
+  } finally {
+    if (bundle) releaseTestCliBundle(bundle);
+  }
 }
 
 function main(argv: string[]): number {
@@ -729,6 +837,17 @@ function main(argv: string[]): number {
     process.stdout.write(`${help()}\n`);
     return 0;
   }
+  let timeoutFloor: number;
+  try {
+    timeoutFloor = testFileTimeoutFloor();
+  } catch (cause) {
+    process.stderr.write(`[test-topology] ${String((cause as Error).message)}\n`);
+    return 2;
+  }
+  if (process.env[FILE_TIMEOUT_OVERRIDE_ENV] !== undefined)
+    process.stdout.write(
+      `[test-topology] explicit ${FILE_TIMEOUT_OVERRIDE_ENV}=${timeoutFloor}; deadline floor only; owned budgets are not reduced\n`
+    );
   const topology = assertTopology();
   // GAP-2: enforced before every command dispatches (same fail-fast placement as assertTopology()
   // above) — a repo test file nobody classified or explicitly excluded must stop every mode, not just
@@ -775,25 +894,7 @@ function main(argv: string[]): number {
     process.stdout.write(
       `[test-topology] deterministic: ${partitions.reduce((sum, part) => sum + part.files.length, 0)} files\n`
     );
-    const stats: TestRunStats[] = [];
-    for (const partition of partitions) {
-      process.stdout.write(
-        `[test-topology] ${partition.name}: ${partition.files.length} files ` +
-          `(${partition.layers.join('+')}; concurrency=${partition.concurrency})\n`
-      );
-      const result = runNodeTests(partition.files, {
-        coverage: false,
-        networkGuard: false,
-        concurrency: partition.concurrency,
-      });
-      if (result.stats !== undefined) stats.push(result.stats);
-      if (result.status !== 0) {
-        if (result.stats !== undefined) writeStats(stats);
-        return result.status;
-      }
-    }
-    writeStats(stats);
-    return 0;
+    return runPartitions(partitions, false);
   }
   if (command === 'experimental') {
     // D-60: agent-inbox/agent-mon — never part of npm test/test:coverage/pre-commit. No c8, no
@@ -814,25 +915,7 @@ function main(argv: string[]): number {
     process.stdout.write(
       `[test-topology] coverage: ${partitions.reduce((sum, part) => sum + part.files.length, 0)} files exactly once\n`
     );
-    const stats: TestRunStats[] = [];
-    for (const partition of partitions) {
-      process.stdout.write(
-        `[test-topology] ${partition.name}: ${partition.files.length} files ` +
-          `(${partition.layers.join('+')}; ${partition.coverage ? 'c8 observes production code' : 'no c8: subprocess boundary'})\n`
-      );
-      const result = runNodeTests(partition.files, {
-        coverage: partition.coverage,
-        networkGuard: false,
-        concurrency: partition.concurrency,
-      });
-      if (result.stats !== undefined) stats.push(result.stats);
-      if (result.status !== 0) {
-        if (result.stats !== undefined) writeStats(stats);
-        return result.status;
-      }
-    }
-    writeStats(stats);
-    return 0;
+    return runPartitions(partitions, true);
   }
   process.stderr.write(`[test-topology] unknown command: ${command}\n${help()}\n`);
   return 2;

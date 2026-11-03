@@ -200,7 +200,11 @@
         Per-group mode closes the WHOLE spec by definition (`due` only fires once every sibling ticket is
         DONE, per `AX_AUDIT_HOOK`) — always add the reverse closed-world sweep over the module's code
         root. In per-task mode, add it only when this ticket is the module's last (every sibling DONE):
-        Run inventoryCheck ToolCall below once for each printed `AuditContext.code-roots` item — every entity declared in the
+        Run the reverse sweep over the module's own files: when `AuditContext.inventory-files` lists files (the module
+        spec's File Mapping), run inventoryCheck ToolCall below ONCE with exactly those files — files of other modules in a
+        shared directory never join the sweep; only when it prints `—` (no mapping declared) run inventoryDirCheck once for
+        each printed `AuditContext.code-roots` item. When it prints `inventory-files: INVALID — <reason>`, the module's
+        declared file set is unreadable or empty: record a FAIL with that reason and do not fall back to the directory. Every entity declared in the
         inventory must now be exported by some file (`ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED` = declared-but-unbuilt
         / renamed-away). Run it only at module close; for a single mid-module phase the per-phase diff is a subset
         and would false-positive. Closed-world symbol diff, the cascade-tier re-derivation, and
@@ -219,8 +223,9 @@
         <ToolCall owner="audit-worker" result="changedCheck">npx gennady sdd-check --changed .</ToolCall> Use changedCheck.
         <ToolCall owner="audit-worker" result="verification">npx gennady verify --phase full</ToolCall> Use verification.
         <ToolCall owner="audit-worker" result="contractCheck">npx gennady lint --include-tests --spec=<spec-path> <lint-file> [lint-file...]</ToolCall> Inputs <spec-path>, <lint-file>, [lint-file...]: <spec-path>=literal AuditContext spec/audit-group field; each <lint-file>=ordered AuditContext lint-files item; zero files skips. Use contractCheck.
+        <ToolCall owner="audit-worker" result="inventoryCheck">npx gennady lint --spec=<spec-path> --inventory-reverse <code-root> <inventory-file> [inventory-file...]</ToolCall> Inputs <spec-path>, <code-root>, <inventory-file>, [inventory-file...]: <spec-path>=literal AuditContext spec field; <code-root>=first AuditContext.code-roots item; each <inventory-file>=ordered AuditContext inventory-files item. Use inventoryCheck.
         Inputs <code-root>: `AuditContext.code-roots` above.
-        <ToolCall owner="audit-worker" result="inventoryCheck">npx gennady lint --spec=<spec-path> --inventory-reverse <code-root></ToolCall> Use inventoryCheck.
+        <ToolCall owner="audit-worker" result="inventoryDirCheck">npx gennady lint --spec=<spec-path> --inventory-reverse <code-root></ToolCall> Use inventoryDirCheck.
       </Action>
     </Step>
     <Step id="STEP_2_SEMANTIC">

@@ -2297,8 +2297,8 @@ describe('SddTaskCommand', () => {
       writeFileSync(join(gDir, 'core.task.TSK-a.md'), ticket, 'utf-8');
       mkdirSync(join(gDir, 'src'), { recursive: true });
       writeFileSync(join(gDir, 'src', 'TSK-a.ts'), '// supported\n', 'utf-8');
-      writeFileSync(join(gDir, 'src', 'runtime.js'), '// unsupported by gennady lint\n', 'utf-8');
-      writeFileSync(join(gDir, 'src', 'view.jsx'), '// unsupported by gennady lint\n', 'utf-8');
+      writeFileSync(join(gDir, 'src', 'runtime.js'), '// supported JS/TS source family\n', 'utf-8');
+      writeFileSync(join(gDir, 'src', 'view.jsx'), '// supported JS/TS source family\n', 'utf-8');
       execSync('git init -q', { cwd: gDir });
       try {
         const result = await withCwd(gDir, () => mod.run(argv('--group-scope', 'TSK-a')));
@@ -2307,7 +2307,8 @@ describe('SddTaskCommand', () => {
         assert.match(result.text, /^files:\n(?: {2}.*\n)* {2}src\/runtime\.js$/m);
         assert.match(result.text, /^lint-files:\n {2}src\/TSK-a\.ts$/m);
         const lintBlock = /lint-files:\n([\s\S]*?)\ncode-roots:/.exec(result.text)?.[1] ?? '';
-        assert.doesNotMatch(lintBlock, /runtime\.js|view\.jsx/);
+        assert.match(lintBlock, /src\/runtime\.js/);
+        assert.match(lintBlock, /src\/view\.jsx/);
       } finally {
         rmSync(gDir, { recursive: true, force: true });
       }

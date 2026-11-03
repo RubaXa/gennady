@@ -1,0 +1,426 @@
+{
+  "index": 1,
+  "arm": "candidate",
+  "caseId": "E1",
+  "inputSha256": "7d5509074311ce73ac3daf28c3382f3757fff703ce7225da76ae756dd6be8b9f",
+  "primaryBudgetMs": 360000,
+  "sourceCommit": "e24ce33eeada13b666df116a903c15568af504cc",
+  "terminal": "completed-worker",
+  "elapsedMs": 104118,
+  "workerElapsedMs": 91411,
+  "endToEndMs": 104118,
+  "usage": {
+    "messages": 10,
+    "input": 38888,
+    "output": 1875,
+    "reasoning": 1152,
+    "cacheRead": 235904,
+    "cacheWrite": 0,
+    "total": 41915,
+    "providerReportedCost": 0,
+    "complete": true,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "costZeroIsNotFree": true
+  },
+  "toolCalls": 20,
+  "traceComplete": true,
+  "writeBoundary": true,
+  "runtimeIntact": true,
+  "providerError": false,
+  "trajectoryStatus": "not-proven",
+  "functional": true,
+  "domainPass": true,
+  "oracle": {
+    "functionalExit": 0,
+    "ownerCorrect": true,
+    "canonicalPassJournal": true,
+    "phase2Dispatched": false,
+    "outputSha256": "3b43a0d4405fe43a66d3d6c100266dabcc73fa3ea2ec1caf449cb0c777ea2c7d"
+  },
+  "transitions": [],
+  "events": [
+    {
+      "i": 0,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "d316ebb421cf16870805d838b4eb5871ce0dcb8c29d227b5ee6d512e23b26482",
+      "argumentSha256": "aab5165d397df6d29acb50c65ac3b1443d027e1b2a1caff1d7380319a2737e0f",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681875830,
+      "finishedAt": 1793681875847,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 1,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "b1b6170e81d2b51bcc8fe59f7675fff91cef6e36e15ff0154096485a7fae2f1b",
+      "argumentSha256": "929cf7a4d6a6f9303300cd260655cfadb0e2863d22491b618f1529f3ced3baef",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681877486,
+      "finishedAt": 1793681877490,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 2,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "8f73ac6f8d7386e3ca9e991f45c42df3ece4d861b73c43cd1f80d3a8ec612c5c",
+      "argumentSha256": "e1af60272de812b02dddbd73b39a557a987135a3b7fe611ea65f8c52e13ef642",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681877467,
+      "finishedAt": 1793681877480,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 3,
+      "tool": "bash",
+      "category": "sdd-task",
+      "callIdentity": "78a81c17baa8b69fec8277cb02cd29a502e7855962138656e4ac2c46d53ef2f3",
+      "argumentSha256": "b63dfa02bea014324b349e771fca5029b4edf6cf9baa44c09000fb04eae00726",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681883313,
+      "finishedAt": 1793681883413,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 4,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "37aa9ce9528ba90191e7e04d572457c38c7a98aabc837263d30b7e1b472c8f96",
+      "argumentSha256": "792264db194ab2179b719d313e4168f2a4eac160650ba945e02c257e552b5a9d",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681879800,
+      "finishedAt": 1793681879816,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 5,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "e74686aa26a35bbd1d46cef5a68414a9ce629bd8f122dc4f6253eac8da705554",
+      "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681885290,
+      "finishedAt": 1793681885295,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 6,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "c6409a64c139b8aba040b1a3eca9ed7d0409a25c8a0e85b31c632ea5794c1431",
+      "argumentSha256": "9cf3c90d30b3fb4faca4679d89e9295aaa67ceaab609f9255246f76a5216c02a",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681885564,
+      "finishedAt": 1793681885574,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 7,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "323532eb9a266d9714cd4704bf1ed0aa93d56afbbbf92d98b32b251045c2f1b7",
+      "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681885889,
+      "finishedAt": 1793681885894,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 8,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "4b637dc77c4ec1ce8758452575b35d9563b84dcc1ad410c064ed2c12a98f58d6",
+      "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681886148,
+      "finishedAt": 1793681886164,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 9,
+      "tool": "bash",
+      "category": "orient",
+      "callIdentity": "b4deb04cd0326db2e8d243c12dcc6a20d91b53c9e4e3d0f6da5f2554b94050a0",
+      "argumentSha256": "1762edf5d59a7f7d619ce871932744097ca8707aa2c14980aff933b25382e703",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681889806,
+      "finishedAt": 1793681889810,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 10,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "eb3ac525fc7fe36ce10c47c8b8c1643b231d67dd4f63ee89deba63d225b6f774",
+      "argumentSha256": "63d20d99c771eb343c2d8e6c3c8ba71f19c31d6264a498a219d9b8f6056471fa",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681888429,
+      "finishedAt": 1793681888432,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 11,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "397d17c30c3ce55e8dfae63f4ba0c43879ce581064d463539eedb756d49196fe",
+      "argumentSha256": "3d090e693a5c9991a30159abfff9ac679252362cda1ede6c5062ba043ecd980d",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681888687,
+      "finishedAt": 1793681888691,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 12,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "410915506c92eeafab363d3fa505e8eb815fb5a3f3f847b2b09e84de8348bf62",
+      "argumentSha256": "b981960ea084109616e3bd5fd23866c7acd5adae8434252f3d5896a2cef8496c",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681888939,
+      "finishedAt": 1793681888942,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 13,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "2eb543d22c9c08df77c20734c57b98e8cddb36a7c35cbf5a6f77b0fedb36b041",
+      "argumentSha256": "22d79449ab3150418b33be0b515289252b67b8a787cacc2937205fb45f36a914",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681889159,
+      "finishedAt": 1793681889164,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 14,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "e688c87f9707361129823e9e6e28d347ccf2ceadf081060bdc2ff7d536806fcb",
+      "argumentSha256": "109af3563ae1a5cac5c869755bb1d2b86e8ba66e4fe04ec1ac1b0d03a531afbf",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681889412,
+      "finishedAt": 1793681889416,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 15,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "240002da536dd35b06a810c7faa21b36061722ab7b7f757c630406f165f164bb",
+      "argumentSha256": "1abed793c98d82e0b9b9d789ff780abc39ae927da778a3d2abd883d20b946215",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681889674,
+      "finishedAt": 1793681889679,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 16,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "50e1fb5cad6309b80526a37a89c346d5a4485911863bef2925460a2d8b774048",
+      "argumentSha256": "5f616c7b31b4aa73604a0e054b1b28c51e73c1458f72be9c0ee49f4e6dbe6f84",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681897876,
+      "finishedAt": 1793681897878,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 17,
+      "tool": "edit",
+      "category": "write",
+      "callIdentity": "e1d44a6d3bd7592671ef63a328835efe555c07a0a6f6684a01f393595b0eb08e",
+      "argumentSha256": "b981960ea084109616e3bd5fd23866c7acd5adae8434252f3d5896a2cef8496c",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793681900112,
+      "finishedAt": 1793681900115,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 18,
+      "tool": "bash",
+      "category": "sdd-verify",
+      "callIdentity": "46380220cb04a19240ed94a89430db64df135e1ed66abb861c10f5f0e85a4845",
+      "argumentSha256": "b332a3fe52b77c7e45340712b23146c7a22d6898cdd92e1bff1e70ae76b11016",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681952863,
+      "finishedAt": 1793681952879,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 19,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "0b4a0d9a00ae2f3560f3ec95a2389263d2b5320a6e8fdf2492357b7cb82b6557",
+      "argumentSha256": "a8e7ae988c10176d9acddf74c1b08cf591b9f8754002c4b0cf59bfb55d1fd5f1",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793681957156,
+      "finishedAt": 1793681957158,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    }
+  ],
+  "observations": [
+    {
+      "elapsedMs": 5048,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 10077,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 15099,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 20129,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 25151,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 30188,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 35240,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 40295,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 45481,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 50565,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 55708,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 60768,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 65870,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 70972,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 76039,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 81076,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 86105,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 91193,
+      "state": "completed",
+      "forbidden": false
+    }
+  ],
+  "privateEvidenceSha256": "75077d897206f3019e44156129038d61e8ae796d55d83b11aee4e854eb9f8013",
+  "judgeVerdict": "pass",
+  "judgeSha256": "00af6d192289c6c30b20e545f97f49e408d846162fee11ab046f198959365009",
+  "judgeUsage": {
+    "messages": 1,
+    "input": 4718,
+    "output": 115,
+    "reasoning": 734,
+    "cacheRead": 2048,
+    "cacheWrite": 0,
+    "total": 5567,
+    "providerReportedCost": 0,
+    "complete": true,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "costZeroIsNotFree": true
+  },
+  "reflection": {
+    "sha256": "62038eb61bc3dd7d745aebd8046730ab5cabb6bd314b520a111e184723080459",
+    "tokens": 35293,
+    "messages": 1
+  },
+  "cleanup": {
+    "safeCleanup": true,
+    "rootRemoved": true,
+    "logicalBytesRemoved": 96909856,
+    "sharedDependenciesPreserved": true
+  }
+}

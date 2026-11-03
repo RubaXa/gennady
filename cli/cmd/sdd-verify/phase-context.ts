@@ -268,13 +268,17 @@ export function resolvePhaseContext(
   }
   const deletedFiles: string[] = [];
   for (const deleted of rawDeleted) {
-    const inspected = inspectRepoPath(projectRoot, deleted, 'missing');
+    const inspected = inspectRepoPath(projectRoot, deleted, 'missing', 'literal-brackets');
     if (!inspected.ok) return failure(`Deleted File ${inspected.detail}: ${deleted}`);
-    const tracked = spawnSync('git', ['ls-files', '--', inspected.relative], {
-      cwd: projectRoot,
-      encoding: 'utf-8',
-    });
-    if (tracked.status !== 0 || !(tracked.stdout ?? '').trim())
+    const tracked = spawnSync(
+      'git',
+      ['--literal-pathspecs', 'ls-files', '--with-tree=HEAD', '-z', '--', inspected.relative],
+      {
+        cwd: projectRoot,
+        encoding: 'utf-8',
+      }
+    );
+    if (tracked.status !== 0 || !(tracked.stdout ?? '').split('\0').includes(inspected.relative))
       return failure(`Deleted File has no tracked VCS baseline: ${deleted}`);
     deletedFiles.push(inspected.relative);
   }

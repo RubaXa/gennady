@@ -164,3 +164,29 @@ test('execution help opt-in does not waive forbidden stderr redirection', async 
   assert.equal(observation.stuck, true);
   assert.match(observation.errors.join('\n'), /forbidden CLI shell redirection/);
 });
+
+for (const command of [
+  'git archive HEAD | tar -x -C .tmp/exp3 2>/dev/null && (cd .tmp/exp3 && npx --no-install gennady sdd-check --all .)',
+  'npx --no-install gennady sdd-check --all .; tar -xf sample.tar 2>/dev/null',
+  'tar -xf sample.tar 2>/dev/null\nnpx gennady sdd-check --all .',
+]) {
+  test(`observer does not attribute another command stderr redirect to the CLI: ${command}`, async () => {
+    const observation = await observeCommand(command);
+    assert.equal(observation.stuck, false);
+    assert.deepEqual(observation.errors, []);
+  });
+}
+
+for (const command of [
+  'tar -xf sample.tar && npx gennady sdd-check --all . 2>/dev/null',
+  '(npx gennady sdd-check --all .; echo done) 2>/dev/null',
+  'printf "a;b" && npx gennady sdd-check --all . 2>/dev/null',
+  '{ npx gennady sdd-check --all .; } 2>/dev/null',
+  'if true; then npx gennady sdd-check --all .; fi 2>/dev/null',
+]) {
+  test(`observer still rejects redirected CLI diagnostics: ${command}`, async () => {
+    const observation = await observeCommand(command);
+    assert.equal(observation.stuck, true);
+    assert.match(observation.errors.join('\n'), /forbidden CLI shell redirection/);
+  });
+}

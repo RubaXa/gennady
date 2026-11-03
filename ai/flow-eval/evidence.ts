@@ -9,7 +9,7 @@ import { lstat, readFile, readlink, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
-import { createSddEvalOpenCodeClient } from './opencode-client.ts';
+import { createSddEvalOpenCodeClient, DEFAULT_SDD_EVAL_BASE_URL } from './opencode-client.ts';
 import { fingerprintTail } from './observer.ts';
 import { SddEvalSessionDirectoryMap } from './session-directory.ts';
 import { safeVerifyText } from '../../shared/verify/reporting/report-safety.ts';
@@ -437,7 +437,7 @@ export class SddEvalOpenCodeEvidenceSource implements SddEvalEvidenceSource {
     this.#client =
       options.client ??
       createSddEvalOpenCodeClient({
-        baseUrl: options.baseUrl ?? 'http://localhost:4096',
+        baseUrl: options.baseUrl ?? DEFAULT_SDD_EVAL_BASE_URL,
         directory: options.directory,
       });
     // GAP-E-1b: the default used to be a dead `async () => []` — the judge/observer never saw a

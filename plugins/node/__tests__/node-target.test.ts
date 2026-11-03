@@ -271,6 +271,51 @@ describe('Node target StackPlugin', () => {
     );
   });
 
+  it('repairs the supported JS/TS source family while preserving read-only lint scope and excludes', () => {
+    const supported = ['js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts'].map(
+      (extension) => `src/value.${extension}`
+    );
+    withProject(
+      {
+        scripts: {
+          'type-check': 'tsc --noEmit',
+          'lint:fix': 'gennady lint --autofix',
+          lint: 'gennady lint src',
+          'format:fix': 'prettier --write',
+          format: 'prettier --check src',
+        },
+      },
+      (root) => {
+        const files = [
+          ...supported,
+          'scripts/outside.mjs',
+          'src/value.config.mjs',
+          'src/data.json',
+        ];
+        for (const file of files) {
+          fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+          fs.writeFileSync(
+            path.join(root, file),
+            file.endsWith('.json') ? '{}\n' : 'export const value = 1;\n'
+          );
+        }
+        const result = resolveNodeVerifyPlan(root, 'code', {
+          homeDirectory: root,
+          targetFiles: files,
+        });
+        const repair = result.plan.steps.find((step) => step.id === 'node:lint-fix');
+        assert.deepEqual(repair?.command?.argv.slice(0, 3), ['npm', 'run', 'lint:fix']);
+        assert.deepEqual(repair?.command?.argv.slice(4), [...supported].sort());
+        assert.equal(
+          result.readiness.entries.some(
+            (entry) => entry.requirementId.includes('lint-fix') && entry.status === 'WAIVED'
+          ),
+          false
+        );
+      }
+    );
+  });
+
   it('fails readiness closed when Gennady lint declares no exact source operands', () => {
     withProject(
       {

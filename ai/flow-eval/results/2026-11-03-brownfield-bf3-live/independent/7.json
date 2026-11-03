@@ -1,0 +1,361 @@
+{
+  "schema": "gennady.bf3.independent-call-audit.1",
+  "position": 7,
+  "caseId": "E4",
+  "arm": "baseline",
+  "derivedOnly": true,
+  "rawUnchanged": true,
+  "sourcePrimarySha256": "a9bfc5007da7a13645d8d810a1d955b38d1a035a0320510e1e1c2032f9082089",
+  "traceComplete": true,
+  "calls": [
+    {
+      "call": 1,
+      "tool": "read",
+      "classification": "required",
+      "action": "Read brief",
+      "basis": "Обязательный источник exact P1 target и запрета самовольного P2.",
+      "argument": "{\"filePath\":\"./inputs/brief.md\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 9.123,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 1215,
+      "outputPrefixSha256": "64683041e84601ccfebfc2693cef1d726a45ad70655fcc41d299300fcb2c288f"
+    },
+    {
+      "call": 2,
+      "tool": "bash",
+      "classification": "redundant",
+      "action": "List repository, directive/spec/input directories",
+      "basis": "Все нужные exact paths уже заданы brief. Пустого контекста или конкретного unresolved path gap агент не показал; четыре ls не нужны для нахождения известных входов.",
+      "argument": "ls -la; echo '---'; ls ai/directives/sdd-v2/ 2>/dev/null; echo '---'; ls specs/bf/ 2>/dev/null; echo '---'; ls inputs/",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 14.672,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 1734,
+      "outputPrefixSha256": "126f604e1f4d644691e76b31963a3eaa31d45d5fcfae159fb85f2f956f6f467c"
+    },
+    {
+      "call": 3,
+      "tool": "read",
+      "classification": "required",
+      "action": "Load execution protocol",
+      "basis": "Прямое требование brief.",
+      "argument": "{\"filePath\":\"./ai/directives/sdd-v2/phase-execution-protocol.directive.xml\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 18.047,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 14801,
+      "outputPrefixSha256": "a7bbd4ecf2a4deffd5c4f68c23e569f687c63b66e36db2e5aa79e71250e23eba"
+    },
+    {
+      "call": 4,
+      "tool": "bash",
+      "classification": "required",
+      "action": "Get actual P1 dispatch",
+      "basis": "Реальный scope/rules/canonical Verify нужен до изменения.",
+      "argument": "npx --no-install gennady sdd-task specs/bf/bf.task.BF-work.md --phase P1",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 34.945,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 7540,
+      "outputPrefixSha256": "3ca4b2fe67669539403a8287379523baacb0efa0d3edb459cd6624d7a66ff14c"
+    },
+    {
+      "call": 5,
+      "tool": "bash",
+      "classification": "required",
+      "action": "Batch read four step directives",
+      "basis": "Все четыре файла обязательны worker contract; один bounded Bash читает известные exact paths, не делает discovery.",
+      "argument": "for f in STEP_1_ORIENT STEP_2_IMPLEMENT STEP_3_VERIFY STEP_4_HANDOFF; do echo \"===== $f =====\"; cat \"ai/directives/sdd-v2/phase-execution-protocol/steps/$f.xml\"; done",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 39.384,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 23517,
+      "outputPrefixSha256": "58512dbc170cfe9e24ecaf45e30d690b8213e364546f728b2fcc3fea518638bb"
+    },
+    {
+      "call": 6,
+      "tool": "bash",
+      "classification": "required",
+      "action": "Batch read two coding rule files",
+      "basis": "READ selected rules обязателен; известные exact paths объединены в одном вызове.",
+      "argument": "cat ai/directives/coding/baseline-rules.xml; echo '=====TS====='; cat ai/directives/coding/typescript-rules.xml",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 42.153,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 49599,
+      "outputPrefixSha256": "392d2f1c34d3365c01d6285496a530126e061715eb0002eda1a8dd6030665d7a"
+    },
+    {
+      "call": 7,
+      "tool": "bash",
+      "classification": "required",
+      "action": "Extract spec contract and three required ticket sections",
+      "basis": "sdd-extract spec value + PHASE_P1/BDD/VERIFICATION соответствует anchored context guidance. Общий exit0; readable output не сохранён, отдельные subcommand exits не выводим.",
+      "argument": "npx --no-install gennady sdd-extract specs/bf/bf.spec.md value; echo '=====PHASE_P1====='; npx --no-install gennady sdd-extract specs/bf/bf.task.BF-work.md PHASE_P1; echo '=====BDD====='; npx --no-install gennady sdd-extract specs/bf/bf.task.BF-work.md BDD; echo '=====VERIFICATION====='; npx --no-install gennady sdd-extract specs/bf/bf.task.BF-work.md VERIFICATION",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 52.473,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 1733,
+      "outputPrefixSha256": "3473f6e283dc60b2833e364512b0da8a3d2d3e7a60a276c06f85aafd264b6c54"
+    },
+    {
+      "call": 8,
+      "tool": "bash",
+      "classification": "required",
+      "action": "P1 bounded ownership preflight",
+      "basis": "Обязательный exact-task/phase query; не даёт Verify PASS.",
+      "argument": "npx --no-install gennady orient --coverage --task specs/bf/bf.task.BF-work.md --phase P1 --stage preflight --json",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 66.943,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 1266,
+      "outputPrefixSha256": "4e9389a816c26c38ed9872c63cd349bacf4a81baf90a4a07805195a8b1d58afd"
+    },
+    {
+      "call": 9,
+      "tool": "bash",
+      "classification": "unknown",
+      "action": "Read target/tests mixed with recursive listing and extra config/future-file reads",
+      "basis": "cat literal route — required, fixed-test read — supporting. Но тот же call делает ls -R pages bf-work (recursive scan, запрещён протоколом), читает ещё не созданный P2 output и config/package без явного gap. Не объявляем весь compound call justified.",
+      "argument": "ls -R pages bf-work; echo '=====slug====='; cat 'pages/[...slug].cts'; echo '=====tests====='; cat bf-work/value.test.cjs; echo '=====extra====='; cat bf-work/extra.cts; echo '=====yaml====='; cat gennady.yaml; echo '=====pkg====='; cat package.json",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 56.251,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 1266,
+      "outputPrefixSha256": "9c8cd26dd629860031a4b8eb8fed7a78160009cd09e0b8c2e7c9fc0a3961dffa",
+      "components": [
+        {
+          "action": "cat literal P1 route",
+          "classification": "required"
+        },
+        {
+          "action": "cat protected test",
+          "classification": "supporting"
+        },
+        {
+          "action": "recursive ls -R",
+          "classification": "redundant",
+          "instructionViolation": true
+        },
+        {
+          "action": "cat missing future P2 output",
+          "classification": "redundant"
+        },
+        {
+          "action": "config/package reads",
+          "classification": "unknown"
+        }
+      ]
+    },
+    {
+      "call": 10,
+      "tool": "bash",
+      "classification": "redundant",
+      "action": "Re-read whole spec/ticket after anchored extraction",
+      "basis": "Перечитываются spec и весь тикет после вызова7 с нужными anchored sections. Явного нового вопроса не указано; reflection отдельно признаёт partial reread, но оценка опирается на видимое перекрытие аргументов.",
+      "argument": "sed -n '1,40p' specs/bf/bf.spec.md; echo '=====task====='; cat specs/bf/bf.task.BF-work.md",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 71.935,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 3736,
+      "outputPrefixSha256": "aa8192ee82baf582d5f67d23c2c2c5c93ea36d63d7970a5ae1284d082ececf3d"
+    },
+    {
+      "call": 11,
+      "tool": "edit",
+      "classification": "required",
+      "action": "Edit exact literal route",
+      "basis": "Добавлены owner/file/consumer header, значение6→7, без изменения P2 или именования пути.",
+      "argument": "{\"filePath\":\"./pages/[...slug].cts\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 78.692,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 26,
+      "outputPrefixSha256": "8caec1349d76de16c89d9b64f22a46c79f641ab12a2540c8d2433217dac59f07"
+    },
+    {
+      "call": 12,
+      "tool": "bash",
+      "classification": "required",
+      "action": "Run mandatory P1 Verify",
+      "basis": "Actual exit4. Worker final message цитирует VERIFY_CONFIG_INVALID_TYPE для literal bracket target; это известная capability baseline, а не неправильный код агента.",
+      "argument": "npx gennady sdd-verify --task=specs/bf/bf.task.BF-work.md --phase=P1",
+      "status": "completed",
+      "exitCode": 4,
+      "observedOffsetSeconds": 129.674,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 784,
+      "outputPrefixSha256": "a0bdb09098ef4ae9e15f2de92084b7806caf01f3351d01877690cc398b95dbef"
+    },
+    {
+      "call": 13,
+      "tool": "bash",
+      "classification": "supporting",
+      "action": "Create scratch directory for file-backed blocker",
+      "basis": "Подготавливает допустимый временный перенос payload к каноническому logger. ls parent — дополнительная проверка, не substantive proof.",
+      "argument": "mkdir -p .claude/tmp && ls -d .claude/tmp",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 143.66,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 12,
+      "outputPrefixSha256": "bc0f1fd99843f99cf8944f6f797dfddb6e0f4645fabe433b1920b5d34dc66ac4"
+    },
+    {
+      "call": 14,
+      "tool": "write",
+      "classification": "required",
+      "action": "Write blocker payload",
+      "basis": "File-backed logging разрешён worker и требуется для фиксации реального tool blocker; не grants authority.",
+      "argument": "{\"filePath\":\"./.claude/tmp/BF-work-P1-log.json\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 146.868,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 24,
+      "outputPrefixSha256": "e3e06ec0f8c958669ed3682941ab88218ff9ee42a7ab9b48fd78126336aa968c"
+    },
+    {
+      "call": 15,
+      "tool": "bash",
+      "classification": "required",
+      "action": "Record canonical P1 blocker",
+      "basis": "sdd-log blocker exit0; worker не принял deviation и не выставил DONE.",
+      "argument": "npx gennady sdd-log specs/bf/bf.task.BF-work.md blocker --payload-file .claude/tmp/BF-work-P1-log.json --phase P1",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 172.836,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 793,
+      "outputPrefixSha256": "2eeef9d17f2cb38d018be531a216f3eb3e25df650ceb6cf4229ebd4a7d4175f1"
+    },
+    {
+      "call": 16,
+      "tool": "bash",
+      "classification": "redundant",
+      "action": "Idempotent scratch rm after accepted payload command",
+      "basis": "Дополнительный rm -f того же disposable payload после успешного CLI transition. Контракт one-shot payload уже владеет cleanup; ошибки cleanup не видны. Это не изменение product files или расширение полномочий.",
+      "argument": "rm -f .claude/tmp/BF-work-P1-log.json",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 184.182,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "outputBytes": 11,
+      "outputPrefixSha256": "efefc15c24ee8645a3f5f6958389db729c1577eb6b32aeac4caab2a86d90daa3"
+    }
+  ],
+  "counts": {
+    "required": 11,
+    "supporting": 1,
+    "redundant": 3,
+    "unknown": 1
+  },
+  "directiveTimeline": [
+    {
+      "call": 3,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol.directive.xml",
+      "fileBytes": 13858,
+      "loadedFileSha256": "4dd90032bbba75f37cc7013599e040228635eb17d1f561a29ada640de412fc25",
+      "toolOutputPrefixSha256": "a7bbd4ecf2a4deffd5c4f68c23e569f687c63b66e36db2e5aa79e71250e23eba",
+      "observedOffsetSeconds": 18.047,
+      "source": "bound unchanged baseline package copied into workspace",
+      "sharedToolOutput": false
+    },
+    {
+      "call": 5,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml",
+      "fileBytes": 6036,
+      "loadedFileSha256": "adfb5974956cc883741165ab8f166e2cc05840b368967b211c3ad002f4f6917d",
+      "toolOutputPrefixSha256": "58512dbc170cfe9e24ecaf45e30d690b8213e364546f728b2fcc3fea518638bb",
+      "observedOffsetSeconds": 39.384,
+      "source": "bound unchanged baseline package copied into workspace",
+      "sharedToolOutput": true
+    },
+    {
+      "call": 5,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml",
+      "fileBytes": 9770,
+      "loadedFileSha256": "48aed81cca42c5a1068ef5278f59c7afd5ced5e4a0f04f86975d62d97ff52dc4",
+      "toolOutputPrefixSha256": "58512dbc170cfe9e24ecaf45e30d690b8213e364546f728b2fcc3fea518638bb",
+      "observedOffsetSeconds": 39.384,
+      "source": "bound unchanged baseline package copied into workspace",
+      "sharedToolOutput": true
+    },
+    {
+      "call": 5,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml",
+      "fileBytes": 4850,
+      "loadedFileSha256": "84b2653952f2a003400e5ffd662b069f9dffdc0ff014cbf6dda499ec37730a04",
+      "toolOutputPrefixSha256": "58512dbc170cfe9e24ecaf45e30d690b8213e364546f728b2fcc3fea518638bb",
+      "observedOffsetSeconds": 39.384,
+      "source": "bound unchanged baseline package copied into workspace",
+      "sharedToolOutput": true
+    },
+    {
+      "call": 5,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml",
+      "fileBytes": 2753,
+      "loadedFileSha256": "0374acef87312b2eb5d14e9d8bab028bb026e7c7cd4b64adc9c252a683a38c45",
+      "toolOutputPrefixSha256": "58512dbc170cfe9e24ecaf45e30d690b8213e364546f728b2fcc3fea518638bb",
+      "observedOffsetSeconds": 39.384,
+      "source": "bound unchanged baseline package copied into workspace",
+      "sharedToolOutput": true
+    },
+    {
+      "call": 6,
+      "path": "ai/directives/coding/baseline-rules.xml",
+      "fileBytes": 5872,
+      "loadedFileSha256": "d6df78f50459c8564ac16ca5fa9ec529782c752b252116d1930a2d3121b41fbb",
+      "toolOutputPrefixSha256": "392d2f1c34d3365c01d6285496a530126e061715eb0002eda1a8dd6030665d7a",
+      "observedOffsetSeconds": 42.153,
+      "source": "bound unchanged baseline package copied into workspace",
+      "sharedToolOutput": true
+    },
+    {
+      "call": 6,
+      "path": "ai/directives/coding/typescript-rules.xml",
+      "fileBytes": 43714,
+      "loadedFileSha256": "cf5a85bb6c3e284a01de6c7cc12a3ec4c141e25fa0412ca59e5ab6e64ed02f8b",
+      "toolOutputPrefixSha256": "392d2f1c34d3365c01d6285496a530126e061715eb0002eda1a8dd6030665d7a",
+      "observedOffsetSeconds": 42.153,
+      "source": "bound unchanged baseline package copied into workspace",
+      "sharedToolOutput": true
+    }
+  ],
+  "roleViolationsObserved": [],
+  "instructionViolationsObserved": [
+    {
+      "call": 9,
+      "kind": "recursive-source-directory-discovery",
+      "basis": "cat literal route — required, fixed-test read — supporting. Но тот же call делает ls -R pages bf-work (recursive scan, запрещён протоколом), читает ещё не созданный P2 output и config/package без явного gap. Не объявляем весь compound call justified."
+    }
+  ],
+  "derivedTrajectoryStatus": "violated",
+  "rawTrajectoryStatusPreserved": "not-proven",
+  "chain": {
+    "P1CorrectSourceProduced": true,
+    "P1VerifyExit": 4,
+    "P1VerifyPass": false,
+    "canonicalBlockerLoggedExit": 0,
+    "P1WorkerHonestBlockedHandoff": true,
+    "hostP1Complete": false,
+    "P2Prompt": false,
+    "P2Produced": false,
+    "finalHostLifecycle": null
+  },
+  "knownFailure": "Baseline Verify rejects existing literal pages/[...slug].cts with VERIFY_CONFIG_INVALID_TYPE. Host never completes P1 or dispatches P2. No attempted renaming, escaping bypass or tool-internal fix. This is baseline product capability, not newly inferred model regression.",
+  "interpretation": "Completed-worker means the worker returned a truthful blocker, not completed E4. Judge pass is consistent with honest scope-safe blocker handling, not end-to-end functional/domain PASS. P1 test-only functionalExit0 does not prove full E4, because the separate mandatory second output is absent.",
+  "timingCaveat": "192183ms is the observed primary flow; comparison to candidate544760ms is invalid as an efficiency claim because arms stop at different lifecycle points. No per-tool SDK latency attribution."
+}

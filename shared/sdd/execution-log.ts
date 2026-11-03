@@ -259,12 +259,32 @@ export function hasActiveBlocker(logBody: string, blockerTrailBody?: string): bo
 }
 
 /**
- * @purpose Matches the skeleton's unfilled Handoff line (`templates.ts`'s Round 1 block) — every
- *   field still holds the literal placeholder ellipsis, never real content.
- * @invariant A real Handoff line never contains a bracketed `...` — empty fields use `none`/`n/a`/
- *   `—` instead, so this can't misfire on genuine empty fields.
+ * @purpose Parse canonical Handoff field boundaries while keeping literal brackets inside field text.
+ * @param payload Single-line value without the Markdown Handoff prefix.
+ * @returns Named field text; deviations is absent only for historical three-field Handoffs.
  */
-const HANDOFF_PLACEHOLDER_RE = /\[\.\.\.\]/;
+export function parseHandoffPayload(payload: string): {
+  artifacts: string;
+  decisions: string;
+  open: string;
+  deviations?: string;
+} | null {
+  if (/[\r\n\0]/.test(payload)) return null;
+  const current =
+    /^artifacts:\s*\[(.*)\];\s*decisions:\s*\[(.*)\];\s*open:\s*\[(.*)\];\s*deviations:\s*\[(.*)\]$/.exec(
+      payload
+    );
+  const match =
+    current ?? /^artifacts:\s*\[(.*)\];\s*decisions:\s*\[(.*)\];\s*open:\s*\[(.*)\]$/.exec(payload);
+  return match
+    ? {
+        artifacts: match[1]!,
+        decisions: match[2]!,
+        open: match[3]!,
+        ...(current ? { deviations: match[4]! } : {}),
+      }
+    : null;
+}
 
 /**
  * @purpose Parse each phase's verbatim Handoff line from the Execution Log — the compact context
@@ -285,7 +305,9 @@ export function parsePhaseHandoffs(logBody: string): Record<string, string> {
       current = heading[1] as string;
       continue;
     }
-    if (current && /^\*\*Handoff\s*→\*\*/.test(line) && !HANDOFF_PLACEHOLDER_RE.test(line)) {
+    if (current && /^\*\*Handoff\s*→\*\*/.test(line)) {
+      const fields = parseHandoffPayload(line.replace(/^\*\*Handoff\s*→\*\*\s*/, ''));
+      if (fields && Object.values(fields).some((value) => value.trim() === '...')) continue;
       out[current] = line;
     }
   }
@@ -409,7 +431,9 @@ export function analyzeRoundClosures(logBody: string): RoundCloseAnalysis[] {
  * @returns Artifact paths in declared order (possibly empty).
  */
 export function parseHandoffArtifacts(handoffLine: string): string[] {
-  const inner = /artifacts:\s*\[([^\]]*)\]/.exec(handoffLine)?.[1]?.trim();
+  const inner = parseHandoffPayload(
+    handoffLine.replace(/^\*\*Handoff\s*→\*\*\s*/, '')
+  )?.artifacts.trim();
   if (!inner || /^(none|n\/a|[—-])$/i.test(inner)) return [];
   return inner
     .split(',')

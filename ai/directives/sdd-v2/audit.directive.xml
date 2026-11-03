@@ -36,9 +36,18 @@
       free-text, audit finding `Detail` / `Proposed Remediation`. Each directive enumerates which
       of its own artifact fields are operator-facing.
 
-      **English regardless of context:** code, JSDoc, intent comments, file paths, tool commands,
+      **English regardless of context:** code, file paths, tool commands,
       axiom IDs (`AX_*`), Trace anchors, IDs (`<ACR>-DL-N` / `TSK-NN` / `F-NNN` / `P<N>` / `H_*`),
       severity / status / scope-type tokens, BDD keywords, field labels (`**Status:**`, `**Why:**`).
+
+      **Code comment language is a project setting:** JSDoc text, `// @file:` / `// @consumers:`
+      header text and intent comments follow the effective `lint.commentLanguage` reported by the tool (repo `.gennadyrc` > project
+      `gennady.yaml` > HOME `.gennadyrc`) —
+      absent or `en` → English; `ru` → Russian (English allowed); `any` → the language of the
+      surrounding file. If policy blocks the project convention, show the tool-proposed exact config
+      change to the operator; apply it only with consent and verify the effective source afterwards.
+      Never translate existing comments into another language. Tags (`@purpose`,
+      `@param`), identifiers and anchors stay English in every mode.
 
       **Не спрягать английские глагольные корни по-русски, когда есть готовый русский глагол:**
       «лочит» → «фиксирует», «пиним» → «фиксируем версию», «автофиксят» → «исправляется

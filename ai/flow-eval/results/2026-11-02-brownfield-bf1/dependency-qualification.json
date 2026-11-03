@@ -1,0 +1,12 @@
+{
+  "schema": "brownfield-dependency-qualification/1",
+  "sourceLockSha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c",
+  "projectNpmrcSha256": "46002ab7b008ce6311354b2f8da7c3a37acd0c11d82465296280a2ff9a92b582",
+  "installedLockSha256": "232944dcdcd035cbb7c7b97fbaadb2c8e0c0c264319aba6581e70b3c76e32849",
+  "installedPackageEntries": 697,
+  "contractMismatches": 0,
+  "sourceLockChanged": false,
+  "corporateInstallChanged": false,
+  "sharedCohortPerExactLock": true,
+  "modelCalls": 0
+}

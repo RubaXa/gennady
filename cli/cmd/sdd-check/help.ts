@@ -38,7 +38,7 @@ export function printHelp(): void {
   );
   console.info('  Choose exactly one mode: --task, --spec, --all, or --changed.');
   console.info(
-    '  Ordinary code outside declarations/current or prior @spec is not adopted by these checks.'
+    '  Ordinary code outside declarations/current or prior @spec is not adopted by these checks. --all reports untouched declared headerless files as pending; changed files and removed prior headers remain strict.'
   );
   console.info(
     '  --all --authoring grants no completion proof; strict phase exit and selected-spec ownership audit still apply.'

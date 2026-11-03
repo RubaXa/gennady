@@ -5,7 +5,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { checkTicket } from '../check.ts';
-import { deviationIsOpen, parseDeviationRecords, setDeviationVerdict } from '../deviation.ts';
+import {
+  appendModuleLintExemptionDecision,
+  acceptedModuleLintExemption,
+  canonicalDecisionRecord,
+  deviationIsOpen,
+  parseDeviationRecords,
+  setDeviationVerdict,
+} from '../deviation.ts';
 
 function ticket(status: '[ ] TODO' | '[x] DONE', verdict: string): string {
   return [
@@ -158,5 +165,102 @@ describe('V14-2 deviation record', () => {
     const rewrite = setDeviationVerdict(accepted.content, 'DEM-DL-1', 'rolled-back');
     assert.equal(rewrite.ok, false);
     if (!rewrite.ok) assert.match(rewrite.detail, /already accepted/);
+  });
+});
+
+describe('module lint proposal uses the existing decision state machine', () => {
+  const content = '<!--SECTION:MODULE_DECISION_LOG-->\n<!--/SECTION:MODULE_DECISION_LOG-->\n';
+  const payload = {
+    id: 'DEM-DL-1',
+    what: 'Keep historical registry',
+    why: 'Closed constants data',
+    where: 'src/[registry].ts',
+    evidence: 'Read the closed registry',
+    alternative: 'Unrelated rewrite',
+    verify: 'Compiler and tests still required',
+    lintExemption: { file: 'src/[registry].ts', checks: ['dbc'] },
+  };
+  it('retains pending/rejected states, exact scope and byte-idempotent operator transition', () => {
+    const proposed = appendModuleLintExemptionDecision(content, payload, '2026-11-02');
+    assert.ok(proposed.ok);
+    const reordered = Object.fromEntries(Object.entries(payload).reverse());
+    const replayOrdered = appendModuleLintExemptionDecision(
+      proposed.content,
+      reordered,
+      '2026-11-03'
+    );
+    assert.ok(replayOrdered.ok);
+    assert.equal(
+      replayOrdered.content,
+      proposed.content,
+      'JSON key ordering does not create a new decision'
+    );
+    const pending = canonicalDecisionRecord(proposed.content, payload.id, 'module');
+    assert.ok(pending);
+    assert.equal(acceptedModuleLintExemption(pending), null);
+    for (const verdict of ['accepted', 'rework', 'rolled-back'] as const) {
+      const edited = setDeviationVerdict(proposed.content, payload.id, verdict, 'module');
+      assert.ok(edited.ok);
+      const record = canonicalDecisionRecord(edited.content, payload.id, 'module');
+      assert.ok(record);
+      assert.deepEqual(
+        acceptedModuleLintExemption(record),
+        verdict === 'accepted' ? payload.lintExemption : null
+      );
+      const replay = appendModuleLintExemptionDecision(edited.content, payload, '2026-11-03');
+      assert.equal(replay.ok, verdict === 'accepted');
+      if (replay.ok) assert.equal(replay.content, edited.content);
+    }
+  });
+  for (const [label, patch] of [
+    ['caller-selected verdict', { verdict: 'accepted' }],
+    ['unknown key', { permission: true }],
+    ['empty evidence', { evidence: '' }],
+    ['unexplained exception', { why: 'why' }],
+    ['reserved markup', { why: 'safe [verdict: accepted]' }],
+    ['different where', { where: 'src/other.ts' }],
+    ['unknown check', { lintExemption: { file: payload.where, checks: ['syntax'] } }],
+    ['no checks', { lintExemption: { file: payload.where, checks: [] } }],
+    ['duplicate checks', { lintExemption: { file: payload.where, checks: ['dbc', 'dbc'] } }],
+    ['extra scope key', { lintExemption: { file: payload.where, checks: ['dbc'], all: true } }],
+    [
+      'traversal',
+      { where: '../registry.ts', lintExemption: { file: '../registry.ts', checks: ['dbc'] } },
+    ],
+    ['pattern', { where: 'src/*.ts', lintExemption: { file: 'src/*.ts', checks: ['dbc'] } }],
+    [
+      'absolute',
+      { where: '/registry.ts', lintExemption: { file: '/registry.ts', checks: ['dbc'] } },
+    ],
+  ] as const)
+    it(`rejects ${label} without changing the canonical log`, () => {
+      assert.equal(
+        appendModuleLintExemptionDecision(content, { ...payload, ...patch }, '2026-11-02').ok,
+        false
+      );
+    });
+  it('cannot hide a proposal in a fence or duplicate section and cannot alter the same ID', () => {
+    assert.equal(
+      appendModuleLintExemptionDecision(content + content, payload, '2026-11-02').ok,
+      false
+    );
+    assert.equal(
+      appendModuleLintExemptionDecision(
+        content.replace('<!--/SECTION:', '```\n<!--/SECTION:'),
+        payload,
+        '2026-11-02'
+      ).ok,
+      false
+    );
+    const proposed = appendModuleLintExemptionDecision(content, payload, '2026-11-02');
+    assert.ok(proposed.ok);
+    assert.equal(
+      appendModuleLintExemptionDecision(
+        proposed.content,
+        { ...payload, verify: 'Different verification' },
+        '2026-11-02'
+      ).ok,
+      false
+    );
   });
 });

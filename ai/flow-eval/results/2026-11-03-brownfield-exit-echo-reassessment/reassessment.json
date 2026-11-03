@@ -1,0 +1,67 @@
+{
+  "schema": "gennady.brownfield-exit-echo-reassessment.v1",
+  "revision": "bounded-exit-echo-v2",
+  "modelCalls": 0,
+  "newPrimaryAttempts": 0,
+  "priorRawUnchanged": true,
+  "modelBehaviorWinClaimed": false,
+  "sourceHashes": [
+    {
+      "path": "ai/flow-eval/brownfield-command-proof.ts",
+      "sha256": "e195984b639c43062a899827e2999b5525964a69d557766077895ce2bffb56b8",
+      "snapshot": "harness/brownfield-command-proof.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/brownfield-benchmark.ts",
+      "sha256": "ca16556903351d9157aed5df8239cf703214f766139310d9f4df0c83b3414dce",
+      "snapshot": "harness/brownfield-benchmark.ts.txt"
+    },
+    {
+      "path": "ai/flow-eval/scripts/brownfield-benchmark-live.ts",
+      "sha256": "fd42609f01f43d704e888f8184f852ccf5aec500a56140b40dc4e13f15e28af9",
+      "snapshot": "harness/brownfield-benchmark-live.ts.txt"
+    }
+  ],
+  "assessments": [
+    {
+      "label": "E3-v2-prior-censored",
+      "inputPath": "inputs/E3-v2-prior-censored.json",
+      "inputSha256": "69613bb28a87dad6e97fce2cd5dfe36e7b7b46dcdaea378b1e55b3eb1ac4d7db",
+      "rawRecordPath": "ai/flow-eval/results/2026-11-03-brownfield-e3-e4-confirmation/records/0.json",
+      "rawRecordSha256": "b33c0ee9883d3a978cf30080daa91e7ad3a61a90cd396873f3b48f2266fad124",
+      "raw": {
+        "proposalInvocationProven": false,
+        "confirmationAccepted": false,
+        "confirmationStatus": "not-proven",
+        "judgeVerdict": "fail"
+      },
+      "reassessed": {
+        "proposalInvocationProven": false,
+        "confirmationAccepted": false,
+        "confirmationStatus": "not-proven"
+      },
+      "privatePublicProofEqual": true,
+      "fullTrajectoryPassClaimed": false
+    },
+    {
+      "label": "E3-v3-pending",
+      "inputPath": "inputs/E3-v3-pending.json",
+      "inputSha256": "303684d1fb097e6ad1f8b508ecb2dc26ee7b391dcdf9dc9d35d7f1fcca8f6633",
+      "rawRecordPath": "ai/flow-eval/results/2026-11-03-brownfield-e3-explicit-command/records/0.json",
+      "rawRecordSha256": "4711b1aa699ace06de5d4fec1a2e9b6e9786f8b238f996c12d5dd12be740b52e",
+      "raw": {
+        "proposalInvocationProven": false,
+        "confirmationAccepted": false,
+        "confirmationStatus": "not-proven",
+        "judgeVerdict": "pass"
+      },
+      "reassessed": {
+        "proposalInvocationProven": true,
+        "confirmationAccepted": true,
+        "confirmationStatus": "proven"
+      },
+      "privatePublicProofEqual": true,
+      "fullTrajectoryPassClaimed": false
+    }
+  ]
+}

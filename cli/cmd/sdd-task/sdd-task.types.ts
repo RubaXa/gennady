@@ -786,6 +786,15 @@ export type CoverageGate = TicketCoveragePolicy & {
 };
 
 /**
+ * @purpose The audited module's reverse-inventory file set, or why it cannot be used.
+ * @consumer SddTaskCommand, formatGroupScope
+ */
+export type InventoryFiles =
+  | { readonly kind: 'absent' }
+  | { readonly kind: 'valid'; readonly files: readonly string[] }
+  | { readonly kind: 'invalid'; readonly reason: string };
+
+/**
  * @purpose Format `sdd-task --group-scope` — the ready-made review scope (Target Files ∪ group-attributable git diff, plus Handoff artifacts) instead of manual git archaeology.
  * @invariant Never fabricates a git range when HEAD is absent: the typed empty-tree baseline uses
  *   index entries plus untracked paths and `git:` states that scope plainly.
@@ -799,6 +808,7 @@ export type CoverageGate = TicketCoveragePolicy & {
  * @param [lintFiles] Source files ready to pass to `gennady lint` without extension guessing.
  * @param [codeRoots] Minimal non-nested roots ready for reverse-inventory checks.
  * @param [coverageGates] Per-ticket ready-made coverage commands (own threshold + own files).
+ * @param [inventoryFiles] Module File Mapping lint targets for the reverse-inventory sweep, or why not.
  * @returns The formatted review-scope report.
  */
 export function formatGroupScope(
@@ -811,7 +821,8 @@ export function formatGroupScope(
   contractAnchors: string[] = [],
   lintFiles: string[] = [],
   codeRoots: string[] = [],
-  coverageGates: CoverageGate[] = []
+  coverageGates: CoverageGate[] = [],
+  inventoryFiles: InventoryFiles = { kind: 'absent' }
 ): TaskOutcome {
   const lines = renderGroupHeader(specPath, group, root);
 
@@ -839,6 +850,13 @@ export function formatGroupScope(
   if (lintFiles.length === 0) lines.push('  —');
   else for (const file of lintFiles) lines.push(`  ${file}`);
   lines.push('', `code-roots: ${codeRoots.length ? codeRoots.join(', ') : '—'}`);
+  if (inventoryFiles.kind === 'invalid') {
+    lines.push('', `inventory-files: INVALID — ${inventoryFiles.reason}`);
+  } else {
+    lines.push('', 'inventory-files:');
+    if (inventoryFiles.kind === 'absent') lines.push('  —');
+    else for (const file of inventoryFiles.files) lines.push(`  ${file}`);
+  }
 
   lines.push('', 'handoff:');
   if (handoffArtifacts.length === 0) {

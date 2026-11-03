@@ -8,8 +8,13 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { rmSync, utimesSync, statSync, writeFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildRepoFixture } from './fixture.ts';
+import { buildRepoFixture as buildGitRepoFixture, type RepoFixtureState } from './fixture.ts';
 import { runCli } from './run-cli.ts';
+
+/** @purpose Coverage identity/freshness fixtures have no VCS dependency; keep each filesystem isolated. */
+function buildRepoFixture(state: RepoFixtureState): { root: string } {
+  return buildGitRepoFixture({ ...state, git: false });
+}
 
 /** @purpose Two trivial TS source files with the same statement count — one fully hit, one never hit. */
 const GOOD_TS = ['export function good(): number {', '  return 1;', '}', ''].join('\n');

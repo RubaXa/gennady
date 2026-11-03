@@ -1,0 +1,110 @@
+{
+  "schema": "gennady.brownfield-order-qualified.v1",
+  "revision": "bounded-exit-echo-v3",
+  "sourceBaseCommit": "969200ae63fcdbba413b4ab525ad8c1d53cb5528",
+  "modelCalls": 0,
+  "newPrimaryAttempts": 0,
+  "priorRawUnchanged": true,
+  "previousAssessment": {
+    "path": "ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment/reassessment.json",
+    "sha256": "ec96dc09a98cf23d7c08e00f27474055299252443c7bf9443e8869f8d396a39f",
+    "revision": "bounded-exit-echo-v2"
+  },
+  "sourceHashes": [
+    {
+      "path": "ai/flow-eval/brownfield-benchmark.ts",
+      "snapshot": "harness/brownfield-benchmark.ts.txt",
+      "sha256": "ddb6a2bee7f84ddef387fdca63b4db925bb8d251f693094e42efe209278738f7"
+    },
+    {
+      "path": "ai/flow-eval/brownfield-command-proof.ts",
+      "snapshot": "harness/brownfield-command-proof.ts.txt",
+      "sha256": "51d8ac37d9e1059e13338df04aec67047d5419568350f3db19632e2f5f537db7"
+    }
+  ],
+  "orderControl": {
+    "kind": "synthetic pure unit, not a worker attempt",
+    "overlappingEvents": [
+      {
+        "i": 0,
+        "tool": "bash",
+        "status": "completed",
+        "exitCode": 1,
+        "command": "npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts",
+        "startedAt": 100,
+        "finishedAt": 250
+      },
+      {
+        "i": 1,
+        "tool": "bash",
+        "status": "completed",
+        "exitCode": 0,
+        "command": "npx --no-install gennady sdd-log specs/settings/registry/registry.spec.md decision --payload-file .claude/tmp/lint-proposal.json",
+        "startedAt": 150,
+        "finishedAt": 200
+      }
+    ],
+    "priorProofObserved": true,
+    "priorRedLogSha256": "559b72ee8d4f9694d5fc5ad38ae33c82444c378b56a639d67e64d74fd7516db7",
+    "qualifiedOverlapProof": false,
+    "orderedEvents": [
+      {
+        "i": 0,
+        "tool": "bash",
+        "status": "completed",
+        "exitCode": 1,
+        "command": "npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts",
+        "startedAt": 100,
+        "finishedAt": 150
+      },
+      {
+        "i": 1,
+        "tool": "bash",
+        "status": "completed",
+        "exitCode": 0,
+        "command": "npx --no-install gennady sdd-log specs/settings/registry/registry.spec.md decision --payload-file .claude/tmp/lint-proposal.json",
+        "startedAt": 200,
+        "finishedAt": 250
+      }
+    ],
+    "qualifiedOrderedProof": true
+  },
+  "assessments": [
+    {
+      "label": "E3-v2-prior-censored",
+      "inputPath": "ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment/inputs/E3-v2-prior-censored.json",
+      "inputSha256": "69613bb28a87dad6e97fce2cd5dfe36e7b7b46dcdaea378b1e55b3eb1ac4d7db",
+      "rawRecordPath": "ai/flow-eval/results/2026-11-03-brownfield-e3-e4-confirmation/records/0.json",
+      "rawRecordSha256": "b33c0ee9883d3a978cf30080daa91e7ad3a61a90cd396873f3b48f2266fad124",
+      "privatePublicProofEqual": true,
+      "previousDerived": {
+        "proposalInvocationProven": false,
+        "confirmationAccepted": false,
+        "confirmationStatus": "not-proven"
+      },
+      "reassessed": {
+        "proposalInvocationProven": false,
+        "confirmationAccepted": false
+      }
+    },
+    {
+      "label": "E3-v3-pending",
+      "inputPath": "ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment/inputs/E3-v3-pending.json",
+      "inputSha256": "303684d1fb097e6ad1f8b508ecb2dc26ee7b391dcdf9dc9d35d7f1fcca8f6633",
+      "rawRecordPath": "ai/flow-eval/results/2026-11-03-brownfield-e3-explicit-command/records/0.json",
+      "rawRecordSha256": "4711b1aa699ace06de5d4fec1a2e9b6e9786f8b238f996c12d5dd12be740b52e",
+      "privatePublicProofEqual": true,
+      "previousDerived": {
+        "proposalInvocationProven": true,
+        "confirmationAccepted": true,
+        "confirmationStatus": "proven"
+      },
+      "reassessed": {
+        "proposalInvocationProven": true,
+        "confirmationAccepted": true
+      }
+    }
+  ],
+  "modelBehaviorWinClaimed": false,
+  "fullTrajectoryPassClaimed": false
+}

@@ -5,9 +5,10 @@
 import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
+import { runV1Eradication } from '../check-v1-eradication.ts';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const SCRIPT = join(ROOT, 'scripts/check-v1-eradication.ts');
@@ -30,6 +31,12 @@ function write(root: string, path: string, content: string): void {
 }
 
 function execute(root: string): { status: number | null; report: Report; stderr: string } {
+  // Tiny causal fixtures exercise the exact gate core without starting TSX for every mutation.
+  // The real tree and invalid-policy tests retain actual CLI stdout/exit/error boundaries.
+  if (root !== ROOT) {
+    const report = runV1Eradication(root);
+    return { status: report.ok ? 0 : 1, report, stderr: '' };
+  }
   const result = executeRaw(root);
   assert.notEqual(result.stdout.trim(), '', result.stderr);
   return {
@@ -39,10 +46,10 @@ function execute(root: string): { status: number | null; report: Report; stderr:
   };
 }
 
-function executeRaw(root: string): SpawnSyncReturns<string> {
+function executeRaw(root: string, script = SCRIPT): SpawnSyncReturns<string> {
   const result = spawnSync(
     process.execPath,
-    ['--import', 'tsx', SCRIPT, '--root', root, '--json'],
+    ['--import', 'tsx', script, '--root', root, '--json'],
     { cwd: ROOT, encoding: 'utf8' }
   );
   assert.equal(result.signal, null, result.stderr);
@@ -195,6 +202,32 @@ afterEach(() => {
 });
 
 describe('UV-27A V1-only eradication inventory', () => {
+  it('preserves real CLI JSON and rejection through a symlink entry alias', () => {
+    const root = fixture();
+    const aliases = mkdtempSync(join(tmpdir(), 'gennady-eradication-entry-alias-'));
+    temporary.push(aliases);
+    const alias = join(aliases, 'gate-link.ts');
+    symlinkSync(SCRIPT, alias);
+    const canonicalPass = executeRaw(root);
+    const aliasPass = executeRaw(root, alias);
+    assert.equal(canonicalPass.status, 0, canonicalPass.stderr);
+    assert.notEqual(canonicalPass.stdout.trim(), '');
+    assert.equal(aliasPass.status, canonicalPass.status, aliasPass.stderr);
+    assert.equal(aliasPass.stdout, canonicalPass.stdout);
+
+    write(root, 'tasks/unowned.md', 'forbidden runtime residue');
+    const canonicalFail = executeRaw(root);
+    const aliasFail = executeRaw(root, alias);
+    assert.equal(canonicalFail.status, 1, canonicalFail.stderr);
+    assert.ok(
+      JSON.parse(canonicalFail.stdout).findings.some(
+        (finding: { code: string }) => finding.code === 'V1_ERADICATION_FORBIDDEN_RESIDUE'
+      )
+    );
+    assert.equal(aliasFail.status, canonicalFail.status, aliasFail.stderr);
+    assert.equal(aliasFail.stdout, canonicalFail.stdout);
+  });
+
   it('rejects retired active runtime even when attached to an exact migration path', () => {
     const root = fixture();
     write(

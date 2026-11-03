@@ -240,6 +240,55 @@ describe('gennady rules', () => {
     }
   });
 
+  it('reads an existing bracketed route file literally instead of expanding it as a mask', () => {
+    const built = fixture();
+    try {
+      fs.mkdirSync(path.join(built.root, 'pages'));
+      fs.writeFileSync(path.join(built.root, 'pages', '[...slug].tsx'), 'export {};\n');
+      fs.writeFileSync(path.join(built.root, 'pages', 's.tsx'), 'export {};\n');
+      const result = run(built.root, [
+        'resolve',
+        '--phase',
+        'code',
+        '--files',
+        'pages/[...slug].tsx',
+        '--format',
+        'json',
+      ]);
+      assert.equal(result.status, 0, result.stderr);
+      const report = JSON.parse(result.stdout) as { scope: { files: string[] } };
+      assert.deepEqual(report.scope.files, ['pages/[...slug].tsx']);
+    } finally {
+      built.cleanup();
+    }
+  });
+
+  it('never expands an existing glob-named symlink or directory into unrelated regular files', () => {
+    for (const kind of ['symlink', 'directory'] as const) {
+      const built = fixture();
+      try {
+        fs.writeFileSync(path.join(built.root, 'src/a.ts'), 'export {};\n');
+        fs.writeFileSync(path.join(built.root, 'src/b.ts'), 'export {};\n');
+        const literal = path.join(built.root, 'src/[ab].ts');
+        if (kind === 'symlink') fs.symlinkSync('a.ts', literal);
+        else fs.mkdirSync(literal);
+        const result = run(built.root, [
+          'resolve',
+          '--phase',
+          'code',
+          '--files',
+          'src/[ab].ts',
+          '--format',
+          'json',
+        ]);
+        assert.notEqual(result.status, 0, `${kind}: ${result.stdout}`);
+        assert.match(result.stderr, /RULES_SCOPE_UNSAFE/);
+      } finally {
+        built.cleanup();
+      }
+    }
+  });
+
   it('uses one selector-matched ticket phase and leaves dirty files, ticket and sentinel unchanged', () => {
     const built = fixture();
     try {

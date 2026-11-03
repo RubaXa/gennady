@@ -15,7 +15,7 @@ import {
 } from '../../../shared/common/repo-file-identity.ts';
 import {
   getChangedSourceFiles,
-  getHeadContent,
+  getHeadContents,
   readHeadContent,
 } from '../../../shared/common/changed-files.ts';
 import {
@@ -841,7 +841,7 @@ function checkFileOwnership(
           code: 'SDD_FILE_OWNER_PENDING',
           file: relPath,
           message:
-            'Authoring only: this declared file needs its canonical @spec during implementation, before strict phase exit/audit. No execution proof is granted.',
+            'Pending adoption: this untouched declared file needs its canonical @spec before its strict phase exit or selected ownership audit. This global coherence check grants no execution or full-coverage proof.',
         },
       ],
     };
@@ -1532,6 +1532,12 @@ export async function run(
     const researchFiles: string[] = [];
     const referencedResearch = new Set<string>();
     const registeredResearch = new Set<string>();
+    const headContents = getHeadContents(
+      repoRoot,
+      mdFiles
+        .filter((file) => file.endsWith('.spec.md') || file.endsWith('.1-spec.md'))
+        .map((file) => relative(repoRoot, file))
+    );
     for (const file of mdFiles) {
       const observed = readUtf8(file);
       if (!observed.ok) {
@@ -1572,7 +1578,7 @@ export async function run(
           ...checkRequirementBudgetsAgainstBaseline(
             file,
             content,
-            getHeadContent(repoRoot, relative(repoRoot, file))
+            headContents.get(relative(repoRoot, file)) ?? null
           )
         );
         findings.push(...checkDecisionLogIds(file, content));
@@ -1680,6 +1686,21 @@ export async function run(
     if (changed?.status === 'error')
       return gitEvidenceError(changed.operation, changed.exitCode, changed.stderr);
     const changedPaths = new Set(changed?.files ?? []);
+    const baseline =
+      changed?.status === 'ok'
+        ? spawnSync('git', ['ls-tree', '-r', '-z', '--name-only', 'HEAD'], {
+            cwd: repoRoot,
+            encoding: 'utf8',
+            maxBuffer: 64 * 1024 * 1024,
+          })
+        : null;
+    if (baseline && (baseline.error || baseline.status !== 0))
+      return gitEvidenceError(
+        'ls-tree HEAD',
+        baseline.status,
+        baseline.error?.message ?? baseline.stderr ?? ''
+      );
+    const baselinePaths = new Set(baseline?.stdout.split('\0').filter(Boolean) ?? []);
     walkSources(root === repoRoot ? repoRoot : root, sourceFiles, sourceIssues);
     for (const issue of sourceIssues) addReadIssue(findings, issue);
     for (const source of sourceFiles.sort((left, right) =>
@@ -1705,7 +1726,9 @@ export async function run(
           baselineContent,
           ownershipContext,
           declaredPaths,
-          authoring
+          authoring ||
+            (baselinePaths.has(relative(repoRoot, source).split(sep).join('/')) &&
+              !changedPaths.has(relative(repoRoot, source).split(sep).join('/')))
         );
         if (ownership.flow === 'v2' && ownership.claimed !== false) {
           findings.push(...ownership.findings);
@@ -1773,5 +1796,11 @@ export async function run(
 
 // Self-executing for CLI: gennady sdd-check (--task <ticket> | --all [root])
 const result = await run(process.argv);
-console.log(result.text);
+// Pipes are asynchronous: exiting before this callback can truncate large JSON responses.
+await new Promise<void>((resolveWrite, rejectWrite) => {
+  process.stdout.write(`${result.text}\n`, (error) => {
+    if (error) rejectWrite(error);
+    else resolveWrite();
+  });
+});
 process.exit(result.exitCode);

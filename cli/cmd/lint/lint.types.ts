@@ -123,7 +123,7 @@ export const ERR_CLI_LINT_ANCHOR_UNPAIRED_END = 'ERR_CLI_LINT_ANCHOR_UNPAIRED_EN
 export const ERR_CLI_LINT_ANCHOR_NESTING = 'ERR_CLI_LINT_ANCHOR_NESTING' as const;
 /** @purpose Bare #region/#endregion without START_/END_ prefix — malformed anchor. */
 export const ERR_CLI_LINT_ANCHOR_MALFORMED = 'ERR_CLI_LINT_ANCHOR_MALFORMED' as const;
-/** @purpose Cyrillic characters found in JSDoc contracts or file headers — English required. */
+/** @purpose Cyrillic characters found in JSDoc contracts or file headers while `lint.commentLanguage` is `en`. */
 export const ERR_CLI_LINT_NON_ENGLISH = 'ERR_CLI_LINT_NON_ENGLISH' as const;
 
 /** @purpose Target resolution failed — path does not exist (ENOENT) or permission denied (EACCES). | @invariant Used by resolveTargets for graceful degradation. */
@@ -164,6 +164,8 @@ export const ERR_CLI_LINT_TAG_TOO_MANY_WORDS = 'ERR_CLI_LINT_TAG_TOO_MANY_WORDS'
 export const ERR_CLI_LINT_BAD_WORD_LIMIT = 'ERR_CLI_LINT_BAD_WORD_LIMIT' as const;
 /** @purpose Command-line shape is invalid and linting did not start. */
 export const ERR_CLI_LINT_BAD_INVOCATION = 'ERR_CLI_LINT_BAD_INVOCATION' as const;
+/** @purpose The `lint` section of `gennady.yaml` / `.gennadyrc` is invalid and linting did not start. */
+export const ERR_CLI_LINT_BAD_CONFIG = 'ERR_CLI_LINT_BAD_CONFIG' as const;
 
 /** @purpose Region body contains more comments (// or /*) than the configured limit. */
 export const ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS =
@@ -195,3 +197,6 @@ export const ERR_CLI_LINT_SPEC_NOT_FOUND = 'ERR_CLI_LINT_SPEC_NOT_FOUND' as cons
 /** @purpose `--inventory-reverse` was given without the required `--spec`. */
 export const ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC =
   'ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC' as const;
+
+/** @purpose Complete reverse inventory cannot be proved for an unresolved export source. */
+export const ERR_CLI_LINT_INVENTORY_INCOMPLETE = 'ERR_CLI_LINT_INVENTORY_INCOMPLETE' as const;

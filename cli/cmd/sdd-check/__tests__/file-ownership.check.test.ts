@@ -3,6 +3,7 @@
 // @consumers: sdd-check.cmd
 
 import assert from 'node:assert/strict';
+import { readSddCoverage } from '../../../../shared/sdd/coverage-repository.ts';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -166,6 +167,54 @@ describe('sdd-check file ownership', () => {
       } finally {
         rmSync(removed.root, { recursive: true, force: true });
       }
+    }
+  });
+
+  it('global coherence permits untouched declared adoption while selected audit and changed files remain strict', async () => {
+    const { root, source } = fixture({ sourceHeader: '', tickets: [] });
+    try {
+      git(root, 'add', 'src/value.ts');
+      git(root, 'commit', '-qm', 'existing unadopted source');
+      writeFileSync(
+        join(root, 'specs/app/app.spec.md'),
+        spec('APP') +
+          '\n<!--SECTION:FILE_STRUCTURE-->\n**File Mapping:**\n- `src/value.ts`: existing implementation\n<!--/SECTION:FILE_STRUCTURE-->'
+      );
+      const coherence = await mod.run(argv('--all', root));
+      assert.doesNotMatch(coherence.text, /SDD_FILE_SPEC_OWNER_UNRESOLVED/);
+      assert.match(coherence.text, /SDD_FILE_OWNER_PENDING/);
+      const strict = readSddCoverage(root, { kind: 'spec', id: 'APP' }, 'audit');
+      assert.equal(strict.coverage.canProceed, false);
+      assert.ok(
+        strict.coverage.findings.some(
+          (finding) => finding.code === 'MISSING_HEADER' && finding.severity === 'error'
+        )
+      );
+      writeFileSync(source, 'export const value = 2;\n');
+      const changed = await mod.run(argv('--all', root));
+      assert.match(changed.text, /SDD_FILE_SPEC_OWNER_UNRESOLVED/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('an ignored new mapped source cannot masquerade as tracked unchanged adoption', async () => {
+    const { root } = fixture({ sourceHeader: '', tickets: [] });
+    try {
+      writeFileSync(join(root, '.gitignore'), 'src/generated.ts\n');
+      git(root, 'add', 'src/value.ts', '.gitignore');
+      git(root, 'commit', '-qm', 'existing source and ignore policy');
+      writeFileSync(join(root, 'src/generated.ts'), 'export const generated = 1;\n');
+      writeFileSync(
+        join(root, 'specs/app/app.spec.md'),
+        spec('APP') +
+          '\n<!--SECTION:FILE_STRUCTURE-->\n**File Mapping:**\n- `src/value.ts`: existing source\n- `src/generated.ts`: new implementation\n<!--/SECTION:FILE_STRUCTURE-->'
+      );
+      const result = await mod.run(argv('--all', root));
+      assert.match(result.text, /src\/generated\.ts: error: SDD_FILE_SPEC_OWNER_UNRESOLVED/);
+      assert.match(result.text, /src\/value\.ts: warn: SDD_FILE_OWNER_PENDING/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
     }
   });
 

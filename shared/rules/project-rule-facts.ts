@@ -2,9 +2,10 @@
 // @consumers: SDD rule snapshot composition
 // @spec: CLI-RULES
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { extname } from 'node:path';
 import { inspectRepoPath } from '../common/repo-path.ts';
+import { proveRepoFile, readProvenRepoFile } from '../common/repo-file-identity.ts';
 import { isSddTestFile } from '../sdd/source-extensions.ts';
 
 type ProjectRuleArtifact = {
@@ -74,11 +75,12 @@ function packageFacts(root: string): {
   readonly scripts: Readonly<Record<string, string>>;
 } {
   if (!existsSync(`${root}/package.json`)) return { dependencies: [], scripts: {} };
-  const inspected = inspectRepoPath(root, 'package.json', 'file');
-  if (!inspected.ok) fail('RULE_PROJECT_FACTS_UNSAFE', `package.json: ${inspected.detail}`);
+  const proof = proveRepoFile(root, 'package.json');
+  const read = proof.ok ? readProvenRepoFile(proof.identity) : proof;
+  if (!read.ok) fail('RULE_PROJECT_FACTS_UNSAFE', `package.json: ${read.detail}`);
   let parsed: unknown;
   try {
-    parsed = JSON.parse(readFileSync(inspected.absolute, 'utf8'));
+    parsed = JSON.parse(read.content);
   } catch (cause) {
     fail(
       'RULE_PROJECT_FACTS_MALFORMED',

@@ -128,3 +128,20 @@ describe('parseDuration — a mandatory timeout cannot be zeroed (review #9)', (
     assert.strictEqual(parseDuration('10m'), 600_000);
   });
 });
+
+it('parse diagnostics never echo neighboring credential values', () => {
+  const secret = 'private-synthetic-credential-47392';
+  for (const [name, text] of [
+    ['.gennadyrc', secret],
+    ['gennady.yaml', `token: ${secret}\nlint: [unfinished`],
+  ])
+    withConfigs({ [name]: text }, (root) => {
+      const loaded = loadConfigSection(root, 'lint', { homeDirectory: root });
+      assert.ok(loaded.errors.length > 0);
+      assert.ok(
+        loaded.errors.every((error) => !error.message.includes(secret.slice(0, 10))),
+        JSON.stringify(loaded.errors)
+      );
+      assert.match(loaded.errors[0]!.message, /cannot parse/);
+    });
+});

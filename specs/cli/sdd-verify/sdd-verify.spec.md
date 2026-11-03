@@ -602,6 +602,40 @@ layer that now owns each invariant; UV-14 migrates project-level full coverage t
   validation-only evidence. Project-code repair remains governed by the universal engine's
   declared write boundaries.
 
+### D-SV041 — Existing Target Files with glob metacharacters are exact
+
+- **Status:** active, 2026-11-02.
+- **Decision:** a phase Target File that names an existing regular file inside the project is an
+  exact path even when it holds `[`, `]`, `{`, `}`, `*` or `?` (`pages/[...slug].tsx`). An absent
+  Target File with that syntax is still a mask and fails with `path must be exact, not a glob`.
+  Full rationale and the affected call sites: `specs/shared/repo-path-literal-names.adr.md`.
+
+### D-SV042 — Flow bookkeeping does not stale a phase proof
+
+- **Status:** active, 2026-11-02 (issue #1, P2).
+- **Why:** a phase PASS is bound to `currentSddPhaseWorktreeDigest` over every tracked and
+  untracked file. After `sdd-log close`, the ordinary closing steps — `sdd-sync` rewriting the
+  task index and `sdd-log … audit-receipt | review-receipt` appending receipts to the module spec —
+  changed that digest, so `sdd-check --all` reported `SDD_PHASE_ATTEMPT_STALE` for every phase
+  although no product, config, rule or plan byte changed. Agents had to re-run `sdd-verify` as a
+  last action, which contradicts "one `sdd-verify` per phase attempt".
+- **Decision:** the digest normalizes only what the flow itself writes. In a task index
+  (`specs/3-tasks.md`, `*.3-tasks.md`) `maskTrackerBookkeeping` locates the tracker table and the
+  rollup table by the same header rules `sdd-sync` writes with, and replaces only the data cells of
+  the Status column and the `Done`/`Progress` column; rows, Task-IDs, titles, dependencies, task
+  counts and prose stay hashed, including identical-looking text in other columns. In other spec
+  markdown a `SDD_AUDIT_RECEIPT` / `SDD_REVIEW_RECEIPT` block is dropped only when its JSON passes
+  `isGroupReceipt` for the marker's kind (the same check `sdd-check` reads receipts with);
+  invalid JSON, a foreign kind or text wrapped in receipt markers stays hashed. End-of-file
+  whitespace is canonical. The ticket keeps its existing normalization.
+- **Rejected alternatives:** excluding `specs/**` or whole task indexes from the digest — a changed
+  requirement, decomposition or verification obligation would no longer stale the proof; writing a
+  separate `SDD_PHASE_RECEIPT` on `complete` — a second proof format next to the canonical
+  `SDD_VERIFY_ATTEMPT`, with its own forge and staleness rules.
+- **Evidence:** `ai/flow-eval/__tests__/pilot-verify-probe.test.ts` drives the real CLI through
+  Verify → complete → close → sync → audit and review receipts → `sdd-check --all` with zero errors
+  and no re-verify, while seven product/config/spec/index/rule controls still stale the proofs.
+
 </details>
 
 <!--/SECTION:MODULE_DECISION_LOG-->

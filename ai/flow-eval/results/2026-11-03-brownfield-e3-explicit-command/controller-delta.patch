@@ -1,0 +1,60 @@
+--- canonical-runner.ts
++++ one-case-controller.ts
+@@ -41,26 +41,26 @@
+   referenceProposal,
+   sha,
+   type CaseId,
+-} from '../brownfield-benchmark.ts';
+-import { createSddEvalOpenCodeClient } from '../opencode-client.ts';
+-import { SddEvalOpenCodeRuntime } from '../opencode-runtime.ts';
+-import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
+-import { SddEvalSessionDirectoryMap } from '../session-directory.ts';
+-import { toolEventsFrom } from '../trajectory.ts';
++} from '../../ai/flow-eval/brownfield-benchmark.ts';
++import { createSddEvalOpenCodeClient } from '../../ai/flow-eval/opencode-client.ts';
++import { SddEvalOpenCodeRuntime } from '../../ai/flow-eval/opencode-runtime.ts';
++import { SddEvalOpenCodeEvidenceSource } from '../../ai/flow-eval/evidence.ts';
++import { SddEvalSessionDirectoryMap } from '../../ai/flow-eval/session-directory.ts';
++import { toolEventsFrom } from '../../ai/flow-eval/trajectory.ts';
+ import {
+   prepareEvalDependencyStore,
+   bindEvalDependencies,
+   releaseEvalDependencyLease,
+   startEvalDependencyLeaseHeartbeat,
+-} from '../dependency-store.ts';
+-import { createExecutionShellCarrier } from './execution-autonomy-shell-carrier.ts';
++} from '../../ai/flow-eval/dependency-store.ts';
++import { createExecutionShellCarrier } from '../../ai/flow-eval/scripts/execution-autonomy-shell-carrier.ts';
+ import {
+   assessConsentOrder,
+   findHostConsentApproval,
+   capturePrivateSessionMessages,
+   publicQualification,
+-} from '../brownfield-measurement.ts';
+-const root = resolve(import.meta.dirname, '../../..');
++} from '../../ai/flow-eval/brownfield-measurement.ts';
++const root = resolve(import.meta.dirname, '../..');
+ const defaultPackages = resolve(process.env.GENNADY_BF3_PACKAGE_ROOT ?? '.');
+ const packageManifestPath = join(defaultPackages, 'manifest.json');
+ let commits: { baseline: string; candidate: string };
+@@ -1343,7 +1343,11 @@
+ /** @purpose Freeze exact inputs and execute only the explicitly selected finite campaign, without replacements. */
+ async function main() {
+   const [mode, outArg] = process.argv.slice(2);
+-  const campaign = brownfieldCampaign(mode);
++  const baseCampaign = brownfieldCampaign(mode);
++  assert.equal(baseCampaign.confirmation, true, 'one-case controller is confirmation-only');
++  const positions = Object.freeze(baseCampaign.positions.filter((position) => position.caseId === 'E3'));
++  assert.deepEqual(positions, [{ caseId: 'E3', arm: 'candidate' }], 'exactly one authorized E3 position');
++  const campaign = Object.freeze({ ...baseCampaign, id: 'bf3-e3-explicit-command-single', positions, qualificationPositions: positions });
+   assert.ok(outArg && process.argv.length === 4, 'mode and NEW output directory required');
+   const schedule = campaign.positions;
+   const arms = [...new Set(schedule.map((position) => position.arm))];
+@@ -1451,6 +1455,7 @@
+       .map((path) => ({ path: relative(root, path), sha256: sha(readFileSync(path)) }));
+     json(out, 'protocol.json', {
+       schema: 'gennady.brownfield-bf3.2',
++      controllerProvenance: { kind: 'temporary-one-case-controller', canonicalRunnerCommit: '9f19fb431fda609b945aae9f4906b7228e01e9c8', canonicalRunnerPath: 'ai/flow-eval/scripts/brownfield-benchmark-live.ts', canonicalRunnerSha256: '4c040762081529f9fd317e425a1a9aa910b3e7735a32354c6be1e8576dd0f9bf', controllerTracked: false, trackedProductTreeClean: true, changes: ['relative import and repository-root relocation', 'exactly one E3 position for qualification and live', 'provenance only; original safety, acceptance and fixture unchanged'] },
+       measurementRevision: 'post-eight-attempt-campaign; no old outcome replay',
+       campaign: campaign.id,
+       fixtureRevision: campaign.confirmation ? 'e3-explicit-proposal-command-v3' : 'original',

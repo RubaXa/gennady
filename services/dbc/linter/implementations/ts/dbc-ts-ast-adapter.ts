@@ -3,12 +3,14 @@
 // @consumers: DbcTsLinter
 
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import type { default as Parser } from 'tree-sitter';
 import type { SyntaxNode } from 'tree-sitter';
 import { logger } from '#logger';
 import type {
   DbcAstAdapter,
   DbcExportedEntity,
+  DbcExportNames,
   DbcMember,
   DbcParamInfo,
   DbcParseResult,
@@ -21,6 +23,35 @@ type RawContract = {
   startLine: number;
   startCol: number;
 };
+
+/**
+ * @purpose Tooling line comments that may sit between a JSDoc contract and its declaration
+ *   without detaching the contract (`// eslint-disable-next-line`, `// @ts-expect-error`).
+ */
+const DIRECTIVE_LINE_COMMENT =
+  /^\/\/\s*(?:eslint-disable(?:-next-line|-line)?\b|eslint-enable\b|@ts-(?:expect-error|ignore|nocheck)\b|prettier-ignore\b)/;
+
+/**
+ * @purpose Decide whether a comment keeps a preceding JSDoc attached to the next declaration.
+ * @param commentText Raw comment text.
+ * @returns True for a tooling directive line comment.
+ */
+function isDirectiveLineComment(commentText: string): boolean {
+  return DIRECTIVE_LINE_COMMENT.test(commentText);
+}
+
+/** @purpose Exact source grammar, with JavaScript kept outside the TypeScript syntax superset. */
+type TsDialect = 'javascript' | 'typescript' | 'tsx';
+
+/**
+ * @purpose Pick an exact grammar: JavaScript supports JSX without accepting TypeScript-only syntax.
+ * @param filePath Source path.
+ * @returns TypeScript for `.ts`/`.mts`/`.cts`, TSX for `.tsx`, JavaScript otherwise.
+ */
+function dialectFor(filePath: string): TsDialect {
+  if (/\.[cm]?ts$/i.test(filePath)) return 'typescript';
+  return /\.tsx$/i.test(filePath) ? 'tsx' : 'javascript';
+}
 
 /**
  * @purpose Declaration types whose `export default` still needs a DbC contract — function/arrow/class
@@ -45,8 +76,8 @@ const DEFAULT_CONTRACT_DECL_TYPES: ReadonlySet<string> = new Set([
  * @invariant `exported` contains all top-level exported entities, excluding re-exports.
  */
 export class DbcTsAstAdapter implements DbcAstAdapter {
-  /** @purpose Lazy-initialized tree-sitter parser instance */
-  protected _parser: Parser | undefined;
+  /** @purpose Lazy-initialized tree-sitter parser per grammar dialect */
+  protected _parsers: Map<TsDialect, Parser> = new Map();
 
   /** @see {DbcAstAdapter#parseFile} in ../../dbc-ast-adapter.types.ts */
   async parseFile(filePath: string, content?: string): Promise<DbcParseResult> {
@@ -54,7 +85,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     try {
       logger.debug(`[DbcTsAstAdapter#parseFile] [idle → reading] ${filePath}`);
       const source = content ?? readFileSync(filePath, 'utf8');
-      const parser = await this._initializeParser();
+      const parser = await this._initializeParser(dialectFor(filePath));
       const tree = parser.parse(source);
 
       const hasError = tree.rootNode.hasError as unknown as boolean;
@@ -92,23 +123,274 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   }
 
   /**
-   * @purpose Lazy-initializes the tree-sitter Parser with the TypeScript grammar.
+   * @purpose List every ES export of a file for inventory sync; contract checks keep using `parseFile`.
+   * @invariant Covers declarations, `export {…}`, re-exports, `export * as ns` and every default form;
+   *   a default without a binding name only sets `hasDefault`. Never throws.
+   * @param filePath Source path selecting JavaScript, TypeScript or TSX grammar.
+   * @param [content] Source text; read from disk when omitted.
+   * @returns Export names, or an error when the file cannot be read or parsed.
+   */
+  async parseExportNames(
+    filePath: string,
+    content?: string
+  ): Promise<{ ok: true; names: DbcExportNames } | { ok: false; error: string }> {
+    try {
+      const source = content ?? readFileSync(filePath, 'utf8');
+      const tree = (await this._initializeParser(dialectFor(filePath))).parse(source);
+      if (tree.rootNode.hasError as unknown as boolean) {
+        return { ok: false, error: `Syntax error in ${filePath}` };
+      }
+      const local = new Set<string>();
+      const commonLocal = new Set<string>();
+      const commonShadow = this._commonJsShadow(tree.rootNode, source);
+      let commonReplaced = false;
+      const reexported = new Set<string>();
+      let hasDefault = false;
+      let starReexport = false;
+      for (const node of this._children(tree.rootNode)) {
+        const common = commonShadow ? null : this._commonJsAssignment(node, source);
+        if (common) {
+          if (common.kind === 'property') {
+            if (common.via !== 'exports' || !commonReplaced) commonLocal.add(common.name);
+          } else {
+            commonLocal.clear();
+            commonReplaced = true;
+            hasDefault = true;
+            if (common.value.type === 'object') {
+              for (const property of this._children(common.value)) {
+                if (property.type === 'pair' || property.type === 'method_definition') {
+                  const key =
+                    property.childForFieldName?.('key') ?? property.childForFieldName?.('name');
+                  if (key && /^(?:property_identifier|identifier)$/.test(key.type))
+                    commonLocal.add(source.slice(key.startIndex, key.endIndex));
+                  else starReexport = true;
+                } else if (property.type === 'shorthand_property_identifier')
+                  commonLocal.add(source.slice(property.startIndex, property.endIndex));
+                else if (property.type === 'spread_element') starReexport = true;
+              }
+            } else {
+              const id = this._innermostIdentifier(common.value);
+              if (id) commonLocal.add(source.slice(id.startIndex, id.endIndex));
+            }
+          }
+          continue;
+        }
+        if (node.type !== 'export_statement') {
+          if (!commonShadow && this._hasCommonJsWrite(node, source)) starReexport = true;
+          continue;
+        }
+        const text = (n: SyntaxNode) => source.slice(n.startIndex, n.endIndex);
+        const fromSource = node.childForFieldName?.('source') ?? null;
+        const isDefault = this._children(node).some((c) => c.type === 'default');
+        const clause = this._findChild(node, 'export_clause');
+        const namespace = this._findChild(node, 'namespace_export');
+        if (clause) {
+          for (const spec of this._children(clause).filter((c) => c.type === 'export_specifier')) {
+            const name = spec.childForFieldName?.('name');
+            const alias = spec.childForFieldName?.('alias');
+            const exported = alias ? text(alias) : name ? text(name) : '';
+            if (exported === 'default') {
+              hasDefault = true;
+              if (name && !fromSource) local.add(text(name));
+            } else if (exported) (fromSource ? reexported : local).add(exported);
+          }
+          continue;
+        }
+        if (namespace) {
+          const id = this._findChild(namespace, 'identifier');
+          if (id) reexported.add(text(id));
+          continue;
+        }
+        if (fromSource) {
+          starReexport = true;
+          continue;
+        }
+        if (isDefault) hasDefault = true;
+        const declaration = node.childForFieldName?.('declaration') ?? null;
+        if (declaration) {
+          for (const name of this._declaredNames(declaration, source)) local.add(name);
+          continue;
+        }
+        const value = node.childForFieldName?.('value') ?? null;
+        const identifier = value ? this._innermostIdentifier(value) : null;
+        if (identifier) local.add(text(identifier));
+      }
+      return {
+        ok: true,
+        names: {
+          local: [...new Set([...local, ...commonLocal])],
+          reexported: [...reexported],
+          hasDefault,
+          starReexport,
+        },
+      };
+    } catch (cause) {
+      return { ok: false, error: `Failed to parse ${filePath}: ${String(cause)}` };
+    }
+  }
+
+  /**
+   * @purpose Recognize direct static CommonJS assignments without interpreting strings as code.
+   * @param node Top-level syntax node.
+   * @param source Original source bytes decoded as text.
+   * @returns Static public name and value, or null for non-static/wiring statements.
+   */
+  protected _commonJsAssignment(
+    node: SyntaxNode,
+    source: string
+  ): {
+    kind: 'replacement' | 'property';
+    name: string;
+    value: SyntaxNode;
+    via: 'module' | 'exports';
+  } | null {
+    if (node.type !== 'expression_statement') return null;
+    const assignment = this._findChild(node, 'assignment_expression');
+    const left = assignment?.childForFieldName?.('left');
+    const value = assignment?.childForFieldName?.('right');
+    if (!left || !value) return null;
+    const spelling = source.slice(left.startIndex, left.endIndex).replace(/\s/g, '');
+    if (spelling === 'module.exports')
+      return { kind: 'replacement', name: 'default', value, via: 'module' };
+    const property = /^(?:module\.exports|exports)\.([A-Za-z_$][\w$]*)$/.exec(spelling);
+    return property
+      ? {
+          kind: 'property',
+          name: property[1]!,
+          value,
+          via: spelling.startsWith('exports.') ? 'exports' : 'module',
+        }
+      : null;
+  }
+
+  /**
+   * @purpose Recognize top-level local bindings that shadow the CommonJS wrapper names.
+   * @param root Root syntax node.
+   * @param source Original source.
+   * @returns True when module or exports is a local declared identifier.
+   */
+  protected _commonJsShadow(root: SyntaxNode, source: string): boolean {
+    return this._children(root).some((node) =>
+      this._declaredNames(node, source).some((name) => name === 'module' || name === 'exports')
+    );
+  }
+
+  /**
+   * @purpose Preserve uncertainty for dynamic/nested CommonJS writes, never treating them as no exports.
+   * @param node Unresolved syntax subtree.
+   * @param source Original source.
+   * @returns Whether a CommonJS-shaped assignment prevents a closed static inventory.
+   */
+  protected _hasCommonJsWrite(node: SyntaxNode, source: string): boolean {
+    const pending = [node];
+    while (pending.length) {
+      const current = pending.pop()!;
+      if (
+        /^delete\s+(?:module\s*\.\s*exports|exports)\b/.test(
+          source.slice(current.startIndex, current.endIndex)
+        )
+      )
+        return true;
+      if (current.type === 'assignment_expression') {
+        const left = current.childForFieldName?.('left');
+        if (
+          left &&
+          /^(?:module\s*\.\s*exports|exports)(?:\s*[.\[]|$)/.test(
+            source.slice(left.startIndex, left.endIndex)
+          )
+        )
+          return true;
+      }
+      pending.push(...this._children(current));
+    }
+    return false;
+  }
+
+  /**
+   * @purpose Names bound by every declarator, including nested destructuring and aliases.
+   * @param declaration Declaration node of an export statement.
+   * @param source Full source text.
+   * @returns Runtime binding names, excluding property keys and initializer references.
+   */
+  protected _declaredNames(declaration: SyntaxNode, source: string): string[] {
+    if (declaration.type === 'lexical_declaration' || declaration.type === 'variable_declaration') {
+      return this._children(declaration)
+        .filter((c) => c.type === 'variable_declarator')
+        .flatMap((c) => this._bindingNames(c.childForFieldName?.('name') ?? null, source));
+    }
+    const name = declaration.childForFieldName?.('name') ?? null;
+    return name ? [source.slice(name.startIndex, name.endIndex)] : [];
+  }
+
+  /**
+   * @purpose Read only binding positions; defaults and computed keys never introduce exported names.
+   * @param pattern Identifier or destructuring pattern.
+   * @param source Full source text.
+   * @returns Bound identifiers in source order.
+   */
+  protected _bindingNames(pattern: SyntaxNode | null, source: string): string[] {
+    if (!pattern) return [];
+    switch (pattern.type) {
+      case 'identifier':
+      case 'shorthand_property_identifier_pattern':
+        return [source.slice(pattern.startIndex, pattern.endIndex)];
+      case 'pair_pattern':
+        return this._bindingNames(pattern.childForFieldName?.('value') ?? null, source);
+      case 'assignment_pattern':
+      case 'object_assignment_pattern':
+        return this._bindingNames(pattern.childForFieldName?.('left') ?? null, source);
+      case 'object_pattern':
+      case 'array_pattern':
+      case 'rest_pattern':
+        return this._children(pattern).flatMap((child) => this._bindingNames(child, source));
+      default:
+        return [];
+    }
+  }
+
+  /**
+   * @purpose The identifier a default-exported expression stands for: `x`, `x as T`, `(x)`.
+   * @param value Exported expression.
+   * @returns The identifier node, or null for `new X()`, literals, calls and functions.
+   */
+  protected _innermostIdentifier(value: SyntaxNode): SyntaxNode | null {
+    let node: SyntaxNode | null = value;
+    while (
+      node &&
+      (node.type === 'as_expression' ||
+        node.type === 'satisfies_expression' ||
+        node.type === 'parenthesized_expression' ||
+        node.type === 'non_null_expression')
+    ) {
+      node = this._children(node).find((c) => c.type !== '(' && c.type !== ')') ?? null;
+    }
+    return node && node.type === 'identifier' ? node : null;
+  }
+
+  /**
+   * @purpose Lazy-initializes the tree-sitter Parser for one grammar dialect.
    * Uses dynamic import so tree-sitter is only loaded when the adapter is actually used.
+   * @param [dialect] Exact JavaScript, TypeScript or TSX grammar.
    * @returns Configured Parser instance.
    */
-  protected async _initializeParser(): Promise<Parser> {
-    if (!this._parser) {
-      const [treeSitterModule, tsModule] = await Promise.all([
-        import('tree-sitter'),
-        import('tree-sitter-typescript'),
-      ]);
+  protected async _initializeParser(dialect: TsDialect = 'tsx'): Promise<Parser> {
+    let parser = this._parsers.get(dialect);
+    if (!parser) {
+      const treeSitterModule = await import('tree-sitter');
+      // JavaScript is an explicit dependency of tree-sitter-typescript. Resolve from that
+      // package so installed layouts need not hoist its native grammar beside our entrypoint.
+      const grammars: unknown =
+        dialect === 'javascript'
+          ? createRequire(import.meta.resolve('tree-sitter-typescript'))('tree-sitter-javascript')
+          : (await import('tree-sitter-typescript')).default;
       const ParserImpl = treeSitterModule.default;
-      const tsLanguage = tsModule.default;
-      this._parser = new ParserImpl();
-      const language: unknown = (tsLanguage as Record<string, unknown>).tsx ?? tsLanguage;
-      this._parser.setLanguage(language as Parser.Language);
+      parser = new ParserImpl();
+      const language: unknown =
+        dialect === 'javascript' ? grammars : (grammars as Record<string, unknown>)[dialect];
+      parser.setLanguage(language as Parser.Language);
+      this._parsers.set(dialect, parser);
     }
-    return this._parser;
+    return parser;
   }
 
   /**
@@ -121,6 +403,9 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   protected _extractExported(root: SyntaxNode, source: string): DbcExportedEntity[] {
     // --- EXTRACT_EXPORTED
     const entities: DbcExportedEntity[] = [];
+    const commonEntities = new Map<string, DbcExportedEntity>();
+    const commonShadow = this._commonJsShadow(root, source);
+    let commonReplaced = false;
     let pendingContract: RawContract | undefined;
 
     for (let idx = 0; idx < root.childCount; idx += 1) {
@@ -135,7 +420,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
             startLine: child.startPosition.row + 1,
             startCol: child.startPosition.column + 1,
           };
-        } else {
+        } else if (!isDirectiveLineComment(commentText)) {
           pendingContract = undefined;
         }
         continue;
@@ -151,13 +436,32 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
         continue;
       }
 
+      const common = commonShadow ? null : this._commonJsAssignment(child, source);
+      if (common?.kind === 'replacement') {
+        commonEntities.clear();
+        commonReplaced = true;
+      }
+      if (
+        common &&
+        (common.via !== 'exports' || !commonReplaced) &&
+        DEFAULT_CONTRACT_DECL_TYPES.has(common.value.type)
+      ) {
+        const kind = common.value.type === 'class' ? 'class' : 'function';
+        commonEntities.set(common.name, {
+          name: common.name,
+          kind,
+          members: this._extractMembers(common.value, source, kind),
+          signature: { ...this._extractSignature(common.value, source), valueFunction: true },
+          ...(pendingContract ? { contract: pendingContract } : {}),
+        });
+      }
       // Non-export, non-comment node resets the pending contract
       if (child.type !== 'comment') {
         pendingContract = undefined;
       }
     }
 
-    return entities;
+    return [...entities, ...commonEntities.values()];
     // --- END EXTRACT_EXPORTED
   }
 
@@ -332,16 +636,41 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @returns Signature info with empty arrays for non-callable entities.
    */
   protected _extractSignature(node: SyntaxNode, source: string): DbcSignatureInfo {
+    // `export const f = (a) => …` / `= function (a) {…}`: the callable lives in the declarator value.
+    if (node.type === 'lexical_declaration' || node.type === 'variable_declaration') {
+      const declarators = this._children(node).filter((c) => c.type === 'variable_declarator');
+      const value = declarators.length === 1 ? declarators[0].childForFieldName?.('value') : null;
+      if (
+        value &&
+        (value.type === 'arrow_function' ||
+          value.type === 'function_expression' ||
+          value.type === 'function')
+      ) {
+        return { ...this._extractSignature(value, source), valueFunction: true };
+      }
+      return { params: [], returnType: 'void' };
+    }
+
     const params: DbcParamInfo[] = [];
     let returnType = 'void';
 
     // Find formal_parameters child
     const paramList = this._findChild(node, 'formal_parameters');
+    const single = node.childForFieldName?.('parameter');
+    if (!paramList && single?.type === 'identifier')
+      params.push({
+        name: source.slice(single.startIndex, single.endIndex),
+        type: 'unknown',
+        optional: false,
+        isRest: false,
+      });
     if (paramList) {
       for (let i = 0; i < paramList.childCount; i += 1) {
         const p = paramList.child(i);
         if (!p) continue;
         if (p.type === 'required_parameter' || p.type === 'optional_parameter') {
+          // `this: T` types the receiver; it is not a runtime parameter and has no @param.
+          if (p.childForFieldName?.('pattern')?.type === 'this') continue;
           params.push(this._extractParam(p, source));
         }
       }
@@ -374,6 +703,11 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
     // For non-callable entities, check if there's an implicit return from initialized value
     if (params.length === 0 && !rtNode) {
       returnType = 'void';
+    }
+
+    // A callable without a return annotation may still return a value: @returns is optional.
+    if (!rtNode && (paramList || single)) {
+      return { params, returnType, implicitReturn: true };
     }
 
     return { params, returnType };
@@ -515,7 +849,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
             startLine: child.startPosition.row + 1,
             startCol: child.startPosition.column + 1,
           };
-        } else {
+        } else if (!isDirectiveLineComment(commentText)) {
           pendingContract = undefined;
         }
         continue;
@@ -846,6 +1180,20 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
       }
     }
     return interfaces;
+  }
+
+  /**
+   * @purpose Lists the non-null direct children of a node in order.
+   * @param parent Parent node.
+   * @returns Direct children.
+   */
+  protected _children(parent: SyntaxNode): SyntaxNode[] {
+    const children: SyntaxNode[] = [];
+    for (let i = 0; i < parent.childCount; i += 1) {
+      const child = parent.child(i);
+      if (child) children.push(child);
+    }
+    return children;
   }
 
   /**

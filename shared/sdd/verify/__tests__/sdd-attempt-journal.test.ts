@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import {
   existsSync,
+  lstatSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -21,6 +22,8 @@ import { join, relative } from 'node:path';
 import { it } from 'node:test';
 import { appendExecutionDecision } from '../../deviation.ts';
 import { technicalReplanBase } from '../../technical-replan.ts';
+import { parseTrackerRows, recomputeRollupProgress, updateTrackerStatus } from '../../tracker.ts';
+import { readSddCoverage } from '../../coverage-repository.ts';
 import { runCli } from '../../../../cli/__tests__/tool-behavior/run-cli.ts';
 import type {
   VerifyRunReport,
@@ -1455,3 +1458,322 @@ it('persists remote-required BLOCKED, rejects local PASS, and accepts exact-SHA 
     cleanup();
   }
 });
+
+it('masks only the tracker Status and rollup ratio columns that sdd-sync rewrites', () => {
+  const f = fixture();
+  try {
+    const index = join(f.root, 'specs', 'demo.3-tasks.md');
+    const tracker = (status: string, title: string, deps: string, done: string) =>
+      [
+        '| Task-ID | Title | Deps | Status |',
+        '|---|---|---|---|',
+        `| TSK-1 | ${title} | ${deps} | ${status} |`,
+        '',
+        '| Index | Tasks | Done |',
+        '|---|---|---|',
+        `| [3-tasks](./demo.3-tasks.md) | 1 | ${done} |`,
+        '',
+      ].join('\n');
+    writeFileSync(index, tracker('[ ] TODO', 'Build it', '—', '0/1'));
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+    writeFileSync(index, tracker('[x] DONE', 'Build it', '—', '1/1'));
+    assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'sync bookkeeping');
+    writeFileSync(index, tracker('[x] DONE', '[x] DONE', '—', '1/1'));
+    assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'title cell');
+    writeFileSync(index, tracker('[x] DONE', 'Build it', '1/2', '1/1'));
+    assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'deps cell');
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('drops only receipt blocks whose JSON is a valid receipt of the marker kind', () => {
+  const f = fixture();
+  try {
+    const spec = join(f.root, 'specs', 'demo.spec.md');
+    writeFileSync(spec, '# Demo\n\nRequirement A.\n');
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+    const block = (marker: string, body: string) =>
+      `\n\n<!--${marker}-->\n\`\`\`json\n${body}\n\`\`\`\n<!--/${marker}-->\n`;
+    const receipt = (kind: string) =>
+      JSON.stringify(
+        {
+          schema: 1,
+          kind,
+          group: 'specs/demo.spec.md',
+          members: ['task.md'],
+          gitRef: 'no-head',
+          verdict: 'PASS',
+          ts: '2026-11-02T00:00:00.000Z',
+          signature: 'sha256:x',
+        },
+        null,
+        2
+      );
+    const base = '# Demo\n\nRequirement A.';
+    writeFileSync(spec, base + block('SDD_AUDIT_RECEIPT', receipt('audit')));
+    assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, 'valid receipt');
+    for (const [label, forged] of [
+      ['invalid JSON', block('SDD_AUDIT_RECEIPT', 'Requirement B replaces A.')],
+      ['wrong kind', block('SDD_AUDIT_RECEIPT', receipt('review'))],
+      [
+        'audit BEGIN only',
+        block('SDD_AUDIT_RECEIPT', receipt('audit')).replace('<!--/SDD_AUDIT_RECEIPT-->', ''),
+      ],
+      [
+        'audit END only',
+        block('SDD_AUDIT_RECEIPT', receipt('audit')).replace('<!--SDD_AUDIT_RECEIPT-->', ''),
+      ],
+      [
+        'review BEGIN only',
+        block('SDD_REVIEW_RECEIPT', receipt('review')).replace('<!--/SDD_REVIEW_RECEIPT-->', ''),
+      ],
+      [
+        'review END only',
+        block('SDD_REVIEW_RECEIPT', receipt('review')).replace('<!--SDD_REVIEW_RECEIPT-->', ''),
+      ],
+      ['text in a receipt shell', block('SDD_REVIEW_RECEIPT', '{"note": "Requirement B"}')],
+    ] as const) {
+      writeFileSync(spec, base + forged);
+      assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, label);
+    }
+  } finally {
+    f.cleanup();
+  }
+});
+
+/** @purpose Add exact downstream fixture declarations without rewriting historical evidence. */
+function withDownstreamClaims(ticket: string, laterTarget: string, thirdTarget?: string): void {
+  const text = readFileSync(ticket, 'utf8');
+  writeFileSync(
+    ticket,
+    text
+      .replace(
+        '| P1 | unit | — | [ ] |',
+        '| P1 | unit | — | [ ] |\n| P2 | code | P1 | [ ] |' +
+          (thirdTarget ? '\n| P3 | code | P2 | [ ] |' : '')
+      )
+      .replace(
+        '<!--SECTION:EXECUTION_LOG-->',
+        `<!--SECTION:PHASE_P2-->\n- **Target Files:** \`${laterTarget}\`\n- **Deleted Files:** none\n<!--/SECTION:PHASE_P2-->\n` +
+          (thirdTarget
+            ? `<!--SECTION:PHASE_P3-->\n- **Target Files:** \`${thirdTarget}\`\n- **Deleted Files:** none\n<!--/SECTION:PHASE_P3-->\n`
+            : '') +
+          '<!--SECTION:EXECUTION_LOG-->'
+      )
+  );
+}
+
+it('an overlapping downstream target cannot keep an edited current phase PASS current', async () => {
+  const f = fixture();
+  try {
+    withDownstreamClaims(f.ticket, 'source.ts');
+    await runWithSddAttemptJournal({
+      root: f.root,
+      ticketPath: f.ticket,
+      sddPhase: 'P1',
+      run: async () => ({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        report: report(f.root, [result('pass', true)]),
+      }),
+    });
+    assert.deepEqual(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1'), { ok: true });
+    writeFileSync(join(f.root, 'source.ts'), 'export const value = 999;\n');
+    assert.equal(validateCurrentSddPhaseAttempt(f.root, f.ticket, 'P1').ok, false);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('a later claim cannot exclude upstream-owned source from the current phase identity', () => {
+  const f = fixture();
+  try {
+    withDownstreamClaims(f.ticket, 'middle.ts', 'source.ts');
+    writeFileSync(join(f.root, 'middle.ts'), 'export const middle = 1;\n');
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P2');
+    writeFileSync(join(f.root, 'source.ts'), 'export const value = 2;\n');
+    assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P2'), before);
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('remote overlap cannot authorize provider evidence for changed current-owned bytes', async () => {
+  const f = fixture();
+  try {
+    withDownstreamClaims(f.ticket, 'source.ts');
+    git(f.root, 'add', '.');
+    git(f.root, 'commit', '-qm', 'overlap declarations');
+    const head = git(f.root, 'rev-parse', 'HEAD');
+    const base = report(f.root, [result('pass', true)]);
+    const remote: VerifyRunReport = {
+      ...base,
+      plan: { ...base.plan, trust: { level: 'remote-provider', source: 'fixture:exact-source' } },
+      remote: {
+        schema: 'gennady.verify-remote-proof.v1',
+        provider: 'gitlab',
+        project: 'group/repo',
+        definitionId: 'source:push',
+        sourceSha: head,
+        pipelineId: '88',
+        pipelineSha: head,
+        rawStatus: 'success',
+        terminalState: 'REMOTE_SUCCESS',
+        observedAt: '2026-11-02T00:00:00.000Z',
+        jobs: [],
+      },
+    };
+    writeFileSync(join(f.root, 'source.ts'), 'export const value = 9;\n');
+    const outcome = await runWithSddAttemptJournal({
+      root: f.root,
+      ticketPath: f.ticket,
+      sddPhase: 'P1',
+      run: async () => ({ exitCode: 0, stdout: '', stderr: '', report: remote }),
+    });
+    assert.equal(outcome.exitCode, 1);
+    assert.equal(allEvidence(f.ticket).at(-1)?.state, 'VIOLATION');
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('keeps derived rollup repairs current while every semantic tracker cell stays hashed', () => {
+  const f = fixture();
+  try {
+    const index = join(f.root, 'specs', 'demo.3-tasks.md');
+    const original = [
+      '| Task-ID | Title | Deps | Status |',
+      '|---|---|---|---|',
+      '| APP-one | Keep requirements | APP-dep | [ ] TODO |',
+      '',
+      '| Index | Tasks | Done |',
+      '|---|---|---|',
+      '| [tasks](./demo.3-tasks.md) | 9 | 0/9 |',
+      '',
+    ].join('\n');
+    writeFileSync(index, original);
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+    const status = updateTrackerStatus(original, 'APP-one', '[x] DONE');
+    assert.equal(status.ok, true);
+    if (!status.ok) throw new Error(status.reason);
+    const synced = recomputeRollupProgress(status.text, () => parseTrackerRows(status.text)).text;
+    assert.match(synced, /\| 1 \| 1\/1 \|/);
+    writeFileSync(index, synced);
+    assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+    for (const [label, changed] of [
+      ['Task-ID', synced.replace('APP-one', 'APP-two')],
+      ['title', synced.replace('Keep requirements', 'Drop requirements')],
+      ['dependency', synced.replace('APP-dep', 'APP-other')],
+      ['index link', synced.replace('./demo.3-tasks.md', './missing.3-tasks.md')],
+    ]) {
+      writeFileSync(index, changed);
+      assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before, label);
+    }
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('normalizes a safe noncanonical linked index already included in the digest without masking Notes or new tickets', () => {
+  const f = fixture();
+  try {
+    const linked = join(f.root, 'specs', 'custom-progress.md');
+    const rows = '| Task-ID | Status |\n|---|---|\n| APP-one | [x] DONE |\n';
+    writeFileSync(linked, rows);
+    const index = join(f.root, 'specs', 'demo.3-tasks.md');
+    const original =
+      '| Index | Tasks | Done | Notes |\n|---|---|---|---|\n| [custom](./custom-progress.md) | 9 | 0/9 | preserve requirement A |\n';
+    writeFileSync(index, original);
+    const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+    const synced = recomputeRollupProgress(original, () => parseTrackerRows(rows)).text;
+    writeFileSync(index, synced);
+    assert.equal(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+    writeFileSync(index, synced.replace('requirement A', 'requirement B'));
+    assert.notEqual(
+      currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'),
+      before,
+      'Notes stays semantic'
+    );
+    writeFileSync(index, synced);
+    writeFileSync(join(f.root, 'specs', 'new.task.APP-two.md'), '# New task\n');
+    assert.notEqual(
+      currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'),
+      before,
+      'a real new task is not bookkeeping'
+    );
+  } finally {
+    f.cleanup();
+  }
+});
+
+it('does not read ignored or outside linked index context to suppress semantic rollup changes', () => {
+  for (const outside of [false, true]) {
+    const f = fixture();
+    const external = mkdtempSync(join(tmpdir(), 'journal-outside-index-'));
+    try {
+      const linked = outside
+        ? join(external, 'custom.md')
+        : join(f.root, 'specs', 'ignored-progress.md');
+      writeFileSync(linked, '| Task-ID | Status |\n|---|---|\n| APP-one | [x] DONE |\n');
+      if (!outside) writeFileSync(join(f.root, '.gitignore'), 'specs/ignored-progress.md\n');
+      const href = relative(join(f.root, 'specs'), linked).split('\\').join('/');
+      const index = join(f.root, 'specs', 'demo.3-tasks.md');
+      const original = `| Index | Tasks | Done |\n|---|---|---|\n| [context](${href}) | 9 | 0/9 |\n`;
+      writeFileSync(index, original);
+      const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+      writeFileSync(index, original.replace('0/9', '1/9'));
+      assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+    } finally {
+      f.cleanup();
+      rmSync(external, { recursive: true, force: true });
+    }
+  }
+});
+
+for (const [label, stored, alternate] of [
+  ['case', 'Foo.ts', 'foo.ts'],
+  ['Unicode normalization', '\u00e9.ts', 'e\u0301.ts'],
+] as const)
+  it(`literal ${label} aliases cannot erase current-owned bytes from freshness`, (context) => {
+    const f = fixture(true);
+    try {
+      mkdirSync(join(f.root, 'src'));
+      const actual = `src/${stored}`;
+      const alias = `src/${alternate}`;
+      const source = '// @spec: DEM\nexport const value = 1;\n';
+      writeFileSync(join(f.root, actual), source);
+      const aliasExists = existsSync(join(f.root, alias));
+      if (!aliasExists) writeFileSync(join(f.root, alias), source);
+      const sameFile = lstatSync(join(f.root, actual)).ino === lstatSync(join(f.root, alias)).ino;
+      context.diagnostic(
+        `Host treats ${label} variants as ${sameFile ? 'one physical file' : 'distinct files'}`
+      );
+      writeFileSync(
+        f.ticket,
+        '<!--SECTION:META-->\n**Task-ID:** DEM-work\n**Status:** [ ] TODO\n<!--/SECTION:META-->\n' +
+          readFileSync(f.ticket, 'utf8').replace('  - source.ts', `  - ${alias}`)
+      );
+      withDownstreamClaims(f.ticket, actual);
+      writeFileSync(
+        join(f.root, 'specs/demo.spec.md'),
+        `<!--SECTION:SPEC_ID-->\nDEM\n<!--/SECTION:SPEC_ID-->\n<!--SECTION:FILE_STRUCTURE-->\n**File Mapping:**\n- \`${actual}\`: implementation\n- \`${alias}\`: implementation\n<!--/SECTION:FILE_STRUCTURE-->\n`
+      );
+      git(f.root, 'add', '-A');
+      const coverage = readSddCoverage(f.root, { kind: 'project' }, 'audit');
+      assert.equal(coverage.coverage.complete, true, JSON.stringify(coverage.coverage.findings));
+      const before = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+      writeFileSync(join(f.root, actual), '// @spec: DEM\nexport const value = 999;\n');
+      const after = currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1');
+      if (sameFile)
+        assert.notEqual(after, before, 'a spelling alias is still the current phase source');
+      else {
+        assert.equal(after, before, 'a distinct truly-later file remains excluded');
+        writeFileSync(join(f.root, alias), '// @spec: DEM\nexport const value = 2;\n');
+        assert.notEqual(currentSddPhaseWorktreeDigest(f.root, f.ticket, 'P1'), before);
+      }
+    } finally {
+      f.cleanup();
+    }
+  });

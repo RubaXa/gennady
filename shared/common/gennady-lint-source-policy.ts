@@ -5,7 +5,7 @@
 import { extname } from 'node:path';
 import { matchesAnyGlob } from './glob-match.ts';
 
-const EXTENSIONS = new Set(['.ts', '.tsx']);
+const EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']);
 const SYSTEM_DIRECTORIES = new Set(['node_modules', 'dist', 'coverage', 'build', 'out']);
 const SYSTEM_EXCLUDES = [
   '**/node_modules/**',

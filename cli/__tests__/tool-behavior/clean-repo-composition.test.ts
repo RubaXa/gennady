@@ -488,6 +488,15 @@ describe('clean-repo SDD composition harness', { concurrency: 1 }, () => {
         'P3',
         'package.json, scripts/verify-extra.mjs, src/test-support.ts, test/toolchain-smoke.test.js'
       );
+      // P3 changed a file already verified by P1. A later declaration cannot hide that drift.
+      const beforeRejectedClose = readFileSync(join(root, TICKET), 'utf8');
+      const staleClose = runCli(['sdd-log', TICKET, 'close'], root);
+      assert.notEqual(staleClose.exitCode, 0, staleClose.stdout + staleClose.stderr);
+      assert.match(staleClose.stdout, /phase P1 PASS is stale after worktree changed/);
+      assert.equal(readFileSync(join(root, TICKET), 'utf8'), beforeRejectedClose);
+      const finalPackage = readFileSync(packagePath, 'utf8');
+      for (const phase of ['P1', 'P2', 'P3']) verifyPhase(root, phase);
+      assert.equal(readFileSync(packagePath, 'utf8'), finalPackage);
       runOk(root, ['sdd-log', TICKET, 'close']);
 
       runOk(root, ['sdd-check', '--task', TICKET]);

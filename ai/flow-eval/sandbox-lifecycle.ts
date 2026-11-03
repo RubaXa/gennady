@@ -85,8 +85,11 @@ export async function countPendingOperatorDeviations(root: string): Promise<numb
 // Directory segments that are provisioned scaffolding, never worker-authored output.
 const NON_ARTIFACT_SEGMENTS = new Set(['ai', 'node_modules', '.claude', '.git']);
 
-/** @purpose Recursively collect worker-authored *.spec.md paths, skipping provisioned scaffolding. */
-export async function collectSpecFiles(root: string): Promise<string[]> {
+/** @purpose Preserve all partial specs for lifecycle recovery; durable export opts into canonical specs/** only. */
+export async function collectSpecFiles(
+  root: string,
+  options: { canonicalOnly?: boolean } = {}
+): Promise<string[]> {
   const found: string[] = [];
   async function walk(dir: string): Promise<void> {
     let entries: Awaited<ReturnType<typeof readdir>>;
@@ -104,7 +107,14 @@ export async function collectSpecFiles(root: string): Promise<string[]> {
       }
     }
   }
-  await walk(root);
+  const specsRoot = options.canonicalOnly ? join(root, 'specs') : root;
+  try {
+    // Starting directly at specs must not follow a symlink that the old directory walk skipped.
+    if (!(await lstat(specsRoot)).isDirectory()) return [];
+  } catch {
+    return [];
+  }
+  await walk(specsRoot);
   return found.sort();
 }
 

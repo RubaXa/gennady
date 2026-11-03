@@ -1,0 +1,411 @@
+{
+  "schema": "gennady.brownfield-exit-echo-input.v1",
+  "label": "E3-v2-prior-censored",
+  "rawRecordPath": "ai/flow-eval/results/2026-11-03-brownfield-e3-e4-confirmation/records/0.json",
+  "rawRecordSha256": "b33c0ee9883d3a978cf30080daa91e7ad3a61a90cd396873f3b48f2266fad124",
+  "sourceBindings": {
+    "privateArchiveSha256": "62e06e230071cd715c6e273ba96d0cde106ce156fcdafa8aed79231620d24dd8",
+    "privatePrimarySha256": "299dbec0a113e76fa93dea6bffd9cbac8448e332dacf293824db79aa5975daaa",
+    "serverMessagesGzipSha256": "f171b50e182f9c64c44317a0f79cca56daaa83be8c9b4727c60d6ca9b5f81bb7",
+    "serverMessagesBodySha256": "a29aedb6e20135f0954eb5666de146063f55e5507b2eea2669278fc38e2c7b31"
+  },
+  "projection": {
+    "identityTransform": "SHA256 per SDK identity, preserving equality/collisions",
+    "outputTransform": "only full synthetic lint/proposal output; workspace-root spelling normalized; other outputs explicitly withheld",
+    "privatePublicProofEqual": true
+  },
+  "events": [
+    {
+      "i": 0,
+      "tool": "read",
+      "arg": "{\"filePath\":\"./inputs/brief.md\"}",
+      "status": "completed",
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:87a3d8bbce312a96e693f74ca26ba86935b2517e43ca0f7da20ddea307650248",
+      "callId": "1804110d78cc0564bdba2c76ee813ea227c1e54f590069e4e9455c86f323322c",
+      "startedAt": 1793707700815,
+      "finishedAt": 1793707700823
+    },
+    {
+      "i": 1,
+      "tool": "bash",
+      "command": "pwd && ls -la && cat src/flag-registry.ts && printf '\\n---SPEC---\\n' && cat specs/settings/registry/registry.spec.md",
+      "arg": "{\"command\":\"pwd && ls -la && cat src/flag-registry.ts && printf '\\\\n---SPEC---\\\\n' && cat specs/settings/registry/registry.spec.md\"}",
+      "status": "completed",
+      "exitCode": 0,
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:9e245608d085bf3a791e2626b2fb734739db88d4b60d63845606556a48899517",
+      "callId": "981e3298c5cf6931a60adc701c57e8544654f33e6f52914a87721845d3682ffc",
+      "startedAt": 1793707702384,
+      "finishedAt": 1793707702387
+    },
+    {
+      "i": 2,
+      "tool": "bash",
+      "command": "npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts 2>&1; echo \"EXIT:$?\"",
+      "arg": "{\"command\":\"npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts 2>&1; echo \\\"EXIT:$?\\\"\"}",
+      "status": "completed",
+      "exitCode": 0,
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:67990033af8900c6f664f12f98043bf237544f0a078b4679c362a2e01f40a802",
+      "callId": "f43d4d917464e6ae66bfcfcfc611063b6479193b2ec15d09d1fb0d81ef89efb2",
+      "startedAt": 1793707704778,
+      "finishedAt": 1793707704781
+    },
+    {
+      "i": 3,
+      "tool": "bash",
+      "command": "mkdir -p .claude/tmp && cat > .claude/tmp/lint-proposal.json <<'EOF'\n{\n  \"id\": \"REG-DL-1\",\n  \"what\": \"Exempt only src/flag-registry.ts from the dbc and inventory lint checks under proposal REG-DL-1.\",\n  \"why\": \"The file is an existing historical constants registry whose eight exports predate the closed-world inventory and DBC contract rules, and this policy-review task must not change source or spec bytes.\",\n  \"where\": \"src/flag-registry.ts\",\n  \"evidence\": \"Installed gennady lint on src/flag-registry.ts reports 16 errors: 8x ERR_DBC_LINT_MISSING_CONTRACT and 8x ERR_CLI_LINT_INVENTORY_UNDECLARED across FEATURE_1 through FEATURE_8.\",\n  \"alternative\": \"Leave the source and spec unchanged and retain all 16 lint failures until a separate scoped refactor adds DBC contracts and module Entity Inventory entries.\",\n  \"verify\": \"Re-run npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts and confirm only the exempted dbc and inventory diagnostics remain.\",\n  \"lintExemption\": {\n    \"file\": \"src/flag-registry.ts\",\n    \"checks\": [\"dbc\", \"inventory\"]\n  }\n}\nEOF\ncat .claude/tmp/lint-proposal.json",
+      "arg": "{\"command\":\"mkdir -p .claude/tmp && cat > .claude/tmp/lint-proposal.json <<'EOF'\\n{\\n  \\\"id\\\": \\\"REG-DL-1\\\",\\n  \\\"what\\\": \\\"Exempt only src/flag-registry.ts from the dbc and inventory lint checks under proposal REG-DL-1.\\\",\\n  \\\"why\\\": \\\"The file is an existing historical constants registry whose eight exports predate the closed-world inventory and DBC contract rules, and this policy-review task must not change source or spec bytes.\\\",\\n  \\\"where\\\": \\\"src/flag-registry.ts\\\",\\n  \\\"evidence\\\": \\\"Installed gennady lint on src/flag-registry.ts reports 16 errors: 8x ERR_DBC_LINT_MISSING_CONTRACT and 8x ERR_CLI_LINT_INVENTORY_UNDECLARED across FEATURE_1 through FEATURE_8.\\\",\\n  \\\"alternative\\\": \\\"Leave the source and spec unchanged and retain all 16 lint failures until a separate scoped refactor adds DBC contracts and module Entity Inventory entries.\\\",\\n  \\\"verify\\\": \\\"Re-run npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts and confirm only the exempted dbc and inventory diagnostics remain.\\\",\\n  \\\"lintExemption\\\": {\\n    \\\"file\\\": \\\"src/flag-registry.ts\\\",\\n    \\\"checks\\\": [\\\"dbc\\\", \\\"inventory\\\"]\\n  }\\n}\\nEOF\\ncat .claude/tmp/lint-proposal.json\"}",
+      "status": "completed",
+      "exitCode": 0,
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:b736469a9edeba483a73c6b481daebe078130c6a6224e72bacb9c51a96460802",
+      "callId": "39e8d291a4526d38e9b5a5ba627dac90fa577fae8b17628a6e1a020bf80146f7",
+      "startedAt": 1793707709648,
+      "finishedAt": 1793707709650
+    },
+    {
+      "i": 4,
+      "tool": "bash",
+      "command": "npx --no-install sdd-log specs/settings/registry/registry.spec.md decision --payload-file .claude/tmp/lint-proposal.json 2>&1; echo \"EXIT:$?\"",
+      "arg": "{\"command\":\"npx --no-install sdd-log specs/settings/registry/registry.spec.md decision --payload-file .claude/tmp/lint-proposal.json 2>&1; echo \\\"EXIT:$?\\\"\"}",
+      "status": "completed",
+      "exitCode": 0,
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:14cc7a35ee15e1f740e03e12a5e0e49a5395e96e860eca08ee31a27264877ee3",
+      "callId": "2ec9fdfff31de45ea82810a083bd80982f0defdee28bd3189807413c49955046",
+      "startedAt": 1793707781839,
+      "finishedAt": 1793707781843
+    },
+    {
+      "i": 5,
+      "tool": "bash",
+      "command": "ls node_modules/.bin 2>/dev/null; echo '---'; ls node_modules | head -50; echo '---'; cat package.json 2>/dev/null; cat gennady.yaml",
+      "arg": "{\"command\":\"ls node_modules/.bin 2>/dev/null; echo '---'; ls node_modules | head -50; echo '---'; cat package.json 2>/dev/null; cat gennady.yaml\"}",
+      "status": "completed",
+      "exitCode": 0,
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:ef83d8e323aa4b5c1fa75d6f43d387d3c958c38a80786163dcb7b153645b311c",
+      "callId": "35a58b02fdb9ed6aae133d48472915867c7b7686bd66541fff4441456857299a",
+      "startedAt": 1793707783663,
+      "finishedAt": 1793707783666
+    },
+    {
+      "i": 6,
+      "tool": "bash",
+      "command": "command -v sdd-log || true; command -v gennady || true; ls -la node_modules/gennady 2>/dev/null; node -e \"const p=require('./node_modules/gennady/package.json'); console.log(p.name,p.version,p.bin)\" 2>&1",
+      "arg": "{\"command\":\"command -v sdd-log || true; command -v gennady || true; ls -la node_modules/gennady 2>/dev/null; node -e \\\"const p=require('./node_modules/gennady/package.json'); console.log(p.name,p.version,p.bin)\\\" 2>&1\"}",
+      "status": "completed",
+      "exitCode": 0,
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:a88c28974d196c9d6cb72d648b82eeffd5d001a009e5a7966c52f02646c95b48",
+      "callId": "bd812b81a71be72dc66dbc7ef53164b3b8f3fe5851f3c4e622c428ef3d78a75d",
+      "startedAt": 1793707786308,
+      "finishedAt": 1793707786310
+    },
+    {
+      "i": 7,
+      "tool": "bash",
+      "command": "grep -R \"sdd-log\\|payload-file\\|pending-operator\\|proposal\" -n node_modules/gennady/README.md node_modules/gennady/dist node_modules/gennady/package.json 2>/dev/null | head -60",
+      "arg": "{\"command\":\"grep -R \\\"sdd-log\\\\|payload-file\\\\|pending-operator\\\\|proposal\\\" -n node_modules/gennady/README.md node_modules/gennady/dist node_modules/gennady/package.json 2>/dev/null | head -60\"}",
+      "status": "completed",
+      "exitCode": 0,
+      "sessionId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+      "messageId": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6:9ec5890d4f9b6899182b69d7c1a1030da53d6e82e74c2403f7e2b02782e618ce",
+      "callId": "dc310f4828449332e18da2f97235518d03e57b6f860e371d696841a8dadb9600",
+      "startedAt": 1793707788436,
+      "finishedAt": 1793707788480
+    }
+  ],
+  "capture": {
+    "complete": true,
+    "messages": [
+      {
+        "info": {
+          "id": "25ede1d84e77de34dcf657942a24156ee66dd7a434bfc4eceb4d86af19f8e3e0",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "user"
+        },
+        "parts": []
+      },
+      {
+        "info": {
+          "id": "87a3d8bbce312a96e693f74ca26ba86935b2517e43ca0f7da20ddea307650248",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "read",
+            "callID": "1804110d78cc0564bdba2c76ee813ea227c1e54f590069e4e9455c86f323322c",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "87a3d8bbce312a96e693f74ca26ba86935b2517e43ca0f7da20ddea307650248",
+            "state": {
+              "status": "completed",
+              "input": {},
+              "time": {
+                "start": 1793707700815,
+                "end": 1793707700823
+              },
+              "output": "",
+              "metadata": {
+                "truncated": true,
+                "output": ""
+              }
+            },
+            "projection": {
+              "outputWithheld": true
+            }
+          }
+        ]
+      },
+      {
+        "info": {
+          "id": "9e245608d085bf3a791e2626b2fb734739db88d4b60d63845606556a48899517",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "bash",
+            "callID": "981e3298c5cf6931a60adc701c57e8544654f33e6f52914a87721845d3682ffc",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "9e245608d085bf3a791e2626b2fb734739db88d4b60d63845606556a48899517",
+            "state": {
+              "status": "completed",
+              "input": {
+                "command": "pwd && ls -la && cat src/flag-registry.ts && printf '\\n---SPEC---\\n' && cat specs/settings/registry/registry.spec.md"
+              },
+              "time": {
+                "start": 1793707702384,
+                "end": 1793707702387
+              },
+              "output": "",
+              "metadata": {
+                "exit": 0,
+                "truncated": true,
+                "output": ""
+              }
+            },
+            "projection": {
+              "outputWithheld": true
+            }
+          }
+        ]
+      },
+      {
+        "info": {
+          "id": "67990033af8900c6f664f12f98043bf237544f0a078b4679c362a2e01f40a802",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "bash",
+            "callID": "f43d4d917464e6ae66bfcfcfc611063b6479193b2ec15d09d1fb0d81ef89efb2",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "67990033af8900c6f664f12f98043bf237544f0a078b4679c362a2e01f40a802",
+            "state": {
+              "status": "completed",
+              "input": {
+                "command": "npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts 2>&1; echo \"EXIT:$?\""
+              },
+              "time": {
+                "start": 1793707704778,
+                "end": 1793707704781
+              },
+              "output": "Effective lint.scope=all (source=gennady.yaml).\n❌ [LintCommand#run] [linting → failed] 16 error(s)\n<workspace>/src/flag-registry.ts:1:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_1' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:2:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_2' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:3:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_3' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:4:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_4' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:5:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_5' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:6:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_6' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:7:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_7' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:8:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_8' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_1` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_2` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_3` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_4` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_5` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_6` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_7` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_8` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n\n---\nRelevant specs & tasks for errors above:\n  specs/settings/registry/registry.spec.md\nEXIT:1\n",
+              "metadata": {
+                "exit": 0,
+                "truncated": false,
+                "output": "Effective lint.scope=all (source=gennady.yaml).\n❌ [LintCommand#run] [linting → failed] 16 error(s)\n<workspace>/src/flag-registry.ts:1:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_1' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:2:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_2' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:3:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_3' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:4:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_4' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:5:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_5' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:6:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_6' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:7:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_7' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:8:1: error: ERR_DBC_LINT_MISSING_CONTRACT: Entity 'FEATURE_8' (const) is missing a DBC contract\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_1` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_2` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_3` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_4` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_5` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_6` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_7` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n<workspace>/src/flag-registry.ts:1:1: error: ERR_CLI_LINT_INVENTORY_UNDECLARED: Exported `FEATURE_8` is not in the module's closed-world Entity Inventory (AX_CLOSED_WORLD_INVENTORY). Fix: remove it, or — if genuinely needed — log an `intro <name> ← <reason>` line (AX_INTRODUCED_DISCIPLINE) and backflow it into the spec inventory; never silently keep an undeclared export. If you added it under drift / context loss, re-read the module spec ## 3 Entity Inventory and AX_INTRODUCED_DISCIPLINE.\n\n---\nRelevant specs & tasks for errors above:\n  specs/settings/registry/registry.spec.md\nEXIT:1\n"
+              }
+            },
+            "projection": {
+              "outputWithheld": false
+            }
+          }
+        ]
+      },
+      {
+        "info": {
+          "id": "b736469a9edeba483a73c6b481daebe078130c6a6224e72bacb9c51a96460802",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "bash",
+            "callID": "39e8d291a4526d38e9b5a5ba627dac90fa577fae8b17628a6e1a020bf80146f7",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "b736469a9edeba483a73c6b481daebe078130c6a6224e72bacb9c51a96460802",
+            "state": {
+              "status": "completed",
+              "input": {
+                "command": "mkdir -p .claude/tmp && cat > .claude/tmp/lint-proposal.json <<'EOF'\n{\n  \"id\": \"REG-DL-1\",\n  \"what\": \"Exempt only src/flag-registry.ts from the dbc and inventory lint checks under proposal REG-DL-1.\",\n  \"why\": \"The file is an existing historical constants registry whose eight exports predate the closed-world inventory and DBC contract rules, and this policy-review task must not change source or spec bytes.\",\n  \"where\": \"src/flag-registry.ts\",\n  \"evidence\": \"Installed gennady lint on src/flag-registry.ts reports 16 errors: 8x ERR_DBC_LINT_MISSING_CONTRACT and 8x ERR_CLI_LINT_INVENTORY_UNDECLARED across FEATURE_1 through FEATURE_8.\",\n  \"alternative\": \"Leave the source and spec unchanged and retain all 16 lint failures until a separate scoped refactor adds DBC contracts and module Entity Inventory entries.\",\n  \"verify\": \"Re-run npx --no-install gennady lint --spec=specs/settings/registry/registry.spec.md src/flag-registry.ts and confirm only the exempted dbc and inventory diagnostics remain.\",\n  \"lintExemption\": {\n    \"file\": \"src/flag-registry.ts\",\n    \"checks\": [\"dbc\", \"inventory\"]\n  }\n}\nEOF\ncat .claude/tmp/lint-proposal.json"
+              },
+              "time": {
+                "start": 1793707709648,
+                "end": 1793707709650
+              },
+              "output": "",
+              "metadata": {
+                "exit": 0,
+                "truncated": true,
+                "output": ""
+              }
+            },
+            "projection": {
+              "outputWithheld": true
+            }
+          }
+        ]
+      },
+      {
+        "info": {
+          "id": "14cc7a35ee15e1f740e03e12a5e0e49a5395e96e860eca08ee31a27264877ee3",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "bash",
+            "callID": "2ec9fdfff31de45ea82810a083bd80982f0defdee28bd3189807413c49955046",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "14cc7a35ee15e1f740e03e12a5e0e49a5395e96e860eca08ee31a27264877ee3",
+            "state": {
+              "status": "completed",
+              "input": {
+                "command": "npx --no-install sdd-log specs/settings/registry/registry.spec.md decision --payload-file .claude/tmp/lint-proposal.json 2>&1; echo \"EXIT:$?\""
+              },
+              "time": {
+                "start": 1793707781839,
+                "end": 1793707781843
+              },
+              "output": "",
+              "metadata": {
+                "exit": 0,
+                "truncated": true,
+                "output": ""
+              }
+            },
+            "projection": {
+              "outputWithheld": true
+            }
+          }
+        ]
+      },
+      {
+        "info": {
+          "id": "ef83d8e323aa4b5c1fa75d6f43d387d3c958c38a80786163dcb7b153645b311c",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "bash",
+            "callID": "35a58b02fdb9ed6aae133d48472915867c7b7686bd66541fff4441456857299a",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "ef83d8e323aa4b5c1fa75d6f43d387d3c958c38a80786163dcb7b153645b311c",
+            "state": {
+              "status": "completed",
+              "input": {
+                "command": "ls node_modules/.bin 2>/dev/null; echo '---'; ls node_modules | head -50; echo '---'; cat package.json 2>/dev/null; cat gennady.yaml"
+              },
+              "time": {
+                "start": 1793707783663,
+                "end": 1793707783666
+              },
+              "output": "",
+              "metadata": {
+                "exit": 0,
+                "truncated": true,
+                "output": ""
+              }
+            },
+            "projection": {
+              "outputWithheld": true
+            }
+          }
+        ]
+      },
+      {
+        "info": {
+          "id": "a88c28974d196c9d6cb72d648b82eeffd5d001a009e5a7966c52f02646c95b48",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "bash",
+            "callID": "bd812b81a71be72dc66dbc7ef53164b3b8f3fe5851f3c4e622c428ef3d78a75d",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "a88c28974d196c9d6cb72d648b82eeffd5d001a009e5a7966c52f02646c95b48",
+            "state": {
+              "status": "completed",
+              "input": {
+                "command": "command -v sdd-log || true; command -v gennady || true; ls -la node_modules/gennady 2>/dev/null; node -e \"const p=require('./node_modules/gennady/package.json'); console.log(p.name,p.version,p.bin)\" 2>&1"
+              },
+              "time": {
+                "start": 1793707786308,
+                "end": 1793707786310
+              },
+              "output": "",
+              "metadata": {
+                "exit": 0,
+                "truncated": true,
+                "output": ""
+              }
+            },
+            "projection": {
+              "outputWithheld": true
+            }
+          }
+        ]
+      },
+      {
+        "info": {
+          "id": "9ec5890d4f9b6899182b69d7c1a1030da53d6e82e74c2403f7e2b02782e618ce",
+          "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+          "role": "assistant"
+        },
+        "parts": [
+          {
+            "type": "tool",
+            "tool": "bash",
+            "callID": "dc310f4828449332e18da2f97235518d03e57b6f860e371d696841a8dadb9600",
+            "sessionID": "b39565e3fd3a668eacb2d824a6611741ac49d4501e8ea6e6d96fdd01689a5fd6",
+            "messageID": "9ec5890d4f9b6899182b69d7c1a1030da53d6e82e74c2403f7e2b02782e618ce",
+            "state": {
+              "status": "completed",
+              "input": {
+                "command": "grep -R \"sdd-log\\|payload-file\\|pending-operator\\|proposal\" -n node_modules/gennady/README.md node_modules/gennady/dist node_modules/gennady/package.json 2>/dev/null | head -60"
+              },
+              "time": {
+                "start": 1793707788436,
+                "end": 1793707788480
+              },
+              "output": "",
+              "metadata": {
+                "exit": 0,
+                "truncated": true,
+                "output": ""
+              }
+            },
+            "projection": {
+              "outputWithheld": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

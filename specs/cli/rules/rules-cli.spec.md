@@ -167,7 +167,9 @@ receipts и journals неизменными; output не содержит absolu
 - `show <rule-id> [--format text|json]`; id is one normalized `[a-z][a-z0-9-]*` token.
 - `resolve --phase <selector> (--files <inputs...> | --changed-from <ref> | --task <ticket>)
 [--format text|json]`.
-- `--files` accepts exact paths/globs only inside root with no symlink escape.
+- `--files` accepts exact paths/globs only inside root with no symlink escape. An input that names an
+  existing regular file is literal even when it holds glob metacharacters (`pages/[...slug].tsx`);
+  only an absent input with them is expanded as a mask.
 - All Git calls use direct argv and the command never invokes project code.
 
 <!--/SECTION:PUBLIC_OPTIONS-->

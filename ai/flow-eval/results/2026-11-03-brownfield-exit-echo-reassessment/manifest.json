@@ -1,0 +1,15 @@
+{
+  "schema": "gennady.brownfield-exit-echo-archive.v1",
+  "files": {
+    "INDEPENDENT-REVIEW.md": "44977b66e3617ae16d3aad5bca7558229dbe76c3389a34e017e52f106b8514e5",
+    "REPORT.md": "c0f5cad9f4c53b9e7bb7f6e83d6a37c5c0b03eb94f186ab6739373e874eb4518",
+    "harness/brownfield-benchmark-live.ts.txt": "fd42609f01f43d704e888f8184f852ccf5aec500a56140b40dc4e13f15e28af9",
+    "harness/brownfield-benchmark.ts.txt": "ca16556903351d9157aed5df8239cf703214f766139310d9f4df0c83b3414dce",
+    "harness/brownfield-command-proof.ts.txt": "e195984b639c43062a899827e2999b5525964a69d557766077895ce2bffb56b8",
+    "harness/offline-projection-runner.ts.txt": "74fab567057164ff8578264fa9c2877baac2a4a7cef2b63c6b8b824cd9f230ab",
+    "inputs/E3-v2-prior-censored.json": "69613bb28a87dad6e97fce2cd5dfe36e7b7b46dcdaea378b1e55b3eb1ac4d7db",
+    "inputs/E3-v3-pending.json": "303684d1fb097e6ad1f8b508ecb2dc26ee7b391dcdf9dc9d35d7f1fcca8f6633",
+    "reassessment.json": "ec96dc09a98cf23d7c08e00f27474055299252443c7bf9443e8869f8d396a39f",
+    "retention.json": "0e78b2e7a25dec7de831c7991ba617b6abf517d4606a865959a858fbd3ca3033"
+  }
+}

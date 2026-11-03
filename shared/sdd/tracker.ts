@@ -180,6 +180,69 @@ function findRollupHeader(
   return null;
 }
 
+/**
+ * @purpose Mask explicit writer-owned columns only for rows the same writer can address.
+ * @param lines Index lines, rewritten in place.
+ * @param headerIdx Header row index.
+ * @param columns Derived columns and their canonical placeholders.
+ * @param eligible Whether the writer owns this exact row.
+ */
+function maskColumns(
+  lines: string[],
+  headerIdx: number,
+  columns: readonly { column: number; token: string }[],
+  eligible: (cells: readonly string[]) => boolean
+): void {
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (line === undefined || !line.trimStart().startsWith('|')) break;
+    if (/^\|?\s*-+\s*\|/.test(line) || !eligible(contentCells(line))) continue;
+    const raw = line.split('|');
+    for (const { column, token } of columns) {
+      if (raw[column + 1] !== undefined) raw[column + 1] = ` ${token} `;
+    }
+    lines[i] = raw.join('|');
+  }
+}
+
+/**
+ * @purpose Mask only tracker status and resolved rollup Tasks/Done cells written by sdd-sync.
+ * @invariant Same header and row eligibility rules as the writers; unresolved/unlinked rows,
+ *   Task-ID/title/dependency/link cells and all other text remain byte-identical. No filesystem I/O.
+ * @param content Full index markdown.
+ * @param [resolveRows] Explicit readable linked-tracker context; absent context grants no rollup mask.
+ * @returns Text with only proven derived bookkeeping replaced by placeholders.
+ */
+export function maskTrackerBookkeeping(
+  content: string,
+  resolveRows: (indexLink: string) => readonly TrackerRow[] | null = () => null
+): string {
+  const lines = content.split('\n');
+  const status = findTaskStatusHeader(lines);
+  if (status)
+    maskColumns(
+      lines,
+      status.headerIdx,
+      [{ column: status.statusCol, token: '<STATUS>' }],
+      (cells) => cellText(cells[status.idCol] ?? '') !== ''
+    );
+  const rollup = findRollupHeader(lines);
+  if (rollup)
+    maskColumns(
+      lines,
+      rollup.headerIdx,
+      [
+        { column: rollup.tasksCol, token: '<TASKS>' },
+        { column: rollup.doneCol, token: '<DONE>' },
+      ],
+      (cells) => {
+        const link = linkTarget(cells[rollup.indexCol] ?? '');
+        return link !== null && resolveRows(link) !== null;
+      }
+    );
+  return lines.join('\n');
+}
+
 /** @purpose Extract the link target from a markdown-link cell (`[3-tasks](./x.3-tasks.md)` → `./x.3-tasks.md`), or null if the cell carries no link. */
 function linkTarget(cell: string): string | null {
   return cell.match(/\[[^\]]*\]\(([^)]+)\)/)?.[1] ?? null;

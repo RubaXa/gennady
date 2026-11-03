@@ -63,12 +63,14 @@ describe('sdd-verify thin facade', () => {
       NODE_V8_COVERAGE: '/tmp/root-c8-owner',
       NODE_TEST_CONTEXT: 'child-v8',
       GIT_DIR: '/tmp/real-repo/.git',
+      GENNADY_TEST_CLI_BUNDLE_MANIFEST: 'parent-owned-build',
       PATH: '/usr/bin',
     };
     const child = cleanTestChildEnv(source);
     assert.strictEqual(child.NODE_V8_COVERAGE, '');
     assert.strictEqual(child.NODE_TEST_CONTEXT, undefined);
     assert.strictEqual(child.GIT_DIR, undefined);
+    assert.strictEqual(child.GENNADY_TEST_CLI_BUNDLE_MANIFEST, undefined);
     assert.strictEqual(child.PATH, '/usr/bin');
     assert.strictEqual(source.NODE_V8_COVERAGE, '/tmp/root-c8-owner');
   });

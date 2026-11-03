@@ -1,0 +1,17 @@
+{
+  "schema": "brownfield-external-report/1",
+  "sourceSha256": "32f1980ed5043700c137a0952ec158b9507dd52b609754fb13ea3733d7258496",
+  "evidenceLevel": "operator-supplied-summary; transcript and usage exports unavailable",
+  "reported": {
+    "approxElapsedMinutes": 59,
+    "agents": 11,
+    "agentTokens": 826600,
+    "orchestratorCalls": 102,
+    "orchestratorNewInput": 229000,
+    "orchestratorOutput": 68600,
+    "orchestratorCacheReadApprox": 27300000
+  },
+  "rawPrivateSourceCopied": false,
+  "ourModelCalls": 0,
+  "predictionIsMeasured": false
+}

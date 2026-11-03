@@ -1,0 +1,46 @@
+{
+  "schema": "installed-vitest-stream-qualification/1",
+  "modelCalls": 0,
+  "installedVitestVersion": "3.2.4",
+  "runnerEntrypointSha256": "39db22f579acf5639bbb17a261408debbde03f4692c0c439e77e7f13aeba74d6",
+  "observedReferenceStdoutBytes": 3120824,
+  "policyLimitUnchanged": 1048576,
+  "statsSource": "declared runner stdout only; not stderr or a stale report file",
+  "rows": [
+    {
+      "broken": false,
+      "verdict": "pass",
+      "durationMs": 464,
+      "stats": {
+        "schema": "gennady.verify-test-stats.v1",
+        "policy": "required",
+        "protocol": "vitest-json-v1",
+        "runner": "vitest",
+        "source": "host:explicit-installed-vitest",
+        "executed": 1,
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "broken": true,
+      "verdict": "fail",
+      "durationMs": 576,
+      "stats": {
+        "schema": "gennady.verify-test-stats.v1",
+        "policy": "required",
+        "protocol": "vitest-json-v1",
+        "runner": "vitest",
+        "source": "host:explicit-installed-vitest",
+        "executed": 1,
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0
+      }
+    }
+  ],
+  "rootRemoved": true,
+  "sharedDependencyEntryStillExists": true,
+  "sourceSha256": "9e25a732272a9b3a0b05a8aa5e4b67f3a78a5b1914759f5afe59e9e929bf4951"
+}

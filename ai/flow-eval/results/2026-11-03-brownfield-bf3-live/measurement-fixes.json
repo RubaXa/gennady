@@ -1,0 +1,53 @@
+{
+  "schema": "gennady.bf3.post-campaign-measurement.1",
+  "appliedAfterPrimaryAttempts": 8,
+  "primaryResultsRegraded": false,
+  "newModelCalls": 0,
+  "productionCodeChanged": false,
+  "gitEnvironmentControl": {
+    "sameSandboxProfile": true,
+    "sameOwnedTmpdir": true,
+    "changedVariable": "PATH prepends host-resolved real Git toolchain",
+    "shim": {
+      "outcome": "timeout",
+      "elapsedMs": 50056,
+      "xcrunCachePermissionErrors": true
+    },
+    "directGit": {
+      "p1VerifyExit": 0,
+      "p1VerifyMs": 4606,
+      "hostP1CompleteExit": 0,
+      "hostP1CompleteMs": 938,
+      "p2VerifyExit": 0,
+      "p2VerifyMs": 7492
+    },
+    "privateInitialProofSha256": "df9540f83cc298ff354a7411a68aa3db62b90e02854e39852542718396774ab5",
+    "privateCompletionProofSha256": "5f981bc0f6b1f541d1131b7b98f1241556d4cb8776c28a7aa9f124c4e68277ee",
+    "causalBoundary": "Reproduces sandbox-specific shim stall on reference and removes it by PATH only. Does not prove the sole cause of every old P2 delay without missing stderr."
+  },
+  "consentFacts": {
+    "singleServerClock": true,
+    "actualHostUserMessageId": true,
+    "ambiguousMissingEqualClocks": "unknown",
+    "oldJudgeFailRetained": true
+  },
+  "privateCapture": {
+    "maxStoredBytes": 8388608,
+    "credentialRedactionBeforeHashAndGzip": true,
+    "publishedRawMessages": false
+  },
+  "qualification": {
+    "usesActualWorkerProfile": true,
+    "controls": 8,
+    "complete": true,
+    "modelCalls": 0,
+    "safeCleanup": true,
+    "elapsedMs": 68293
+  },
+  "targetTests": {
+    "passed": 14,
+    "failed": 0
+  },
+  "dedicatedHarnessStrictTypeCheck": "PASS",
+  "historicalCodeAndDataRewritten": false
+}

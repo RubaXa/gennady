@@ -5,6 +5,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
+import { readTestCliBundleEntry, TEST_CLI_BUNDLE_ENV } from '../../../scripts/test-cli-bundle.ts';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const GENNADY_ENTRY = join(REPO_ROOT, 'cli', 'gennady.ts');
@@ -37,7 +38,14 @@ export function cleanTestChildEnv(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv 
   for (const key of Object.keys(env)) {
     if (key.startsWith('GIT_') || key.startsWith('NODE_TEST')) delete env[key];
   }
+  delete env[TEST_CLI_BUNDLE_ENV];
   return env;
+}
+
+/** @purpose Use a runner-owned fresh bundle only in explicitly authorized black-box partitions. */
+function cliNodeArgs(args: readonly string[]): string[] {
+  const bundled = readTestCliBundleEntry(REPO_ROOT, process.env);
+  return bundled ? [bundled, ...args] : ['--import', TSX_LOADER, GENNADY_ENTRY, ...args];
 }
 
 /**
@@ -54,7 +62,7 @@ export function cleanTestChildEnv(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv 
  */
 export function runCli(args: string[], cwd: string): CliResult {
   const env = cleanTestChildEnv(process.env);
-  const res = spawnSync(process.execPath, ['--import', TSX_LOADER, GENNADY_ENTRY, ...args], {
+  const res = spawnSync(process.execPath, cliNodeArgs(args), {
     cwd,
     encoding: 'utf-8',
     env,
@@ -76,7 +84,7 @@ export function runCli(args: string[], cwd: string): CliResult {
  */
 export function runCliAsync(args: string[], cwd: string): Promise<CliResult> {
   return new Promise((resolveResult) => {
-    const child = spawn(process.execPath, ['--import', TSX_LOADER, GENNADY_ENTRY, ...args], {
+    const child = spawn(process.execPath, cliNodeArgs(args), {
       cwd,
       env: cleanTestChildEnv(process.env),
       stdio: ['ignore', 'pipe', 'pipe'],

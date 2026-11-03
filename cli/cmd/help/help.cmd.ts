@@ -25,7 +25,7 @@ console.info(
 );
 console.info('  remote-console    Mirror browser console output into local stdout');
 console.info(
-  '  lint              Validate .ts files: headers, anchors, DBC contracts, invariants, disables'
+  '  lint              Validate JS/TS: headers, contracts, scoped decisions; --scope all strengthens owned policy'
 );
 console.info(
   '  sync              Synchronize v2 ai/directives/ (refuses an SDD v1 consumer before writes)'
@@ -50,7 +50,7 @@ console.info(
   '  rules             Read-only embedded rule inventory, detail, and scoped resolution'
 );
 console.info(
-  '  sdd-log           Phase events/decisions, bounded technical replan, verified completion'
+  '  sdd-log           Phase events, pending ticket/module decisions, operator verdict, bounded replan'
 );
 console.info('  sdd-sync          Propagate ticket status into task trackers');
 console.info('  sdd-task          Show the phase-aware execution map or one ticket phase context');

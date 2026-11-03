@@ -43,6 +43,12 @@ function diagnoseRow(
   const deletion = targets.some((target) => target.operation === 'delete');
   const write = targets.some((target) => target.operation === 'write');
   const owners = ordered(claim.owners);
+  if (!claim.mapped && !deletion && write && input.stage === 'preflight')
+    add(
+      'MAPPING_REQUIRED',
+      `Add this target to File Mapping of ${owners.join(', ')} before audit; preparation may continue, but this is not full coverage`,
+      'pending'
+    );
   if (owners.length !== 1)
     add('OWNER_CONFLICT', `Expected one owner; observed ${owners.join(', ')}`);
   for (const id of owners)

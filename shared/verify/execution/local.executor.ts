@@ -25,6 +25,7 @@ import type {
 } from '../model/verify-step.type.ts';
 import type { WorkspaceGuard } from './workspace-guard.ts';
 import { parseVerifyTestStats, verifyTestStatsCapability } from '../test-stats.ts';
+import { VitestStatsCapture } from './vitest-stats-capture.ts';
 
 const DEFAULT_EVIDENCE_BYTES = 64 * 1024;
 const DEFAULT_POLICY_OUTPUT_BYTES = 1024 * 1024;
@@ -83,6 +84,7 @@ type ProcessOutcome = {
   readonly policyOutputExceeded: boolean;
   /** Bounded terminal stdout used only by an exact runner-owned trailing stats record. */
   readonly statsTailStdout: string;
+  readonly vitestStatsStdout?: string | null;
   readonly stdoutHasNonWhitespace: boolean;
   readonly stdout: string;
   readonly stderr: string;
@@ -431,6 +433,7 @@ async function runProcess(
   policyStreams: ReadonlySet<'stdout' | 'stderr'>,
   detectStdoutContent: boolean,
   captureStatsTail: boolean,
+  captureVitestStats: boolean,
   signal: AbortSignal | undefined
 ): Promise<ProcessOutcome> {
   const stdout = new BoundedUtf8Capture(maxEvidenceBytes);
@@ -438,6 +441,7 @@ async function runProcess(
   const policy = new PolicyOutputCapture(maxPolicyOutputBytes, policyStreams);
   const statsTail = new BoundedUtf8TailCapture(captureStatsTail ? DEFAULT_STATS_TAIL_BYTES : 0);
   const stdoutContent = new NonWhitespaceStdoutDetector();
+  const vitestStats = captureVitestStats ? new VitestStatsCapture() : null;
   let spawnError: Error | undefined;
   let termination: ProcessOutcome['termination'] = 'completed';
   const identity = `local-process:${randomUUID()}`;
@@ -488,6 +492,7 @@ async function runProcess(
       if (detectStdoutContent) stdoutContent.write(chunk);
       policy.write('stdout', chunk);
       if (captureStatsTail) statsTail.write(chunk);
+      vitestStats?.write(chunk);
     });
     child.stderr?.on('data', (chunk: Buffer) => {
       stderr.write(chunk);
@@ -518,6 +523,7 @@ async function runProcess(
         policyStderr: policyOutput.stderr,
         policyOutputExceeded: policyOutput.exceeded,
         statsTailStdout: captureStatsTail ? statsTail.finish() : '',
+        vitestStatsStdout: vitestStats?.finish(),
         stdoutHasNonWhitespace: detectStdoutContent ? stdoutContent.finish() : false,
         stdout: stdout.finish(),
         stderr: stderr.finish(),
@@ -941,6 +947,7 @@ async function executeLocalStepOutcome(
     ]),
     step.outputMeansFailure === true,
     step.testStats?.protocol === 'gennady-test-topology-v1',
+    step.testStats?.protocol === 'vitest-json-v1',
     options.signal
   );
   const combined = boundedText(
@@ -1031,15 +1038,18 @@ async function executeLocalStepOutcome(
           step.testStats,
           step.testStats.protocol === 'gennady-test-topology-v1'
             ? processOutcome.statsTailStdout
-            : processOutcome.policyStdout,
-          processOutcome.policyStderr
+            : step.testStats.protocol === 'vitest-json-v1'
+              ? (processOutcome.vitestStatsStdout ?? '')
+              : processOutcome.policyStdout,
+          step.testStats.protocol === 'vitest-json-v1' ? '' : processOutcome.policyStderr
         ) ?? undefined);
   if (
     step.testStats?.policy === 'required' &&
     processOutcome.termination === 'completed' &&
     processOutcome.spawnError === undefined &&
     ((processOutcome.policyOutputExceeded &&
-      step.testStats.protocol !== 'gennady-test-topology-v1') ||
+      step.testStats.protocol !== 'gennady-test-topology-v1' &&
+      step.testStats.protocol !== 'vitest-json-v1') ||
       testStats === undefined)
   ) {
     status = 'violation';
@@ -1050,6 +1060,16 @@ async function executeLocalStepOutcome(
       source: step.testStats.source,
     };
     testStats = undefined;
+  }
+
+  if (verdict === 'pass' && testStats !== undefined && testStats.failed > 0) {
+    status = 'fail';
+    verdict = 'fail';
+    problem = {
+      code: 'VERIFY_LOCAL_TEST_FAILURE',
+      message: `runner reported ${testStats.failed} failed tests despite a zero process exit`,
+      source: testStats.source,
+    };
   }
 
   let mutations: readonly VerifyMutation[] = [];

@@ -99,6 +99,43 @@ function normalizeSpecifier(specifier: string): string {
 }
 
 /**
+ * @purpose Root parameter of a nested `@param options.request` entry.
+ * @param name Normalised `@param` specifier.
+ * @returns Root name, or null for a top-level entry.
+ */
+function subParamRoot(name: string): string | null {
+  const match = name.match(/^([A-Za-z_$][\w$]*)\./);
+  return match ? match[1] : null;
+}
+
+/**
+ * @purpose Bind each destructured signature parameter (`{request, xray}: Options`) to the
+ *   positional top-level `@param` name the contract chose for it (`@param options`).
+ * @invariant An exact pattern-text `@param` keeps its old meaning; an alias that names another
+ *   signature parameter is never taken. Nested `@param options.request` entries do not shift positions.
+ * @param signature Signature extracted from the AST.
+ * @param specifiers Raw `@param` specifiers in contract order.
+ * @returns The same signature, or a copy whose destructured names are replaced by their aliases.
+ */
+export function bindContractParams(
+  signature: DbcSignatureInfo,
+  specifiers: readonly string[]
+): DbcSignatureInfo {
+  const names = specifiers.map(normalizeSpecifier);
+  const topLevel = names.filter((name) => subParamRoot(name) === null);
+  const sigNames = signature.params.map((param) => param.name);
+  let changed = false;
+  const params = signature.params.map((param, index) => {
+    if (!/^[{[]/.test(param.name) || names.includes(param.name)) return param;
+    const alias = topLevel[index];
+    if (alias === undefined || /^[{[]/.test(alias) || sigNames.includes(alias)) return param;
+    changed = true;
+    return { ...param, name: alias };
+  });
+  return changed ? { ...signature, params } : signature;
+}
+
+/**
  * @purpose Build a minimal DbcLintError with placeholder file/line/col (caller fills real positions).
  */
 function blankError(code: DbcLintIssueCode | DbcIssueCode, message: string): DbcLintError {
@@ -177,13 +214,26 @@ export function validate(
   // --- END IMPLEMENTS_REDUNDANCY_CHECK
 
   const errors: DbcLintError[] = [];
-  const paramEntries = entries.filter((e) => e.type === 'param');
+  const allParamEntries = entries.filter((e) => e.type === 'param');
   const returnsEntry = entries.find((e) => e.type === 'returns');
+  signature = bindContractParams(
+    signature,
+    allParamEntries.map((pe) => pe.specifier ?? '')
+  );
+  // `@param options.request` documents a property of a bound parameter, not a parameter itself.
+  const sigRoots = new Set(signature.params.map((p) => p.name));
+  const paramEntries = allParamEntries.filter((pe) => {
+    const root = subParamRoot(normalizeSpecifier(pe.specifier ?? ''));
+    return root === null || !sigRoots.has(root);
+  });
+  // A function stored in a `const`: @param/@returns are optional, and validated once written.
+  const valueFunction = signature.valueFunction === true;
 
-  const hasParams = KINDS_WITH_PARAMS.has(kind);
-  const checksReturns = KINDS_WITH_RETURNS_WHEN_NON_VOID.has(kind);
+  const hasParams = KINDS_WITH_PARAMS.has(kind) || (valueFunction && paramEntries.length > 0);
+  const checksReturns = KINDS_WITH_RETURNS_WHEN_NON_VOID.has(kind) || valueFunction;
   const alwaysReturns = KINDS_ALWAYS_RETURNS.has(kind);
   const noReturns = KINDS_NO_RETURNS.has(kind);
+  const implicitReturn = signature.implicitReturn === true;
 
   // --- PARAM_VALIDATION
   if (hasParams) {
@@ -273,8 +323,8 @@ export function validate(
       errors.push(blankError(ERR_DBC_LINT_RETURNS_MISSING, `Missing @returns for kind '${kind}'`));
     }
   } else if (checksReturns) {
-    // function / method / interface-method
-    if (signature.returnType !== 'void' && !returnsEntry) {
+    // function / method / interface-method; no return annotation → @returns is optional
+    if (!implicitReturn && !valueFunction && signature.returnType !== 'void' && !returnsEntry) {
       errors.push(
         blankError(
           ERR_DBC_LINT_RETURNS_MISSING,
@@ -282,7 +332,7 @@ export function validate(
         )
       );
     }
-    if (signature.returnType === 'void' && returnsEntry) {
+    if (!implicitReturn && signature.returnType === 'void' && returnsEntry) {
       errors.push(
         blankError(ERR_DBC_LINT_RETURNS_UNEXPECTED, 'Unexpected @returns for void return type')
       );
@@ -371,7 +421,10 @@ export class DbcTsLinter implements DbcLinter {
         return { errors: [error], format: () => formatErrors([error]) };
       }
 
-      const errors = this._lintEntities(parseResult.exported, filePath);
+      const typed = /\.(?:[cm]?ts|tsx)$/i.test(filePath);
+      const errors = this._lintEntities(parseResult.exported, filePath).filter(
+        (error) => typed || error.code !== ERR_DBC_LINT_TYPE_REDUNDANT
+      );
 
       logger.info(`[DbcTsLinter#lint] [parsing → linted] ${filePath} (${errors.length} errors)`);
       return {
@@ -430,7 +483,7 @@ export class DbcTsLinter implements DbcLinter {
         fixed = this._expandToMultiline(fixed, block.kind);
 
         // Chain step 1: remove {type} annotations
-        fixed = this._removeRedundantTypes(fixed);
+        if (/\.(?:[cm]?ts|tsx)$/i.test(filePath)) fixed = this._removeRedundantTypes(fixed);
 
         // Chain step 2: remove redundant @param/@returns in implements methods
         fixed = this._removeRedundantInImplements(
@@ -439,17 +492,20 @@ export class DbcTsLinter implements DbcLinter {
           block.memberName
         );
 
+        // Destructured parameters take the names the contract chose for them (`@param options`).
+        const signature = bindContractParams(block.signature, this._paramSpecifiers(fixed));
+
         // Chain step 3: normalize param brackets to match signature optionality
-        fixed = this._normalizeParamBrackets(fixed, block.signature);
+        fixed = this._normalizeParamBrackets(fixed, signature);
 
         // Chain step 4: remove extra @param
-        fixed = this._removeExtraParams(fixed, block.signature);
+        fixed = this._removeExtraParams(fixed, signature);
 
         // Chain step 5: remove unexpected @returns
-        fixed = this._removeUnexpectedReturns(fixed, block.kind, block.signature);
+        fixed = this._removeUnexpectedReturns(fixed, block.kind, signature);
 
         // Chain step 6: reorder @param to match signature
-        fixed = this._reorderParams(fixed, block.signature);
+        fixed = this._reorderParams(fixed, signature);
 
         // Chain step 7: reorder tags to canonical order
         fixed = this._reorderTags(fixed);
@@ -970,7 +1026,8 @@ export class DbcTsLinter implements DbcLinter {
       if (/^@param\s/.test(trimmed)) {
         const spec = this._extractParamSpecifier(trimmed);
         const normalized = normalizeSpecifier(spec);
-        if (sigNames.has(normalized)) {
+        const root = subParamRoot(normalized);
+        if (sigNames.has(normalized) || (root !== null && sigNames.has(root))) {
           skipMode = false;
           result.push(line);
         } else {
@@ -1003,10 +1060,13 @@ export class DbcTsLinter implements DbcLinter {
     kind: string,
     signature?: DbcSignatureInfo
   ): string {
-    // Remove if kind is in no-returns set OR (checkable kind with void return)
+    // Remove if kind is in no-returns set OR (checkable kind with an explicit void return).
+    // A function stored in a const and an unannotated callable may document @returns.
+    const valueFunction = signature?.valueFunction === true;
+    const explicitVoid = signature?.returnType === 'void' && signature.implicitReturn !== true;
     const shouldRemove =
-      KINDS_NO_RETURNS.has(kind) ||
-      (KINDS_WITH_RETURNS_WHEN_NON_VOID.has(kind) && signature?.returnType === 'void');
+      (KINDS_NO_RETURNS.has(kind) && !valueFunction) ||
+      ((KINDS_WITH_RETURNS_WHEN_NON_VOID.has(kind) || valueFunction) && explicitVoid);
 
     if (!shouldRemove) {
       return jsdocText;
@@ -1141,6 +1201,13 @@ export class DbcTsLinter implements DbcLinter {
       if (block) {
         reordered.push(block);
         nameToBlock.delete(sigName);
+      }
+      // Nested `@param options.request` entries stay right after their root, in written order.
+      for (const [name, nested] of [...nameToBlock]) {
+        if (subParamRoot(name) === sigName) {
+          reordered.push(nested);
+          nameToBlock.delete(name);
+        }
       }
     }
     // Append any remaining (unmatched) blocks
@@ -1366,6 +1433,28 @@ export class DbcTsLinter implements DbcLinter {
 
     return inlineText;
     // --- END BUILD_INLINE
+  }
+
+  /**
+   * @purpose List the `@param` specifiers of a contract in written order (single- or multi-line).
+   * @param jsdocText Raw JSDoc comment text.
+   * @returns Raw specifiers.
+   */
+  protected _paramSpecifiers(jsdocText: string): string[] {
+    const specifiers: string[] = [];
+    for (const rawLine of jsdocText.split('\n')) {
+      // Only a tag that starts a JSDoc line (or a ` | ` part of a single-line contract) counts;
+      // `@param` mentioned inside description text must not shift the positional binding.
+      const line = rawLine
+        .replace(/^\s*\/\*\*/, '')
+        .replace(/\*\/\s*$/, '')
+        .replace(/^\s*\*\s?/, '');
+      for (const part of line.split(' | ')) {
+        const match = /^\s*@param\s+(?:\{[^}]*\}\s+)?(\S+)/.exec(part);
+        if (match) specifiers.push(match[1]!);
+      }
+    }
+    return specifiers;
   }
 
   /**

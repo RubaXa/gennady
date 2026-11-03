@@ -4,6 +4,9 @@
 
 import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk';
 
+/** @purpose Keep default eval connections away from the operator's personal Desktop server. */
+export const DEFAULT_SDD_EVAL_BASE_URL = 'http://127.0.0.1:4097';
+
 /** @purpose Connect to a local OpenCode server without putting its password in command arguments. */
 export function createSddEvalOpenCodeClient(options: {
   baseUrl: string;

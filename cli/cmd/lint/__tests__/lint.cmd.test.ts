@@ -239,17 +239,17 @@ describe('LintCommand', () => {
 
   it('should reject unsupported explicit files while still processing supported files', async () => {
     const filePath = writeFixture('real.ts', 'import { z } from "./mod.ts";\n');
-    const jsPath = writeFixture('unsupported.js', 'export const ignoredBefore = true;\n');
+    const unsupportedPath = writeFixture('unsupported.py', 'value = True\n');
 
-    const report = await mod.run(['node', 'gennady', 'lint', jsPath, filePath]);
+    const report = await mod.run(['node', 'gennady', 'lint', unsupportedPath, filePath]);
 
     assert.strictEqual(report.exitCode, 1);
     const realErrors = report.errors.filter((e) => e.file === filePath);
     assert.ok(realErrors.length > 0);
-    const unsupported = report.errors.filter((e) => e.file === jsPath);
+    const unsupported = report.errors.filter((e) => e.file === unsupportedPath);
     assert.strictEqual(unsupported.length, 1);
     assert.strictEqual(unsupported[0]?.code, 'ERR_CLI_LINT_UNSUPPORTED_TARGET');
-    assert.match(unsupported[0]?.message ?? '', /only \.ts and \.tsx/);
+    assert.match(unsupported[0]?.message ?? '', /JS\/TS source family/);
   });
 
   it('should return typed nonzero evidence for an unreadable explicit production file', async (t) => {

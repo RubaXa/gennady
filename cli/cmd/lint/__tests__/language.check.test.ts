@@ -15,7 +15,8 @@ import { ERR_CLI_LINT_NON_ENGLISH } from '../lint.types.ts';
  * ├── should report ERR_CLI_LINT_NON_ENGLISH for Cyrillic in JSDoc contract
  * ├── should not report errors for Cyrillic outside JSDoc and headers
  * ├── should report multiple errors for multiple Cyrillic chars in header
- * └── should return no errors when content has no JSDoc and no headers
+ * ├── should return no errors when content has no JSDoc and no headers
+ * └── should follow lint.commentLanguage: en flags Cyrillic, ru and any flag nothing
  */
 describe('LanguageCheck', () => {
   it('should return no errors for English-only JSDoc and headers', () => {
@@ -172,5 +173,26 @@ describe('LanguageCheck', () => {
     // #region START_NO_JSDOC_HEADERS_ASSERT_RESULT
     assert.deepStrictEqual(errors, []);
     // #endregion END_NO_JSDOC_HEADERS_ASSERT_RESULT
+  });
+
+  it('should follow lint.commentLanguage: en flags Cyrillic, ru and any flag nothing', () => {
+    const content = [
+      '// @file: Модуль расчёта.',
+      '// @consumers: Отчёт',
+      '',
+      '/** @purpose Считает итог. */',
+      'export const total = 1;',
+    ].join('\n');
+
+    const codes = (language: 'en' | 'ru' | 'any') =>
+      new Set(check(content, 'test.ts', language).map((error) => error.code));
+
+    assert.deepStrictEqual(codes('en'), new Set([ERR_CLI_LINT_NON_ENGLISH]));
+    assert.deepStrictEqual(
+      check(content, 'test.ts').map((error) => error.line),
+      check(content, 'test.ts', 'en').map((error) => error.line)
+    );
+    assert.deepStrictEqual(check(content, 'test.ts', 'ru'), []);
+    assert.deepStrictEqual(check(content, 'test.ts', 'any'), []);
   });
 });

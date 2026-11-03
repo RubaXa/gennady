@@ -1,0 +1,79 @@
+{
+  "schema": "brownfield-source-bindings/1",
+  "baselineCommit": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+  "gitlabMaster": "0d527a652694f08da4237a9ee45b583f80c1b66a",
+  "gitlabIntegration": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+  "imports": [
+    {
+      "path": "ai/flow-eval/pilot-verify-probe.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "2eaba24953bf94fa232f873966584b83252a44520b16c5b533c3fe24e9546118",
+      "bytes": 9083,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "ai/flow-eval/__tests__/pilot-verify-probe.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "4f5c8750354ae38b6d159de8f934d3af5a13dbc52f2819325ca319b0b33a5580",
+      "bytes": 4218,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-30-pilot-verify-red/README.md",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "7b5c84f48831346179b35afdc47a1117bd51ce651e81cc2b6021b7276f9b8262",
+      "bytes": 4777,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-30-pilot-verify-red/record.json",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "71ea53efafd8c45f7cbb0a6088dd7fefa65d4b672657be434f55bbb60a477e9a",
+      "bytes": 39139,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "ai/flow-eval/results/2026-10-30-pilot-verify-red/runtime-source.json",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "9cf4f9f74178c5858bef0977ca7388fda1a845c74a2dd06744785876233159ba",
+      "bytes": 12612,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "services/dbc/linter/implementations/ts/__tests__/dbc-ts-linter.brownfield-forms.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "74efbd48ae8fcd32fb24ad94a56939d95658eccdbea90f9eae168ed2dbd0fafe",
+      "bytes": 7825,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "cli/__tests__/tool-behavior/inventory-file-mapping.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "4afc5dca7fefa791eefe6e80287d22f697e96a24bb69c172fa5912679e878abc",
+      "bytes": 5175,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "cli/__tests__/tool-behavior/inventory-js-sources.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "a3b8f803541891aef129838be9ef4a5dfb1a52e7eb5cdacb29ff69c0f7243d68",
+      "bytes": 2849,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "cli/__tests__/tool-behavior/lint-scope-owned.test.ts",
+      "sourceCommit": "2ed10506f8fe42903a37145853aac6bee7c5313e",
+      "sha256": "76b1586511eb03b88321dc29f7e36f0213b84d00a39a9fcea235c768fab8cfb6",
+      "bytes": 4920,
+      "disposition": "reused-test-or-frozen-evidence"
+    },
+    {
+      "path": "utils/test/process-budget.ts",
+      "sourceCommit": "0d527a652694f08da4237a9ee45b583f80c1b66a",
+      "sha256": "8262c33ed78f5822f4c866acce33ef1ebca0e9eaed821bd8d399fe5e24d8a362",
+      "bytes": 1071,
+      "disposition": "test-only-prerequisite; no product timeout changed"
+    }
+  ],
+  "modelCalls": 0
+}

@@ -14,6 +14,17 @@ import { check as checkAnchors } from './checks/anchor.check.ts';
 import { check as checkDbcContracts } from './checks/dbc-contract.check.ts';
 import { check as checkDisables } from './checks/disables.check.ts';
 import { check as checkLanguage } from './checks/language.check.ts';
+import {
+  loadLintConfig,
+  lintConfigRoot,
+  lintLanguageGuidance,
+  lintScopeGuidance,
+} from './lint-config.ts';
+import { findFileLintDisable, authorizeFileLintDisable } from './checks/utils/file-lint-disable.ts';
+import { proveRepoFile, readProvenRepoFile } from '../../../shared/common/repo-file-identity.ts';
+import { readSddCoverage } from '../../../shared/sdd/coverage-repository.ts';
+import { parseSourceOwnershipHeader } from '../../../shared/sdd/source-ownership-header.ts';
+import { selectOwnedLintFiles } from './lint-scope.ts';
 import { check as checkInvariantCount } from './checks/invariant-count.check.ts';
 import { check as checkAnchorClassBody } from './checks/anchor-class-body.check.ts';
 import { check as checkAnchorThin } from './checks/anchor-thin.check.ts';
@@ -28,6 +39,7 @@ import {
   collectExports,
   reverseUnimplemented,
   parseDeferredEntities,
+  parseDefaultExportEntities,
   checkDeferral,
   type DeferralCheck,
   type ReverseSweepResult,
@@ -37,18 +49,21 @@ import { ticketOwnsEntity } from '../../../shared/sdd/audit-group.ts';
 import { parseEntityInventory } from '../../../shared/sdd/inventory.ts';
 import { LintReport } from './lint.types.ts';
 import {
+  ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
   ERR_CLI_LINT_STAGED_CONFLICT,
   ERR_CLI_LINT_RESOLVE_FAILED,
   ERR_CLI_LINT_READ_FAILED,
   ERR_CLI_LINT_UNSUPPORTED_TARGET,
   ERR_CLI_LINT_TAG_TOO_MANY_WORDS,
   ERR_CLI_LINT_BAD_WORD_LIMIT,
+  ERR_CLI_LINT_BAD_CONFIG,
   ERR_CLI_LINT_BAD_INVOCATION,
   ERR_CLI_LINT_REGION_TOO_MANY_COMMENTS,
   ERR_CLI_LINT_REGION_START_ANNOTATION_TOO_LONG,
   ERR_CLI_LINT_UNKNOWN_FLAG,
   ERR_CLI_LINT_SPEC_NOT_FOUND,
   ERR_CLI_LINT_INVENTORY_REVERSE_NEEDS_SPEC,
+  ERR_CLI_LINT_INVENTORY_INCOMPLETE,
 } from './lint.types.ts';
 import type { LintError } from './lint.types.ts';
 import { extractHeader } from '../orient/core/extract-header.ts';
@@ -61,7 +76,10 @@ import { gennadyLintSourcePolicy } from '../../../shared/common/gennady-lint-sou
 import { isGennadyLintTarget } from './lint-source-policy.ts';
 
 const LINT_USAGE =
-  'usage: gennady lint [paths...] [--staged] [--autofix] [--include-all] [--include-tests] [--verbose] [--max-invariants=N] [--exclude=GLOB] [--max-words=N] [--max-header-words=N] [--max-contract-words=N] [--max-region-comments=N] [--spec=PATH] [--inventory-reverse=DIR]';
+  'usage: gennady lint [paths...] [--staged] [--scope=all] [--autofix] [--include-all] [--include-tests] [--verbose] [--max-invariants=N] [--exclude=GLOB] [--max-words=N] [--max-header-words=N] [--max-contract-words=N] [--max-region-comments=N] [--spec=PATH] [--inventory-reverse=DIR]';
+
+/** @purpose Sources lint accepts only as reverse-inventory export providers, never for contract checks. */
+const INVENTORY_ONLY_SOURCE_RE = /\.(?:[cm]?js|jsx)$/i;
 
 /** @purpose Reject malformed argv before target resolution or lint execution. */
 function badInvocation(message: string, code: string = ERR_CLI_LINT_BAD_INVOCATION): LintReport {
@@ -110,6 +128,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
         includeAll: ['include-all'],
         includeTests: ['include-tests'],
         verbose: ['verbose', 'v'],
+        scope: { aliases: ['scope'], takesValue: true },
         maxInvariants: { aliases: ['max-invariants'], takesValue: true },
         exclude: { aliases: ['exclude'], takesValue: true },
         maxWords: { aliases: ['max-words'], takesValue: true },
@@ -149,12 +168,18 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     ['--max-region-comments', args.maxRegionComments],
     ['--spec', args.spec],
     ['--inventory-reverse', args.inventoryReverse],
+    ['--scope', args.scope],
   ];
   const malformedScalar = scalarOptions.find(
     ([, value]) => value !== undefined && (typeof value !== 'string' || value.length === 0)
   );
   if (malformedScalar) {
     return badInvocation(`${malformedScalar[0]} requires exactly one non-empty value`);
+  }
+  if (args.scope !== undefined && args.scope !== 'all') {
+    return badInvocation(
+      '--scope accepts only all to strengthen this run; owned is a consent-bound project lint.scope setting, not a CLI override'
+    );
   }
 
   const rawExclude = args.exclude;
@@ -209,6 +234,29 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       `--max-region-comments requires a safe integer >= 0; received ${String(args.maxRegionComments)}`
     );
   }
+  const configRoot = lintConfigRoot(process.cwd());
+  const lintConfig = loadLintConfig(configRoot);
+  if (lintConfig.errors.length > 0) {
+    return new LintReport(
+      lintConfig.errors.map((error) => ({
+        file: error.source,
+        line: 0,
+        col: 0,
+        severity: 'error' as const,
+        code: ERR_CLI_LINT_BAD_CONFIG,
+        message: `${error.path}: ${error.message}`,
+      })),
+      0,
+      [],
+      [],
+      undefined,
+      4
+    );
+  }
+  const scopeOverride = args.scope === 'all';
+  const configuredScopeSource = lintConfig.provenance.get('scope') ?? 'default';
+  let effectiveScope = scopeOverride ? 'all' : lintConfig.scope;
+  let effectiveScopeSource = scopeOverride ? 'CLI --scope all' : configuredScopeSource;
   const specPath = typeof args.spec === 'string' ? args.spec : null;
   const inventoryReverseDir =
     typeof args.inventoryReverse === 'string' ? args.inventoryReverse : null;
@@ -281,6 +329,7 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   // #region START_COLLECT_FILES — invariant: --staged → git diff + ls-files; otherwise resolveTargets
   let files: string[];
   const resolutionErrors: LintError[] = [];
+  const inventoryOnlyFiles: string[] = [];
 
   if (staged) {
     logger.debug('[LintCommand#run] [idle → collecting] staged mode');
@@ -311,8 +360,12 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     }
   } else if (positional.length > 0) {
     logger.debug(`[LintCommand#run] [idle → resolving] ${positional.length} target(s)`);
-    const result = resolveTargets(positional, { includeTests: includeAll || includeTests });
+    const result = resolveTargets(positional, {
+      includeTests: includeAll || includeTests,
+      inventorySources: inventoryReverseDir !== null,
+    });
     files = result.files;
+    inventoryOnlyFiles.push(...(result.inventoryOnly ?? []));
     resolutionErrors.push(...result.errors);
     for (const re of result.errors) {
       logger.warn(`[LintCommand#run] [resolving → failed] ${re.file}: ${re.message}`);
@@ -334,7 +387,37 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   }
   // #endregion END_EXCLUDE_FILTER
 
-  if (files.length === 0) {
+  // `lint.scope: owned` — legacy files no SDD spec or ticket owns are skipped, not reported.
+  if (effectiveScope === 'owned' && files.length > 0) {
+    const owned = selectOwnedLintFiles(
+      configRoot,
+      files.map((file) => resolve(file))
+    );
+    files = owned.files;
+    if (owned.degraded) {
+      effectiveScope = 'all';
+      effectiveScopeSource = 'SDD declaration fallback';
+      console.log(
+        `⚠️  [LintCommand#run] lint.scope=owned disabled for this run: ${owned.degraded}; every selected file is checked. Fix the declarations (npx gennady sdd-check --all .) to re-enable skipping.`
+      );
+    }
+    if (owned.skipped > 0) {
+      console.log(
+        `ℹ️  [LintCommand#run] lint.scope=owned: skipped ${owned.skipped} file(s) not owned by any SDD spec or ticket`
+      );
+    }
+  }
+
+  // Preserve the existing default CLI response; report policy provenance when it changes the run.
+  if (scopeOverride || configuredScopeSource !== 'default' || lintConfig.scope !== 'all')
+    console.log(
+      `Effective lint.scope=${effectiveScope} (source=${effectiveScopeSource}).` +
+        (scopeOverride || effectiveScopeSource !== configuredScopeSource
+          ? ` Project lint.scope=${lintConfig.scope} (source=${configuredScopeSource}); configuration unchanged.`
+          : '')
+    );
+
+  if (files.length === 0 && inventoryOnlyFiles.length === 0) {
     logger.debug('[LintCommand#run] [collecting → done] no files to lint');
     return new LintReport([...resolutionErrors, ...specLoadErrors]);
   }
@@ -346,8 +429,10 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   const implementedUnion = new Set<string>();
 
   // #region START_RESOLVE_REFERENCES — invariant: resolve current semantic owner and active ticket relations, never legacy header ownership
-  const projectRoot = resolve('.');
-  const ownershipContext = prepareOrientFileRelationsContext(projectRoot);
+  const projectRoot = configRoot;
+  let ownershipContext: ReturnType<typeof prepareOrientFileRelationsContext> | undefined;
+  let safeReferenceRoot: boolean | undefined;
+  let exceptionCoverage: ReturnType<typeof readSddCoverage> | undefined;
   const foundTaskPaths = new Set<string>();
   const foundSpecPaths = new Set<string>();
   // #endregion END_RESOLVE_REFERENCES
@@ -368,8 +453,71 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       continue;
     }
 
+    const errorCountBefore = allErrors.length;
+    let filePermissions: ReadonlySet<'dbc' | 'inventory'> = new Set();
+    const disable = findFileLintDisable(content);
+    if (disable) {
+      exceptionCoverage ??= readSddCoverage(projectRoot, { kind: 'project' }, 'audit', {
+        observeSources: false,
+      });
+      const relativeFile = relative(projectRoot, absPath).split(sep).join('/');
+      const row = exceptionCoverage.coverage.rows.find((entry) => entry.path === relativeFile);
+      const headers = parseSourceOwnershipHeader(content).blocks.filter(
+        (block) => block.tag === 'spec'
+      );
+      const uncertain = exceptionCoverage.coverage.findings.some(
+        (finding) => finding.severity === 'error' && finding.code !== 'OBSERVATION_MISSING'
+      );
+      const owners = row?.owners ?? [];
+      const candidates = exceptionCoverage.specifications.filter((spec) => spec.id === owners[0]);
+      const valid =
+        !uncertain &&
+        owners.length === 1 &&
+        headers.length === 1 &&
+        headers[0]!.value.trim() === owners[0] &&
+        candidates.length === 1;
+      const proof = valid
+        ? proveRepoFile(projectRoot, candidates[0]!.path, 'literal-brackets')
+        : null;
+      const document = proof?.ok ? readProvenRepoFile(proof.identity) : null;
+      const permission = document?.ok
+        ? authorizeFileLintDisable(
+            content,
+            relative(projectRoot, absPath).split(sep).join('/'),
+            document.content
+          )
+        : {
+            ok: false as const,
+            detail:
+              'Cannot prove one declaration owner agreeing with the header; repair File Mapping/targets before resolving the module Decision Log',
+          };
+      if (permission.ok) {
+        filePermissions = permission.checks;
+        console.log(
+          `EXEMPTED ${relative(projectRoot, absPath)} checks=${[...permission.checks].join(',')} decision=${permission.ref}; ownership, syntax and project tests remain required`
+        );
+      } else
+        allErrors.push({
+          file: filePath,
+          line: disable.line,
+          col: 1,
+          severity: 'error',
+          code: ERR_CLI_LINT_UNAUTHORIZED_DISABLE,
+          message:
+            permission.detail +
+            '. Propose a scoped canonical decision for operator approval; do not self-approve or disable other gates.' +
+            (valid
+              ? ` Proposal through the orchestrator: npx gennady sdd-log ${candidates[0]!.path} decision --payload-file .claude/tmp/lint-exemption.json (no --phase). JSON: id, what, why, where, evidence, alternative, verify, lintExemption: {file, checks}; where=file=${relativeFile}, checks only dbc/inventory. Pending keeps checks active; only an explicit operator decision permits deviation-verdict.`
+              : ''),
+        });
+    }
     if (autofix) {
-      const fixResult = await checkDbcContracts(content, filePath, true);
+      const fixResult = await checkDbcContracts(
+        content,
+        filePath,
+        true,
+        filePermissions.has('dbc')
+      );
       totalAutoFixed += fixResult.autoFixed;
       try {
         content = readFileSync(absPath, 'utf-8');
@@ -383,11 +531,9 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
       }
     }
 
-    const errorCountBefore = allErrors.length;
-
     allErrors.push(...checkFileHeader(content, filePath));
     allErrors.push(...checkAnchors(content, filePath));
-    allErrors.push(...checkLanguage(content, filePath));
+    allErrors.push(...checkLanguage(content, filePath, lintConfig.commentLanguage));
     allErrors.push(...checkDisables(content, filePath));
     allErrors.push(...checkAnchorClassBody(content, filePath));
     allErrors.push(...checkAnchorThin(content, filePath));
@@ -395,18 +541,35 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     allErrors.push(...checkWordCount(content, filePath, wordLimits));
     allErrors.push(...checkRegionComment(content, filePath, maxRegionComments));
 
-    const dbcResult = await checkDbcContracts(content, filePath, false);
+    const dbcResult = await checkDbcContracts(content, filePath, false, filePermissions.has('dbc'));
     allErrors.push(...dbcResult.errors);
 
     const inventoryApplicable = !isTestFile(filePath) && !isUnderTestDirectory(filePath);
     if (declaredInventory !== null && !inventoryVacuous && inventoryApplicable) {
-      allErrors.push(...(await checkInventorySync(content, filePath, declaredInventory)));
+      allErrors.push(
+        ...(await checkInventorySync(
+          content,
+          filePath,
+          declaredInventory,
+          filePermissions.has('inventory')
+        ))
+      );
       if (inventoryReverseDir) {
         for (const name of await collectExports(content, filePath)) implementedUnion.add(name);
       }
     }
 
     if (allErrors.length > errorCountBefore) {
+      // References are advisory; never traverse an unsafe declaration root to embellish an error.
+      if (safeReferenceRoot === undefined) {
+        const specsRoot = inspectRepoPath(projectRoot, 'specs', 'potential', 'literal-brackets');
+        safeReferenceRoot =
+          specsRoot.ok &&
+          existsSync(specsRoot.absolute) &&
+          lstatSync(specsRoot.absolute).isDirectory();
+      }
+      if (!safeReferenceRoot) continue;
+      ownershipContext ??= prepareOrientFileRelationsContext(projectRoot);
       const relations = resolveOrientFileRelations(
         projectRoot,
         resolve(filePath),
@@ -421,6 +584,18 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
     }
   }
   // #endregion END_LINT_LOOP
+
+  // JavaScript File Mapping sources contribute only their exports to the reverse sweep.
+  if (inventoryReverseDir && declaredInventory !== null && !inventoryVacuous) {
+    for (const filePath of inventoryOnlyFiles) {
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        for (const name of await collectExports(content, filePath)) implementedUnion.add(name);
+      } catch (cause) {
+        allErrors.push(lintReadError(filePath, cause));
+      }
+    }
+  }
 
   // #region START_INVENTORY_REVERSE — invariant: declared-but-unimplemented sweep over the whole scanned dir; vacuous inventory skips the sweep
   if (inventoryReverseDir && declaredInventory !== null && specPath && !inventoryVacuous) {
@@ -458,16 +633,42 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
         deferredEntities.set(name, checkDeferral(taskId, tickets, specScope, name, ticketOwns));
       }
     }
+    const incompleteFiles = [...implementedUnion].filter((name) =>
+      name.startsWith('unverifiable@')
+    );
+    for (const opaque of incompleteFiles)
+      allErrors.push({
+        file: specPath,
+        line: 1,
+        col: 1,
+        severity: 'error',
+        code: ERR_CLI_LINT_INVENTORY_INCOMPLETE,
+        message: `Cannot prove complete reverse inventory: unresolved exports or parse failure in ${opaque.slice('unverifiable@'.length)}. Restore the source or supply a statically supported declared export; other matching entities do not make this sweep complete.`,
+      });
     const reverseResult: ReverseSweepResult = reverseUnimplemented(
       declaredInventory,
       implementedUnion,
       specPath,
-      deferredEntities
+      deferredEntities,
+      specRawContent ? parseDefaultExportEntities(specRawContent) : new Map()
     );
     allErrors.push(...reverseResult.errors);
     for (const { name, taskId } of reverseResult.deferred) {
       console.log(
         `ℹ️  [LintCommand#run] Inventory entity \`${name}\` — deferred to ${taskId}, not counted as drift`
+      );
+    }
+    for (const { name, files } of reverseResult.unverifiable) {
+      allErrors.push({
+        file: specPath,
+        line: 1,
+        col: 1,
+        severity: 'error',
+        code: ERR_CLI_LINT_INVENTORY_INCOMPLETE,
+        message: `Cannot prove complete reverse inventory for ${name}: unresolved exports in ${files.join(', ')}. Resolve the declared source/export mapping; do not delete the inventory row or treat this as full PASS.`,
+      });
+      console.log(
+        `⚠️  [LintCommand#run] ERR_CLI_LINT_INVENTORY_UNVERIFIABLE: inventory entity \`${name}\` was not found, but ${files.join(', ')} export names the sweep cannot list (\`export *\` or a parse failure) — not counted as drift; do not remove the row on this evidence alone`
       );
     }
   }
@@ -476,7 +677,20 @@ export async function run(rawArgs: string[]): Promise<LintReport> {
   // #region START_RESOLVE_REFS_OUTPUT — invariant: project only canonical owner and current active relations
   const taskPaths = [...foundTaskPaths].sort();
   const specPaths = [...foundSpecPaths].sort();
-  const guidance = buildGuidance(allErrors);
+  const guidance =
+    [
+      buildGuidance(allErrors),
+      ...(!scopeOverride &&
+      lintConfig.scope === 'all' &&
+      allErrors.some((error) => error.code === 'ERR_CLI_LINT_MISSING_FILE')
+        ? [lintScopeGuidance(lintConfig)]
+        : []),
+      ...(allErrors.some((error) => error.code === 'ERR_CLI_LINT_NON_ENGLISH')
+        ? [lintLanguageGuidance(lintConfig)]
+        : []),
+    ]
+      .filter(Boolean)
+      .join('\n\n') || undefined;
   const report = new LintReport(allErrors, totalAutoFixed, taskPaths, specPaths, guidance);
   // #endregion END_RESOLVE_REFS_OUTPUT
 
@@ -539,10 +753,11 @@ function inspectLintTarget(target: string): { ok: true } | { ok: false; detail: 
  */
 export function resolveTargets(
   targets: string[],
-  options: { includeTests?: boolean } = {}
-): { files: string[]; errors: LintError[] } {
+  options: { includeTests?: boolean; inventorySources?: boolean } = {}
+): { files: string[]; errors: LintError[]; inventoryOnly?: string[] } {
   logger.debug(`[resolveTargets] [idle → resolving] ${targets.length} target(s)`);
   const fileSet = new Set<string>();
+  const inventoryOnly = new Set<string>();
   const errors: LintError[] = [];
 
   for (const target of targets) {
@@ -573,16 +788,19 @@ export function resolveTargets(
     if (stat.isDirectory()) {
       walkDir(absTarget, absTarget, fileSet, errors, options);
     } else if (stat.isFile()) {
-      if (isGennadyLintTarget(target)) {
-        fileSet.add(absTarget);
-      } else {
+      if (options.inventorySources && INVENTORY_ONLY_SOURCE_RE.test(target)) {
+        // JavaScript in a module's File Mapping: its exports implement inventory entities, but
+        // contract lint does not apply to it.
+        inventoryOnly.add(absTarget);
+      } else if (isGennadyLintTarget(target)) fileSet.add(absTarget);
+      else {
         errors.push({
           file: target,
           line: 0,
           col: 0,
           severity: 'error',
           code: ERR_CLI_LINT_UNSUPPORTED_TARGET,
-          message: `Explicit target \`${target}\` is unsupported: gennady lint currently inspects only .ts and .tsx files. Pass a supported file or its containing directory; directory traversal ignores other extensions.`,
+          message: `Explicit target \`${target}\` is unsupported: gennady lint inspects the JS/TS source family (.js/.jsx/.mjs/.cjs/.ts/.tsx/.mts/.cts). Pass a supported file or its containing directory; directory traversal ignores other extensions.`,
         });
       }
     }
@@ -592,7 +810,9 @@ export function resolveTargets(
   logger.debug(
     `[resolveTargets] [resolving → resolved] ${files.length} file(s), ${errors.length} error(s)`
   );
-  return { files, errors };
+  return options.inventorySources
+    ? { files, errors, inventoryOnly: [...inventoryOnly].sort() }
+    : { files, errors };
 }
 
 // #region START_WALK_DIR — invariant: recursive, lstat, skip hidden/system dirs, filter by SUPPORTED_EXTENSIONS

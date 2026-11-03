@@ -11,6 +11,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
+import { collectSpecFiles } from '../sandbox-lifecycle.ts';
 import {
   appendExperimentLogStub,
   persistDurableResult,
@@ -24,6 +25,62 @@ import {
 function tempDir(): string {
   return mkdtempSync(join(tmpdir(), 'results-archive-'));
 }
+
+it('archives a failed run canonical specs despite scratch copies without changing its verdict', async () => {
+  const root = tempDir();
+  const sandbox = join(root, 'sandbox');
+  const spec = join(sandbox, 'specs/calc/nth/nth.spec.md');
+  const shadow = join(sandbox, '.tmp/exp3/specs/calc/nth/nth.spec.md');
+  for (const file of [spec, shadow]) {
+    mkdirSync(join(file, '..'), { recursive: true });
+    writeFileSync(file, '# observed spec\n');
+  }
+  try {
+    assert.deepEqual(
+      await collectSpecFiles(sandbox),
+      [shadow, spec].sort(),
+      'transient lifecycle evidence must not lose partial/scratch specifications'
+    );
+    const files = await collectSpecFiles(sandbox, { canonicalOnly: true });
+    assert.deepEqual(files, [spec], 'scratch copies are not canonical specification outputs');
+    const dir = await persistDurableResult(
+      join(root, 'results'),
+      fakeSummary({
+        verdict: 'worker-error',
+        status: 'error',
+        outcome: 'worker-error',
+        hasJudge: false,
+      }),
+      { specs: { root: sandbox, files } }
+    );
+    const saved = JSON.parse(await readFile(join(dir, 'summary.json'), 'utf8'));
+    assert.equal(saved.outcome, 'worker-error');
+    assert.equal(saved.verdict, 'worker-error');
+    assert.deepEqual(saved.specFiles, ['specs/calc/nth/nth.spec.md']);
+    assert.equal(existsSync(join(dir, '.tmp')), false);
+    await assert.rejects(
+      persistDurableResult(join(root, 'results'), fakeSummary(), {
+        specs: { root: sandbox, files: [shadow] },
+      }),
+      /escaped/
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+it('canonical spec collection does not follow a symlinked specs root', async () => {
+  const root = tempDir();
+  try {
+    mkdirSync(join(root, 'sandbox'));
+    mkdirSync(join(root, 'outside'));
+    writeFileSync(join(root, 'outside/private.spec.md'), 'not an output');
+    symlinkSync(join(root, 'outside'), join(root, 'sandbox/specs'));
+    assert.deepEqual(await collectSpecFiles(join(root, 'sandbox'), { canonicalOnly: true }), []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 it('binds experiments to tracked, untracked, scenario and configuration inputs without following aliases', async () => {
   const root = tempDir();

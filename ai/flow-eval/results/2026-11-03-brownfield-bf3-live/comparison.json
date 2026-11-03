@@ -1,0 +1,165 @@
+{
+  "schema": "gennady.bf3.comparison.1",
+  "evaluatedCandidate": "e24ce33eeada13b666df116a903c15568af504cc",
+  "baseline": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+  "planned": 8,
+  "recorded": 8,
+  "replacements": 0,
+  "newPrimaryAttemptsAuthorized": false,
+  "modelBehaviorWinClaimed": false,
+  "fullTrajectoryQualifiedEfficiencyPairs": 0,
+  "rows": [
+    {
+      "caseId": "E1",
+      "arms": {
+        "baseline": {
+          "terminal": "completed-worker",
+          "functional": true,
+          "domainPass": true,
+          "rawJudge": "pass",
+          "primaryFlowMs": 60503,
+          "tools": 19,
+          "tokensWithoutCache": 34179,
+          "cacheRead": 151296,
+          "cleanup": true
+        },
+        "candidate": {
+          "terminal": "completed-worker",
+          "functional": true,
+          "domainPass": true,
+          "rawJudge": "pass",
+          "primaryFlowMs": 91411,
+          "tools": 20,
+          "tokensWithoutCache": 41915,
+          "cacheRead": 235904,
+          "cleanup": true
+        }
+      },
+      "efficiencyComparisonQualified": false
+    },
+    {
+      "caseId": "E2",
+      "arms": {
+        "candidate": {
+          "terminal": "completed-worker",
+          "functional": true,
+          "domainPass": true,
+          "rawJudge": "fail",
+          "primaryFlowMs": 40565,
+          "tools": 10,
+          "tokensWithoutCache": 12819,
+          "cacheRead": 77568,
+          "cleanup": true
+        },
+        "baseline": {
+          "terminal": "policy-censored",
+          "functional": true,
+          "domainPass": false,
+          "rawJudge": "fail",
+          "primaryFlowMs": 20531,
+          "tools": 10,
+          "tokensWithoutCache": 14293,
+          "cacheRead": 50432,
+          "cleanup": true
+        }
+      },
+      "efficiencyComparisonQualified": false
+    },
+    {
+      "caseId": "E3",
+      "arms": {
+        "baseline": {
+          "terminal": "policy-censored",
+          "functional": false,
+          "domainPass": false,
+          "rawJudge": "fail",
+          "primaryFlowMs": 10247,
+          "tools": 8,
+          "tokensWithoutCache": 13049,
+          "cacheRead": 16896,
+          "cleanup": true
+        },
+        "candidate": {
+          "terminal": "policy-censored",
+          "functional": false,
+          "domainPass": false,
+          "rawJudge": "fail",
+          "primaryFlowMs": 15635,
+          "tools": 10,
+          "tokensWithoutCache": 10228,
+          "cacheRead": 26112,
+          "cleanup": true
+        }
+      },
+      "efficiencyComparisonQualified": false
+    },
+    {
+      "caseId": "E4",
+      "arms": {
+        "candidate": {
+          "terminal": "budget-exhausted",
+          "functional": true,
+          "domainPass": false,
+          "rawJudge": "fail",
+          "primaryFlowMs": 544760,
+          "tools": 25,
+          "tokensWithoutCache": 44979,
+          "cacheRead": 343680,
+          "cleanup": true
+        },
+        "baseline": {
+          "terminal": "completed-worker",
+          "functional": false,
+          "domainPass": false,
+          "rawJudge": "pass",
+          "primaryFlowMs": 192183,
+          "tools": 16,
+          "tokensWithoutCache": 40179,
+          "cacheRead": 404096,
+          "cleanup": true
+        }
+      },
+      "efficiencyComparisonQualified": false
+    }
+  ],
+  "spendOnly": {
+    "primaryTokensWithoutCache": 211641,
+    "judgeTokensWithoutCache": 49988,
+    "reflectionTokensWithoutCache": 175961,
+    "primaryCacheRead": 1305984,
+    "primaryToolCalls": 118,
+    "allUncachedTokens": 437590,
+    "money": null,
+    "providerReportedCostZeroIsNotFree": true,
+    "apiRequests": null,
+    "toolCallsAreNotHttpRequests": true
+  },
+  "cleanup": {
+    "attemptRootsRemoved": 8,
+    "campaignRootRemoved": true,
+    "logicalBytesRemoved": 744093179,
+    "sharedDependenciesPreserved": true
+  },
+  "independentCallAudit": {
+    "calls": 118,
+    "required": 76,
+    "supporting": 14,
+    "redundant": 20,
+    "unknownOrMixed": 8,
+    "isCausalEffectProof": false
+  },
+  "decisions": {
+    "E1": "Both artifacts correct; candidate more expensive in this one pair and adds ungapped broad discovery; no trajectory win",
+    "E2": "Candidate objective and separate host consent confirmed; raw judge false fail mixes time origins, preserved. Baseline actual installed implementation search was censored",
+    "E3": "Both policy-censored on package reads before lint/proposal; metadata read alone is not proof of implementation reverse engineering. No live pending-proposal proof",
+    "E4": "Baseline blocked by known literal path capability; candidate correct code and P1 completion but P2 Verify not terminal before budget. No completed comparable pair"
+  },
+  "limitations": [
+    "Explicit bounded task briefs and host-provided specs/tickets are inputs, not model achievements",
+    "E4 primary flow includes intermediate host P1 checkpoint; not pure inference latency",
+    "Tool timestamps describe observed order, not proven per-command latency",
+    "Private raw tool stdout was not fully retained in this campaign; absence limits E4 causal diagnosis",
+    "Known baseline capability gaps are separate from behavior quality",
+    "One attempt per case/arm; no noninferiority or universal cost/latency effect claimed"
+  ]
+}

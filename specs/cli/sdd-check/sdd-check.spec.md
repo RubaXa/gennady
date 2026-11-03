@@ -492,3 +492,12 @@ shared/sdd/anchor-inject.ts  # injectAnchors + legacyHeaderBody (shared header/s
 - **Depends on:** `shared/common/parse-args.ts`, `shared/common/changed-files.ts`, `shared/sdd/check.ts` (→ `section.ts`, `ticket.ts`), `shared/sdd/file-relations.ts`, `shared/sdd/source-extensions.ts`, `shared/sdd/portal.ts` (parseScopes + parseGraphEdges), `#logger`
 - **Provides to:** `gennady.ts`; вызывается из скилов `audit` / `reconcile` / `check`
 <!--/SECTION:INTER_MODULE_DEPENDENCIES-->
+
+### Global coherence and selected adoption
+
+`--all` checks structural coherence and keeps untouched declared files without headers visibly
+pending when a successful Git observation proves they are unchanged. It does not prove full SDD
+adoption. Changed/new declared files, foreign owners, duplicate owners and removed prior headers
+remain errors. No-Git or failed Git evidence does not claim untouched status. Selected coverage
+`--stage audit` and phase-exit remain strict for every selected obligation. This separates task
+completion from adoption of an entire existing module without an exclusion snapshot.

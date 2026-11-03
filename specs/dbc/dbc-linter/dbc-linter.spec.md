@@ -23,9 +23,10 @@ _Это полный список сущностей модуля. Любое в
 | `DbcTsAstAdapter`           | Adapter      | Реализация `DbcAstAdapter` для TypeScript через tree-sitter                                                                                              |
 | `DbcTsLinter`               | Adapter      | Реализация `DbcLinter` для TypeScript: pass 1–4                                                                                                          |
 | `DbcParseResult`            | Value Object | Результат `DbcAstAdapter.parseFile()`: discriminated union                                                                                               |
+| `DbcExportNames`            | Value Object | Имена ES-экспорта файла: `local`, `reexported`, `hasDefault`, `starReexport` — результат `DbcTsAstAdapter.parseExportNames()` (D-021)                    |
 | `DbcExportedEntity`         | Value Object | Экспортируемая сущность: имя, kind, члены, контракт, сигнатура                                                                                           |
 | `DbcMember`                 | Value Object | Член сущности: имя, kind, контракт, сигнатура                                                                                                            |
-| `DbcSignatureInfo`          | Value Object | Сигнатура: параметры + возвращаемый тип                                                                                                                  |
+| `DbcSignatureInfo`          | Value Object | Сигнатура: параметры + возвращаемый тип; `implicitReturn` (нет аннотации возврата), `valueFunction` (функция в `const`)                                  |
 | `DbcParamInfo`              | Value Object | Параметр: имя, тип, optional, isRest                                                                                                                     |
 | `DbcLintOptions`            | Value Object | Опции линтинга: `strategy?: 'full'`, `content?: string` (предварительно прочитанный контент)                                                             |
 | `DbcLintReport`             | Value Object | Результат `lint()`: ошибки + `format()`                                                                                                                  |
@@ -35,6 +36,7 @@ _Это полный список сущностей модуля. Любое в
 | `ERR_DBC_LINT_*` ×10        | Constant     | Стабильные строковые коды ошибок линтера                                                                                                                 |
 | `DbcContractMatchValidator` | Service      | Сервис сверки контракта с сигнатурой: проверка param-ов, returns, порядка, избыточных типов, implements+@see redundancy                                  |
 | `DbcValidateContext`        | Value Object | Контекст для `validate()`: `implementsInterfaces?: string[]` (имена интерфейсов), `memberName?: string` (имя метода для @see-матчинга внутри validate()) |
+| `bindContractParams`        | Function     | Связывает деструктурированные параметры сигнатуры с позиционными именами `@param` контракта; общая для валидатора и autofix                              |
 
 ## 3. Entity Surfaces
 
@@ -74,6 +76,7 @@ _Это полный список сущностей модуля. Любое в
 - **Public Properties:** N/A
 - **Public Operations:**
   - `parseFile(filePath: string, content?: string) → Promise<DbcParseResult>` — реализация контракта `DbcAstAdapter`. Если `content` передан — использовать его; иначе читать с диска через `readFileSync`
+  - `parseExportNames(filePath: string, content?: string) → Promise<{ ok: true; names: DbcExportNames } | { ok: false; error: string }>` — имена всех форм ES-экспорта для сверки описи (D-021). Не бросает: битый или нечитаемый файл → `{ ok: false }`
 - **Lifecycle:** stateless; инициализирует tree-sitter с TS-грамматикой один раз
 - **Events Emitted:** N/A
 - **Errors & Degradation:** Синтаксически битый файл → `{ ok: false, error }`. Файл не найден → `{ ok: false, error }`.
@@ -213,9 +216,17 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 
 **Side Effects:**
 
-- Инициализация tree-sitter с TS-грамматикой (one-time)
+- Инициализация tree-sitter (one-time на грамматику): `.ts`/`.mts`/`.cts` разбираются грамматикой TypeScript, `.tsx` — TSX, `.js`/`.jsx`/`.mjs`/`.cjs` — JavaScript с JSX. JavaScript не принимает TypeScript-only синтаксис; `<T>(x)` допустимо только в TypeScript вне TSX.
 - Чтение файла с диска
 - Логирование через `#logger`
+
+**Извлечение сигнатуры:**
+
+- Параметр `this: T` типизирует получатель и не является параметром времени выполнения: в `params` не попадает, `@param` для него не нужен (`@param this` — `PARAM_EXTRA`).
+- Деструктурированный параметр (`{ request, xray }: Options`) попадает в `params` с исходным текстом паттерна как именем; имя для сверки выбирает `DbcContractMatchValidator` (см. ниже).
+- Вызываемая сущность без аннотации типа возврата получает `implicitReturn: true`: тип выводить из тела без type checker нельзя, поэтому `@returns` необязателен и не считается лишним.
+- `export const f = (a) => …` и `= function (a) {…}` с одним декларатором: сигнатура берётся из значения, `valueFunction: true`. Kind остаётся `const`.
+- Строки-директивы инструментов между JSDoc и объявлением (`// eslint-disable-next-line`, `// eslint-disable-line`, `// eslint-disable`, `// eslint-enable`, `// @ts-expect-error`, `// @ts-ignore`, `// @ts-nocheck`, `// prettier-ignore`) не отрывают контракт от объявления. Любой другой `//`-комментарий по-прежнему отрывает.
 
 #### Adapter: `DbcTsLinter`
 
@@ -243,11 +254,14 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
    - **Data-flow:** `DbcTsLinter.lintAndFix()` (pass 4) вызывает `_removeRedundantInImplements` для каждого method-члена, у которого `entry.implementsInterfaces.length > 0` И `member.contract.text` содержит `@see`. Валидатор (`validate()`) независимо проверяет этот же condition с тем же `context` — единый detection logic, дублирование нежелательно (см. решение D-019 ниже).
 3. `_removeRedundantTypes(source) → string` — удаляет избыточные `{type}` в `@param` и `@returns`
 4. `_normalizeParamBrackets(source, signature) → string` — добавляет/убирает `[]` в `@param` для соответствия опциональности сигнатуры
-5. `_removeExtraParams(source, signature) → string` — удаляет @param, которых нет в сигнатуре. НЕ трогает `*/` (closing marker) — никогда не удаляется, даже при активном skipMode.
-6. `_removeUnexpectedReturns(source, signature) → string` — удаляет @returns, где он не нужен. НЕ трогает `*/`.
-7. `_reorderParams(source, signature) → string` — пересортировывает @param в порядке сигнатуры
+5. `_removeExtraParams(source, signature) → string` — удаляет @param, которых нет в сигнатуре. Вложенные `@param options.request` при параметре `options` сохраняет. НЕ трогает `*/` (closing marker) — никогда не удаляется, даже при активном skipMode.
+6. `_removeUnexpectedReturns(source, signature) → string` — удаляет @returns, где он не нужен: kind без возврата (кроме `const` с `valueFunction`) или явная аннотация `void`. При `implicitReturn` не удаляет. НЕ трогает `*/`.
+7. `_reorderParams(source, signature) → string` — пересортировывает @param в порядке сигнатуры; вложенные `@param options.request` идут сразу за своим корнем в записанном порядке
+
 8. `_reorderTags(source) → string` — пересортировывает теги в канонический порядок (implements → invariant → pre → param → throws → returns → post → sideEffect)
 9. `_normalizeMultiLine(source) → string` — исправляет malformed формат: (a) если `/**` содержит контент на той же строке → переносит контент на новую строку, (b) если `*/` и контент на одной строке → разделяет. НЕ реконструирует блок с нуля — сохраняет исходные отступы и форматирование. Single-line не трогает. Канонические контракты (bare `/**`, bare ` */`, `* content`) проходят без изменений.
+
+Шаги 4–7 получают сигнатуру после `bindContractParams` — те же имена деструктурированных параметров, что видит валидатор.
 
 ### 4.3 Services
 
@@ -272,6 +286,10 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
   - Возвращает `DbcLintError[]` (пустой если контракт соответствует сигнатуре)
   - Каждая ошибка содержит `code` из `DbcLintIssueCode`
   - При `context.hasSeeTag && context.implementsInterfaces.length > 0`: `@param`/`@returns` → `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS` (валидатор НЕ генерирует `ERR_DBC_LINT_RETURNS_UNEXPECTED` для того же @returns — приоритет у redundancy). Если `@see` не содержит валидный `{specifier}` (например, `ERR_DBC_SEE_FORMAT_INVALID`) — implements+@see redundancy не срабатывает, метод проверяется как обычный.
+  - Деструктурированный параметр сверяется с `@param`, записанным на той же позиции среди `@param` верхнего уровня (`@param options`); `@param` с точным текстом паттерна (`@param [{a = 1}]`) работает как раньше. Имя, совпадающее с другим параметром сигнатуры, в псевдоним не берётся. Связывание — экспортируемая чистая функция `bindContractParams(signature, specifiers)`, ей пользуется и autofix.
+  - `@param options.request` при параметре `options` описывает свойство параметра и не участвует в `PARAM_MISSING` / `PARAM_EXTRA` / `PARAM_ORDER`.
+  - `implicitReturn`: ни `RETURNS_MISSING`, ни `RETURNS_UNEXPECTED`.
+  - `const` с `valueFunction`: `@param` и `@returns` необязательны; если записан хотя бы один `@param`, параметры сверяются как у функции; `@returns` при явной аннотации `void` — `RETURNS_UNEXPECTED`. `@param` у `const` без функции — по-прежнему `PARAM_EXTRA`.
 - Invariants:
   - Не кидает исключений
   - Не мутирует входные данные
@@ -368,6 +386,29 @@ services/dbc/linter/
 - **Shared data:** `DbcExportedEntity.implementsInterfaces: string[]` — единый источник для валидатора и autofix.
 - **Risk accepted:** Дублирование detection-логики между `validate()` и `_removeRedundantInImplements`. Принято осознанно: autofix-функции — приватные, покрываются теми же тестовыми фикстурами. Изменение detection-логики → обновляются обе функции → тесты ловят расхождение.
 - **Rejected alternatives:** Передавать `DbcLintError[]` в autofix → coupling autofix к lint-проходу, усложняет тестирование; autofix должен работать standalone.
+
+### D-020 — Контракты существующего TypeScript-кода: `this`, деструктуризация, стрелки, неявный возврат
+
+- **Status:** active
+- **Recorded:** 2026-11-02, dbc-linter
+- **Why:** В большом существующем TS-коде часть функций нельзя было описать контрактом, который пройдёт lint: `this: T` давал параметр с пустым именем, обязательный деструктурированный параметр требовал `@param {request, xray}` (имя до пробела — невозможно), функция без аннотации считалась `void` и `@returns` у неё был ошибкой, у `export const f = (a) => …` нельзя было описать `@param`, а `// eslint-disable-next-line` отрывал JSDoc. Файл с `<T>(x)` не разбирался, потому что `.ts` читался TSX-грамматикой. Исправление делает эти формы описуемыми, не ослабляя сверку там, где контракт уже записан.
+- **Rejected alternatives:** выводить тип возврата из тела (`return expr` → обязательный `@returns`) — без type checker это эвристика, и она сделала бы красными уже чистые функции без аннотации; сделать `@param`/`@returns` обязательными у стрелочных `const` (kind `function`) — тоже новые ошибки во всём существующем коде; пускать в псевдоним деструктуризации любое имя без позиции — ломает обнаружение опечаток в соседних `@param`.
+- **Risk accepted:** функция без аннотации может вернуть значение, а `@returns` у неё не потребуется. Явная аннотация по-прежнему включает строгую проверку.
+
+### D-021 — Имена экспорта для сверки описи
+
+- **Status:** active
+- **Recorded:** 2026-11-02, dbc-linter
+- **Why:** обратная сверка Entity Inventory брала экспорты из `parseFile`, который собирает только декларации с контрактами. `export { a }`, `export default x`, реэкспорты и второй декларатор `export const a = 1, b = 2` в реализованное не попадали. `parseExportNames` перечисляет имена каждой формы; файл `.js` разбирается TSX-грамматикой.
+- **Rejected alternatives:** расширять `parseFile` — его сущности требуют контракт и сигнатуру, и новые формы дали бы ложные ошибки DbC.
+- **Risk accepted:** `export *` не раскрывается — помечается `starReexport`, решение оставлено потребителю.
+
+### D-022 — JavaScript grammar rejects TypeScript-only syntax
+
+- **Status:** active, 2026-11-03. Уточняет grammar-часть D-021; её исходная запись сохранена.
+- **Why:** TSX — надмножество JavaScript. Типизированный `export const value: number = 1` проходил `.js` lint и syntax check при принятом DbC-исключении, хотя JavaScript runtime его отвергает.
+- **Decision:** JavaScript family использует настоящую JavaScript grammar с JSX; `.ts/.mts/.cts` и `.tsx` сохраняют соответствующие TypeScript grammar. `parseFile` и `parseExportNames` выбирают одну grammar по расширению. Native JavaScript dependency резолвится относительно `tree-sitter-typescript`, который явно её объявляет: hoisting не требуется.
+- **Evidence:** `dbc-source-grammar.test.ts` — TypeScript-only syntax rejected in JS family, typed TS positive, JSX/CommonJS positive, accepted DbC exemption retains syntax rejection. Project compiler/tests остаются отдельными обязательствами.
 
 ## 8. Inter-Module Dependencies
 
@@ -605,3 +646,11 @@ graph TD
   | N17 | `implements-see/priority-returns-only.ts`         | `class Impl implements Agent`, method с `@see {Agent#scan}`, только `@returns result` (без @param) → 1 ошибка `ERR_DBC_LINT_PARAM_REDUNDANT_IN_IMPLEMENTS`. `ERR_DBC_LINT_RETURNS_UNEXPECTED` НЕ генерируется (приоритет у redundancy)                |
 
   **Итого: 10 happy + 16 missing-contract + 2 parse-failed + 5 param-missing + 4 param-extra + 3 param-order + 3 returns-missing + 6 returns-unexpected + 4 type-redundant + 4 parser-errors + 8 autofix-combined + 11 edge + 20 unit-validator + 20 snapshots + 17 implements-redundant (@deferred) = 133 тестовых случая.**
+
+### Смешанные JS/TS исходники
+
+Контрактный adapter читает JS/TS family; статические CommonJS callable assignments являются
+контрактной поверхностью, включая unparenthesized arrow argument. CommonJS object exports
+учитываются по статическим именам; динамические/nested writes явно оставляют inventory неполным.
+Типы JSDoc полезны в JavaScript: lint/autofix сохраняют их. В TypeScript правило redundant types
+сохраняется. Это extraction capability, не замена синтаксическим/типовым проверкам проекта.

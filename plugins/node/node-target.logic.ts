@@ -3,6 +3,7 @@
 // @spec: CLI-VERIFY
 
 import { provenanceOf } from '../../services/config/config-loader.ts';
+import { isGennadyLintTarget } from '../../shared/common/gennady-lint-source-policy.ts';
 import { VerifyConfigError } from '../../shared/verify/config/verify-config.error.ts';
 import type {
   VerifyConfigLoad,
@@ -59,10 +60,10 @@ function nodeRepairTargets(
   if (stepId !== 'lint-fix' || !nodeScriptReachesGennady(facts.scripts, script)) {
     return targetFiles;
   }
-  const typescriptTargets = targetFiles.filter((file) => /\.tsx?$/i.test(file));
+  const supportedTargets = targetFiles.filter(isGennadyLintTarget);
   return (
-    nodeGennadyLintRepairTargets(facts.scripts, STEP_SCRIPTS.lint, typescriptTargets) ??
-    typescriptTargets
+    nodeGennadyLintRepairTargets(facts.scripts, STEP_SCRIPTS.lint, supportedTargets) ??
+    supportedTargets
   );
 }
 
@@ -329,7 +330,8 @@ export function nodeDetectedConfig(
           candidate.id,
           {
             enabled: false,
-            reason: 'no applicable .ts/.tsx Target Files for the Gennady contract repair',
+            reason:
+              'no applicable JS/TS Target Files in the read-only Gennady lint source scope for contract repair',
           },
         ];
       }

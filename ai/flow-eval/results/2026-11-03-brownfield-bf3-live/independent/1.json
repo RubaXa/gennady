@@ -1,0 +1,369 @@
+{
+  "schema": "gennady.bf3.independent-call-audit.1",
+  "position": 1,
+  "caseId": "E1",
+  "arm": "candidate",
+  "derivedOnly": true,
+  "rawUnchanged": true,
+  "sourcePrimarySha256": "75077d897206f3019e44156129038d61e8ae796d55d83b11aee4e854eb9f8013",
+  "traceComplete": true,
+  "calls": [
+    {
+      "call": 1,
+      "tool": "read",
+      "action": "Read brief",
+      "classification": "required",
+      "basis": "Хост прямо требует brief; цель и границы доступны по точному пути.",
+      "argument": "{\"filePath\":\"./inputs/brief.md\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 2.718,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 2,
+      "tool": "bash",
+      "action": "Broad repository discovery",
+      "classification": "redundant",
+      "basis": "ls -la плюс recursive find . при уже заданных точных путях. Агент не называет конкретный gap; протокол запрещает recursive/project-wide scans. Успешный exit0 не делает вызов обоснованным.",
+      "argument": "ls -la && find . -maxdepth 3 -type f | head -100",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 4.374,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 3,
+      "tool": "bash",
+      "action": "Load execution protocol",
+      "classification": "required",
+      "basis": "Прямое требование brief. Fallback echo не понадобился: протокол существовал.",
+      "argument": "cat ai/directives/sdd-v2/phase-execution-protocol.directive.xml 2>/dev/null || echo MISSING",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 4.355,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 4,
+      "tool": "bash",
+      "action": "Get actual P1 dispatch",
+      "classification": "required",
+      "basis": "Нужно получить targets, READ rules, ownership и canonical Verify; вызов явно задан brief.",
+      "argument": "npx --no-install gennady sdd-task specs/bf/bf.task.BF-work.md --phase P1",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 10.201,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 5,
+      "tool": "bash",
+      "action": "Config/package read plus directive tree discovery",
+      "classification": "redundant",
+      "basis": "Скомбинированы чтения gennady.yaml/package.json и recursive find ai. Точные directive paths уже известны, конкретный config gap не указан. Recursive scan — нарушение инструкции; не считаем весь batched вызов эффективным только потому, что он один.",
+      "argument": "cat gennady.yaml; printf '\\n---PKG---\\n'; cat package.json; printf '\\n---TREE---\\n'; find ai -type f",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 6.688,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 6,
+      "tool": "read",
+      "action": "Load STEP_1_ORIENT",
+      "classification": "required",
+      "basis": "Обязательный step-файл public protocol.",
+      "argument": "{\"filePath\":\"./ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 12.178,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 7,
+      "tool": "read",
+      "action": "Load STEP_2_IMPLEMENT",
+      "classification": "required",
+      "basis": "Обязательные implementation/header rules.",
+      "argument": "{\"filePath\":\"./ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 12.452,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 8,
+      "tool": "read",
+      "action": "Load STEP_3_VERIFY",
+      "classification": "required",
+      "basis": "Обязательный step canonical Verify.",
+      "argument": "{\"filePath\":\"./ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 12.777,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 9,
+      "tool": "read",
+      "action": "Load STEP_4_HANDOFF",
+      "classification": "required",
+      "basis": "Обязательный формат возврата без worker-owned completion.",
+      "argument": "{\"filePath\":\"./ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 13.036,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 10,
+      "tool": "bash",
+      "action": "Bounded P1 ownership preflight",
+      "classification": "required",
+      "basis": "Прямое требование STEP_1_ORIENT; exact task/phase, без массовой разметки.",
+      "argument": "npx --no-install gennady orient --coverage --task specs/bf/bf.task.BF-work.md --phase P1 --stage preflight --json",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 16.694,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 11,
+      "tool": "read",
+      "action": "Read task context",
+      "classification": "required",
+      "basis": "Dispatch требует PHASE_P1/BDD/VERIFICATION. Весь маленький файл вместо точных anchored sections — гранулярность шире инструкции, но контекст задачи нужен.",
+      "argument": "{\"filePath\":\"./specs/bf/bf.task.BF-work.md\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 15.317,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 12,
+      "tool": "read",
+      "action": "Read owner spec",
+      "classification": "required",
+      "basis": "Путь сразу правильный, без baseline wrong-root retry. Полный файл вместо Value anchor — возможная избыточная гранулярность.",
+      "argument": "{\"filePath\":\"./specs/bf/bf.spec.md\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 15.575,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 13,
+      "tool": "read",
+      "action": "Read exact target",
+      "classification": "required",
+      "basis": "Нужны исходные байты разрешённого implementation target перед правкой.",
+      "argument": "{\"filePath\":\"./bf-work/value.cts\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 15.827,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 14,
+      "tool": "read",
+      "action": "Read fixed test",
+      "classification": "supporting",
+      "basis": "Проверка существующего exact-value oracle/consumer; тест не изменён.",
+      "argument": "{\"filePath\":\"./bf-work/value.test.cjs\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 16.047,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 15,
+      "tool": "read",
+      "action": "Load baseline coding rules",
+      "classification": "required",
+      "basis": "READ selected/applicable coding rules до изменения implementation.",
+      "argument": "{\"filePath\":\"./ai/directives/coding/baseline-rules.xml\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 16.3,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 16,
+      "tool": "read",
+      "action": "Load TypeScript rules",
+      "classification": "required",
+      "basis": "Публичные TS rules для .cts target до изменения; чужие правила не активируются.",
+      "argument": "{\"filePath\":\"./ai/directives/coding/typescript-rules.xml\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 16.562,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 17,
+      "tool": "bash",
+      "action": "Allowed exact status plus ungapped Git history",
+      "classification": "unknown",
+      "basis": "git status --porcelain -- exact target явно допустим, но в том же вызове git log --oneline -3 без названного version/history gap. Компоненты имеют разные оценки: status=supporting, log=redundant и instruction violation. Поэтому весь вызов не помечаем безусловно justified.",
+      "argument": "git status --porcelain -- bf-work/value.cts; git log --oneline -3",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 24.764,
+      "offsetTimingIsSdkObservationNotCommandLatency": true,
+      "components": [
+        {
+          "action": "exact-target git status",
+          "classification": "supporting"
+        },
+        {
+          "action": "git log --oneline -3",
+          "classification": "redundant",
+          "instructionViolation": true
+        }
+      ]
+    },
+    {
+      "call": 18,
+      "tool": "edit",
+      "action": "Edit exact implementation target",
+      "classification": "required",
+      "basis": "Единственная worker write меняет6→7 и добавляет canonical file/spec/consumer header; соответствует brief.",
+      "argument": "{\"filePath\":\"./bf-work/value.cts\"}",
+      "status": "completed",
+      "exitCode": null,
+      "observedOffsetSeconds": 27.0,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 19,
+      "tool": "bash",
+      "action": "Run canonical P1 Verify",
+      "classification": "required",
+      "basis": "Реальный обязательный phase check, exit0; journal/functional oracle подтверждают PASS.",
+      "argument": "npx gennady sdd-verify --task=specs/bf/bf.task.BF-work.md --phase=P1",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 79.751,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    },
+    {
+      "call": 20,
+      "tool": "bash",
+      "action": "Post-Verify exact status and target re-read",
+      "classification": "supporting",
+      "basis": "Узкая проверка финальных байтов/границы после Verify. В этом fixture нет repair-изменений; необходимость повторного чтения не доказана, но это exact permitted self-check, не broad discovery.",
+      "argument": "git status --porcelain -- bf-work/value.cts; cat bf-work/value.cts",
+      "status": "completed",
+      "exitCode": 0,
+      "observedOffsetSeconds": 84.044,
+      "offsetTimingIsSdkObservationNotCommandLatency": true
+    }
+  ],
+  "counts": {
+    "required": 15,
+    "supporting": 2,
+    "redundant": 2,
+    "unknown": 1
+  },
+  "roleViolationsObserved": [],
+  "instructionViolationsObserved": [
+    {
+      "call": 2,
+      "kind": "recursive-repository-discovery",
+      "basis": "ls -la плюс recursive find . при уже заданных точных путях. Агент не называет конкретный gap; протокол запрещает recursive/project-wide scans. Успешный exit0 не делает вызов обоснованным."
+    },
+    {
+      "call": 5,
+      "kind": "recursive-directive-discovery",
+      "basis": "Скомбинированы чтения gennady.yaml/package.json и recursive find ai. Точные directive paths уже известны, конкретный config gap не указан. Recursive scan — нарушение инструкции; не считаем весь batched вызов эффективным только потому, что он один."
+    },
+    {
+      "call": 17,
+      "kind": "ungapped-git-history",
+      "basis": "git status --porcelain -- exact target явно допустим, но в том же вызове git log --oneline -3 без названного version/history gap. Компоненты имеют разные оценки: status=supporting, log=redundant и instruction violation. Поэтому весь вызов не помечаем безусловно justified."
+    }
+  ],
+  "derivedTrajectoryStatus": "violated",
+  "rawTrajectoryStatusPreserved": "not-proven",
+  "directiveTimeline": [
+    {
+      "call": 3,
+      "observedOffsetSeconds": 4.355,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol.directive.xml",
+      "fileBytes": 13858,
+      "loadedFileSha256": "4dd90032bbba75f37cc7013599e040228635eb17d1f561a29ada640de412fc25",
+      "toolOutputBytes": 13858,
+      "toolOutputRedactedPrefixSha256": "4dd90032bbba75f37cc7013599e040228635eb17d1f561a29ada640de412fc25",
+      "source": "unchanged installed candidate runtime package (workspace copy bound by harness input integrity)"
+    },
+    {
+      "call": 6,
+      "observedOffsetSeconds": 12.178,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml",
+      "fileBytes": 6036,
+      "loadedFileSha256": "adfb5974956cc883741165ab8f166e2cc05840b368967b211c3ad002f4f6917d",
+      "toolOutputBytes": 6578,
+      "toolOutputRedactedPrefixSha256": "c6ec11825bdb2cd8a18d6e8a634ed982d7b5c03456ed557236a4abd0c0518302",
+      "source": "unchanged installed candidate runtime package (workspace copy bound by harness input integrity)"
+    },
+    {
+      "call": 7,
+      "observedOffsetSeconds": 12.452,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml",
+      "fileBytes": 10068,
+      "loadedFileSha256": "27208a613e99e34b48c40e7751be1301dd0b0835d47f4be4986d8211f543b55d",
+      "toolOutputBytes": 11010,
+      "toolOutputRedactedPrefixSha256": "d4bafb36e37d866734c7310102161652299dd537aef64c2d5d250eabeb23c3b0",
+      "source": "unchanged installed candidate runtime package (workspace copy bound by harness input integrity)"
+    },
+    {
+      "call": 8,
+      "observedOffsetSeconds": 12.777,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml",
+      "fileBytes": 4850,
+      "loadedFileSha256": "84b2653952f2a003400e5ffd662b069f9dffdc0ff014cbf6dda499ec37730a04",
+      "toolOutputBytes": 5368,
+      "toolOutputRedactedPrefixSha256": "1a1e00db72f5019c92fc4108b4a196328532ee5f324df264d7e410f8214d9550",
+      "source": "unchanged installed candidate runtime package (workspace copy bound by harness input integrity)"
+    },
+    {
+      "call": 9,
+      "observedOffsetSeconds": 13.036,
+      "path": "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml",
+      "fileBytes": 2753,
+      "loadedFileSha256": "0374acef87312b2eb5d14e9d8bab028bb026e7c7cd4b64adc9c252a683a38c45",
+      "toolOutputBytes": 3188,
+      "toolOutputRedactedPrefixSha256": "cd1a4d7b9df999093dd6d9ada5d2cfbe2a9707cc35e1212b4841b7700fee4a7b",
+      "source": "unchanged installed candidate runtime package (workspace copy bound by harness input integrity)"
+    },
+    {
+      "call": 15,
+      "observedOffsetSeconds": 16.3,
+      "path": "ai/directives/coding/baseline-rules.xml",
+      "fileBytes": 5872,
+      "loadedFileSha256": "d6df78f50459c8564ac16ca5fa9ec529782c752b252116d1930a2d3121b41fbb",
+      "toolOutputBytes": 6525,
+      "toolOutputRedactedPrefixSha256": "f2532267b0b29fb31c8390842dd7d7df3e6117bf45bc6f4727f9c4950acf696c",
+      "source": "unchanged installed candidate runtime package (workspace copy bound by harness input integrity)"
+    },
+    {
+      "call": 16,
+      "observedOffsetSeconds": 16.562,
+      "path": "ai/directives/coding/typescript-rules.xml",
+      "fileBytes": 43988,
+      "loadedFileSha256": "86615e164225c6af19334733ef411eb3a0b9b4e25226261f2266822de0eee87f",
+      "toolOutputBytes": 47088,
+      "toolOutputRedactedPrefixSha256": "2b27e0379973427a0a652cd795131fab46bf349b473ec6d43468790ad7f3bd1b",
+      "source": "unchanged installed candidate runtime package (workspace copy bound by harness input integrity)"
+    }
+  ],
+  "observations": [
+    "Нет worker complete/close/verdict/receipts, direct spec write или tool-internals read.",
+    "Все7 public directive/rule files загружены до edit.",
+    "Candidate избегает baseline wrong-root spec probe, но добавляет broad discovery и ungapped history.",
+    "Уменьшение Bash calls17→8 связано в том числе с переходом на native Read; общее число tools19→20. Compound Bash содержит несколько действий, поэтому aggregate count не отражает обоснованность."
+  ],
+  "timingCaveat": "SDK offsets preserve only observed metadata/order. Use host monotonic workerElapsedMs for primary flow; do not infer command latency from tool timestamps.",
+  "comparisonQualification": "Functional/domain and judge PASS сохранены как исходные оценки. Независимый derived trajectory audit обнаружил instruction violations, поэтому полного quality-equivalent trajectory PASS для сравнения экономии нет."
+}

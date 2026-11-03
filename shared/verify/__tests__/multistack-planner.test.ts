@@ -6,9 +6,36 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 import { VerifyConfigError } from '../config/verify-config.error.ts';
 import { resolveMultistackVerifyPlan } from '../planning/resolve-multistack.ts';
+
+const HOST_GIT = (process.env.PATH ?? '')
+  .split(path.delimiter)
+  .map((directory) => path.join(directory, 'git'))
+  .find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isFile())!;
+
+function trackedDeletion(root: string, file: string): string {
+  // withRepo restores PATH in finally. Keep its fake tools first, but let the planner find real Git.
+  process.env.PATH = `${process.env.PATH}${path.delimiter}${path.dirname(HOST_GIT)}`;
+  fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+  fs.writeFileSync(path.join(root, file), 'export {};\n');
+  const env = { ...process.env };
+  for (const name of Object.keys(env)) if (name.startsWith('GIT_')) delete env[name];
+  const git = (...args: string[]) =>
+    execFileSync(
+      HOST_GIT,
+      ['-C', root, '-c', 'user.name=scope-test', '-c', 'user.email=scope@test', ...args],
+      { encoding: 'utf8', env }
+    ).trim();
+  git('init', '-q');
+  git('add', '.');
+  git('commit', '-qm', 'tracked deletion baseline');
+  const base = git('rev-parse', 'HEAD');
+  fs.rmSync(path.join(root, file));
+  return base;
+}
 
 function executable(file: string): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -542,17 +569,107 @@ describe('scope-aware multistack target planner', () => {
     });
   });
 
+  it('keeps exact SDD bracket tombstones while rejecting authored absent masks and unsafe tombstones', () => {
+    withRepo((root, home) => {
+      const file = 'pages/[id].tsx';
+      const result = resolveMultistackVerifyPlan(root, 'code', {
+        homeDirectory: home,
+        scope: { mode: 'files', files: [file] },
+        knownDeletedFiles: [file],
+      });
+      assert.deepEqual(result.scope.files, [file]);
+      assert.equal(
+        result.stacks.find((stack) => stack.plugin === 'node')?.participation,
+        'affected'
+      );
+      assert.throws(() => resolve(root, home, [file]), VerifyConfigError);
+      for (const invalid of ['src/*.ts', '../escape.ts', '/tmp/escape.ts']) {
+        assert.throws(
+          () =>
+            resolveMultistackVerifyPlan(root, 'code', {
+              homeDirectory: home,
+              scope: { mode: 'files', files: [invalid] },
+              knownDeletedFiles: [invalid],
+            }),
+          VerifyConfigError,
+          invalid
+        );
+      }
+      fs.mkdirSync(path.join(root, 'real'));
+      fs.symlinkSync(path.join(root, 'real'), path.join(root, 'alias'));
+      const alias = 'alias/[id].tsx';
+      assert.throws(
+        () =>
+          resolveMultistackVerifyPlan(root, 'code', {
+            homeDirectory: home,
+            scope: { mode: 'files', files: [alias] },
+            knownDeletedFiles: [alias],
+          }),
+        VerifyConfigError
+      );
+    });
+  });
+
+  it('plans existing files whose names hold glob metacharacters as exact Target Files', () => {
+    withRepo((root, home) => {
+      fs.mkdirSync(path.join(root, 'pages'));
+      fs.mkdirSync(path.join(root, 'a'));
+      fs.writeFileSync(path.join(root, 'pages', '[...slug].tsx'), 'export {};\n');
+      fs.writeFileSync(path.join(root, 'a', '{b}.ts'), 'export {};\n');
+      assert.doesNotThrow(() => resolve(root, home, [], 'all'));
+      const result = resolve(root, home, ['pages/[...slug].tsx', 'a/{b}.ts']);
+      assert.deepStrictEqual(result.scope.files, ['a/{b}.ts', 'pages/[...slug].tsx']);
+      assert.strictEqual(
+        result.stacks.find((stack) => stack.plugin === 'node')?.participation,
+        'affected'
+      );
+    });
+  });
+
+  it('keeps a VCS-reported deleted path literal but rejects an absent authored mask', () => {
+    withRepo((root, home) => {
+      const base = trackedDeletion(root, 'pages/[id].tsx');
+      const changed = resolve(root, home, ['pages/[id].tsx'], 'changed', base);
+      assert.deepStrictEqual(changed.scope.files, ['pages/[id].tsx']);
+      for (const mask of ['pages/[id].tsx', 'src/*.ts', 'a/{b}.ts']) {
+        assert.throws(
+          () => resolve(root, home, [mask]),
+          (error: unknown) => {
+            assert.ok(error instanceof VerifyConfigError);
+            assert.strictEqual(error.code, 'VERIFY_CONFIG_INVALID_TYPE');
+            assert.match(error.message, /is not repo-relative|is not an exact repo-relative path/);
+            return true;
+          }
+        );
+      }
+    });
+  });
+
+  it('rejects changed-mode missing paths without VCS deletion evidence and unsafe tombstone parents', () => {
+    withRepo((root, home) => {
+      const base = trackedDeletion(root, 'deleted.ts');
+      assert.throws(
+        () => resolve(root, home, ['never-tracked/[id].tsx'], 'changed', base),
+        /VCS|deleted|deletion|tracked/
+      );
+      assert.throws(
+        () => resolve(root, home, ['deleted.ts'], 'changed', 'missing-branch'),
+        /Cannot prove VCS deletions/
+      );
+      fs.symlinkSync(home, path.join(root, 'linked'), 'dir');
+      assert.throws(
+        () => resolve(root, home, ['linked/[id].tsx'], 'changed', 'HEAD'),
+        /symlink|unsafe/
+      );
+    });
+  });
+
   it('canonicalizes deleted-file paths before scope ownership and reporting', () => {
     withRepo((root, home) => {
-      const result = resolve(
-        root,
-        home,
-        ['src/../deleted.ts', 'deleted.ts'],
-        'changed',
-        'origin/main'
-      );
+      const base = trackedDeletion(root, 'deleted.ts');
+      const result = resolve(root, home, ['src/../deleted.ts', 'deleted.ts'], 'changed', base);
       assert.deepStrictEqual(result.scope.files, ['deleted.ts']);
-      assert.strictEqual(result.scope.changedFrom, 'origin/main');
+      assert.strictEqual(result.scope.changedFrom, base);
       assert.strictEqual(
         result.stacks.find((stack) => stack.plugin === 'node')?.participation,
         'affected'

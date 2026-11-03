@@ -1,0 +1,34 @@
+{
+  "complete": true,
+  "modelCalls": 0,
+  "controls": [
+    {
+      "arm": "candidate",
+      "caseId": "E3",
+      "modelCalls": 0,
+      "correct": null,
+      "commands": [],
+      "broken": null,
+      "missingHeader": null,
+      "before": {
+        "exit": 1,
+        "outputSha256": "6fb20d0dedb04104b1fdf5d3de67269e0f0150ba030fff5929fc9dcb6504c077"
+      },
+      "after": null,
+      "hostCorrect": null,
+      "hostBroken": null,
+      "proposal": {
+        "exit": 0,
+        "outputSha256": "0e27ab0e48bec3157d9a3ac931f0cdc13d621d71cafe5a82e69f489073f73f13"
+      },
+      "baselineConfiguredCapability": null,
+      "knownBaselineCapabilityBlocked": null,
+      "reference": {
+        "commonPass": true,
+        "persistencePass": true,
+        "lintExit": 1,
+        "actualCodesPresent": true
+      }
+    }
+  ]
+}

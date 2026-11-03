@@ -11,6 +11,7 @@ import {
 } from '../deviation.ts';
 import { completePhase } from '../../../cli/cmd/sdd-log/sdd-log.types.ts';
 import { checkTicket } from '../check.ts';
+import { parseHandoffArtifacts, parsePhaseHandoffs } from '../execution-log.ts';
 
 const decision = {
   id: 'DEM-DL-1',
@@ -220,4 +221,16 @@ describe('canonical execution decision', () => {
       );
     }
   });
+});
+
+it('completed bracket-literal Handoffs round trip through the canonical completion writer and reader', () => {
+  for (const file of ['pages/[...slug].tsx', 'pages/[...].tsx', 'src/[open.ts', 'src/close].ts']) {
+    const payload = `artifacts: [${file}]; decisions: [none]; open: []; deviations: []`;
+    const completed = completePhase(ticket, 'P1', payload, '2026-11-03T10:00:00Z', true);
+    assert.equal(completed.ok, true, file);
+    if (!completed.ok) continue;
+    const handoffs = parsePhaseHandoffs(completed.content);
+    assert.deepEqual(parseHandoffArtifacts(handoffs.P1!), [file]);
+    assert.equal(completed.handoffLine, `**Handoff →** ${payload}`);
+  }
 });

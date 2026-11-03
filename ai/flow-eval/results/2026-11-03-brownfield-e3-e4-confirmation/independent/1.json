@@ -1,0 +1,297 @@
+{
+  "schema": "gennady.independent-confirmation-e4-audit.v1",
+  "caseId": "E4",
+  "confirmationIndex": 1,
+  "readOnlyAudit": true,
+  "newTestsOrModelCalls": 0,
+  "rawResultsChanged": false,
+  "runnerCommit": "e0908aa5ab413db8172dce222bd46592adceaaa8",
+  "productLabelSuppliedByController": "0a",
+  "rawEvidenceBinding": {
+    "publicPrivateEvidenceSha256": "64f65b0676ff54b4c811c71360a24818d9f0d643ace6d4e3f14ebc8974894b6b",
+    "privatePrimaryHashMatches": true,
+    "capturedGzipHashMatches": true,
+    "traceComplete": true,
+    "sessions": 1
+  },
+  "verdict": "bounded-full-lifecycle-confirmed",
+  "checks": {
+    "actualP1WriteNotSeededAnswer": true,
+    "p1OldValue": 6,
+    "actualP1NewValue": 7,
+    "actualP2WriteForPreviouslyCreateTarget": true,
+    "actualP2Value": 9,
+    "rawWritePayloadsMatchFinalArtifacts": true,
+    "actualP1AndP2VerifyPass": true,
+    "eachPhaseTests": {
+      "executed": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "hostP1CompletionBeforeExplicitP2Dispatch": true,
+    "onePrimarySession": true,
+    "workerDirectTicketWrites": false,
+    "workerCompletionOrReceiptCommands": false,
+    "protectedRuntimeIntact": true,
+    "writeBoundaryIntact": true,
+    "hostP2CompleteExit": 0,
+    "hostCloseSyncGroupScopeCoverageAuditSddCheckFullVerifyAuditReceiptAllExit0": true,
+    "independentJudgeVerdict": "pass",
+    "realHostReviewReceiptExit": 0,
+    "cleanupSafe": true,
+    "rootRemoved": true
+  },
+  "toolCallCounts": {
+    "required": 13,
+    "redundant": 1,
+    "unknown": 2,
+    "supporting": 1
+  },
+  "toolCalls": [
+    {
+      "index": 0,
+      "tool": "read",
+      "summary": "Read bounded brief",
+      "necessity": "required",
+      "observableBasis": "Supplies worker/orchestrator separation, exact phase entrypoint, value requirements, and stop/continuation rule.",
+      "status": "completed",
+      "exitCode": null,
+      "callIdentity": "041abec381ef63fa5e545e5d658b7210f193c02700f4742be06213efa6e285eb",
+      "argumentSha256": "aab5165d397df6d29acb50c65ac3b1443d027e1b2a1caff1d7380319a2737e0f"
+    },
+    {
+      "index": 1,
+      "tool": "bash",
+      "summary": "List checkout and broadly enumerate its first three levels",
+      "necessity": "redundant",
+      "observableBasis": "Brief already names the protocol and exact phase dispatch command; no unresolved path or diagnostic motivated broad checkout discovery.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "0939055a2d161ee994477ca5a2f1609c54b7ca6602817fccf7af343c463367c4",
+      "argumentSha256": "f9f869152d6ad242f68dc3648f02fdbb3cab4a469f8a929156604f7619dbeb17"
+    },
+    {
+      "index": 2,
+      "tool": "bash",
+      "summary": "Enumerate directives; inspect project config and package metadata",
+      "necessity": "unknown",
+      "observableBasis": "Mixed call: config/package metadata can explain available verification, but broad directive enumeration was unnecessary beside the named protocol. Whole-call necessity is not established.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "4d788e516e607a3c7fef2550da73670ffcde354fd9dbb7c4664ecebad978f1b1",
+      "argumentSha256": "48cc6e2e2f80a0781c8b64f1e89b453711fc2173bda1d26e6d94872004fc8cec"
+    },
+    {
+      "index": 3,
+      "tool": "bash",
+      "summary": "Read phase-execution protocol",
+      "necessity": "required",
+      "observableBasis": "Explicitly required by the brief; defines the bounded worker role and execution workflow.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "38e9ece3b01a801fc935965c0879692a4d516f369557e084be1821ea48b94d21",
+      "argumentSha256": "38a414a28a5538c8212a832cec852c975ee3be03d2e1db6234ff34cb152625d6"
+    },
+    {
+      "index": 4,
+      "tool": "bash",
+      "summary": "Read the four phase-execution step directives",
+      "necessity": "required",
+      "observableBasis": "Actual phase dispatch requires these four protocol files; this batched read loads their concrete rules.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "483bd24531853c01f2a73a4d57504b63a83f139c68843674a48791a1c89c4ee7",
+      "argumentSha256": "5411e4a83d8c69de87b24a29d6476ec1ab0b4809903955bd37db3755a8583d5f"
+    },
+    {
+      "index": 5,
+      "tool": "bash",
+      "summary": "Dispatch P1 through installed sdd-task",
+      "necessity": "required",
+      "observableBasis": "Obtains actual objective, exact target, rule bodies, verification command, and authority boundaries.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "9619c0024b92eaf927dded981b721c9d5519884c038d966da75977eee74426af",
+      "argumentSha256": "b63dfa02bea014324b349e771fca5029b4edf6cf9baa44c09000fb04eae00726"
+    },
+    {
+      "index": 6,
+      "tool": "bash",
+      "summary": "Read selected baseline coding rules",
+      "necessity": "required",
+      "observableBasis": "P1 manifest explicitly selects this exact required rule body.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "bf91e8e3d2b377748acbcd0efd80f6a5cfd8529d24a570bbfab91651d58c6eff",
+      "argumentSha256": "0117c319607cedf2225aff261298fc5100776f413ca5db8f70754e66e4cfcd78"
+    },
+    {
+      "index": 7,
+      "tool": "bash",
+      "summary": "Read selected TypeScript rules",
+      "necessity": "required",
+      "observableBasis": "P1 manifest explicitly selects this exact required rule body; verbosity alone does not make the required read redundant.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "e631c114e41650fc7c9a23a94de2780a10a09ffee4028ad9bfa228c07ddd87d0",
+      "argumentSha256": "4cf830581fc6944d1863ad135c108a24576b27acf9fe47099427ad7eae4d0e88"
+    },
+    {
+      "index": 8,
+      "tool": "bash",
+      "summary": "Read P1 source and owning specification",
+      "necessity": "required",
+      "observableBasis": "Confirms current source and declared value/ownership before editing. Current source was the old value, not a completed answer.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "53c822e5010d2c7b54684dec942bcd2f1854f223356b0010a8c1821993adb8e3",
+      "argumentSha256": "ae70b3412634a50897fc46fd6e32f8d14f50b1e0f243c839fa6bd0cbeb167869"
+    },
+    {
+      "index": 9,
+      "tool": "bash",
+      "summary": "Read ticket metadata and phase/test sections",
+      "necessity": "supporting",
+      "observableBasis": "The manifest requires phase, BDD and verification sections; reading the short whole ticket supports these requirements, with broader content than the selected sections.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "38616ba4b972ee7795fcf0c84a87e74f10e939efd9fa9dc1f5d4fb54f3107e50",
+      "argumentSha256": "ae57206686147e1bb77f75adac97ed95015147a50264da475027f2953cd8ce5b"
+    },
+    {
+      "index": 10,
+      "tool": "bash",
+      "summary": "Run declared coverage preflight for P1",
+      "necessity": "required",
+      "observableBasis": "Required ORIENT boundary query distinguishes a missing header from foreign or ambiguous ownership before implementation.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "ec695696a2db99eeda8b289fa63225863e407712cd7007ed23cb7c7f43c55d71",
+      "argumentSha256": "1762edf5d59a7f7d619ce871932744097ca8707aa2c14980aff933b25382e703"
+    },
+    {
+      "index": 11,
+      "tool": "bash",
+      "summary": "Read fixed test, tracker and portal together",
+      "necessity": "unknown",
+      "observableBasis": "Fixed assertion inspection is defensible related context. Tracker/portal reads were not tied to an unresolved assertion or diagnostic, so necessity of the whole mixed call is not proven.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "a8040bdd596a643c1d281813eb1148de9ae9886972358bbbfd9af44d4348fa52",
+      "argumentSha256": "68c1a3df2d9029944b611933ae0438b8e7464f96063c42822ef5201fa3e319a9"
+    },
+    {
+      "index": 12,
+      "tool": "write",
+      "summary": "Write only P1 literal-route implementation",
+      "necessity": "required",
+      "observableBasis": "Raw write payload changes the old value to 7 and supplies ownership header; payload matches the final artifact.",
+      "status": "completed",
+      "exitCode": null,
+      "callIdentity": "5970b960e2f2e6c641818384e6a9bd44a471b0fa53acdb3be9c60171f20acf15",
+      "argumentSha256": "216b28984c3bcba25dd8617369ff149c1d79270680db1e03db7ea28ff0bbb95b"
+    },
+    {
+      "index": 13,
+      "tool": "bash",
+      "summary": "Run actual canonical Verify for P1",
+      "necessity": "required",
+      "observableBasis": "Actual installed command returned PASS and 3/3/0/0; worker then returned Handoff and waited.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "74e8520e49bc44af489f6e08ecb8bd28b6ec149b6940c56c4533cf2314fb5821",
+      "argumentSha256": "5099513a831d9b7eaac7e4f12847136f034811762bca29d556dac9cc0001215c"
+    },
+    {
+      "index": 14,
+      "tool": "bash",
+      "summary": "Dispatch P2 after explicit host continuation",
+      "necessity": "required",
+      "observableBasis": "A host-owned P1 completion succeeded first; a new user dispatch in the same primary session authorized only P2. Installed context marks its target CREATE.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "327a7aeaf78563cff653fad3f3498db62985e6ba70cf2612aadfdaf82f57c585",
+      "argumentSha256": "de70a359a19abc3ac104d546688e8b608ce64429d03f597734b712baf7679a53"
+    },
+    {
+      "index": 15,
+      "tool": "write",
+      "summary": "Write only P2 implementation",
+      "necessity": "required",
+      "observableBasis": "Raw write payload creates the independent value 9 with ownership header; it matches the final artifact and does not edit P1.",
+      "status": "completed",
+      "exitCode": null,
+      "callIdentity": "decf9d3e072cb72519c8334352609c9cb5127c326518cfe0b83c9e0c86899913",
+      "argumentSha256": "9bf82fd015cae8aac2b2ac78a24ca0fda2b9ce945ca3fad3b58203f10388b4fa"
+    },
+    {
+      "index": 16,
+      "tool": "bash",
+      "summary": "Run actual canonical Verify for P2",
+      "necessity": "required",
+      "observableBasis": "Actual installed command returned PASS and 3/3/0/0, followed by typed Handoff; closure remained host-owned.",
+      "status": "completed",
+      "exitCode": 0,
+      "callIdentity": "feb973af12d5bfaa930f8bb8820474a0fc91f311fced39796129e5230c3247e6",
+      "argumentSha256": "116ca6b07e1798513c20706a37b4666836d485cff9d95c8ecaaa4379cbbd6cb5"
+    }
+  ],
+  "loadedDirectiveTimeline": [
+    {
+      "toolIndex": 3,
+      "publicDirectivePaths": [
+        "ai/directives/sdd-v2/phase-execution-protocol.directive.xml"
+      ],
+      "capturedOutputSha256": "4dd90032bbba75f37cc7013599e040228635eb17d1f561a29ada640de412fc25",
+      "capturePrefixComplete": true
+    },
+    {
+      "toolIndex": 4,
+      "publicDirectivePaths": [
+        "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_1_ORIENT.xml",
+        "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_2_IMPLEMENT.xml",
+        "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_3_VERIFY.xml",
+        "ai/directives/sdd-v2/phase-execution-protocol/steps/STEP_4_HANDOFF.xml"
+      ],
+      "capturedOutputSha256": "1c210a087be5f9dfabe30c0011f730f7d98ade83af0a36e1e150d7447ba991b9",
+      "capturePrefixComplete": true
+    },
+    {
+      "toolIndex": 6,
+      "publicDirectivePaths": [
+        "ai/directives/coding/baseline-rules.xml"
+      ],
+      "capturedOutputSha256": "d6df78f50459c8564ac16ca5fa9ec529782c752b252116d1930a2d3121b41fbb",
+      "capturePrefixComplete": true
+    },
+    {
+      "toolIndex": 7,
+      "publicDirectivePaths": [
+        "ai/directives/coding/typescript-rules.xml"
+      ],
+      "capturedOutputSha256": "86615e164225c6af19334733ef411eb3a0b9b4e25226261f2266822de0eee87f",
+      "capturePrefixComplete": true
+    }
+  ],
+  "hostLifecycleTimeline": [
+    "Worker P1 dispatch, target write and real phase Verify PASS",
+    "Worker returns typed Handoff and explicitly waits",
+    "Host validates evidence and canonically completes P1, exit0",
+    "Explicit P2 user dispatch in same primary session",
+    "Worker P2 installed dispatch, new target write and real phase Verify PASS",
+    "Host completes P2, closes round, syncs tracker and checks group scope",
+    "Host declared coverage audit, ticket check and independent full Verify all pass",
+    "Host audit receipt succeeds; independent read-only judge passes; real review receipt succeeds"
+  ],
+  "reflection": "Separate self-report: installed phase context, selected rules and Verify outputs helped; large required rule bodies and repeated metadata were described as low value. Reflection is not causal proof.",
+  "limits": [
+    "Confirms this one E4 lifecycle on the supplied candidate runtime; this audit did not rebuild the runtime or independently prove a general performance improvement.",
+    "Broad checkout/directive discovery and mixed metadata reads remain; full trajectory status is not-proven, unchanged from raw record.",
+    "Captured tool-call ordering is reported, not a per-call latency model; same-message tool calls may overlap.",
+    "Host lifecycle, receipt creation and independent review are host achievements, not autonomous worker achievements.",
+    "Review receipt has actual successful CLI output in its separate evidence. The earlier primary source diff was captured before that receipt; no separate post-review file snapshot is present.",
+    "Ordinary role trust applies, not cryptographic operator authentication. Provider cost zero is not evidence of free execution."
+  ],
+  "publicSafety": "Only normalized command summaries, public directive paths, scalar outcomes and hashes; no private checkout paths, source contents, payloads, stdout or session IDs."
+}

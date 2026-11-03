@@ -16,4 +16,13 @@ describe('E-21: the default model config fixes the llm-proxy family (L-14)', () 
   it('the default judge model is in the llm-proxy family', () => {
     assert.strictEqual(DEFAULT_SDD_EVAL_CONFIG.judgeModel.providerID, 'llm-proxy');
   });
+
+  it('both default models use the approved Flash model, not Pro', () => {
+    assert.equal(DEFAULT_SDD_EVAL_CONFIG.runnerModel.modelID, 'deepseek-v4-flash');
+    assert.equal(DEFAULT_SDD_EVAL_CONFIG.judgeModel.modelID, 'deepseek-v4-flash');
+  });
+
+  it('the default endpoint matches the isolated eval port, never the personal Desktop port', () => {
+    assert.equal(DEFAULT_SDD_EVAL_CONFIG.baseUrl, 'http://127.0.0.1:4097');
+  });
 });

@@ -115,6 +115,7 @@ export type SddEvalFixtureId =
   | 'execution-autonomy'
   | 'authoring-benchmark'
   | 'v2-brownfield-routing'
+  | 'brownfield-lint-review'
   | 'deviation-verdict'
   | 'fibonacci-library'
   | 'tic-tac-toe'

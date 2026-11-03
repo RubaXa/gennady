@@ -3,6 +3,7 @@
 // @consumers: sdd-flow-eval command, fake-backed tests
 
 import { SddEvalJudge } from './judge.ts';
+import { DEFAULT_SDD_EVAL_BASE_URL } from './opencode-client.ts';
 import { captureAuthoringJudgeEvidence } from './authoring-judge-evidence.ts';
 import { withEvalSignal } from './eval-signal.ts';
 import { SddEvalObserver } from './observer.ts';
@@ -49,7 +50,7 @@ export type SddEvalResult = {
  *   `--judge-model` still gets the mandated family instead of silently falling back to a different
  *   provider; `--model`/`--judge-model` can still override the specific model within (or outside) it. */
 export const DEFAULT_SDD_EVAL_CONFIG: SddEvalConfig = {
-  baseUrl: 'http://localhost:4096',
+  baseUrl: DEFAULT_SDD_EVAL_BASE_URL,
   runnerModel: { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' },
   judgeModel: { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' },
   concurrency: 3,

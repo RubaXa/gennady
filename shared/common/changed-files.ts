@@ -188,6 +188,164 @@ export function getHeadContent(root: string, relPath: string): string | null {
   return result.status === 'ok' ? result.content : null;
 }
 
+const HEAD_CONTENT_LIMIT_BYTES = 64 * 1024 * 1024;
+const HEAD_BATCH_OBJECT_LIMIT = 512;
+const HEAD_BATCH_HEADER_BYTES = 128;
+type HeadBlob = { oid: string; size: number; paths: string[] };
+
+function headPathBatches(paths: readonly string[]): string[][] {
+  const batches: string[][] = [];
+  let batch: string[] = [];
+  let bytes = 0;
+  for (const file of paths) {
+    const size = Buffer.byteLength(file) + 1;
+    if (batch.length > 0 && (batch.length === 128 || bytes + size > 32 * 1024)) {
+      batches.push(batch);
+      batch = [];
+      bytes = 0;
+    }
+    // A single exact name remains intact; an OS-level rejection affects only its own chunk.
+    batch.push(file);
+    bytes += size;
+  }
+  if (batch.length > 0) batches.push(batch);
+  return batches;
+}
+
+function exactHeadPath(value: string): boolean {
+  return (
+    value.length > 0 &&
+    !value.includes('\0') &&
+    !value.startsWith('/') &&
+    !/^[A-Za-z]:[\\/]/.test(value) &&
+    value.split('/').every((part) => part !== '' && part !== '.' && part !== '..') &&
+    Buffer.from(value).toString('utf8') === value
+  );
+}
+
+function headBuffer(
+  root: string,
+  args: string[],
+  input?: string,
+  maxBuffer = HEAD_CONTENT_LIMIT_BYTES
+): Buffer | null {
+  const child = spawnSync('git', ['-C', root, ...args], { input, maxBuffer });
+  return child.status === 0 && !child.error ? child.stdout : null;
+}
+
+function headBlobBatch(root: string, blobs: readonly HeadBlob[]): Map<string, string> | null {
+  const output = headBuffer(
+    root,
+    ['cat-file', '--batch'],
+    blobs.map((blob) => blob.oid).join('\n') + '\n',
+    HEAD_CONTENT_LIMIT_BYTES + HEAD_BATCH_HEADER_BYTES * blobs.length
+  );
+  if (output === null) return null;
+  const contents = new Map<string, string>();
+  let offset = 0;
+  for (const blob of blobs) {
+    const end = output.indexOf(10, offset);
+    if (end < offset || end - offset >= HEAD_BATCH_HEADER_BYTES) return null;
+    const header = output.subarray(offset, end).toString('ascii');
+    offset = end + 1;
+    if (header === `${blob.oid} missing`) continue;
+    const match = /^([a-f0-9]{40,64}) blob (\d+)$/.exec(header);
+    if (!match || match[1] !== blob.oid || Number(match[2]) !== blob.size) return null;
+    const next = offset + blob.size;
+    if (next >= output.length || output[next] !== 10) return null;
+    contents.set(blob.oid, output.subarray(offset, next).toString('utf8'));
+    offset = next + 1;
+  }
+  return offset === output.length ? contents : null;
+}
+
+/**
+ * @purpose Read exact files from one pinned HEAD without repeating repository discovery per file.
+ * @invariant Literal NUL-delimited paths select immutable OIDs; failures never fall back to another path or live source.
+ * @param root Repository root, passed as one Git argv value.
+ * @param relPaths Exact repository-relative file names, including literal brackets, tabs and newlines.
+ * @returns Every unique requested key maps to its unchanged UTF8 content or null for absence/no-HEAD/error, matching getHeadContent compatibility.
+ */
+export function getHeadContents(
+  root: string,
+  relPaths: readonly string[]
+): ReadonlyMap<string, string | null> {
+  const contents = new Map<string, string | null>(relPaths.map((file) => [file, null]));
+  const paths = [...contents.keys()].filter(exactHeadPath);
+  if (paths.length === 0) return contents;
+  try {
+    const head = git(root, 'pin HEAD baseline', [
+      'rev-parse',
+      '--is-inside-work-tree',
+      '--verify',
+      'HEAD^{commit}',
+    ]);
+    if (!head.ok) return contents;
+    const match = /^true\r?\n([a-f0-9]{40,64})\r?\n?$/.exec(head.stdout);
+    if (!match) return contents;
+    const blobs = new Map<string, HeadBlob>();
+    for (const pathBatch of headPathBatches(paths)) {
+      const tree = headBuffer(root, [
+        '--literal-pathspecs',
+        'ls-tree',
+        '-r',
+        '-z',
+        '--long',
+        '--full-tree',
+        match[1],
+        '--',
+        ...pathBatch,
+      ]);
+      if (tree === null) continue;
+      const requested = new Set(pathBatch);
+      let offset = 0;
+      while (offset < tree.length) {
+        const end = tree.indexOf(0, offset);
+        const tab = tree.indexOf(9, offset);
+        if (end < 0 || tab < offset || tab >= end) return contents;
+        const entry = /^[0-7]{6} blob ([a-f0-9]{40,64}) +(\d+)$/.exec(
+          tree.subarray(offset, tab).toString('ascii')
+        );
+        const nameBytes = tree.subarray(tab + 1, end);
+        const name = nameBytes.toString('utf8');
+        offset = end + 1;
+        if (!entry || !requested.has(name) || !Buffer.from(name).equals(nameBytes)) continue;
+        const size = Number(entry[2]);
+        if (!Number.isSafeInteger(size) || size < 0 || size > HEAD_CONTENT_LIMIT_BYTES) continue;
+        const known = blobs.get(entry[1]);
+        if (known && known.size !== size) return contents;
+        if (known) known.paths.push(name);
+        else blobs.set(entry[1], { oid: entry[1], size, paths: [name] });
+      }
+    }
+    let batch: HeadBlob[] = [];
+    let bytes = 0;
+    const readBatch = () => {
+      const values = headBlobBatch(root, batch);
+      if (values)
+        for (const blob of batch) {
+          const value = values.get(blob.oid);
+          if (value !== undefined) for (const file of blob.paths) contents.set(file, value);
+        }
+      batch = [];
+      bytes = 0;
+    };
+    for (const blob of blobs.values()) {
+      if (
+        batch.length > 0 &&
+        (batch.length === HEAD_BATCH_OBJECT_LIMIT || bytes + blob.size > HEAD_CONTENT_LIMIT_BYTES)
+      )
+        readBatch();
+      batch.push(blob);
+      bytes += blob.size;
+    }
+    if (batch.length > 0) readBatch();
+  } catch {
+    // Compatibility matches getHeadContent: an unprovable baseline is null, never current source.
+  }
+  return contents;
+}
+
 /**
  * @purpose Compatibility boolean for callers/tests that do not make a safety decision from failure.
  * @param root Repository root.

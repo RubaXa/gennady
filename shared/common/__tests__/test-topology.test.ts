@@ -12,6 +12,23 @@ import { availableParallelism, tmpdir } from 'node:os';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const RUNNER = join(ROOT, 'scripts/test-topology.ts');
+const BUNDLE_ENV = 'GENNADY_TEST_CLI_BUNDLE_MANIFEST';
+const bundleMock = `
+let bundleBuilds = 0;
+mock.module(${JSON.stringify(pathToFileURL(join(ROOT, 'scripts/test-cli-bundle.ts')).href)}, {
+  namedExports: {
+    TEST_CLI_BUNDLE_ENV: ${JSON.stringify(BUNDLE_ENV)},
+    prepareTestCliBundle: (_root, options) => {
+      if (options.env[${JSON.stringify(BUNDLE_ENV)}] !== undefined) throw new Error('ambient bundle authority leaked');
+      bundleBuilds++;
+      return { manifestPath: '__fresh-owned-cli__', sourceDigest: 'proof' };
+    },
+    verifyTestCliBundle: () => {},
+    releaseTestCliBundle: () => {},
+  },
+});
+`;
+
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
 const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.ts';
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
@@ -121,6 +138,14 @@ const BOUNDED_OUTER_CONCURRENCY = `--test-concurrency=${Math.min(10, Math.max(6,
 // independent of `availableParallelism()` — to cut IPC pressure from local's subprocess-heavy
 // suites (see R-REL-15.md / V-BATCH-03.md finding F6).
 const LOCAL_PARTITION_CONCURRENCY = '--test-concurrency=2';
+const SERIAL_LOCAL_FILES = [
+  'ai/flow-eval/__tests__/pilot-verify-probe.test.ts',
+  'cli/__tests__/tool-behavior/verify.test.ts',
+  'cli/__tests__/tool-behavior/bootstrap-path.test.ts',
+  'cli/__tests__/tool-behavior/clean-repo-composition.test.ts',
+  'cli/__tests__/tool-behavior/sdd-verify-repair-adapters.test.ts',
+] as const;
+const SERIAL_LOCAL_FILE_SET = new Set<string>(SERIAL_LOCAL_FILES);
 const OWNED_FILE_TIMEOUTS: Readonly<Record<string, string>> = {
   'ai/flow-eval/__tests__/execution-autonomy-audit.test.ts': '--test-timeout=120000',
   'ai/flow-eval/__tests__/execution-autonomy-fixture.test.ts': '--test-timeout=120000',
@@ -209,13 +234,17 @@ function listedTopology(): Record<Layer, string[]> {
   return structuredClone(topology);
 }
 
-function probeSpawns(mode: 'unit' | 'deterministic' | 'coverage' | 'experimental'): RunnerProbe[] {
-  const snapshot = spawnProbeSnapshots.get(mode);
+function probeSpawns(
+  mode: 'unit' | 'deterministic' | 'coverage' | 'experimental',
+  timeoutFloor?: string
+): RunnerProbe[] {
+  const snapshot = timeoutFloor === undefined ? spawnProbeSnapshots.get(mode) : undefined;
   if (snapshot) return structuredClone(snapshot);
   const probeMarker = '__TEST_TOPOLOGY_PROBE__';
   const source = `
 import { mock } from 'node:test';
 import { writeFileSync } from 'node:fs';
+${bundleMock}
 const calls = [];
 mock.module('node:child_process', {
   namedExports: {
@@ -229,14 +258,18 @@ mock.module('node:child_process', {
 });
 process.argv = [process.execPath, ${JSON.stringify(RUNNER)}, ${JSON.stringify(mode)}];
 await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?boundary-probe-${mode}`)});
+if (bundleBuilds !== ${mode === 'deterministic' || mode === 'coverage' ? 1 : 0}) throw new Error('fresh build must occur once only for black-box mode');
 process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map(([, args, options]) => ({ args, env: options.env }))) + '\\n');
 `;
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     SAFE_TEST_SETTING: 'preserved',
+    [BUNDLE_ENV]: 'untrusted-ambient-bundle',
     UNLISTED_PROVIDER_API_KEY: 'secret-dynamic-provider',
     NPM_CONFIG_REGISTRY_AUTHTOKEN: 'secret-npm',
   };
+  delete env.GENNADY_TEST_FILE_TIMEOUT_MS;
+  if (timeoutFloor !== undefined) env.GENNADY_TEST_FILE_TIMEOUT_MS = timeoutFloor;
   for (const key of OPT_IN_KEYS) env[key] = '1';
   for (const key of CREDENTIAL_KEYS) env[key] = `secret-${key}`;
   const result = spawnSync(
@@ -255,7 +288,7 @@ process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map((
   const encoded = result.stdout.split('\n').find((line) => line.startsWith(probeMarker));
   assert.ok(encoded, result.stdout);
   const probes = JSON.parse(encoded.slice(probeMarker.length)) as RunnerProbe[];
-  spawnProbeSnapshots.set(mode, probes);
+  if (timeoutFloor === undefined) spawnProbeSnapshots.set(mode, probes);
   return structuredClone(probes);
 }
 
@@ -271,6 +304,7 @@ function probeFailingCommand(
   const source = `
 import { mock } from 'node:test';
 import { writeFileSync } from 'node:fs';
+${bundleMock}
 let call = 0;
 mock.module('node:child_process', {
   namedExports: {
@@ -312,6 +346,91 @@ await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?failure-proof-${mod
 }
 
 describe('test topology contract', () => {
+  it('only local black-box batches receive a fresh runner-owned CLI; observed/rest/unit keep source', () => {
+    const local = new Set(listedTopology().local);
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
+      for (const { args, env } of probeSpawns(mode)) {
+        const files = args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg));
+        const blackBox =
+          (mode === 'deterministic' || mode === 'coverage') &&
+          files.some((file) => local.has(file));
+        assert.equal(env[BUNDLE_ENV], blackBox ? '__fresh-owned-cli__' : undefined, mode);
+      }
+    }
+  });
+
+  it('temporary env deadline floor preserves exactly-once, owned budgets, concurrency and child isolation', () => {
+    for (const mode of ['deterministic', 'coverage'] as const) {
+      const ordinary = probeSpawns(mode);
+      const raised = probeSpawns(mode, '120000');
+      const files = (calls: RunnerProbe[]) =>
+        calls.flatMap(({ args }) => args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg))).sort();
+      assert.deepEqual(files(raised), files(ordinary));
+      assert.equal(new Set(files(raised)).size, files(raised).length);
+      for (const { args, env } of raised) {
+        assert.equal(
+          env.GENNADY_TEST_FILE_TIMEOUT_MS,
+          undefined,
+          'parent override must not leak into nested fixtures'
+        );
+        const deadline = args.find((arg) => arg.startsWith('--test-timeout='));
+        for (const file of args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg))) {
+          const owned = Number((OWNED_FILE_TIMEOUTS[file] ?? '--test-timeout=30000').split('=')[1]);
+          assert.equal(deadline, `--test-timeout=${Math.max(120000, owned)}`, file);
+          const previous = ordinary.find((call) => call.args.includes(file))!;
+          assert.equal(
+            args.find((arg) => arg.startsWith('--test-concurrency=')),
+            previous.args.find((arg) => arg.startsWith('--test-concurrency='))
+          );
+        }
+      }
+    }
+  });
+
+  it('rejects invalid temporary deadlines before launching tests', () => {
+    for (const value of [
+      '',
+      '0',
+      '29999',
+      '-1',
+      '120000ms',
+      'NaN',
+      '600001',
+      '999999999999999999999',
+    ]) {
+      const result = spawnSync(process.execPath, ['--import', 'tsx', RUNNER, 'deterministic'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        timeout: 5000,
+        env: { ...process.env, GENNADY_TEST_FILE_TIMEOUT_MS: value },
+      });
+      assert.equal(result.status, 2, value + result.stderr);
+      assert.match(result.stderr, /GENNADY_TEST_FILE_TIMEOUT_MS.*30000.*600000/);
+      assert.doesNotMatch(result.stdout, /deterministic:|TAP version/);
+    }
+  });
+
+  it('isolates full-flow CLI suites serially without changing their 30s deadlines or the ordinary pool', () => {
+    for (const mode of ['deterministic', 'coverage'] as const) {
+      const spawns = probeSpawns(mode);
+      const serial = spawns.filter(({ args }) =>
+        SERIAL_LOCAL_FILES.some((file) => args.includes(file))
+      );
+      assert.equal(serial.length, 1, `${mode}: one serial full-flow group`);
+      const args = serial[0].args;
+      assert.ok(args.includes('--test-concurrency=1'), `${mode}: full-flow suites are serial`);
+      assert.ok(args.includes('--test-timeout=30000'), `${mode}: no wider deadline`);
+      assert.deepEqual(
+        args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)).sort(),
+        [...SERIAL_LOCAL_FILES].sort(),
+        `${mode}: serial isolation must not change the ordinary local pool`
+      );
+      const ordinary = spawns.find(({ args }) => args.includes(LOCAL_PARTITION_CONCURRENCY));
+      assert.ok(ordinary, `${mode}: ordinary local pool stays at two`);
+      assert.ok(ordinary.args.includes('--test-timeout=30000'));
+    }
+  });
+
   it('keeps default deadlines at 30s and scopes every larger budget to its exact owned file', () => {
     for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
       for (const { args } of probeSpawns(mode)) {
@@ -603,25 +722,27 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
     // Set identity + exactly-once are still asserted below and by the sorted comparison here.
     assert.deepStrictEqual([...deterministic].sort(), expected);
     assert.strictEqual(new Set(deterministic).size, deterministic.length);
-    // REL-7 local partition keeps its concurrency, subdivided only by explicit owned file deadline.
-    assert.strictEqual(deterministicSpawns.length, 4, 'three local budget groups + rest partition');
+    // Local scheduling separates ordinary, serial-default and the two owned deadline groups.
+    assert.strictEqual(deterministicSpawns.length, 5, 'four local groups + rest partition');
     assert.deepStrictEqual(
       deterministicSpawns[0].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
-      topology.local.filter((file) => !OWNED_FILE_TIMEOUTS[file])
+      topology.local.filter(
+        (file) => !OWNED_FILE_TIMEOUTS[file] && !SERIAL_LOCAL_FILE_SET.has(file)
+      )
     );
     assert.ok(deterministicSpawns[0].args.includes(LOCAL_PARTITION_CONCURRENCY));
     assert.deepStrictEqual(
-      deterministicSpawns[3].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
+      deterministicSpawns[4].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
       [...topology.contract, ...topology.external, ...topology.unit]
     );
-    assert.ok(deterministicSpawns[3].args.includes(BOUNDED_OUTER_CONCURRENCY));
+    assert.ok(deterministicSpawns[4].args.includes(BOUNDED_OUTER_CONCURRENCY));
     assert.deepStrictEqual([...coverage].sort(), expected);
     assert.strictEqual(new Set(coverage).size, coverage.length);
     // D-60: neither mode may ever touch the experimental layer.
     assert.ok(topology.experimental.length > 0);
     assert.ok(!deterministic.some((file) => topology.experimental.includes(file)));
     assert.ok(!coverage.some((file) => topology.experimental.includes(file)));
-    assert.strictEqual(coverageSpawns.length, 4);
+    assert.strictEqual(coverageSpawns.length, 5);
     assert.strictEqual(
       coverageSpawns.filter(({ args }) => args.some((arg) => arg.endsWith('/c8/bin/c8.js'))).length,
       1,
@@ -645,12 +766,16 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
           (arg) => arg.startsWith('data:text/javascript,') && arg.includes('NODE_V8_COVERAGE')
         )
       );
-      const owned = spawn.args.some((arg) => OWNED_FILE_TIMEOUTS[arg]);
-      assert.ok(spawn.args.includes(owned ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY));
+      const serial = spawn.args.some(
+        (arg) => OWNED_FILE_TIMEOUTS[arg] || SERIAL_LOCAL_FILE_SET.has(arg)
+      );
+      assert.ok(spawn.args.includes(serial ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY));
     }
     assert.deepStrictEqual(
       coverageSpawns[1].args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg)),
-      [...topology.local, ...topology.external].sort().filter((file) => !OWNED_FILE_TIMEOUTS[file])
+      [...topology.local, ...topology.external]
+        .sort()
+        .filter((file) => !OWNED_FILE_TIMEOUTS[file] && !SERIAL_LOCAL_FILE_SET.has(file))
     );
     assert.ok(coverageSpawns[0].args.includes(BOUNDED_OUTER_CONCURRENCY));
     for (const mode of [deterministicSpawns, coverageSpawns]) {
@@ -714,7 +839,7 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
 
   it('deterministic bounds local subprocesses at two and serializes owned heavy fixtures, the rest unchanged', () => {
     const spawns = probeSpawns('deterministic');
-    assert.strictEqual(spawns.length, 4, 'three local budget groups + rest partition');
+    assert.strictEqual(spawns.length, 5, 'four local groups + rest partition');
     for (const { args } of spawns) {
       assert.strictEqual(
         args.filter((arg) => arg.startsWith('--test-concurrency=')).length,
@@ -722,10 +847,10 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
         JSON.stringify(args)
       );
     }
-    for (const { args } of spawns.slice(0, 3)) {
-      const owned = args.some((arg) => OWNED_FILE_TIMEOUTS[arg]);
+    for (const { args } of spawns.slice(0, 4)) {
+      const serial = args.some((arg) => OWNED_FILE_TIMEOUTS[arg] || SERIAL_LOCAL_FILE_SET.has(arg));
       assert.ok(
-        args.includes(owned ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY),
+        args.includes(serial ? '--test-concurrency=1' : LOCAL_PARTITION_CONCURRENCY),
         `local partition: ${JSON.stringify(args)}`
       );
       assert.ok(
@@ -734,8 +859,8 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
       );
     }
     assert.ok(
-      spawns[3].args.includes(BOUNDED_OUTER_CONCURRENCY),
-      `rest partition: ${JSON.stringify(spawns[3].args)}`
+      spawns[4].args.includes(BOUNDED_OUTER_CONCURRENCY),
+      `rest partition: ${JSON.stringify(spawns[4].args)}`
     );
   });
 
@@ -847,5 +972,187 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
     assert.notStrictEqual(result.status, 0);
     assert.match(result.stderr, new RegExp(NETWORK_MARKER));
     assert.doesNotMatch(result.stderr, /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT/);
+  });
+});
+
+describe('fresh black-box CLI provenance', () => {
+  it('issues authority only after one build, verifies all output chunks, and removes only its manifest', async () => {
+    const {
+      prepareTestCliBundle,
+      readTestCliBundleEntry,
+      verifyTestCliBundle,
+      releaseTestCliBundle,
+    } = await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-input-'));
+    let builds = 0;
+    try {
+      mkdirSync(join(root, 'cli'));
+      writeFileSync(join(root, 'cli/gennady.ts'), 'source input');
+      const bundle = prepareTestCliBundle(root, {
+        env: {},
+        build: () => {
+          builds++;
+          mkdirSync(join(root, 'dist'));
+          writeFileSync(join(root, 'dist/gennady.js'), 'entry bytes');
+          writeFileSync(join(root, 'dist/chunk.js'), 'chunk bytes');
+        },
+      });
+      assert.equal(builds, 1);
+      assert.equal(readTestCliBundleEntry(root, {}), undefined, 'standalone remains source');
+      const environment = { [BUNDLE_ENV]: bundle.manifestPath };
+      writeFileSync(join(root, 'dist/chunk.js'), 'changed bytes');
+      assert.throws(() => readTestCliBundleEntry(root, environment), /OUTPUT_DRIFT/);
+      writeFileSync(join(root, 'dist/chunk.js'), 'chunk bytes');
+      assert.equal(readTestCliBundleEntry(root, environment), join(bundle.root, 'dist/gennady.js'));
+      const original = readFileSync(bundle.manifestPath, 'utf8');
+      writeFileSync(
+        bundle.manifestPath,
+        JSON.stringify({ ...JSON.parse(original), nodeAbi: 'foreign' })
+      );
+      assert.throws(() => readTestCliBundleEntry(root, environment), /BUNDLE_INVALID/);
+      writeFileSync(bundle.manifestPath, original);
+      verifyTestCliBundle(bundle);
+      assert.throws(() => releaseTestCliBundle({ ...bundle }), /foreign capability/);
+      releaseTestCliBundle(bundle);
+      assert.ok(readdirSync(join(root, 'dist')).includes('gennady.js'));
+      assert.throws(() => readFileSync(bundle.manifestPath), /ENOENT/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('builds production CLI bytes independently of inherited test NODE_ENV', async () => {
+    const { prepareTestCliBundle, verifyTestCliBundle, releaseTestCliBundle } =
+      await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-production-'));
+    const inherited = { ...process.env, NODE_ENV: 'test' };
+    try {
+      mkdirSync(join(root, 'node_modules/vite/bin'), { recursive: true });
+      writeFileSync(join(root, 'index.ts'), 'production source');
+      writeFileSync(
+        join(root, 'node_modules/vite/bin/vite.js'),
+        [
+          "const fs = require('node:fs');",
+          "fs.mkdirSync('dist', { recursive: true });",
+          "fs.writeFileSync('dist/gennady.js', process.env.NODE_ENV);",
+        ].join('\n')
+      );
+      const testBundle = prepareTestCliBundle(root, { env: inherited });
+      let productionDigest: string;
+      try {
+        assert.equal(readFileSync(join(root, 'dist/gennady.js'), 'utf8'), 'production');
+        assert.equal(inherited.NODE_ENV, 'test', 'the caller/source test environment is unchanged');
+        verifyTestCliBundle(testBundle);
+        productionDigest = testBundle.outputDigest;
+      } finally {
+        releaseTestCliBundle(testBundle);
+      }
+      const normalBundle = prepareTestCliBundle(root, {
+        env: { ...inherited, NODE_ENV: 'production' },
+      });
+      try {
+        assert.equal(
+          normalBundle.outputDigest,
+          productionDigest,
+          'test inheritance cannot alter compiled bytes'
+        );
+        verifyTestCliBundle(normalBundle);
+      } finally {
+        releaseTestCliBundle(normalBundle);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('never accepts stale dist after a failed build or source changes during build', async () => {
+    const { prepareTestCliBundle } = await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-refusal-'));
+    try {
+      mkdirSync(join(root, 'cli'));
+      mkdirSync(join(root, 'dist'));
+      writeFileSync(join(root, 'cli/gennady.ts'), 'before');
+      writeFileSync(join(root, 'dist/gennady.js'), 'stale old output');
+      assert.throws(
+        () =>
+          prepareTestCliBundle(root, {
+            env: {},
+            build: () => {
+              throw new Error('compiler failed');
+            },
+          }),
+        /compiler failed/
+      );
+      assert.throws(
+        () =>
+          prepareTestCliBundle(root, {
+            env: {},
+            build: () => {
+              writeFileSync(join(root, 'cli/gennady.ts'), 'after');
+            },
+          }),
+        /SOURCE_DRIFT/
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('binds root entrypoint bytes during build and across black-box tests', async () => {
+    const { prepareTestCliBundle, verifyTestCliBundle, releaseTestCliBundle } =
+      await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-root-entry-drift-'));
+    try {
+      mkdirSync(join(root, 'dist'));
+      writeFileSync(join(root, 'index.ts'), 'export const value = 1;');
+      writeFileSync(join(root, 'dist/gennady.js'), 'compiled');
+      assert.throws(
+        () =>
+          prepareTestCliBundle(root, {
+            env: {},
+            build: () => {
+              writeFileSync(join(root, 'index.ts'), 'export const value = 2;');
+            },
+          }),
+        /SOURCE_DRIFT/
+      );
+      const bundle = prepareTestCliBundle(root, { env: {}, build: () => {} });
+      try {
+        writeFileSync(join(root, 'index.ts'), 'export const value = 3;');
+        assert.throws(() => verifyTestCliBundle(bundle), /SOURCE_DRIFT/);
+      } finally {
+        releaseTestCliBundle(bundle);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects same-length source edits and changed output after tests, without relying on timestamps', async () => {
+    const { prepareTestCliBundle, verifyTestCliBundle, releaseTestCliBundle } =
+      await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-drift-'));
+    try {
+      mkdirSync(join(root, 'cli'));
+      writeFileSync(join(root, 'cli/gennady.ts'), 'same-length-A');
+      const bundle = prepareTestCliBundle(root, {
+        env: {},
+        build: () => {
+          mkdirSync(join(root, 'dist'));
+          writeFileSync(join(root, 'dist/gennady.js'), 'compiled');
+        },
+      });
+      try {
+        writeFileSync(join(root, 'cli/gennady.ts'), 'same-length-B');
+        assert.throws(() => verifyTestCliBundle(bundle), /SOURCE_DRIFT/);
+        writeFileSync(join(root, 'cli/gennady.ts'), 'same-length-A');
+        writeFileSync(join(root, 'dist/gennady.js'), 'modified');
+        assert.throws(() => verifyTestCliBundle(bundle), /OUTPUT_DRIFT/);
+      } finally {
+        releaseTestCliBundle(bundle);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

@@ -1,0 +1,244 @@
+{
+  "schema": "brownfield-green-progress/1",
+  "modelCalls": 0,
+  "complete": false,
+  "runs": [
+    {
+      "id": "import-green",
+      "counts": {
+        "tests": 18,
+        "pass": 18,
+        "fail": 0
+      },
+      "rawSha256": "14b8c5a280e7c6aeb8e8753a9ae3043cdfe4e572ac2c8f52b424050ed02c87fa",
+      "evidence": "local node:test; not live model; suites may overlap"
+    },
+    {
+      "id": "vitest-process",
+      "counts": {
+        "tests": 19,
+        "pass": 19,
+        "fail": 0
+      },
+      "rawSha256": "6a098acc3312f6b09e8e6a1ee158da03256af8af384ebadcfb3061ab5532432c",
+      "evidence": "local node:test; not live model; suites may overlap"
+    },
+    {
+      "id": "vitest-adversarial",
+      "counts": {
+        "tests": 17,
+        "pass": 17,
+        "fail": 0
+      },
+      "rawSha256": "738484ab9de009cf17a55de572b21f730d17b082ea5902270d8d4ba86a29e699",
+      "evidence": "local node:test; not live model; suites may overlap"
+    },
+    {
+      "id": "mapping-green",
+      "counts": {
+        "tests": 63,
+        "pass": 63,
+        "fail": 0
+      },
+      "rawSha256": "35d8b2b02760277b61cb9f1d27231ebf8ea449e8f2de7dda61508db8055fc4f5",
+      "evidence": "local node:test; not live model; suites may overlap"
+    },
+    {
+      "id": "guidance-green",
+      "counts": {
+        "tests": 11,
+        "pass": 11,
+        "fail": 0
+      },
+      "rawSha256": "7343614d81083c39beab95dcc5e046f841ec5073cda580ecb3bcd5d0176ddcfe",
+      "evidence": "local node:test; not live model; suites may overlap"
+    },
+    {
+      "id": "review-fixes",
+      "counts": {
+        "tests": 20,
+        "pass": 20,
+        "fail": 0
+      },
+      "rawSha256": "62edf8e8f4dd2a1439aa30795738f6be7b70e2558d746c76fec6583794621e60",
+      "evidence": "local node:test; not live model; suites may overlap"
+    },
+    {
+      "id": "exemption-green",
+      "counts": {
+        "tests": 8,
+        "pass": 8,
+        "fail": 0
+      },
+      "rawSha256": "8f8c0ed5786db396276b4709025129b6c50449620dd05c7cce1e239a5700ec81",
+      "evidence": "local node:test; not live model; suites may overlap"
+    },
+    {
+      "id": "qualified-targets",
+      "counts": {
+        "tests": 598,
+        "pass": 598,
+        "fail": 0
+      },
+      "rawSha256": "c0560162200ea8f96b8a69f171a51748e090cfedead2085471077e941dc40ab7",
+      "evidence": "local no-model run; suites overlap; source execution, not installed-package proof"
+    },
+    {
+      "id": "cjs-stats-reviewed",
+      "counts": {
+        "tests": 15,
+        "pass": 15,
+        "fail": 0
+      },
+      "rawSha256": "234e6a1859042a0ae0335f88c804f041aa09784f4c280ec36490576c1f830054",
+      "evidence": "local no-model run; suites overlap; source execution, not installed-package proof"
+    },
+    {
+      "id": "authority-config-inventory",
+      "counts": {
+        "tests": 25,
+        "pass": 25,
+        "fail": 0
+      },
+      "rawSha256": "380349cd3ac1092e28d5921495dbbbaca8ed01780c53b7b4fa2ebad5cc6e8a54",
+      "evidence": "local no-model run; suites overlap; source execution, not installed-package proof"
+    },
+    {
+      "id": "coherence-tracked",
+      "counts": {
+        "tests": 15,
+        "pass": 15,
+        "fail": 0
+      },
+      "rawSha256": "b812674a685053c172594fc35224f358171a6167d1999d80be3f7fe321be150d",
+      "evidence": "local no-model run; suites overlap; source execution, not installed-package proof"
+    },
+    {
+      "id": "eval-portability",
+      "counts": {
+        "tests": 39,
+        "pass": 39,
+        "fail": 0
+      },
+      "rawSha256": "cdd7c8f85f44d74023e5dba7e7359e91e0ad0e2c773cb36b1e673a50c3981424",
+      "evidence": "local no-model run; suites overlap; source execution, not installed-package proof"
+    },
+    {
+      "id": "rule-equivalence",
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0
+      },
+      "rawSha256": "31b0d4bf1a759262d8e1f2e99ffb85460baeddb35c21ff05810f0986b48b2be5",
+      "evidence": "local no-model run; suites overlap; source execution, not installed-package proof"
+    },
+    {
+      "id": "full-gate-expectations",
+      "counts": {
+        "tests": 108,
+        "pass": 108,
+        "fail": 0
+      },
+      "rawSha256": "6d4bc4a953f296de7604f7d326aec63c2f45f072afaec4dab2acf1154be2b285",
+      "evidence": "local no-model run; suites overlap"
+    },
+    {
+      "id": "serial-topology",
+      "counts": {
+        "tests": 22,
+        "pass": 22,
+        "fail": 0
+      },
+      "rawSha256": "91e990c99db732b4546d7e7e3806b728ceebc6a05dbda34926d94dcfb9701842",
+      "evidence": "local no-model run; suites overlap"
+    },
+    {
+      "id": "node-repair-unit",
+      "counts": {
+        "tests": 31,
+        "pass": 31,
+        "fail": 0
+      },
+      "rawSha256": "cc446583ae90f37fd849da0ee3b75fa60523c4feb44cc05ff9470b8871bc90dd",
+      "evidence": "local no-model run; suites overlap"
+    },
+    {
+      "id": "composition-isolated",
+      "counts": {
+        "tests": 13,
+        "pass": 13,
+        "fail": 0
+      },
+      "rawSha256": "498c8c4e3ea6c1d20e28802e302a4e25da5a7f94e18e4755f023c2a6ec90205c",
+      "evidence": "local no-model run; suites overlap"
+    },
+    {
+      "id": "installed-fixtures-qualified",
+      "counts": {
+        "tests": 9,
+        "pass": 9,
+        "fail": 0
+      },
+      "rawSha256": "f68965a9e2d569fc7b09b8b52621b8506c9fec7197cef18359cee71d1b097447",
+      "evidence": "local no-model run; exact-lock shared cohort; suites overlap"
+    },
+    {
+      "id": "scope-guidance",
+      "counts": {
+        "tests": 9,
+        "pass": 9,
+        "fail": 0
+      },
+      "rawSha256": "fce09bfca6ef84f3bc7e32b3db16a035e98fb695bbf10657f85fc54f2be867fb",
+      "evidence": "local no-model run; exact-lock shared cohort; suites overlap"
+    }
+  ],
+  "baselineRuntimeArchiveSha256": "732365b937cfeb134116396a763abb70f4574f25a61124770fefb3e7c46459b8",
+  "eradicationInventory": {
+    "baselineEntries": 1058,
+    "currentEntries": 1064,
+    "removed": 0,
+    "reclassified": 0,
+    "historicalEvidence": {
+      "before": 739,
+      "after": 743
+    },
+    "protocolEvidence": {
+      "before": 70,
+      "after": 72
+    },
+    "independentReview": true,
+    "onlyExpectedCountsAndDigestChanged": true,
+    "additionalRunnerQualificationEntries": 2
+  },
+  "latestSharedTargetRun": {
+    "files": 41,
+    "tests": 598,
+    "passed": 598,
+    "failed": 0,
+    "node": "22.19.0",
+    "concurrency": 2,
+    "elapsedSeconds": 47.534
+  },
+  "additionalTrackedMembershipRun": {
+    "tests": 15,
+    "passed": 15,
+    "failed": 0
+  },
+  "unitFullGate": "FAIL-3 preserved: previously shared corporate dependencies did not match GitHub lock; rebound to one exact-lock shared cohort, final gate pending",
+  "installedVitestQualification": "installed-vitest-stream.json",
+  "temporaryOrphanCleanup": {
+    "ownerProof": "wrapper source-root path matches this worktree",
+    "roots": 2,
+    "bytesRemoved": 1017581,
+    "sharedDependenciesRemoved": false
+  },
+  "proxyMetadataPreflight": {
+    "httpStatus": 200,
+    "exactFlashAdvertised": true,
+    "modelCalls": 0
+  },
+  "dependenciesQualification": "dependency-qualification.json",
+  "earlierTargetRunsDependencyBoundary": "Initial target counts used the prior shared checkout; final full gate must requalify exact-lock runtime. No live attempts used either runtime."
+}

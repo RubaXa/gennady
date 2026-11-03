@@ -1,0 +1,14 @@
+{
+  "schema": "gennady.brownfield-order-qualified-archive.v1",
+  "files": {
+    "FINAL-REASSESSMENT-REVIEW.md": "f9166f7992333c8371c960a9a5a6717e04aa8b9a9209d2d81fe6a8b269b6f9e1",
+    "PARSER-REVIEW.md": "559ad35a47663657a5ae5ffa9eb47608b756a38bf9cb8066e68ae78e51d9a7c6",
+    "REASSESSMENT-REVIEW.md": "97d82a172f7840024006013fa32f1cdb27e997736f2e3f1ff2db6a74ea2ba3c0",
+    "REPORT.md": "da7d624611fdecc6cea41d711eb7c4af2cf259f66f1662a10c527f9927c5c90c",
+    "harness/brownfield-benchmark.ts.txt": "ddb6a2bee7f84ddef387fdca63b4db925bb8d251f693094e42efe209278738f7",
+    "harness/brownfield-command-proof.ts.txt": "51d8ac37d9e1059e13338df04aec67047d5419568350f3db19632e2f5f537db7",
+    "harness/offline-order-qualification.ts.txt": "e5c8ee57f96c5aba176b94175689cf84e0405e421db9db3bd8293691267c341c",
+    "reassessment.json": "007a4958f1a573a43468c3d271ed76e3cc9e16938ef4b6d090bfc08e855c3b6f",
+    "retention.json": "26a7545b503a91470e1e5fb1483a9cc77689cec7e85b0d3cd85be21d2c166d1b"
+  }
+}

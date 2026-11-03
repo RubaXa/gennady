@@ -42,6 +42,7 @@ import { checkSpecAuthoringDraft, type Finding } from '../../../shared/sdd/check
 import { normalizeSddToolFailure } from '../../../shared/sdd/tool-guidance.ts';
 import {
   appendExecutionDecision,
+  appendModuleLintExemptionDecision,
   setDeviationVerdict,
   type DeviationVerdict,
 } from '../../../shared/sdd/deviation.ts';
@@ -195,6 +196,7 @@ async function runCommand(
   if (!mode || !MODES.includes(mode)) {
     return badInvocation(`unknown mode "${mode ?? ''}" — use ${MODES.join(' | ')}`);
   }
+  const moduleDecision = mode === 'decision' && ticket.endsWith('.spec.md');
   const root = resolve(projectRoot);
   if (isSddEvidencePath(relative(root, resolve(root, ticket)))) {
     return fileError(
@@ -224,7 +226,9 @@ async function runCommand(
     (!blockerFile || contentFile || positional.length !== 2)
   )
     return badInvocation(
-      `${mode} requires only --payload-file .claude/tmp/<name>.json and --phase P<digits>`
+      moduleDecision
+        ? 'module decision requires only --payload-file .claude/tmp/<name>.json (no --phase)'
+        : `${mode} requires only --payload-file .claude/tmp/<name>.json and --phase P<digits>`
     );
   if (mode !== 'blocker' && (axiomFlag || unblockFlag)) {
     return badInvocation('--axiom and --unblock apply only to blocker mode');
@@ -281,13 +285,18 @@ async function runCommand(
     return badInvocation('mode "complete" requires --phase <PhaseID>');
   }
   if (
-    (mode === 'blocker' || mode === 'resolved' || mode === 'decision' || mode === 'replan') &&
+    (mode === 'blocker' ||
+      mode === 'resolved' ||
+      (mode === 'decision' && !moduleDecision) ||
+      mode === 'replan') &&
     phaseFlag === undefined
   ) {
     return missingFlag(
       `mode "${mode}" requires --phase <PhaseID> so the blocker lifecycle stays phase-owned`
     );
   }
+  if (moduleDecision && phaseFlag !== undefined)
+    return badInvocation('module decision has no --phase; use its canonical module Decision Log');
   if (phaseFlag !== undefined) {
     if (
       mode !== 'line' &&
@@ -475,6 +484,34 @@ async function runCommand(
     return { ok: true, text: idBanner ? `${idBanner}\n${body}` : body };
   }
   // #endregion END_DEVIATION_VERDICT
+
+  // Module proposals use the existing lease and pending→terminal transition, without a fake ticket phase.
+  if (moduleDecision) {
+    if (!replaceTicket)
+      return badInvocation(
+        'module decision requires an initialized Git project and shared artifact lease'
+      );
+    if (!content.includes('<!--SECTION:MODULE_VISION-->'))
+      return badInvocation('module decision requires an implementation module spec');
+    let raw: unknown;
+    try {
+      raw = JSON.parse(scratch?.content ?? '');
+    } catch {
+      return payloadFileError('decision payload must be valid JSON');
+    }
+    const prepared = appendModuleLintExemptionDecision(
+      content,
+      raw,
+      now.toISOString().slice(0, 10)
+    );
+    if (!prepared.ok) return badInvocation(prepared.detail);
+    if (prepared.created) replaceTicket(content, prepared.content);
+    const cleanupFailure = scratch?.consume();
+    return {
+      ok: true,
+      text: `[sdd-log] module decision ${prepared.id} ${prepared.created ? 'recorded pending-operator' : 'already recorded'}. No lint exception is granted by a proposal. Executor must wait for an explicit operator decision; operator records it with npx gennady sdd-log ${displayPath} deviation-verdict ${prepared.id} accepted|rework|rolled-back. This is the existing role/review model, not identity authentication.${cleanupFailure ? `\n[sdd-log] payload applied but cleanup failed: ${cleanupFailure}` : ''}`,
+    };
+  }
 
   const bounds = findSectionBounds(content, LOG_SECTION);
   if (!bounds) return noLogSection(displayPath);

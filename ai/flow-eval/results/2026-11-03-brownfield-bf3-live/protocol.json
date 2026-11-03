@@ -1,0 +1,215 @@
+{
+  "schema": "gennady.brownfield-bf3.1",
+  "commits": {
+    "baseline": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+    "candidate": "e24ce33eeada13b666df116a903c15568af504cc"
+  },
+  "sourceOverlay": false,
+  "sourceOverlaySha256": null,
+  "runtimeSourceOverlay": false,
+  "nodeVersion": "v22.19.0",
+  "nodeAbi": "127",
+  "packageEntrypointHashes": {
+    "baseline": "972f5157fc5faf06c5c420e92b811add8b610ba94454f558d07d394e0bc56690",
+    "candidate": "9c05f1ca96eb17490e5a21e305d624b8c3587e7b26f75dd196dea8e02894bd69"
+  },
+  "model": "llm-proxy/deepseek-v4-flash",
+  "primaryAttempts": 8,
+  "replacements": 0,
+  "concurrency": 1,
+  "budgetMs": {
+    "E1": 360000,
+    "E2": 360000,
+    "E3": 240000,
+    "E4": 540000
+  },
+  "schedule": [
+    {
+      "caseId": "E1",
+      "arm": "baseline"
+    },
+    {
+      "caseId": "E1",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "E2",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "E2",
+      "arm": "baseline"
+    },
+    {
+      "caseId": "E3",
+      "arm": "baseline"
+    },
+    {
+      "caseId": "E3",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "E4",
+      "arm": "candidate"
+    },
+    {
+      "caseId": "E4",
+      "arm": "baseline"
+    }
+  ],
+  "harness": [
+    {
+      "path": "ai/flow-eval/brownfield-benchmark.ts",
+      "sha256": "f322453f025d33d5334832790fc2a540d8ed23dca7bf3d404f3447338a89d127"
+    },
+    {
+      "path": "ai/flow-eval/dependency-store.ts",
+      "sha256": "689959face5725fb5fb595c372fb33550ed6fc6e39c76c73c1e695d065831a17"
+    },
+    {
+      "path": "ai/flow-eval/eval-signal.ts",
+      "sha256": "db4bc846b5cf00e429433beca114e3004abcc88f9de61e3f772b6edcf3c8d0b5"
+    },
+    {
+      "path": "ai/flow-eval/evidence.ts",
+      "sha256": "d1def1fdffdece35ca457ae28e4659b74d50858fa8fa887f8f3aef2da5dc7b34"
+    },
+    {
+      "path": "ai/flow-eval/fixtures/brownfield-lint-review.ts",
+      "sha256": "243892201db7b681f4aa70e2db0bf72848be330296295d054b4fc060077358cc"
+    },
+    {
+      "path": "ai/flow-eval/observer.ts",
+      "sha256": "05083640c36ddd753aadd1a34dde4753d1beb2a2b80dfccf027962397deaae81"
+    },
+    {
+      "path": "ai/flow-eval/opencode-client.ts",
+      "sha256": "d01910a02bba7d7467e211f72b17a0d5cbb4189a07c6e78ba756aaec6040203f"
+    },
+    {
+      "path": "ai/flow-eval/opencode-runtime.ts",
+      "sha256": "cfa3ceb41a6ea9e4bef5bbd72a03aa875f7a691d4e1676fee69b15f27e8e9ddc"
+    },
+    {
+      "path": "ai/flow-eval/retention-policy.ts",
+      "sha256": "7a0fc7e4d0caf567aa0ab9010a5e68861fb0566e7b8852996eeb2ee3ed9625a7"
+    },
+    {
+      "path": "ai/flow-eval/scripts/brownfield-benchmark-live.ts",
+      "sha256": "dede592bfaad5720f373ee322bac4e1106ecc169d663fd1207f64b70cc3b864f"
+    },
+    {
+      "path": "ai/flow-eval/scripts/execution-autonomy-shell-carrier.ts",
+      "sha256": "807a92af49da140931c6b3465ab59368f5ce5d90d7433dc855e49fe8fc00fe87"
+    },
+    {
+      "path": "ai/flow-eval/session-directory.ts",
+      "sha256": "c1b191c27dab6f912d9bcb89309690918597c4f4fdc28c819003046794cf866b"
+    },
+    {
+      "path": "ai/flow-eval/tool-observation.ts",
+      "sha256": "b3a94d8a2c64bd3855d05f710517e2aab50f7cf04c056829ddb13dfc2fd59642"
+    },
+    {
+      "path": "ai/flow-eval/trajectory.ts",
+      "sha256": "027b8f564ce2d448d39e43f7f1c260bc8fabf1aeaf9d20a5344f3d530d6cd486"
+    },
+    {
+      "path": "ai/flow-eval/types.ts",
+      "sha256": "3d6db54c7af744e39816f6717c30938cee04948e89e04d071c7fea32b277d646"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "50988adc7d5a12a60de946965fee0b1fd903658ccf54c084169b0d3dd381c75c"
+    },
+    {
+      "path": "shared/common/repo-file-identity.ts",
+      "sha256": "8e6e9f3c4a5b124aa338a4c1dca80367a16c682f03f7b0a7a08bf94b2711767d"
+    },
+    {
+      "path": "shared/common/repo-path.ts",
+      "sha256": "463ecd25b9c6c8acfebb5628b0a34d64e464af859382acf279aed3885d7a5d93"
+    },
+    {
+      "path": "shared/sdd/execution-log.ts",
+      "sha256": "6d23580c691ecfff912c547115fc137f780d02083f1b19a9d10ca1380253e624"
+    },
+    {
+      "path": "shared/sdd/markdown-fence.ts",
+      "sha256": "816be162358814766a08dbcd0a77a2b09bb8f6b53d2e352af11890d922a30a5c"
+    },
+    {
+      "path": "shared/sdd/section.ts",
+      "sha256": "440a6e2c7b177f689536e5e5a472c2e8a291e06d2db54fd5f5d3877e17ab1a12"
+    },
+    {
+      "path": "shared/verify/model/plugin-id.type.ts",
+      "sha256": "bfebd564d4630335e6065e5d86609984a253e32cd25dae572251fc07631cb045"
+    },
+    {
+      "path": "shared/verify/model/verify-context.type.ts",
+      "sha256": "a0626eed642b5d77632420f2b69958df4a1ab7ad3da484ddce83fa5ebd679f06"
+    },
+    {
+      "path": "shared/verify/model/verify-readiness.type.ts",
+      "sha256": "5ec1c654cebff8af12d034b2565e4367c27518dcae1c89d784a1352ed7b265a9"
+    },
+    {
+      "path": "shared/verify/model/verify-report.type.ts",
+      "sha256": "437db0884a5b2f75b297f975dc1df006c904d3338afe83fab5e5ff492dd62fa1"
+    },
+    {
+      "path": "shared/verify/model/verify-step.type.ts",
+      "sha256": "a2b52864b99cfda0a2b173e46eca58c0d5fef116f174bde3b0fd9a6adb1bc7a0"
+    },
+    {
+      "path": "shared/verify/reporting/command-identity.ts",
+      "sha256": "f4b617c3a31773326eff337b926bd6fdaa3b13b5f2fdc57453dd7c3b0dc939c4"
+    },
+    {
+      "path": "shared/verify/reporting/report-safety.ts",
+      "sha256": "3ef2f6f0553f415af715669eb8f3517ff94626c1017c3f9b91e9c18de0a07c24"
+    }
+  ],
+  "source": {
+    "sourceCommit": "2bb9a8039e5479634f8dfb5a6d234d0991278ace",
+    "trackedRegularFiles": 4043,
+    "exportedFiles": 4019,
+    "sourceFiles": 3001,
+    "excludedFiles": 24,
+    "excludedContent": 8,
+    "manifestSha256": "ac98383d0818a635cd352a02d9e3c03f3032d5f61b14172f6b557d26ea8b8f58",
+    "historyExported": false,
+    "limitation": "Existing real source snapshot, secret/agent-config exclusions, synthetic isolated task overlay. Not a whole-project build."
+  },
+  "packageManifestSha256": "f5890548be9685a2702bb94cfe7bb82bc6bc1675df0c29cccb210d1cf5186935",
+  "fixtureHashes": [
+    {
+      "caseId": "E1",
+      "sha256": "7d5509074311ce73ac3daf28c3382f3757fff703ce7225da76ae756dd6be8b9f"
+    },
+    {
+      "caseId": "E2",
+      "sha256": "e40570c9c140eaaf2299ecae694ad90790466fcf4161fcaccdc2293d657c0483"
+    },
+    {
+      "caseId": "E3",
+      "sha256": "2b7425945743b54f3ac8efa9e7800d1f9a37e499392fe5f654b6636db34014d3"
+    },
+    {
+      "caseId": "E4",
+      "sha256": "400e99af2b27ee23f21692b70df4d0e752fb6f0774b204c439656f304786cda5"
+    }
+  ],
+  "E3Comparison": "Common evidence-backed proposal/safety; baseline persistence unsupported known before dispatch; candidate pending persistence is product capability, not behavioral superiority.",
+  "E4Scope": "Two phase workers in one primary session; host completes phases/close/sync/audit/review after checking actual evidence. Host validations are not agent achievements.",
+  "publicPolicy": "Only numeric/enum/hash allowlist; private source/diffs/raw/transcripts retained locally outsideGit.",
+  "limitations": [
+    "One attempt per case/arm; no statistical noninferiority/universalcostwin.",
+    "Synthetic isolated task in exact real source snapshot; not full Octavius build.",
+    "Ordinary roles not actor authentication.",
+    "Timeline necessity initially unknown pending independent post-run review.",
+    "Toolcalls are not HTTPrequests; APIrequestcount unknown unless transport observed.",
+    "Total tokens exclude cachereads; providerreportedcost0notfree."
+  ]
+}

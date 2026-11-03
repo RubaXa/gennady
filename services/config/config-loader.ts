@@ -29,6 +29,8 @@ const DURATION_RE = /^([1-9]\d*)(s|m|h)$/;
  * @consumer stack-config, verify.cmd
  */
 export type ConfigError = {
+  /** @purpose Exact source when a read or structural validation identifies it. */
+  readonly source?: string;
   /** @purpose Dotted path of the offending key, e.g. `stack.golang.skipGate`. */
   readonly path: string;
   /** @purpose What is wrong, with a did-you-mean hint where applicable. */
@@ -140,6 +142,24 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 }
 
 /**
+ * @purpose Retain parser location without echoing configuration values in diagnostic previews.
+ * @param format Configuration syntax name.
+ * @param cause Parser or file-read failure.
+ * @returns Source-safe reason; the caller supplies the exact configuration path.
+ */
+function configParseIssue(format: 'JSON' | 'YAML', cause: unknown): string {
+  const message = cause instanceof Error ? cause.message : '';
+  const position = /\bat position (\d+)\b/.exec(message)?.[1];
+  const line = /\bat line (\d+), column (\d+)\b/.exec(message);
+  const location = line
+    ? ` at line ${line[1]}, column ${line[2]}`
+    : position
+      ? ` at position ${position}`
+      : '';
+  return `cannot parse ${format}${location}: check syntax and file readability (configuration values omitted)`;
+}
+
+/**
  * @purpose Read one section of a JSON .gennadyrc. Only parse errors are fatal: a foreign
  *   section is its own consumer's problem.
  * @param dir Directory holding the rc file.
@@ -163,7 +183,11 @@ function readRcSource(dir: string, name: string, sectionName: string): RawSource
     return {
       name,
       stack: undefined,
-      error: { path: name, message: `cannot parse JSON: ${(cause as Error).message}` },
+      error: {
+        source: name,
+        path: name,
+        message: configParseIssue('JSON', cause),
+      },
     };
   }
 }
@@ -189,7 +213,7 @@ function readYamlSource(root: string, sectionName: string): RawSource {
       return {
         name,
         stack: undefined,
-        error: { path: name, message: 'top level must be a mapping' },
+        error: { source: name, path: name, message: 'top level must be a mapping' },
       };
     }
     return { name, stack: doc[sectionName], error: null };
@@ -197,7 +221,11 @@ function readYamlSource(root: string, sectionName: string): RawSource {
     return {
       name,
       stack: undefined,
-      error: { path: name, message: `cannot parse YAML: ${(cause as Error).message}` },
+      error: {
+        source: name,
+        path: name,
+        message: configParseIssue('YAML', cause),
+      },
     };
   }
 }
@@ -311,7 +339,7 @@ export function loadConfigSection(
       continue;
     }
     if (typeof source.stack !== 'object' || Array.isArray(source.stack)) {
-      errors.push({ path: sectionName, message: 'must be a mapping' });
+      errors.push({ path: sectionName, message: 'must be a mapping', source: source.name });
       continue;
     }
     seen = true;
