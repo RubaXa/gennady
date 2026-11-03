@@ -78,8 +78,24 @@ test('quoted and unquoted echo wrappers recover actual lint1/proposal0, includin
     assert.equal(brownfieldProposalInvocationProven(mixed.events, mixed.capture), true);
   }
   const bare = [
-    { i: 0, tool: 'bash', status: 'completed', exitCode: 1, command: lint },
-    { i: 1, tool: 'bash', status: 'completed', exitCode: 0, command: proposal },
+    {
+      i: 0,
+      tool: 'bash',
+      status: 'completed',
+      exitCode: 1,
+      command: lint,
+      startedAt: 100,
+      finishedAt: 150,
+    },
+    {
+      i: 1,
+      tool: 'bash',
+      status: 'completed',
+      exitCode: 0,
+      command: proposal,
+      startedAt: 200,
+      finishedAt: 250,
+    },
   ];
   assert.equal(brownfieldProposalInvocationProven(bare), true);
 });
@@ -273,5 +289,54 @@ test('overlap and reversed order remain unknown; invocation evidence grants neit
       oracle: { commonPass: true, persistencePass: false, proposalInvocationProven: true },
     }),
     false
+  );
+});
+
+test('bare invocations require real nonoverlapping intervals, never only array order', () => {
+  const events: BrownfieldCommandEvent[] = [
+    {
+      i: 0,
+      tool: 'bash',
+      status: 'completed',
+      exitCode: 1,
+      command: lint,
+      startedAt: 100,
+      finishedAt: 250,
+    },
+    {
+      i: 1,
+      tool: 'bash',
+      status: 'completed',
+      exitCode: 0,
+      command: proposal,
+      startedAt: 150,
+      finishedAt: 200,
+    },
+  ];
+  assert.equal(
+    brownfieldProposalInvocationProven(events),
+    false,
+    'parallel parts are not ordered by i'
+  );
+  const ordered = events.map((event) => ({ ...event }));
+  ordered[0]!.finishedAt = 150;
+  ordered[1]!.startedAt = 200;
+  ordered[1]!.finishedAt = 250;
+  assert.equal(brownfieldProposalInvocationProven(ordered), true);
+  for (const index of [0, 1])
+    for (const field of ['startedAt', 'finishedAt'] as const) {
+      const missing = ordered.map((event) => ({ ...event }));
+      missing[index]![field] = undefined;
+      assert.equal(brownfieldProposalInvocationProven(missing), false, `missing ${index}/${field}`);
+      const invalid = ordered.map((event) => ({ ...event }));
+      invalid[index]![field] = Number.NaN;
+      assert.equal(brownfieldProposalInvocationProven(invalid), false, `invalid ${index}/${field}`);
+    }
+  const inverted = ordered.map((event) => ({ ...event }));
+  inverted[0]!.startedAt = 160;
+  assert.equal(
+    brownfieldProposalInvocationProven(inverted),
+    false,
+    'a backwards interval is not proof'
   );
 });

@@ -14,7 +14,6 @@ import {
   brownfieldConfirmationAccepted,
 } from '../brownfield-benchmark.ts';
 import {
-  BROWNFIELD_COMMAND_PROOF_REVISION,
   type BrownfieldCommandEvent,
   type BrownfieldCommandCapture,
 } from '../brownfield-command-proof.ts';
@@ -136,7 +135,7 @@ test('reassessment archive authenticates every file and Git membership; changed 
 
 test('offline proof gives v3 a separate qualified PASS while prior censored v2 and all raw flags remain unchanged', () => {
   const report = load<Result>('reassessment.json');
-  assert.equal(report.revision, BROWNFIELD_COMMAND_PROOF_REVISION);
+  assert.equal(report.revision, 'bounded-exit-echo-v2');
   assert.equal(report.modelCalls, 0);
   assert.equal(report.newPrimaryAttempts, 0);
   assert.equal(report.priorRawUnchanged, true);
@@ -228,4 +227,88 @@ test('published projection contains no original session IDs, host paths, credent
         path
       );
     }
+});
+
+test('final v3 order qualification preserves all prior data and rejects bare overlap without changing the two real outcomes', () => {
+  const qualifiedRoot = fileURLToPath(
+    new URL('../results/2026-11-03-brownfield-order-qualified/', import.meta.url)
+  );
+  const archive = files(qualifiedRoot);
+  authenticate(archive);
+  const prefix = relative(repository, qualifiedRoot).split('\\').join('/');
+  const tracked = execFileSync('git', ['ls-files', '-z', '--', prefix], { cwd: repository })
+    .toString()
+    .split('\0')
+    .filter(Boolean)
+    .map((path) => path.slice(prefix.length + 1));
+  assert.deepEqual(tracked.sort(), [...archive.keys()].sort());
+  const report = JSON.parse(archive.get('reassessment.json')!.toString()) as {
+    revision: string;
+    modelCalls: number;
+    newPrimaryAttempts: number;
+    priorRawUnchanged: boolean;
+    previousAssessment: { path: string; sha256: string; revision: string };
+    sourceHashes: { snapshot: string; sha256: string }[];
+    orderControl: {
+      overlappingEvents: BrownfieldCommandEvent[];
+      orderedEvents: BrownfieldCommandEvent[];
+      priorProofObserved: boolean;
+      qualifiedOverlapProof: boolean;
+      qualifiedOrderedProof: boolean;
+    };
+    assessments: {
+      inputPath: string;
+      inputSha256: string;
+      rawRecordPath: string;
+      rawRecordSha256: string;
+      privatePublicProofEqual: boolean;
+      reassessed: { proposalInvocationProven: boolean; confirmationAccepted: boolean };
+    }[];
+    fullTrajectoryPassClaimed: boolean;
+    modelBehaviorWinClaimed: boolean;
+  };
+  assert.equal(report.revision, 'bounded-exit-echo-v3');
+  assert.equal(report.modelCalls, 0);
+  assert.equal(report.newPrimaryAttempts, 0);
+  assert.equal(report.priorRawUnchanged, true);
+  assert.equal(report.previousAssessment.revision, 'bounded-exit-echo-v2');
+  assert.equal(
+    sha(readFileSync(join(repository, report.previousAssessment.path))),
+    report.previousAssessment.sha256
+  );
+  assert.deepEqual(
+    report.assessments.map((row) => row.reassessed.confirmationAccepted),
+    [false, true]
+  );
+  for (const row of report.assessments) {
+    assert.equal(sha(readFileSync(join(repository, row.inputPath))), row.inputSha256);
+    const input = JSON.parse(readFileSync(join(repository, row.inputPath), 'utf8')) as Input;
+    const original = raw(input);
+    assert.equal(sha(readFileSync(join(repository, row.rawRecordPath))), row.rawRecordSha256);
+    assert.equal(row.privatePublicProofEqual, true);
+    assert.equal(
+      brownfieldProposalInvocationProven(input.events, input.capture),
+      row.reassessed.proposalInvocationProven
+    );
+    assert.equal(
+      brownfieldConfirmationAccepted({
+        ...original,
+        oracle: {
+          ...original.oracle,
+          proposalInvocationProven: row.reassessed.proposalInvocationProven,
+        },
+      }),
+      row.reassessed.confirmationAccepted
+    );
+    assert.equal(original.confirmationAccepted, false);
+  }
+  assert.equal(report.orderControl.priorProofObserved, true);
+  assert.equal(brownfieldProposalInvocationProven(report.orderControl.overlappingEvents), false);
+  assert.equal(report.orderControl.qualifiedOverlapProof, false);
+  assert.equal(brownfieldProposalInvocationProven(report.orderControl.orderedEvents), true);
+  assert.equal(report.orderControl.qualifiedOrderedProof, true);
+  assert.equal(report.fullTrajectoryPassClaimed, false);
+  assert.equal(report.modelBehaviorWinClaimed, false);
+  for (const source of report.sourceHashes)
+    assert.equal(sha(archive.get(source.snapshot)!), source.sha256);
 });

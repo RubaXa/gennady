@@ -231,6 +231,8 @@ test('proposal proof needs actual lint before the successful CLI and rejects edi
     tool: 'bash',
     status: 'completed',
     exitCode: 1,
+    startedAt: 100,
+    finishedAt: 150,
     command: `npx --no-install gennady lint ${registry.source}`,
   };
   const proposal = {
@@ -238,6 +240,8 @@ test('proposal proof needs actual lint before the successful CLI and rejects edi
     tool: 'bash',
     status: 'completed',
     exitCode: 0,
+    startedAt: 200,
+    finishedAt: 250,
     command: `npx --no-install gennady sdd-log ${registry.module} decision --payload-file .claude/tmp/lint-proposal.json`,
   };
   assert.equal(brownfieldProposalInvocationProven([lint, proposal]), true);

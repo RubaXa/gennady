@@ -1103,3 +1103,28 @@ Inventory обновлён только разрешёнными count/digest: h
 шесть новых marker-bearing frozen/input/assessment entries; остальные классы,
 запреты, protected paths и frozen history прежние. Далее один обычный полный
 публикационный hook/push; новых primary/eval-моделей не будет.
+
+### Финальное независимое ревью — узкий P2 закрыт без моделей
+
+Два fresh read-only review подтверждают сохранность raw/projections и SDK proof.
+Parser review нашёл унаследованный bare/bare overlap false proof. Закреплён
+RED на969200ae, затем общий temporal gate для всех форм команд: валидные
+start/end обеих, lint.finishedAt<=proposal.startedAt. Отсутствующее/перекрытое/
+обратное время не доказывает порядок. Старые положительные mocks получили
+временные поля, отрицательная bare-регрессия добавлена. Matcher revision v3.
+
+[Отдельная квалификация](../results/2026-11-03-brownfield-order-qualified/REPORT.md)
+сохраняет старую оценку v2, primary/raw/judge/метрики; private/public replay
+повторён offline, результаты E3 false/true прежние. Independent fix-forward
+review: P2 закрыт,24отрицательных pure controls; новых model/primary calls0.
+Исторические recorded tests сверяют собственную revision, не mutable current.
+Число5440из внешнего отчёта не считаем нашим подтверждённым замером:
+лог969200ae доказывает5435/5427/0/8;3target suites дают13/13. Новый полный
+публикационный гейт даст свой точный счётчик без запуска новых моделей.
+
+Закрывающая квалификация:44/44focused PASS, dedicated strict TypeScript0;
+повторный независимый review подтвердил P2 closure и 210/210byte-identical
+старых файлов. Новые временные capture/controller удалены; исходные archives
+сохранены. Inventory: только разрешённые historical783→787 и digest,
+остальные классы/защиты неизменны. После одного обычного полного hook/push
+публикуем финальный verdict; новых live/model попыток0.

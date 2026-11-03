@@ -329,13 +329,15 @@ export function brownfieldProposalInvocationProven(
         ].some((words) => JSON.stringify(words) === JSON.stringify(lint.words))
       )
         return false;
-      if (lint.wrapped || proposal.wrapped)
-        return (
-          Number.isSafeInteger(earlier.finishedAt) &&
-          Number.isSafeInteger(event.startedAt) &&
-          earlier.finishedAt! <= event.startedAt!
-        );
-      return true;
+      return (
+        Number.isSafeInteger(earlier.startedAt) &&
+        Number.isSafeInteger(earlier.finishedAt) &&
+        Number.isSafeInteger(event.startedAt) &&
+        Number.isSafeInteger(event.finishedAt) &&
+        earlier.startedAt! <= earlier.finishedAt! &&
+        event.startedAt! <= event.finishedAt! &&
+        earlier.finishedAt! <= event.startedAt!
+      );
     });
   });
 }

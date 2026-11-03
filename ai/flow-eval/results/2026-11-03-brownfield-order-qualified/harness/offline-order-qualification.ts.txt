@@ -1,0 +1,31 @@
+// @file: Offline qualification of uniform invocation ordering; prior raw and derived assessments are read-only inputs.
+import { readFileSync,writeFileSync,mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { brownfieldProposalInvocationProven,brownfieldConfirmationAccepted,registry } from '../../ai/flow-eval/brownfield-benchmark.ts';
+import { BROWNFIELD_COMMAND_PROOF_REVISION } from '../../ai/flow-eval/brownfield-command-proof.ts';
+import { toolEventsFrom } from '../../ai/flow-eval/trajectory.ts';
+const repo=process.cwd(),out=join(repo,'ai/flow-eval/results/2026-11-03-brownfield-order-qualified');
+const hash=(v:string|Buffer)=>createHash('sha256').update(v).digest('hex');
+const load=(p:string)=>JSON.parse(readFileSync(p,'utf8'));
+const previousPath='ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment/reassessment.json';
+const previous=load(join(repo,previousPath));const privateCases=load(process.argv[2]!);
+const rows=[];
+for(const row of previous.assessments){
+ const inputPath='ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment/'+row.inputPath;
+ const input=load(join(repo,inputPath)),raw=load(join(repo,input.rawRecordPath));
+ if(hash(readFileSync(join(repo,input.rawRecordPath)))!==input.rawRecordSha256)throw new Error('Raw changed');
+ const actual=privateCases.find((v:any)=>v.label===row.label);if(!actual)throw new Error('Missing private binding');
+ const privateProof=brownfieldProposalInvocationProven(toolEventsFrom(actual.primary.trace.entries),{complete:input.capture.complete,messages:actual.messages});
+ const projectedProof=brownfieldProposalInvocationProven(input.events,input.capture);if(privateProof!==projectedProof)throw new Error('Projection mismatch');
+ rows.push({label:row.label,inputPath,inputSha256:hash(readFileSync(join(repo,inputPath))),rawRecordPath:input.rawRecordPath,rawRecordSha256:input.rawRecordSha256,privatePublicProofEqual:true,previousDerived:row.reassessed,reassessed:{proposalInvocationProven:projectedProof,confirmationAccepted:brownfieldConfirmationAccepted({...raw,oracle:{...raw.oracle,proposalInvocationProven:projectedProof}})}});
+}
+const bare=[{i:0,tool:'bash',status:'completed',exitCode:1,command:`npx --no-install gennady lint --spec=${registry.module} ${registry.source}`,startedAt:100,finishedAt:250},{i:1,tool:'bash',status:'completed',exitCode:0,command:`npx --no-install gennady sdd-log ${registry.module} decision --payload-file .claude/tmp/lint-proposal.json`,startedAt:150,finishedAt:200}];
+if(brownfieldProposalInvocationProven(bare))throw new Error('Overlap still accepted');
+const ordered=bare.map(x=>({...x}));ordered[0]!.finishedAt=150;ordered[1]!.startedAt=200;ordered[1]!.finishedAt=250;if(!brownfieldProposalInvocationProven(ordered))throw new Error('Ordered control rejected');
+mkdirSync(out);mkdirSync(join(out,'harness'));
+const sources=['ai/flow-eval/brownfield-benchmark.ts','ai/flow-eval/brownfield-command-proof.ts'];
+for(const source of sources)writeFileSync(join(out,'harness',source.split('/').pop()+'.txt'),readFileSync(join(repo,source)));
+writeFileSync(join(out,'harness/offline-order-qualification.ts.txt'),readFileSync(import.meta.filename));
+const result={schema:'gennady.brownfield-order-qualified.v1',revision:BROWNFIELD_COMMAND_PROOF_REVISION,sourceBaseCommit:'969200ae63fcdbba413b4ab525ad8c1d53cb5528',modelCalls:0,newPrimaryAttempts:0,priorRawUnchanged:true,previousAssessment:{path:previousPath,sha256:hash(readFileSync(join(repo,previousPath))),revision:previous.revision},sourceHashes:sources.map(path=>({path,snapshot:'harness/'+path.split('/').pop()+'.txt',sha256:hash(readFileSync(join(repo,path)))})),orderControl:{kind:'synthetic pure unit, not a worker attempt',overlappingEvents:bare,priorProofObserved:true,priorRedLogSha256:hash(readFileSync(process.argv[3]!)),qualifiedOverlapProof:false,orderedEvents:ordered,qualifiedOrderedProof:true},assessments:rows,modelBehaviorWinClaimed:false,fullTrajectoryPassClaimed:false};
+writeFileSync(join(out,'reassessment.json'),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(rows));

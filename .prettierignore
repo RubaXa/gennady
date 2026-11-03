@@ -187,3 +187,7 @@ ai/flow-eval/results/2026-11-03-brownfield-e3-explicit-command/controller-delta.
 # Separate offline exit-echo reassessment: exact capture projections and executed matcher bytes.
 ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment/**/*.json
 ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment/harness/**
+
+# Final order qualification: immutable offline projections and executed proof source.
+ai/flow-eval/results/2026-11-03-brownfield-order-qualified/**/*.json
+ai/flow-eval/results/2026-11-03-brownfield-order-qualified/harness/**

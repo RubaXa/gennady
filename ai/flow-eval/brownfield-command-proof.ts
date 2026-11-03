@@ -19,7 +19,7 @@ export type BrownfieldCommandCapture = {
   complete: boolean;
   messages: readonly unknown[];
 };
-export const BROWNFIELD_COMMAND_PROOF_REVISION = 'bounded-exit-echo-v2';
+export const BROWNFIELD_COMMAND_PROOF_REVISION = 'bounded-exit-echo-v3';
 const object = (value: unknown): Record<string, unknown> | undefined =>
   value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
