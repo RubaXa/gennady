@@ -1068,3 +1068,38 @@ active/migration counts и запреты неизменны. Обычный п�
 historical evidence769→777 и digest, восемь новых marker-bearing entries —
 frozen source/independent audit/manifest; active/migration counts и запреты
 прежние. Обычный полный hook/push завершает публикацию этого результата.
+
+### Отдельное исправление измерителя echo EXIT — без моделей
+
+Оператор разрешил ограниченную поддержку `; echo EXIT:$?` и отдельную
+переоценку. Изменён только eval-measurer; старые primary/raw/judge/метрики
+не меняются. Поддерживается также double-quoted echo, не произвольный shell.
+
+- Wrapper proof требует полного уникального identity-bound SDK result,
+  exact command/time/status, shell exit0, metadata.truncated=false, совпадающих
+  полных outputs≤64КиБ и единственной законченной финальной EXIT-строки.
+- Lint1→proposal0 доказуются только для scoped-команд и неперекрывающегося
+  порядка. Shell composition/подделки/обрыв/перенос proof/side effects отвергаются.
+  Остальные persistence/judge/boundary/runtime/cleanup условия прежние.
+- Новая отдельная [offline-оценка](../results/2026-11-03-brownfield-exit-echo-reassessment/REPORT.md):
+  E3 v3 false→true/PROVEN; старый censored E3 v2 false→false/NOT PROVEN.
+  `confirmationAccepted` — принятие доказательства оценщиком, не принятие
+  pending-решения оператором. REG-DL-1 остаётся pending-operator.
+- Exact SHA старых записей/captures и matcher source зафиксированы;
+  private/public normalized replay совпал. Raw flags остаются false, новые
+  значения лежат только в reassessment.json. Full trajectory/общий model win
+  не объявляем; новые primary/eval-model calls=0, новых LLM-eval токенов0.
+- Независимый adversarial code review: блокеров нет; bare-критерий сохранён,
+  redirects/pipelines остаются unknown. Новые положительные/отрицательные
+  тесты и recorded replay квалифицируют механизм до обычного hook/push.
+
+Точка завершения: исправленный recognizer + отдельная воспроизводимая оценка,
+обязательные тесты, PR update и cleanup. Новых живых прогонов не назначаем.
+
+Квалификация:42/42targeted PASS, dedicated strict TypeScript0, zero-new-error
+baseline PASS. Временный полный capture input и projection runner удалены;
+исходные private archives неизменны, новых workspace/runtime/dependency copies0.
+Inventory обновлён только разрешёнными count/digest: historical777→783,
+шесть новых marker-bearing frozen/input/assessment entries; остальные классы,
+запреты, protected paths и frozen history прежние. Далее один обычный полный
+публикационный hook/push; новых primary/eval-моделей не будет.

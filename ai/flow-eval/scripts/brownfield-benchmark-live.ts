@@ -42,6 +42,7 @@ import {
   sha,
   type CaseId,
 } from '../brownfield-benchmark.ts';
+import { BROWNFIELD_COMMAND_PROOF_REVISION } from '../brownfield-command-proof.ts';
 import { createSddEvalOpenCodeClient } from '../opencode-client.ts';
 import { SddEvalOpenCodeRuntime } from '../opencode-runtime.ts';
 import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
@@ -1052,8 +1053,16 @@ async function attempt(
       oracle = existsSync(profile)
         ? proposalCheck(cwd, arm, initialModule, profile)
         : { commonPass: false, persistencePass: false, reason: 'profile unavailable' };
-      if (confirmation)
-        oracle.proposalInvocationProven = brownfieldProposalInvocationProven(events);
+      if (confirmation) {
+        oracle.proposalInvocationProven = brownfieldProposalInvocationProven(events, {
+          complete:
+            rawMessages.capture.messagesComplete === true &&
+            rawMessages.capture.bodyComplete === true &&
+            rawMessages.capture.issue === null,
+          messages: rawMessages.messages ?? [],
+        });
+        oracle.proposalInvocationProofRevision = BROWNFIELD_COMMAND_PROOF_REVISION;
+      }
       functional = oracle.commonPass;
       domainPass = oracle.commonPass && oracle.persistencePass;
     } else if (id === 'E2') {
@@ -1451,7 +1460,7 @@ async function main() {
       .map((path) => ({ path: relative(root, path), sha256: sha(readFileSync(path)) }));
     json(out, 'protocol.json', {
       schema: 'gennady.brownfield-bf3.2',
-      measurementRevision: 'post-eight-attempt-campaign; no old outcome replay',
+      measurementRevision: BROWNFIELD_COMMAND_PROOF_REVISION,
       campaign: campaign.id,
       fixtureRevision: campaign.confirmation ? 'e3-explicit-proposal-command-v3' : 'original',
       comparison: campaign.confirmation

@@ -2,6 +2,11 @@
 // @spec: AI-SKILLS
 // @consumers: brownfield benchmark controller; no live model calls
 
+import {
+  brownfieldCommandInvocation,
+  type BrownfieldCommandEvent,
+  type BrownfieldCommandCapture,
+} from './brownfield-command-proof.ts';
 import { createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { parseDocument } from 'yaml';
@@ -286,53 +291,25 @@ export function brownfieldConfirmationAccepted(record: {
   );
 }
 
-/** @purpose Prove a simple successful proposal invocation after actual lint, never infer CLI execution from a final edited record alone. */
+/** @purpose Prove an actual scoped proposal after lint; an optional exit echo requires complete, identity-bound SDK output. */
 export function brownfieldProposalInvocationProven(
-  events: readonly {
-    i: number;
-    tool: string;
-    command?: string;
-    arg?: string;
-    status?: string;
-    exitCode?: number;
-  }[]
+  events: readonly BrownfieldCommandEvent[],
+  capture?: BrownfieldCommandCapture
 ): boolean {
-  const direct = (event: (typeof events)[number]): string[] | undefined => {
-    const command = event.command;
-    if (
-      event.tool !== 'bash' ||
-      event.status !== 'completed' ||
-      !command ||
-      /[;&|`$\\<>\r\n'"]/.test(command)
-    )
-      return;
-    const words = command.trim().split(/\s+/);
-    let executable = words.shift();
-    if (executable === 'npx') {
-      while (['--no-install', '--offline'].includes(words[0] ?? '')) words.shift();
-      executable = words.shift();
-    }
-    if (
-      !['gennady', './node_modules/.bin/gennady', 'node_modules/.bin/gennady'].includes(
-        executable ?? ''
-      )
-    )
-      return;
-    return words;
-  };
   if (
     events.some(
       (event) =>
-        ['write', 'edit', 'apply_patch'].includes(event.tool) &&
-        `${event.arg ?? ''} ${event.command ?? ''}`.includes(registry.module)
+        (['write', 'edit', 'apply_patch'].includes(event.tool) &&
+          `${event.arg ?? ''} ${event.command ?? ''}`.includes(registry.module)) ||
+        (event.tool === 'bash' && /\bdeviation-verdict\b/.test(event.command ?? ''))
     )
   )
     return false;
   return events.some((event) => {
-    const words = direct(event);
+    const proposal = brownfieldCommandInvocation(event, capture);
     if (
-      event.exitCode !== 0 ||
-      JSON.stringify(words) !==
+      proposal?.exitCode !== 0 ||
+      JSON.stringify(proposal.words) !==
         JSON.stringify([
           'sdd-log',
           registry.module,
@@ -343,14 +320,22 @@ export function brownfieldProposalInvocationProven(
     )
       return false;
     return events.some((earlier) => {
-      const lint = direct(earlier);
-      return (
-        earlier.i < event.i &&
-        earlier.exitCode === 1 &&
-        lint?.[0] === 'lint' &&
-        lint.includes(registry.source) &&
-        !lint.includes('--autofix')
-      );
+      const lint = brownfieldCommandInvocation(earlier, capture);
+      if (!lint || earlier.i >= event.i || lint.exitCode !== 1) return false;
+      if (
+        ![
+          ['lint', registry.source],
+          ['lint', `--spec=${registry.module}`, registry.source],
+        ].some((words) => JSON.stringify(words) === JSON.stringify(lint.words))
+      )
+        return false;
+      if (lint.wrapped || proposal.wrapped)
+        return (
+          Number.isSafeInteger(earlier.finishedAt) &&
+          Number.isSafeInteger(event.startedAt) &&
+          earlier.finishedAt! <= event.startedAt!
+        );
+      return true;
     });
   });
 }

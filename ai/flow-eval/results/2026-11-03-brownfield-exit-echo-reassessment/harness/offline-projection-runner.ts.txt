@@ -1,0 +1,44 @@
+// @file: Offline, privacy-bounded E3 reassessment from already stored and hash-verified captures; no model or network operations.
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { brownfieldProposalInvocationProven, brownfieldConfirmationAccepted } from '../../ai/flow-eval/brownfield-benchmark.ts';
+import { BROWNFIELD_COMMAND_PROOF_REVISION } from '../../ai/flow-eval/brownfield-command-proof.ts';
+import { toolEventsFrom } from '../../ai/flow-eval/trajectory.ts';
+const repo = process.cwd();
+const out = join(repo, 'ai/flow-eval/results/2026-11-03-brownfield-exit-echo-reassessment');
+const sha = (data: string | Buffer) => createHash('sha256').update(data).digest('hex');
+const id = (value: unknown) => typeof value === 'string' ? sha(value) : undefined;
+const safeOutput = (text: string) => text.replace(/\/(?:private\/)?var\/folders\/[^\s:]*\/workspaces\/sdd-flow-eval-phase(?=\/|\s|:|$)/g, '<workspace>');
+const dump = (name:string,value:unknown) => {const text=JSON.stringify(value,null,2)+'\n';if(/\/Users\/|\/private\/|\/var\/folders\/|\bses_[A-Za-z0-9]|\bmsg_[A-Za-z0-9]|Bearer\s+[A-Za-z0-9_.-]{12,}|glpat-[A-Za-z0-9_-]{16,}/.test(text))throw new Error('Private value in projection');writeFileSync(join(out,name),text)};
+mkdirSync(out);mkdirSync(join(out,'inputs'));
+const cases=JSON.parse(readFileSync(process.argv[2]!,'utf8'));
+const assessments=[];
+for(const item of cases){
+  const events=toolEventsFrom(item.primary.trace.entries);
+  for(const event of events){const rawEvent=item.raw.events[event.i];if(sha(event.callId??'')!==rawEvent.callIdentity||sha(event.command??event.arg??'')!==rawEvent.argumentSha256)throw new Error('Trace/public record identity mismatch')}
+  const complete=item.raw.privateRawMessagesCapture.messagesComplete===true&&item.raw.privateRawMessagesCapture.bodyComplete===true&&item.raw.privateRawMessagesCapture.issue===null;
+  const privateProof=brownfieldProposalInvocationProven(events,{complete,messages:item.messages});
+  const projectedEvents=events.map(event=>{
+    if(!event.messageId?.startsWith(event.sessionId+':'))throw new Error('Unknown trace message framing');
+    return {i:event.i,tool:event.tool,command:event.command,arg:event.arg,status:event.status,exitCode:event.exitCode,sessionId:id(event.sessionId),messageId:`${id(event.sessionId)}:${id(event.messageId.slice(event.sessionId!.length+1))}`,callId:id(event.callId),startedAt:event.startedAt,finishedAt:event.finishedAt};
+  });
+  const messages=item.messages.map((message:any)=>({info:{id:id(message.info?.id),sessionID:id(message.info?.sessionID),role:message.info?.role},parts:(message.parts??[]).filter((part:any)=>part.type==='tool').map((part:any)=>{
+    const state=part.state??{},meta=state.metadata??{};
+    const candidate=part.tool==='bash'&&typeof state.input?.command==='string'&&/^npx --no-install gennady (?:lint |sdd-log )/.test(state.input.command);
+    return {type:part.type,tool:part.tool,callID:id(part.callID),sessionID:id(part.sessionID),messageID:id(part.messageID),state:{status:state.status,input:{command:state.input?.command},time:state.time,output:candidate&&typeof state.output==='string'?safeOutput(state.output):'',metadata:{exit:meta.exit,truncated:candidate?meta.truncated:true,output:candidate&&typeof meta.output==='string'?safeOutput(meta.output):''}},projection:{outputWithheld:!candidate}};
+  })}));
+  const capture={complete,messages};
+  const publicProof=brownfieldProposalInvocationProven(projectedEvents,capture);
+  if(publicProof!==privateProof)throw new Error('Privacy projection changed the assessment');
+  const accepted=brownfieldConfirmationAccepted({...item.raw,oracle:{...item.raw.oracle,proposalInvocationProven:publicProof}});
+  const input={schema:'gennady.brownfield-exit-echo-input.v1',label:item.label,rawRecordPath:item.rawRecordPath,rawRecordSha256:item.rawRecordSha256,sourceBindings:item.sourceBindings,projection:{identityTransform:'SHA256 per SDK identity, preserving equality/collisions',outputTransform:'only full synthetic lint/proposal output; workspace-root spelling normalized; other outputs explicitly withheld',privatePublicProofEqual:true},events:projectedEvents,capture};
+  const filename='inputs/'+item.label+'.json';dump(filename,input);
+  assessments.push({label:item.label,inputPath:filename,inputSha256:sha(readFileSync(join(out,filename))),rawRecordPath:item.rawRecordPath,rawRecordSha256:item.rawRecordSha256,raw:{proposalInvocationProven:item.raw.oracle.proposalInvocationProven,confirmationAccepted:item.raw.confirmationAccepted,confirmationStatus:item.raw.confirmationStatus,judgeVerdict:item.raw.judgeVerdict},reassessed:{proposalInvocationProven:publicProof,confirmationAccepted:accepted,confirmationStatus:accepted?'proven':'not-proven'},privatePublicProofEqual:true,fullTrajectoryPassClaimed:false});
+}
+const sources=['ai/flow-eval/brownfield-command-proof.ts','ai/flow-eval/brownfield-benchmark.ts','ai/flow-eval/scripts/brownfield-benchmark-live.ts'];
+mkdirSync(join(out,'harness'));
+for(const source of sources)writeFileSync(join(out,'harness',source.split('/').pop()+'.txt'),readFileSync(join(repo,source)));
+writeFileSync(join(out,'harness/offline-projection-runner.ts.txt'),readFileSync(import.meta.filename));
+dump('reassessment.json',{schema:'gennady.brownfield-exit-echo-reassessment.v1',revision:BROWNFIELD_COMMAND_PROOF_REVISION,modelCalls:0,newPrimaryAttempts:0,priorRawUnchanged:true,modelBehaviorWinClaimed:false,sourceHashes:sources.map(path=>({path,sha256:sha(readFileSync(join(repo,path))),snapshot:'harness/'+path.split('/').pop()+'.txt'})),assessments});
+console.log(JSON.stringify(assessments.map(x=>({label:x.label,raw:x.raw,reassessed:x.reassessed}))));
