@@ -1,0 +1,11 @@
+{
+  "safeCleanup": true,
+  "runtimeRootRemoved": true,
+  "controllerRemoved": true,
+  "runtimeLogicalBytesRemoved": 39986725,
+  "privateArchiveBytes": 290673,
+  "privateArchiveSha256": "24ca79b3c61e9890ea0baa1a81e1646d09c21e8c46cadf5b733ecc10f7829b96",
+  "allPrivateFilesRoundTripVerified": true,
+  "sharedDependenciesPreserved": true,
+  "modelCalls": 0
+}

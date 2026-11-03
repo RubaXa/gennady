@@ -1,0 +1,23 @@
+{
+  "campaign": "bf3-e3-explicit-command-single",
+  "authorizedPrimaryAttempts": 1,
+  "replacements": 0,
+  "schedule": [
+    {
+      "caseId": "E3",
+      "arm": "candidate"
+    }
+  ],
+  "model": "llm-proxy/deepseek-v4-flash",
+  "fixtureRevision": "e3-explicit-proposal-command-v3",
+  "productCommit": "0a506340d6fe6a509b752f2585c17ff8b57ca326",
+  "runnerBaseCommit": "9f19fb431fda609b945aae9f4906b7228e01e9c8",
+  "canonicalRunnerSha256": "4c040762081529f9fd317e425a1a9aa910b3e7735a32354c6be1e8576dd0f9bf",
+  "controllerSha256": "7eae5bf97c6d7c10a82ef677eaa187a3d79e73ce0d249446a4ac1ceeccad7c2b",
+  "fixtureFactorySha256": "84956d10d1074946a88726432f9cd7df1e6096599879960f7d5a31b790b75e97",
+  "primaryBudgetMs": 240000,
+  "judgeBudgetMs": 90000,
+  "reflectionBudgetMs": 60000,
+  "priorFailuresImmutable": true,
+  "at": "2026-11-03T13:09:28.985248+00:00"
+}

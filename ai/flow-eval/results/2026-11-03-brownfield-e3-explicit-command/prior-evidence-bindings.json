@@ -1,0 +1,10 @@
+[
+  {
+    "path": "ai/flow-eval/results/2026-11-03-brownfield-e3-e4-confirmation/records/0.json",
+    "sha256": "b33c0ee9883d3a978cf30080daa91e7ad3a61a90cd396873f3b48f2266fad124"
+  },
+  {
+    "path": "ai/flow-eval/results/2026-11-03-brownfield-bf3-live/manifest.json",
+    "sha256": "cf82f4920f2e424e097d4e2e7f310ac19826ee0fb96a15c65e2944b9747ecb49"
+  }
+]

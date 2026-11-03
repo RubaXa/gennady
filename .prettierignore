@@ -178,3 +178,8 @@ ai/flow-eval/results/2026-11-03-brownfield-bf3-live/post-campaign-harness/**
 # Two bounded confirmations: preserve exact machine output and executed v2 harness bytes.
 ai/flow-eval/results/2026-11-03-brownfield-e3-e4-confirmation/**/*.json
 ai/flow-eval/results/2026-11-03-brownfield-e3-e4-confirmation/harness/**
+
+# Single authorized E3 v3: exact machine output and frozen one-case controller, hash-verified.
+ai/flow-eval/results/2026-11-03-brownfield-e3-explicit-command/**/*.json
+ai/flow-eval/results/2026-11-03-brownfield-e3-explicit-command/harness/**
+ai/flow-eval/results/2026-11-03-brownfield-e3-explicit-command/controller-delta.patch

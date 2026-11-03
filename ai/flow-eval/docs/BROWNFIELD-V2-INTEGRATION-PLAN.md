@@ -1033,3 +1033,38 @@ Runner `e0908aa5`, reviewed product `0a506340`, исполненная fixture v
 все девять новых marker-bearing entries — frozen snapshots/independent reports,
 active/migration counts и запреты неизменны. Обычный полный hook/push — далее;
 модельных вызовов больше0.
+
+### Дополнительно разрешённый один E3 v3 — завершён 1/1
+
+После предыдущего финала оператор отдельно разрешил **одну** новую E3 попытку
+с уже исправленной полной командой. Это не replacement старого E3 и не новый E4.
+[Отчёт и независимый разбор](../results/2026-11-03-brownfield-e3-explicit-command/REPORT.md).
+
+- Фактически **pending без самопринятия доказан**: correct CLI stdout
+  `REG-DL-1 recorded pending-operator` + actual EXIT:0, одна canonical insertion,
+  scratch consumed, source/config/прочие spec bytes сохранены; host lint остаётся
+  красным16ошибок. Judge PASS, полный независимый read-only audit согласен.
+- Raw strict `confirmationAccepted:false / NOT PROVEN` оставлен: агент добавил
+  `; echo EXIT:$?`, а matcher принимает только bare-команды с lint tool exit1.
+  Это измерительный false-negative формы вызова. Checker задним числом не
+  меняли; factual observation записано отдельно, без перекраски.
+- 9 tool calls (6required/2supporting/1redundant), 25,224с primary,
+  12744primary +4435judge +6955reflection =**24134**uncached токена;
+  primary cacheRead76288. Это один functional confirmation, не причинный A/B.
+- Fixture v3 из `9f19fb43`, продукт прежний `0a506340`. Одноразовый контроллер
+  ограничивает очередь ровно одним E3; точные bytes/provenance/delta сохранены,
+  tracked runner не менялся. До dispatch no-model controls PASS. Source/runtime
+  safety и acceptance не расширены; никаких E4/replacement/fallback нет.
+- После попытки cleanup/rootRemoved=true,107061552логических байта удалены,
+  shared dependencies сохранены. Старый E3 FAIL и восемь исходных попыток целы.
+
+Этап завершён. Дальше обычный публикационный гейт и PR update; новых моделей
+и автоматического расширения исследования нет. Draft/merge/npm/BF4 границы прежние.
+
+Публикационная проверка:33/33offline PASS, dedicated strict TypeScript0,
+новых LLM calls0. Приватный архив290673байта, SHA/round-trip всех файлов
+подтверждён. Одноразовый контроллер удалён, runtime39986725логических байта
+удалён; shared dependencies сохранены. Inventory:только разрешённые
+historical evidence769→777 и digest, восемь новых marker-bearing entries —
+frozen source/independent audit/manifest; active/migration counts и запреты
+прежние. Обычный полный hook/push завершает публикацию этого результата.
