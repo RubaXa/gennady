@@ -1,0 +1,281 @@
+{
+  "schema": "brownfield.post-campaign-resource-costs.1",
+  "modelCalls": 0,
+  "oldEightAttemptsChanged": false,
+  "workspaceGuard": {
+    "schema": "pr132.workspace-guard-profile-comparison.1",
+    "modelCalls": 0,
+    "productionEditsByReviewer": 0,
+    "fixturesIdentical": {
+      "sourceFiles": 1000,
+      "uniqueContent": true,
+      "sourceBytes": 8192000,
+      "observeSteps": 6,
+      "commandsExecuted": false,
+      "publicApi": [
+        "acquireWorkspaceGuard",
+        "beginStep",
+        "finishStep",
+        "release"
+      ]
+    },
+    "sourceHashes": {
+      "baseline": "6dc128f11734afc90c6230a2225375d2466f6e8718168e8009d75816f619deb7",
+      "candidate": "60cc6463631de685369c26487d30a8bdee7bd4cdd2a866068c1884174edca6cb"
+    },
+    "metrics": {
+      "sourceReads": {
+        "baseline": 7000,
+        "candidate": 7000
+      },
+      "sourceReadBytes": {
+        "baseline": 57344000,
+        "candidate": 57344000
+      },
+      "sourceHashBytes": {
+        "baseline": 57344000,
+        "candidate": 57344000
+      },
+      "hashBytes": {
+        "baseline": 58662681,
+        "candidate": 107814735
+      },
+      "blobWrites": {
+        "baseline": 7007,
+        "candidate": 1001
+      },
+      "blobWriteBytes": {
+        "baseline": 57344063,
+        "candidate": 8192009
+      },
+      "blobReads": {
+        "baseline": 0,
+        "candidate": 6006
+      },
+      "blobReadBytes": {
+        "baseline": 0,
+        "candidate": 49152054
+      },
+      "lstatCalls": {
+        "baseline": 35072,
+        "candidate": 41078
+      },
+      "ancestorLstat": {
+        "baseline": 21000,
+        "candidate": 21000
+      },
+      "gitSpawns": {
+        "baseline": 44,
+        "candidate": 44
+      },
+      "gitElapsedMs": {
+        "baseline": 4800.263208000004,
+        "candidate": 2636.8801660000017
+      },
+      "elapsedMs": {
+        "baseline": 24531.119247,
+        "candidate": 15515.779542000002
+      }
+    },
+    "cloneRequests": {
+      "calls": 6006,
+      "logicalBytes": 49152054,
+      "physicalBytes": "not measured; COPYFILE_FICLONE may fall back to ordinary copy",
+      "hardlinks": 0
+    },
+    "elapsedDescription": {
+      "totalChangePercent": -36.75062525368676,
+      "baselineFinishMedianMs": 2687.722208000001,
+      "candidateFinishMedianMs": 2235.8115,
+      "limitations": "One bounded observation per source variant on the same host. Git timings also changed; no universal throughput or full-gate speedup is inferred."
+    },
+    "correctness": {
+      "baselineAllAccepted": true,
+      "candidateAllAccepted": true,
+      "adversarial": [
+        {
+          "name": "independent inodes preserve accepted chmod and later rollback after old-blob mutation",
+          "passed": true,
+          "rootRemoved": true
+        },
+        {
+          "name": "corrupt reused payload is rejected with lock retained and no destructive restore",
+          "passed": true,
+          "rootRemoved": true
+        },
+        {
+          "name": "prior blob symlink cannot be reused even when outside bytes have the correct hash",
+          "passed": true,
+          "rootRemoved": true
+        },
+        {
+          "name": "same-size same-mtime source mutation is still hashed, rejected and rolled back",
+          "passed": true,
+          "rootRemoved": true
+        }
+      ]
+    },
+    "cleanup": {
+      "baseline": {
+        "rootRemoved": true
+      },
+      "candidate": {
+        "rootRemoved": true
+      }
+    },
+    "recommendation": "Retain if normal targeted tests pass: unchanged source hashing/path checks, fewer userland payload writes via independent-inode clone requests. Report additional destination read/hash cost and filesystem fallback."
+  },
+  "cliStartup": {
+    "method": "bounded single tiny-fixture source-vs-current-dist probe; no full test/build/model",
+    "observations": [
+      {
+        "query": "summary",
+        "kind": "source",
+        "elapsedMs": 1922.3634999999995,
+        "status": 0,
+        "stdoutSha256": "e681e7d9e28b2ea072ff80b31ff8322a2fdf7b3e08fe3ac27f264a7a27a17c5d",
+        "stdoutExactMatch": true
+      },
+      {
+        "query": "summary",
+        "kind": "dist",
+        "elapsedMs": 501.8301250000004,
+        "status": 0,
+        "stdoutSha256": "e681e7d9e28b2ea072ff80b31ff8322a2fdf7b3e08fe3ac27f264a7a27a17c5d",
+        "stdoutExactMatch": true
+      },
+      {
+        "query": "phase",
+        "kind": "dist",
+        "elapsedMs": 765.6340829999999,
+        "status": 0,
+        "stdoutSha256": "f2855fd22e87ec09229d461e53326fce2bc367d371a55e4f23bc0f952ee69b46",
+        "stdoutExactMatch": true
+      },
+      {
+        "query": "phase",
+        "kind": "source",
+        "elapsedMs": 2260.1225000000004,
+        "status": 0,
+        "stdoutSha256": "f2855fd22e87ec09229d461e53326fce2bc367d371a55e4f23bc0f952ee69b46",
+        "stdoutExactMatch": true
+      }
+    ],
+    "limitations": "One bounded source/dist comparison on a tiny fixture; not a universal latency claim."
+  },
+  "verifyDag": {
+    "compilerBefore": 2,
+    "compilerAfter": 1,
+    "formatBefore": 2,
+    "formatAfter": 1,
+    "contractLintBefore": 1,
+    "contractLintAfter": 1,
+    "mandatoryNodesUnchanged": true
+  },
+  "checks": {
+    "guard": "25/25 PASS; 86.508 seconds",
+    "policy": "5/5 PASS; neighbors 51/51",
+    "bundleProvenance": "7/7 PASS; includes spawned production build-env control; initial build env defect preserved in failed hook",
+    "realBundledSuites": "fresh build 30.70s; sdd-verify 3/3 PASS 8.08s; sdd-task timeout at unchanged 30s; reported one failure and cleanup complete",
+    "realProductionBuildFromTestEnvironment": "PASS 20.83s; all-output digest matches normal production build",
+    "builderTypecheck": "Explicit NodeJS.ProcessEnv annotation; standalone tsc exit0. Prior hook TS7053 and concurrent edit correctly rejected/restored."
+  },
+  "notCulprits": {
+    "typescriptResearchArchiveInputs": 0,
+    "recordedArchiveReplaySeconds": 1.404,
+    "archiveReadSecondsApprox": 0.18,
+    "actualRecordedGitProcesses": 2
+  },
+  "fullGate": "Pending ordinary hook; no global deadline increase, no assertions or mandatory test files removed.",
+  "buildEnvironmentCorrection": {
+    "old": "test NODE_ENV leaked into Vite build and pulled optional React DevTools",
+    "new": "builder child NODE_ENV=production; caller/test NODE_ENV unchanged",
+    "modelCalls": 0
+  },
+  "subsequentUnitGate": {
+    "outcome": "TIMEOUT",
+    "stepLimitMs": 600000,
+    "reportedDurationIncludingGuardMs": 744481,
+    "partialCompletedTopLevelRecords": 395,
+    "partialNotOkRecords": 0,
+    "isFullPass": false
+  },
+  "targetedProcessReduction": {
+    "nodeTsxStartsRemoved": 53,
+    "acceptanceCliCallsUsingSameFreshBundle": 22,
+    "gitFixtureSetupProcessesRemoved": 110,
+    "checks": "37 pass, 1 E22 file timeout; no assertion failure; not qualified full green"
+  },
+  "e22BeforeBatch": {
+    "modelCalls": 0,
+    "exitCode": 1,
+    "expectedErrors": 199,
+    "expectedWarnings": 432,
+    "fileCount": 212,
+    "gitCalls": 273,
+    "summedChildReturnMs": 10658.318916999988,
+    "cpuMicroseconds": {
+      "user": 6044646,
+      "system": 2302488
+    },
+    "profileSampleSpanMs": 20700.875,
+    "compiledEntrySha256": "ae2a31fc6c34a2348712c87c6bbe062c1a650faef1f1859105b533fbed18482d",
+    "outputSha256": "c02775e9e753ed74ecd754f3b69aebe57bcaa5c19f9b5c1871adc991f759d446",
+    "limitations": "One diagnostic run; profiler/preload overhead, no physical I/O or universal speed claim."
+  },
+  "batchHeadValidation": {
+    "targetTests": 12,
+    "passed": 12,
+    "rootTypecheck": 0,
+    "independentReview": "no confirmed blockers",
+    "boundedPathChunks": "128/~32KiB; individually oversized path isolated",
+    "boundedBlobChunks": "512/64MiB; binary framing and pinned OIDs",
+    "virtualLongPaths": 1000,
+    "notPhysicalFiles": true
+  },
+  "finalNoModelQualification": {
+    "modelCalls": 0,
+    "sourceDigest": "99a676867d89123d567c837b62308aefb848c590b64eb08c310d0ed90f328261",
+    "outputDigest": "d8f0a4cd850bbddbb0612ed986933c8ec9e76f3698c2083f150576ca8291c29b",
+    "buildMs": 4115.18525,
+    "e22": {
+      "elapsedMs": 2415.051917,
+      "status": 1,
+      "byteIdentical": true,
+      "outputSha256": "c02775e9e753ed74ecd754f3b69aebe57bcaa5c19f9b5c1871adc991f759d446",
+      "gitCalls": 8,
+      "childReturnMs": 197.69837600000014,
+      "cpuMicroseconds": {
+        "user": 1646240,
+        "system": 402757
+      }
+    },
+    "acceptance": {
+      "status": 0,
+      "stats": {
+        "executed": 10,
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0
+      },
+      "elapsedMs": 7612.058875000001
+    },
+    "sourceAndOutputUnchanged": true,
+    "manifestRemoved": true,
+    "totalMs": 14237.269792
+  },
+  "largeJsonPipeFix": {
+    "beforeBytes": 65536,
+    "afterBytes": 242917,
+    "syntheticSpecs": 120,
+    "exitCodeBeforeAndAfter": 1,
+    "samePipeAndRegularFdJson": true,
+    "regressionPassed": 1,
+    "rootAndFocusedTypecheck": 0,
+    "initialDiagnosticFailedAndPreserved": true
+  },
+  "followupNotImplemented": {
+    "reclassifySixSuites": "42/42 controlled qualification, not needed for this finite fix; pool/corpus unchanged",
+    "cachedSanitizer": "single caps CPU test2.05s, generic regex~5ms, not evidence for600s timeout"
+  }
+}

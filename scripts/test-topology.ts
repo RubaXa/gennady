@@ -13,6 +13,13 @@ import { spawnSync } from 'node:child_process';
 import { availableParallelism, tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { safeVerifyText } from '../shared/verify/reporting/report-safety.ts';
+import {
+  prepareTestCliBundle,
+  verifyTestCliBundle,
+  releaseTestCliBundle,
+  TEST_CLI_BUNDLE_ENV,
+  type TestCliBundle,
+} from './test-cli-bundle.ts';
 
 const PROJECT_ROOT = resolve(import.meta.dirname, '..');
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
@@ -566,12 +573,18 @@ function createTestEnvironment(): NodeJS.ProcessEnv {
   }
   // The parent runner owns this deadline; nested test/CLI fixtures retain their own policies.
   delete env[FILE_TIMEOUT_OVERRIDE_ENV];
+  delete env[TEST_CLI_BUNDLE_ENV];
   return env;
 }
 
 export function runNodeTests(
   files: string[],
-  options: { coverage: boolean; networkGuard: boolean; concurrency: number }
+  options: {
+    coverage: boolean;
+    networkGuard: boolean;
+    concurrency: number;
+    cliBundle?: TestCliBundle;
+  }
 ): TestRunResult {
   if (
     options.coverage &&
@@ -615,7 +628,13 @@ export function runNodeTests(
 
 function runNodeTestBatch(
   files: string[],
-  options: { coverage: boolean; networkGuard: boolean; concurrency: number; timeoutMs: number }
+  options: {
+    coverage: boolean;
+    networkGuard: boolean;
+    concurrency: number;
+    timeoutMs: number;
+    cliBundle?: TestCliBundle;
+  }
 ): TestRunResult {
   const reporterDirectory = mkdtempSync(join(tmpdir(), 'gennady-test-topology-'));
   const reporterPath = join(reporterDirectory, 'runner.tap');
@@ -647,7 +666,12 @@ function runNodeTestBatch(
     const result = spawnSync(process.execPath, args, {
       cwd: PROJECT_ROOT,
       stdio: 'inherit',
-      env: createTestEnvironment(),
+      env: {
+        ...createTestEnvironment(),
+        ...(!options.coverage && options.cliBundle
+          ? { [TEST_CLI_BUNDLE_ENV]: options.cliBundle.manifestPath }
+          : {}),
+      },
     });
     if (result.error) {
       process.stderr.write(`[test-topology] cannot start test runner: ${result.error.message}\n`);
@@ -762,8 +786,49 @@ function help(): string {
     '  File deadlines: default 30s; owned local Git/Swift suites 120s; offline package acceptance 360s.',
     '  GENNADY_TEST_FILE_TIMEOUT_MS=120000: temporary deadline floor (30000..600000 ms); never lowers owned budgets.',
     '  The override is reported and removed from child-test environments; concurrency and assertions are unchanged.',
+    '  Local black-box partitions build one fresh source-bound CLI; observed coverage and standalone suites keep source execution.',
     '  --help    Show this help.',
   ].join('\n');
+}
+
+/** @purpose Run every existing partition, building one fresh CLI only for noncoverage local boundaries. */
+function runPartitions(partitions: TestPartition[], coverageMode: boolean): number {
+  let bundle: TestCliBundle | undefined;
+  const stats: TestRunStats[] = [];
+  try {
+    for (const partition of partitions) {
+      process.stdout.write(
+        `[test-topology] ${partition.name}: ${partition.files.length} files ` +
+          (coverageMode
+            ? `(${partition.layers.join('+')}; ${partition.coverage ? 'c8 observes production code' : 'no c8: subprocess boundary'})\n`
+            : `(${partition.layers.join('+')}; concurrency=${partition.concurrency})\n`)
+      );
+      const blackBox = !partition.coverage && partition.layers.includes('local');
+      if (blackBox && !bundle) {
+        bundle = prepareTestCliBundle(PROJECT_ROOT, { env: createTestEnvironment() });
+        process.stdout.write(`[test-topology] fresh CLI bundle source=${bundle.sourceDigest}\n`);
+      }
+      const result = runNodeTests(partition.files, {
+        coverage: partition.coverage,
+        networkGuard: false,
+        concurrency: partition.concurrency,
+        ...(blackBox && bundle ? { cliBundle: bundle } : {}),
+      });
+      if (result.stats !== undefined) stats.push(result.stats);
+      if (result.status !== 0) {
+        if (result.stats !== undefined) writeStats(stats);
+        return result.status;
+      }
+    }
+    if (bundle) verifyTestCliBundle(bundle);
+    writeStats(stats);
+    return 0;
+  } catch (cause) {
+    process.stderr.write(`[test-topology] fresh CLI qualification failed: ${String(cause)}\n`);
+    return 1;
+  } finally {
+    if (bundle) releaseTestCliBundle(bundle);
+  }
 }
 
 function main(argv: string[]): number {
@@ -829,25 +894,7 @@ function main(argv: string[]): number {
     process.stdout.write(
       `[test-topology] deterministic: ${partitions.reduce((sum, part) => sum + part.files.length, 0)} files\n`
     );
-    const stats: TestRunStats[] = [];
-    for (const partition of partitions) {
-      process.stdout.write(
-        `[test-topology] ${partition.name}: ${partition.files.length} files ` +
-          `(${partition.layers.join('+')}; concurrency=${partition.concurrency})\n`
-      );
-      const result = runNodeTests(partition.files, {
-        coverage: false,
-        networkGuard: false,
-        concurrency: partition.concurrency,
-      });
-      if (result.stats !== undefined) stats.push(result.stats);
-      if (result.status !== 0) {
-        if (result.stats !== undefined) writeStats(stats);
-        return result.status;
-      }
-    }
-    writeStats(stats);
-    return 0;
+    return runPartitions(partitions, false);
   }
   if (command === 'experimental') {
     // D-60: agent-inbox/agent-mon — never part of npm test/test:coverage/pre-commit. No c8, no
@@ -868,25 +915,7 @@ function main(argv: string[]): number {
     process.stdout.write(
       `[test-topology] coverage: ${partitions.reduce((sum, part) => sum + part.files.length, 0)} files exactly once\n`
     );
-    const stats: TestRunStats[] = [];
-    for (const partition of partitions) {
-      process.stdout.write(
-        `[test-topology] ${partition.name}: ${partition.files.length} files ` +
-          `(${partition.layers.join('+')}; ${partition.coverage ? 'c8 observes production code' : 'no c8: subprocess boundary'})\n`
-      );
-      const result = runNodeTests(partition.files, {
-        coverage: partition.coverage,
-        networkGuard: false,
-        concurrency: partition.concurrency,
-      });
-      if (result.stats !== undefined) stats.push(result.stats);
-      if (result.status !== 0) {
-        if (result.stats !== undefined) writeStats(stats);
-        return result.status;
-      }
-    }
-    writeStats(stats);
-    return 0;
+    return runPartitions(partitions, true);
   }
   process.stderr.write(`[test-topology] unknown command: ${command}\n${help()}\n`);
   return 2;

@@ -1,0 +1,2083 @@
+{
+  "schema": "brownfield-installed-cli-performance/1",
+  "startedAt": "2026-11-03T04:54:17.655Z",
+  "completedAt": "2026-11-03T04:54:30.316Z",
+  "elapsedMs": 12654.685375000001,
+  "helperSha256": "bc2b74b83806138685b0ac8d197b81b9b0bde0dca4153029a380088626d3121b",
+  "runtimeManifestSha256": "f5890548be9685a2702bb94cfe7bb82bc6bc1675df0c29cccb210d1cf5186935",
+  "runtimes": {
+    "baseline": {
+      "commit": "6e19167e0c756b5e136dd3a9e5a597280c78c2e9",
+      "sourceOverlay": false,
+      "tarballSha256": "ef0c523c2506815791abd0d6b458473eca3c288b8c6bd1db0df46ba2e62cb02d",
+      "entrySha256": "972f5157fc5faf06c5c420e92b811add8b610ba94454f558d07d394e0bc56690",
+      "compiledJavaScriptHashes": {
+        "chunks/classify-mr-stage.logic-Bvec3Ej1.js": "441db439c5dfa19f3fcaad36a64d20cbb86ad4b49b2f5a2f89c881a508a9c490",
+        "chunks/config-help-Ws1ngThF.js": "f85672cc047c0fc3059946281c8cb83d1bce7892ce8f7ef135492b7978a571ac",
+        "chunks/config-index-XqhVM0gZ.js": "56eeedf8fcca55046cbc4cabcc1995926ba83f75c919be37138871b0109f52ea",
+        "chunks/devtools-CwoG_QV6.js": "ec9b05272b35b4232391d4ddbc71b09487f0b3ebb6f92a388f3f1f233a4421c2",
+        "chunks/eval.cmd-DouYIYfB.js": "0ae54382b01d98926c6104a388c232559fcb1ef37008ba06f039af76d1c802cf",
+        "chunks/help-5qCaicff.js": "8af2260a5559298a5511f196c0285d1ea89541e5ddba4d736c328210f2ca1aa6",
+        "chunks/help-B2ETH0j6.js": "690e0a072afe415015d338d094e54126f0daf12f78862b753bf6c972696b58aa",
+        "chunks/help-B6e1u35w.js": "fa952d0879d7fe54a7a1b8479cedf20117a1a47d8b4e7964872b206228bc7f6a",
+        "chunks/help-BCDURaCQ.js": "99ec5aecde3b6946d6cb4660cf6932cedccb2609d560295e0ebf6281c1277cd7",
+        "chunks/help-BD8-LEeF.js": "fcb6508ecd678f18356e78f7563a1cb1462b31377aec9afda6c2a57576ba1a9b",
+        "chunks/help-BOdcV1vC.js": "78192b75c2ca2825af16d8817e07b21abf156c351111ff27af95bbbdffbb73d6",
+        "chunks/help-BZAS4kM2.js": "66b076d3a6662b595354f38f75e3e2441deabbb708ec32d687643557e87b1cda",
+        "chunks/help-BZy6KWe9.js": "0ef39be6281e35840857ab508c31f12174a6582bdd2e578507bf25b8fc2abefc",
+        "chunks/help-Baj9Avee.js": "1a88926e619f6a29a722b9f064fe1ef18ad45be3360b9c54d2f12ea3248f2b31",
+        "chunks/help-Bb-4xa8Y.js": "df6c912187c3605b567eb9de9f569dff488af9487556388012a8bb22b6116f4c",
+        "chunks/help-BeKMlWuu.js": "cccb1a3e07ce4b1a215ebf3d10f1935289d61ec8dfce6e97e67780086255949e",
+        "chunks/help-BiBPW0kL.js": "0e88750176c392c6870e64432b3289b338ebd6caba7e6d762bd84a36829b93d1",
+        "chunks/help-Bs46D8RF.js": "f4e83ce2e86df4c564c47556dead2406b71561a9f344307d0a9302e3314593bb",
+        "chunks/help-BtKSJyz4.js": "f691dff4f24de329bd5344af7c4a3ac0b3f10b6da81d8c116646c38d68d8fd9b",
+        "chunks/help-BvgYOSyQ.js": "45dee4bf03f8f09b6434f34ab2c85dd48f52a2c3c70503149840797104ce4958",
+        "chunks/help-C0GfohvW.js": "2314c6ebb5c0205b545b79e97a0071bc053cda504e7bdd643e19d0944d3ebe27",
+        "chunks/help-C3Ykc-Nc.js": "f718cfa760d4b0d740f116d3410e8dec287f3adb17e60b91b37597c74c9d97d3",
+        "chunks/help-CES366oI.js": "9acd578f367106721dac18e2eff16b9fcf6ba09cae417724f659409fd02bd0e9",
+        "chunks/help-CFtBzvdI.js": "79ce6e5017d1fc487cbf7fdde41fadb3e72c7de844398e7e0b2840b483b9a6f2",
+        "chunks/help-CPLo3r86.js": "b790c8ac3dadbfb2e4f9745c5b40686411ff4ce6ede1f0a4be31ff22b7c251f4",
+        "chunks/help-CTGgIaO0.js": "543c5fe832535fd054dc48feab354fbdb0fa7aa797dfaa904a199e6018f05a9c",
+        "chunks/help-CXLu7Or0.js": "739f27612dd40b9a537c3c8488bcfe0f5860cf99342ae37b977e5b7371f2a917",
+        "chunks/help-CjkR6SB9.js": "9a0eca292e547499c910382fa7495a2181a0a0ce7bfa786abded929edf28c92b",
+        "chunks/help-Coi1l5u9.js": "497520b08bfdc4ea864727d6ae55e05961c0b9f216fb7a02cc01dcf1c5ce89f2",
+        "chunks/help-CsuLpZn-.js": "38ac68cf28ddd30b313934e8a1a5e1e15c7c51fd43ca26b9dce56fab7dffdbda",
+        "chunks/help-CtRZ2iiB.js": "0160f1e9f22ef5f6909dc5189a7e352f4e03249bc2beac3351efcc81be74367d",
+        "chunks/help-D-EH655m.js": "b01728707fe1c06131dccfcd6ccd622d79755af2b3bfd4abf342754c2b78ab57",
+        "chunks/help-D9ftWh3l.js": "3240aa7a0baa61b5c149af0a43327f653ab24e073aaca67baab3f4f42f38608f",
+        "chunks/help-DGVzsKCv.js": "59616fe9201cf5ab49bc13f5eb5b6dd9cc27dd7c2ec9e8031c4c1b1c72711e14",
+        "chunks/help-DGeDH4WB.js": "1867fc538f818da31b9475e0cc494560f5c966c1569d89b41a355875bdbc11e0",
+        "chunks/help-DTmOPgfI.js": "783024cae9c93d835007aec31c642f2cbb3ccc78f9aaf2c3e41ed8f4c4c7cf15",
+        "chunks/help-Db0rU0KC.js": "bb00961537966737b56281b2e10fb17b991dd79002d5ca99ac7f614946ae61f5",
+        "chunks/help-Db1OZhxV.js": "0bb0b1509a1f01d33454e5f0072f58248e8689083243b26688610719525d0668",
+        "chunks/help-DePbUhaj.js": "527e382ac7bce36608f7513c64e72fd87546e18822e90fd37be9d4261c3bcdd6",
+        "chunks/help-Dr3bwyF2.js": "dcde11d70a2d0a036cda8bed5f27546d6b7dce1b88e55baf13c8324f4b943ed7",
+        "chunks/help-DrHkswSq.js": "0201d3a664443787f0de07466a64051f47641da04865d40e61ef68dba51fa58a",
+        "chunks/help-DrzfwozG.js": "66176059143c5256380a868fa184f1a6de6cc27b6c3bbb18e55a2f90d355b7c4",
+        "chunks/help-N0ueAQfo.js": "903b69bd7ddef747561f98125d321b94d710e608e8e261202aa6775bb6395e29",
+        "chunks/help-_U6NUUQV.js": "f4e9d30067cd7e0f087409d40c1aae25753764826d83c6cb149a22fe9e104d5a",
+        "chunks/help-gRMGnfTj.js": "ac54aff281096b83f40f2b621670b4020c6b3c1ceee9e78b353ab05d71c1968b",
+        "chunks/help-krcRU3UT.js": "db31fd187adc06be457d3a9ffd98f7c53f36e1a4969f18218c22b1635e1e27cf",
+        "chunks/help-n8XrJTZI.js": "fa996edd494ca4df8e4cd3606e41f0c20b4b0111560dd8ad59ad43fa674a8d27",
+        "chunks/help-wdnPQTX_.js": "c3d031aba8c1d4880e0f7f374a02e89856003c127d2d9dc12f17696c52e872a5",
+        "chunks/help-xvMooQES.js": "7d9cc85de4a7d553355a68c73a384a0c1b9299ddfcaed7c8a5c645803f35ca75",
+        "chunks/help-zHNM-8jj.js": "a26a175378023bb401e8289cfab5ad9bb0dcaa7bd1a55d5581d8943239527655",
+        "chunks/help.cmd-D8kml6uB.js": "76869d280b7766086bc509928886620f537e86ab9cabe8b207d6e73516c56cc6",
+        "chunks/index-0SBOCx6U.js": "25a5dbff2100b998c8fe1f469576c4d30f7d9e4ffc515b94ecdcef36dedb9c0c",
+        "chunks/index-0mxDrJsL.js": "0e749634933a0a9b05bad7c4a16a9471dd4421ba75479c60366cc486d56e01c0",
+        "chunks/index-38N2DCWx.js": "3a9d0ff05586ba79b6fe5688cdf9c5a7399367fd1a305e2022ada9547e1bba5a",
+        "chunks/index-5WZT6euS.js": "3bcba5dfdc54bdb02cb668e5552f60d82eb712a87ab501e8b281126b8b14d447",
+        "chunks/index-B2XIaEMf.js": "3f997893634bca2b8c5fee3ac023af7b162b4933d02a8a496ec343abb20e373e",
+        "chunks/index-BDba8FVA.js": "4a8fc57ba6e74e983241394b9facb1bad67e7dae1d3dc80cc3c7aa3b5c1839f4",
+        "chunks/index-BM1Xk8Lz.js": "3a12e099ee0b8af8a139cfa8346c25f007f4bcfc5f4bdbd123bb01712eac3b24",
+        "chunks/index-BTI8tT7_.js": "8984cb5f3ac74be2fed131efe854b5bc8341a2acd98584c9fda7e19ca4398988",
+        "chunks/index-BUqefPie.js": "bfb43b210947caa873521479849daa851bafae047e891d71f4d43772ee95c530",
+        "chunks/index-BVwqKb4d.js": "b00a8a861db7072ed2b91385d628b2e163d06159d550462023705bdc93415719",
+        "chunks/index-BWphZiE_.js": "9a6e8189825de2098e7d6b7499f1e6fd3648f1fbc7bb8322eaecf63ef5d00233",
+        "chunks/index-BXqwV5lL.js": "a56c2233926942c7650cec74f84bcbfeb21dea1b79ccdec4088cd44ad23de003",
+        "chunks/index-B_W_27yM.js": "39eb309fd191e8d5ed26aff94364ca3f783f7406742b77a99e2ad0db8dc0a2fa",
+        "chunks/index-BbAn1xC7.js": "21046ed46182ab2dc8f5bd4cf2b403a25da8a9a4237b3990a857cfee2ae881df",
+        "chunks/index-Bhy21fo4.js": "34d41fc296c68053b89c993025796f2ced404d17f327421e605c04a43d1bab09",
+        "chunks/index-Bq2ItRjN.js": "6c5691f77ae63411aaefae7fb5eac230155bdc3acfbaea9db86482b2b31fffb8",
+        "chunks/index-Bvch7yaY.js": "77f6f5f11a86c6a60ddd908a2923dbfb00316de978373c7147b429296c35034f",
+        "chunks/index-CEmQ3oZ2.js": "b814240e89f8bf30b44936fec172e0e52e4ab84f8b1acf7cdccfaf51353e42a6",
+        "chunks/index-CPLUvUuC.js": "68f34901c989a290435f5cbc83655337ee9b16d5cf49b7a2c65346be5f685725",
+        "chunks/index-CRcuAU26.js": "24348135cbdc8c55352dac8acea0803acb2a7189772e2e5a74210ba6b9c786c8",
+        "chunks/index-CSSsnUfT.js": "21b313b0e1b90c910628f609ce66c87cc9c98ad9c47246c102f6056e244c4660",
+        "chunks/index-CT8GjjWZ.js": "14a0c5ec81b7e33ba7e4b134a3d1c96592c0c3f3b7fb1a9409be26b81d64cd91",
+        "chunks/index-CW257OR7.js": "74f9c6d143dac7a5aff508c1a6aa73148eb278b1651e4c8c929956ecee7e4860",
+        "chunks/index-CXxzDg6l.js": "f63e21c179ac4a0013abf1617597961d9abbaeda532928a057a6fbd966245433",
+        "chunks/index-CYlFPZ8G.js": "de32f682fee77a436608322051a794dd6b2fd599b361acbc48cc8238f7f10e6f",
+        "chunks/index-CaqzNrmW.js": "78c8ea12c5f5573b156c5301380fec0b6f583f0d4109e8b10bb46d88c43d2dcb",
+        "chunks/index-ClZdkm6a.js": "c19847c72120a19fb505f97bae4c5daf5682b4bfd7f49a6cbef72f67800caffd",
+        "chunks/index-Cpju_1sA.js": "6d99a6e66fad0958c9b57485b02fd1276d26300f2d026c1d4bc4605609740560",
+        "chunks/index-Cpr5rlQo.js": "6cb5e836d3a0abc8cd1c693ee9f576976e71305d09207c249543e9c7fa3bdf54",
+        "chunks/index-CrkQWUBI.js": "6caceefab3d868a3d0bb3c940eab56ca9204797d6cc9337e9d0f12ad9963bd6f",
+        "chunks/index-CrtQrqeW.js": "34fb62b659ab110adfd86a83460cb5d71575d6fcac250a90473fa308698689ee",
+        "chunks/index-CtJKSOL0.js": "b33c88050ad657c100caa630c95b32238ad2a4c904a3d3d2f16121e119089dcd",
+        "chunks/index-CvwoZj3T.js": "3bbebaf0d84311e8cc0e8c7a783ad887f79e2598cbd65d3a304a9f5f8cf7b5e3",
+        "chunks/index-CyhXsU2w.js": "546b4ffb02b90cf47b72632b308cefd20891832ed5136897e6e319a4dba1ac61",
+        "chunks/index-CziU1yJN.js": "fb7a52ddede003d88eb328e3c6a44b48632f6da8ccf81e294500d03c6d6b7e1e",
+        "chunks/index-D9wQ6_oP.js": "5b19480e89bee0f5b4dd11f0797c30c487cd417f365dd051a8aae5ca8369ee6c",
+        "chunks/index-DEHQWTXi.js": "bd27bfd6b816cc8b8a2c5abfc7471c11861f186beaf1ef97459d11478d319f07",
+        "chunks/index-DFwCtA8R.js": "a850ecc485314b2f71f72b82012ad07d19858b7e3db42b3285e3e8c0cf8fee4d",
+        "chunks/index-DGY6Kzbc.js": "020e37ec3421889f3d121eae0969d07328e6917839b98a087acc2a3ed23e3971",
+        "chunks/index-DUMsUAwD.js": "8a158266e43be1355dec6fe4da21c97dfa1dbfcc240bdee14ddbd0b7718d781d",
+        "chunks/index-DeAKEUj-.js": "b3f596edd644affa7a6b46313e5458b1a59211c299205fd6503d5e0861ea5abc",
+        "chunks/index-Dg7q0SHX.js": "2c64bed9d0f42770ef7379ce7645acbbf52a047f55511c6f84bf257364d99568",
+        "chunks/index-DiBPV-pC.js": "cd025e81b1e3f0b51b5347f327b1cb96d8c0d1e9f4f964ae9004fa27559dc3e8",
+        "chunks/index-DsUNGBkj.js": "7d7826dee843a5c70f9260366123fb9454ebb3dc3071a80d121259e4e2c065da",
+        "chunks/index-DyqQr2Vn.js": "be65e5aca7e004ef484d4ec5d4c981afd7274c1fc4863da3f5801afb5a7220c3",
+        "chunks/index-Tdi1z3Vm.js": "fba57be1267fade10877d02bbede8e351ad56bf11fb6eda5c69615833bbad932",
+        "chunks/index-b_d5Toie.js": "34593dd97088565c2adc805c7e72e108bba751cd40076a9bdff9876ff1c86c63",
+        "chunks/index-qf0IC4NQ.js": "1b340e5fd3dea19bf31d5beeaa7bce9656de5b28b59051b5d3e76fe3a148751a",
+        "chunks/index-s_kVeLDC.js": "5eefe22cf7d75d4e4690b59334e63f2b38201994cc19c183cdf4d3b8b837875d",
+        "chunks/index-zu4akynM.js": "c06ffd856f4ff898de16158a4f9e49ae6f49597ca286d8cfea78633f9dfa4e7b",
+        "chunks/phase-receipt-validation-Cg9KIaRI.js": "1c4fce496962af496be809a5217d72d4975d9741aed656f7b56ba4287539c604",
+        "chunks/resolve-file-relations-B2i3Mok-.js": "f2509b1afbc434881cd13868bd657f19d90cb1be6a4f3c1ff2bdb017c3e126a4",
+        "chunks/run-review-command.logic-Biz-gLCa.js": "ac404eeb996e65fddf00bf20584c1990c4fa9c3eb21e646d57cc30dcd8d86f6e",
+        "chunks/serve.cmd-BPBdbeRs.js": "c25f1bfb49f79ba1acff89c836a22f57bcf4a080d0f078c28c148fa6e2ec251d",
+        "chunks/services-DeLCSpms.js": "dbf23a1d0d9ff92765b5dc96b81d5316c3f31aaddb6dd6fb8cdee0d1db058f67",
+        "chunks/shared-Dp7YGfKf.js": "756d88d26391561015f2a97f9e1b8bfc6a74ca00754bb1d894bacccfd58c8713",
+        "chunks/stats-help-BnLpk6Ns.js": "4c70407a9402d0442a74be8ddd9b6800d6fedc4ef1d3524a6cb643f4b0a26662",
+        "chunks/stats-index-DKA1VM56.js": "7f0433ff979e61c6a281acc7df4921af3302d6e767e9ebfda590f9965b509671",
+        "chunks/sync-core-Ce9OB0KE.js": "0c1cc7b9aaf207a2235610dde885b116585d9a854be89453ac21e08eb00e8645",
+        "chunks/update-check-worker.js": "8405dfef233d80870b6080796cc6611341c649a4edc3f80c6af531ad590057ec",
+        "chunks/verify.cmd-BVcfNpCu.js": "7b06a2063fc0593cf26ddb49e0de4326955f5b5c7442d9199afff9fb61088883",
+        "gennady.js": "972f5157fc5faf06c5c420e92b811add8b610ba94454f558d07d394e0bc56690",
+        "index.js": "7e821deba5d57a0e7b8b9e4f1275e65027fb5f65974b1f5fdd893ce518b5c8f2",
+        "providers/claude.js": "c281ca421268e1e435538c90746c2cdacdde6ac481b538377932bbdb505bbbb5",
+        "providers/opencode.js": "3741ef7af6aaacc3b6051c18100b12bc4254121ecfbb9f898cc994ac8ad04ee8",
+        "stack.js": "966b7a0b0fb8005b774af5d851f3b83f22cf455422476ade4bdaaccbdfe60116"
+      }
+    },
+    "candidate": {
+      "commit": "e24ce33eeada13b666df116a903c15568af504cc",
+      "sourceOverlay": false,
+      "tarballSha256": "08d50f2c1a24ffe8ef7da70ae0abfacecfbd2f8add8abcf4ab59ac25d95bf016",
+      "entrySha256": "9c05f1ca96eb17490e5a21e305d624b8c3587e7b26f75dd196dea8e02894bd69",
+      "compiledJavaScriptHashes": {
+        "chunks/classify-mr-stage.logic-BOIJetaw.js": "eca429824670d8ffb346d3edf4354aed0f48895a54c73205e23ff8ab5cabfff0",
+        "chunks/classify-mr-stage.logic-Bvec3Ej1.js": "441db439c5dfa19f3fcaad36a64d20cbb86ad4b49b2f5a2f89c881a508a9c490",
+        "chunks/classify-mr-stage.logic-CIldp4vC.js": "bbe1f7f14f431294c6885b52ef20a6e13e30844d7ad72413bf4a3f7032ca2fcf",
+        "chunks/classify-mr-stage.logic-CNEtYxNY.js": "fca02a8c9d105d241014c432303bf79bfdf60d673210862ae0e870be98cb0d9b",
+        "chunks/classify-mr-stage.logic-CYD79T16.js": "97860b4b966f5512b5028bd9b56faf0d1f9ef382c3abe373722c82e3799c2598",
+        "chunks/classify-mr-stage.logic-DSLdegZS.js": "fc9edb56a84d83bff85f23fd82b4ccb9fbba08fe8d29dd3842acfccd44679e56",
+        "chunks/config-help-Ws1ngThF.js": "f85672cc047c0fc3059946281c8cb83d1bce7892ce8f7ef135492b7978a571ac",
+        "chunks/config-index-BM1iBa39.js": "0af717be2c1261b2f26e88b3f35e27c2ef4aa9f644f7e780eff911e1cb58d85c",
+        "chunks/config-index-BmHlYOFa.js": "8204c1710b4362e18ae9f3f1ad14aa236750e80d27f4332ad151511f5b485d72",
+        "chunks/config-index-BpQl2ohp.js": "eaa0f20eb838eb6c0cfc5e0a6f779e66aa69abb5c98a7c8f3b520b7624c8df55",
+        "chunks/config-index-DPtcf4Me.js": "bb9b6111e9ae9a81e4553ea2610dc5c9aa1cabce220474e05478089aeaa6bc60",
+        "chunks/config-index-DtKzRD22.js": "e9907659703ae23bd44d545d462764c4edc748ff4628eb189c3ae7b7c533fdbd",
+        "chunks/config-index-XqhVM0gZ.js": "56eeedf8fcca55046cbc4cabcc1995926ba83f75c919be37138871b0109f52ea",
+        "chunks/devtools-CwoG_QV6.js": "ec9b05272b35b4232391d4ddbc71b09487f0b3ebb6f92a388f3f1f233a4421c2",
+        "chunks/devtools-DBaPmSna.js": "bebfc969be9ce062f641a37fa4b11116814d715fb7b5486b693de7bd04690fac",
+        "chunks/devtools-DUPeMMEG.js": "df87b76675bdf66e1cbaadce271468c386e32743ab3ace5a1c75ea0617b27e71",
+        "chunks/devtools-M078_Xnd.js": "a1d9f4cccd150e24a93a2bc1876d56c4a905fe9ea725bd224f7bec09e662e85a",
+        "chunks/devtools-MZ9PToDL.js": "9a032479d130782559d968ca3f49a0589cb68faf70a3cacfeb9ebfca034a50b7",
+        "chunks/devtools-iZoRd18n.js": "9557719b50ab7cf3d6c140fba8fc10a1af093584aa99baa4ee0e6f967b5e42c0",
+        "chunks/eval.cmd-B9jN2874.js": "57b630d14f0773e81273fa3976250d4148c04a7ea70c858cfbd26c487938e876",
+        "chunks/eval.cmd-DgcZSY_R.js": "2400f8a0bdc9125c068bc8cf222c4b456d77e86e82295dc72bfe71a868589fe9",
+        "chunks/eval.cmd-DouYIYfB.js": "0ae54382b01d98926c6104a388c232559fcb1ef37008ba06f039af76d1c802cf",
+        "chunks/eval.cmd-epUsr70g.js": "da957490e758565e179f0ede9c5178d6548ca13eac1b08c05d58eb2e1d2fe2ab",
+        "chunks/eval.cmd-nwUvoNOf.js": "2078ff7c0d16301f5587faebd4f7059cd5802af8b6efa7001eeb2eabaa2da37b",
+        "chunks/eval.cmd-wo0p5GOd.js": "42190f9d70ce33c83e1ea7ec89b8fafd511f317ed1e1e884823bb04a9f145bd7",
+        "chunks/help-5qCaicff.js": "8af2260a5559298a5511f196c0285d1ea89541e5ddba4d736c328210f2ca1aa6",
+        "chunks/help-B2ETH0j6.js": "690e0a072afe415015d338d094e54126f0daf12f78862b753bf6c972696b58aa",
+        "chunks/help-B6e1u35w.js": "fa952d0879d7fe54a7a1b8479cedf20117a1a47d8b4e7964872b206228bc7f6a",
+        "chunks/help-BCDURaCQ.js": "99ec5aecde3b6946d6cb4660cf6932cedccb2609d560295e0ebf6281c1277cd7",
+        "chunks/help-BD8-LEeF.js": "fcb6508ecd678f18356e78f7563a1cb1462b31377aec9afda6c2a57576ba1a9b",
+        "chunks/help-BOdcV1vC.js": "78192b75c2ca2825af16d8817e07b21abf156c351111ff27af95bbbdffbb73d6",
+        "chunks/help-BW6CzMtf.js": "d36f46276f93aa0c9f9ae8907aa80b065f0d9970448d929dd5caf0254106c826",
+        "chunks/help-BZAS4kM2.js": "66b076d3a6662b595354f38f75e3e2441deabbb708ec32d687643557e87b1cda",
+        "chunks/help-BZy6KWe9.js": "0ef39be6281e35840857ab508c31f12174a6582bdd2e578507bf25b8fc2abefc",
+        "chunks/help-BZz_jNsE.js": "210a00383c5ee60fb3664f1531079770b06f39e08c849efd551a7334e6a130d4",
+        "chunks/help-Baj9Avee.js": "1a88926e619f6a29a722b9f064fe1ef18ad45be3360b9c54d2f12ea3248f2b31",
+        "chunks/help-Bb-4xa8Y.js": "df6c912187c3605b567eb9de9f569dff488af9487556388012a8bb22b6116f4c",
+        "chunks/help-BeKMlWuu.js": "cccb1a3e07ce4b1a215ebf3d10f1935289d61ec8dfce6e97e67780086255949e",
+        "chunks/help-BiBPW0kL.js": "0e88750176c392c6870e64432b3289b338ebd6caba7e6d762bd84a36829b93d1",
+        "chunks/help-BoonGbjF.js": "3609b804cdc6716deb5269d88f7e6033208d27a97d6431171261ccec86af542b",
+        "chunks/help-Bs46D8RF.js": "f4e83ce2e86df4c564c47556dead2406b71561a9f344307d0a9302e3314593bb",
+        "chunks/help-BtKSJyz4.js": "f691dff4f24de329bd5344af7c4a3ac0b3f10b6da81d8c116646c38d68d8fd9b",
+        "chunks/help-BvgYOSyQ.js": "45dee4bf03f8f09b6434f34ab2c85dd48f52a2c3c70503149840797104ce4958",
+        "chunks/help-ByFyfcyv.js": "b3961340cefe72f6a0213b30b181ef82fcf06601f0c70253e1bc60f81da6d524",
+        "chunks/help-C0GfohvW.js": "2314c6ebb5c0205b545b79e97a0071bc053cda504e7bdd643e19d0944d3ebe27",
+        "chunks/help-C3Ykc-Nc.js": "f718cfa760d4b0d740f116d3410e8dec287f3adb17e60b91b37597c74c9d97d3",
+        "chunks/help-CES366oI.js": "9acd578f367106721dac18e2eff16b9fcf6ba09cae417724f659409fd02bd0e9",
+        "chunks/help-CFtBzvdI.js": "79ce6e5017d1fc487cbf7fdde41fadb3e72c7de844398e7e0b2840b483b9a6f2",
+        "chunks/help-CPLo3r86.js": "b790c8ac3dadbfb2e4f9745c5b40686411ff4ce6ede1f0a4be31ff22b7c251f4",
+        "chunks/help-CRJjjziD.js": "2c18cb56f7e6fd332b228e2117d9981a8c5976ad3da8254a61c937ab48e01b5a",
+        "chunks/help-CTGgIaO0.js": "543c5fe832535fd054dc48feab354fbdb0fa7aa797dfaa904a199e6018f05a9c",
+        "chunks/help-CUS1Wr0h.js": "2f6c97e2c4bb6d2bcdda5db8edd451033c8b3f35f65d51d3305f77e54c072040",
+        "chunks/help-CXLu7Or0.js": "739f27612dd40b9a537c3c8488bcfe0f5860cf99342ae37b977e5b7371f2a917",
+        "chunks/help-CXxZ-LsH.js": "307132e7abcbb63cc723453d92cd4ef0ebaf50a81a835b13add70d3bef1c9eee",
+        "chunks/help-CjkR6SB9.js": "9a0eca292e547499c910382fa7495a2181a0a0ce7bfa786abded929edf28c92b",
+        "chunks/help-Coi1l5u9.js": "497520b08bfdc4ea864727d6ae55e05961c0b9f216fb7a02cc01dcf1c5ce89f2",
+        "chunks/help-CsuLpZn-.js": "38ac68cf28ddd30b313934e8a1a5e1e15c7c51fd43ca26b9dce56fab7dffdbda",
+        "chunks/help-CtRZ2iiB.js": "0160f1e9f22ef5f6909dc5189a7e352f4e03249bc2beac3351efcc81be74367d",
+        "chunks/help-D-EH655m.js": "b01728707fe1c06131dccfcd6ccd622d79755af2b3bfd4abf342754c2b78ab57",
+        "chunks/help-D53hPR5m.js": "efae22b7587a12b3104e2f194d9de970d97a4a799f3262d760b90683d0f78aad",
+        "chunks/help-D9ftWh3l.js": "3240aa7a0baa61b5c149af0a43327f653ab24e073aaca67baab3f4f42f38608f",
+        "chunks/help-DGVzsKCv.js": "59616fe9201cf5ab49bc13f5eb5b6dd9cc27dd7c2ec9e8031c4c1b1c72711e14",
+        "chunks/help-DGeDH4WB.js": "1867fc538f818da31b9475e0cc494560f5c966c1569d89b41a355875bdbc11e0",
+        "chunks/help-DTmOPgfI.js": "783024cae9c93d835007aec31c642f2cbb3ccc78f9aaf2c3e41ed8f4c4c7cf15",
+        "chunks/help-DW136jkj.js": "036cfc6dfa97258f69641f86c769b200f5ec5ae5c81c0b374118dc0ad6f0d6f0",
+        "chunks/help-Db0rU0KC.js": "bb00961537966737b56281b2e10fb17b991dd79002d5ca99ac7f614946ae61f5",
+        "chunks/help-Db1OZhxV.js": "0bb0b1509a1f01d33454e5f0072f58248e8689083243b26688610719525d0668",
+        "chunks/help-DePbUhaj.js": "527e382ac7bce36608f7513c64e72fd87546e18822e90fd37be9d4261c3bcdd6",
+        "chunks/help-Dr3bwyF2.js": "dcde11d70a2d0a036cda8bed5f27546d6b7dce1b88e55baf13c8324f4b943ed7",
+        "chunks/help-DrHkswSq.js": "0201d3a664443787f0de07466a64051f47641da04865d40e61ef68dba51fa58a",
+        "chunks/help-DrzfwozG.js": "66176059143c5256380a868fa184f1a6de6cc27b6c3bbb18e55a2f90d355b7c4",
+        "chunks/help-N0ueAQfo.js": "903b69bd7ddef747561f98125d321b94d710e608e8e261202aa6775bb6395e29",
+        "chunks/help-R4-8yPMm.js": "f1b9ab635ef599e42bd8961146aafef1108d34b0a7db288f79fa802de5b0f0ba",
+        "chunks/help-_U6NUUQV.js": "f4e9d30067cd7e0f087409d40c1aae25753764826d83c6cb149a22fe9e104d5a",
+        "chunks/help-eMAJiZOQ.js": "b96c3388bbb3126f6be0b19cdcf3f0a558e2cee585f39fc9ba52b72ebc1afec0",
+        "chunks/help-gRMGnfTj.js": "ac54aff281096b83f40f2b621670b4020c6b3c1ceee9e78b353ab05d71c1968b",
+        "chunks/help-krcRU3UT.js": "db31fd187adc06be457d3a9ffd98f7c53f36e1a4969f18218c22b1635e1e27cf",
+        "chunks/help-n8XrJTZI.js": "fa996edd494ca4df8e4cd3606e41f0c20b4b0111560dd8ad59ad43fa674a8d27",
+        "chunks/help-wdnPQTX_.js": "c3d031aba8c1d4880e0f7f374a02e89856003c127d2d9dc12f17696c52e872a5",
+        "chunks/help-xvMooQES.js": "7d9cc85de4a7d553355a68c73a384a0c1b9299ddfcaed7c8a5c645803f35ca75",
+        "chunks/help-zHNM-8jj.js": "a26a175378023bb401e8289cfab5ad9bb0dcaa7bd1a55d5581d8943239527655",
+        "chunks/help.cmd-D8kml6uB.js": "76869d280b7766086bc509928886620f537e86ab9cabe8b207d6e73516c56cc6",
+        "chunks/help.cmd-kF0mLL58.js": "c78f4a196b7de29ec3197f5ebc3a5c86d0c1018ad1b4206f9bb37b74c8d1dfd6",
+        "chunks/index-0SBOCx6U.js": "25a5dbff2100b998c8fe1f469576c4d30f7d9e4ffc515b94ecdcef36dedb9c0c",
+        "chunks/index-0mxDrJsL.js": "0e749634933a0a9b05bad7c4a16a9471dd4421ba75479c60366cc486d56e01c0",
+        "chunks/index-1P5PggxO.js": "fab53664d7d09a1c5a67c05a5bffe3a89df4beb8dac698f87c7597adf0ea41cc",
+        "chunks/index-38N2DCWx.js": "3a9d0ff05586ba79b6fe5688cdf9c5a7399367fd1a305e2022ada9547e1bba5a",
+        "chunks/index-3ipJONiy.js": "773d9f8bb637c492f7b82590b2562457d0fcd87d95868c993a8ea17c906e1b32",
+        "chunks/index-5WZT6euS.js": "3bcba5dfdc54bdb02cb668e5552f60d82eb712a87ab501e8b281126b8b14d447",
+        "chunks/index-5x4ckXhx.js": "1e1ad16e8c07b1c085cbb6c7728b5be088ef6f661931c663d5304225b109e2f2",
+        "chunks/index-6CT-sV0g.js": "b141c894ec2af815b95e1a88a6b53e70455b8fcd3fca9885c0de5d9d1a3dbec6",
+        "chunks/index-7FBS7xJP.js": "b016d2f6f0c92775df7b1be4123652d4041ad8b442ea49895fa56e360ca333f0",
+        "chunks/index-9ruvQa_k.js": "7c40ce7e4de7fe674f1df05aa1a5b7265481e44f966fc830c7e7102642dcdade",
+        "chunks/index-B0F6SyQ1.js": "8cc8b8ffa29447bb0cf57dc982d8517d17c1f0a11e1a3fd14d894cf90505e595",
+        "chunks/index-B0P5foU1.js": "126a6e7de989f7a65111351c6db5fa84ceab7045244b951471444f19d31361d0",
+        "chunks/index-B0T6TWQf.js": "18ce62ff8c9410b6aed8616649e0f7da427f322a34215b816a58ef0544a9268f",
+        "chunks/index-B0sgSXpk.js": "72934f0d4c8e0be4899a14c33fe0f5cbc7836f62fcbffece910049c839da1d34",
+        "chunks/index-B1K8TbVx.js": "664f86b5210b5dd21d779c93fa8cd7bfc4b0e3d71aef5d0d22acfc2f66505c84",
+        "chunks/index-B2WBJ6HB.js": "2761c8a5f04a165b3d913146c7b8b07b8d391a9ddc0eb5bf7fc999729ade1333",
+        "chunks/index-B2XIaEMf.js": "3f997893634bca2b8c5fee3ac023af7b162b4933d02a8a496ec343abb20e373e",
+        "chunks/index-B4cXjdjP.js": "d41fe3f1659699d6af81c802e6cf7ca36a4a422ee64fa68428e2cd1df082b4cb",
+        "chunks/index-B4cegpb8.js": "abceed7c7ebf402616403195c979de97fc869b8d6f055fa07f68ad9651e31724",
+        "chunks/index-B7RWG1H-.js": "998aa5c8b3fe158c32bbf7cf4e9874d180a2edea6664099b49466dd565cdc59c",
+        "chunks/index-B9eERSm6.js": "5173e63272709be3edf718eb1dc3afd9cf92c158d1033dd081d8a5e628b3a6ab",
+        "chunks/index-BBPWckRE.js": "2a17ab81fdaf042d05caefd3ffa13dbee3924419a32af7b4b2da530e53d384f8",
+        "chunks/index-BDba8FVA.js": "4a8fc57ba6e74e983241394b9facb1bad67e7dae1d3dc80cc3c7aa3b5c1839f4",
+        "chunks/index-BE2Diy5R.js": "ddb12dedecfd2e5f123e0ab96dea35883523149940d20a6f844cdf53a4759ec8",
+        "chunks/index-BEHMZ1sW.js": "5d289478d9840a5edb2fa501f3acecca00e49e02a5ad1f594330960b2ba72ac0",
+        "chunks/index-BEqcFkXy.js": "6c986e2b515634fc0ba1e86f820fd522b2298f19bc428d336ae04c8bdd0f0bc2",
+        "chunks/index-BF8H8FJU.js": "1b41ea42fb42a78b4f4c749a76d52ced2079cb997ab64340e6d8d35f50f1b3f5",
+        "chunks/index-BFbi_tEA.js": "2a160bef53c89dddcb45f0f6d5b4f1b7241d2e7fa3f8753041e0edd5f24877bf",
+        "chunks/index-BH8eB2Vq.js": "b9d6e45bf619464bc32644c2a54515702a882233d3dddc82b79be37138029b59",
+        "chunks/index-BHDyfuQz.js": "3c889c92a90ac5e8cd404d0565c41c7f0e0a05149dd4af44a49f9e458faab079",
+        "chunks/index-BHGlo-1r.js": "4e8452178365a80568e3ae95850c21445040d3ba6e2b87462743fe2e44600b01",
+        "chunks/index-BHMejpXy.js": "7a78e981badbae47c4f11e4c93b76cd2cad5502e108e87e832608d494190aae2",
+        "chunks/index-BKagedKe.js": "761bdffdae0111a2b93befa2b619392ed374785f2181c18e441d66c173440053",
+        "chunks/index-BKgfX84K.js": "44135cbcf3604cdeed2864ed91550f5e2156835ea20a34f0f4b5f1fbb5d46cf3",
+        "chunks/index-BM1Xk8Lz.js": "3a12e099ee0b8af8a139cfa8346c25f007f4bcfc5f4bdbd123bb01712eac3b24",
+        "chunks/index-BMfD10XY.js": "aa7e0692c87211e0156e04cce7c99369e181593c17617ca13b7190413297f761",
+        "chunks/index-BMz4nWX9.js": "01bef43d4a20902448714a8b60fdff65ec94fa6301cd4fffddbf529a7a5ddcae",
+        "chunks/index-BOUPw9EU.js": "48b8ae626e724037fee2f173f12c916719d44a524abbb1a52957ecbf39d7d249",
+        "chunks/index-BOjQf9AU.js": "cef6e7d5e2755efbef2fcf2eac4985c6e0c247e5b640d157383cd47a97e9fe98",
+        "chunks/index-BPI2uCFK.js": "340951a3e9728f6c7c8932ab88d2f3043dc9d5d5adf0e4361501d1125baa5951",
+        "chunks/index-BPUuoyQC.js": "554cdeda8a3d257fd9bf9f1c6637c6d1b0fb6db5487ebd0050655856a9c68cef",
+        "chunks/index-BQwC00Mn.js": "f90048a409eaaf5c14232e6c4564f3e849427c74911a159c3eb4937da6f9bfd8",
+        "chunks/index-BRKT9pGY.js": "50cedd9170ea4af12e1786b17fd7cc5d35b00bf79a4eb17e32b9a9d84068dc88",
+        "chunks/index-BSVmMctr.js": "0b139613cc505a0af8f2f788336c9f991995e102e9a47fe49a7cf300f77134da",
+        "chunks/index-BT7JJo_k.js": "c69bf2035a75f6a050dac8a2bdd88ad9812d34ce06c2b185fe13ea2ac6430925",
+        "chunks/index-BTI8tT7_.js": "8984cb5f3ac74be2fed131efe854b5bc8341a2acd98584c9fda7e19ca4398988",
+        "chunks/index-BTV8zYYv.js": "3979f79d97e98a857c7d71114f558fd5ed4583b2ba8f83500f116c959e43890d",
+        "chunks/index-BU8fiyLo.js": "8d65f17ecd221d9640afdb91cad7a275579fc688b326b571d4f1aaf1eb3395b7",
+        "chunks/index-BUqefPie.js": "bfb43b210947caa873521479849daa851bafae047e891d71f4d43772ee95c530",
+        "chunks/index-BVBIy4MI.js": "f97509f1f489c677b261ff322ec8e344855703ecac860ba57bad66a20f340a3f",
+        "chunks/index-BVwqKb4d.js": "b00a8a861db7072ed2b91385d628b2e163d06159d550462023705bdc93415719",
+        "chunks/index-BWphZiE_.js": "9a6e8189825de2098e7d6b7499f1e6fd3648f1fbc7bb8322eaecf63ef5d00233",
+        "chunks/index-BWyGaa6N.js": "fde9efe95a591298fccffe43326d3483a43118883deb80bb9416eaf911614e3e",
+        "chunks/index-BXqwV5lL.js": "a56c2233926942c7650cec74f84bcbfeb21dea1b79ccdec4088cd44ad23de003",
+        "chunks/index-BYoJ2KfN.js": "eeba0ae8edbd57d023ad77c1b7e27414577b8b188bde5dcd58e56d2ada4f6563",
+        "chunks/index-BYsAc_cn.js": "644fcd3d477cd797614ab5ff187cc39672fc8f9f2e3543693c3481f28b392f23",
+        "chunks/index-B_W_27yM.js": "39eb309fd191e8d5ed26aff94364ca3f783f7406742b77a99e2ad0db8dc0a2fa",
+        "chunks/index-BaqV66b3.js": "04074c4a377d52ffcd5d073c44776b72cfa90b1b4a67a131eedc63201848c654",
+        "chunks/index-Bav7wvlp.js": "5c1e93acbb5a4caea9c6fcd2e3d6bdf78727aa6a133ca1de2fe9582368b95316",
+        "chunks/index-BbAn1xC7.js": "21046ed46182ab2dc8f5bd4cf2b403a25da8a9a4237b3990a857cfee2ae881df",
+        "chunks/index-BdLpiyZ9.js": "d05986d7b6dda6739f0296f0d50e30351ca37648a8ca53ae9433f5252bd22064",
+        "chunks/index-BeZcB82e.js": "f586402fafa0d0b68b687e650b1d93e511a7a769c091134c2f4a9eb9f12e7804",
+        "chunks/index-BgXSFdac.js": "b8ac895c87305285f326dc9e7beaaba50f9bff5e0e3ec7b4a9f8b1ba7d201c60",
+        "chunks/index-BhU33Yeg.js": "bed021f8e05b1bb98548d19c82693e524eec1941c59aa09a82dbb5c59c42c9ae",
+        "chunks/index-Bhy21fo4.js": "34d41fc296c68053b89c993025796f2ced404d17f327421e605c04a43d1bab09",
+        "chunks/index-BjsJSo2_.js": "261a83eface7f0703f67a8a28d8c7e2f1aada6ba4db8f693024b7325770a1b9f",
+        "chunks/index-Bm6FPteG.js": "1ab4ba6b1a5e2a04cafa52405e06f8f9a653bc27047f934b5b0898c826bc76a0",
+        "chunks/index-BmKXYal7.js": "65948f577ad15b30ec8ebf1cec9b3c1688d4fe82dc4bdfa0270c2fbd7b7e485d",
+        "chunks/index-BmRbZ__U.js": "e753780106e73590bb60042a192db2a7bb4bbf84f6307b19487d9ebc6de38b38",
+        "chunks/index-BnHxh-9i.js": "575b719bb8d924188528230a63dd82e443c92cfbeff98e30b26ba8a24d187c00",
+        "chunks/index-BoOzl7Aq.js": "dd11fff1fa365608a08e012dfaffd6a46794041feab378c5f93c9c508156d8ce",
+        "chunks/index-BoQWSYa2.js": "3acb1b21392f8d76fa73b83477a170fe6b2d77f45569fd82e72fd975c8204049",
+        "chunks/index-BoSvxYMq.js": "d4201b2ee5e32529c38d5d6083570c77465fb305386dabd3956efc2ab12cec92",
+        "chunks/index-Bq2ItRjN.js": "6c5691f77ae63411aaefae7fb5eac230155bdc3acfbaea9db86482b2b31fffb8",
+        "chunks/index-Br0s4aVi.js": "3ff518ee19829d31b17d9c956e2936208355ae3f4bf449b06c6bc6ab2f635b4c",
+        "chunks/index-BrkhOdO1.js": "f57d683afc6145ff117e1e818a609d9436424f2c551bc5516cf1df9c7684d244",
+        "chunks/index-BslzcIQq.js": "b543bdad8c53023c5b61dfb0984c7160adcaecfd4c7b306e42a7c4d7e914b628",
+        "chunks/index-BtjfCh7n.js": "b9fcbc5dd8d85568281437dd7b8b1cb1320f2a8f15b9b3c123dc8ddf888d5577",
+        "chunks/index-BuNJlUox.js": "9ef54ea8cd39dbce8f6cba3e31e87a7d2c4c7cafc65b56635dbb43077d8cb784",
+        "chunks/index-BuQnZ7x9.js": "7ff908cdfff501aa891cec04f14828e19a2bfc5d302f094de47eb1d7baf50547",
+        "chunks/index-BvPJDYDg.js": "a634256e1153edb0d17b85072a5a1aa6c6b4191445f77e5b6b70caa753f130dd",
+        "chunks/index-Bvch7yaY.js": "77f6f5f11a86c6a60ddd908a2923dbfb00316de978373c7147b429296c35034f",
+        "chunks/index-BwQ_sl29.js": "73e51b53745f13a5b877cbccb6834c551332ded564b78e0a296350ebc531b8b7",
+        "chunks/index-BwgWkMsa.js": "745bb82456e9927c499f1b90e64aa2f71652cf54548e72b02c34b0b742623a55",
+        "chunks/index-Bwyhkqma.js": "3e9f8a08beb39e2bcf72463ccde351bf59984760fab6ab1b39cbf7fc77128362",
+        "chunks/index-BxLF5dbi.js": "8cd83bd25c8e4d21ad60721fb1119f6685e928bec6cc4893c5a5b5a17c071742",
+        "chunks/index-C-mfqax2.js": "c4618b81dc9f7ccab3a74fda7e0207b60818d36b7374c66a312e45e6ce1848d7",
+        "chunks/index-C-n5ZNJ8.js": "19561193c569111110cecf1159cd71fed5bbb1808908b19de0737c514ab2a499",
+        "chunks/index-C1OLeLSX.js": "024f129e0ca4206fa0c9a64b7857c59ef47251474a741b7a579e5db77625881d",
+        "chunks/index-C1Ufc6q1.js": "0b63abfe1d474d8c37180163b05f0b721da86e8de2d17677a8ff25f7d9329a1b",
+        "chunks/index-C3vdfT8u.js": "2a37ff6cb140429a5f7863abf55334986bae98df637aac2ea9f5f7701f2999c7",
+        "chunks/index-C5QjQxTR.js": "336fed80f2eada9ab8fe5d54171ca2c4522702a86d091272f51d8d2b89dae7f9",
+        "chunks/index-C5u_Yuc-.js": "906af476622fe865d978d534675f857f4807918050882fd8a4b1ac6f85886ddd",
+        "chunks/index-C65P_0LS.js": "2dd3fe09efec3e67da5a4a554a788caa2c4ebcc0cc2b6b60f8cf7918e0d37863",
+        "chunks/index-C6LamOr9.js": "308b8087d9f7b496481962e282ccca5526749e39318590c7ac2ac69b3090be2e",
+        "chunks/index-C6StiJ0c.js": "f91a2a986ea0e90ffc774890d5006eeeb506fe53ed029d94ddde7e20417bdd07",
+        "chunks/index-C8-nhQGR.js": "8614ecd58ab3189b042915297ecb6fdf637fc69c535fadf416bfc95181a4c84d",
+        "chunks/index-CC85QouP.js": "99ea09a2e1605c478f7dbf8822a439967cffd60adff19a0bc69d97216f0e3a1f",
+        "chunks/index-CCsRjR6c.js": "bf08edeff72d7801c579c1a06ec88f886faa19f40451628aeffbcd1924e7f372",
+        "chunks/index-CDtSrAp4.js": "7e858de69f74b741eb0484c5f9debfbe420d4858f77d1df77b5260d7c35011e1",
+        "chunks/index-CEGjoIe9.js": "84d8ad78470883cd5e5ca0b0431352bfc3e7a397702a5616c84210e9607341de",
+        "chunks/index-CEPerXZd.js": "22b620593a9b6c0080ff60c780c73f90b7c41c4085a8e897b781e15172db76d1",
+        "chunks/index-CEmQ3oZ2.js": "b814240e89f8bf30b44936fec172e0e52e4ab84f8b1acf7cdccfaf51353e42a6",
+        "chunks/index-CHsnhT2_.js": "e1782f2ed083c2fecf1e89268e64f57426189aa6070a3ee0486eeb636f33b0bf",
+        "chunks/index-CIG5hjR_.js": "f9bfe4d4e00a49254afb9ec15407f3641478ce8915c69ee753b56d5a930a499a",
+        "chunks/index-CJMTeOt7.js": "660ebe2d3f9198cd9ffb5fbe1929798e9c0ec20407a122859eb6a84b6f090320",
+        "chunks/index-CJrmOqcU.js": "631c8df0d79bf2ce62072ff5e7dc6445ca866ce0ec77a65f24a69bfdc6cba33a",
+        "chunks/index-CKYqbUGY.js": "5432f19e79e036dd74ec5615a3f8824082e29086fd18e657a480b3452cad23bc",
+        "chunks/index-CKc6WaYk.js": "29792cf9fa27cef4b1caf5e0a752c192cbab9304203b1ca2ba2461a27219e3fc",
+        "chunks/index-CKu6KxMz.js": "5d519f6a9c9d9bb10e696a64f36f289d45898a63a318cbf44bdf77a49ac5053e",
+        "chunks/index-CMpArMqg.js": "9c43d737d5889e2daa4208fa849a7769f2ebc4333969ef3f4d334c5b44fb4e15",
+        "chunks/index-CPLUvUuC.js": "68f34901c989a290435f5cbc83655337ee9b16d5cf49b7a2c65346be5f685725",
+        "chunks/index-CPPGGMpU.js": "3a0e88734d3e92047dfa637ce825440ec2b1c233790c9e31f0a2625eac749cb1",
+        "chunks/index-CPt2LKns.js": "4d59009fc0fea0488030207166810468f397eb40dbc41725a7ea11abb6dd3e55",
+        "chunks/index-CPth2UUp.js": "180aa6fb63a5a1cb9cabdaac942e723c5057c832712741a0818f6f13ebe8d81c",
+        "chunks/index-CRcuAU26.js": "24348135cbdc8c55352dac8acea0803acb2a7189772e2e5a74210ba6b9c786c8",
+        "chunks/index-CRg-x-PI.js": "ba5b873041e6748b92221a5a89ff410ab01013f22e89093bae0b5ba641092624",
+        "chunks/index-CSSsnUfT.js": "21b313b0e1b90c910628f609ce66c87cc9c98ad9c47246c102f6056e244c4660",
+        "chunks/index-CT8GjjWZ.js": "14a0c5ec81b7e33ba7e4b134a3d1c96592c0c3f3b7fb1a9409be26b81d64cd91",
+        "chunks/index-CVT-H6qQ.js": "0145bb3cfa83daef7e61f3c2f7e1c542e1661db0b0185fefc03bf09277be8905",
+        "chunks/index-CW257OR7.js": "74f9c6d143dac7a5aff508c1a6aa73148eb278b1651e4c8c929956ecee7e4860",
+        "chunks/index-CXxzDg6l.js": "f63e21c179ac4a0013abf1617597961d9abbaeda532928a057a6fbd966245433",
+        "chunks/index-CYlFPZ8G.js": "de32f682fee77a436608322051a794dd6b2fd599b361acbc48cc8238f7f10e6f",
+        "chunks/index-CZns1mCv.js": "c9b72bfde1836cfa562fcc1abda1ecf330f6df6c09457e5075164784e6562c2a",
+        "chunks/index-CZtBXtdv.js": "60e55fb39abdec8661426fa5e64e8bfe0f41cd12e10aeda9aaaf7942b0397fb2",
+        "chunks/index-CZuWSR2Z.js": "2ad6b07f2f1eb30af5297aac8161a34df8790fce92c7af1478a33396616eb99f",
+        "chunks/index-CaqzNrmW.js": "78c8ea12c5f5573b156c5301380fec0b6f583f0d4109e8b10bb46d88c43d2dcb",
+        "chunks/index-CbLBL5O9.js": "49384881f0d40c33df8a644445e9d602b371d77bbf049a5e4e1f78fa51c2a917",
+        "chunks/index-CbqqUPUg.js": "c616e66b7512cb985958d0c4185116023669ee3abf1c460efc17424f37701607",
+        "chunks/index-CgJjZphp.js": "187dcf21f6d4aff8ad97137afb7253a8d746c866728c8ce7c9e7788710e93493",
+        "chunks/index-ChlvMpFt.js": "af7d634adcf92b750d455b6ca6d360189ebcfff4441dcfb126038542925a0207",
+        "chunks/index-Civ-B8vC.js": "ad43feb7d68306db907b4db02cefb72d6c29bb9657f7985b9e3af111534d8f52",
+        "chunks/index-CjRcuiEw.js": "03742d15c16b26c1ab73e09bf845c645d36daa6ce68970f6ff64271438345843",
+        "chunks/index-Ckagfp6y.js": "2ea9d9e9cf243767d4f139f58c7288c89a0b155c9cd180f7ea93c4cedcd1d7e5",
+        "chunks/index-ClVHgamb.js": "ed9ff3f913b51532835cd1f60cad89f04f8b97be573f7f63f7e172a56e70dbe2",
+        "chunks/index-ClZPUy3a.js": "ab253beac4ba91485e2fc7757a1a9e68e879c79d34903784ca1968547d9cf7f0",
+        "chunks/index-ClZdkm6a.js": "c19847c72120a19fb505f97bae4c5daf5682b4bfd7f49a6cbef72f67800caffd",
+        "chunks/index-CmWJBvPs.js": "dac7366d7469796109db95f272e30650ddbf26fc34a29fa8bfe5c76d0ba6b901",
+        "chunks/index-CnlqER5k.js": "cdcbbf1b6fd83b98ee605be3c4f8498dac5ec684a99cf26ce89a74b5ed58e679",
+        "chunks/index-CoD61ZmX.js": "0fb34e0ab47f48aed26fc6cf3d574c9a15ec8eb6d8dd84778a5c89eafae420ef",
+        "chunks/index-Cpju_1sA.js": "6d99a6e66fad0958c9b57485b02fd1276d26300f2d026c1d4bc4605609740560",
+        "chunks/index-Cpr5rlQo.js": "6cb5e836d3a0abc8cd1c693ee9f576976e71305d09207c249543e9c7fa3bdf54",
+        "chunks/index-Cq1CxX_4.js": "be0c009826973db83d659fc21e7aa77e42967039bdd8c72acbd6e9594b22aca0",
+        "chunks/index-CqaC3qA5.js": "b8f6f9b798b766bb0c0e5ac033740db267e817133ba32233bfb031a39c7e7e13",
+        "chunks/index-CrG1cG2Z.js": "8a5c46c0108966b98196c6c5268d3087987ad8da23a5e2c594dbcd08ba4ab03e",
+        "chunks/index-CrUylfur.js": "97ce4b6b2303373b8fd1e1f503bb4a23aa011a4b8f41b4cf4da514674d9ef43c",
+        "chunks/index-CrZMdrJu.js": "cb1f63b4737e8483cd86951525d7b1da1e40dfaf2bee1da7e618844a090a617f",
+        "chunks/index-CrkQWUBI.js": "6caceefab3d868a3d0bb3c940eab56ca9204797d6cc9337e9d0f12ad9963bd6f",
+        "chunks/index-CrtQrqeW.js": "34fb62b659ab110adfd86a83460cb5d71575d6fcac250a90473fa308698689ee",
+        "chunks/index-Cs1g0-Cf.js": "1c35b63a0ea80a0a00f1da8b40b8b6d85d381f54d96791e145a95bed5e53125f",
+        "chunks/index-CsNvPDmf.js": "e167f7e1f2112e3ecb4937e2174e5a5414385dae71b9dcce101db8d9b3e75a70",
+        "chunks/index-CtJKSOL0.js": "b33c88050ad657c100caa630c95b32238ad2a4c904a3d3d2f16121e119089dcd",
+        "chunks/index-Cuq33Zj8.js": "f21be63222d6b760aafd8253b4b61dd50da58c1890ff094d32056a1ecbcff28d",
+        "chunks/index-CvwoZj3T.js": "3bbebaf0d84311e8cc0e8c7a783ad887f79e2598cbd65d3a304a9f5f8cf7b5e3",
+        "chunks/index-Cw6Iyt9g.js": "a81334dc06eaa0ad726d8ff09533862cb2313cbc06f368094c3559f3d13152a9",
+        "chunks/index-CwypQk0_.js": "6f399e7aefae67f78196b5a96e85516253267050ff1350aacd498276033870ba",
+        "chunks/index-CxGfJcvO.js": "529041fa12273d6b6899eb1566e86b5236737ee43647ff417ec37efffe4ab618",
+        "chunks/index-CxsVYQ1g.js": "8bb1396f41725266a6218cee4038e6120b82c6dcfb393030d84ca850336a5313",
+        "chunks/index-CyhXsU2w.js": "546b4ffb02b90cf47b72632b308cefd20891832ed5136897e6e319a4dba1ac61",
+        "chunks/index-CzBIExwX.js": "3299165e6de95c41da6f39ed0cbeb9aa0ff276e9213f635baf95726cadd39ea9",
+        "chunks/index-CzMeDlwz.js": "fd067f89629a77142eeadfab3010af9e7a3fc1e20c1a8d8ae1ba907acdeeaf2b",
+        "chunks/index-CziU1yJN.js": "fb7a52ddede003d88eb328e3c6a44b48632f6da8ccf81e294500d03c6d6b7e1e",
+        "chunks/index-D-6evS_l.js": "c5bfb88486c6b79239cd51adf9e0d084fa1189b3e87d7e75546898a212238339",
+        "chunks/index-D-FVziJw.js": "f564fa060dbf7e1953931523725ec99ad9ba7039f3b9837b7bfd6bac8323b884",
+        "chunks/index-D0rihcCW.js": "5d748e44b5a565caf0d28428a62cac3f97ad3643d54e2ba43510157fef545dc3",
+        "chunks/index-D0zrBZfS.js": "47ca3dac4f7f626787ca268e00be34fbffa35886ae25cedaf84ee8e7ad40c85d",
+        "chunks/index-D1epNTNA.js": "dc59406af3aca6551401fd26894f2571b8dd053d9fc48f9d6c18101bf66d0890",
+        "chunks/index-D1pfgitu.js": "e8e39a2c99dbe4c3c17eccd998a2c3519c957bfe8ce011e572a3e69cc9db016e",
+        "chunks/index-D4KH4ahX.js": "e1b54eee420f0e21b683d2f832ef461ebcd65a5c1d54bc4bf5ba05f305ddf929",
+        "chunks/index-D4fc8MSu.js": "b22bc5714a3ec93d32b75e491788d0f6b0c75fef7562629d478d1b6c6406940d",
+        "chunks/index-D4kv5kMp.js": "31e464fe6f36ad64b01a50f9e43e4e000cb62f6b0b378914b21dca0e00bca612",
+        "chunks/index-D6c6KggV.js": "abae444ee9905dc6b1f1e7810d95a55874d4086009df400ac450dfabf68c9cee",
+        "chunks/index-D8Pn3uuj.js": "8c7968f6ceb1b0f9ae698fb0ee72d663ae4cb2a10e6936fe94bd354df72102d4",
+        "chunks/index-D95APEGE.js": "2deb951fc7626b5fd6928625e98dd45c983867b35d863e8ae94855b8f6fd0fdc",
+        "chunks/index-D9lOoI-D.js": "05752b43c02f776ef408942f37f000fbcb5890b727e60080e36e7cb217539830",
+        "chunks/index-D9wQ6_oP.js": "5b19480e89bee0f5b4dd11f0797c30c487cd417f365dd051a8aae5ca8369ee6c",
+        "chunks/index-DCAK1zjQ.js": "f33b7365a0da2df898cb39191537cee9d333f3feb7f26631a400c1fc8b5cf6cd",
+        "chunks/index-DCSvQG0O.js": "d0cdf547ed3404de67cf2a2d4c9e086fbae682aefb1b8d1c8dcd79099d574940",
+        "chunks/index-DCohKRFO.js": "d13ddfa81ccbe2cfd9b2654efd732400f3fb2d776a2a2417e8b9eec5ff509f1c",
+        "chunks/index-DD3Lc31y.js": "ad14d7d0470482811dc6865b3c9980f0d11eccba29753dd9b016839275c1d11c",
+        "chunks/index-DDRx-iZb.js": "e0073a90605fbfa7bf6682fac203f1fed9b1a59d0b5053409606a0570c4af8a3",
+        "chunks/index-DEHQWTXi.js": "bd27bfd6b816cc8b8a2c5abfc7471c11861f186beaf1ef97459d11478d319f07",
+        "chunks/index-DFg1S7su.js": "63db4999e75ea921940a4b71ef2d10b571eee59fea04fdcc01d0b8038694fb6f",
+        "chunks/index-DFg_RJiY.js": "7d98d03ea5a4426b468e29156badaaec684d48e543b8a447de251a27c3d7ce81",
+        "chunks/index-DFwCtA8R.js": "a850ecc485314b2f71f72b82012ad07d19858b7e3db42b3285e3e8c0cf8fee4d",
+        "chunks/index-DG9ZanHt.js": "8ac444223a7f44b7035da9d71c71203796516f2b593d4eca3ab5573078e1061f",
+        "chunks/index-DGY6Kzbc.js": "020e37ec3421889f3d121eae0969d07328e6917839b98a087acc2a3ed23e3971",
+        "chunks/index-DGmre9wW.js": "3bd0cd3c0356a52397814357c6ae2179f34530cdeee42297f447d83cdc4e6e4b",
+        "chunks/index-DHJka4QU.js": "ea1bc87d751c97da7527eb81ee89f06df7f13e0bcafb20e9dce438ab74c634b6",
+        "chunks/index-DHQ2Yjao.js": "590d09ac1be4857330b1c752f645c09dd055d1b23390d5bf24e72e2b8316389d",
+        "chunks/index-DHz7jfWg.js": "6f3c1502101fb82e35f6696283da28dc1c74e48d8b30511d8eefca2a43319b03",
+        "chunks/index-DLYvPl3w.js": "e4b102e405e6fc159fa898ea71ee4f01f331d6175c01e20a5de5808bc644ed8a",
+        "chunks/index-DLrWFuk7.js": "04f61d830f5cb11169b2e837cf78de8eaaf695ec6aec0f680e58e553ffdc467c",
+        "chunks/index-DMHtDcba.js": "e9dbe413c9d50d3f12782a94bff0850216356e1222cb3bec47ab35ef56d7d7ae",
+        "chunks/index-DO5FwStQ.js": "8297ec6802436a1dfbdf549a741fbd5c6359d3c30671bf11cd4fa1ea9e3057c1",
+        "chunks/index-DOQ8ngHg.js": "f96bd0330ffb9deaa7642f86fb80c2488e0f1b0d1c0acd1cfeb9347b0a396bcd",
+        "chunks/index-DOZlBKQ8.js": "c213834035c80f4fa673d89ad8fd70753489ae78d5669e40d8fc8fb5a6ea38b7",
+        "chunks/index-DPKXAg5r.js": "c425dd1797758b7be484c4351b8679a9467ff44d1f20e3992da0e786548c837e",
+        "chunks/index-DRHLTn9q.js": "3212a6dfce41867aeac654058a98159b724f226dd78f287f368114c2f8c8929d",
+        "chunks/index-DU7nr9cR.js": "91e4c75124f96cbf109266bbbed2df86c892f5c1d9b10105486bba00a8a2dfbd",
+        "chunks/index-DUMsUAwD.js": "8a158266e43be1355dec6fe4da21c97dfa1dbfcc240bdee14ddbd0b7718d781d",
+        "chunks/index-DVlp7Vyu.js": "65dd06c46c89ad3267c8604c3ca7ff4ad915b8345ceef067da19dc02ab8d1090",
+        "chunks/index-DXoELfaN.js": "e6a58707b0bdfa87fbac4ba5b3fddcf85d9d5c63aedbe567805772d55994aced",
+        "chunks/index-DZG02Fni.js": "3401a736b2c5fa52aec12f81283d2bc1bbc9809fa983e73ec735fe19d63ee55d",
+        "chunks/index-DZWtMUyl.js": "64b62989b4adf4c0ea44f63177e1bbca51189299a2b5bffffa09ef03b9a5da49",
+        "chunks/index-DZZahFIA.js": "0292a7a5b1d0c95a7dbd37191077fd23f23102764fe57d09e2324c52ee495122",
+        "chunks/index-DZhqHZmI.js": "a351bdc1a0d43267ab0f80166d9d8645ba1f396406b29ee5879f23de10c50383",
+        "chunks/index-Da9tWRgB.js": "dd99ffc6b496bc966d66c679089a1765a74b83d3766916858b746d667c9ffd00",
+        "chunks/index-Db0PsCRx.js": "010ca3dcd31f2bdcad317ffef1108184c46a193ac2f272bfc425133de39bf5cc",
+        "chunks/index-DcQXAphi.js": "eadfcfdb0f46ca7a9b7e92222f94b069d339d841226d7ae3d62994af9ea2a68e",
+        "chunks/index-DcpMjON9.js": "52bf0c9322177c051a4136b871bc34e6d39ded63193eda3e9e98cc8126c3404c",
+        "chunks/index-De5nzrcI.js": "aa81eb2e4f20f1fb0207fcac403d110bc88ac7a3494bfaec145452bf2e308dde",
+        "chunks/index-DeAKEUj-.js": "b3f596edd644affa7a6b46313e5458b1a59211c299205fd6503d5e0861ea5abc",
+        "chunks/index-DeBjIR6S.js": "4eb73d20abe37e1d3345d4dbe77df083735b4c0b975924773733b655de7b769e",
+        "chunks/index-Dg6A8o4U.js": "3d94a85c4caa309da0b93da8baea109b749a363e4be81787d9e2ed7b828b4535",
+        "chunks/index-Dg7q0SHX.js": "2c64bed9d0f42770ef7379ce7645acbbf52a047f55511c6f84bf257364d99568",
+        "chunks/index-DgCIZe4G.js": "5f0358fa64f8a9d30cb072ddfaa3cb89e9faea8601478e98c4f1a74abf5c2b1b",
+        "chunks/index-DgkK8wrf.js": "3d6601c977ab3d7f7c805e7a514a1e5dcc6de34d49691b2b6ba7703ae9370d94",
+        "chunks/index-DhNsFQq3.js": "69fdc90c6a185da9bb318006afde5b92648430512b41335a56cf2f75cced7929",
+        "chunks/index-Dhm7I_FS.js": "439339f197355aadd8cf519b3d5bf62cdba2752a6bdf46e991c59593377e9785",
+        "chunks/index-Dhtvohzu.js": "41ae9da223d772e961ce0b50290abe12415bea56a279a5b5547dcd2a9803f651",
+        "chunks/index-DiBPV-pC.js": "cd025e81b1e3f0b51b5347f327b1cb96d8c0d1e9f4f964ae9004fa27559dc3e8",
+        "chunks/index-DiIsnzdj.js": "4218f4028aee2e52ec488f2aa439baf346016314636c05e4174b7ff22301f1a0",
+        "chunks/index-DlVcXzEK.js": "ac2b8e142b55f90df3584452545798a1748a390101ebd7599cbb37e8255a33d2",
+        "chunks/index-DnQ2nQya.js": "a2b611a00487cf1adaa10a73fe637e096cf224109102dec2201dc5cd2ca27eaf",
+        "chunks/index-DnaXKU5Y.js": "1456ed23440d73a4ee97a6c98ad475b0d3906778b78489c69047cf1f1a33733b",
+        "chunks/index-DoT08HW9.js": "3528f74e9c6a3c3ec90c2108c9c33075418cec1e9281a8be16519e1aba3a5609",
+        "chunks/index-DonnQqtV.js": "79ff257aa2d0fab6682cdb3bfdf1abb25eafdc3f7c541ac6ab2b94948caae4ea",
+        "chunks/index-DpgiZ3ZS.js": "7022ce61b812b90ce7c937725db353c1201da65f5ab33c0a2978c9289000d814",
+        "chunks/index-DqD0_8Pz.js": "674def3d8f83a671016da87b9400fad8be1b8d12650c3a3dfb6286ea8f6ec58b",
+        "chunks/index-DqwhQuBw.js": "2b24d2e472f28efc22e1b67f1f305af10e36752fcf8abdf72f6ec8a4f5567e90",
+        "chunks/index-DrG1pRyM.js": "32deac2b3009c5635777556f56e6d1971a81249745774862ccca516d385b6f8a",
+        "chunks/index-DsUNGBkj.js": "7d7826dee843a5c70f9260366123fb9454ebb3dc3071a80d121259e4e2c065da",
+        "chunks/index-DsVRPHSx.js": "ac57528a946f43aadb47d8930d8526fad9898c4f868d2ee36f1e85fe830c8f76",
+        "chunks/index-DtXSjsyF.js": "56e0d31627495082b4a107350d5e7de69c218f166dfde13acb70574d5aa43da3",
+        "chunks/index-Du0imzV0.js": "5b6152b5f8f87757c7171dc08837d581e09169b0ae64c958032bbf9bf5a49251",
+        "chunks/index-DuSmiTkF.js": "f6aa589cdbfae54e92bb619606d7df16184909d986cb73524e056a508d12e807",
+        "chunks/index-DuiqlwiV.js": "f1d86d864f5943792c96b40dae540ea06092843dbcc79fca83bdec7aca62b3e0",
+        "chunks/index-DvRLwxG-.js": "3a16fbbbf27408444413cb29e232ee19dde860a44cfb923e5394447db0296ded",
+        "chunks/index-Dvp1hcVZ.js": "3f8cadd062335673bde9225a9bd9cde4a6bb4361bb9790efb3a3c3b02526a16a",
+        "chunks/index-DyRlnKPD.js": "c88d5388209798607c49c0ba78064f35ea04f3504e904999e3f6cb72c237a6c4",
+        "chunks/index-DyqQr2Vn.js": "be65e5aca7e004ef484d4ec5d4c981afd7274c1fc4863da3f5801afb5a7220c3",
+        "chunks/index-DzJE22ap.js": "1f51e7f82962854ffc701075c92b0e5d6ec0cb8f56ddc8ea24ad7f0a47c094db",
+        "chunks/index-ECMpYTSX.js": "e916ad59711fbe2da0cd6ecd370125c96a398566a937e477d5cf3a4c44b4a6ef",
+        "chunks/index-GS-rrVKH.js": "aefb98644a16c9a7d924679e2e27171308b547475f8f40cc1e244426a805a608",
+        "chunks/index-ICJ0aDv3.js": "7758b1f8233b9b3bb64c2f2fe26f7461c3b22540dcab2ac905ed0778aab4a341",
+        "chunks/index-IgC4Es1t.js": "1938d6a20a410acb57f65d0754cc1e741fbede0ea63a5dd7f9fbbeb4af8bf836",
+        "chunks/index-Jxnnbqzr.js": "fbaa950afc5c7affe4e56caf3ff69b7caea0dc24c1108afa6c4b13fcdfd63af3",
+        "chunks/index-N6O1C9sv.js": "a2f2647fb74567a14fbeb4ac59e96ef335b4539ef08f82caa461e306e2e3b3f5",
+        "chunks/index-NT6kX9R7.js": "042573b17c89009c51ed610c94c0fe53585a085a6a1a0b87d62e8cf8cbca257d",
+        "chunks/index-OtU6ksXN.js": "4baedd8e2a73fb50500d83ff3f2088b139c2af25338c56c09f90c40f1f492dca",
+        "chunks/index-QHIpl4Ya.js": "d6a4ea0c1f4dba324ccc966e8d0aeb0eb66c0508c78a9690d4b9dfa72fe8f8c7",
+        "chunks/index-San41jr5.js": "0cf61e9d723b4400b023a5be44376cba0770c9017d45070bcfe4076c82634a17",
+        "chunks/index-Tdi1z3Vm.js": "fba57be1267fade10877d02bbede8e351ad56bf11fb6eda5c69615833bbad932",
+        "chunks/index-UWJcYuzC.js": "9755a822d6a761b71c99c8a8d07eae783bc935a023d4bf8b197d4b59f66e3730",
+        "chunks/index-VsU5Est1.js": "86f3ab9997efe7b6cf4e83cc4287c392e53371c16c172992924e52d3d55f42fc",
+        "chunks/index-Yd9b-92P.js": "c5b8f7cc5dd1c7078b838db3aa5e84616082d309532fd5bc6aac4ea689c4f59d",
+        "chunks/index-Z_VEJDfT.js": "eafdd6f029c64b713a51dcc18d0f7db04e61ed74d6f9a2868f05d83962e0a27d",
+        "chunks/index-ZoKOK-y8.js": "2a640d2d14ecd1880ab102033e1214ef0d9bf222cd5b8fbf41aa0ea73860da02",
+        "chunks/index-b8rBbm_0.js": "624d8637c787b7cbf78ff63a5070dbe3ad6fefe8c859afee09335b3a7ad0da83",
+        "chunks/index-b_d5Toie.js": "34593dd97088565c2adc805c7e72e108bba751cd40076a9bdff9876ff1c86c63",
+        "chunks/index-dtQTXG3k.js": "53ed1c070c1ee5a91bed8794a6d67ac626942a6d04c36fcb8647a2fa6aa3d1a6",
+        "chunks/index-ePq2sr05.js": "679391b0dc7e999608bb91fced7407bae367db1ac6e869566cc0510e53697cf9",
+        "chunks/index-eUFxZ-9I.js": "25224026e1f1602c7b387dd9010df541cab0237f2e7f76262c91d32d220d1104",
+        "chunks/index-g4gx-xJA.js": "89139a352f010704a8f40fe09f4bebecbd4ea39b04205f79bafa4f5d53222c4f",
+        "chunks/index-iZGYbTHs.js": "69235be80cc04b9a4e302a9d27325be3a5ee550ff4fd97f2f5aef54aec05f004",
+        "chunks/index-jfpUm6a3.js": "d325e829271db9219efbaf8beadb93f42225fcfe75818011f4e5c31b2270fb5f",
+        "chunks/index-kVhRQI11.js": "ef633a35f62d4b212dfd25a4817b16d3b0460f51576ff5e8c71f2564eee76cac",
+        "chunks/index-lEPqLnLb.js": "c2f6419a9353c9a0b0c9648196c2640d19fad3ace546da4b9c465d423a1abd55",
+        "chunks/index-lyAWEyHX.js": "d81d9c99555494d6b55e138828626e82dd1f66e44c2c98c4e39022fd2dd5e3a6",
+        "chunks/index-lzMakD6x.js": "bd2985e435765a5c2344ac5464f0d6773fdc6f39238aaf58237929c956379c00",
+        "chunks/index-mqXc91_G.js": "e62700571ff4dc407acd32ec6093f9743e47f931c8a9ace1812353984f74fa2b",
+        "chunks/index-mw-BxYUL.js": "2e888c8543bc598ed5f8ff22ba8b6fadf2c41c52a1553eb59a22cdf209a72b17",
+        "chunks/index-n7HsbUmi.js": "2ba477217c72f48589cbbaea4c971cc29cd41a77df8f48a30a1e00ddccff1125",
+        "chunks/index-nbFy8Yz3.js": "242271a1a7c45e218844cf2e213a14694f96c58a4fc543ad9c2a4986f35706cf",
+        "chunks/index-npqCbXwh.js": "5830723da088f13a1fea8e8df6ece80ca692e22cddeb190839e9d8f4b720a392",
+        "chunks/index-olmsrMer.js": "c291b9ec17047927b97e586b6c3b21bec46ad2638609edfba787c6ecea090e45",
+        "chunks/index-otWI4EDv.js": "134112e06068c2ea5f3c3076bb7cfb4cacea9c6cdd6dc046bed68ead7cd01697",
+        "chunks/index-pxAfR7iF.js": "b1d9dc692fc63c4567a7c2f2753ac282f63f06c0b8d5936ad04d6e370612e721",
+        "chunks/index-qf0IC4NQ.js": "1b340e5fd3dea19bf31d5beeaa7bce9656de5b28b59051b5d3e76fe3a148751a",
+        "chunks/index-rftX0PQ3.js": "2206bc65eddfdcf70b690abfe17583810cedb1462a4bbe6ea29484c8ba7959bb",
+        "chunks/index-ruWBCAyl.js": "1816a6c11e468fb5b2bc9a332c2eb1b9c15554311e918938e073d5518b4e5169",
+        "chunks/index-rzqLGnsV.js": "4481cbce8f9a5bb53d51161464eb414fddea963a4ff4b0332513111796d0e1b3",
+        "chunks/index-sFI5NQR6.js": "f39da0710bb7dc6aeba11a8042464e9a5e50f114a473d5aff640abb2d30472ba",
+        "chunks/index-s_kVeLDC.js": "5eefe22cf7d75d4e4690b59334e63f2b38201994cc19c183cdf4d3b8b837875d",
+        "chunks/index-siSyDzFT.js": "194c6aeb8cc1c06ec976c6d84e013f3c7046cef2043b0b632f3835408f5fc1ba",
+        "chunks/index-tU4SpxsU.js": "099e23411063b757e0d4642a69bc147c4bab9a319e0dfc0200ab48fedc6d1d75",
+        "chunks/index-tm4Xv1LA.js": "eee4f5c92966a64de6a74d176be2c92b8a9357aa7474c6ade05f4b6952cde95b",
+        "chunks/index-unxU1GYc.js": "8611713d7b502bd0ddd49389ebb08685adb79d43d3d3e72bf36d6dc0ed1fe210",
+        "chunks/index-vB8Aku1v.js": "dc907bc0194d7e4f2d17fdc93880bb6236b7022e0fd48ad9839ff1e90cd107c0",
+        "chunks/index-vZA6D-F-.js": "0aa5924a0c497eaf0f74988f29f778f2503b0bffa4b095db8ee1832c17760819",
+        "chunks/index-vcXdS5Dw.js": "f2337b73370a441a4f8f8ea7d3d3915b6a54699f0e297a05120571ef386729e0",
+        "chunks/index-wvqII9Ab.js": "b2bb7f663c9300fd85565ff3fc8820662d045e9eef5c453d994f647655308fe0",
+        "chunks/index-yMgliMRD.js": "b5a7f0b9f4fe9aed7471da0bea4b6e36b65f130c95d57c42c8ca8451e211395e",
+        "chunks/index-ygVcL8KU.js": "edc1605fcbb0f870eca01fa2340044fa1729738ce28b77a7cd04ac6a1e159199",
+        "chunks/index-zu4akynM.js": "c06ffd856f4ff898de16158a4f9e49ae6f49597ca286d8cfea78633f9dfa4e7b",
+        "chunks/phase-receipt-validation-CNyqTkLk.js": "fd8170ee280378dfc9e7de20e80a5a337d89941a36c00767412d93fa5dc9eeb1",
+        "chunks/phase-receipt-validation-Cg9KIaRI.js": "1c4fce496962af496be809a5217d72d4975d9741aed656f7b56ba4287539c604",
+        "chunks/phase-receipt-validation-ChS8JfJ6.js": "d7bcd7eeabfe0513e4b0cad2a6b5883940d499e3f902489b52128ecede51bfbf",
+        "chunks/phase-receipt-validation-DI-lrk-S.js": "626c5e1573c4524c2d9733e449c2cfd6a7bd1f383a8424a3e8ad04151ec3b2f5",
+        "chunks/phase-receipt-validation-IbcHBpgb.js": "866d1a25e27d1369b139d836ba927c23612d348520ba6e09caea8d8303765739",
+        "chunks/phase-receipt-validation-vuzGFENJ.js": "599ea7f941f9edef26a3117c63615023da7fe9c37dc907659412fbfbe305283a",
+        "chunks/resolve-file-relations-6PBv5CJr.js": "439020e41292e485af0fa592891c7d5c8a8f053ec161bfbca020bbb794b9b8e0",
+        "chunks/resolve-file-relations-B2i3Mok-.js": "f2509b1afbc434881cd13868bd657f19d90cb1be6a4f3c1ff2bdb017c3e126a4",
+        "chunks/resolve-file-relations-BhdBZezP.js": "026025fdaa724998797db14c601fc573426f70a8576eaebccff770464d9129e7",
+        "chunks/resolve-file-relations-DoGT5SfZ.js": "353ee0256b7be4f48238c05f2b10b433979fa579ec2f14299afd3443a11a746c",
+        "chunks/resolve-file-relations-DtqGnbZL.js": "0e5fa3adf717661dc30850e4c1525ceec66ab469e87057d7653f5a272afee91a",
+        "chunks/resolve-file-relations-GXpnnnNu.js": "87f3f66b988fac4734a0564e0d62ccaac949936c3e503d3db1958e9b94c06663",
+        "chunks/run-review-command.logic-BKfSGmg6.js": "a6eee9c52f230b9587ab273e59ba47c614acde0fe13aa1cb2d5f94e4d80b5840",
+        "chunks/run-review-command.logic-Bi78AH00.js": "d9f2c1e5d2f320f794c724d870db5185ce35a318f632efec508ba6d29903120d",
+        "chunks/run-review-command.logic-Biz-gLCa.js": "ac404eeb996e65fddf00bf20584c1990c4fa9c3eb21e646d57cc30dcd8d86f6e",
+        "chunks/run-review-command.logic-CFmymFmN.js": "6b3364cb214de1a23b52693f9a2f36c2f759a4a54ae34649356bc339afded6c8",
+        "chunks/run-review-command.logic-D9a7wxkY.js": "c6bda7370815ca42f1f279cb6fc917ef5557606712e26520ca91d856f3d88304",
+        "chunks/run-review-command.logic-kCl76I4X.js": "c212c4ff530666d3cf23dad52c54e30f86955ca054719d6816497acf203a59bc",
+        "chunks/serve.cmd-BPBdbeRs.js": "c25f1bfb49f79ba1acff89c836a22f57bcf4a080d0f078c28c148fa6e2ec251d",
+        "chunks/serve.cmd-BRtViQJN.js": "3efa85ff72505e1272706edfac2db8a0a5aee29ab5750c6acec59c9efd152290",
+        "chunks/serve.cmd-Cwe2g-hP.js": "a1069c999858ebe96ba313836639355143300c12010ba0c24e7c087b51a33a39",
+        "chunks/serve.cmd-DidPz-K3.js": "4572a8998269e2b4d4001c835a68d6f8b661213fd8ca1bd42b3244e7b08d7dfb",
+        "chunks/serve.cmd-Du9K1d6s.js": "8ddf6194d9925ceb9b4b0db19c5149cef8f0e2f8deb9bb9513cb38b84cfb82ce",
+        "chunks/serve.cmd-DxOQP5ZO.js": "0c8b6335424c8a525ad2cb0bd89225555b8d650e7bc172da30c41cf91c62d132",
+        "chunks/services-5uCv3ihj.js": "e9202cfd52c0bac5f6985ce1283701da4c871995ebac7c243a0e6008c1802aef",
+        "chunks/services-BB3-CRy_.js": "95c4c15f0f2fd418929132fe09688f0a7eccc3fe5833de67484a1c19a53a79eb",
+        "chunks/services-BWwXlSw-.js": "15372b045c973a870bbdab93085f99d906f6e7a8c60a4471c407dfc490b5b254",
+        "chunks/services-BXotJejm.js": "ec9e59526167cbe8a6af64a6cb9793ae2f0924847c67662bf2cbacc59990f9e8",
+        "chunks/services-DeLCSpms.js": "dbf23a1d0d9ff92765b5dc96b81d5316c3f31aaddb6dd6fb8cdee0d1db058f67",
+        "chunks/services-DqGmjFVf.js": "0ae0a1a355a78aa155c256ff59248de190c2150d04bda26a9b83ee0ab182f4d0",
+        "chunks/shared-BolCRbW8.js": "8b70064a1e3042ebcdc7b6eaec238c70c7de9b1ec049ffdd770bd62fcb2b4a6e",
+        "chunks/shared-CTcXcJ-y.js": "df5897436777e5bd8bba6572c67ee6319b53fb028195a47ab73f816d302b6cfb",
+        "chunks/shared-CgNhly-h.js": "f38ad108bd9bf871fb0c98d3dcb11fb94c41ab32ddfe8eb4ffdce8dc32024708",
+        "chunks/shared-Dp7YGfKf.js": "756d88d26391561015f2a97f9e1b8bfc6a74ca00754bb1d894bacccfd58c8713",
+        "chunks/shared-DwISvblp.js": "134ba3a3e0351f3c61648317bf8e1cf7a5d5b4bd719f396ee923da65a56dda24",
+        "chunks/shared-NQMDzyo8.js": "317ab4f2bd35e315ae4af4e21d2d8f133ff72145ebe5aecae82b83b9bf3c7c5f",
+        "chunks/stats-help-BnLpk6Ns.js": "4c70407a9402d0442a74be8ddd9b6800d6fedc4ef1d3524a6cb643f4b0a26662",
+        "chunks/stats-index-BXiPIzMe.js": "1116166eb79b28e9553a9c25765078b09dcd70956db638511eac43809e144a61",
+        "chunks/stats-index-DKA1VM56.js": "7f0433ff979e61c6a281acc7df4921af3302d6e767e9ebfda590f9965b509671",
+        "chunks/stats-index-V23-VaX7.js": "49de6273669bf4d8d98259ce6448b5a4d47a843bc7bb824733eed6287fec5329",
+        "chunks/stats-index-g_jTooHr.js": "74b35d9e6909f8acb472fbe7110cf47969bb6c1bbd0c29724b8165714cfc1b0b",
+        "chunks/stats-index-u0pvEYO8.js": "6073894eac9f9658d67f8dfac7deac1421a2a43ebd7ab5b94f4a1465c592492d",
+        "chunks/stats-index-znVSfrw7.js": "f82a18ee5f7072018e377dd3cf32b8b92bb6327c4d518def3085244dc646c2a2",
+        "chunks/sync-core-BDV4PacP.js": "ee5f88c592c2bf30a0a9bbe35f3130f89afc1f933f5ba5dbeb05e6f07913dc56",
+        "chunks/sync-core-BS2dc_GF.js": "335574c72604ca5cc8dea59f6f494229f1df718cbdabc4f9988a3d201b977bdf",
+        "chunks/sync-core-CKZDB_Py.js": "3651ce7ee019ce1a1f7f6b9786c93c0b15be9614829bfa4879e263fa4c885b40",
+        "chunks/sync-core-Ce9OB0KE.js": "0c1cc7b9aaf207a2235610dde885b116585d9a854be89453ac21e08eb00e8645",
+        "chunks/sync-core-DqH7bfVv.js": "21c305e6f7319d47817be1a19a3eb00b82c5994e1886d56addc55a54f358319a",
+        "chunks/sync-core-syQwmtze.js": "90eb2eb598437f6eba1edea1cb96bb39eef045325748b6edb89ce3900c90b271",
+        "chunks/update-check-worker.js": "8405dfef233d80870b6080796cc6611341c649a4edc3f80c6af531ad590057ec",
+        "chunks/verify.cmd-BVcfNpCu.js": "7b06a2063fc0593cf26ddb49e0de4326955f5b5c7442d9199afff9fb61088883",
+        "chunks/verify.cmd-CTEOca1K.js": "fbff7ad7fb0675ff64870429e674426e64bdf52aab20f6160bc58336c6df7762",
+        "chunks/verify.cmd-DBeEqHRf.js": "e16383fd8d71646b5033b062e0722d224d7ce6ca588827c205259515b1453a06",
+        "chunks/verify.cmd-DVt9IVtj.js": "e1eea320b08f2000b92b206ae6173a06230cfcfba1b20c9ddd5fd9ee3b0a9332",
+        "chunks/verify.cmd-mDAbn1-G.js": "5530491951d7e9fcbe6035ef4df246f7df82bf9fc639bea1a643108faa98fc3b",
+        "chunks/verify.cmd-nX62WUAk.js": "2885d2fe262c5fd113ff2c67848a381c7f794a735215f931f161bf1c5a5597df",
+        "gennady.js": "9c05f1ca96eb17490e5a21e305d624b8c3587e7b26f75dd196dea8e02894bd69",
+        "index.js": "959f8571979686a1d047e51b694bfc2cbd411bfcbbba6de01ef27ef15d4dfd94",
+        "providers/claude.js": "de0b52906fde5213ca0f86e6e53e7b7c434a9d0a3056e599ed1e00e3cf317cf4",
+        "providers/opencode.js": "a11de32da30802a84f36a155926ed9e6f259efcde14d9c3c173096725cf78042",
+        "stack.js": "8462d3017a4942abadaf7dc8f53fe9436967de87b25af361c50a8350aed1d8e7"
+      }
+    }
+  },
+  "realRepositoryCommit": "2bb9a8039e5479634f8dfb5a6d234d0991278ace",
+  "trackedPaths": 4048,
+  "sourcePaths": 3007,
+  "trackedPathManifestSha256": "34b797cb9e22b00ae1ee2447096640b1967854bacfc5242c06481239a44b4fba",
+  "modelCalls": 0,
+  "samplesPerArmPerCase": {
+    "firstProcess": 1,
+    "warmProcesses": 5
+  },
+  "firstProcessIsNotOsColdCache": true,
+  "independentProcessPerSample": true,
+  "peakRssScope": "entire CLI process as reported by macOS time -l",
+  "readCountersScope": "explicit coverage adapter reads, not kernel syscalls",
+  "phaseProjectionNotFullRepositoryAudit": true,
+  "claim": "descriptive installed query performance; no model, no universal speed win or statistical non-inferiority",
+  "initialHostLoad": [
+    4.1279296875,
+    5.6083984375,
+    11.55419921875
+  ],
+  "finalHostLoad": [
+    5.404296875,
+    5.82177734375,
+    11.5263671875
+  ],
+  "originalCheckoutUnchanged": true,
+  "dependencyCopies": 0,
+  "sharedDependenciesUntouched": true,
+  "cleanup": {
+    "safeCleanup": true,
+    "rootRemoved": true,
+    "freedAllocatedBytes": 31531008,
+    "childrenActive": false
+  },
+  "cases": [
+    {
+      "name": "no-sdd",
+      "expectedSourceReads": 0,
+      "expectedRows": 0,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "arms": {
+        "baseline": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 85.86354200000005,
+              "userSeconds": 0.07,
+              "systemSeconds": 0,
+              "peakRssBytes": 75776000,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 97.10208300000022,
+              "userSeconds": 0.08,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 76447744,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 101.62212499999987,
+              "userSeconds": 0.08,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 76169216,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 89.60233400000016,
+              "userSeconds": 0.07,
+              "systemSeconds": 0,
+              "peakRssBytes": 75431936,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 91.54575000000023,
+              "userSeconds": 0.08,
+              "systemSeconds": 0,
+              "peakRssBytes": 76496896,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 124.0137920000002,
+            "userSeconds": 0.08,
+            "systemSeconds": 0.01,
+            "peakRssBytes": 76169216,
+            "reads": {
+              "metadataReads": 0,
+              "metadataBytes": 0,
+              "sourceReads": 0,
+              "sourceBytes": 0,
+              "priorBytes": 0
+            },
+            "rows": 0,
+            "complete": true,
+            "canProceed": true,
+            "findings": []
+          },
+          "medianWarmElapsedMs": 91.54575000000023,
+          "medianWarmPeakRssBytes": 76169216
+        },
+        "candidate": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 91.09062499999982,
+              "userSeconds": 0.08,
+              "systemSeconds": 0,
+              "peakRssBytes": 75579392,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 89.81445899999972,
+              "userSeconds": 0.07,
+              "systemSeconds": 0,
+              "peakRssBytes": 75366400,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 110.10162499999979,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 74219520,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 93.79558299999962,
+              "userSeconds": 0.08,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 74383360,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 90.85095799999999,
+              "userSeconds": 0.08,
+              "systemSeconds": 0,
+              "peakRssBytes": 75595776,
+              "reads": {
+                "metadataReads": 0,
+                "metadataBytes": 0,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 88.99283399999968,
+            "userSeconds": 0.07,
+            "systemSeconds": 0,
+            "peakRssBytes": 77070336,
+            "reads": {
+              "metadataReads": 0,
+              "metadataBytes": 0,
+              "sourceReads": 0,
+              "sourceBytes": 0,
+              "priorBytes": 0
+            },
+            "rows": 0,
+            "complete": true,
+            "canProceed": true,
+            "findings": []
+          },
+          "medianWarmElapsedMs": 91.09062499999982,
+          "medianWarmPeakRssBytes": 75366400
+        }
+      },
+      "medianElapsedDeltaPercent": -0.49715579368829754
+    },
+    {
+      "name": "portal-only",
+      "expectedSourceReads": 0,
+      "expectedRows": 0,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "arms": {
+        "baseline": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 92.37391699999989,
+              "userSeconds": 0.08,
+              "systemSeconds": 0,
+              "peakRssBytes": 75792384,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 93.27099999999973,
+              "userSeconds": 0.08,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 75595776,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 91.7870839999996,
+              "userSeconds": 0.08,
+              "systemSeconds": 0,
+              "peakRssBytes": 75415552,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 97.62408400000004,
+              "userSeconds": 0.08,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 75890688,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 94.69837499999994,
+              "userSeconds": 0.08,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 76316672,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 119.94862499999999,
+            "userSeconds": 0.1,
+            "systemSeconds": 0.01,
+            "peakRssBytes": 76283904,
+            "reads": {
+              "metadataReads": 1,
+              "metadataBytes": 46,
+              "sourceReads": 0,
+              "sourceBytes": 0,
+              "priorBytes": 0
+            },
+            "rows": 0,
+            "complete": true,
+            "canProceed": true,
+            "findings": []
+          },
+          "medianWarmElapsedMs": 93.27099999999973,
+          "medianWarmPeakRssBytes": 75792384
+        },
+        "candidate": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 87.74749999999995,
+              "userSeconds": 0.08,
+              "systemSeconds": 0,
+              "peakRssBytes": 74465280,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 99.89620799999966,
+              "userSeconds": 0.08,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 76398592,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 95.36354199999914,
+              "userSeconds": 0.08,
+              "systemSeconds": 0,
+              "peakRssBytes": 75448320,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 106.37770900000032,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 76595200,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            },
+            {
+              "elapsedMs": 108.28850000000057,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 76087296,
+              "reads": {
+                "metadataReads": 1,
+                "metadataBytes": 46,
+                "sourceReads": 0,
+                "sourceBytes": 0,
+                "priorBytes": 0
+              },
+              "rows": 0,
+              "complete": true,
+              "canProceed": true,
+              "findings": []
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 97.0173749999999,
+            "userSeconds": 0.08,
+            "systemSeconds": 0.01,
+            "peakRssBytes": 77135872,
+            "reads": {
+              "metadataReads": 1,
+              "metadataBytes": 46,
+              "sourceReads": 0,
+              "sourceBytes": 0,
+              "priorBytes": 0
+            },
+            "rows": 0,
+            "complete": true,
+            "canProceed": true,
+            "findings": []
+          },
+          "medianWarmElapsedMs": 99.89620799999966,
+          "medianWarmPeakRssBytes": 76087296
+        }
+      },
+      "medianElapsedDeltaPercent": 7.103181053060381
+    },
+    {
+      "name": "real-3007-mapping-one-phase",
+      "expectedSourceReads": 1,
+      "expectedRows": 1,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "arms": {
+        "baseline": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 119.11141700000007,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 83640320,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 111.08508299999994,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 83279872,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 115.28049999999985,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 82968576,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 142.44779199999994,
+              "userSeconds": 0.11,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 83066880,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 119.5112909999998,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 82395136,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 116.5552090000001,
+            "userSeconds": 0.1,
+            "systemSeconds": 0.01,
+            "peakRssBytes": 84115456,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 211599,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 119.11141700000007,
+          "medianWarmPeakRssBytes": 83066880
+        },
+        "candidate": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 113.02316700000029,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 83312640,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 121.99458400000003,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 84082688,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 118.89775000000009,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 85082112,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 114.11004099999991,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 84426752,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 140.83429100000012,
+              "userSeconds": 0.11,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 84180992,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 211599,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 119.9898749999993,
+            "userSeconds": 0.1,
+            "systemSeconds": 0.01,
+            "peakRssBytes": 85016576,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 211599,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 118.89775000000009,
+          "medianWarmPeakRssBytes": 84180992
+        }
+      },
+      "medianElapsedDeltaPercent": -0.179384147533046
+    },
+    {
+      "name": "synthetic-1000-mapping-one-real-target",
+      "expectedSourceReads": 1,
+      "expectedRows": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "arms": {
+        "baseline": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 111.50962499999969,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 81428480,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 105.78962499999943,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 80986112,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 110.30220800000006,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 82034688,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 121.60574999999972,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 81985536,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 118.1182090000002,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 80134144,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 114.37754200000018,
+            "userSeconds": 0.09,
+            "systemSeconds": 0.01,
+            "peakRssBytes": 81838080,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 41450,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 111.50962499999969,
+          "medianWarmPeakRssBytes": 81428480
+        },
+        "candidate": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 105.09579099999974,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 81461248,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 109.00824999999986,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 80773120,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 106.96808400000009,
+              "userSeconds": 0.09,
+              "systemSeconds": 0.01,
+              "peakRssBytes": 81608704,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 242.49970799999937,
+              "userSeconds": 0.14,
+              "systemSeconds": 0.03,
+              "peakRssBytes": 81018880,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 168.01058300000022,
+              "userSeconds": 0.1,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 80904192,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 41450,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 117.76591699999972,
+            "userSeconds": 0.09,
+            "systemSeconds": 0.02,
+            "peakRssBytes": 82034688,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 41450,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 109.00824999999986,
+          "medianWarmPeakRssBytes": 81018880
+        }
+      },
+      "medianElapsedDeltaPercent": -2.243192011451778
+    },
+    {
+      "name": "synthetic-10000-mapping-one-real-target",
+      "expectedSourceReads": 1,
+      "expectedRows": 1,
+      "order": [
+        "baseline",
+        "candidate"
+      ],
+      "arms": {
+        "baseline": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 130.99883299999965,
+              "userSeconds": 0.13,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 101466112,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 134.4746669999986,
+              "userSeconds": 0.14,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 100515840,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 137.7799159999995,
+              "userSeconds": 0.14,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 102039552,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 128.6386249999996,
+              "userSeconds": 0.13,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 98779136,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 131.36904099999992,
+              "userSeconds": 0.13,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 101711872,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 138.66708300000028,
+            "userSeconds": 0.13,
+            "systemSeconds": 0.02,
+            "peakRssBytes": 99926016,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 419449,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 131.36904099999992,
+          "medianWarmPeakRssBytes": 101466112
+        },
+        "candidate": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 142.81212499999856,
+              "userSeconds": 0.15,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 102760448,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 136.47991700000057,
+              "userSeconds": 0.14,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 101974016,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 178.15450000000055,
+              "userSeconds": 0.15,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 102662144,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 157.9117499999993,
+              "userSeconds": 0.15,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 101138432,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 131.90504099999998,
+              "userSeconds": 0.13,
+              "systemSeconds": 0.02,
+              "peakRssBytes": 103071744,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 419449,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 141.72541699999965,
+            "userSeconds": 0.14,
+            "systemSeconds": 0.02,
+            "peakRssBytes": 103104512,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 419449,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 142.81212499999856,
+          "medianWarmPeakRssBytes": 102662144
+        }
+      },
+      "medianElapsedDeltaPercent": 8.710639822664646
+    },
+    {
+      "name": "synthetic-50000-mapping-one-real-target",
+      "expectedSourceReads": 1,
+      "expectedRows": 1,
+      "order": [
+        "candidate",
+        "baseline"
+      ],
+      "arms": {
+        "baseline": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 257.3856250000008,
+              "userSeconds": 0.3,
+              "systemSeconds": 0.04,
+              "peakRssBytes": 163266560,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 224.87275000000045,
+              "userSeconds": 0.27,
+              "systemSeconds": 0.03,
+              "peakRssBytes": 161284096,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 224.03270800000064,
+              "userSeconds": 0.27,
+              "systemSeconds": 0.03,
+              "peakRssBytes": 165625856,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 239.51620800000092,
+              "userSeconds": 0.3,
+              "systemSeconds": 0.04,
+              "peakRssBytes": 162938880,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 222.07675000000017,
+              "userSeconds": 0.26,
+              "systemSeconds": 0.03,
+              "peakRssBytes": 162250752,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 226.70870800000012,
+            "userSeconds": 0.27,
+            "systemSeconds": 0.04,
+            "peakRssBytes": 160120832,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 2139448,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 224.87275000000045,
+          "medianWarmPeakRssBytes": 162938880
+        },
+        "candidate": {
+          "warmProcesses": [
+            {
+              "elapsedMs": 228.98712499999965,
+              "userSeconds": 0.27,
+              "systemSeconds": 0.04,
+              "peakRssBytes": 162578432,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 223.53254200000083,
+              "userSeconds": 0.26,
+              "systemSeconds": 0.03,
+              "peakRssBytes": 165953536,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 217.87825000000157,
+              "userSeconds": 0.25,
+              "systemSeconds": 0.03,
+              "peakRssBytes": 163921920,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 255.0643340000006,
+              "userSeconds": 0.29,
+              "systemSeconds": 0.04,
+              "peakRssBytes": 161939456,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            },
+            {
+              "elapsedMs": 240.4340830000001,
+              "userSeconds": 0.26,
+              "systemSeconds": 0.04,
+              "peakRssBytes": 162611200,
+              "reads": {
+                "metadataReads": 3,
+                "metadataBytes": 2139448,
+                "sourceReads": 1,
+                "sourceBytes": 7776,
+                "priorBytes": 7828
+              },
+              "rows": 1,
+              "complete": false,
+              "canProceed": true,
+              "findings": [
+                "MISSING_HEADER"
+              ]
+            }
+          ],
+          "firstProcess": {
+            "elapsedMs": 230.67712500000016,
+            "userSeconds": 0.26,
+            "systemSeconds": 0.04,
+            "peakRssBytes": 161333248,
+            "reads": {
+              "metadataReads": 3,
+              "metadataBytes": 2139448,
+              "sourceReads": 1,
+              "sourceBytes": 7776,
+              "priorBytes": 7828
+            },
+            "rows": 1,
+            "complete": false,
+            "canProceed": true,
+            "findings": [
+              "MISSING_HEADER"
+            ]
+          },
+          "medianWarmElapsedMs": 228.98712499999965,
+          "medianWarmPeakRssBytes": 162611200
+        }
+      },
+      "medianElapsedDeltaPercent": 1.8296458775014734
+    }
+  ]
+}

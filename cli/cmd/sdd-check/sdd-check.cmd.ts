@@ -15,7 +15,7 @@ import {
 } from '../../../shared/common/repo-file-identity.ts';
 import {
   getChangedSourceFiles,
-  getHeadContent,
+  getHeadContents,
   readHeadContent,
 } from '../../../shared/common/changed-files.ts';
 import {
@@ -1532,6 +1532,12 @@ export async function run(
     const researchFiles: string[] = [];
     const referencedResearch = new Set<string>();
     const registeredResearch = new Set<string>();
+    const headContents = getHeadContents(
+      repoRoot,
+      mdFiles
+        .filter((file) => file.endsWith('.spec.md') || file.endsWith('.1-spec.md'))
+        .map((file) => relative(repoRoot, file))
+    );
     for (const file of mdFiles) {
       const observed = readUtf8(file);
       if (!observed.ok) {
@@ -1572,7 +1578,7 @@ export async function run(
           ...checkRequirementBudgetsAgainstBaseline(
             file,
             content,
-            getHeadContent(repoRoot, relative(repoRoot, file))
+            headContents.get(relative(repoRoot, file)) ?? null
           )
         );
         findings.push(...checkDecisionLogIds(file, content));
@@ -1790,5 +1796,11 @@ export async function run(
 
 // Self-executing for CLI: gennady sdd-check (--task <ticket> | --all [root])
 const result = await run(process.argv);
-console.log(result.text);
+// Pipes are asynchronous: exiting before this callback can truncate large JSON responses.
+await new Promise<void>((resolveWrite, rejectWrite) => {
+  process.stdout.write(`${result.text}\n`, (error) => {
+    if (error) rejectWrite(error);
+    else resolveWrite();
+  });
+});
 process.exit(result.exitCode);

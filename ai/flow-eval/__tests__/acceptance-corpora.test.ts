@@ -18,6 +18,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
+import { readTestCliBundleEntry, TEST_CLI_BUNDLE_ENV } from '../../../scripts/test-cli-bundle.ts';
 import {
   dedupeSortFindings,
   toBaselineFindings,
@@ -112,12 +113,14 @@ function runChecked(
   cwd: string,
   options: { stdoutFd?: number; allowExit?: readonly number[] } = {}
 ): ReturnType<typeof spawnSync> {
+  const childEnvironment = { ...process.env };
+  delete childEnvironment[TEST_CLI_BUNDLE_ENV];
   const result = spawnSync(bin, args, {
     cwd,
     encoding: 'utf8',
     stdio: options.stdoutFd === undefined ? 'pipe' : ['ignore', options.stdoutFd, 'pipe'],
     env: {
-      ...process.env,
+      ...childEnvironment,
       NO_COLOR: '1',
       GIT_AUTHOR_NAME: 'golden-v1-corpus',
       GIT_AUTHOR_EMAIL: 'golden-v1@example.invalid',
@@ -191,6 +194,14 @@ function prepareFrozenV1Corpus(root: string, contract: GoldenContract): void {
   );
 }
 
+/** @purpose Reuse the runner's freshly qualified black-box CLI; standalone tests retain source. */
+function currentGennadyArgs(args: readonly string[]): string[] {
+  const entry = readTestCliBundleEntry(PROJECT_ROOT, process.env);
+  return entry
+    ? [entry, ...args]
+    : ['--import', import.meta.resolve('tsx'), join(PROJECT_ROOT, 'cli/gennady.ts'), ...args];
+}
+
 function runCurrentSddCheck(
   root: string,
   scratch: string,
@@ -202,15 +213,7 @@ function runCurrentSddCheck(
   try {
     result = runChecked(
       process.execPath,
-      [
-        '--import',
-        import.meta.resolve('tsx'),
-        join(PROJECT_ROOT, 'cli/gennady.ts'),
-        'sdd-check',
-        ...selection,
-        '--format',
-        'json',
-      ],
+      currentGennadyArgs(['sdd-check', ...selection, '--format', 'json']),
       root,
       { stdoutFd, allowExit: [0, 1] }
     );
@@ -230,13 +233,7 @@ function runCurrentSddCheckText(
 ): { exitCode: number; text: string } {
   const result = runChecked(
     process.execPath,
-    [
-      '--import',
-      import.meta.resolve('tsx'),
-      join(PROJECT_ROOT, 'cli/gennady.ts'),
-      'sdd-check',
-      ...selection,
-    ],
+    currentGennadyArgs(['sdd-check', ...selection]),
     root,
     { allowExit: [0, 1, 2, 4] }
   );
@@ -247,12 +244,9 @@ function runCurrentGennady(
   root: string,
   args: readonly string[]
 ): { exitCode: number; text: string } {
-  const result = runChecked(
-    process.execPath,
-    ['--import', import.meta.resolve('tsx'), join(PROJECT_ROOT, 'cli/gennady.ts'), ...args],
-    root,
-    { allowExit: [0, 1, 2, 4] }
-  );
+  const result = runChecked(process.execPath, currentGennadyArgs(args), root, {
+    allowExit: [0, 1, 2, 4],
+  });
   return { exitCode: result.status ?? -1, text: result.stdout?.toString() ?? '' };
 }
 
@@ -471,13 +465,73 @@ function specWithGroupReceipts(specFile: string, members: GroupMemberInput[]): s
   let spec = '';
   for (const kind of ['audit', 'review'] as GroupReceiptKind[]) {
     const built = buildGroupReceipt(kind, specFile, members, 'fixture-head', 'PASS', 'ts');
-    assert.equal(built.ok, true, built.ok ? '' : built.issue);
+    assert.equal(built.ok, true, built.ok ? '' : built.notDone.join(', '));
     if (built.ok) spec = upsertGroupReceipt(spec, built.receipt);
   }
   return spec;
 }
 
 describe('Batch 23A acceptance corpora', () => {
+  it('preserves a complete large JSON rejection through an actual stdout pipe', (context) => {
+    withTempRoot('gennady-large-json-pipe-', (root) => {
+      const specCount = 120;
+      for (let index = 0; index < specCount; index++) {
+        const name = `broken-${String(index).padStart(3, '0')}`;
+        const directory = join(root, 'specs/transport', name);
+        mkdirSync(directory, { recursive: true });
+        writeFileSync(
+          join(directory, `${name}.spec.md`),
+          [
+            `# ${name}`,
+            '<!--SECTION:MODULE_VISION-->',
+            'A deliberately incomplete module specification.',
+            '<!--/SECTION:MODULE_VISION-->',
+            '',
+          ].join('\n')
+        );
+      }
+      const result = runChecked(
+        process.execPath,
+        currentGennadyArgs(['sdd-check', '--all', '.', '--format', 'json']),
+        root,
+        { allowExit: [1] }
+      );
+      const text = result.stdout?.toString() ?? '';
+      let payload: CorpusRun['payload'] & { readonly ok: boolean };
+      assert.doesNotThrow(
+        () => {
+          payload = JSON.parse(text);
+        },
+        `sdd-check must flush the complete JSON before exit 1 (received ${Buffer.byteLength(text)} bytes)`
+      );
+      assert.ok(Buffer.byteLength(text) > 65_536, 'the actual pipe response must exceed 64 KiB');
+      assert.equal(payload!.schema, 'gennady.sdd-check.findings.v1');
+      assert.equal(payload!.ok, false);
+      assert.equal(payload!.fileCount, specCount);
+      assert.ok(payload!.summary.errors > 0);
+      const fileBacked = runCurrentSddCheck(root, root);
+      assert.equal(result.status, fileBacked.exitCode);
+      assert.deepEqual(
+        payload!,
+        fileBacked.payload,
+        'pipe and regular-fd transports preserve the same JSON'
+      );
+      context.diagnostic(
+        `complete pipe JSON: ${Buffer.byteLength(text)} bytes, ${specCount} specs, exit ${result.status}`
+      );
+      const reportedSpecs = new Set(
+        payload!.findings
+          .map((finding) => finding.file)
+          .filter((file) => /broken-\d{3}\.spec\.md$/.test(file))
+      );
+      assert.equal(
+        reportedSpecs.size,
+        specCount,
+        'the final files cannot disappear behind a partial pipe write'
+      );
+    });
+  });
+
   it('E-22: frozen golden-v1 records the clean-sheet rule-registry error and warning movement explicitly', () => {
     assert.equal(goldenContract.schema, 'gennady.flow-eval.golden-v1.v1');
     assert.deepEqual(goldenContract.deferred, ['E-18']);

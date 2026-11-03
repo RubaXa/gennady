@@ -4,8 +4,9 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 type Classification =
   | 'canonical-v2'
@@ -559,7 +560,7 @@ function counts(entries: readonly Entry[]): Record<Classification, number> {
   return result;
 }
 
-function run(root: string): {
+export function runV1Eradication(root: string): {
   schemaVersion: 'gennady.v1-eradication-report.v1';
   ok: boolean;
   policyDigest: string;
@@ -745,24 +746,26 @@ function args(argv: readonly string[]): { root: string; format: 'text' | 'json' 
   return { root: resolve(root), format };
 }
 
-try {
-  const options = args(process.argv.slice(2));
-  const report = run(options.root);
-  if (options.format === 'json') process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-  else {
-    process.stdout.write(
-      `${report.ok ? 'PASS' : 'FAIL'} v1-eradication ${report.inventoryDigest}\n` +
-        `${Object.entries(report.counts)
-          .map(([key, value]) => `${key}=${value}`)
-          .join(' ')}\n`
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  try {
+    const options = args(process.argv.slice(2));
+    const report = runV1Eradication(options.root);
+    if (options.format === 'json') process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    else {
+      process.stdout.write(
+        `${report.ok ? 'PASS' : 'FAIL'} v1-eradication ${report.inventoryDigest}\n` +
+          `${Object.entries(report.counts)
+            .map(([key, value]) => `${key}=${value}`)
+            .join(' ')}\n`
+      );
+      for (const finding of report.findings)
+        process.stderr.write(`${finding.code} ${finding.path}: ${finding.detail}\n`);
+    }
+    process.exitCode = report.ok ? 0 : 1;
+  } catch (error) {
+    process.stderr.write(
+      `V1_ERADICATION_POLICY_INVALID: ${error instanceof Error ? error.message : String(error)}\n`
     );
-    for (const finding of report.findings)
-      process.stderr.write(`${finding.code} ${finding.path}: ${finding.detail}\n`);
+    process.exitCode = 1;
   }
-  process.exitCode = report.ok ? 0 : 1;
-} catch (error) {
-  process.stderr.write(
-    `V1_ERADICATION_POLICY_INVALID: ${error instanceof Error ? error.message : String(error)}\n`
-  );
-  process.exitCode = 1;
 }

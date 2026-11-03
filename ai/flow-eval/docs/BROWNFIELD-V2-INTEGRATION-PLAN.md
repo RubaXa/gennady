@@ -1,6 +1,6 @@
 # SDD V2 в существующем проекте: общий контракт и единая интеграция
 
-Дата начала: 2026-11-02; обновлено: 2026-11-03. Статус: BF1/BF2 прошли независимое ревью; дополнительные BF-R8–R11 исправлены и квалифицированы. BF3: installed no-model controls8/8, live0/8. Исходные RED сохранены; полный hook текущего stage и восемь живых попыток впереди.
+Дата начала: 2026-11-02; обновлено: 2026-11-03. Статус: BF1/BF2 прошли независимое ревью; дополнительные BF-R8–R11 исправлены и квалифицированы. BF3 завершён: live8/8, replacements0; общего поведенческого выигрыша нет. Исторические RED/raw сохранены. Результаты и отдельные исправления измерителя приведены в заключительном разделе ниже.
 Владелец продуктового решения — оператор. Это продолжение declared coverage, а не особый
 режим для Octavius и не повтор закрытых authoring/автономных исследований.
 
@@ -163,7 +163,7 @@ override, агент объясняет источник, а не сообщае
 | BF0  | План, exact исходники, карта переносимых изменений                    | один план; ограничения и исходные RED сохранены                 | оператор разрешил выполнение; план опубликован в Draft MR                                        |
 | BF1  | Контракты/диагностика, синтетические RED, квалификация oracle         | каждый defect причинно воспроизведён; ошибки стенда отделены    | RED сохранён; дополнительные review RED F1–F7 ниже                                               |
 | BF2  | Общие исправления и GREEN, переиспользование !13–!20                  | весь deterministic matrix проходит; негативы не ослаблены       | 8317c168 published; F1–F7 подтверждены независимо; BF-R8–R11 GREEN, ожидается штатный stage hook |
-| BF3  | Installed-package lifecycle, большой репозиторий, конечные live evals | воспроизводимые результаты, ясный вердикт, cleanup              | installed controls8/8; live0/8                                                                   |
+| BF3  | Installed-package lifecycle, большой репозиторий, конечные live evals | воспроизводимые результаты, ясный вердикт, cleanup              | live8/8; итог ограничен, автоматических повторов нет                                             |
 | BF4  | GitHub фиксация и один итоговый GitLab MR                             | parity ledger, чистый GitLab clone, итоговое независимое review | Draft MR !23 создан; transfer/parity acceptance впереди                                          |
 
 Каждый этап фиксируется коммитами с результатом и передаётся на review в том же реквесте.
@@ -760,3 +760,173 @@ trajectory не повышается доPASS. Условия старта — �
 или proxy. Ссылка исправлена на реальный repo-relative путь; focused
 `npm run flow-eval:docs-check` PASS. Исходный failed hook сохранён; попытки
 модели0/8. Следующий hook запускается полностью, без bypass и без ослабления теста.
+
+## BF3 завершён — 3 ноября,8/8 без замен
+
+Проверенный продукт — `e24ce33eeada13b666df116a903c15568af504cc`, база —
+`6e19167e0c756b5e136dd3a9e5a597280c78c2e9`. Штатные гейты этого candidate:
+5377 executed /5369 passed /0failed /8skipped; coverage/pre-push PASS.
+Выполнены ровно8 локальных primary attempts через AI Proxy/deepseek-v4-flash,
+плюс по одному заранее предусмотренному judge/reflection. Replacements0.
+
+| Случай | База                                                                      | Candidate                                                          | Вывод                                                                             |
+| ------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| E1     | Артефакт/owner PASS;19tools,34179tokens,60.5s                             | Артефакт/owner PASS;20tools,41915tokens,91.4s; лишнее исследование | Экономии нет; одна пара не доказывает причинную/общую деградацию                  |
+| E2     | Реальное чтение implementation dist, policy-censored                      | Язык согласован отдельно, минимальная настройка и lint PASS        | Полезное наблюдение настройки; неполная пара, экономия несопоставима              |
+| E3     | Остановка на metadata до lint/proposal                                    | Остановка на shim/docs/metadata до lint/proposal                   | Live pending-предложение не доказано; metadata сама по себе не source archaeology |
+| E4     | Известный VERIFY_CONFIG_INVALID_TYPE для bracket path; корректный blocker | Верный код/owner/P1, но P2 Verify не завершён до9мин               | End-to-end PASS отсутствует; разные этапы остановки, экономию не считать          |
+
+Исходный E2 judge FAIL не изменён. Независимо подтверждено: правка началась
+через2325ms после отдельного host-user approval; судья смешал origins времени.
+Отдельный derived consent/objective PASS не подменяет raw. Judge PASS у E4 baseline
+означает честное сообщение блокера, не завершённую задачу.
+
+Все118 tool calls разобраны отдельно:76 required,14 supporting,20 redundant,
+8 unknown/mixed. Это экспертная оценка наблюдаемых действий, не причинное
+доказательство выигрыша от удаления вызовов. Primary flow E4 включает host P1
+checkpoint; SDK timestamps не считаются доказанной command latency.
+
+Затраты: primary211641, judge49988, reflection175961 — всего437590 tokens
+без cacheRead/cacheWrite; primary cacheRead1305984. API request count неизвестен
+и не равен118tool calls. Provider cost0 не означает бесплатность; тарифа нет.
+Все8 roots и общий root удалены,744093179logicalbytes; shared cohort сохранён.
+Дополнительно очищен raw coverage542186552bytes с проверенным gzip.
+
+### Исправления только измерителя после восьми попыток
+
+Причинный no-model control: тот же sandbox/owned TMPDIR с системным xcrun Git
+достиг50s timeout/cache EPERM; единственная смена PATH на реальный Git дала
+P1 Verify4.6s/host complete0.94s/P2 Verify7.49s PASS, без расширения sandbox.
+Это подтверждает дефект условий измерения; не доказывает единственную причину
+каждой старой задержки P2, поскольку часть stderr была сохранена лишь hash.
+
+Исправлены общий origin consent fact по actual server user-message, bounded
+private capture с redaction до SHA/gzip, qualification под actual profile/direct
+Git, безопасная public projection. Старые8 исходов и executed harness не менялись.
+Новых model calls0. Target14/14 и dedicated strict TypeScript PASS; новый
+no-model reference8/8 за68.3s с настоящим полным E4 lifecycle, cleanup=true.
+
+Полный отчёт: `ai/flow-eval/results/2026-11-03-brownfield-bf3-live/REPORT.md`.
+118 действий: `ai/flow-eval/results/2026-11-03-brownfield-bf3-live/TRAJECTORIES.md`.
+Raw и derived разделены; manifest и recorded suite проверяют completeness,
+Git-index bytes, hashes, cost arithmetic, mixed verdicts и privacy на чистом клоне.
+
+**Решение:** механические исправления принять по причинным тестам/контролям;
+универсальное улучшение модели, стоимости и скорости не заявлять. Исследовательский
+цикл закрыт, автоматических дополнительных primary attempts нет. BF4(одна
+интеграция в GitLab) ещё не выполнен и начинается после ревью этого этапа.
+Merge/npm publication не разрешены. Результат заключительного обычного hook/push
+публикуется в PR вместе с итоговым commit; дополнительных модельных прогонов нет.
+
+Заключительное независимое ревью post-campaign measurement patch — Approve,
+подтверждённых блокеров нет. Recorded/regression/fixture слой20/20 PASS;
+проверены полнота archive/Git index, raw-vs-derived, cost arithmetic, privacy и
+отрицательные подмены. Docs-check PASS. Inventory обновлён только на historical
+745→759 и digest48a8646c…; остальные policy-поля побайтово/структурно неизменны,
+на этом measurement-only этапе production CLI/shared/specs после e24 не менялись. Остался обычный заключительный
+commit/push; его фактический итог фиксируется в PR, без нового model dispatch.
+
+Первый заключительный hook честно завершился TIMEOUT: node:unit превысил общий
+600000ms step deadline; это не file deadline. В этот момент host load≈97.4,
+type-check45.4s/lint162.8s/format41.9s против прежних7.5s/31.4s/4.9s.
+Выживших процессов нашего завершившегося gate по ранее подтверждённым PID/потомкам
+не найдено. Когда load упал≈13.9, тот же hook повторён без изменения общего
+600000ms лимита, без сокращения проверок и без новых модельных попыток.
+Failed log сохраняется отдельно; временный file floor120000ms остаётся прежним.
+
+### Завершающий этап: стоимость самого гейта
+
+После двух таймаутов общего unit-step исправляем измеренные затраты, а не
+повторяем гейт в ожидании свободного хоста. Это отдельные изменения ПОСЛЕ
+восьми живых попыток: старые результаты не являются их live-валидацией.
+
+- Verify выбирает contract-lint leaf: compiler/format 2→1, contract lint 1→1;
+  семь обязательных узлов и standalone lint сохранены. Политика 5/5, соседи 51/51.
+- WorkspaceGuard продолжает читать/хешировать каждый исходник и проверять пути.
+  Совпадающий payload копируется в независимый inode с COPYFILE_FICLONE request
+  и проверкой SHA; fallback обычного копирования разрешён. На 1000×8192B и
+  шести шагах buffer writes 7007→1001, 57.34→8.19MB; дополнительно прочитано/
+  захешировано 49.15MB destination. Physical disk writes не измерялись. Один
+  замер 24.53→15.52s, Git timing тоже менялся: общего ускорения не выводим.
+  Guard suite 25/25, включая повреждённый blob, symlink, rollback/chmod и
+  same-size/same-mtime mutation.
+- Black-box partition использует один свежий Vite build, проверяемый по всем
+  source/output SHA до/после. Unit/contract coverage остаётся исходниковым.
+  Два tiny-fixture запроса: 1.92/2.26s source против 0.50/0.77s dist, stdout
+  совпал. Provenance/partition/env 6/6. Реальный контроль честно красный:
+  sdd-verify 3/3 за8.08s, sdd-task превысил standalone30s; failure посчитан,
+  manifest удалён. Общий hook использует ранее разрешённый file floor120s.
+- Исследовательские архивы не входят в TSC program. Recorded replay1.4s,
+  archive read≈0.18s и2 Git processes: это не причина многоминутного таймаута.
+
+Новых model calls0. Числа и ограничения: resource-costs.json в пакете BF3.
+Общий step deadline600000ms, список обязательных тестов и assertions сохранены.
+Обычный завершающий hook/push ещё предстоит; PASS заранее не заявляется.
+
+Первый оптимизированный hook выявил новую ошибку подготовки CLI bundle:
+createTestEnvironment передавал NODE_ENV=test сборщику Vite, отчего optional
+React DevTools попадал в bundle и build падал. Это дефект нового harness, не
+таймаут/ошибка модели. Исправлено только окружение builder: production;
+test-процессы по-прежнему test. Causal spawned-builder regression проверяет
+одинаковые выходные bytes/digest при inherited test/production и неизменность
+caller env; focused7/7 PASS. Красный hook сохранён отдельно; старые8 attempts
+не изменены, model calls0. Следующий обычный hook выполняется после реальной
+production-сборки из inherited test.
+
+Следующий hook честно остановился на TS7053 и конкурентной annotation-правке
+сабагента: WorkspaceGuard обнаружил mutation и восстановил index bytes.
+В финальный staged набор включена явная NodeJS.ProcessEnv annotation;
+последний отдельный tsc с ней exit0. До нового запуска все reviewers переведены
+в read-only. Красный запуск не объявляется PASS и сохраняется отдельно.
+Реальная production-сборка из test env уже PASS20.83s, output digest совпал
+с прежним обычным production-build. Новых model calls0.
+
+Повторный полный hook прошёл type-check32.7s/lint33.1s/format140.2s,
+но node:unit снова достиг600000ms (744.5s включая завершение guard).
+Частичный TAP сохранил395 top-level records, not-ok0; это НЕ PASS полного
+корпуса. Нового слепого повтора не было. Профилирование выделило53 повторных
+Node/TSXстарта в V1 fixture core,22acceptance вызова sourceCLI в обход bundle
+и110Git setup процессов в22testcovфикстурах, где Git не участвует.
+Сохранены classifiers, protected paths, tests/assertions и реальные root/
+invalid-policy CLI controls. Новый symlink-entry regression1/1 PASS;
+capability удаляется из env product children.
+
+Targeted три suites:37PASS и1file timeout(E22), не GREEN. Inventory15/15
+61.9s против прежних103.4s, testcov22/22 83.5s против54.7s — несинхронные
+host-замеры не доказывают общий speedup. E22 child позже оставил полный JSON.
+Один отдельный no-model CPU/child-process профиль на том же scratch подтвердил
+212files/199errors/432warnings,273Git subprocesses:68repository probes,
+68HEAD probes,67path lookups,67blob reads и дополнительные операции.
+Новая узкая гипотеза: читать baseline спецификаций одним pinnedHEAD batch,
+с exact-byte сравнением старой/новой CLI-диагностики, без глобального cache.
+Полный hook повторится только после причинной квалификации этих изменений.
+
+### Завершающая причинная квалификация ресурсных изменений
+
+- Пакетный baseline:12/12 PASS, root TypeScript0. Один pinnedHEAD, literal
+  NUL-paths, OID/body-size framing, bounded32KiB/128-path и64MiB/512-object
+  chunks, без глобального кеша. Проверены смена HEAD между вызовами и1000
+  virtual long-path protocol records (не1000физических файлов). Старые
+  strict/single readers сохранены. Независимый read-only review: blockers0.
+- Реальный E22:Git273→8, JSON403292bytes побайтово совпал, тот же
+  fileCount212/errors199/warnings432 иexit1. Новый wall2.415s — один
+  описательный замер; исходный CPU-profiler имел дополнительную инструментализацию,
+  host/cache не зафиксированы, универсального speedup не выводим.
+- Первый pipe diagnostic был RED:65536bytes вместо403292. Это привело к
+  отдельному реальному фиксу прежнего process.exit до окончания async stdout.
+  Новый RED/GREEN:120synthetic specs,65536→242917bytes,валидный JSON
+  pipe=regularfd, прежний exit1; все120файлов сохранены. Никаких проверок
+  не отключено. Строгий test-file TypeScript также прошёл после исправления
+  устаревшего diagnostic-only built.issue→built.notDone (assertion неизменен).
+- Одна свежая production-сборка4.115s, точный E22 control и весь acceptance
+  corpus10/10 PASS7.612s; source/output hashes проверены, manifest удалён,
+  новых model calls0. Старый E22 fd-протокол и frozen contract не изменены.
+- Проверили и НЕ внедряли: broad перенос6pure/fake suites в другой pool
+  (42/42 qualification, но недостаточный выигрыш для расширения scope);
+  новый cached sanitizer (точечный CPU profile2.05s, generic regex≈5ms,
+  не причина600s). Никакого blanket classifier исключения не добавлено.
+
+После этой квалификации — один обычный полный hook/push. Все авторы остановили
+запись в source. Default/file/global deadlines и обязательный corpus сохранены.
+Восемь live попыток относятся к e24, новые ресурсные/product исправления имеют
+только описанную deterministic/no-model валидацию; общей победы модели нет.

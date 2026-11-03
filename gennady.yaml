@@ -4,6 +4,12 @@
 verify:
   presets:
     node:
+      # The standalone lint script also runs format and type-check. Verify already owns
+      # those mandatory observations, so select only its contract-lint leaf here.
+      steps:
+        lint:
+          command:
+            npmScript: lint:contracts
       phases:
         full:
           include: [code, unit, coverage]

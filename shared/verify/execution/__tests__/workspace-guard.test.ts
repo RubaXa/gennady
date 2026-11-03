@@ -749,4 +749,131 @@ describe('WorkspaceGuard checkpoint and write policy', () => {
       if (recovered.kind === 'guard') recovered.guard.release();
     });
   });
+  it('owns advanced checkpoint storage independently and preserves accepted modes on later rollback', () => {
+    withRepo((root) => {
+      const target = path.join(root, 'tracked.txt');
+      const original = fs.readFileSync(target);
+      const guard = acquire(root);
+      const previous = checkpointOf(root);
+      const previousDirectory = fs.realpathSync(previous.directory);
+      const previousBlobName = previous.manifest.entries['tracked.txt'].blob;
+      assert.ok(previousBlobName);
+      const previousBlob = path.join(previousDirectory, previousBlobName);
+      const originalRemove = fs.rmSync;
+      let independentStorageObserved = false;
+      fs.rmSync = ((targetPath, options) => {
+        if (typeof targetPath === 'string' && path.resolve(targetPath) === previousDirectory) {
+          const parent = path.dirname(previousDirectory);
+          const nextIds = fs
+            .readdirSync(parent)
+            .filter((id) => id !== path.basename(previousDirectory));
+          assert.equal(nextIds.length, 1);
+          const nextDirectory = path.join(parent, nextIds[0]);
+          const manifest = JSON.parse(
+            fs.readFileSync(path.join(nextDirectory, 'manifest.json'), 'utf8')
+          );
+          const nextBlob = path.join(nextDirectory, manifest.entries['tracked.txt'].blob);
+          const before = fs.statSync(previousBlob, { bigint: true });
+          const after = fs.statSync(nextBlob, { bigint: true });
+          assert.notDeepEqual([before.dev, before.ino], [after.dev, after.ino]);
+          fs.writeFileSync(previousBlob, 'changed obsolete storage\n');
+          assert.deepEqual(fs.readFileSync(nextBlob), original);
+          assert.equal(manifest.entries['tracked.txt'].mode, 0o755);
+          independentStorageObserved = true;
+        }
+        originalRemove(targetPath, options);
+      }) as typeof fs.rmSync;
+      try {
+        assert.equal(guard.beginStep(step(root, 'repair', ['tracked.txt'])).kind, 'ready');
+        fs.chmodSync(target, 0o755);
+        assert.equal(guard.finishStep('node:format-fix', { succeeded: true }).kind, 'accepted');
+        assert.equal(independentStorageObserved, true);
+      } finally {
+        fs.rmSync = originalRemove;
+      }
+      assert.equal(guard.beginStep(step(root, 'observe')).kind, 'ready');
+      fs.writeFileSync(target, 'unexpected later mutation\n');
+      assert.equal(guard.finishStep('node:format-fix', { succeeded: true }).kind, 'violation');
+      assert.deepEqual(fs.readFileSync(target), original);
+      assert.equal(fs.statSync(target).mode & 0o777, 0o755);
+      assert.deepEqual(guard.release(), { kind: 'released' });
+    });
+  });
+
+  it('rejects a corrupted prior payload before advancing or destructively restoring the checkpoint', () => {
+    withRepo((root) => {
+      const target = path.join(root, 'tracked.txt');
+      const original = fs.readFileSync(target);
+      const guard = acquire(root);
+      const previous = checkpointOf(root);
+      const blobName = previous.manifest.entries['tracked.txt'].blob;
+      assert.ok(blobName);
+      const blob = path.join(previous.directory, blobName);
+      fs.writeFileSync(blob, 'corrupted previous payload\n');
+      guard.beginStep(step(root, 'observe'));
+      const outcome = guard.finishStep('node:format-fix', { succeeded: true });
+      assert.equal(outcome.kind, 'error');
+      if (outcome.kind === 'error') assert.equal(outcome.restored, false);
+      assert.deepEqual(fs.readFileSync(target), original);
+      assert.equal(fs.existsSync(lockPath(root)), true);
+      fs.writeFileSync(blob, original);
+      assert.deepEqual(guard.cancel('SIGTERM'), { kind: 'cancelled', exitCode: 143 });
+      assert.equal(fs.existsSync(lockPath(root)), false);
+    });
+  });
+
+  it('rejects a symlink prior payload even when the external target contains the expected bytes', () => {
+    withRepo((root) => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'workspace-guard-external-'));
+      try {
+        const target = path.join(root, 'tracked.txt');
+        const original = fs.readFileSync(target);
+        const external = path.join(outside, 'same-bytes.txt');
+        fs.writeFileSync(external, original);
+        const guard = acquire(root);
+        const previous = checkpointOf(root);
+        const blobName = previous.manifest.entries['tracked.txt'].blob;
+        assert.ok(blobName);
+        const blob = path.join(previous.directory, blobName);
+        fs.rmSync(blob);
+        fs.symlinkSync(external, blob);
+        guard.beginStep(step(root, 'observe'));
+        const outcome = guard.finishStep('node:format-fix', { succeeded: true });
+        assert.equal(outcome.kind, 'error');
+        if (outcome.kind === 'error') assert.equal(outcome.restored, false);
+        assert.deepEqual(fs.readFileSync(target), original);
+        assert.deepEqual(fs.readFileSync(external), original);
+        assert.equal(fs.existsSync(lockPath(root)), true);
+        fs.rmSync(blob);
+        fs.writeFileSync(blob, original);
+        assert.deepEqual(guard.cancel('SIGTERM'), { kind: 'cancelled', exitCode: 143 });
+        assert.deepEqual(fs.readFileSync(external), original);
+      } finally {
+        fs.rmSync(outside, { recursive: true, force: true });
+      }
+    });
+  });
+
+  it('rehashes and rejects same-size source edits even when their previous mtime is restored', () => {
+    withRepo((root) => {
+      const target = path.join(root, 'tracked.txt');
+      const original = fs.readFileSync(target);
+      const fixedTime = new Date('2026-01-01T00:00:00.000Z');
+      fs.utimesSync(target, fixedTime, fixedTime);
+      const before = fs.statSync(target);
+      const guard = acquire(root);
+      guard.beginStep(step(root, 'observe'));
+      const changed = Buffer.from(original);
+      changed[0] ^= 1;
+      fs.writeFileSync(target, changed);
+      fs.utimesSync(target, before.atime, before.mtime);
+      assert.equal(fs.statSync(target).size, before.size);
+      assert.equal(fs.statSync(target).mtimeMs, before.mtimeMs);
+      const outcome = guard.finishStep('node:format-fix', { succeeded: true });
+      assert.equal(outcome.kind, 'violation');
+      assert.ok(outcome.mutations.some((mutation) => mutation.path === 'tracked.txt'));
+      assert.deepEqual(fs.readFileSync(target), original);
+      assert.deepEqual(guard.release(), { kind: 'released' });
+    });
+  });
 });

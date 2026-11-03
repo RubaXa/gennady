@@ -165,3 +165,12 @@ ai/flow-eval/results/2026-10-30-pilot-verify-red/**
 
 # Exact installed-runner qualification bytes, verified by sourceSha256.
 ai/flow-eval/results/2026-11-02-brownfield-bf1/installed-vitest-stream.json
+
+# Finite BF3 campaign: immutable primary/derived machine bytes; SHA replay tests own integrity.
+ai/flow-eval/results/2026-11-03-brownfield-bf3-live/**/*.json
+
+# Captured executed/post-campaign sources are unsupported .txt snapshots. Their exact bytes
+# are verified by the exhaustive recorded manifest; format the maintained originals instead.
+# Keep authored README/REPORT/TRAJECTORIES markdown outside these frozen-source folders checked.
+ai/flow-eval/results/2026-11-03-brownfield-bf3-live/harness/**
+ai/flow-eval/results/2026-11-03-brownfield-bf3-live/post-campaign-harness/**

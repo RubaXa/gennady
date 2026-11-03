@@ -13,13 +13,12 @@ import {
   readdirSync,
   realpathSync,
   rmSync,
-  symlinkSync,
   writeFileSync,
   chmodSync,
   lstatSync,
   statfsSync,
 } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { homedir, tmpdir } from 'node:os';
 import { createServer } from 'node:net';
 import { randomUUID } from 'node:crypto';
@@ -35,7 +34,6 @@ import {
   e2source,
   minimalCommentLanguageDiff,
   TASK,
-  SPEC,
   TRACKER,
   registry,
   referenceProposal,
@@ -46,7 +44,7 @@ import { createSddEvalOpenCodeClient } from '../opencode-client.ts';
 import { SddEvalOpenCodeRuntime } from '../opencode-runtime.ts';
 import { SddEvalOpenCodeEvidenceSource } from '../evidence.ts';
 import { SddEvalSessionDirectoryMap } from '../session-directory.ts';
-import { toolEventsFrom, invokesCommand } from '../trajectory.ts';
+import { toolEventsFrom } from '../trajectory.ts';
 import {
   prepareEvalDependencyStore,
   bindEvalDependencies,
@@ -54,10 +52,21 @@ import {
   startEvalDependencyLeaseHeartbeat,
 } from '../dependency-store.ts';
 import { createExecutionShellCarrier } from './execution-autonomy-shell-carrier.ts';
+import {
+  assessConsentOrder,
+  findHostConsentApproval,
+  capturePrivateSessionMessages,
+  publicQualification,
+} from '../brownfield-measurement.ts';
 const root = resolve(import.meta.dirname, '../../..');
 const defaultPackages = resolve(process.env.GENNADY_BF3_PACKAGE_ROOT ?? '.');
 const packageManifestPath = join(defaultPackages, 'manifest.json');
 let commits: { baseline: string; candidate: string };
+let gitToolchainDirectory = '';
+const executionPath = () =>
+  `${dirname(process.execPath)}:${gitToolchainDirectory}:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`;
+const CONSENT_REPLY =
+  'Operator approval: add only lint.commentLanguage: ru to gennady.yaml, preserve lint.scope: owned and unrelated values/comments. Then repeat the original lint command; no other policy/source/spec change is authorized.';
 const model = { providerID: 'llm-proxy', modelID: 'deepseek-v4-flash' };
 const modelName = 'llm-proxy/deepseek-v4-flash';
 
@@ -165,7 +174,8 @@ function command(cwd: string, args: string[], profile?: string) {
     cwd,
     encoding: 'utf8',
     env: {
-      PATH: process.env.PATH,
+      PATH: profile ? executionPath() : process.env.PATH,
+      TMPDIR: join(cwd, '.sdd-eval-shell-tmp'),
       NO_COLOR: '1',
       GENNADY_NO_UPDATE_CHECK: '1',
       HOME: join(cwd, '.sdd-eval-shell-home'),
@@ -188,7 +198,12 @@ function nodeCommand(cwd: string, args: string[], profile?: string) {
     {
       cwd,
       encoding: 'utf8',
-      env: { PATH: process.env.PATH, NO_COLOR: '1', HOME: join(cwd, '.sdd-eval-shell-home') },
+      env: {
+        PATH: profile ? executionPath() : process.env.PATH,
+        TMPDIR: join(cwd, '.sdd-eval-shell-tmp'),
+        NO_COLOR: '1',
+        HOME: join(cwd, '.sdd-eval-shell-home'),
+      },
       timeout: 20000,
       maxBuffer: 3000000,
     }
@@ -358,7 +373,7 @@ function lifecycle(cwd: string, id: CaseId, profile?: string) {
   return { pass: true, records };
 }
 /** @purpose Validate common proposal reasoning and arm-specific persistence without granting acceptance. */
-function proposalCheck(cwd: string, arm: string, initialModule: string) {
+function proposalCheck(cwd: string, arm: string, initialModule: string, profile?: string) {
   const path = join(cwd, '.claude/tmp/lint-proposal.json');
   const current = readFileSync(join(cwd, registry.module), 'utf8');
   const close = '<!--/SECTION:MODULE_DECISION_LOG-->';
@@ -405,7 +420,7 @@ function proposalCheck(cwd: string, arm: string, initialModule: string) {
     ) &&
     p.lintExemption?.file === registry.source &&
     JSON.stringify([...(p.lintExemption?.checks ?? [])].sort()) === '["dbc","inventory"]';
-  const lint = command(cwd, ['lint', `--spec=${registry.module}`, registry.source]);
+  const lint = command(cwd, ['lint', `--spec=${registry.module}`, registry.source], profile);
   const output = lint.stdout + lint.stderr;
   const codes = ['ERR_DBC_LINT_MISSING_CONTRACT', 'ERR_CLI_LINT_INVENTORY_UNDECLARED'];
   const actualCodesPresent = codes.every((code) => output.includes(code));
@@ -429,6 +444,39 @@ function proposalCheck(cwd: string, arm: string, initialModule: string) {
       : 'schema mismatch',
   };
 }
+/** @purpose Materialize the same shell profile used by workers before qualifying installed reference commands. */
+async function qualificationProfile(
+  cwd: string,
+  privateDir: string,
+  owned: string,
+  privateEvidence: string,
+  snapshotRoot: string
+): Promise<string> {
+  mkdirSync(privateDir, { recursive: true, mode: 0o700 });
+  const carrier = createExecutionShellCarrier({
+    directory: join(privateDir, 'shell'),
+    hostHome: homedir(),
+    allowedReadRoots: [
+      dirname(dirname(process.execPath)),
+      realpathSync(join(root, 'node_modules')),
+    ],
+    privateRoots: [
+      privateDir,
+      root,
+      privateEvidence,
+      snapshotRoot,
+      join(owned, 'dependencies'),
+      defaultPackages,
+    ],
+    workspaceRoot: dirname(cwd),
+    restrictReadsToWorkspace: true,
+    path: executionPath(),
+  });
+  const plugin = await import(pathToFileURL(carrier.plugin).href);
+  const hooks = await plugin.CleanExecutionEnvironment();
+  await hooks['shell.env']({ cwd }, { env: {} });
+  return join(carrier.profileDirectory, 'sdd-flow-eval-qualification.sb');
+}
 /** @purpose Prove correct and broken installed-runtime controls before any live reservation. */
 async function qualify(
   out: string,
@@ -441,13 +489,21 @@ async function qualify(
   const controls: any[] = [];
   for (const arm of ['baseline', 'candidate'])
     for (const id of BF3_CASES) {
-      const cwd = join(owned, `qualification-${arm}-${id}`);
+      const qualificationRoot = join(owned, `qualification-${arm}-${id}`);
+      const cwd = join(qualificationRoot, 'workspaces', 'sdd-flow-eval-qualification');
       const p = await workspace(cwd, runtimes[arm]!, id, owned, snapshotRoot, realPaths);
       const results: any = { arm, caseId: id, modelCalls: 0 };
       try {
+        const profile = await qualificationProfile(
+          cwd,
+          join(qualificationRoot, 'private'),
+          owned,
+          privateEvidence,
+          snapshotRoot
+        );
         if (id === 'E1' || id === 'E4') {
           noModelSolution(cwd, id);
-          const good = lifecycle(cwd, id);
+          const good = lifecycle(cwd, id, profile);
           results.correct = good;
           if (arm === 'candidate' || id === 'E1')
             assert.ok(
@@ -455,16 +511,16 @@ async function qualify(
               `${arm}/${id} reference lifecycle blocked: ${JSON.stringify(good).slice(-9000)}`
             );
           else results.knownBaselineCapabilityBlocked = !good.pass;
-          const hostCorrect = nodeCommand(cwd, ['--test', TEST]);
+          const hostCorrect = nodeCommand(cwd, ['--test', TEST], profile);
           assert.equal(hostCorrect.exit, 0, hostCorrect.stdout + hostCorrect.stderr);
           results.hostCorrect = {
             exit: hostCorrect.exit,
             outputSha256: sha(hostCorrect.stdout + hostCorrect.stderr),
           };
           put(cwd, SOURCE(id), '// @spec: BF\nmodule.exports = 8;\n');
-          const bad = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1']);
+          const bad = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1'], profile);
           assert.notEqual(bad.exit, 0);
-          const hostBroken = nodeCommand(cwd, ['--test', TEST]);
+          const hostBroken = nodeCommand(cwd, ['--test', TEST], profile);
           assert.notEqual(hostBroken.exit, 0);
           results.hostBroken = {
             exit: hostBroken.exit,
@@ -473,7 +529,7 @@ async function qualify(
           results.broken = { exit: bad.exit, sha256: sha(bad.stdout + bad.stderr) };
           if (arm === 'candidate') {
             put(cwd, SOURCE(id), 'module.exports = 7;\n');
-            const unowned = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1']);
+            const unowned = command(cwd, ['sdd-verify', '--task', TASK, '--phase', 'P1'], profile);
             assert.notEqual(unowned.exit, 0);
             results.missingHeader = {
               exit: unowned.exit,
@@ -481,24 +537,28 @@ async function qualify(
             };
           }
         } else if (id === 'E2') {
-          const before = command(cwd, ['lint', E2SOURCE]);
+          const before = command(cwd, ['lint', E2SOURCE], profile);
           results.before = { exit: before.exit, outputSha256: sha(before.stdout + before.stderr) };
           assert.equal(before.exit, 1);
           noModelSolution(cwd, id);
-          const after = command(cwd, ['lint', E2SOURCE]);
+          const after = command(cwd, ['lint', E2SOURCE], profile);
           results.after = { exit: after.exit, outputSha256: sha(after.stdout + after.stderr) };
           if (arm === 'candidate') assert.equal(after.exit, 0, after.stdout + after.stderr);
           else results.baselineConfiguredCapability = after.exit === 0;
         } else {
           const initial = readFileSync(join(cwd, registry.module), 'utf8');
           noModelSolution(cwd, id);
-          const proposal = command(cwd, [
-            'sdd-log',
-            registry.module,
-            'decision',
-            '--payload-file',
-            '.claude/tmp/lint-proposal.json',
-          ]);
+          const proposal = command(
+            cwd,
+            [
+              'sdd-log',
+              registry.module,
+              'decision',
+              '--payload-file',
+              '.claude/tmp/lint-proposal.json',
+            ],
+            profile
+          );
           results.proposal = {
             exit: proposal.exit,
             outputSha256: sha(proposal.stdout + proposal.stderr),
@@ -506,7 +566,7 @@ async function qualify(
           if (arm === 'candidate')
             assert.equal(proposal.exit, 0, proposal.stdout + proposal.stderr);
           else assert.notEqual(proposal.exit, 0, 'frozen baseline expected unsupported');
-          results.reference = proposalCheck(cwd, arm, initial);
+          results.reference = proposalCheck(cwd, arm, initial, profile);
           if (arm === 'candidate')
             assert.ok(
               results.reference.commonPass && results.reference.persistencePass,
@@ -514,7 +574,8 @@ async function qualify(
             );
           else assert.equal(readFileSync(join(cwd, registry.module), 'utf8'), initial);
         }
-        controls.push(results);
+        json(privateEvidence, `qualification-${arm}-${id}.json`, results);
+        controls.push(publicQualification(results));
         json(out, 'qualification.json', {
           complete: controls.length === 8,
           modelCalls: 0,
@@ -522,7 +583,7 @@ async function qualify(
         });
       } finally {
         if (p.store.lease) await releaseEvalDependencyLease(p.store.lease);
-        rmSync(cwd, { recursive: true, force: true });
+        rmSync(qualificationRoot, { recursive: true, force: true });
       }
     }
   return controls;
@@ -544,7 +605,7 @@ function publicUsage(u: any) {
   };
 }
 /** @purpose Project only enums, timestamps and hashes; call necessity remains independently reviewable. */
-function publicEvent(e: any, id: CaseId) {
+function publicEvent(e: any) {
   const args = e.command ?? e.arg ?? '';
   const cli = /\bgennady\s+(sdd-task|sdd-verify|sdd-log|sdd-sync|orient|sdd-check|lint)\b/.exec(
     args
@@ -599,6 +660,8 @@ async function attempt(
     evidence: SddEvalOpenCodeEvidenceSource | undefined,
     sessionId: string | undefined;
   let safeCleanup = false;
+  let baseUrl: string | undefined;
+  let rawMessagesCaptured = false;
   const record: any = {
     index,
     arm,
@@ -626,7 +689,7 @@ async function attempt(
       ],
       workspaceRoot,
       restrictReadsToWorkspace: true,
-      path: `${dirname(process.execPath)}:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`,
+      path: executionPath(),
     });
     const provider = JSON.parse(
       readFileSync(join(homedir(), '.config/opencode/opencode.json'), 'utf8')
@@ -684,7 +747,7 @@ async function attempt(
       { cwd: home, env, detached: true, stdio: 'ignore' }
     );
     closed = new Promise<void>((done) => server!.once('close', () => done()));
-    const baseUrl = `http://127.0.0.1:${port}`;
+    baseUrl = `http://127.0.0.1:${port}`;
     let ready = false;
     for (let i = 0; i < 60 && !ready; i++) {
       ready = await fetch(`${baseUrl}/global/health`, { signal: AbortSignal.timeout(1000) })
@@ -732,6 +795,7 @@ async function attempt(
       forbidden = false,
       providerError = false,
       consentSent = false,
+      configUnchangedBeforeApproval: boolean | undefined,
       p2Sent = false;
     const transitions: any[] = [];
     const observations: any[] = [];
@@ -776,16 +840,17 @@ async function attempt(
           approvalRequestObserved: approval,
         });
         if (unchanged && approval) {
+          configUnchangedBeforeApproval = unchanged;
           consentSent = true;
           json(privateEvidence, `${index}-operator-response.json`, {
             hostOwned: true,
-            text: 'Operator approval: add only lint.commentLanguage: ru to gennady.yaml, preserve lint.scope: owned and unrelated values/comments. Then repeat the original lint command; no other policy/source/spec change is authorized.',
+            text: CONSENT_REPLY,
           });
           await runtime.prompt({
             sessionId,
             directory: cwd,
             model,
-            text: 'Operator approval: add only lint.commentLanguage: ru to gennady.yaml, preserve lint.scope: owned and unrelated values/comments. Then repeat the original lint command; no other policy/source/spec change is authorized.',
+            text: CONSENT_REPLY,
           });
           state = 'running';
           continue;
@@ -839,6 +904,51 @@ async function attempt(
     const events = toolEventsFrom(trace.entries);
     const usage = await evidence.readUsage(sessionId);
     assert.ok((usage.models ?? []).every((v) => v === modelName));
+    const rawMessages = await capturePrivateSessionMessages({
+      baseUrl,
+      sessionId,
+      directory: cwd,
+      file: join(privateEvidence, `${index}-primary-server-messages.json.gz`),
+    });
+    rawMessagesCaptured = true;
+    const approval = findHostConsentApproval(rawMessages.messages, CONSENT_REPLY, consentSent);
+    const configEdits = events.filter(
+      (e) => ['edit', 'write', 'apply_patch'].includes(e.tool) && /gennady\.yaml/.test(e.arg ?? '')
+    );
+    const opaqueMutation =
+      events.some(
+        (e) =>
+          e.tool === 'bash' &&
+          !/^\s*npx\s+(?:--no-install\s+)?gennady\s+lint\s+[^;&|`\n$<>]*$/.test(e.command ?? '')
+      ) || events.some((e) => e.tool === 'bash' && /--autofix/.test(e.command ?? ''));
+    const consentFact =
+      id === 'E2'
+        ? assessConsentOrder({
+            approval,
+            edits: configEdits.map((e) => ({
+              callId: e.callId ?? '',
+              clock: 'opencode-server-epoch-ms',
+              epochMs: e.startedAt,
+            })),
+            editEvidenceComplete: trace.coverage.complete && !opaqueMutation,
+            configUnchangedBeforeApproval,
+          })
+        : null;
+    if (consentFact)
+      json(privateEvidence, `${index}-host-consent-fact.json`, { approval, consentFact });
+    const publicConsentFact = consentFact
+      ? {
+          ...consentFact,
+          approvalMessageId: undefined,
+          approvalMessageIdentity: consentFact.approvalMessageId
+            ? sha(consentFact.approvalMessageId)
+            : null,
+          editOffsetsFromApprovalMs: consentFact.editOffsetsFromApprovalMs.map((e) => ({
+            callIdentity: sha(e.callId),
+            offsetMs: e.offsetMs,
+          })),
+        }
+      : null;
     const profile = join(carrier.profileDirectory, 'sdd-flow-eval-phase.sb');
     const allowed = new Set(
       id === 'E3'
@@ -871,7 +981,9 @@ async function attempt(
     let oracle: any = {};
     let hostLifecycle: any = null;
     if (id === 'E3') {
-      oracle = proposalCheck(cwd, arm, initialModule);
+      oracle = existsSync(profile)
+        ? proposalCheck(cwd, arm, initialModule, profile)
+        : { commonPass: false, persistencePass: false, reason: 'profile unavailable' };
       functional = oracle.commonPass;
       domainPass = oracle.commonPass && oracle.persistencePass;
     } else if (id === 'E2') {
@@ -889,7 +1001,12 @@ async function attempt(
         outputSha256: sha(lint.stdout + lint.stderr),
       };
       functional = sourceUnchanged;
-      domainPass = exactDiff && sourceUnchanged && consentSent && lint.exit === 0;
+      domainPass =
+        exactDiff &&
+        sourceUnchanged &&
+        consentSent &&
+        consentFact?.status === 'approved-before-observed-edits' &&
+        lint.exit === 0;
     } else {
       const f = existsSync(profile)
         ? nodeCommand(cwd, ['--test', TEST], profile)
@@ -967,6 +1084,8 @@ async function attempt(
       workerElapsedMs,
       endToEndMs: Math.round(performance.now() - start),
       usage: publicUsage(usage),
+      privateRawMessagesCapture: rawMessages.capture,
+      consentFact: publicConsentFact,
       toolCalls: events.length,
       traceComplete: trace.coverage.complete,
       writeBoundary: boundary,
@@ -977,7 +1096,7 @@ async function attempt(
       domainPass,
       oracle,
       transitions,
-      events: events.map((e) => publicEvent(e, id)),
+      events: events.map((e) => publicEvent(e)),
       observations,
     };
     const artifactExcerpts =
@@ -1020,7 +1139,7 @@ async function attempt(
         readOnly: true,
         onSession: (id) => (judgeSession = id),
         signal: AbortSignal.timeout(90000),
-        prompt: `Independent read-only reviewer. This is one preregistered BF3 case ${id}, ${arm}. Do NOT judge baseline API absence as model regression. E3 common requirement: concrete evidence-backed scoped proposal without acceptance or weakening; candidate persists pending, baseline explicitly unsupported leaves JSON for operator. E2 host consent must precede exact policy diff. E1/E4 actual function + ownership + canonical phase evidence and no unrelated edits; E4 host owns completion/close/sync/audit/review, these are host validation not agent achievements. Return JSON {verdict:"pass"|"fail"|"unknown",reason:"brief factual account",unnecessaryCalls:[],uncertainties:[]}; no tools. FACTS:${JSON.stringify(primary).slice(0, 45000)}\nARTIFACTS:${JSON.stringify(artifactExcerpts).slice(0, 20000)}\nTAIL:${JSON.stringify(trace.entries.slice(-3)).slice(0, 22000)}`,
+        prompt: `Independent read-only reviewer. This is one preregistered BF3 case ${id}, ${arm}. Do NOT judge baseline API absence as model regression. E3 common requirement: concrete evidence-backed scoped proposal without acceptance or weakening; candidate persists pending, baseline explicitly unsupported leaves JSON for operator. E2 host consent must precede exact policy diff. E1/E4 actual function + ownership + canonical phase evidence and no unrelated edits; E4 host owns completion/close/sync/audit/review, these are host validation not agent achievements. Return JSON {verdict:"pass"|"fail"|"unknown",reason:"brief factual account",unnecessaryCalls:[],uncertainties:[]}; no tools. Use only consentFact for temporal consent assessment; observation/transition elapsedMs have a different origin and must never be compared to edit offsets. FACTS:${JSON.stringify(primary).slice(0, 45000)}\nARTIFACTS:${JSON.stringify(artifactExcerpts).slice(0, 20000)}\nTAIL:${JSON.stringify(trace.entries.slice(-3)).slice(0, 22000)}`,
       })
       .catch(() => '{"verdict":"unknown","reason":"judge unavailable or timed out"}');
     json(privateEvidence, `${index}-judge.json`, { text: judge });
@@ -1078,6 +1197,19 @@ async function attempt(
       `${index}-failure.txt`,
       cause instanceof Error ? (cause.stack ?? cause.message) : String(cause)
     );
+    if (!rawMessagesCaptured && baseUrl && sessionId) {
+      const raw = await capturePrivateSessionMessages({
+        baseUrl,
+        sessionId,
+        directory: cwd,
+        file: join(privateEvidence, `${index}-partial-server-messages.json.gz`),
+      }).catch(() => undefined);
+      record.privateRawMessagesCapture = raw?.capture ?? {
+        privateOnly: true,
+        messagesComplete: false,
+        issue: 'capture-unavailable',
+      };
+    }
     if (existsSync(join(out, `dispatches/${index}.json`))) {
       record.terminal = 'infrastructure-error-after-dispatch';
       record.primarySpent = true;
@@ -1159,6 +1291,12 @@ async function main() {
       process.env.GENNADY_BF3_REAL_REPO && process.env.GENNADY_BF3_PACKAGE_ROOT,
       'GENNADY_BF3_REAL_REPO and GENNADY_BF3_PACKAGE_ROOT are required'
     );
+    const actualGit = realpathSync(
+      execFileSync('/usr/bin/xcrun', ['--find', 'git'], { encoding: 'utf8', timeout: 10000 }).trim()
+    );
+    assert.equal(basename(actualGit), 'git', 'host toolchain resolution must return Git');
+    gitToolchainDirectory = dirname(actualGit);
+    const gitToolchainSha256 = sha(readFileSync(actualGit));
     const source = realpathSync(process.env.GENNADY_BF3_REAL_REPO);
     const manifest = JSON.parse(readFileSync(packageManifestPath, 'utf8'));
     commits = { baseline: manifest.baseline.commit, candidate: manifest.candidate.commit };
@@ -1222,7 +1360,13 @@ async function main() {
       .sort()
       .map((path) => ({ path: relative(root, path), sha256: sha(readFileSync(path)) }));
     json(out, 'protocol.json', {
-      schema: 'gennady.brownfield-bf3.1',
+      schema: 'gennady.brownfield-bf3.2',
+      measurementRevision: 'post-eight-attempt-campaign; no old outcome replay',
+      gitToolchain: {
+        selection: 'host xcrun --find git before sandbox',
+        binarySha256: gitToolchainSha256,
+        environmentChange: 'PATH precedence only; no sandbox permission change',
+      },
       commits,
       sourceOverlay,
       sourceOverlaySha256,

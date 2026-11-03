@@ -390,7 +390,12 @@ function safeEntry(root: string, relative: string): fs.Stats | null {
   return null;
 }
 
-function captureCheckpoint(root: string, directory: string, id: string): Checkpoint {
+function captureCheckpoint(
+  root: string,
+  directory: string,
+  id: string,
+  previous?: Checkpoint
+): Checkpoint {
   fs.mkdirSync(path.join(directory, 'blobs'), { recursive: true });
   const entries: Record<string, SnapshotEntry> = {};
   for (const relative of listedWorkspacePaths(root)) {
@@ -409,7 +414,29 @@ function captureCheckpoint(root: string, directory: string, id: string): Checkpo
     const contents = fs.readFileSync(absolute);
     const hash = sha256(contents);
     const blob = path.join('blobs', sha256(relative));
-    fs.writeFileSync(path.join(directory, blob), contents, { flag: 'wx', mode });
+    const destination = path.join(directory, blob);
+    const prior = previous?.manifest.entries[relative];
+    if (previous && prior?.kind === 'file' && prior.hash === hash) {
+      // Source bytes are always read and hashed above. Reuse only their identical immutable
+      // checkpoint payload, with a copy-on-write request and an independent destination inode.
+      const priorBlob = path.join(previous.directory, blob);
+      const priorStat = fs.lstatSync(priorBlob);
+      if (!priorStat.isFile() || priorStat.isSymbolicLink()) {
+        throw new Error(`checkpoint blob is not a regular file: ${relative}`);
+      }
+      fs.copyFileSync(
+        priorBlob,
+        destination,
+        fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE
+      );
+      // COPYFILE_FICLONE has a normal-copy fallback on filesystems without reflinks. Validate
+      // the materialized bytes before publishing the checkpoint; never trust mtime or size.
+      if (sha256(fs.readFileSync(destination)) !== hash) {
+        throw new Error(`checkpoint blob hash mismatch: ${relative}`);
+      }
+    } else {
+      fs.writeFileSync(destination, contents, { flag: 'wx', mode });
+    }
     entries[relative] = { kind: 'file', mode, hash, blob };
   }
 
@@ -1049,7 +1076,7 @@ export function acquireWorkspaceGuard(
       temporaryCheckpointDirectories.add(candidateDirectory);
       let candidate: Checkpoint;
       try {
-        candidate = captureCheckpoint(root, candidateDirectory, candidateId);
+        candidate = captureCheckpoint(root, candidateDirectory, candidateId, checkpoint);
       } catch (error) {
         const restoreError = restore();
         if (restoreError !== null) {

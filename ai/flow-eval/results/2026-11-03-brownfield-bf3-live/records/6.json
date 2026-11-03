@@ -1,0 +1,877 @@
+{
+  "index": 6,
+  "arm": "candidate",
+  "caseId": "E4",
+  "inputSha256": "400e99af2b27ee23f21692b70df4d0e752fb6f0774b204c439656f304786cda5",
+  "primaryBudgetMs": 540000,
+  "sourceCommit": "e24ce33eeada13b666df116a903c15568af504cc",
+  "terminal": "budget-exhausted",
+  "elapsedMs": 546417,
+  "workerElapsedMs": 544760,
+  "endToEndMs": 546417,
+  "usage": {
+    "messages": 13,
+    "input": 40999,
+    "output": 2231,
+    "reasoning": 1749,
+    "cacheRead": 343680,
+    "cacheWrite": 0,
+    "total": 44979,
+    "providerReportedCost": 0,
+    "complete": true,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "costZeroIsNotFree": true
+  },
+  "toolCalls": 25,
+  "traceComplete": true,
+  "writeBoundary": true,
+  "runtimeIntact": true,
+  "providerError": false,
+  "trajectoryStatus": "not-proven",
+  "functional": true,
+  "domainPass": false,
+  "oracle": {
+    "functionalExit": 0,
+    "ownerCorrect": true,
+    "canonicalPassJournal": false,
+    "phase2Dispatched": true,
+    "outputSha256": "856ca8b119345fff67a938c3fcdf60a7cdbea1423da9ea6d7a4f0ae373a92d11"
+  },
+  "transitions": [
+    {
+      "type": "host-P1-complete",
+      "exit": 0,
+      "outputSha256": "7e9cbb21b7d5e324fff7f2f93122523b93f5ed3291dae7f11cd01b3e6602aadc",
+      "elapsedMs": 139455
+    }
+  ],
+  "events": [
+    {
+      "i": 0,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "191a7ed09096c1cc0b64010924052c137e6d5824a63b4203449b6f91f4f3893f",
+      "argumentSha256": "aab5165d397df6d29acb50c65ac3b1443d027e1b2a1caff1d7380319a2737e0f",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682222442,
+      "finishedAt": 1793682222455,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 1,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "9a3d2bb0b1856840922cb13f26b5947c0679b12a923a0c8892778f32cc011064",
+      "argumentSha256": "4257aacf73329ea8a72e4d77a3ad0da8e65160346ca877233630dfccb5ac23dc",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682227894,
+      "finishedAt": 1793682227900,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 2,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "393beb525e01c1b58077c3471bebad7b5df10d42254ed6f1651716854fe5e861",
+      "argumentSha256": "99a118cc96ad5647d38612242c0fb186a2c9dc99ed2e547f34d18dbc2fe99f66",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682224629,
+      "finishedAt": 1793682224633,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 3,
+      "tool": "bash",
+      "category": "sdd-task",
+      "callIdentity": "313c1058036b8b149b006628fddb9d3c09c860aaf984040d8b8553caf204cc63",
+      "argumentSha256": "b63dfa02bea014324b349e771fca5029b4edf6cf9baa44c09000fb04eae00726",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682231767,
+      "finishedAt": 1793682231864,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 4,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "a6580f07cfa0f0fe3836d4d8ccb5310d13995c56e1581b8125486f4c95a59770",
+      "argumentSha256": "5be2ae9798ade96986a66ea6193a474bdc800f00a1b6ffdf7db385a4768bfafc",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682229987,
+      "finishedAt": 1793682229990,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 5,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "f29a61287c3c7a63006238039de2b4b735b690b1c9bd4afb6605424dd3c85458",
+      "argumentSha256": "9cf3c90d30b3fb4faca4679d89e9295aaa67ceaab609f9255246f76a5216c02a",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682230254,
+      "finishedAt": 1793682230258,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 6,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "3e7bd289f5a82171d11568a22b1addc30addf58609c53ade299ec32f4ca3c41b",
+      "argumentSha256": "9b9b8bd2f5cd63d17e70d2efcd957bae9fceb9bde520a6dba032096d06422047",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682230540,
+      "finishedAt": 1793682230551,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 7,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "4915e9235ed1ad977ab318f6d79214a5b7964ccc2c368973a6e7be20ba23a6e7",
+      "argumentSha256": "49015129e0ee4ebf9835f72cdf42d1b7b4af82b7210d2ee25888503f4f1108fa",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682230824,
+      "finishedAt": 1793682230866,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 8,
+      "tool": "bash",
+      "category": "orient",
+      "callIdentity": "e545e6705699eac42138fb3f30d95ecb4e964281ca0146bfa131f99a3f30ecf9",
+      "argumentSha256": "9cfe9aaaf63e0498fcc40f11fd8d95947dc1636a6d6dcbdf120e1b7d96d08729",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682235494,
+      "finishedAt": 1793682235503,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 9,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "1851f564c4204e2bdf4cdc66c0b78a1079cdeecfd9b829dfbbf5f4ca60f56b88",
+      "argumentSha256": "63d20d99c771eb343c2d8e6c3c8ba71f19c31d6264a498a219d9b8f6056471fa",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682234250,
+      "finishedAt": 1793682234254,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 10,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "3df0fe00c4088dd72baafb23d6b5639e24ae8aab9bd00ed3aecd73ef23c1ffef",
+      "argumentSha256": "216b28984c3bcba25dd8617369ff149c1d79270680db1e03db7ea28ff0bbb95b",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682234485,
+      "finishedAt": 1793682234488,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 11,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "1dbb750644036749c2b724c73d401cc86dffe18af1cfe99d4ceea61735e563d0",
+      "argumentSha256": "109af3563ae1a5cac5c869755bb1d2b86e8ba66e4fe04ec1ac1b0d03a531afbf",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682234746,
+      "finishedAt": 1793682234749,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 12,
+      "tool": "read",
+      "category": "directive-read",
+      "callIdentity": "591f45fb834c3b66ab981bbfd2abf1f05022fc91ea4256796c447a4a3195e537",
+      "argumentSha256": "1abed793c98d82e0b9b9d789ff780abc39ae927da778a3d2abd883d20b946215",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682234998,
+      "finishedAt": 1793682235002,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 13,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "9acf7991112b3fed61da2727cb54cb75a244dc2fce75d602843408186b00c911",
+      "argumentSha256": "caeee88f672f646b37e45d86664dae83f845e68453dd271381f97362a2da5950",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682239869,
+      "finishedAt": 1793682239875,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 14,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "446fb85fc6e5a3a5cb4b9d329220722c229dadcc79a3c10f4a36182677de6bf6",
+      "argumentSha256": "3d090e693a5c9991a30159abfff9ac679252362cda1ede6c5062ba043ecd980d",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682239628,
+      "finishedAt": 1793682239631,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 15,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "3c530da0777b3d0a31fd563e9505a5a5ff9ee956ca3790c441da32aa4fb43719",
+      "argumentSha256": "8309cb58e0fdb0da568abe9c68980d2ca5701b0dc46ad203bac53d2fa4f566a2",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682239757,
+      "finishedAt": 1793682239759,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 16,
+      "tool": "read",
+      "category": "project-read",
+      "callIdentity": "8abfc9f31e5bff3e09b70821c72d21c77dcd1cd94c9e2509d8cfdb0ed80fe921",
+      "argumentSha256": "22d79449ab3150418b33be0b515289252b67b8a787cacc2937205fb45f36a914",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682240057,
+      "finishedAt": 1793682240060,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 17,
+      "tool": "edit",
+      "category": "write",
+      "callIdentity": "eff361def32856f6f8f3c5955b4d0f996b7ea9b364d4f85b815f2ba67ed0b782",
+      "argumentSha256": "216b28984c3bcba25dd8617369ff149c1d79270680db1e03db7ea28ff0bbb95b",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682246365,
+      "finishedAt": 1793682246368,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 18,
+      "tool": "bash",
+      "category": "sdd-verify",
+      "callIdentity": "7ac49a35ce988f7a70c0cd7b819c1b372f612923715bf50c05a06c2e77e5c5cf",
+      "argumentSha256": "b332a3fe52b77c7e45340712b23146c7a22d6898cdd92e1bff1e70ae76b11016",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682299027,
+      "finishedAt": 1793682299045,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 19,
+      "tool": "bash",
+      "category": "sdd-task",
+      "callIdentity": "a54c2168b1b0637f306ad43204caad4011574dc4d3626b05f76a5b2cb227725a",
+      "argumentSha256": "407ed22d403988bca7035750f4ba90d44fdf99141ab79e9179f45bd955487cc5",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682568347,
+      "finishedAt": 1793682568371,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 20,
+      "tool": "bash",
+      "category": "orient",
+      "callIdentity": "bfa591ec441a3bf562803928d6cb9c32a0b066a4138ef983c385817ccc7bcb09",
+      "argumentSha256": "64e37f94b0edbd07db27b12a7086587aba2a88ae4121acabcaa23f3fabfdfaf1",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682559069,
+      "finishedAt": 1793682559130,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 21,
+      "tool": "write",
+      "category": "write",
+      "callIdentity": "6b2199351f4e058d518124318af0dada894be2f737523ceff52b2217581f92fc",
+      "argumentSha256": "9bf82fd015cae8aac2b2ac78a24ca0fda2b9ce945ca3fad3b58203f10388b4fa",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682572404,
+      "finishedAt": 1793682572418,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 22,
+      "tool": "bash",
+      "category": "sdd-verify",
+      "callIdentity": "64d514db2a92af011b9604417b51872a15c7b596371e7c9c65392d102a3f603c",
+      "argumentSha256": "1ad72b8afc939328470d6da421ce217a972b841c8455236df57937cc447f62d6",
+      "status": "completed",
+      "exitCode": null,
+      "startedAt": 1793682651657,
+      "finishedAt": 1793682698760,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 23,
+      "tool": "bash",
+      "category": "other",
+      "callIdentity": "dc30acb59a71aefbd4465eda24adacc443db3236b021869c4dd5ac77a8cb460f",
+      "argumentSha256": "d16ff00f6890da891507d649ea7ab3af70becc3468e6409d01f54faf715e5bd2",
+      "status": "completed",
+      "exitCode": 0,
+      "startedAt": 1793682715595,
+      "finishedAt": 1793682715609,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    },
+    {
+      "i": 24,
+      "tool": "bash",
+      "category": "sdd-verify",
+      "callIdentity": "f376ba609480725893b4fbda0c40d837172b92ba0eb199fd28f9cd8aba73c054",
+      "argumentSha256": "1ad72b8afc939328470d6da421ce217a972b841c8455236df57937cc447f62d6",
+      "status": "error",
+      "exitCode": null,
+      "startedAt": 1793682756005,
+      "finishedAt": 1793682764352,
+      "necessity": "unknown",
+      "necessityBasis": "Independent post-run review required; tool count alone does not prove necessity."
+    }
+  ],
+  "observations": [
+    {
+      "elapsedMs": 5043,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 10061,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 15085,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 20116,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 25139,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 30169,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 35215,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 40274,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 45314,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 50347,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 55371,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 60470,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 65545,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 70633,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 75711,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 80781,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 85850,
+      "state": "completed",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 144828,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 150159,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 155459,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 160825,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 166078,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 171445,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 176939,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 182223,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 187473,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 192848,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 198092,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 203821,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 209462,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 214730,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 219921,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 225149,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 230415,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 235927,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 241385,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 246768,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 252086,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 257419,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 262772,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 267946,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 273104,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 278572,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 284058,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 289377,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 294481,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 299679,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 304917,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 310064,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 315284,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 320565,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 325675,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 330869,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 336401,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 341528,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 346650,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 351844,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 356958,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 362087,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 367195,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 372327,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 377455,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 382590,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 387753,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 392843,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 397971,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 403101,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 408288,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 413449,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 418652,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 423809,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 428928,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 434038,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 439173,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 444319,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 449467,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 454615,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 459983,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 465411,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 470725,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 476293,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 481767,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 490734,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 495950,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 501317,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 506454,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 511566,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 516736,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 521827,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 527027,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 532179,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 537296,
+      "state": "running",
+      "forbidden": false
+    },
+    {
+      "elapsedMs": 542490,
+      "state": "running",
+      "forbidden": false
+    }
+  ],
+  "privateEvidenceSha256": "73ef6827ac204f2d731fa67e918b161fa55a218264b52e9f8a0a863ab029797e",
+  "judgeVerdict": "fail",
+  "judgeSha256": "1fb41237503ab64f32b3223b9de848f4d3a57a02d24186b4b48ff344cf193148",
+  "judgeUsage": {
+    "messages": 1,
+    "input": 6728,
+    "output": 243,
+    "reasoning": 1491,
+    "cacheRead": 2048,
+    "cacheWrite": 0,
+    "total": 8462,
+    "providerReportedCost": 0,
+    "complete": true,
+    "models": [
+      "llm-proxy/deepseek-v4-flash"
+    ],
+    "costZeroIsNotFree": true
+  },
+  "hostReviewReceipt": {
+    "exit": null,
+    "source": "not-issued-without-qualified-independent-review"
+  },
+  "reflection": {
+    "sha256": "6f53679d78a66866b7ab36cd7308803c56b396547e160db0626c30bd044f6340",
+    "tokens": 37822,
+    "messages": 1
+  },
+  "cleanup": {
+    "safeCleanup": true,
+    "rootRemoved": true,
+    "logicalBytesRemoved": 101521825,
+    "sharedDependenciesPreserved": true
+  }
+}

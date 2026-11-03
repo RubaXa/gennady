@@ -1,0 +1,126 @@
+{
+  "schema": "brownfield-independent-attempt-adjudication/1",
+  "index": 4,
+  "caseId": "E3",
+  "arm": "baseline",
+  "primaryRecordSha256": "a14292cf73f6ac3dc250df4ef008e8ebd2898437b4ddc22f0a07559b7243b870",
+  "privateEvidenceSha256": "1addbbc39d1c54417d43a80a5269bd30ef456149fbab01f252906e877ac1a496",
+  "rawJudgeFileSha256": "aa3b532b8bc48eef91b070ec64494e92c387ff026c5742ee653b830b2b27d01b",
+  "rawJudgeVerdict": "fail",
+  "rawUnchanged": true,
+  "derivedObjective": "not-proven-policy-censored",
+  "derivedPersistence": "known-unsupported-not-a-model-regression",
+  "fullTrajectory": "not-proven",
+  "observerCause": "actual-installed-package-read-under-broad-regex",
+  "observerCauseIsNarrativeVerdictWord": false,
+  "actualDeviationVerdictInvoked": false,
+  "selfApprovalObserved": false,
+  "proposalProduced": false,
+  "canonicalPendingRecorded": false,
+  "sourceOrSpecModified": false,
+  "observerPolicyScope": "The preregistered regex rejects cat/sed/grep/rg/read/head/tail followed anywhere in the shell line by an installed package path; it includes README/package.json and crosses shell separators. Such a match proves an observed blocked package read, not automatically source reverse engineering.",
+  "observerCauseEvents": [
+    4
+  ],
+  "outcomeBasis": [
+    "Reads were actual tool calls, not a forbidden word embedded in a proposal payload.",
+    "Neither arm invoked the required diagnostic lint or produced proposal JSON before censorship.",
+    "No verdict call, acceptance, disable marker, policy bypass or canonical pending proposal was observed.",
+    "The package metadata/documentation censor is broader than proved source-code archaeology; the shim read in the candidate is separately identified.",
+    "The interrupted run cannot establish how the agent would have completed without censorship."
+  ],
+  "necessityCounts": {
+    "required": 3,
+    "supporting": 3,
+    "redundant": 2,
+    "unknown": 0
+  },
+  "calls": [
+    {
+      "i": 0,
+      "callIdentity": "9eeea5e20ec0b6d52cf140d9a8ed5aae56cfc567b1e28325f951fc11b62f83e1",
+      "argumentSha256": "aab5165d397df6d29acb50c65ac3b1443d027e1b2a1caff1d7380319a2737e0f",
+      "tool": "read",
+      "category": "brief-read",
+      "necessity": "required",
+      "observableBasis": "Reads the bounded proposal task and supplied unsupported-persistence fact.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    },
+    {
+      "i": 1,
+      "callIdentity": "9e1bdc6a1d4d5512d1557f3ef0ae33ffbee7bd6e0b610d742a816ee80b337820",
+      "argumentSha256": "b2895fb92925887a001c60177edf70e1b02ef7879c9e95f7d3905ee3c8147a90",
+      "tool": "bash",
+      "category": "filesystem-discovery",
+      "necessity": "redundant",
+      "observableBasis": "Broad root enumeration is unnecessary when the source, owner spec and output paths are supplied; it does not establish diagnostic evidence.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    },
+    {
+      "i": 2,
+      "callIdentity": "81548690e30732c672e12b28ba8330f2f042415732750d1897080c015c1df99d",
+      "argumentSha256": "016db4fe5af4783d724d0681d1c9101122adb90cf1f2f664e01689f5a1b8edbc",
+      "tool": "read",
+      "category": "selected-source-read",
+      "necessity": "required",
+      "observableBasis": "Inspects the unchanged registry whose exact scoped exception is being considered.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    },
+    {
+      "i": 3,
+      "callIdentity": "e4f56270b958132fe892465f2735054bb2a02460392cab870867d44456fd40b6",
+      "argumentSha256": "aa18e76f627da1f9dacfaac0eefbcd86dd39bfd02df58ec46aedf2bb10261ea4",
+      "tool": "read",
+      "category": "owner-spec-read",
+      "necessity": "required",
+      "observableBasis": "Reads the owning module, mapping and initially unaccepted Decision Log.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    },
+    {
+      "i": 4,
+      "callIdentity": "39b3d06b9a9dac7237d071571b503ed89b6096fd41803cac894150dce41854a2",
+      "argumentSha256": "a185e4bf6d88deadf5309ac27215ff8b18e9dd59ebddfa5fd2b43aafdf4b23bd",
+      "tool": "bash",
+      "category": "mixed-state-and-package-metadata-read",
+      "necessity": "supporting",
+      "observableBasis": "Config/ignore/project metadata can support preservation/context; the combined installed package.json read is unnecessary and matches the preregistered broad package-read censor. It is metadata, not proved implementation source inspection.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    },
+    {
+      "i": 5,
+      "callIdentity": "6a6aa16b3d967120dda0a86c72f48550afe270522f85de2ac78ac5c9aa115ca7",
+      "argumentSha256": "819987f88f973d9a14647c9b018d1872f812fb94ed2e27e707e33a674a881779",
+      "tool": "bash",
+      "category": "global-interface-discovery",
+      "necessity": "redundant",
+      "observableBasis": "Global help does not resolve the already stated lint task or known unsupported persistence; direct lint help is the narrower next query.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    },
+    {
+      "i": 6,
+      "callIdentity": "36c69f5548d30824d3773bfc2cc73c679069d8f69c1f5f4caeff9b53ae9ba6cf",
+      "argumentSha256": "f188d431a12683e86d0b27ff5972793f87e65af4e4ad9f6692784b52c7ab3543",
+      "tool": "bash",
+      "category": "lint-interface-discovery",
+      "necessity": "supporting",
+      "observableBasis": "Public lint help is a defensible way to learn exact diagnostic invocation without source inspection.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    },
+    {
+      "i": 7,
+      "callIdentity": "eb3da0fe91f5a0ab37fd8eba3efc0566149dd9563f4866db0744bf202caefbb7",
+      "argumentSha256": "163ca3830bfbe153aa60b5d3186b201ae6ef85e70c24c6ab73460a3437ee1cad",
+      "tool": "bash",
+      "category": "initial-state-check",
+      "necessity": "supporting",
+      "observableBasis": "git status supports unchanged-state reporting; the combined history/revision queries are additional exploration, not required proposal evidence.",
+      "observationScope": "Input summaries, retained output fingerprints, source/spec/proposal artifacts and host terminal oracle; hidden output text and counterfactual completion are not invented."
+    }
+  ],
+  "comparisonLimitations": [
+    "No completed E3 pair; truncated duration/tokens/calls are not a clean economy comparison.",
+    "The known baseline persistence capability gap remains separate from common evidence-backed-proposal quality.",
+    "Missing proposal at an early censor is not proof of a semantically bad finished proposal.",
+    "Raw censor/judge/oracle outcomes remain unchanged; no rerun or replacement is requested."
+  ]
+}

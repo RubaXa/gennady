@@ -12,6 +12,23 @@ import { availableParallelism, tmpdir } from 'node:os';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
 const RUNNER = join(ROOT, 'scripts/test-topology.ts');
+const BUNDLE_ENV = 'GENNADY_TEST_CLI_BUNDLE_MANIFEST';
+const bundleMock = `
+let bundleBuilds = 0;
+mock.module(${JSON.stringify(pathToFileURL(join(ROOT, 'scripts/test-cli-bundle.ts')).href)}, {
+  namedExports: {
+    TEST_CLI_BUNDLE_ENV: ${JSON.stringify(BUNDLE_ENV)},
+    prepareTestCliBundle: (_root, options) => {
+      if (options.env[${JSON.stringify(BUNDLE_ENV)}] !== undefined) throw new Error('ambient bundle authority leaked');
+      bundleBuilds++;
+      return { manifestPath: '__fresh-owned-cli__', sourceDigest: 'proof' };
+    },
+    verifyTestCliBundle: () => {},
+    releaseTestCliBundle: () => {},
+  },
+});
+`;
+
 const TEST_LAYERS = ['unit', 'contract', 'local', 'external', 'experimental'] as const;
 const SDD_COMMAND_NAVIGATION_TEST = 'cli/__tests__/sdd-command-navigation.test.ts';
 const YAGNI_SOURCE_POLICY_TEST = 'shared/common/__tests__/yagni-source-policy.test.ts';
@@ -227,6 +244,7 @@ function probeSpawns(
   const source = `
 import { mock } from 'node:test';
 import { writeFileSync } from 'node:fs';
+${bundleMock}
 const calls = [];
 mock.module('node:child_process', {
   namedExports: {
@@ -240,11 +258,13 @@ mock.module('node:child_process', {
 });
 process.argv = [process.execPath, ${JSON.stringify(RUNNER)}, ${JSON.stringify(mode)}];
 await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?boundary-probe-${mode}`)});
+if (bundleBuilds !== ${mode === 'deterministic' || mode === 'coverage' ? 1 : 0}) throw new Error('fresh build must occur once only for black-box mode');
 process.stdout.write(${JSON.stringify(probeMarker)} + JSON.stringify(calls.map(([, args, options]) => ({ args, env: options.env }))) + '\\n');
 `;
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     SAFE_TEST_SETTING: 'preserved',
+    [BUNDLE_ENV]: 'untrusted-ambient-bundle',
     UNLISTED_PROVIDER_API_KEY: 'secret-dynamic-provider',
     NPM_CONFIG_REGISTRY_AUTHTOKEN: 'secret-npm',
   };
@@ -284,6 +304,7 @@ function probeFailingCommand(
   const source = `
 import { mock } from 'node:test';
 import { writeFileSync } from 'node:fs';
+${bundleMock}
 let call = 0;
 mock.module('node:child_process', {
   namedExports: {
@@ -325,6 +346,19 @@ await import(${JSON.stringify(`${pathToFileURL(RUNNER).href}?failure-proof-${mod
 }
 
 describe('test topology contract', () => {
+  it('only local black-box batches receive a fresh runner-owned CLI; observed/rest/unit keep source', () => {
+    const local = new Set(listedTopology().local);
+    for (const mode of ['unit', 'deterministic', 'coverage', 'experimental'] as const) {
+      for (const { args, env } of probeSpawns(mode)) {
+        const files = args.filter((arg) => /\.test\.(?:ts|mjs)$/.test(arg));
+        const blackBox =
+          (mode === 'deterministic' || mode === 'coverage') &&
+          files.some((file) => local.has(file));
+        assert.equal(env[BUNDLE_ENV], blackBox ? '__fresh-owned-cli__' : undefined, mode);
+      }
+    }
+  });
+
   it('temporary env deadline floor preserves exactly-once, owned budgets, concurrency and child isolation', () => {
     for (const mode of ['deterministic', 'coverage'] as const) {
       const ordinary = probeSpawns(mode);
@@ -938,5 +972,187 @@ process.stdout.write(${JSON.stringify(marker)} + JSON.stringify({ ordinary, owne
     assert.notStrictEqual(result.status, 0);
     assert.match(result.stderr, new RegExp(NETWORK_MARKER));
     assert.doesNotMatch(result.stderr, /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT/);
+  });
+});
+
+describe('fresh black-box CLI provenance', () => {
+  it('issues authority only after one build, verifies all output chunks, and removes only its manifest', async () => {
+    const {
+      prepareTestCliBundle,
+      readTestCliBundleEntry,
+      verifyTestCliBundle,
+      releaseTestCliBundle,
+    } = await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-input-'));
+    let builds = 0;
+    try {
+      mkdirSync(join(root, 'cli'));
+      writeFileSync(join(root, 'cli/gennady.ts'), 'source input');
+      const bundle = prepareTestCliBundle(root, {
+        env: {},
+        build: () => {
+          builds++;
+          mkdirSync(join(root, 'dist'));
+          writeFileSync(join(root, 'dist/gennady.js'), 'entry bytes');
+          writeFileSync(join(root, 'dist/chunk.js'), 'chunk bytes');
+        },
+      });
+      assert.equal(builds, 1);
+      assert.equal(readTestCliBundleEntry(root, {}), undefined, 'standalone remains source');
+      const environment = { [BUNDLE_ENV]: bundle.manifestPath };
+      writeFileSync(join(root, 'dist/chunk.js'), 'changed bytes');
+      assert.throws(() => readTestCliBundleEntry(root, environment), /OUTPUT_DRIFT/);
+      writeFileSync(join(root, 'dist/chunk.js'), 'chunk bytes');
+      assert.equal(readTestCliBundleEntry(root, environment), join(bundle.root, 'dist/gennady.js'));
+      const original = readFileSync(bundle.manifestPath, 'utf8');
+      writeFileSync(
+        bundle.manifestPath,
+        JSON.stringify({ ...JSON.parse(original), nodeAbi: 'foreign' })
+      );
+      assert.throws(() => readTestCliBundleEntry(root, environment), /BUNDLE_INVALID/);
+      writeFileSync(bundle.manifestPath, original);
+      verifyTestCliBundle(bundle);
+      assert.throws(() => releaseTestCliBundle({ ...bundle }), /foreign capability/);
+      releaseTestCliBundle(bundle);
+      assert.ok(readdirSync(join(root, 'dist')).includes('gennady.js'));
+      assert.throws(() => readFileSync(bundle.manifestPath), /ENOENT/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('builds production CLI bytes independently of inherited test NODE_ENV', async () => {
+    const { prepareTestCliBundle, verifyTestCliBundle, releaseTestCliBundle } =
+      await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-production-'));
+    const inherited = { ...process.env, NODE_ENV: 'test' };
+    try {
+      mkdirSync(join(root, 'node_modules/vite/bin'), { recursive: true });
+      writeFileSync(join(root, 'index.ts'), 'production source');
+      writeFileSync(
+        join(root, 'node_modules/vite/bin/vite.js'),
+        [
+          "const fs = require('node:fs');",
+          "fs.mkdirSync('dist', { recursive: true });",
+          "fs.writeFileSync('dist/gennady.js', process.env.NODE_ENV);",
+        ].join('\n')
+      );
+      const testBundle = prepareTestCliBundle(root, { env: inherited });
+      let productionDigest: string;
+      try {
+        assert.equal(readFileSync(join(root, 'dist/gennady.js'), 'utf8'), 'production');
+        assert.equal(inherited.NODE_ENV, 'test', 'the caller/source test environment is unchanged');
+        verifyTestCliBundle(testBundle);
+        productionDigest = testBundle.outputDigest;
+      } finally {
+        releaseTestCliBundle(testBundle);
+      }
+      const normalBundle = prepareTestCliBundle(root, {
+        env: { ...inherited, NODE_ENV: 'production' },
+      });
+      try {
+        assert.equal(
+          normalBundle.outputDigest,
+          productionDigest,
+          'test inheritance cannot alter compiled bytes'
+        );
+        verifyTestCliBundle(normalBundle);
+      } finally {
+        releaseTestCliBundle(normalBundle);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('never accepts stale dist after a failed build or source changes during build', async () => {
+    const { prepareTestCliBundle } = await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-refusal-'));
+    try {
+      mkdirSync(join(root, 'cli'));
+      mkdirSync(join(root, 'dist'));
+      writeFileSync(join(root, 'cli/gennady.ts'), 'before');
+      writeFileSync(join(root, 'dist/gennady.js'), 'stale old output');
+      assert.throws(
+        () =>
+          prepareTestCliBundle(root, {
+            env: {},
+            build: () => {
+              throw new Error('compiler failed');
+            },
+          }),
+        /compiler failed/
+      );
+      assert.throws(
+        () =>
+          prepareTestCliBundle(root, {
+            env: {},
+            build: () => {
+              writeFileSync(join(root, 'cli/gennady.ts'), 'after');
+            },
+          }),
+        /SOURCE_DRIFT/
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('binds root entrypoint bytes during build and across black-box tests', async () => {
+    const { prepareTestCliBundle, verifyTestCliBundle, releaseTestCliBundle } =
+      await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-root-entry-drift-'));
+    try {
+      mkdirSync(join(root, 'dist'));
+      writeFileSync(join(root, 'index.ts'), 'export const value = 1;');
+      writeFileSync(join(root, 'dist/gennady.js'), 'compiled');
+      assert.throws(
+        () =>
+          prepareTestCliBundle(root, {
+            env: {},
+            build: () => {
+              writeFileSync(join(root, 'index.ts'), 'export const value = 2;');
+            },
+          }),
+        /SOURCE_DRIFT/
+      );
+      const bundle = prepareTestCliBundle(root, { env: {}, build: () => {} });
+      try {
+        writeFileSync(join(root, 'index.ts'), 'export const value = 3;');
+        assert.throws(() => verifyTestCliBundle(bundle), /SOURCE_DRIFT/);
+      } finally {
+        releaseTestCliBundle(bundle);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects same-length source edits and changed output after tests, without relying on timestamps', async () => {
+    const { prepareTestCliBundle, verifyTestCliBundle, releaseTestCliBundle } =
+      await import('../../../scripts/test-cli-bundle.ts');
+    const root = mkdtempSync(join(tmpdir(), 'test-cli-build-drift-'));
+    try {
+      mkdirSync(join(root, 'cli'));
+      writeFileSync(join(root, 'cli/gennady.ts'), 'same-length-A');
+      const bundle = prepareTestCliBundle(root, {
+        env: {},
+        build: () => {
+          mkdirSync(join(root, 'dist'));
+          writeFileSync(join(root, 'dist/gennady.js'), 'compiled');
+        },
+      });
+      try {
+        writeFileSync(join(root, 'cli/gennady.ts'), 'same-length-B');
+        assert.throws(() => verifyTestCliBundle(bundle), /SOURCE_DRIFT/);
+        writeFileSync(join(root, 'cli/gennady.ts'), 'same-length-A');
+        writeFileSync(join(root, 'dist/gennady.js'), 'modified');
+        assert.throws(() => verifyTestCliBundle(bundle), /OUTPUT_DRIFT/);
+      } finally {
+        releaseTestCliBundle(bundle);
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
