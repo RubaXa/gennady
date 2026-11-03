@@ -1,6 +1,6 @@
 # SDD V2 в существующем проекте: общий контракт и единая интеграция
 
-Дата: 2026-11-02. Статус: BF1/BF2 выполняются в GitHub-ветке; исходные RED сохранены, новые исправления проходят GREEN-квалификацию. Новая live eval-серия ещё не начата.
+Дата начала: 2026-11-02; обновлено: 2026-11-03. Статус: BF1/BF2 прошли независимое ревью; дополнительные BF-R8–R11 исправлены и квалифицированы. BF3: installed no-model controls8/8, live0/8. Исходные RED сохранены; полный hook текущего stage и восемь живых попыток впереди.
 Владелец продуктового решения — оператор. Это продолжение declared coverage, а не особый
 режим для Octavius и не повтор закрытых authoring/автономных исследований.
 
@@ -158,13 +158,13 @@ override, агент объясняет источник, а не сообщае
 
 ## Пять конечных этапов в одной рабочей ветке
 
-| Этап | Изменение и review point                                              | Критерий завершения                                             | Сейчас                                                                  |
-| ---- | --------------------------------------------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| BF0  | План, exact исходники, карта переносимых изменений                    | один план; ограничения и исходные RED сохранены                 | оператор разрешил выполнение; план опубликован в Draft MR               |
-| BF1  | Контракты/диагностика, синтетические RED, квалификация oracle         | каждый defect причинно воспроизведён; ошибки стенда отделены    | RED сохранён; дополнительные review RED F1–F7 ниже                      |
-| BF2  | Общие исправления и GREEN, переиспользование !13–!20                  | весь deterministic matrix проходит; негативы не ослаблены       | 0ddd3508 прошёл full gate; review-коррекции F1–F7 проходят квалификацию |
-| BF3  | Installed-package lifecycle, большой репозиторий, конечные live evals | воспроизводимые результаты, ясный вердикт, cleanup              | не начат                                                                |
-| BF4  | GitHub фиксация и один итоговый GitLab MR                             | parity ledger, чистый GitLab clone, итоговое независимое review | Draft MR !23 создан; transfer/parity acceptance впереди                 |
+| Этап | Изменение и review point                                              | Критерий завершения                                             | Сейчас                                                                                           |
+| ---- | --------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| BF0  | План, exact исходники, карта переносимых изменений                    | один план; ограничения и исходные RED сохранены                 | оператор разрешил выполнение; план опубликован в Draft MR                                        |
+| BF1  | Контракты/диагностика, синтетические RED, квалификация oracle         | каждый defect причинно воспроизведён; ошибки стенда отделены    | RED сохранён; дополнительные review RED F1–F7 ниже                                               |
+| BF2  | Общие исправления и GREEN, переиспользование !13–!20                  | весь deterministic matrix проходит; негативы не ослаблены       | 8317c168 published; F1–F7 подтверждены независимо; BF-R8–R11 GREEN, ожидается штатный stage hook |
+| BF3  | Installed-package lifecycle, большой репозиторий, конечные live evals | воспроизводимые результаты, ясный вердикт, cleanup              | installed controls8/8; live0/8                                                                   |
+| BF4  | GitHub фиксация и один итоговый GitLab MR                             | parity ledger, чистый GitLab clone, итоговое независимое review | Draft MR !23 создан; transfer/parity acceptance впереди                                          |
 
 Каждый этап фиксируется коммитами с результатом и передаётся на review в том же реквесте.
 Следующий этап начинается после review предыдущего; это не разрешение merge всего MR.
@@ -684,3 +684,79 @@ Regression qualification: topology 24/24; прежние default tests сохр�
 explicit floor, owned budgets, exactly-once, unchanged concurrency, child env isolation и invalid
 values. Type-check выполнен отдельно. Следующий запуск ordinary commit hook получает env=120000;
 PASS объявляется только по его фактическому исходу, без bypass. Старые timeout-записи сохранены.
+
+## BF2 независимое ревью перед BF3 — 3 ноября
+
+Оператор запросил независимую проверку всего PR132 и конечные восемь локальных
+попыток через AI Proxy / deepseek-v4-flash. Два независимых reviewer подтвердили
+F1–F7; focused controls: 43/43, 86/86, topology24/24 и отдельная glob-регрессия.
+Полный unit-счётчик5352 из внешнего ReviewAgent повторно не заявляется: наш
+предыдущий штатный hook записал5347. F2 остаётся обычной моделью ролей, F6 —
+point-in-time доказательством, не аутентификацией и не атомарным sandbox.
+
+Расширенная проверка остальных production changes обнаружила два новых
+подтверждённых blocker до live:
+
+- **BF-R8:** exported object/array destructuring терялся в inventory; реальный CLI
+  давал ложный reverse UNIMPLEMENTED для объявленных exports; отдельный forward unit терял undeclared exports. Первоначальная трактовка clean при inventory-only JS как forward PASS уточнена: эта ветка намеренно не выполняет forward checks.
+- **BF-R9:** JS-family выбирал TSX grammar; TypeScript-аннотация в `.js` проходила
+  реальный lint, хотя Node отвергает её. Scoped DbC exception не должен скрывать syntax.
+
+Исправления и причинные RED/GREEN выполняются до model dispatch.
+Ни одной попытки модели не потрачено:0/8, replacements0. Доступность Flash
+подтверждена `/models` без генерации; секреты не печатались. Baseline и candidate
+собраны на одинаковом exact-lock shared cohort. Локальные npm pack созданы без
+публикации; worker-facing runtime исключает eval answers. Candidate будет
+пересобран после BF-R8/BF-R9; старый tarball не выдаётся за исправленный.
+
+У E3 baseline отсутствует module-proposal API. До dispatch фиксируется общий
+семантический результат (обоснованное pending-предложение без self-approval),
+а способность сохранить canonical module record оценивается отдельно. Baseline
+получает факт отсутствия API и не расходует вызовы на повторное доказательство
+известной несовместимости. Unsupported persistence не является model regression.
+
+### Итог независимого ревью и BF3 pre-dispatch
+
+Дополнительно закрыты **BF-R10** (явно пустая File Mapping теперь INVALID, настоящее
+отсутствие сохраняет предусмотренный fallback) и **BF-R11** (единый Handoff parser
+сохраняет literal brackets; whole-field placeholder не путается с `[...].tsx`).
+R8 RED6fail→23/23; R9 RED5fail→10/10; R10 RED2fail→7/7; R11 RED5fail→149/149.
+Cross-review дополнительных исправлений не нашёл блокеров. Подробные ограничения
+и hash-bound логи — `ai/flow-eval/results/2026-11-03-brownfield-independent-review/review.json`.
+
+Первый canonical installed-package no-model qualification выполнил8 controls
+с cleanup=true: candidate reference проходит все четыре случая, включая настоящий
+двухфазный bracket workflow; broken source и отсутствие owner действительно красные.
+Baseline E2/E3/E4 содержит известные ограничения возможностей. Это не четыре
+полноценных взаимозаменяемых workflow: общее поведение/безопасность и product
+capability измеряются отдельно; неподдержанная операция не называется model regression.
+
+До live фиксируется чистый candidate commit, manifest пакетов и harness hashes.
+Schedule: E1 baseline→candidate; E2 candidate→baseline; E3 baseline→candidate;
+E4 candidate→baseline. Одинаковые arm-бюджеты: E1/E2 360s, E3 240s, E4 540s.
+Judge≤90s и одна reflection≤60s учитываются отдельно, не входят в primary comparison.
+Worker elapsed отделён от host verification end-to-end. Вызовы инструментов не
+выдаются за HTTP requests; неизвестный тариф/транспорт остаётся unknown.
+Порог запаса диска перед каждой позицией3GiB; ошибка cleanup останавливает очередь.
+После восьми позиций новых primary/replacements не создаётся. Старые RED/raw
+и исходы закрытых исследований не перекрашиваются.
+
+Installed performance (precommit overlay):72 CLI-процесса,0modelcalls; first process
+и5warm наarm отдельно. На50k phase-проекция читает1исходник/7776bytes и3metadata,
+median305.9→390.9ms; RSS152.2→142.3MiB. На реальных3007 declarations200.0→164.6ms.
+Есть и ускорения, и замедления; общего speed win не заявляем. Исходный checkout
+неизменён, owned perf-clone удалён; первый sandbox sysctl-denial сохранён как
+0-sample infrastructure failure. Portable script добавлен в scripts; после clean
+commit/final package будет отдельный final measurement, прежний не переписывается.
+
+Independent harness review:Approve, fixture5/5. Восемьprimarypositions безretry;
+rawprivate; hostconsent/lifecycle отдельно от agent achievements; partial/unknown
+trajectory не повышается доPASS. Условия старта — обычный hook, чистый commit,
+пересобранный package manifest(sourceOverlay:false). Следующее действие — именно
+этот gate, затем8live, не новый исследовательский цикл.
+
+Первый stage commit остановлен штатным hook: docs-check нашёл мою неверную
+относительную ссылку на новый review record. Причина — документация, не timeout
+или proxy. Ссылка исправлена на реальный repo-relative путь; focused
+`npm run flow-eval:docs-check` PASS. Исходный failed hook сохранён; попытки
+модели0/8. Следующий hook запускается полностью, без bypass и без ослабления теста.

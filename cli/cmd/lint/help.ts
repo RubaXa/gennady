@@ -80,7 +80,7 @@ export function printHelp(): void {
     '  owned — lint only files with // @spec:, a File Mapping entry or a ticket Target File; others are skipped'
   );
   console.info(
-    '  Scope provenance is printed on each valid run: CLI --scope all > project lint.scope > default all. An explicit all override never proposes narrowing to owned.'
+    '  Explicit project scope, CLI --scope all and owned fallback print scope provenance; implicit default all preserves existing output. Precedence: CLI --scope all > project lint.scope > default all. An explicit all override never proposes narrowing to owned.'
   );
   console.info(
     '  An unknown key or value stops before linting with exit 4 and ERR_CLI_LINT_BAD_CONFIG.'

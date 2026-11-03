@@ -51,6 +51,8 @@ export type CoverageDocument = {
   schema: 'sdd-coverage/1';
   /** @purpose Safe canonical owner paths for selected declaration rows; no extra filesystem reads. */
   specifications: readonly { readonly id: string; readonly path: string }[];
+  /** @purpose Selected metadata that explicitly declares File Mapping, including an empty declaration. */
+  declaredMappings: readonly string[];
   /** @purpose Exact requested query, with spec paths resolved to canonical identities. */
   selection: CoverageSelection;
   /** @purpose Diagnosis of declared coverage, not a census of unclaimed repository code. */
@@ -95,7 +97,8 @@ function headerIds(content: string): string[] {
     .map((block) => block.value.trim());
 }
 
-function mappingLines(content: string): string[] {
+function mappingLines(content: string): { declared: boolean; lines: string[] } {
+  let declared = false;
   let mapping = false;
   const lines: string[] = [];
   const visible = visibleSddMarkdown(
@@ -103,13 +106,14 @@ function mappingLines(content: string): string[] {
   );
   for (const line of visible.split('\n')) {
     if (/^\s*(?:\*\*)?File Mapping:?\s*(?:\*\*)?:?\s*$/i.test(line)) {
+      declared = true;
       mapping = true;
       continue;
     }
     if (/^\s*(?:#{1,6}\s|<\/?(?:details|summary)\b|\*\*[^*]+\*\*)/.test(line)) mapping = false;
     if (mapping && line.trim()) lines.push(line);
   }
-  return lines;
+  return { declared, lines };
 }
 
 type CoverageIssue = (code: string, path: string, detail: string) => void;
@@ -201,6 +205,7 @@ function parseMetadata(
   const issue: CoverageIssue = (code, path, detail) =>
     metadataFindings.push({ code, path, detail });
   const specs: CoverageSpec[] = [];
+  const declaredMappings = new Set<string>();
   const byPath = new Map<string, string>();
   const contents = new Map<string, string>();
   for (const entry of metadata) {
@@ -280,7 +285,9 @@ function parseMetadata(
     if (fileSection === null) issue('INVALID_MAPPING', path, 'Malformed FILE_STRUCTURE');
     else {
       let tableFileColumn: number | null = null;
-      for (const line of mappingLines(content)) {
+      const mapping = mappingLines(content);
+      if (mapping.declared) declaredMappings.add(path);
+      for (const line of mapping.lines) {
         let entry = line;
         if (line.trimStart().startsWith('|')) {
           const parsed = lexMarkdownTableRow(line);
@@ -458,7 +465,14 @@ function parseMetadata(
   for (const finding of metadataFindings)
     if (selection.kind === 'project' || selectedPaths.has(finding.path))
       emit(finding.code, finding.path, finding.detail);
-  return { specs, tasks, byPath };
+  return {
+    specs,
+    tasks,
+    byPath,
+    declaredMappings: [...declaredMappings]
+      .filter((path) => selection.kind === 'project' || selectedPaths.has(path))
+      .sort(),
+  };
 }
 
 /** @purpose Select current task obligations using proved phase dependency order, not ticket history union. */
@@ -719,7 +733,7 @@ export function readSddCoverage(
     return result.content;
   };
   const metadata = readMetadata(root, read, issue, selection);
-  const { specs, tasks, byPath } = parseMetadata(metadata, issue, selection);
+  const { specs, tasks, byPath, declaredMappings } = parseMetadata(metadata, issue, selection);
   const { selected, targets, phaseContexts } = projectTargets(
     root,
     tasks,
@@ -760,6 +774,7 @@ export function readSddCoverage(
     selection: selected,
     coverage,
     reads,
+    declaredMappings,
     specifications: specs
       .filter((spec) => ownerIds.has(spec.id))
       .map(({ id, path }) => ({ id, path })),

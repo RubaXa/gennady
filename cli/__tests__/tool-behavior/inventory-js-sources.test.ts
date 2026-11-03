@@ -95,3 +95,41 @@ it('does not accept a broken or dynamic source merely because another file suppl
     rmSync(fx.root, { recursive: true, force: true });
   }
 });
+
+it('counts destructured JavaScript bindings in reverse inventory and detects a genuinely missing binding', () => {
+  const fx = buildFixture();
+  try {
+    writeFileSync(
+      join(fx.root, 'src/destructured.js'),
+      'export const { a, b: renamed } = { a: 1, b: 2 };\n'
+    );
+    const args = [
+      `--spec=${fx.specPath}`,
+      '--inventory-reverse',
+      'src',
+      'src/greeter.ts',
+      'src/destructured.js',
+    ];
+    const spec = join(fx.root, fx.specPath);
+    writeFileSync(
+      spec,
+      readFileSync(spec, 'utf8').replace(
+        '| `greet` | Function | Greets a person by name.  |',
+        '| `greet` | Function | Greets a person by name.  |\n| `a` | Const | Value. |\n| `renamed` | Const | Value. |'
+      )
+    );
+    const complete = lint(fx.root, args);
+    assert.equal(complete.exitCode, 0, complete.output);
+    assert.doesNotMatch(
+      complete.output,
+      /INVENTORY_UNIMPLEMENTED|INVENTORY_UNDECLARED|INVENTORY_INCOMPLETE/
+    );
+    writeFileSync(join(fx.root, 'src/destructured.js'), 'export const { a } = { a: 1, b: 2 };\n');
+    const missing = lint(fx.root, args);
+    assert.equal(missing.exitCode, 1, missing.output);
+    assert.match(missing.output, /ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED[^\n]*`renamed`/);
+    assert.doesNotMatch(missing.output, /ERR_CLI_LINT_INVENTORY_UNIMPLEMENTED[^\n]*`a`/);
+  } finally {
+    rmSync(fx.root, { recursive: true, force: true });
+  }
+});

@@ -7,7 +7,7 @@ import type { TicketRef } from '../../../shared/sdd/check.ts';
 import { parsePhaseReceipts } from '../../../shared/sdd/phase-receipt.ts';
 // V-BATCH-14 nonblocking #5: this file used to carry its own byte-identical copy of the checked
 // `DONE` line matcher (`CLOSE_MARKED_DONE_LINE_RE`) — now imported from the one home instead.
-import { MARKED_DONE_LINE_RE } from '../../../shared/sdd/execution-log.ts';
+import { MARKED_DONE_LINE_RE, parseHandoffPayload } from '../../../shared/sdd/execution-log.ts';
 import { extractSection, findSectionBounds } from '../../../shared/sdd/section.ts';
 import { deriveSpecAcronym } from '../../../shared/sdd/requirement-id.ts';
 import { decisionReferenceIssue } from '../../../shared/sdd/deviation.ts';
@@ -368,9 +368,6 @@ export function buildHandoffLine(payload: string): string {
   return `**Handoff →** ${payload}`;
 }
 
-/** @purpose Canonical field boundaries accepted by `complete`; field text may contain nested brackets. */
-const COMPLETE_HANDOFF_PAYLOAD_RE =
-  /^artifacts:\s*\[(.+)\];\s*decisions:\s*\[(.*)\];\s*open:\s*\[(.*)\];\s*deviations:\s*\[(.*)\]$/;
 /** @purpose One current-Round phase heading, with an optional re-run suffix. */
 const COMPLETE_PHASE_HEADING_RE = /^####\s+(P[0-9]+)\b/;
 /** @purpose The only incomplete DONE skeleton line `complete` owns. */
@@ -387,12 +384,18 @@ const COMPLETE_HANDOFF_SKELETONS = new Set([
  * @returns True only for all four named fields in canonical order and no scaffold ellipsis.
  */
 export function isCompleteHandoffPayload(payload: string): boolean {
-  return COMPLETE_HANDOFF_PAYLOAD_RE.test(payload) && !payload.includes('[...]');
+  const fields = parseHandoffPayload(payload);
+  return (
+    fields !== null &&
+    fields.deviations !== undefined &&
+    fields.artifacts.trim() !== '' &&
+    !Object.values(fields).some((value) => value.trim() === '...')
+  );
 }
 
 // HANDOFF_FORMAT provenance grammar (ISS-11): `decisions`/`open` entries may carry a trailing
 // `(measured|reported|assumed)` tag — and `open` entries an additional `; extent` qualifier — per
-// `ai/kit/contract/process/handoff-format.xml`. `COMPLETE_HANDOFF_PAYLOAD_RE` above already accepts
+// `ai/kit/contract/process/handoff-format.xml`. `parseHandoffPayload` already accepts
 // this grammar unchanged, as ordinary free text inside its field brackets; a dedicated parser/warn
 // step for untagged (⇒ `assumed`) entries belongs with the actual consumer (`sdd-log.cmd.ts`
 // `complete`, and the audit `STEP_2_SEMANTIC` rule), not here.
@@ -416,10 +419,10 @@ export function completePhase(
 ):
   | { ok: true; content: string; doneLine: string; handoffLine: string }
   | { ok: false; detail: string } {
-  const handoff = COMPLETE_HANDOFF_PAYLOAD_RE.exec(payload);
-  if (!handoff)
+  const handoff = parseHandoffPayload(payload);
+  if (!handoff || !isCompleteHandoffPayload(payload))
     return { ok: false, detail: 'phase completion needs the four canonical Handoff fields' };
-  const referenceIssue = decisionReferenceIssue(content, handoff[4] ?? '', phaseId);
+  const referenceIssue = decisionReferenceIssue(content, handoff.deviations ?? '', phaseId);
   if (referenceIssue) return { ok: false, detail: referenceIssue };
   const receipts = parsePhaseReceipts(content);
   if (!receipts.ok) return { ok: false, detail: receipts.issue };

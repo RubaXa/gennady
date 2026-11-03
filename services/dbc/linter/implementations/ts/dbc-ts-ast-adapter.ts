@@ -3,6 +3,7 @@
 // @consumers: DbcTsLinter
 
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import type { default as Parser } from 'tree-sitter';
 import type { SyntaxNode } from 'tree-sitter';
 import { logger } from '#logger';
@@ -39,16 +40,17 @@ function isDirectiveLineComment(commentText: string): boolean {
   return DIRECTIVE_LINE_COMMENT.test(commentText);
 }
 
-/** @purpose tree-sitter-typescript grammar a source file is parsed with. */
-type TsDialect = 'typescript' | 'tsx';
+/** @purpose Exact source grammar, with JavaScript kept outside the TypeScript syntax superset. */
+type TsDialect = 'javascript' | 'typescript' | 'tsx';
 
 /**
- * @purpose Pick the grammar by file extension: `<T>(x)` assertions are valid only outside TSX.
+ * @purpose Pick an exact grammar: JavaScript supports JSX without accepting TypeScript-only syntax.
  * @param filePath Source path.
- * @returns `typescript` for `.ts`/`.mts`/`.cts`, `tsx` otherwise.
+ * @returns TypeScript for `.ts`/`.mts`/`.cts`, TSX for `.tsx`, JavaScript otherwise.
  */
 function dialectFor(filePath: string): TsDialect {
-  return /\.[cm]?ts$/i.test(filePath) ? 'typescript' : 'tsx';
+  if (/\.[cm]?ts$/i.test(filePath)) return 'typescript';
+  return /\.tsx$/i.test(filePath) ? 'tsx' : 'javascript';
 }
 
 /**
@@ -124,7 +126,7 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
    * @purpose List every ES export of a file for inventory sync; contract checks keep using `parseFile`.
    * @invariant Covers declarations, `export {…}`, re-exports, `export * as ns` and every default form;
    *   a default without a binding name only sets `hasDefault`. Never throws.
-   * @param filePath Source path (picks the grammar; `.js` parses with TSX).
+   * @param filePath Source path selecting JavaScript, TypeScript or TSX grammar.
    * @param [content] Source text; read from disk when omitted.
    * @returns Export names, or an error when the file cannot be read or parsed.
    */
@@ -305,21 +307,45 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   }
 
   /**
-   * @purpose Names bound by an exported declaration: every declarator of `const a = 1, b = 2`.
+   * @purpose Names bound by every declarator, including nested destructuring and aliases.
    * @param declaration Declaration node of an export statement.
    * @param source Full source text.
-   * @returns Bound names; empty for destructuring patterns.
+   * @returns Runtime binding names, excluding property keys and initializer references.
    */
   protected _declaredNames(declaration: SyntaxNode, source: string): string[] {
     if (declaration.type === 'lexical_declaration' || declaration.type === 'variable_declaration') {
       return this._children(declaration)
         .filter((c) => c.type === 'variable_declarator')
-        .map((c) => c.childForFieldName?.('name'))
-        .filter((n): n is SyntaxNode => !!n && n.type === 'identifier')
-        .map((n) => source.slice(n.startIndex, n.endIndex));
+        .flatMap((c) => this._bindingNames(c.childForFieldName?.('name') ?? null, source));
     }
     const name = declaration.childForFieldName?.('name') ?? null;
     return name ? [source.slice(name.startIndex, name.endIndex)] : [];
+  }
+
+  /**
+   * @purpose Read only binding positions; defaults and computed keys never introduce exported names.
+   * @param pattern Identifier or destructuring pattern.
+   * @param source Full source text.
+   * @returns Bound identifiers in source order.
+   */
+  protected _bindingNames(pattern: SyntaxNode | null, source: string): string[] {
+    if (!pattern) return [];
+    switch (pattern.type) {
+      case 'identifier':
+      case 'shorthand_property_identifier_pattern':
+        return [source.slice(pattern.startIndex, pattern.endIndex)];
+      case 'pair_pattern':
+        return this._bindingNames(pattern.childForFieldName?.('value') ?? null, source);
+      case 'assignment_pattern':
+      case 'object_assignment_pattern':
+        return this._bindingNames(pattern.childForFieldName?.('left') ?? null, source);
+      case 'object_pattern':
+      case 'array_pattern':
+      case 'rest_pattern':
+        return this._children(pattern).flatMap((child) => this._bindingNames(child, source));
+      default:
+        return [];
+    }
   }
 
   /**
@@ -344,20 +370,23 @@ export class DbcTsAstAdapter implements DbcAstAdapter {
   /**
    * @purpose Lazy-initializes the tree-sitter Parser for one grammar dialect.
    * Uses dynamic import so tree-sitter is only loaded when the adapter is actually used.
-   * @param [dialect] Grammar: `typescript` for `.ts`, `tsx` for `.tsx` and other sources.
+   * @param [dialect] Exact JavaScript, TypeScript or TSX grammar.
    * @returns Configured Parser instance.
    */
   protected async _initializeParser(dialect: TsDialect = 'tsx'): Promise<Parser> {
     let parser = this._parsers.get(dialect);
     if (!parser) {
-      const [treeSitterModule, tsModule] = await Promise.all([
-        import('tree-sitter'),
-        import('tree-sitter-typescript'),
-      ]);
+      const treeSitterModule = await import('tree-sitter');
+      // JavaScript is an explicit dependency of tree-sitter-typescript. Resolve from that
+      // package so installed layouts need not hoist its native grammar beside our entrypoint.
+      const grammars: unknown =
+        dialect === 'javascript'
+          ? createRequire(import.meta.resolve('tree-sitter-typescript'))('tree-sitter-javascript')
+          : (await import('tree-sitter-typescript')).default;
       const ParserImpl = treeSitterModule.default;
-      const grammars = tsModule.default as Record<string, unknown>;
       parser = new ParserImpl();
-      const language: unknown = grammars[dialect] ?? grammars.tsx ?? grammars;
+      const language: unknown =
+        dialect === 'javascript' ? grammars : (grammars as Record<string, unknown>)[dialect];
       parser.setLanguage(language as Parser.Language);
       this._parsers.set(dialect, parser);
     }

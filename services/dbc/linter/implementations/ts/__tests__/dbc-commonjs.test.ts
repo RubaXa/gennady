@@ -61,3 +61,27 @@ test('a property named default never replaces the CommonJS export object', async
   assert.ok(contracts.ok);
   assert.deepEqual(contracts.exported.map((entity) => entity.name).sort(), ['a', 'default']);
 });
+
+for (const source of [
+  'const { exports } = local; exports.fake = function() {};',
+  'const { key: module } = local; module.exports.fake = function() {};',
+  'const [, { nested: [exports] }] = local; exports.fake = function() {};',
+])
+  test(`destructured local bindings do not grant CommonJS exports: ${source}`, async () => {
+    const adapter = new DbcTsAstAdapter();
+    const names = await adapter.parseExportNames('value.cjs', source);
+    assert.ok(names.ok);
+    assert.deepEqual(names.names.local, []);
+    const contracts = await adapter.parseFile('value.cjs', source);
+    assert.ok(contracts.ok);
+    assert.deepEqual(contracts.exported, []);
+  });
+
+test('a destructuring property key does not shadow the CommonJS binding', async () => {
+  const result = await new DbcTsAstAdapter().parseExportNames(
+    'value.cjs',
+    'const { exports: localExports, module: localModule } = local; exports.real = 1;'
+  );
+  assert.ok(result.ok);
+  assert.deepEqual(result.names.local, ['real']);
+});

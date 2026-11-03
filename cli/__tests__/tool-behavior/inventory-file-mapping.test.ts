@@ -145,3 +145,37 @@ it('mixed supported/unsupported source mapping is incomplete, never a partial fu
     rmSync(fx.root, { recursive: true, force: true });
   }
 });
+
+for (const [label, mapping] of [
+  ['empty declaration', '**File Mapping:**\n'],
+  ['empty table', '**File Mapping:**\n| File | Purpose |\n|---|---|\n'],
+] as const)
+  it(`${label} is INVALID rather than an absent-mapping directory fallback`, () => {
+    const fx = buildFixture();
+    try {
+      appendFileSync(
+        join(fx.root, fx.specPath),
+        `\n<!--SECTION:FILE_STRUCTURE-->\n${mapping}<!--/SECTION:FILE_STRUCTURE-->\n`
+      );
+      const result = runCli(['sdd-task', '--group-scope', fx.taskId], fx.root);
+      assert.equal(result.exitCode, 0, result.output);
+      assert.match(
+        result.stdout,
+        /inventory-files: INVALID.*File Mapping declares no existing lint target/
+      );
+      assert.doesNotMatch(result.stdout, /^inventory-files:\n {2}—$/m);
+    } finally {
+      rmSync(fx.root, { recursive: true, force: true });
+    }
+  });
+
+it('a genuinely absent File Mapping preserves the documented directory fallback', () => {
+  const fx = buildFixture();
+  try {
+    const result = runCli(['sdd-task', '--group-scope', fx.taskId], fx.root);
+    assert.equal(result.exitCode, 0, result.output);
+    assert.match(result.stdout, /^inventory-files:\n {2}—$/m);
+  } finally {
+    rmSync(fx.root, { recursive: true, force: true });
+  }
+});

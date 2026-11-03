@@ -14,7 +14,14 @@ import {
   formatTokenVocabulary,
   parseExecutionLog,
   nextRoundNumber,
+  parseHandoffArtifacts,
+  parsePhaseHandoffs,
 } from '../execution-log.ts';
+
+import {
+  buildHandoffLine,
+  isCompleteHandoffPayload,
+} from '../../../cli/cmd/sdd-log/sdd-log.types.ts';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FROZEN_TASK_57 = path.join(
@@ -252,5 +259,49 @@ describe('parseExecutionLog', () => {
   it('parses the Round heading number, and null for an unparseable one', () => {
     const log = parseExecutionLog(ticket('### Round 3 — 2026-06-21, fix\n#### P1'));
     assert.strictEqual(log?.rounds[0]?.n, 3);
+  });
+});
+
+describe('literal Handoff artifact round trips', () => {
+  it('reads field boundaries without truncating literal brackets or consuming the next field', () => {
+    const paths = [
+      'pages/[...slug].tsx',
+      'pages/[...].tsx',
+      'src/[open.ts',
+      'src/close].ts',
+      'src/[outer[nested]].ts',
+    ];
+    for (const suffix of ['', '; deviations: []']) {
+      const payload = `artifacts: [${paths.join(', ')}]; decisions: [error=[name], regex=[^a-z]]; open: []${suffix}`;
+      assert.deepEqual(parseHandoffArtifacts(buildHandoffLine(payload)), paths);
+    }
+  });
+
+  it('distinguishes a literal ellipsis filename from the whole-field scaffold placeholder', () => {
+    const payload = 'artifacts: [pages/[...].tsx]; decisions: [none]; open: []; deviations: []';
+    const line = buildHandoffLine(payload);
+    assert.equal(isCompleteHandoffPayload(payload), true);
+    assert.deepEqual(parsePhaseHandoffs(`#### P1\n${line}`), { P1: line });
+    assert.deepEqual(parseHandoffArtifacts(line), ['pages/[...].tsx']);
+    assert.deepEqual(
+      parsePhaseHandoffs(
+        '#### P1\n**Handoff →** artifacts: [...]; decisions: [...]; open: [...]; deviations: [...]'
+      ),
+      {}
+    );
+    assert.equal(
+      isCompleteHandoffPayload('artifacts: [...]; decisions: [none]; open: []; deviations: []'),
+      false
+    );
+  });
+
+  it('does not manufacture artifact paths from truncated, multiline or trailing-garbage Handoffs', () => {
+    for (const value of [
+      '**Handoff →** artifacts: [src/a.ts',
+      '**Handoff →** artifacts: [src/a.ts]; decisions: [none]; open: [',
+      '**Handoff →** artifacts: [src/a.ts]; decisions: [none]; open: [] trailing',
+      '**Handoff →** artifacts: [src/a.ts]\n; decisions: [none]; open: []',
+    ])
+      assert.deepEqual(parseHandoffArtifacts(value), [], value);
   });
 });

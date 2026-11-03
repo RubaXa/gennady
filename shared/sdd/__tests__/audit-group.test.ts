@@ -410,6 +410,23 @@ describe('validateTicketReviewPaths', () => {
     }
   });
 
+  it('reviews existing literal bracket Handoffs without truncation or glob matching a neighbour', () => {
+    const root = tmp('audit-handoff-route-');
+    mkdirSync(join(root, 'pages'), { recursive: true });
+    const routes = ['pages/[...slug].tsx', 'pages/[...].tsx'];
+    for (const route of routes) writeFileSync(join(root, route), 'export {};\n');
+    const result = validateTicketReviewPaths(root, reviewTicket(routes, [], routes));
+    assert.equal(result.ok, true, JSON.stringify(result));
+    if (result.ok) assert.deepEqual(result.paths.handoffs, routes);
+    writeFileSync(join(root, 'pages/i.tsx'), 'export {};\n');
+    const missing = validateTicketReviewPaths(root, reviewTicket(routes, [], ['pages/[id].tsx']));
+    assert.equal(missing.ok, false);
+    if (!missing.ok) {
+      assert.equal(missing.path, 'pages/[id].tsx');
+      assert.match(missing.detail, /missing/);
+    }
+  });
+
   it('applies the same exact containment rule to Handoff artifacts', () => {
     const root = tmp('audit-handoff-invalid-');
     mkdirSync(join(root, 'src'), { recursive: true });

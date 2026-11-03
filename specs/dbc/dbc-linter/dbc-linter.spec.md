@@ -216,7 +216,7 @@ ERR_DBC_LINT_TYPE_REDUNDANT   = 'ERR_DBC_LINT_TYPE_REDUNDANT'
 
 **Side Effects:**
 
-- Инициализация tree-sitter (one-time на грамматику): `.ts`/`.mts`/`.cts` разбираются грамматикой TypeScript, остальные файлы — TSX. Утверждение типа в угловых скобках `<T>(x)` допустимо только вне TSX.
+- Инициализация tree-sitter (one-time на грамматику): `.ts`/`.mts`/`.cts` разбираются грамматикой TypeScript, `.tsx` — TSX, `.js`/`.jsx`/`.mjs`/`.cjs` — JavaScript с JSX. JavaScript не принимает TypeScript-only синтаксис; `<T>(x)` допустимо только в TypeScript вне TSX.
 - Чтение файла с диска
 - Логирование через `#logger`
 
@@ -402,6 +402,13 @@ services/dbc/linter/
 - **Why:** обратная сверка Entity Inventory брала экспорты из `parseFile`, который собирает только декларации с контрактами. `export { a }`, `export default x`, реэкспорты и второй декларатор `export const a = 1, b = 2` в реализованное не попадали. `parseExportNames` перечисляет имена каждой формы; файл `.js` разбирается TSX-грамматикой.
 - **Rejected alternatives:** расширять `parseFile` — его сущности требуют контракт и сигнатуру, и новые формы дали бы ложные ошибки DbC.
 - **Risk accepted:** `export *` не раскрывается — помечается `starReexport`, решение оставлено потребителю.
+
+### D-022 — JavaScript grammar rejects TypeScript-only syntax
+
+- **Status:** active, 2026-11-03. Уточняет grammar-часть D-021; её исходная запись сохранена.
+- **Why:** TSX — надмножество JavaScript. Типизированный `export const value: number = 1` проходил `.js` lint и syntax check при принятом DbC-исключении, хотя JavaScript runtime его отвергает.
+- **Decision:** JavaScript family использует настоящую JavaScript grammar с JSX; `.ts/.mts/.cts` и `.tsx` сохраняют соответствующие TypeScript grammar. `parseFile` и `parseExportNames` выбирают одну grammar по расширению. Native JavaScript dependency резолвится относительно `tree-sitter-typescript`, который явно её объявляет: hoisting не требуется.
+- **Evidence:** `dbc-source-grammar.test.ts` — TypeScript-only syntax rejected in JS family, typed TS positive, JSX/CommonJS positive, accepted DbC exemption retains syntax rejection. Project compiler/tests остаются отдельными обязательствами.
 
 ## 8. Inter-Module Dependencies
 

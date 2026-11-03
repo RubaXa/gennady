@@ -52,6 +52,50 @@ describe('export names for inventory sync', () => {
     assert.deepStrictEqual([js.local, js.hasDefault], [['q', 'querystringAdd'], true]);
   });
 
+  it('lists only bound destructured names across the supported JS/TS family', async () => {
+    const source = `export const {
+      direct, property: renamed, withDefault = fallback,
+      nested: { inner }, [computedKey()]: computed, ...objectRest
+    } = factory();
+    export const [first, , { value: arrayNested }, last = initializer, ...arrayRest] = values;
+    export const simple = 1;`;
+    const expected = [
+      'direct',
+      'renamed',
+      'withDefault',
+      'inner',
+      'computed',
+      'objectRest',
+      'first',
+      'arrayNested',
+      'last',
+      'arrayRest',
+      'simple',
+    ];
+    for (const extension of ['js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts']) {
+      const result = await names(`destructured.${extension}`, source);
+      assert.deepEqual(result.local, expected, extension);
+      assert.equal(result.starReexport, false, extension);
+    }
+  });
+
+  it('checks destructured exports in both inventory directions without exporting keys or initializers', async () => {
+    const source = 'export const { sourceKey: renamed = fallback, ...rest } = createValue();';
+    const implemented = new Set(await collectExports(source, 'value.js'));
+    assert.deepEqual([...implemented], ['renamed', 'rest']);
+    const errors = await checkInventorySync(source, 'value.js', ['rest']);
+    assert.equal(errors.length, 1);
+    assert.match(errors[0]!.message, /`renamed`/);
+    const accepted = reverseUnimplemented(['renamed', 'rest'], implemented, 'spec.md');
+    assert.deepEqual(accepted, { errors: [], deferred: [], unverifiable: [] });
+    const missing = reverseUnimplemented(
+      ['sourceKey', 'fallback', 'createValue'],
+      implemented,
+      'spec.md'
+    );
+    assert.equal(missing.errors.length, 3);
+  });
+
   it('flags an undeclared export clause entry, but not a re-export', async () => {
     const errors = await checkInventorySync(
       "const helper = 1;\nexport {helper};\nexport {z} from './other';\n",

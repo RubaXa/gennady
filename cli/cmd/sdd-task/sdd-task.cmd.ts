@@ -135,7 +135,10 @@ function moduleInventoryFiles(root: string, specPath: string): InventoryFiles {
         .map((row) => row.path)
     ),
   ];
-  if (declared.length === 0) return { kind: 'absent' };
+  if (declared.length === 0)
+    return document.declaredMappings.includes(id)
+      ? { kind: 'invalid', reason: 'File Mapping declares no existing lint target' }
+      : { kind: 'absent' };
   const missing = declared.find((file) => !existsSync(resolve(root, file)));
   if (missing)
     return { kind: 'invalid', reason: `File Mapping is incomplete: ${missing} does not exist` };
