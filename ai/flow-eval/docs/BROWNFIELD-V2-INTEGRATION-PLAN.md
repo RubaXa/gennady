@@ -993,3 +993,43 @@ No-model GREEN:тот же npx получает обе ожидаемые lint d
 новых Git-visible файлов0, canonical pending PASS; полный E4 reference и
 broken/missing-header negatives PASS. Cleanup подтверждён; model dispatch0.
 Причинность cache-файлов для старых E3 попыток не приписывается задним числом.
+
+### Итог разрешённых двух попыток — 2/2, без продолжения
+
+Runner `e0908aa5`, reviewed product `0a506340`, исполненная fixture v2.
+Новые записи изолированы в
+[confirmation report](../results/2026-11-03-brownfield-e3-e4-confirmation/REPORT.md);
+предыдущие восемь raw/verdict/manifest не изменены.
+
+- **E3 NOT PROVEN**: 8 вызовов, 90,482 с primary, 11 603 primary токена.
+  Содержательный proposal создан, но вызван отдельный `npx sdd-log`, а не
+  `npx gennady sdd-log`; pending отсутствует. Последующий grep installed
+  internals нарушил границу → policy-censored, raw judge FAIL сохранён.
+  Эталонный CLI control доказывает доступность API, а не успех модели.
+- **E4 PROVEN**: 17 вызовов, 40,472 с primary, 40 629 primary токенов.
+  Агент реализовал 7/9; оба Verify PASS, host complete/close/sync/audit и
+  независимый judge + настоящий review receipt exit0 подтверждены отдельно.
+  Broad/mixed reads остаются недостатком: full trajectory NOT PROVEN.
+- Всего primary 52 232 + judge 16 165 + reflection 42 713 = **111 110**
+  uncached токенов; primary cacheRead 406 144. Денежная стоимость неизвестна.
+  Это не paired A/B, общего quality/speed/cost win не заявляем.
+- Независимые два разбора сохранены с call-by-call обоснованием. E3 выявил
+  неоднозначный bare-subcommand пример: после попыток только будущая v3
+  confirmation-инструкция получила полный `npx --no-install gennady sdd-log`.
+  Детерминированный тест проверяет уточнение и неизменность старой fixture;
+  v3 live не запускалась, E3 не перекрашен и не объявлен исправленным поведением.
+- Replacements0; после каждой попытки cleanup/rootRemoved=true,
+  214 625 274 логических байта workspace удалены; shared dependencies сохранены.
+
+**Точка завершения достигнута:** ровно 2 primary выполнены, больше моделей
+не запускаем. Публикуем факты и обычные регрессии в #132, передаём итоговое
+ревью. Draft/merge/npm ограничения прежние; BF4 перенос не выполнен.
+
+Публикационная регрессия: **29/29 PASS** (fixture/measurement/старый archive/
+новый confirmation archive), dedicated strict TypeScript включая новые тесты0.
+Проверены tamper/missing evidence, Git membership, точные executed-source hashes,
+реальный review receipt как обязательное условие, неизменный E3 FAIL, все суммы
+и публичная приватность. Inventory: только historical evidence760→769 и digest;
+все девять новых marker-bearing entries — frozen snapshots/independent reports,
+active/migration counts и запреты неизменны. Обычный полный hook/push — далее;
+модельных вызовов больше0.

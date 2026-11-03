@@ -368,6 +368,6 @@ export function brownfieldCampaignFiles(
     '.gitignore': original['.gitignore'] + '.sdd-eval-shell-home/\n.sdd-eval-shell-tmp/\n',
     'inputs/brief.md':
       original['inputs/brief.md'] +
-      `\nUse the owning-module diagnostic command (only the named file):\n\nnpx --no-install gennady lint --spec=${registry.module} ${registry.source}\n\nThe explicit --spec selects the existing module inventory; it does not accept an exception or change policy. Preserve its real diagnostics as evidence.\n`,
+      `\nUse the owning-module diagnostic command (only the named file):\n\nnpx --no-install gennady lint --spec=${registry.module} ${registry.source}\n\nThe explicit --spec selects the existing module inventory; it does not accept an exception or change policy. Preserve its real diagnostics as evidence.\n\nIf CAPABILITY_FACT is supported, persist the proposal using the installed gennady subcommand, not a separate npm executable:\n\nnpx --no-install gennady sdd-log ${registry.module} decision --payload-file .claude/tmp/lint-proposal.json\n\nThe earlier bare sdd-log notation is subcommand shorthand. A command failure grants no permission to inspect installed package internals or accept the proposal.\n`,
   };
 }

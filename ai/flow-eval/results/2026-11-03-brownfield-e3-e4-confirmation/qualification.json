@@ -1,0 +1,124 @@
+{
+  "complete": true,
+  "modelCalls": 0,
+  "controls": [
+    {
+      "arm": "candidate",
+      "caseId": "E3",
+      "modelCalls": 0,
+      "correct": null,
+      "commands": [],
+      "broken": null,
+      "missingHeader": null,
+      "before": {
+        "exit": 1,
+        "outputSha256": "f57a46829cfd272c7c77f15f05ac184c3e02bb25a94eb88d5b223c1180a5d5c2"
+      },
+      "after": null,
+      "hostCorrect": null,
+      "hostBroken": null,
+      "proposal": {
+        "exit": 0,
+        "outputSha256": "0e27ab0e48bec3157d9a3ac931f0cdc13d621d71cafe5a82e69f489073f73f13"
+      },
+      "baselineConfiguredCapability": null,
+      "knownBaselineCapabilityBlocked": null,
+      "reference": {
+        "commonPass": true,
+        "persistencePass": true,
+        "lintExit": 1,
+        "actualCodesPresent": true
+      }
+    },
+    {
+      "arm": "candidate",
+      "caseId": "E4",
+      "modelCalls": 0,
+      "correct": true,
+      "commands": [
+        {
+          "phase": "P1",
+          "exit": 0,
+          "outputSha256": "70a65c08f641386793d674792c36be349fdc164812f1b1a5bf0be5e3eb60e294"
+        },
+        {
+          "phase": "P1",
+          "exit": 0,
+          "outputSha256": "54e4419c967f5e83b0df53f8f42749a7c194c44cc172085ce49569a0727b90ca"
+        },
+        {
+          "phase": "P2",
+          "exit": 0,
+          "outputSha256": "4c1ca5b06eb13cb6e2ded3755e5b075854512feb08886ef598470410628d1030"
+        },
+        {
+          "phase": "P2",
+          "exit": 0,
+          "outputSha256": "80b103eca5f5ecab3291a5ae1fcf521787ccbdb2b570768d8973dcc77168c566"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "b321cd0f87b89531faad3cb7c3222f3040aa73e54fec6c113dccc1dee990bd9e"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "860886fca0d337ba42d700e31f7f792a1560f1a8e2742b88e4e11d8261fc1ac6"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "3937fc1f20e319f3a9a8c25b1de99958667f562e99db24a1056ed707f4f69650"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "a0306366659894fa797cb768b7d7d061eecb4c86a25a253d7e6a716ce74a5ed2"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "79b2593dedb18e46e4be65754deba7fb0918b010e9771dbd0bdf6424270ff522"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "14c076effba338b21d5dd205fa1b91525e940bd65b3935294b2757b93417dc10"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "7e632003f095b9877cb3a41e739c89d2c751f2bfd52816ea4038c0bbc68a802f"
+        },
+        {
+          "phase": null,
+          "exit": 0,
+          "outputSha256": "d09ddeab35014c0261001401b08b522ab27bea17b03c3a962961c215c2aaca9d"
+        }
+      ],
+      "broken": {
+        "exit": 1,
+        "outputSha256": "2bde0f221522df1033a25c52c99173550bc8cb0de2ebff230df129eb554c9d4a"
+      },
+      "missingHeader": {
+        "exit": 1,
+        "outputSha256": "c2feaa5a8daa40dda78568b7818ebadd61a5707aad9ada5fec822a3816244247"
+      },
+      "before": null,
+      "after": null,
+      "hostCorrect": {
+        "exit": 0,
+        "outputSha256": "27541e51c827f6190bb7c0b7b4cd0f73a3f3a43b5c638fb1a1c406771c400c64"
+      },
+      "hostBroken": {
+        "exit": 1,
+        "outputSha256": "94c00a84a0459ef0884ab29a9b43332658baef920a2992f6080760e4338808cf"
+      },
+      "proposal": null,
+      "baselineConfiguredCapability": null,
+      "knownBaselineCapabilityBlocked": null,
+      "reference": null
+    }
+  ]
+}

@@ -273,5 +273,11 @@ test('confirmation overlay only isolates host shell caches and names the existin
   assert.ok(
     confirmation['inputs/brief.md']!.includes(`lint --spec=${registry.module} ${registry.source}`)
   );
+  assert.ok(
+    confirmation['inputs/brief.md']!.includes(
+      `npx --no-install gennady sdd-log ${registry.module} decision --payload-file .claude/tmp/lint-proposal.json`
+    )
+  );
+  assert.match(confirmation['inputs/brief.md']!, /subcommand shorthand/);
   assert.deepEqual(brownfieldCampaignFiles('E4', [], true), files('E4'));
 });

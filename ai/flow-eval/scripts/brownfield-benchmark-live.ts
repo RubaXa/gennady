@@ -1453,9 +1453,7 @@ async function main() {
       schema: 'gennady.brownfield-bf3.2',
       measurementRevision: 'post-eight-attempt-campaign; no old outcome replay',
       campaign: campaign.id,
-      fixtureRevision: campaign.confirmation
-        ? 'e3-host-cache-and-scoped-invocation-v2'
-        : 'original',
+      fixtureRevision: campaign.confirmation ? 'e3-explicit-proposal-command-v3' : 'original',
       comparison: campaign.confirmation
         ? 'candidate-only functional confirmation; not A/B'
         : 'original paired eight',
