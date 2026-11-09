@@ -17,10 +17,19 @@
     the parent directive — never a parallel report. If a probe is inconclusive, say so; do not invent.
     When `security-interrogation.directive.xml` participates in the same review, security findings
     are raised THERE — the `SEC` probe below defers to that battery (no double-flagging).
-    Every flag carries `AX_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` + locus): a local code
-    smell may be a symptom of a boundary or contract one level up; never present it as an obvious
-    local patch.
+    Every flag is a candidate for `arch-interrogation STEP_4_DEFECT_PROOF` (path + trigger + counter-check) and then
+    `arch-interrogation STEP_5_ROOT_CAUSE_TRIAGE` (local vs one level up): a local code smell may be a symptom of a
+    boundary or contract one level up; never present it as an obvious local patch.
   </ScopeGuard>
+
+  <ProofRequired>
+    A `flagged` probe is not ready for the candidate table until it carries a one-line proof skeleton:
+    `Путь: file:line → … → симптом` · `Доказательство: proven|plausible` · `Контрпроверка: <what was
+    searched and why it does not save the code>`. No skeleton → do NOT report the flag. A probe that
+    cannot build the full path and finds no counter-evidence is `plausible` with the missing hop named
+    — never a silent claim and never a blocker. A probe whose counter-check succeeds is `refuted` and
+    is dropped (or becomes a `correction-reply` when it refutes someone else's thread).
+  </ProofRequired>
 
   <Probes>
     Each probe is one question applied where relevant; report only flags. Codes appear in the «Ось»
@@ -52,6 +61,7 @@
     (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`/`TYPO`). `BIZ`-неясность даёт ОДИН кандидат
     уровня MR («попросить автора описать бизнес-цель»), а не шум на каждую сущность. `TYPO` и любая
     другая точная механическая правка с известным итогом → кандидат `kind: suggestion` (line-comment с fenced-блоком ```suggestion:-0+0, новый текст внутри — формат posting-rules §suggestion), не проза. Отдельного отчёта нет — пробы кормят карточки сущностей и таблицу
-    кандидатов arch-interrogation.
+    кандидатов arch-interrogation. Каждый flag несёт proof-скелет из `<ProofRequired>`; без него он
+    не становится кандидатом.
   </Output>
 </CodeInterrogation>

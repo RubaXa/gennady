@@ -80,21 +80,21 @@
   </VerdictModel>
 
   <ExecutionPlan>
-    <Step id="STEP_0_SURFACE_INVENTORY">
+    <Step id="STEP_1_SURFACE_INVENTORY">
       From the full diff, inventory new/changed: external inputs, endpoints/commands, data paths
       touching sinks, secrets handling, dependencies/CI/build files. ZERO surfaces →
       `H_NO_NEW_SURFACE`: report one line («новых поверхностей нет: входы, авторизация,
       секреты, зависимости не менялись») and stop — this keeps the lens cheap on clean MRs.
     </Step>
-    <Step id="STEP_1_TRACE">
+    <Step id="STEP_2_TRACE">
       For each surface trace the path: source → boundary crossings → sink. Find the validation
       point in the actual code (search the repo, cite path+symbol) — or record its absence.
     </Step>
-    <Step id="STEP_2_VERDICTS">
+    <Step id="STEP_3_VERDICTS">
       Assign per-surface verdicts per `<VerdictModel>`; severity per `AX_SEVERITY_BY_ASSET`
       (name the asset). Run `SUPPLY` on manifests/CI even when no code path changed.
     </Step>
-    <Step id="STEP_3_EMIT">
+    <Step id="STEP_4_EMIT">
       Emit findings in the shared format: probe code in «Ось», file/line, one-sentence problem,
       severity, kind per posting-rules CandidateTagging. Relational path findings → boundary
       picture per `AX_TRUST_BOUNDARY_MAP`. De-duplicate against prior_threads.

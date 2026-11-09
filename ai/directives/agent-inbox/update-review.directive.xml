@@ -19,9 +19,11 @@
     </Axiom>
 
     <Axiom id="AX_NEW_FINDINGS_TRIAGE">
-      Any NEW issue found in the delta follows `AX_ROOT_CAUSE_TRIAGE` from `arch-interrogation`
-      (`point-fix` / `arch-suspect` + locus). A fix that closes a remark by patching the symptom while
-      the higher-level cause remains is reported as `arch-suspect`, not as resolved.
+      Any NEW issue found in the delta passes `arch-interrogation STEP_4_DEFECT_PROOF` first (path + trigger +
+      counter-check, `proven`/`plausible`/`refuted`) and then `arch-interrogation STEP_5_ROOT_CAUSE_TRIAGE` from
+      `arch-interrogation` (`point-fix` / `arch-suspect` + locus). A fix that closes a remark by
+      patching the symptom while the higher-level cause remains is reported as `arch-suspect`, not as
+      resolved. An issue without a proof path is not a finding — it is an open question at most.
     </Axiom>
 
     <Axiom id="AX_CHANGESET_AS_TRUTH">
@@ -85,7 +87,7 @@
   </HaltConditions>
 
   <ExecutionPlan>
-    <Step id="STEP_0_ANALYZE_NEW_COMMITS">
+    <Step id="STEP_1_ANALYZE_NEW_COMMITS">
       <Goal>Understand what changed since my last review.</Goal>
       <Action>
         1. Read `headChanged` and `newCommits`. Validate:
@@ -96,12 +98,12 @@
         3. Classify the change nature:
            - ALL files have zero semantic delta (formatting-only) → `AX_PURE_FORMATTING_SKIP` → report "только форматирование" + suggest approve, stop.
            - `myApprovalReset == true` AND the delta introduces NO new functionality (merge of target branch / formatting / comments / non-behavioral only) → `AX_APPROVAL_RESTORE`: restore approval automatically (`vcs-approve --url &lt;webUrl&gt;`), report the restore in one line, STOP — no Ask.
-           - Otherwise → proceed to STEP_1.
+           - Otherwise → proceed to STEP_2.
         4. Collect changed files grouped by category (code, tests, docs, config, assets).
       </Action>
     </Step>
 
-    <Step id="STEP_1_CROSS_REFERENCE">
+    <Step id="STEP_2_CROSS_REFERENCE">
       <Goal>Cross-reference my prior findings with the updated changeset.</Goal>
       <Action>
         1. Parse `myDiscussions`. If empty:
@@ -119,10 +121,10 @@
       </Action>
     </Step>
 
-    <Step id="STEP_2_DECIDE">
+    <Step id="STEP_3_DECIDE">
       <Goal>Make the final decision and report to operator.</Goal>
       <Action>
-        1. Scan new commits for NEW issues on changed files. Apply critical probes from `code-interrogation` lite: SEC (security-sensitive path/auth), NAT (native/stdlib analog misuse), BIZ (business-logic drift), TYPO (obvious typo/error). Do NOT run the full battery — only quick, high-signal checks.
+        1. Scan new commits for NEW issues on changed files. Apply critical probes from `code-interrogation` lite: SEC (security-sensitive path/auth), NAT (native/stdlib analog misuse), BIZ (business-logic drift), TYPO (obvious typo/error). Do NOT run the full battery — only quick, high-signal checks. Every new issue must carry a proof path (`file:line → … → symptom`) and a proof verdict (`proven` / `plausible`); without a path it is an open question, not a finding.
         2. Assemble the result:
             - ALL my prior threads marked for resolve AND no new issues found → suggest approve: `vcs-approve --url &lt;webUrl&gt;`.
            - Some threads need reply OR new issues found → prepare reply list. Unresolved threads stay open.
@@ -133,7 +135,7 @@
              | Thread | Файл | Моё замечание | Вердикт |
              |--------|------|---------------|---------|
              | (discussionId/link) | file.ts:42 | краткая суть | ✅ resolved (fix found) / ✅ resolved (код удалён) / ❌ reply (fix не найден) |
-           - **New issues:** if any — list with file, line, problem, kind.
+           - **New issues:** if any — list with file, line, problem, proof path, proof verdict, kind.
            - **Decision:** approve / reply-needed / error.
         4. Do NOT post anything — the skill's Ask-gate controls posting. This directive only produces the report and recommendations.
       </Action>

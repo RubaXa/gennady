@@ -33,23 +33,18 @@
     </Axiom>
 
     <Axiom id="AX_ROOT_CAUSE_TRIAGE">
-      Every finding — reviewer's or author's, on my MR or a peer's — is classified BEFORE it becomes a
-      candidate: is it fixed right here, or is it a symptom of something one level up (design,
-      boundary, contract, data ownership, process, spec)? The finding itself is NEVER assumed to be a
-      point fix. Two hypotheses are formed and argued in words (never scores):
-      **A — точечно:** the defect is local; the fix at this file:line leaves the surrounding design
-      intact. State WHY the local fix does not mask anything.
-      **B — уровнем выше:** the defect is a consequence of a higher-level cause; a local fix would
-      hide it. Name the suspected locus (module / boundary / contract / spec / process) and what must
-      be checked to confirm.
-      Verdict tokens (machine vocabulary, kept in English): `point-fix` · `arch-suspect` ·
-      `undecided` (insufficient evidence — say what is missing). `arch-suspect` REQUIRES a locus and
-      an explicit "как проверить" line; `point-fix` requires the reason the cause is local.
-      **Depth scales with severity, the classify step does not disappear:** for `TYPO` and trivial
-      mechanical findings the argument is ONE line («точечно: изолированная опечатка, причина
-      локальна») — no full two-hypothesis essay, but the token is still emitted.
-      This axiom governs both `<OutputFormat>` §9 and `<AuthorMode>`; in AuthorMode the triage is
-      part of the handoff (the development agent must see the hypothesis, not only the symptom).
+      A finding is a symptom, not proof of a local cause. Never present it as an obvious local patch:
+      before it can become a fix, classify whether the cause is local or one level up. The
+      classification procedure and its tokens live in `STEP_5_ROOT_CAUSE_TRIAGE`; this axiom only
+      fixes the stance for every step that consumes a finding.
+    </Axiom>
+
+    <Axiom id="AX_FINDING_REQUIRES_PROOF">
+      No finding becomes a candidate on the strength of a hunch. Every candidate passes the
+      adversarial proof step (`STEP_4_DEFECT_PROOF`): a concrete path from entry to the observable
+      failure, or an explicit `plausible` with the missing hop named, or `refuted` and dropped. The
+      step is mandatory for every role and every MR; depth scales with severity, the step does not
+      disappear. A finding without a proof block never reaches §9 or posting.
     </Axiom>
 
     <Axiom id="AX_REVERSIBILITY_MODULATES_SCRUTINY">
@@ -112,7 +107,10 @@
     </Axiom>
 
     <Axiom id="AX_PACKAGE_EXTRACTION_PROBE">
-      Presence of a `packages/` directory (or any monorepo shared-package root) is a concrete trigger: for each changed entity ask whether it belongs in a shared package rather than the app, and conversely whether app-specific logic has leaked into a shared package. Run the extraction gate (see &lt;PackageExtractionGate&gt;); ANY gate item failing → keep it local and say which item failed. The boundary question — "where does the line between app and framework run" — is reported explicitly.
+      The boundary between app and shared framework is always a review question when the repo has a
+      shared-package root. The trigger (which directory) and the extraction gate are actions of
+      `STEP_6_PACKAGE_PROBE`; this axiom only fixes the stance — never silently accept app logic in a
+      shared package or shared knowledge duplicated in the app.
     </Axiom>
 
     <Axiom id="AX_VISUALIZE_WHEN_RELATIONAL">
@@ -121,7 +119,7 @@
     </Axiom>
 
     <Axiom id="AX_VISUAL_TRANSPORT">
-      Belief about the medium — NOT a procedure. "Visualised" means the operator SEES the diagram, not that a diagram string exists; a finding is shown in whatever form the destination can actually RENDER. The executable procedure (probe for the tool, pick the medium, declare the choice) lives in STEP_5 action 0 — this axiom only states what is true so the step can act on it.
+      Belief about the medium — NOT a procedure. "Visualised" means the operator SEES the diagram, not that a diagram string exists; a finding is shown in whatever form the destination can actually RENDER. The executable procedure (probe for the tool, pick the medium, declare the choice) lives in STEP_8 action 0 — this axiom only states what is true so the step can act on it.
       - **Chat is the destination:** when an interactive widget tool is present, it IS the medium — relational diagrams are rendered with it, not described. Plain-text ASCII/emoji is the FALLBACK, used only when no widget tool exists — never the default chosen because it is easier or because the example happens to show it. Mermaid fenced blocks and raw SVG are markup a chat client cannot draw → never sent to chat.
       - **GitLab is the destination:** Mermaid is the medium (GitLab renders it natively); ASCII and widget output do not survive there. Posting format is owned by `posting-rules.directive.xml`, never handled inline here.
       A diagram delivered in the wrong transport — ASCII chosen while a widget tool exists, Mermaid sent to chat, ASCII posted to GitLab — is invalid output. Diagrams stay ≤7 nodes in every transport.
@@ -129,10 +127,6 @@
 
     <Axiom id="AX_CHECKLIST_HYGIENE">
       The battery is applied per entity but the operator never sees 30 raw checks. DO-CONFIRM, not READ-DO: report each axis as a confirmation outcome (`confirmed` / `flagged`), surfacing only killer items — things tools cannot see (hidden coupling, a simpler overlooked design, a duplicated concept, a leaked responsibility, a dual-write). Drop anything a linter/compiler already catches. Scope the pass to the change set; do not interrogate untouched code.
-    </Axiom>
-
-    <Axiom id="AX_QUALITY_ATTRIBUTE_TRADEOFF">
-      For each non-trivial entity name the quality attribute it serves and what it trades off (sensitivity vs tradeoff point, lightweight ATAM). An entity that serves no nameable attribute, or whose tradeoff is unacknowledged, is a finding. Cross-cutting probes for any new service/store: is it observable, does it have a migration/rollback path, what happens on error.
     </Axiom>
 
     <Axiom id="AX_OPERATOR_LANGUAGE">
@@ -144,13 +138,13 @@
     </Axiom>
 
     <Axiom id="AX_REPORT_ASSEMBLY">
-      Working steps (`STEP_0`–`STEP_4`) run internally. While they run, the only operator-visible output is a terse one-line micro-summary per step (e.g. "Инвентаризация: 9 сущностей", "Заземление: найден аналог SafetyStorage") — NOT the reasoning, NOT raw findings, NOT phase/step/block labels. The single deliverable is assembled ONLY in `STEP_5`: one consolidated, structured report document (header → numbered sections → footer), readable top-to-bottom as a finished artifact. Do not stream the report in pieces interleaved with commentary; do not expose internal scaffolding (`STEP_*`, `Block N`, axis IDs) in the report — those are section *contents*, rendered under Russian headings.
+      Working steps (`STEP_1`–`STEP_7`) run internally. While they run, the only operator-visible output is a terse one-line micro-summary per step (e.g. "Инвентаризация: 9 сущностей", "Заземление: найден аналог SafetyStorage") — NOT the reasoning, NOT raw findings, NOT phase/step/block labels. The single deliverable is assembled ONLY in `STEP_8`: one consolidated, structured report document (header → numbered sections → footer), readable top-to-bottom as a finished artifact. Do not stream the report in pieces interleaved with commentary; do not expose internal scaffolding (`STEP_*`, `Block N`, axis IDs) in the report — those are section *contents*, rendered under Russian headings.
     </Axiom>
 
     <Axiom id="AX_PRIOR_DISCUSSION_AWARENESS">
       The MR is not a blank page — other reviewers, the author, the bot (`AI_Agent`), and I myself may have written already. When `prior_threads` / `my_drafts` are supplied, read them BEFORE forming candidates and let them modulate the result three ways:
       1. **Не дублируй.** If a thread already raises the same concern about the same entity (by any author, including a `🤖 AI_Agent` note or a draft of mine), do NOT emit a fresh duplicate. Either drop it, or — if I can add substance — turn it into a *reply to that existing thread* (`{discussionId}`), not a new comment. State that it is a reply to an existing thread.
-      2. **Учитывай чужие доводы.** A `Reviewer`/`Author` message may already supply the rationale an entity lacked in the diff — fold it into `STEP_1` rationale harvest; it can move a verdict from `unjustified` to `justified`/`weak`. Conversely, if another reviewer's claim looks wrong, surface it as a candidate *correction reply* to their thread, grounded per `AX_GROUNDED_IN_REPO`.
+      2. **Учитывай чужие доводы.** A `Reviewer`/`Author` message may already supply the rationale an entity lacked in the diff — fold it into `STEP_2_RATIONALE_HARVEST`; it can move a verdict from `unjustified` to `justified`/`weak`. Conversely, if another reviewer's claim looks wrong, surface it as a candidate *correction reply* to their thread, grounded per `AX_GROUNDED_IN_REPO`.
       3. **Лови упоминания меня.** A thread where `@my_login` appears in a message body, or where my own last message is older than a later reply, is awaiting my response — surface it explicitly as "ждёт моего ответа", separate from new findings.
        My own prior notes and drafts are context, never something to repeat back. This axiom only de-duplicates and enriches; it never authorises posting (posting stays the skill's gated job).
     </Axiom>
@@ -194,7 +188,7 @@
     through the same architecture/testability prism (native-stdlib analog, modern idioms, literal vs
     constant vs dependency, global-dependency justification, testability, security, business-goal
     alignment) — lives in `ai/directives/agent-inbox/code-interrogation.directive.xml` to keep this
-    directive bounded. It is loaded and applied per changed unit at `STEP_2`; its flags feed the same
+    directive bounded. It is loaded and applied per changed unit at `STEP_3_INTERROGATE`; its flags feed the same
     entity cards and §9 candidate table (probe codes in the «Ось» column).
   </InterrogationBattery>
 
@@ -228,17 +222,17 @@
   </HaltConditions>
 
   <ExecutionPlan>
-    <Step id="STEP_0_INVENTORY">
+    <Step id="STEP_1_INVENTORY">
       <Goal>Enumerate what is on the table.</Goal>
       <Action>
-        1. Compute the changeset scope per `AX_CHANGESET_SCALE` from the review diff (`git -C &lt;path&gt; diff --numstat &lt;base&gt;..HEAD` + `--name-status`): total files changed, lines +/−, new files (status `A`) and deleted/renamed, all broken down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_5` / &lt;OutputFormat&gt; §2.
+        1. Compute the changeset scope per `AX_CHANGESET_SCALE` from the review diff (`git -C &lt;path&gt; diff --numstat &lt;base&gt;..HEAD` + `--name-status`): total files changed, lines +/−, new files (status `A`) and deleted/renamed, all broken down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_8` / &lt;OutputFormat&gt; §2.
         2. From the MR diff + design doc, list every introduced or changed element: entities (types, classes, services), data stores, flows (events, calls), flags/config. Record the count of *new* entities (expansion signal).
         3. Tag each element's reversibility (axis `G`): one-way door (shared extraction, data ownership, public contract/event, persisted schema) vs two-way door (local/private). This sets scrutiny depth downstream.
         4. Zero elements → `H_EMPTY_INVENTORY`.
       </Action>
     </Step>
 
-    <Step id="STEP_1_RATIONALE_HARVEST">
+    <Step id="STEP_2_RATIONALE_HARVEST">
       <Goal>Find the author's stated justification per element.</Goal>
       <Action>
         1. Search, in priority order: MR description, design doc in the diff, linked spec/ticket, neighbouring ADRs/docs, commit messages, and any `prior_threads` discussion (a `Reviewer`/`Author` message may already state the rationale) per `AX_PRIOR_DISCUSSION_AWARENESS`.
@@ -247,27 +241,82 @@
       </Action>
     </Step>
 
-    <Step id="STEP_2_INTERROGATE">
+    <Step id="STEP_3_INTERROGATE">
       <Goal>Run the battery per entity, grounded and adversarial.</Goal>
       <Action>
         1. For each element apply axes `A`–`G` at the depth set by its reversibility tag.
         2. Axes `B` and `D` REQUIRE repo search (analogs, prior examples) — record path+symbol or "inconclusive". Never assert a convention without a reference (`AX_GROUNDED_IN_REPO`).
-        3. Apply `AX_QUALITY_ATTRIBUTE_TRADEOFF`: name served attribute + tradeoff; for new service/store probe observability, migration/rollback, error path.
+        3. Name the quality attribute each non-trivial entity serves and the tradeoff it makes
+           (lightweight ATAM): sensitivity point vs tradeoff point. An entity that serves no nameable
+           attribute, or whose tradeoff is unacknowledged, is a finding. For a new service/store also
+           probe observability, migration/rollback path, and what happens on error.
         4. Load `ai/directives/agent-inbox/code-interrogation.directive.xml` and run its code-level battery (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`) per changed unit; honour its `ScopeGuard` (no linter-duplication) and `WebSearchGuard` (web-search off by default). Flags attach to the unit's entity card and become §9 candidates with the probe code in «Ось».
         5. Assign a verdict per &lt;VerdictModel&gt;; default `unjustified` until disproven (`AX_ADVERSARIAL_DEFAULT`).
       </Action>
     </Step>
 
-    <Step id="STEP_3_PACKAGE_PROBE">
+    <Step id="STEP_4_DEFECT_PROOF">
+      <Goal>Prove each finding is a real defect — or drop it. The adversarial second pass.</Goal>
+      <Action>
+        Run for EVERY finding raised by `STEP_3_INTERROGATE` / code-interrogation BEFORE it may
+        enter «Кандидаты»:
+        1. **Build the path.** Name the entry point (user input, event, call site) and every hop to
+           the observable failure: `file:line → file:line → … → symptom`. Every hop must cite real
+           code (open the file, quote the condition). A hop you did not verify is not a hop.
+        2. **Name the trigger.** The concrete input/state that reaches the failure (value, ordering,
+           missing config, concurrent writer). "Could happen" is not a trigger.
+        3. **Run the counter-check.** Actively try to REFUTE the finding: search for a guard,
+           validation, test, type constraint, config default, or a second call path that makes the
+           failure unreachable. Record what you checked and why it does not save the code.
+        4. **Verdict the proof** — exactly one token (machine vocabulary, English):
+           - `proven` — every hop verified in code and the trigger is concrete; may block.
+           - `plausible` — the path is coherent but ≥1 hop cannot be verified in the worktree; name
+             the missing hop. Never a blocker; posts as a question, not a claim.
+           - `refuted` — counter-evidence found; the finding is dropped from «Кандидаты» and listed
+             under «Отозвано при проверке» with the reason.
+        5. **Draw the deviation** for every algorithmic/architectural finding: where the normal path
+           stays correct (green) and where it breaks (red), or the sequence/state transition that
+           deviates. A finding may carry TWO OR MORE diagrams (deviation path + было→стало); each
+           answers a different question. TYPO/one-liner findings give a one-line proof and no diagram.
+        A finding with no proof block does NOT reach `STEP_5_ROOT_CAUSE_TRIAGE`, `<OutputFormat>` §9, or posting.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_ROOT_CAUSE_TRIAGE">
+      <Goal>Classify a proven/plausible defect: local fix or symptom of a higher-level cause.</Goal>
+      <Action>
+        Every finding — reviewer's or author's, on my MR or a peer's — is classified BEFORE it becomes
+        a candidate: is it fixed right here, or is it a symptom of something one level up (design,
+        boundary, contract, data ownership, process, spec)? Never assume a point fix. Two hypotheses
+        are argued in words (never scores):
+        **A — точечно:** the defect is local; the fix at this file:line leaves the surrounding design
+        intact. State WHY the local fix does not mask anything.
+        **B — уровнем выше:** the defect is a consequence of a higher-level cause; a local fix would
+        hide it. Name the suspected locus (module / boundary / contract / spec / process) and what
+        must be checked to confirm.
+        Tokens (machine vocabulary, English): `point-fix` · `arch-suspect` · `undecided`
+        (insufficient evidence — say what is missing). `arch-suspect` REQUIRES a locus and an
+        explicit "как проверить" line; `point-fix` requires the reason the cause is local.
+        **Depth scales with severity, the classify step does not disappear:** for `TYPO` and trivial
+        mechanical findings the argument is ONE line («точечно: изолированная опечатка, причина
+        локальна») — no full essay, but the token is still emitted.
+        This step governs `<OutputFormat>` §9 and `<AuthorMode>`; in AuthorMode the triage goes into
+        the handoff so the development agent sees the hypothesis, not only the symptom.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_PACKAGE_PROBE">
       <Goal>Test the app/framework boundary.</Goal>
       <Action>
-        1. Skip if no `packages/` (or shared-package root) in the repo.
+        1. Trigger: a `packages/` directory (or any monorepo shared-package root) exists in the repo.
+           No such root → skip. For each changed entity ask whether it belongs in a shared package,
+           and conversely whether app-specific logic leaked into a shared package.
         2. For each candidate run &lt;PackageExtractionGate&gt;; record extract-recommended elements and, conversely, app logic that leaked into a shared package.
         3. Report the explicit app↔package boundary line for the changed area.
       </Action>
     </Step>
 
-    <Step id="STEP_4_RELATIONSHIP_PASS">
+    <Step id="STEP_7_RELATIONSHIP_PASS">
       <Goal>Judge the decomposition as a whole.</Goal>
       <Action>
         1. Build the element graph: dependency direction, cycles, redundant paths, leaked boundaries, fan-in/out hubs, source-of-truth vs cache edges.
@@ -275,10 +324,10 @@
       </Action>
     </Step>
 
-    <Step id="STEP_5_SYNTHESIZE">
+    <Step id="STEP_8_SYNTHESIZE">
       <Goal>Emit the helicopter-view report.</Goal>
       <Precondition>
-        **STEP_5 action 0 — transport decision, performed BEFORE any output. This step OWNS the procedure; `AX_VISUAL_TRANSPORT` is its rationale, not its substitute.**
+        **STEP_8 action 0 — transport decision, performed BEFORE any output. This step OWNS the procedure; `AX_VISUAL_TRANSPORT` is its rationale, not its substitute.**
         1. Name the destination: **chat** (operator reads in Claude/terminal) or **GitLab** (posting to MR).
         2. IF chat → actively probe the environment for a widget tool (`mcp__visualize__show_widget` or an equivalent viz skill). Tool present → you MUST render relational diagrams with it; tool genuinely absent → ASCII/emoji-icons. ASCII is the fallback, never the default chosen for convenience or copied from the example. Mermaid/SVG never go to chat.
         3. IF GitLab → LOAD `ai/directives/agent-inbox/posting-rules.directive.xml`; it governs all diagram conversion and posting format. This directive never posts inline.
@@ -290,7 +339,7 @@
         3. Render the context/container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (C4-style: system boundary zone, internal containers coloured by verdict, external systems as black boxes, legend outside the diagram).
         4. Add flow diagrams only for non-trivial scenarios; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
         5. Emit per-entity cards ordered by reversibility per `AX_REVERSIBILITY_MODULATES_SCRUTINY` (one-way doors first): name · role · reconstructed rationale · verdict with emoji per `AX_SCANNABLE_OUTPUT` · stable ID per `AX_STABLE_FINDING_IDS` · open question (Q-ID if unresolved). Prose for ❌ unjustified; one line for ✅⚠️.
-        6. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; assign R-IDs per `AX_STABLE_FINDING_IDS`. Single-judgement findings stay prose.
+        6. Visualize every relational finding from STEP_7 per `AX_VISUALIZE_WHEN_RELATIONAL`; assign R-IDs per `AX_STABLE_FINDING_IDS`. Single-judgement findings stay prose.
         7. Reconcile candidates against `prior_threads` / `my_drafts` per `AX_PRIOR_DISCUSSION_AWARENESS`: drop duplicates, convert already-raised into reply-to-thread candidate, mark correction-replies, list awaiting-my-reply threads.
         8. Produce verdict summary per `AX_SAY_IT_ONCE`: reference E-IDs and R-IDs, never retell. Table format per `AX_SCANNABLE_OUTPUT`.
          9. Produce comment candidate table per &lt;OutputFormat&gt; §9. Note: posting format governed by `posting-rules.directive.xml` — this directive only produces the candidate list, never posts.
@@ -298,14 +347,16 @@
        <SelfCheck>
          **После сборки отчёта, перед отправкой оператору — пройди этот список. Если любой пункт ✗ — вернись и добавь пропущенное. Не выдавай неполный отчёт.**
 
-         0. `&lt;IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/&gt;` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
-         0b. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
-         1. **Шапка** — первая строка: `ref` как markdown-ссылка `[ref](webUrl)` (кликабельная, НЕ голый URL и НЕ голый текст), затем `title`. ✗/✓
-         2. **Обзор — карта изменения ПЕРВОЙ** (`AX_CHANGE_MAP`): граф сущностей с цветом по типу изменения + файлы подписью + серые соседи + строка «что произошло». Есть хотя бы ОДНА диаграмма (даже на однострочный MR — минимальная карта). Ниже — строка размера + таблица категорий + вторичная карта файлов. Отчёт без диаграммы = ✗, возврат. ✗/✓
-         3. **Лесенка понимания (`AX_COMPREHENSION_LADDER`)** отрисована медиумом (action 0): §3 **C4/helicopter — ВСЕГДА** (даже на дельте, отдельно от карты изменения); §4 **Поведение** — sequence (новый флоу) ИЛИ было→стало (рефактор); §4b **Сценарии** — use-case «зачем», grounded (не заявлено → «предполагаемый»). Нетривиальный MR без C4 / без поведения / без сценариев = ✗. Тривиальный (опечатка/конфиг) — карта + строка «зачем», остальное можно `n/a — <причина>`. ✗/✓
-         4. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
-         5. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Вид. ✗/✓
-         6. **Подвал** — повтор markdown-ссылки `[ref](webUrl)` (кликабельная, не голый URL). ✗/✓
+         1. `&lt;IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/&gt;` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
+         2. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
+         3. **Шапка** — первая строка: `ref` как markdown-ссылка `[ref](webUrl)` (кликабельная, НЕ голый URL и НЕ голый текст), затем `title`. ✗/✓
+         4. **Обзор — карта изменения ПЕРВОЙ** (`AX_CHANGE_MAP`): граф сущностей с цветом по типу изменения + файлы подписью + серые соседи + строка «что произошло». Есть хотя бы ОДНА диаграмма (даже на однострочный MR — минимальная карта). Ниже — строка размера + таблица категорий + вторичная карта файлов. Отчёт без диаграммы = ✗, возврат. ✗/✓
+         5. **Лесенка понимания (`AX_COMPREHENSION_LADDER`)** отрисована медиумом (action 0): §3 **C4/helicopter — ВСЕГДА** (даже на дельте, отдельно от карты изменения); §4 **Поведение** — sequence (новый флоу) ИЛИ было→стало (рефактор); §4b **Сценарии** — use-case «зачем», grounded (не заявлено → «предполагаемый»). Нетривиальный MR без C4 / без поведения / без сценариев = ✗. Тривиальный (опечатка/конфиг) — карта + строка «зачем», остальное можно `n/a — <причина>`. ✗/✓
+         6. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
+         7. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Вид/Важность/Разбор/Локус/Доказательство; `refuted` в таблице нет. ✗/✓
+         8. **Доказательство у каждой находки** (`STEP_4_DEFECT_PROOF`): путь с `file:line` на каждом шаге, конкретный триггер и контрпроверка. `blocker` только с `proven`; `plausible` называет непроверенный шаг. Без proof-блока находка в §9 не попадает. ✗/✓
+         9. **Отозванные** — `refuted` перечислены отдельным компактным списком «Отозвано при проверке» с причиной, а не молча удалены. ✗/✓
+         10. **Подвал** — повтор markdown-ссылки `[ref](webUrl)` (кликабельная, не голый URL). ✗/✓
 
          Если все пункты ✓ — отдавай отчёт оператору.
        </SelfCheck>
@@ -313,7 +364,7 @@
   </ExecutionPlan>
 
   <OutputFormat>
-    ONE consolidated report document, assembled in `STEP_5` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_OPERATOR_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT` mandatory precondition. Scannable structure per `AX_SCANNABLE_OUTPUT`: emoji verdict icons (✅⚠️❌), risk colours (🟢🟡🔴), `---` between sections, compact tables over prose, details only for critical. Stable IDs per `AX_STABLE_FINDING_IDS` ([E1], [R2], [Q3]). Cross-references per `AX_SAY_IT_ONCE` — reference IDs, never retell.
+    ONE consolidated report document, assembled in `STEP_8` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_OPERATOR_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT` mandatory precondition. Scannable structure per `AX_SCANNABLE_OUTPUT`: emoji verdict icons (✅⚠️❌), risk colours (🟢🟡🔴), `---` between sections, compact tables over prose, details only for critical. Stable IDs per `AX_STABLE_FINDING_IDS` ([E1], [R2], [Q3]). Cross-references per `AX_SAY_IT_ONCE` — reference IDs, never retell.
 
     Document structure, top to bottom:
 
@@ -355,16 +406,25 @@
     ---
     9. **Кандидаты в замечания [comment candidates].** Per `AX_PRIOR_DISCUSSION_AWARENESS`. Compact table per `AX_SCANNABLE_OUTPUT`:
 
-       | ID | Файл | Строка | Проблема | Ось | Вид | Разбор | Локус |
-       |----|------|--------|-----------|-----|------|-------|-------|
-       | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment | point-fix | — |
-       | [E5] | path/to/file.ts | L15 | краткая суть | GLOBAL | reply-to-thread (discussionId: abc123) | arch-suspect | src/boundary/… |
+       | ID | Файл | Строка | Проблема | Ось | Вид | Важность | Разбор | Локус | Доказательство |
+       |----|------|--------|-----------|-----|------|----------|-------|-------|----------------|
+       | [E3] | path/to/file.ts | L42 | краткая суть | C | new-line-comment | minor | point-fix | — | proven |
+       | [E5] | path/to/file.ts | L15 | краткая суть | GLOBAL | reply-to-thread (discussionId: abc123) | major | arch-suspect | src/boundary/… | plausible |
 
        «Ось» — либо архитектурная ось `A`–`G`, либо код-проба из `code-interrogation.directive.xml` (`NAT`/`IDIOM`/`LIT`/`DEP`/`GLOBAL`/`TEST`/`SEC`/`BIZ`/`TYPO`).
        Kind values: `new-line-comment` / `reply-to-thread` (discussionId) / `correction-reply` / `awaiting-my-reply` (per `AX_PRIOR_DISCUSSION_AWARENESS`) / `suggestion` (точная механическая правка — apply-able ```suggestion-блок, posting-rules).
-       «Разбор» — `point-fix` / `arch-suspect` / `undecided`, per `AX_ROOT_CAUSE_TRIAGE`; «Локус» — where the higher-level cause is suspected (`—` for `point-fix`).
+       «Разбор» — `point-fix` / `arch-suspect` / `undecided`, per `STEP_5_ROOT_CAUSE_TRIAGE`; «Локус» — where the higher-level cause is suspected (`—` for `point-fix`).
+       «Доказательство» — `proven` / `plausible` / `refuted`, per `STEP_4_DEFECT_PROOF`; `refuted` не попадает в таблицу, только в «Отозвано при проверке». `blocker` требует `proven`.
 
-       Below the table — the triage argument, one compact block per candidate (TYPO/trivial: one line):
+       Below the table — the proof block AND the triage argument, one compact block per candidate
+       (TYPO/trivial: one line each). The proof block comes first, because a candidate that is not
+       proven must not be argued as if it were real:
+
+       **Доказательство [E5] — plausible**
+       - Путь: `src/api.ts:12` → `src/session/store.ts:45` → `src/session/flush.ts:88` → симптом: состояние сессии не сбрасывается.
+       - Условия: Redis недоступен в момент flush; повторный запрос приходит до таймаута.
+       - Контрпроверка: `try/catch` в `flush.ts:90` ловит ошибку, но не переключает writer — второй источник истины остаётся. Непроверенный шаг: `flush.ts:88` в ветке `catch` (worktree не содержит сгенерированный файл).
+       - Схема: зелёный путь `api → store → flush → memory`, красный обрыв на `store → redis` при недоступности.
 
        **[E5] — arch-suspect → `src/boundary/session.ts`**
        - A (точечно): добавить откат в `store.ts:45` — закрывает симптом, но оставляет два источника истины.
@@ -372,6 +432,8 @@
        - Проверить: кто владеет сессией при недоступности Redis (`grep SessionWriter`), есть ли второй writer.
 
        **[E3] — point-fix** — причина локальна: конфиг читается в одном месте, других потребителей нет; точечная правка ничего не маскирует.
+
+       **Отозвано при проверке** (не кандидаты, не постится): `[E7]` — `refuted`: guard `if (!input) return` в `src/x.ts:20` делает путь недостижимым; `[R4]` — `refuted`: тест `foo.test.ts:31` уже покрывает сценарий.
 
        **IMPORTANT:** This directive produces the candidate list ONLY. Posting format (Mermaid, 🤖 prefix, vcs-reply syntax, line-comment position fields, granularity by artifact type) is governed by `ai/directives/agent-inbox/posting-rules.directive.xml`. When the skill proceeds to posting, it MUST load that directive.
     ---
@@ -395,8 +457,10 @@
     - **needs an answer** — the reviewer is wrong, or it is a question / needs discussion → reply with text;
     - **agree** — the reviewer is right and the fix is clear → a 👍 reaction (`vcs-react`), no text.
 
-    Every point ALSO carries `AX_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` / `undecided`, with
-    the two hypotheses and a locus for `arch-suspect`). The handoff tells the development agent the
+    Every point ALSO carries `STEP_4_DEFECT_PROOF` (`proven` / `plausible` / `refuted`, with the
+    path, trigger, counter-check and diagram when algorithmic/architectural) and
+    `STEP_5_ROOT_CAUSE_TRIAGE` (`point-fix` / `arch-suspect` / `undecided`, with the two hypotheses
+    and a locus for `arch-suspect`). The handoff tells the development agent the proof and the
     hypothesis, never just the symptom — the agent must know whether it is fixing here or hunting a
     cause one level up.
 

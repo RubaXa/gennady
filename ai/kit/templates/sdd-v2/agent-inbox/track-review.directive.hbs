@@ -128,7 +128,7 @@
     </Axiom>
 
     <Axiom id="AX_VISUAL_TRANSPORT">
-      Belief about the medium — NOT a procedure. "Visualised" means the operator SEES the diagram, not that a diagram string exists; a finding is shown in whatever form the destination can actually RENDER. The executable procedure (probe for the tool, pick the medium, declare the choice) lives in STEP_5 action 0 — this axiom only states what is true so the step can act on it.
+      Belief about the medium — NOT a procedure. "Visualised" means the operator SEES the diagram, not that a diagram string exists; a finding is shown in whatever form the destination can actually RENDER. The executable procedure (probe for the tool, pick the medium, declare the choice) lives in STEP_6 action 0 — this axiom only states what is true so the step can act on it.
       - **Chat is the destination:** when an interactive widget tool is present, it IS the medium — relational diagrams are rendered with it, not described. Plain-text ASCII/emoji is the FALLBACK, used only when no widget tool exists — never the default chosen because it is easier or because the example happens to show it. Mermaid fenced blocks and raw SVG are markup a chat client cannot draw → never sent to chat.
       - **GitLab is the destination:** Mermaid is the medium (GitLab renders it natively); ASCII and widget output do not survive there. Posting format is owned by `posting-rules.directive.xml`, never handled inline here.
       A diagram delivered in the wrong transport — ASCII chosen while a widget tool exists, Mermaid sent to chat, ASCII posted to GitLab — is invalid output. Diagrams stay ≤7 nodes in every transport.
@@ -151,13 +151,13 @@
     </Axiom>
 
     <Axiom id="AX_REPORT_ASSEMBLY">
-      Working steps (`STEP_0`–`STEP_4`) run internally. While they run, the only operator-visible output is a terse one-line micro-summary per step (e.g. "Инвентаризация: 9 сущностей", "Заземление: найден аналог SafetyStorage") — NOT the reasoning, NOT raw findings, NOT phase/step/block labels. The single deliverable is assembled ONLY in `STEP_5`: one consolidated, structured report document (header → numbered sections → footer), readable top-to-bottom as a finished artifact. Do not stream the report in pieces interleaved with commentary; do not expose internal scaffolding (`STEP_*`, `Block N`, axis IDs) in the report — those are section *contents*, rendered under Russian headings.
+      Working steps (`STEP_1`–`STEP_5`) run internally. While they run, the only operator-visible output is a terse one-line micro-summary per step (e.g. "Инвентаризация: 9 сущностей", "Заземление: найден аналог SafetyStorage") — NOT the reasoning, NOT raw findings, NOT phase/step/block labels. The single deliverable is assembled ONLY in `STEP_6`: one consolidated, structured report document (header → numbered sections → footer), readable top-to-bottom as a finished artifact. Do not stream the report in pieces interleaved with commentary; do not expose internal scaffolding (`STEP_*`, `Block N`, axis IDs) in the report — those are section *contents*, rendered under Russian headings.
     </Axiom>
 
     <Axiom id="AX_PRIOR_DISCUSSION_AWARENESS">
       The MR is not a blank page — other reviewers, the author, the bot (`AI_Agent`), and I myself may have written already. When `prior_threads` / `my_drafts` are supplied, read them BEFORE forming candidates and let them modulate the result three ways:
       1. **Не дублируй.** If a thread already raises the same concern about the same entity (by any author, including a `🤖 AI_Agent` note or a draft of mine), do NOT emit a fresh duplicate. Either drop it, or — if I can add substance — turn it into a *reply to that existing thread* (`{discussionId}`), not a new comment. State that it is a reply to an existing thread.
-      2. **Учитывай чужие доводы.** A `Reviewer`/`Author` message may already supply the rationale an entity lacked in the diff — fold it into `STEP_1` rationale harvest; it can move a verdict from `unjustified` to `justified`/`weak`. Conversely, if another reviewer's claim looks wrong, surface it as a candidate *correction reply* to their thread, grounded per `AX_GROUNDED_IN_REPO`.
+      2. **Учитывай чужие доводы.** A `Reviewer`/`Author` message may already supply the rationale an entity lacked in the diff — fold it into `STEP_2_RATIONALE_HARVEST`; it can move a verdict from `unjustified` to `justified`/`weak`. Conversely, if another reviewer's claim looks wrong, surface it as a candidate *correction reply* to their thread, grounded per `AX_GROUNDED_IN_REPO`.
       3. **Лови упоминания меня.** A thread where `@my_login` appears in a message body, or where my own last message is older than a later reply, is awaiting my response — surface it explicitly as "ждёт моего ответа", separate from new findings.
        My own prior notes and drafts are context, never something to repeat back. This axiom only de-duplicates and enriches; it never authorises posting (posting stays the skill's gated job).
     </Axiom>
@@ -250,7 +250,7 @@
     through the same architecture/testability prism (native-stdlib analog, modern idioms, literal vs
     constant vs dependency, global-dependency justification, testability, security, business-goal
     alignment) — lives in `ai/directives/agent-inbox/code-interrogation.directive.xml` to keep this
-    directive bounded. It is loaded and applied per changed unit at `STEP_2`; its flags feed the same
+    directive bounded. It is loaded and applied per changed unit at `STEP_3_INTERROGATE`; its flags feed the same
     entity cards and §9 candidate table (probe codes in the «Ось» column).
   </InterrogationBattery>
 
@@ -284,17 +284,17 @@
   </HaltConditions>
 
   <ExecutionPlan>
-    <Step id="STEP_0_INVENTORY">
+    <Step id="STEP_1_INVENTORY">
       <Goal>Enumerate what is on the table.</Goal>
       <Action>
-        1. Read the changeset scope per `AX_CHANGESET_SCALE` from your task file's already-injected `## Контекст` section (total files changed, lines +/−, new files vs deleted/renamed) — do NOT recompute via `git diff`/`git log` yourself; break the figures down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_5` / &lt;OutputFormat&gt; §2.
+        1. Read the changeset scope per `AX_CHANGESET_SCALE` from your task file's already-injected `## Контекст` section (total files changed, lines +/−, new files vs deleted/renamed) — do NOT recompute via `git diff`/`git log` yourself; break the figures down by category — code / tests / docs-specs / config / assets. This feeds the mandatory scope summary in `STEP_6` / &lt;OutputFormat&gt; §2.
         2. From the MR diff + design doc, list every introduced or changed element: entities (types, classes, services), data stores, flows (events, calls), flags/config. Record the count of *new* entities (expansion signal).
         3. Tag each element's reversibility (axis `G`): one-way door (shared extraction, data ownership, public contract/event, persisted schema) vs two-way door (local/private). This sets scrutiny depth downstream.
         4. Zero elements → `H_EMPTY_INVENTORY`.
       </Action>
     </Step>
 
-    <Step id="STEP_1_RATIONALE_HARVEST">
+    <Step id="STEP_2_RATIONALE_HARVEST">
       <Goal>Find the author's stated justification per element.</Goal>
       <Action>
         1. Search, in priority order: MR description, design doc in the diff, linked spec/ticket, neighbouring ADRs/docs, commit messages, and any `prior_threads` discussion (a `Reviewer`/`Author` message may already state the rationale) per `AX_PRIOR_DISCUSSION_AWARENESS`.
@@ -303,7 +303,7 @@
       </Action>
     </Step>
 
-    <Step id="STEP_2_INTERROGATE">
+    <Step id="STEP_3_INTERROGATE">
       <Goal>Run the battery per entity, grounded and adversarial.</Goal>
       <Action>
         1. For each element apply axes `A`–`G` at the depth set by its reversibility tag.
@@ -314,7 +314,7 @@
       </Action>
     </Step>
 
-    <Step id="STEP_3_PACKAGE_PROBE">
+    <Step id="STEP_4_PACKAGE_PROBE">
       <Goal>Test the app/framework boundary.</Goal>
       <Action>
         1. Skip if no `packages/` (or shared-package root) in the repo.
@@ -323,7 +323,7 @@
       </Action>
     </Step>
 
-    <Step id="STEP_4_RELATIONSHIP_PASS">
+    <Step id="STEP_5_RELATIONSHIP_PASS">
       <Goal>Judge the decomposition as a whole.</Goal>
       <Action>
         1. Build the element graph: dependency direction, cycles, redundant paths, leaked boundaries, fan-in/out hubs, source-of-truth vs cache edges.
@@ -331,10 +331,10 @@
       </Action>
     </Step>
 
-    <Step id="STEP_5_SYNTHESIZE">
+    <Step id="STEP_6_SYNTHESIZE">
       <Goal>Emit the helicopter-view report.</Goal>
       <Precondition>
-        **STEP_5 action 0 — transport decision, performed BEFORE any output. This step OWNS the procedure; `AX_VISUAL_TRANSPORT` is its rationale, not its substitute.**
+        **STEP_6 action 0 — transport decision, performed BEFORE any output. This step OWNS the procedure; `AX_VISUAL_TRANSPORT` is its rationale, not its substitute.**
         1. Name the destination: **chat** (operator reads in Claude/terminal) or **GitLab** (posting to MR).
         2. IF chat → actively probe the environment for a widget tool (`mcp__visualize__show_widget` or an equivalent viz skill). Tool present → you MUST render relational diagrams with it; tool genuinely absent → ASCII/emoji-icons. ASCII is the fallback, never the default chosen for convenience or copied from the example. Mermaid/SVG never go to chat.
         3. IF GitLab → LOAD `ai/directives/agent-inbox/posting-rules.directive.xml`; it governs all diagram conversion and posting format. This directive never posts inline.
@@ -346,7 +346,7 @@
         3. Render the context/container diagram per `AX_VISUALIZE_WHEN_RELATIONAL` (C4-style: system boundary zone, internal containers coloured by verdict, external systems as black boxes, legend outside the diagram).
         4. Add flow diagrams only for non-trivial scenarios; one per scenario, ≤7 nodes, one caption each. Omit the section if no non-trivial flow.
         5. Emit per-entity cards ordered by reversibility per `AX_REVERSIBILITY_MODULATES_SCRUTINY` (one-way doors first): name · role · reconstructed rationale · verdict with emoji per `AX_SCANNABLE_OUTPUT` · stable ID per `AX_STABLE_FINDING_IDS` · open question (Q-ID if unresolved). Prose for ❌ unjustified; one line for ✅⚠️.
-        6. Visualize every relational finding from STEP_4 per `AX_VISUALIZE_WHEN_RELATIONAL`; assign R-IDs per `AX_STABLE_FINDING_IDS`. Single-judgement findings stay prose.
+        6. Visualize every relational finding from STEP_5 per `AX_VISUALIZE_WHEN_RELATIONAL`; assign R-IDs per `AX_STABLE_FINDING_IDS`. Single-judgement findings stay prose.
         7. Reconcile candidates against `prior_threads` / `my_drafts` per `AX_PRIOR_DISCUSSION_AWARENESS`: drop duplicates, convert already-raised into reply-to-thread candidate, mark correction-replies, list awaiting-my-reply threads.
         8. Produce verdict summary per `AX_SAY_IT_ONCE`: reference E-IDs and R-IDs, never retell. Table format per `AX_SCANNABLE_OUTPUT`.
          9. Produce comment candidate table per &lt;OutputFormat&gt; §9. Note: posting format governed by `posting-rules.directive.xml` — this directive only produces the candidate list, never posts.
@@ -354,14 +354,14 @@
        <SelfCheck>
          **После сборки отчёта, перед отправкой оператору — пройди этот список. Если любой пункт ✗ — вернись и добавь пропущенное. Не выдавай неполный отчёт.**
 
-         0. `&lt;IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/&gt;` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
-         0b. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
-         1. **Шапка** — первая строка: `ref` как markdown-ссылка `[ref](webUrl)` (кликабельная, НЕ голый URL и НЕ голый текст), затем `title`. ✗/✓
-         2. **Обзор — карта изменения ПЕРВОЙ** (`AX_CHANGE_MAP`): граф сущностей с цветом по типу изменения + файлы подписью + серые соседи + строка «что произошло». Есть хотя бы ОДНА диаграмма (даже на однострочный MR — минимальная карта). Ниже — строка размера + таблица категорий + вторичная карта файлов. Отчёт без диаграммы = ✗, возврат. ✗/✓
-         3. **Лесенка понимания (`AX_COMPREHENSION_LADDER`)** отрисована медиумом (action 0): §3 **C4/helicopter — ВСЕГДА** (даже на дельте, отдельно от карты изменения); §4 **Поведение** — sequence (новый флоу) ИЛИ было→стало (рефактор); §4b **Сценарии** — use-case «зачем», grounded (не заявлено → «предполагаемый»). Нетривиальный MR без C4 / без поведения / без сценариев = ✗. Тривиальный (опечатка/конфиг) — карта + строка «зачем», остальное можно `n/a — <причина>`. ✗/✓
-         4. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
-         5. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Вид. ✗/✓
-         6. **Подвал** — повтор markdown-ссылки `[ref](webUrl)` (кликабельная, не голый URL). ✗/✓
+         1. `&lt;IncludeOnce src="ai/directives/agent-inbox/golden-chat-output.example.md"/&gt;` — эталон СОСТАВА и ПОРЯДКА секций, не формата диаграмм. Диаграммы там в ASCII только потому, что markdown-файл не может вызвать виджет — это НЕ указание выводить ASCII. Сверяй структуру, выбор медиума — по action 0.
+         2. **Транспорт объявлен (action 0):** первая строка содержит «чат, widget» / «чат, ASCII (виджет недоступен)» / «GitLab, Mermaid». Если в чате виджет был доступен — реляционные диаграммы отрисованы им, а не ASCII. ✗/✓
+         3. **Шапка** — первая строка: `ref` как markdown-ссылка `[ref](webUrl)` (кликабельная, НЕ голый URL и НЕ голый текст), затем `title`. ✗/✓
+         4. **Обзор — карта изменения ПЕРВОЙ** (`AX_CHANGE_MAP`): граф сущностей с цветом по типу изменения + файлы подписью + серые соседи + строка «что произошло». Есть хотя бы ОДНА диаграмма (даже на однострочный MR — минимальная карта). Ниже — строка размера + таблица категорий + вторичная карта файлов. Отчёт без диаграммы = ✗, возврат. ✗/✓
+         5. **Лесенка понимания (`AX_COMPREHENSION_LADDER`)** отрисована медиумом (action 0): §3 **C4/helicopter — ВСЕГДА** (даже на дельте, отдельно от карты изменения); §4 **Поведение** — sequence (новый флоу) ИЛИ было→стало (рефактор); §4b **Сценарии** — use-case «зачем», grounded (не заявлено → «предполагаемый»). Нетривиальный MR без C4 / без поведения / без сценариев = ✗. Тривиальный (опечатка/конфиг) — карта + строка «зачем», остальное можно `n/a — <причина>`. ✗/✓
+         6. **Разбор сущностей** — карточки с [E-IDs], ролью, вердиктом (✅/⚠️/❌), обоснованием. ✗/✓
+         7. **Таблица кандидатов** — колонки ID/Файл/Строка/Проблема/Ось/Вид. ✗/✓
+         8. **Подвал** — повтор markdown-ссылки `[ref](webUrl)` (кликабельная, не голый URL). ✗/✓
 
          Если все пункты ✓ — отдавай отчёт оператору.
        </SelfCheck>
@@ -369,7 +369,7 @@
   </ExecutionPlan>
 
   <OutputFormat>
-    ONE consolidated report document, assembled in `STEP_5` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_OPERATOR_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT` mandatory precondition. Scannable structure per `AX_SCANNABLE_OUTPUT`: emoji verdict icons (✅⚠️❌), risk colours (🟢🟡🔴), `---` between sections, compact tables over prose, details only for critical. Stable IDs per `AX_STABLE_FINDING_IDS` ([E1], [R2], [Q3]). Cross-references per `AX_SAY_IT_ONCE` — reference IDs, never retell.
+    ONE consolidated report document, assembled in `STEP_6` per `AX_REPORT_ASSEMBLY`. Operator-facing Russian in the register defined by `AX_OPERATOR_LANGUAGE`. Visual transport per `AX_VISUAL_TRANSPORT` mandatory precondition. Scannable structure per `AX_SCANNABLE_OUTPUT`: emoji verdict icons (✅⚠️❌), risk colours (🟢🟡🔴), `---` between sections, compact tables over prose, details only for critical. Stable IDs per `AX_STABLE_FINDING_IDS` ([E1], [R2], [Q3]). Cross-references per `AX_SAY_IT_ONCE` — reference IDs, never retell.
 
     Document structure, top to bottom:
 

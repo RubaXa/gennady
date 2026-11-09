@@ -35,9 +35,14 @@
     </Axiom>
 
     <Axiom id="AX_DIAGRAM_DISCIPLINE">
-      Every diagram, any medium: ≤7 nodes (split or abstract if more); ONE diagram per idea; a
+      Every diagram, any medium: ≤7 nodes (split or abstract if more); ONE idea per diagram; a
       one-line caption in Russian directly under it; encode the single thing to notice first with
       colour/size/position. A diagram nobody can read in 5 seconds failed its job — simplify.
+      **One finding MAY carry two or more diagrams** when they answer different questions (e.g. the
+      deviation path AND the было→стало shape). Do not merge two ideas into one graph and do not
+      repeat the same idea twice. When posting to GitLab, keep the first diagram visible and wrap the
+      extra ones in `&lt;details&gt;&lt;summary&gt;Схемы&lt;/summary&gt;…&lt;/details&gt;` so the
+      comment stays compact.
     </Axiom>
   </BeliefState>
 
@@ -58,6 +63,14 @@
     | Risk / priority matrix of findings | quadrant 2×2 | 2×2 ASCII grid | `quadrantChart` |
     | DB schema (MR touches models/tables) | ER | indented table→fields list | `erDiagram` |
     | Why a change happened / deeper cause (lens ②) | fishbone | nested cause list | `flowchart` LR |
+    | Where an algorithm/state deviates from expected (defect path) | defect-path | boxes + arrows, green OK / yellow suspect / red break | `flowchart` or `stateDiagram-v2` |
+    | Where a sequence/architectural transition breaks | sequence | participant columns + a red break marker on the failing edge | `sequenceDiagram` |
+    | Why the current shape is problematic (was→became) | before→after | two small labelled box-graphs, broken side red | two `flowchart` blocks |
+
+    **Finding-level colour legend (defect path, any medium):** green = path works as intended · yellow
+    = unverified/suspect hop · red = the break point (observable failure). Use it alongside — not
+    instead of — the change-type colours in the overview: new green / modified yellow / deleted red /
+    outside gray. A diagram that colours a working branch red, or the break green, is invalid.
 
     **Extended — GitLab-only, rare** (no clean ASCII; use ONLY when posting to GitLab and the shape
     genuinely needs it, never as the default): `classDiagram` (OO inheritance-heavy MR),
@@ -167,6 +180,26 @@
       Mermaid: flowchart LR with causes → effect node.
     </Type>
 
+    <Type name="defect-path (algorithm/state deviation)">
+      ASCII (entry → hops → break; green = works, yellow = suspect, red = break):
+        [request]──▶[validate ✅]──▶[store ✅]──▶[flush ✅]──▶[memory ✅]
+                                             └──▶[redis ❌ недоступен]──▶ симптом: сессия не сброшена
+      Mermaid (GitLab; classDef names are fixed):
+        ```mermaid
+        flowchart LR
+          REQ[request]:::ok --> VAL[validate]:::ok
+          VAL --> ST[store]:::ok
+          ST --> FL[flush]:::ok
+          FL --> MEM[memory]:::ok
+          FL --> RDS[redis недоступен]:::break
+          RDS --> SYM[симптом: сессия не сброшена]:::break
+          classDef ok fill:#dafbe1,stroke:#2da44e
+          classDef suspect fill:#fff8c5,stroke:#bf8700
+          classDef break fill:#ffebe9,stroke:#cf222e
+        ```
+      Use `suspect` for a hop the proof could not verify; never colour an unverified hop green.
+    </Type>
+
     <Type name="tree (file map)">
       ASCII only (chat + plain text in GitLab):
         src/
@@ -181,8 +214,11 @@
   <CommentInfographicRule>
     For a GitLab comment (not the overview): embed a small Mermaid diagram INSTEAD of a paragraph only
     when the point is relational AND fits ≤5 nodes (a flow the author must trace, a dependency they
-    missed, a state transition). A single-point remark stays prose. This keeps threads readable —
-    a wall of diagrams erodes author trust as much as a wall of text. Governed together with
-    `posting-rules.directive.xml` AX_POSTING_MERMAID_ONLY.
+    missed, a state transition, the defect path). A single-point remark stays prose. When the finding
+    needs both «где сломалось» and «как было→как стало», that is TWO diagrams, not one overloaded
+    graph: keep the defect path visible and fold the second into
+    `&lt;details&gt;&lt;summary&gt;Схемы&lt;/summary&gt;…&lt;/details&gt;`. A wall of diagrams erodes
+    author trust as much as a wall of text. Governed together with `posting-rules.directive.xml`
+    AX_POSTING_MERMAID_ONLY.
   </CommentInfographicRule>
 </VisualVocabulary>

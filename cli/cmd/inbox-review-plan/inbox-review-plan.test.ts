@@ -58,8 +58,8 @@ function commitAll(dir: string, message: string): void {
 // #region START_VALIDATE_TEST_HELPERS — hand-built report-dir fixtures for --validate schema gate
 
 const CANDIDATES_HEADER =
-  '| ID | Файл | Строка | Проблема | Ось | Вид | Важность | Разбор | Локус |';
-const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- | --- | --- |';
+  '| ID | Файл | Строка | Проблема | Ось | Вид | Важность | Разбор | Локус | Доказательство |';
+const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |';
 
 function taskContent(
   opts: {
@@ -67,6 +67,7 @@ function taskContent(
     status?: string;
     context?: string;
     findings?: string;
+    proofs?: string;
     verdict?: string;
     candidatesRow?: string;
     mermaidBlock?: string;
@@ -77,8 +78,9 @@ function taskContent(
     status = 'filled',
     context = 'Контекст задачи.',
     findings = 'Найдено N проблем.',
+    proofs = '[C1] — proven: Путь foo.ts:10 → симптом; Условия: пустой вход; Контрпроверка: guard не найден.',
     verdict = 'Одобрено.',
-    candidatesRow = '| C1 | foo.ts | 10 | пример проблемы | NAT | suggestion | minor | point-fix | — |',
+    candidatesRow = '| C1 | foo.ts | 10 | пример проблемы | NAT | suggestion | minor | point-fix | — | proven |',
     mermaidBlock = '',
   } = opts;
 
@@ -103,6 +105,10 @@ ${context}
 
 ${findings}
 ${mermaidBlock}
+
+## Доказательства
+
+${proofs}
 
 ## Кандидаты
 
@@ -698,7 +704,8 @@ describe('inbox-review-plan --validate', () => {
 
   it('Candidates row with unknown Kind token → invalid Kind token error', () => {
     const { dir } = setupReportDir({
-      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | typo-fix | minor | point-fix | — |',
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | NAT | typo-fix | minor | point-fix | — | proven |',
     });
     try {
       const r = runValidate(dir);
@@ -712,7 +719,7 @@ describe('inbox-review-plan --validate', () => {
   });
 
   it('dash-only placeholder candidate row → no invalid-token error (means "no candidates")', () => {
-    const { dir } = setupReportDir({ candidatesRow: '| — | — | — | — | — | — | — | — | — |' });
+    const { dir } = setupReportDir({ candidatesRow: '| — | — | — | — | — | — | — | — | — | — |' });
     try {
       const r = runValidate(dir);
       const result = JSON.parse(r.stdout.trim());
@@ -729,7 +736,8 @@ describe('inbox-review-plan --validate', () => {
 
   it('Candidates row with unknown Ось token → invalid Ось token error', () => {
     const { dir } = setupReportDir({
-      candidatesRow: '| C1 | foo.ts | 10 | issue | ZZZ | suggestion | minor | point-fix | — |',
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | ZZZ | suggestion | minor | point-fix | — | proven |',
     });
     try {
       const r = runValidate(dir);
@@ -744,7 +752,7 @@ describe('inbox-review-plan --validate', () => {
 
   it('Candidates row with unknown Разбор token → invalid Разбор token error', () => {
     const { dir } = setupReportDir({
-      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | maybe | — |',
+      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | maybe | — | proven |',
     });
     try {
       const r = runValidate(dir);
@@ -759,7 +767,7 @@ describe('inbox-review-plan --validate', () => {
 
   it('Candidates row with empty Разбор → required error', () => {
     const { dir } = setupReportDir({
-      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | — | — |',
+      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | — | — | proven |',
     });
     try {
       const r = runValidate(dir);
@@ -774,7 +782,8 @@ describe('inbox-review-plan --validate', () => {
 
   it('arch-suspect without Локус → requires non-empty Локус error', () => {
     const { dir } = setupReportDir({
-      candidatesRow: '| C1 | foo.ts | 10 | issue | LAYER | suggestion | major | arch-suspect | — |',
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | LAYER | suggestion | major | arch-suspect | — | proven |',
     });
     try {
       const r = runValidate(dir);
@@ -794,13 +803,133 @@ describe('inbox-review-plan --validate', () => {
   it('arch-suspect with Локус → valid', () => {
     const { dir } = setupReportDir({
       candidatesRow:
-        '| C1 | foo.ts | 10 | issue | LAYER | suggestion | major | arch-suspect | src/boundary.ts |',
+        '| C1 | foo.ts | 10 | issue | LAYER | suggestion | major | arch-suspect | src/boundary.ts | proven |',
     });
     try {
       const r = runValidate(dir);
       const result = JSON.parse(r.stdout.trim());
       assert.ok(
         !(result.errors ?? []).some((e: { error: string }) => /Разбор|Локус/.test(e.error))
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuted candidate → forbidden, move to refuted section', () => {
+    const { dir } = setupReportDir({
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | point-fix | — | refuted |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        result.errors.some((e: { error: string }) =>
+          /refuted finding must not be a candidate/.test(e.error)
+        )
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('blocker with plausible proof → blocker requires proven', () => {
+    const { dir } = setupReportDir({
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | NAT | suggestion | blocker | point-fix | — | plausible |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        result.errors.some((e: { error: string }) =>
+          /blocker requires Доказательство=proven/.test(e.error)
+        )
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('missing proof token → Доказательство required', () => {
+    const { dir } = setupReportDir({
+      candidatesRow: '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | point-fix | — | — |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        result.errors.some((e: { error: string }) => /Доказательство is required/.test(e.error))
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('unknown proof token → invalid Доказательство token', () => {
+    const { dir } = setupReportDir({
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | NAT | suggestion | minor | point-fix | — | maybe |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        result.errors.some((e: { error: string }) => /invalid Доказательство token/.test(e.error))
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('unknown severity token → invalid Важность token', () => {
+    const { dir } = setupReportDir({
+      candidatesRow:
+        '| C1 | foo.ts | 10 | issue | NAT | suggestion | critical | point-fix | — | proven |',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        result.errors.some((e: { error: string }) => /invalid Важность token/.test(e.error))
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('candidate without its own proof block → missing block error', () => {
+    const { dir } = setupReportDir({
+      proofs: '[OTHER] — proven: чужой блок; кандидат C1 не покрыт.',
+    });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        result.errors.some((e: { error: string }) =>
+          /Доказательства missing a block for C1/.test(e.error)
+        )
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('empty Доказательства section → section is empty', () => {
+    const { dir } = setupReportDir({ proofs: '<!-- FILL: agent -->' });
+    try {
+      const r = runValidate(dir);
+      assert.notStrictEqual(r.status, 0);
+      const result = JSON.parse(r.stdout.trim());
+      assert.ok(
+        result.errors.some((e: { error: string }) => /## Доказательства is empty/.test(e.error))
       );
     } finally {
       rmSync(dir, { recursive: true, force: true });

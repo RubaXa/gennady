@@ -24,9 +24,9 @@ import {
 // itself, so a small hand-written fixture is enough to drive validateReviewReports' gate). ───────
 
 const CANDIDATES_HEADER =
-  '| ID | Файл | Строка | Проблема | Ось | Вид | Важность | Разбор | Локус |';
-const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- | --- | --- |';
-const EMPTY_CANDIDATES_ROW = '| - | - | - | - | - | - | - | - | - |';
+  '| ID | Файл | Строка | Проблема | Ось | Вид | Важность | Разбор | Локус | Доказательство |';
+const CANDIDATES_SEPARATOR = '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |';
+const EMPTY_CANDIDATES_ROW = '| - | - | - | - | - | - | - | - | - | - |';
 
 function taskContent(
   opts: {
@@ -63,6 +63,10 @@ status: ${status}
 ## Находки
 
 ${findings}
+
+## Доказательства
+
+Доказательство приложено к находкам; кандидатов нет — секция n/a.
 
 ## Кандидаты
 
@@ -492,15 +496,15 @@ describe('ArtifactValidator — injection-coverage grounding (TSK-137, D-86 over
       // problem cell intentionally omits the symbol name — grounding here must come from the
       // file reference alone, not fall back to the symbol-substring match path.
       const goodRow =
-        '| C1 | `src.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | low | point-fix | — |';
+        '| C1 | `src.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | minor | point-fix | — | proven |';
       const badRow =
-        '| C1 | `does-not-exist.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | low | point-fix | — |';
+        '| C1 | `does-not-exist.ts` | 2 | Обработка ошибок не покрыта | NAT | new-line-comment | minor | point-fix | — | proven |';
 
       const filled = scaffolded
         .replace('status: scaffolded', 'status: filled')
         .replace(
-          '<!-- FILL: agent -->\n\n## Кандидаты',
-          'В файле `src.ts` обнаружена находка по символу realFn.\n\n## Кандидаты'
+          '<!-- FILL: agent -->\n\n## Доказательства\n\n<!-- FILL: agent — один блок на каждую находку (arch-interrogation STEP_4_DEFECT_PROOF): Путь file:line → … → симптом;\n     Условия (триггер); Контрпроверка (что искали и почему не спасает); Вердикт proven|plausible|refuted;\n     Схема для алгоритмических/архитектурных находок (зелёный OK / жёлтый suspect / красный break).\n     refuted сюда не попадает как кандидат: он уходит в «Отозвано при проверке». Без блока находка не\n     становится кандидатом. -->',
+          'В файле `src.ts` обнаружена находка по символу realFn.\n\n## Доказательства\n\n[C1] — proven: `src.ts:2` → симптом; контрпроверка: guard не найден.'
         )
         .replace(
           `${CANDIDATES_HEADER}\n${CANDIDATES_SEPARATOR}\n`,

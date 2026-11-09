@@ -146,23 +146,78 @@
          runtime flow → `sequenceDiagram`; lifecycle → `stateDiagram-v2`; risk-matrix → `quadrantChart`;
          schema → `erDiagram`). Do NOT collapse everything into a flowchart.
       2. Minimal syntax per type — see visual-vocabulary `<Syntax>` (Mermaid column).
-      3. Keep ≤7 nodes per diagram (arch-interrogation AX_VISUALIZE_WHEN_RELATIONAL / visual-vocabulary AX_DIAGRAM_DISCIPLINE).
+      3. Keep ≤7 nodes per diagram. A finding MAY carry TWO OR MORE diagrams when each answers a
+         different question (deviation path + было→стало). Post the first visible; wrap the extras in
+         `&lt;details&gt;&lt;summary&gt;Схемы&lt;/summary&gt;…&lt;/details&gt;` so the comment stays
+         compact. Do not overload one graph with two ideas.
       4. Use fixed classDef for entity state — COPY AS-IS:
          - new → green fill (#dafbe1), green stroke (#2da44e)
          - modified → yellow fill (#fff8c5), yellow stroke (#bf8700)
          - deleted → red fill (#ffebe9), red stroke (#cf222e)
          - related/outside MR → gray fill (#f6f8fa), gray dashed stroke (#999)
+      4b. **Defect-path diagrams** use the same palette with different meaning, fixed names:
+         `ok` → green (path works) · `suspect` → yellow (unverified hop) · `break` → red (observable
+         failure). Never colour an unverified hop green. A working branch painted red, or the break
+         painted green, invalidates the diagram.
       5. Solid edges for in-change connections, dashed edges for outside-MR connections.
       6. Every diagram gets a one-line caption in Russian.
     </Rules>
   </DiagramConversion>
 
+  <Clustering>
+    **Threshold:** more than 10 findings for one MR → do NOT open a thread per finding.
+    **Group by MEANING, not by file:** same root cause / same boundary / same axis / same proof path.
+    **Shape:** one consolidated comment per cluster, posted on the first finding's line (or as a
+    general discussion when no finding has a line). The comment opens with `🤖` and one line:
+    «Группа N — <смысл кластера>. Пункты ниже — находки; предполагаемая правка приложена файлом
+    `.patch`, применяйте по своему усмотрению.»
+    **Each item keeps its own identity:** `[ID] file:line — проблема` + one-line proof verdict and
+    path; **a diagram/infographic whenever the point can be shown relationally** — pick the type per
+    case from `visual-vocabulary` (defect path, sequence, state, before→after, fishbone) so a
+    downstream agent that reads slowly still sees the cause; first diagram visible, extras in
+    `&lt;details&gt;`; closing line «Предлагаемая правка: <patch link>» and, when useful, «Как
+    проверить: <one check>». Nothing is dropped or merged away — a cluster is a delivery container,
+    not a summary.
+    **Cap:** if clusters still exceed 10, merge by module until ≤10. The operator must never see more
+    than 10 open threads from me on one MR.
+    **Single findings (≤10 total):** post as individual threads as today, each with its own proof and
+    patch.
+  </Clustering>
+
+  <PatchAttachments>
+    For every finding with a safe, local fix, generate an apply-able `git diff` patch:
+    - Do it in a THROWAWAY copy/worktree — never mutate the MR worktree, never commit to the MR branch.
+    - Name it `<ID>.patch`. Run `git apply --check` against the reviewed HEAD before attaching; a
+      patch that does not apply cleanly is NOT attached — post the finding and say
+      «патч не приложен: контекст разошёлся».
+    - **GitLab:** upload via `glab api "projects/<url-encoded-group%2Fproject>/uploads" -F file=@<path>` (or the installed
+      `glab upload` equivalent) and put the returned markdown link in the comment. Never paste the
+      patch as a fenced code block — it must be a downloadable file.
+    - **GitHub:** `gh gist create <path> --public=false` and link the gist.
+    - Neither tool available → `H_NO_PATCH_UPLOAD`: tell the operator, do not silently downgrade to a
+      code block. The finding is still postable without the patch.
+    - The patch is a PROPOSAL: the author decides whether to apply it. Say so in the item.
+  </PatchAttachments>
+
+  <IssueDefer>
+    For each finding or cluster the operator may choose `issue` instead of `thread` — offered in the
+    finalization Ask, never decided silently:
+    - **GitLab:** `glab issue create -R <group/project> --title "<short finding>"
+      --description "<finding + proof block + diagrams + patch link>"`.
+    - **GitHub:** `gh issue create -R <owner/repo> --title … --body …`.
+    - The issue body carries the same proof block (path, trigger, counter-check), the Mermaid
+      diagram(s), the patch link, and the line «Автор решает, применять ли предлагаемую правку».
+    - Record the returned URL in the thread reply (when one is posted) and in `findings.md` §9.
+  </IssueDefer>
+
   <Axiom id="AX_COMMENT_INFOGRAPHIC">
     Per `AX_INFOGRAPHIC_FIRST` (visual-vocabulary) applied to POSTED comments — not just the overview:
     when a line-comment or thread-reply explains something RELATIONAL and it fits ≤5 nodes (a flow the
-    author must trace, a dependency they missed, a state transition), embed a small Mermaid diagram
-    instead of a paragraph. A single-point remark stays prose. A wall of diagrams in a thread erodes
-    author trust as much as a wall of text — gate on relational + ≤5 nodes.
+    author must trace, a dependency they missed, a state transition, the defect path), embed a small
+    Mermaid diagram instead of a paragraph. A single-point remark stays prose. A finding may need TWO
+    diagrams («где сломалось» + «было→стало»): keep the first visible, fold the rest into
+    `&lt;details&gt;`. A wall of diagrams in a thread erodes author trust as much as a wall of text —
+    gate on relational + the number of distinct questions, not on decoration.
   </Axiom>
 
   <CommentFormat>
@@ -265,5 +320,7 @@
     |---|---|
     | `H_NO_TOKEN` | GITLAB_PERSONAL_TOKEN not set |
     | `H_NO_CANDIDATES` | No comment candidates to post (all dropped by dedup or operator skip) |
+    | `H_NO_PATCH_UPLOAD` | A patch was requested but neither `glab` (GitLab) nor `gh` (GitHub) is available — report to operator; do NOT paste the patch as a code block |
+    | `H_PATCH_NOT_APPLICABLE` | The generated patch fails `git apply --check` against reviewed HEAD — do not attach it; post the finding without a patch and say why |
   </HaltConditions>
 </PostingRules>

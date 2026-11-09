@@ -21,6 +21,7 @@
     | `findings.md` | me (author side) | append-only; heading + round journal + canonical tables |
     | `response.md` | development agent | append-only; I create the template in round 1, it appends per-round sections |
     | `descriptions.md` | me | regenerated per round per MR (bodies are full replacements, history in git/GitLab) |
+    | `patches/<ID>.patch` | me | one apply-able `git diff` per finding, generated in a throwaway worktree; never mutates the MR worktree; verified with `git apply --check` against the reviewed head |
 
     If a file from a previous round exists — read it FIRST and continue from it (never start from
     scratch). Same head SHA and no new threads since the last round → say «дельты нет» and stop
@@ -28,12 +29,24 @@
   </ArtifactLocation>
 
   <FindingsContract>
+    **`findings.md` is NOT a task.** It is a set of findings for re-verification: some are taken into
+    work, some are rejected with a code-backed justification, some are deferred to a GitLab/GitHub
+    issue. Nothing is applied automatically, and the development agent must not treat the file as an
+    order or use `sdd-fix` on it (unless the operator explicitly says so). This disclaimer is the
+    first block of the file (see the structure below).
+
     `findings.md` structure (top → bottom):
 
     ```
     # Handoff: <ref> — <title>
     webUrl · source→target · head SHA at last round · updated <date> · myRole=author
     Ответ разработчика: ./response.md (append a new round, never edit old rounds)
+
+    > **Это находки, а не задание.** Каждый пункт ниже — гипотеза после второго прохода, а не приказ.
+    > Перепроверь по коду и выбери одно: взять в работу (RED→CODE→GREEN→SYNC SPECS), отвергнуть с
+    > обоснованием по коду, или отложить в issue (ссылка в §9). Ничего не применяется само.
+    > НЕ использовать `sdd-fix` для этих находок (только по явной команде оператора).
+    > Предлагаемая правка лежит в `patches/<ID>.patch` — это предложение, автор решает сам.
 
     ## Журнал раундов
     | Round | Дата | head SHA | Дельта |
@@ -53,17 +66,21 @@
     | T-01 | R1 | !241 | abc123 | src/x.ts:42 | @peer | no | краткая суть | fix |
 
     ## 4. Мои находки (same battery as reviewer)
-    | F-ID | Round | file:line | axis | severity | problem | proposed action | triage | locus | source |
-    | F-01 | R1 | src/y.ts:15 | NAT | blocker | … | … | point-fix | — | mine |
-    | F-02 | R1 | src/z.ts:7 | SEC | major | … | … | arch-suspect | src/boundary/x.ts | T-02 |
+    | F-ID | Round | file:line | axis | severity | problem | proposed action | proof | triage | locus | patch | source |
+    | F-01 | R1 | src/y.ts:15 | NAT | blocker | … | … | proven | point-fix | — | patches/F-01.patch | mine |
+    | F-02 | R1 | src/z.ts:7 | SEC | major | … | … | plausible | arch-suspect | src/boundary/x.ts | patches/F-02.patch | T-02 |
 
-    ## 5. Гипотезы (per AX_ROOT_CAUSE_TRIAGE; TYPO/trivial — одна строка)
-    **[F-02] — arch-suspect → `src/boundary/x.ts`**
+    ## 5. Гипотезы и доказательство (per arch-interrogation STEP_4_DEFECT_PROOF / STEP_5_ROOT_CAUSE_TRIAGE; TYPO/trivial — одна строка)
+    **[F-02] — plausible · arch-suspect → `src/boundary/x.ts`**
+    - Путь: `entry:12` → `z.ts:7` → `boundary/x.ts:40` → симптом: второй writer перетирает состояние.
+    - Условия: два запроса с разными сессиями в одном окне.
+    - Контрпроверка: guard `z.ts:9` проверяет только пустой вход; второй writer не проверен — непроверенный шаг `boundary/x.ts:40`.
     - A (точечно): добавить проверку в `z.ts:7` — закрывает симптом, но оставляет второй источник истины.
     - B (выше): граница владения не определена; точечная правка замаскирует причину.
     - Проверить: есть ли второй writer/дубль контракта, кто владеет состоянием.
+    - Схема: `request → z.ts → boundary` зелёный; обрыв на `boundary → store` красный.
 
-    **[F-01] — point-fix** — причина локальна: один потребитель, рядом нет альтернативного пути; правка ничего не маскирует.
+    **[F-01] — proven · point-fix** — причина локальна: один потребитель, рядом нет альтернативного пути; правка ничего не маскирует.
 
     ## 6. История статусов (append-only; статус меняется только новой строкой)
     | ID | Round | status | основание |
@@ -71,18 +88,27 @@
     | T-01 | R2 | waiting-author | reply received, fix not in diff |
 
     ## 7. Задание агенту разработки (живёт ЗДЕСЬ, не в чате)
+    Это НЕ приказ (см. шапку). НЕ использовать `sdd-fix`; цикл на каждую принятую находку —
+    RED→CODE→GREEN→SYNC SPECS; по каждому ID — принять / отвергнуть с обоснованием / отложить в issue.
     …contract of response.md below…
 
     ## 8. Переписанные описания MR
     → ./descriptions.md (per MR: product first, tech + diagrams after, AX_MR_BODY_STRUCTURE)
+
+    ## 9. Отложено в issues
+    | ID | Issue | URL | reason |
+    | F-07 | !512 | https://… | вне scope этого MR; причина не локальна |
     ```
 
     Rules: one problem = one ID; IDs are permanent (a closed `F-04` is never reused or renumbered);
     `Round` = the round the row was FIRST emitted; current status is derived from §6 (latest row per
     ID wins); a finding re-raised by a reviewer after closure → NEW row in §6
-    (`reopened`, referencing the reviewer T-ID), same F-ID. `triage`/`locus` are set from
-    `AX_ROOT_CAUSE_TRIAGE`; they are not changed retroactively — a re-classification is a new §6 row
-    (`reclassified`, with the new token and reason).
+    (`reopened`, referencing the reviewer T-ID), same F-ID. `proof` is the arch-interrogation STEP_4_DEFECT_PROOF verdict
+    (`proven`/`plausible`/`refuted`; `refuted` findings are not emitted as F-IDs — they go to a
+    «Отозвано при проверке» line). `triage`/`locus` are set from arch-interrogation STEP_5_ROOT_CAUSE_TRIAGE; they are not changed
+    retroactively — a re-classification is a new §6 row (`reclassified`, with the new token and
+    reason). Patches live in `patches/<ID>.patch` next to `findings.md`; a patch that does not apply
+    to the current head is marked `stale` and is not handed over.
   </FindingsContract>
 
   <ResponseContract>
@@ -99,19 +125,24 @@
     3. Не считать находку «просто локальной правкой»: сначала проверить гипотезу из findings.md §5.
        Точечная правка, маскирующая причину уровнем выше, — запрещённый результат.
        Нашёл причину выше — исправляй её (или верни `needs decision` с планом и локусом).
+    4. Не согласен — статус `rejected` и обоснование по коду (какой guard/тест/путь делает дефект
+       недостижимым). Молча проигнорировать нельзя. Отложить — `deferred` + ссылка на issue из §9.
+       Принять — работа по пункту 2. Это находки, а не приказ: решение по каждому ID фиксируется.
 
     ## R1 — <date> — head SHA <sha>
     | ID | hypothesis | status | how (files, commit SHA) | why not | notes |
     | F-01 | agree point-fix | fixed | src/y.ts:15, commit abc1234 | — | RED: test/x.test.ts:88 |
     | F-02 | agree arch-suspect, cause found | fixed | src/boundary/x.ts, commit def5678 | — | местную правку не делал — исправлял границу |
-    | F-03 | disagree point-fix (я считаю: локально) | needs decision | — | причина локальна: один потребитель | почему: … |
+    | F-03 | disagree point-fix (я считаю: локально) | rejected | — | guard `src/z.ts:20` делает путь недостижимым; приложен контрпример | почему: … |
+    | F-04 | agree, вне scope | deferred | — | — | issue: https://… |
     ### Итог раунда
     root-cause summary · changed files · tests run · specs synced · remaining risks · scope changes
     ```
 
     `hypothesis` — agree / disagree + краткое «почему» (обязательно при disagree).
     Accepted statuses: `fixed` / `not fixed` / `needs decision` / `unresolved` (could not verify —
-    never guess). The dev agent must keep every ID from `findings.md`, must not drop or renumber, and
+    never guess) / `rejected` (with code-backed justification) / `deferred` (with the issue URL from
+    §9). The dev agent must keep every ID from `findings.md`, must not drop or renumber, and
     must reference the F/T/P-ID it answers. It never edits `findings.md` itself.
   </ResponseContract>
 
@@ -122,17 +153,24 @@
        against the actual code and commits.
     2. **Reconcile answers.** For every ID in the latest `response.md` round: `fixed` → verify in code
        (diff/worktree, commit exists) → append §6 row `closed` or `reopened` (with reason: claim not
-       backed by code). `not fixed` / `needs decision` → append §6 row with that status. Never trust
+       backed by code). `not fixed` / `needs decision` → append §6 row with that status. `rejected` →
+       check the stated guard/test/path against the code; if it really makes the defect unreachable →
+       §6 `closed (rejected-accepted)`; if not → `reopened` with the proof hole named. `deferred` →
+       verify the issue URL exists and is still open; a missing/closed issue → `reopened`. Never trust
        the dev agent's word (`AX_GROUNDED_IN_REPO`). A fix visible in the code with NO corresponding
        `response.md` round is still recorded in §6 (`closed-by-diff`) — history must not depend on the
-       dev agent's discipline. **Triage check:** the dev agent disagreed with the classification →
-       judge it on the code, not on rhetoric; an `arch-suspect` closed by a purely local patch with
-       the higher-level cause untouched → `reopened` with reason `masked symptom` and the locus
-       restated. A `point-fix` where the agent found a real higher-level cause is accepted only if it
-       says where and shows the check.
+       dev agent's discipline. **Proof check:** a `plausible` finding closed by a fix is accepted only
+       if the previously-unverified hop is now verified or the fix makes the path unreachable;
+       a `refuted` finding must never be in `findings.md` — if it is, drop it to «Отозвано при
+       проверке». **Triage check:** the dev agent disagreed with the classification → judge it on the
+       code, not on rhetoric; an `arch-suspect` closed by a purely local patch with the higher-level
+       cause untouched → `reopened` with reason `masked symptom` and the locus restated. A `point-fix`
+       where the agent found a real higher-level cause is accepted only if it says where and shows the
+       check.
     3. **Extend.** Append new threads (T-IDs), new findings (F-IDs, only if not a duplicate of an open
        or closed one — closed duplicates go to §6 as `reopened`), new pipeline rows (P-IDs).
-       Every new F-ID gets its triage per `AX_ROOT_CAUSE_TRIAGE` (§4/§5). Related MRs discovered in
+       Every new F-ID gets its proof per `arch-interrogation STEP_4_DEFECT_PROOF` and its triage per
+       `arch-interrogation STEP_5_ROOT_CAUSE_TRIAGE` (§4/§5), plus `patches/<ID>.patch`. Related MRs discovered in
        round N → add rows with `Round = RN`.
     4. **Journal.** Append one `Журнал раундов` row with the delta counts and the new head SHA.
     5. **Descriptions.** Rewrite `descriptions.md` per current state (`IX_DescriptionRewrite`). If it
@@ -171,7 +209,8 @@
 
     Forbidden in chat: the fix-task text, reply drafts, description bodies, per-finding retelling.
     Finalization Ask offers: ☑ передать findings.md агенту разработки · ☑ применить описания
-    (apply live, no preview) · ☐ опубликовать ответы/реакции (posting-rules) · ☐ skip.
+    (apply live, no preview) · ☐ вынести отвергнутые/отложенные находки в issues (`glab issue
+    create` / `gh issue create`) · ☐ опубликовать ответы/реакции (posting-rules) · ☐ skip.
   </ChatOutput>
 
   <HaltConditions>

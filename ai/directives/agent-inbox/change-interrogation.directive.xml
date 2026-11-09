@@ -71,28 +71,28 @@
   </Probes>
 
   <ExecutionPlan>
-    <Step id="STEP_0_SCOPE">
+    <Step id="STEP_1_SCOPE">
       Collect modified hunks from the diff (status `M`, plus edited parts of renames). Pure
       additions (only new files) → `H_PURE_ADDITION`. Group hunks by logical change when the MR
       description names several.
     </Step>
-    <Step id="STEP_1_CAUSE_HARVEST">
+    <Step id="STEP_2_CAUSE_HARVEST">
       Per logical change: harvest the stated cause (MR description → commit messages → linked
       ticket → prior_threads). Mark `cause: stated` (with source) or `cause: absent` →
       reconstruct one implied sentence and tag it as reconstruction (`CAUSE` flag when even
       reconstruction is guesswork).
     </Step>
-    <Step id="STEP_2_HISTORY">
+    <Step id="STEP_3_HISTORY">
       For each touched file with non-trivial edits: `git -C <path> log --oneline -n 20 -- <file>`
       (and blame around the hunk when the region matters). Feed `CHURN`. History unavailable →
       `H_NO_HISTORY` (state "история недоступна", do not guess).
     </Step>
-    <Step id="STEP_3_PROBES">
+    <Step id="STEP_4_PROBES">
       Run `LAYER` / `FIGHT` / `RIPPLE` per logical change at the depth its blast radius earns.
       Every flag needs evidence: the marker quoted, the history cited, the deeper layer named
       concretely ("валидация принадлежит `parseConfig`, не каждому потребителю").
     </Step>
-    <Step id="STEP_4_EMIT">
+    <Step id="STEP_5_EMIT">
       Emit findings in the shared format: probe code in «Ось», file/line, one-sentence problem,
       kind per posting-rules CandidateTagging. Deeper-problem findings phrase as a QUESTION to
       the author when the reconstruction is uncertain — this lens raises «зачем?», it does not

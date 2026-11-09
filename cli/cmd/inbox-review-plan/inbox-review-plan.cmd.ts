@@ -530,6 +530,7 @@ const CANDIDATES_COLUMNS = [
   'Важность',
   'Разбор',
   'Локус',
+  'Доказательство',
 ];
 const CANDIDATES_HEADER = `| ${CANDIDATES_COLUMNS.join(' | ')} |`;
 const CANDIDATES_SEPARATOR = `| ${CANDIDATES_COLUMNS.map(() => '---').join(' | ')} |`;
@@ -561,7 +562,9 @@ const README_TEMPLATE = `# Отчёт ревью
 
 ## Кандидаты
 
-<!-- FILL: orchestrator -->
+<!-- FILL: orchestrator — таблица ID|Файл|Строка|Проблема|Ось|Вид|Важность|Разбор|Локус|Доказательство,
+     затем proof-блок и triage-блок на каждую находку, затем «Отозвано при проверке».
+     Находка без proof-блока в таблицу не попадает. -->
 
 ## Треды
 
@@ -620,12 +623,22 @@ ${contextMarkdown ?? '<!-- FILL: orchestrator — смысл, сущности, 
 
 <!-- FILL: agent -->
 
+## Доказательства
+
+<!-- FILL: agent — один блок на каждую находку (arch-interrogation STEP_4_DEFECT_PROOF): Путь file:line → … → симптом;
+     Условия (триггер); Контрпроверка (что искали и почему не спасает); Вердикт proven|plausible|refuted;
+     Схема для алгоритмических/архитектурных находок (зелёный OK / жёлтый suspect / красный break).
+     refuted сюда не попадает как кандидат: он уходит в «Отозвано при проверке». Без блока находка не
+     становится кандидатом. -->
+
 ## Кандидаты
 
 <!-- FILL: agent — одна строка на замечание. Нет замечаний → оставь только шапку, placeholder-строку из «—» НЕ добавляй.
      «Ось» = тип находки: архитектурная A–G или код-проба (NAT/IDIOM/LIT/DEP/GLOBAL/TEST/SEC/BIZ/TYPO).
      «Вид» = КАК постим (не тип проблемы!): new-line-comment / reply-to-thread / correction-reply / awaiting-my-reply / suggestion.
-     «Разбор» = AX_ROOT_CAUSE_TRIAGE: point-fix / arch-suspect / undecided (обязателен в каждой строке); «Локус» обязателен для arch-suspect (где предполагается причина выше), иначе «—».
+     «Важность» = blocker | major | minor | trivial.
+     «Разбор» = arch-interrogation STEP_5_ROOT_CAUSE_TRIAGE: point-fix / arch-suspect / undecided (обязателен в каждой строке); «Локус» обязателен для arch-suspect (где предполагается причина выше), иначе «—».
+     «Доказательство» = arch-interrogation STEP_4_DEFECT_PROOF: proven | plausible | refuted; refuted в таблице запрещён (только «Отозвано при проверке»); blocker требует proven.
      Обоснование двух гипотез (A — точечно / B — выше) — компактным блоком под таблицей; TYPO/trivial — одной строкой. -->
 
 ${CANDIDATES_HEADER}
@@ -903,8 +916,14 @@ const VALID_AXES = new Set([
   'INJ',
 ]);
 
-/** @purpose Root-cause triage verdicts (AX_ROOT_CAUSE_TRIAGE) — machine vocabulary, English tokens. */
+/** @purpose Root-cause triage verdicts (arch-interrogation STEP_5_ROOT_CAUSE_TRIAGE) — machine vocabulary, English tokens. */
 const VALID_TRIAGE = new Set(['point-fix', 'arch-suspect', 'undecided']);
+
+/** @purpose Defect-proof verdicts (arch-interrogation STEP_4_DEFECT_PROOF) — machine vocabulary, English tokens. */
+const VALID_PROOF = new Set(['proven', 'plausible', 'refuted']);
+
+/** @purpose Candidate severity vocabulary. */
+const VALID_SEVERITY = new Set(['blocker', 'major', 'minor', 'trivial']);
 
 function validateSectionFilled(
   taskPath: string,
@@ -948,6 +967,7 @@ function validateCandidatesTable(taskPath: string, body: string, errors: Validat
 
   // A dash/blank cell means "not applicable" — a no-candidate placeholder row is allowed.
   const isEmptyCell = (c: string) => c === '' || c === '—' || c === '-' || c === '–';
+  const proofs = extractSection(body, 'Доказательства') ?? '';
 
   for (const row of rows.slice(2)) {
     const cells = row
@@ -955,12 +975,26 @@ function validateCandidatesTable(taskPath: string, body: string, errors: Validat
       .slice(1, -1)
       .map((c) => c.trim());
     if (cells.every(isEmptyCell)) continue;
-    const [, , , , axis, kind, , triage, locus] = cells;
+    const [id, , , , axis, kind, severity, triage, locus, proof] = cells;
+    if (id && !isEmptyCell(id)) {
+      const bareId = id.replace(/^\[|\]$/g, '').trim();
+      if (bareId && !proofs.includes(`[${bareId}]`)) {
+        errors.push({
+          file: taskPath,
+          error: `Доказательства missing a block for ${id} (expected «[${bareId}]» in ## Доказательства)`,
+        });
+      }
+    }
     if (kind && !isEmptyCell(kind) && !VALID_KINDS.has(kind)) {
       errors.push({ file: taskPath, error: `invalid Kind token: ${kind}` });
     }
     if (axis && !isEmptyCell(axis) && !VALID_AXES.has(axis)) {
       errors.push({ file: taskPath, error: `invalid Ось token: ${axis}` });
+    }
+    if (severity === undefined || isEmptyCell(severity)) {
+      errors.push({ file: taskPath, error: 'Важность is required for every candidate row' });
+    } else if (!VALID_SEVERITY.has(severity)) {
+      errors.push({ file: taskPath, error: `invalid Важность token: ${severity}` });
     }
     if (triage === undefined || isEmptyCell(triage)) {
       errors.push({ file: taskPath, error: 'Разбор is required for every candidate row' });
@@ -971,6 +1005,21 @@ function validateCandidatesTable(taskPath: string, body: string, errors: Validat
       errors.push({
         file: taskPath,
         error: 'Разбор arch-suspect requires a non-empty Локус',
+      });
+    }
+    if (proof === undefined || isEmptyCell(proof)) {
+      errors.push({ file: taskPath, error: 'Доказательство is required for every candidate row' });
+    } else if (!VALID_PROOF.has(proof)) {
+      errors.push({ file: taskPath, error: `invalid Доказательство token: ${proof}` });
+    } else if (proof === 'refuted') {
+      errors.push({
+        file: taskPath,
+        error: 'refuted finding must not be a candidate — move it to «Отозвано при проверке»',
+      });
+    } else if (severity === 'blocker' && proof !== 'proven') {
+      errors.push({
+        file: taskPath,
+        error: 'blocker requires Доказательство=proven',
       });
     }
   }
@@ -1009,6 +1058,7 @@ function validateTaskFile(
   }
   if (stage === 'filled') {
     validateSectionFilled(taskPath, body, 'Находки', errors);
+    validateSectionFilled(taskPath, body, 'Доказательства', errors);
     validateSectionFilled(taskPath, body, 'Вердикт', errors);
     validateCandidatesTable(taskPath, body, errors);
   }
