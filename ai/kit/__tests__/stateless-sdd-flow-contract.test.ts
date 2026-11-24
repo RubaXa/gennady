@@ -26,7 +26,7 @@ function walkFiles(dir: string): string[] {
 
 describe('stateless SDD entry contract', () => {
   it('keeps sdd-state read-only and removes persistent session operations from every public entry', () => {
-    for (const skill of ['sdd', 'sdd-scaffold', 'sdd-execute', 'sdd-critic', 'sdd-reconcile']) {
+    for (const skill of ['sdd', 'sdd-scaffold', 'sdd-execute', 'sdd-critic', 'sdd-reconcile', 'sdd-feature', 'sdd-bugfix']) {
       const source = read('ai', 'skills', skill, 'SKILL.md');
       assert.equal(source.match(/npx gennady sdd-state/g)?.length, 1, skill);
       assert.doesNotMatch(source, /npx gennady sdd-session|session conflict|sessionOpen/);

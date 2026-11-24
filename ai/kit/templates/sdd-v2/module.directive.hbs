@@ -23,7 +23,10 @@
     <Step id="STEP_0_CREATE">
       <Goal>Create actual module artifacts first.</Goal>
       <Action>
-        Resolve initial/add/refine from disk once. For each new cohesive module, call the ToolCall
+        Resolve initial/add/refine from disk once. `refine` of an existing module spec is a surgical
+        `Edit` of the sections the change touches: every untouched section keeps its bytes, so Git
+        shows exactly the semantic delta and review covers only that delta; it needs no `sdd-new`
+        call. For each new cohesive module, call the ToolCall
         before reading optional formats. A function/fix scope creates one Function/Service module
         without invented Port or parallel owner.
         <ToolCall owner="this-step" result="moduleManifest">npx gennady sdd-new module --scope <scope> --module <module></ToolCall> Inputs <scope>, <module>: scope and cohesive module name resolved in this step. Use moduleManifest.
@@ -49,6 +52,10 @@
     <Step id="STEP_2_FILL">
       <Goal>Generate and write the complete module specification once.</Goal>
       <Action>
+        In `refine` mode there is no skeleton: apply the surgical `Edit`s defined in STEP_0_CREATE,
+        run the same self-check on the edited sections, and go to STEP_4_CHECK; the whole-file
+        procedure below is for a new module.
+
         Read the on-disk skeleton once and compose the COMPLETE module document in memory. Before
         writing, run the self-check pass per `AX_ARTIFACT_STYLE_SELF_CHECK`. Replace
         the skeleton with exactly ONE `Write` of the whole file. `Edit`, `Patch`, and per-section

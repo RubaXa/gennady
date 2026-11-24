@@ -1,13 +1,13 @@
 <SddReviewLifecycle keywords="sdd, spec, semantic-review, operator-approval" type="directive" ver="2.3">
   <Mission>
-    Establish approval #1 for the complete actual spec set. One fresh independent reviewer judges
+    Establish approval #1 for the specs this change semantically edits. One fresh independent reviewer judges
     semantic coherence; the operator approves the reviewed artifacts. Resume uses only durable artifacts.
   </Mission>
   <BeliefState>
     {{> "axiom/process/ax-stateless-flow"}}
     {{> "axiom/process/ax-operator-language"}}
+    {{> "axiom/process/ax-operator-dialogue-style"}}
     {{> "axiom/process/ax-tool-invocation"}}
-    {{> "axiom/process/ax-operator-agreement"}}
     {{> "axiom/process/ax-cap-5"}}
     {{> "axiom/critic/ax-default-accept"}}
   </BeliefState>
@@ -17,12 +17,15 @@
   </Contracts>
   <ExecutionPlan>
     <Step id="STEP_1_FREEZE_TARGET">
-      <Goal>Identify the complete spec set whose meaning is being approved.</Goal>
+      <Goal>Identify the specs whose meaning is being approved and the specs read as context.</Goal>
       <Action>
-        Use actual spec paths and their current content. Set approval #1 to `pending` in every member
-        of the reviewed set. Include every changed parent, child, interface,
-        infrastructure, or dependent spec needed to judge consistency. Do not review a prose plan or
-        a subset that hides cross-spec effects. Per `AX_STATELESS_FLOW`, this durable set is the whole
+        Use actual spec paths and their current content. The approval target is exactly the specs
+        whose text this change semantically edits: set approval #1 to `pending` in those specs only,
+        and list those specs in the new `Reviewed set`. Add as read-only context every unedited
+        parent, child, interface, infrastructure, or dependent spec needed to judge consistency;
+        context specs keep their current approval marker per `ARTIFACT_APPROVAL_MARKER`, including
+        specs that share an older `Reviewed set` with a target. Review actual files, with enough
+        context to expose cross-spec effects. Per `AX_STATELESS_FLOW`, the target set is the whole
         review state. Run the owning structural/integrity checks first.
       </Action>
     </Step>
@@ -30,14 +33,18 @@
       <Goal>Obtain one semantic judgment independent from the author.</Goal>
       <Action>
         Load `critic-protocol.directive.xml`, then dispatch one fresh reviewer with its full
-        contents as the reviewer's own governing instructions, plus the exact bounded spec set and
+        contents as the reviewer's own governing instructions, plus the exact target specs, the
+        read-only context specs named as context, and
         `Polish: <on|off>` (on only when the operator explicitly asked for polish/nits this round;
         off by default). The reviewer reads but never edits. It checks requirements, negative/failure
         behavior, interfaces, dependencies, invariants, verification strategy, contradictions, and
         missing decisions. It returns `CLEAN` or at most five evidence-backed findings naming file and
-        anchor. The reviewer reads only the exact target specs plus the operator brief supplied in
+        anchor. The reviewer reads only the exact target and context specs plus the operator brief supplied in
         its prompt; it does not read flow directives, examples, repository history, source code, or
-        search the repository. It performs one semantic pass and returns the verdict without
+        search the repository. When a target is a refinement of a previously approved spec, put that
+        spec's Git diff into the prompt: blocking findings concern the changed sections and their
+        direct contradictions with unchanged text, and older debt the reviewer meets comes back as a
+        separate non-blocking list that the decision card shows under «На потом». It performs one semantic pass and returns the verdict without
         restating the route or narrating its internal analysis.
 
         The author may mentally inspect its own work before this dispatch, but that does not count as
@@ -51,8 +58,19 @@
         Per `AX_DEFAULT_ACCEPT`, classify each returned finding before acting on it: ACCEPT only an
         artifact gap backed by concrete evidence naming what breaks, for whom, and when; REJECT a
         preference, alternative design, missing local convention, or unevidenced question — uncertainty
-        alone never blocks. For each ACCEPTed finding, correct the owning spec; for each REJECTed one,
-        present a concrete disagreement to the operator instead of editing. Run structural checks after edits. Any semantic edit resets the applicable approval
+        alone never blocks. An ACCEPTed finding whose correction keeps the agreed behaviour — a
+        contradiction removed, a missing negative path of already agreed behaviour, an untestable
+        wording made testable — is corrected in the owning spec at once, without a stop; the operator
+        sees all such corrections once, in the STEP_4 card. An ACCEPTed finding whose resolution is
+        a choice of product behaviour goes to the operator as a question: batch such findings into
+        one `AskUserQuestion`, each with the smallest working option first, and edit only after the
+        answer. For each REJECTed finding, list the concrete disagreement in the STEP_4 card instead
+        of editing. An ACCEPTed finding
+        that requires a semantic edit of a context spec moves that spec into the target set and resets
+        its marker; a context spec without such a finding stays approved. Word every finding shown to
+        the operator per `AX_OPERATOR_DIALOGUE_STYLE`: what is wrong and what breaks in plain words
+        first, requirement / Decision Log / review-dimension tokens in parentheses after, each finding
+        restated in full instead of referenced by its number. Run structural checks after edits. Any semantic edit resets the applicable approval
         markers to `pending` and therefore requires one fresh STEP_2 review of the new complete
         target. Give that reviewer the prior findings and corrected target; it verifies those fixes
         plus one contradiction sweep, then returns `CLEAN` or at most five remaining findings. This
@@ -71,9 +89,13 @@
     <Step id="STEP_4_OPERATOR_APPROVAL_1">
       <Goal>Ask the operator to approve the reviewed specifications.</Goal>
       <Action>
-        Present a compact decision card: exact spec paths, key requirements and negative scenarios,
-        dependencies/interfaces, verification promises, independent verdict, and accepted risks.
-        Ask `Approve specs` or `Return for correction` per `AX_OPERATOR_AGREEMENT`. On approval, update the human-readable
+        Present a compact decision card: exact target spec paths, key requirements and negative scenarios,
+        dependencies/interfaces, verification promises, independent verdict, and accepted risks. Name
+        context specs in one line as read and unchanged; the operator approves the target specs only.
+        Per `AX_OPERATOR_DIALOGUE_STYLE`, the card states each item's meaning in plain words with its
+        token in parentheses.
+        List the corrections made from review findings and the rejected findings, one line each.
+        Ask `Approve specs` or `Return for correction`. On approval, update the human-readable
         approval #1 Decision Log markers exactly as `ARTIFACT_APPROVAL_MARKER` defines. Record durable
         product/architecture decisions in the same specs; do not record workflow state outside those
         artifacts. A new session checks marker shape mechanically and uses Git evidence plus semantic

@@ -29,8 +29,13 @@
   Authoring starts with `pending`. A clean independent review updates only the review field. Operator
   approval changes `Status` and `Operator decision` to `approved`. These metadata-only marker edits do
   not require another review. Any later semantic edit to a listed spec, ticket, or owning index resets
-  the applicable marker to `pending`; for approval #1, reset every marker whose Reviewed set contains
-  the edited path. If staleness is uncertain, treat the marker as pending and repeat the boundary.
+  the applicable marker to `pending`. For approval #1 the reset is per file: reset the marker only in
+  the spec whose own text was semantically edited. `Reviewed set` records which specs were approved
+  together at that time; membership in it is history, not a dependency, and it propagates no reset.
+  An unedited spec keeps its `approved` marker and enters the next review as read-only context. Its
+  marker returns to `pending` only when that review yields an accepted finding that requires a
+  semantic edit of that spec. If staleness of an edited artifact is uncertain, treat its marker as
+  pending and repeat the boundary.
 
   Mechanical checks own only marker presence, accepted field values, path existence, and membership.
   The model owns the semantic question whether current Git changes make an apparently approved marker

@@ -26,7 +26,7 @@ _Обзор пути от контракта к реализации и пров
 
 ## 1. Module Vision
 
-Восемь SDD-навыков проводят изменение от спецификации до проверенного кода. Поток оставляет модели
+Десять SDD-навыков проводят изменение от спецификации до проверенного кода. Поток оставляет модели
 свободу рассуждения, но проверяет наблюдаемые артефакты на двух смысловых границах и простыми
 механическими инвариантами.
 
@@ -36,6 +36,19 @@ actual specs → independent semantic review → operator approval #1
 → operator approval #2 (decomposition + test plan)
 → execute from ticket/Execution Log/Git → real gates → audit → code-review
 ```
+
+Полный поток выше нужен, когда изменение добавляет структуру: новый проект, скоуп, модуль, публичную
+сущность, межскоуповый контракт или выбор архитектуры. Работа над поведением существующего кода идёт
+лёгким маршрутом в одну сессию, и в репозитории с кодом это маршрут по умолчанию:
+
+```text
+feature: размер и границы → точное чтение места правки → до 5 вопросов
+→ дельта спеки, одно утверждение оператора → красные тесты → код → одно ревью диффа → отчёт
+fix: причина → вердикт спеки → красный тест → минимальная правка → сверка со спекой → отчёт
+```
+
+Лёгкие маршруты не создают тикетов и не запускают цикл ревью спек, scaffold и аудит. Они работают и в
+коде без спецификаций; при признаке структурного изменения возвращают задачу в полный поток.
 
 Продолжение stateless: спецификации, тикеты, Execution Log, Git и текущий вывод CLI — полный источник
 состояния. Постоянная `.sdd-session.md`, scaffold-plan JSON/digest, feasibility state machine,
@@ -130,7 +143,7 @@ scenario и подмену gate body при неизменном имени ко
 | `ExecutionDecision`        | Value Object  | Каноническое существенное решение с evidence и verdict    |
 | `TechnicalReplan`          | Specification | Проверяемая delta средств без смены обязательств продукта |
 | `ProgressEvidence`         | Value Object  | Новое основание следующей попытки, не новый tool-call ID  |
-| `SddWorkflowPhase`         | Enumeration   | route, specify, scaffold, execute, verify, iterate        |
+| `SddWorkflowPhase`         | Enumeration   | route, specify, scaffold, execute, verify, iterate, light |
 
 <!--/SECTION:ENTITY_INVENTORY-->
 
@@ -253,6 +266,7 @@ Arbitrary target/phase removal, scenario rewrites, weaker kinds/checks and chang
 - `execute` — phase workers and real gates
 - `verify` — audit, check, code-review
 - `iterate` — critic on demand, reconcile
+- `light` — feature и fix: изменение поведения существующего кода за одну сессию, без тикетов
 
 </details>
 <!--/SECTION:ENTITY_SURFACES-->
@@ -352,15 +366,19 @@ inputs/atomic edits, not one mandatory command sequence for every valid implemen
 
 ## 6. Public Options & Policies
 
-| Option               | Binding                                                                 | Status  |
-| -------------------- | ----------------------------------------------------------------------- | ------- |
-| Single state read    | `sdd-state` is read-only; router consumes exact result once             | bound   |
-| Spec semantic gate   | one independent review + operator approval #1                           | bound   |
-| Ticket semantic gate | actual-ticket review + operator approval #2                             | bound   |
-| Mechanical coverage  | Requirement-ID → scenario → test; applicable negative scenario required | bound   |
-| Worker lifetime      | disposable; no checkpoint/session-key correctness dependency            | bound   |
-| Migration            | V1→V2 only                                                              | bound   |
-| Execution autonomy   | SS-REQ-1..8; canonical decisions and bounded technical replan           | planned |
+| Option               | Binding                                                                                | Status  |
+| -------------------- | -------------------------------------------------------------------------------------- | ------- |
+| Single state read    | `sdd-state` is read-only; router consumes exact result once                            | bound   |
+| Spec semantic gate   | one independent review + operator approval #1                                          | bound   |
+| Ticket semantic gate | actual-ticket review + operator approval #2                                            | bound   |
+| Mechanical coverage  | Requirement-ID → scenario → test; applicable negative scenario required                | bound   |
+| Worker lifetime      | disposable; no checkpoint/session-key correctness dependency                           | bound   |
+| Migration            | V1→V2 only                                                                             | bound   |
+| Execution autonomy   | SS-REQ-1..8; canonical decisions and bounded technical replan                          | planned |
+| Light routes         | `feature` / `fix`: one session, no tickets; size trigger returns to full flow          | bound   |
+| Approval reset scope | semantic edit resets approval #1 only in the edited spec; `Reviewed set` is history    | bound   |
+| Refine write         | `refine` of an existing scope/module spec is a surgical edit, not a whole-file rewrite | bound   |
+| Review corrections   | behaviour-preserving review fixes need no stop; behaviour choices go to the operator   | bound   |
 
 <!--/SECTION:PUBLIC_OPTIONS-->
 
@@ -377,7 +395,9 @@ ai/skills/
 ├── sdd-check/SKILL.md
 ├── sdd-code-review/SKILL.md
 ├── sdd-critic/SKILL.md
-└── sdd-reconcile/SKILL.md
+├── sdd-reconcile/SKILL.md
+├── sdd-feature/SKILL.md
+└── sdd-bugfix/SKILL.md
 ```
 
 <!--/SECTION:FILE_STRUCTURE-->
@@ -423,6 +443,8 @@ ai/skills/
 AI-SKILLS-SDD-SKILLS-DL-1 2026-10-26 — Осторожная декомпозиция, review пользовательских сценариев и evidence-directed чтение (почему: меньше предположительных зависимостей и ложных блокировок без ослабления проверок; отвергнуто: свободная запись вне Target Files и автономное изменение DAG — обсуждаются отдельно).
 
 SS-DL-2 2026-10-26 — Разделить изменяемый технический путь и сохраняемые обязательства продукта; решения хранить в одном каноническом Decision Log до применения, Handoff оставляет ссылки (почему: одновременные Handoff-only, direct Edit и CLI-only модели теряют решения и конфликтуют; отвергнуто: второй verdict store, blanket approval любой перестановки фаз и применение новых targets до проверенного replan). Статус: proposed; implementation и эффект ещё не квалифицированы.
+
+SS-DL-3 2026-11-24 — Вес процесса зависит от того, что изменение добавляет: структура идёт полным потоком, поведение существующего кода — лёгкими маршрутами `feature` и `fix` без тикетов. Вместе с этим: сброс approval #1 только в изменённой спецификации, точечная правка при `refine`, исправления по ревью без остановки, если поведение не меняется (почему: в двух живых задачах обычная доработка прошла конвейер нового скоупа — правка одной спецификации сбросила подтверждение у десяти соседних по общему `Reviewed set`, а доработка на ~200 строк кода получила 36 вопросов и 22 запуска критика без единой строки кода; отвергнуто: один общий поток с масштабом `fix`/`function`, который сокращает только интервью и сохраняет все остановки; лёгкий маршрут без утверждения дельты спецификации — тогда спецификация пишется по готовому коду и ничего не согласовано). Навык для багов называется `sdd-bugfix`: путь `sdd-fix` остаётся запрещённым остатком V1, а `/sdd-fix` живёт триггером в описании `sdd-bugfix`. Закрытый список SDD-навыков из восьми стал списком из десяти. Статус: реализовано в директивах; на живой задаче не проверено.
 
 ### План реализации и приёмки — 2026-10-26
 

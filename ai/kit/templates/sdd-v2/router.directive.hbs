@@ -85,13 +85,27 @@
     <Step id="STEP_1_CLASSIFY">
       <Goal>Resolve current intent and, only for spec authoring, proportional depth.</Goal>
       <Action>
-        A forced intent from a direct skill is authoritative: `scaffold`, `execute`, `critic`, or
-        `reconcile`. Preserve the rest of the message as owner payload.
+        A forced intent from a direct skill is authoritative: `scaffold`, `execute`, `critic`,
+        `reconcile`, `feature`, or `fix`. Preserve the rest of the message as owner payload.
 
         Otherwise classify from current message plus `routerState`: project-setup · new-scope ·
-        evolve-scope · module-decomposition · multi-scope · recover-from-code · execute. Resolve
-        scope type for scope work. Ask one concise question only when alternatives would change the
-        owner or artifact boundary.
+        evolve-scope · module-decomposition · multi-scope · recover-from-code · execute · feature ·
+        fix. Resolve scope type for scope work. Ask one concise question only when alternatives
+        would change the owner or artifact boundary.
+
+        Weight follows what the change ADDS, per `AX_SCALE_PROPORTIONAL_DEPTH`. The full authoring
+        flow is for structure: a new project, scope, module, public entity, cross-scope contract, or
+        an architecture choice. Work on behaviour of existing code takes a light route, and this is
+        the default reading of a request in a repository that already holds code:
+        - `feature` — add or change bounded behaviour that reuses the existing architecture: a
+          product feature, an API method, a handler, a flag, a field. Existing specs are optional;
+          legacy code without a spec still routes here.
+        - `fix` — observed behaviour differs from intended and nothing new is designed: a bug
+          report, a failing scenario, a single review finding.
+        A request to restore a desynced spec ⟷ ticket ⟷ code triangle, to continue an open ticket,
+        or to formalize code that ran ahead of its spec stays `reconcile`. When a request could be
+        either a light route or `evolve-scope`, choose the light route: it carries its own size
+        check and hands back to the full flow when structure turns out to be needed.
 
         Apply the artifact reader test from `AX_READER_WITHOUT_SESSION_CONTEXT`: the selected owner
         must produce artifacts understandable without memory of this conversation.
@@ -99,7 +113,9 @@
         When alternatives exist, apply `AX_DIVERGE_BEFORE_RECOMMEND`; do not collapse them before the
         operator can see the material trade-off. Confirm SCALE only for project/scope/module authoring
         where it changes interview depth per `AX_SCALE_PROPORTIONAL_DEPTH`.
-        Execute, scaffold, critic, reconcile, and recovery do not need SCALE.
+        Execute, scaffold, critic, reconcile, and recovery do not need SCALE. `feature` and `fix`
+        confirm their own size and boundary in their first step, so the router adds no SCALE
+        question in front of them.
 
         Apply `READINESS_PREFLIGHT_GATE` once to the read-only snapshot. Missing repository gate
         scripts return to their owning infrastructure/spec authoring path; they never create a
@@ -124,6 +140,10 @@
             -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/critic.directive.xml")
           WHEN forced intent = reconcile
             -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/reconcile.directive.xml")
+          WHEN forced intent = fix OR intent = fix
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/fix.directive.xml")
+          WHEN forced intent = feature OR intent = feature
+            -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/feature.directive.xml")
           WHEN intent = project-setup
             -> READ_AND_USE_DIRECTIVE("ai/directives/sdd-v2/root.directive.xml")
           WHEN intent = recover-from-code

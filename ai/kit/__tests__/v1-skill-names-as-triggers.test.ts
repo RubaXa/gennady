@@ -22,7 +22,23 @@ import { resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '../../..');
 const SKILLS_DIR = resolve(ROOT, 'ai/skills');
 
-const SDD_SKILL_NAMES = ['sdd', 'sdd-audit', 'sdd-check', 'sdd-code-review', 'sdd-critic', 'sdd-execute', 'sdd-reconcile', 'sdd-scaffold'];
+// `sdd-feature` and `sdd-bugfix` are real light flows with their own directives (feature.directive /
+// fix.directive), added by operator decision on 2026-11-24 after the MAILCORE-1364 feedback: they are
+// not wrappers or aliases. The retired `/sdd-fix` name moved its trigger from `sdd-reconcile` to
+// `sdd-bugfix`, which now owns the plain-bug intent; the `sdd-fix` path itself stays forbidden V1
+// residue (scripts/v1-eradication.policy.json).
+const SDD_SKILL_NAMES = [
+  'sdd',
+  'sdd-audit',
+  'sdd-bugfix',
+  'sdd-check',
+  'sdd-code-review',
+  'sdd-critic',
+  'sdd-execute',
+  'sdd-feature',
+  'sdd-reconcile',
+  'sdd-scaffold',
+];
 
 function sddNamespace(dirs: readonly string[]): string[] {
   return dirs.filter((dir) => dir === 'sdd' || dir.startsWith('sdd-')).sort();
@@ -90,7 +106,7 @@ describe('retired v1 skill names live only as triggers (T-B6-07)', () => {
       '/sdd-continue': 'sdd',
       '/sdd-infra': 'sdd',
       '/sdd-module-decomposition': 'sdd',
-      '/sdd-fix': 'sdd-reconcile',
+      '/sdd-fix': 'sdd-bugfix',
       '/sdd-execute-batch': 'sdd-execute',
     };
     for (const [name, owner] of Object.entries(expectedOwner)) {

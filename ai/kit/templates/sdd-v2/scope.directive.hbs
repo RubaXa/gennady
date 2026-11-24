@@ -34,9 +34,11 @@
       <Action>
         Classify the scope type and mode exactly once from the request and disk. Preserve the
         operator-confirmed `scale:` retained by this owner; must not reopen the already-settled route.
-        Greenfield starts with exactly one applicable ToolCall. Existing specs are read in full;
-        every mode still produces exactly one whole-document `Write`, authoring never edits them
-        section by section. `refine` extends the existing decisions in place. `pivot` replaces a
+        Greenfield starts with exactly one applicable ToolCall. Existing specs are read in full.
+        `greenfield`, `pivot`, and `rewrite` produce exactly one whole-document `Write`. `refine` of
+        an existing spec is a surgical `Edit` of the sections the change touches: every untouched
+        section keeps its bytes, so Git shows exactly the semantic delta and review covers only that
+        delta. `refine` extends the existing decisions in place. `pivot` replaces a
         decision but never the history: the prior Decision Log entry is preserved byte-for-byte and
         one new entry is appended naming the delta, per `AX_PIVOT_REQUIRES_SUPERSESSION`. `rewrite`
         is the v0 exception — no supersession, no invalidation list — and is forbidden once the
@@ -68,6 +70,10 @@
     <Step id="STEP_2_FILL">
       <Goal>Generate and write the complete specification once.</Goal>
       <Action>
+        In `refine` mode there is no skeleton: apply the change as the surgical `Edit`s defined in
+        STEP_0_CREATE, run the same self-check on the edited sections, and go to STEP_3_CHECK; the
+        whole-file procedure below is for `greenfield`, `pivot`, and `rewrite`.
+
         Read the on-disk skeleton once, then compose the COMPLETE document in memory from its section
         order, headings, local comments, and manifest. Replace the skeleton with exactly ONE `Write`
         of the whole file. `Edit`, `Patch`, and per-section writes are forbidden in authoring. The
