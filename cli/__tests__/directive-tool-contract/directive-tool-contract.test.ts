@@ -324,7 +324,15 @@ describe('callable SDD-v2 action-call inventory', () => {
   });
 
   it('gives each stateless public skill one structural repository-snapshot owner/result', () => {
-    for (const name of ['sdd', 'sdd-execute', 'sdd-scaffold', 'sdd-reconcile', 'sdd-critic']) {
+    for (const name of [
+      'sdd',
+      'sdd-execute',
+      'sdd-scaffold',
+      'sdd-reconcile',
+      'sdd-critic',
+      'sdd-feature',
+      'sdd-bugfix',
+    ]) {
       const skill = readFileSync(join(REPO_ROOT, 'ai', 'skills', name, 'SKILL.md'), 'utf-8');
       const calls = [
         ...skill.matchAll(

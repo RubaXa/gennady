@@ -1,6 +1,6 @@
 # ai/skills — навыки агентов
 
-13 навыков: 8 SDD-навыков, agent-inbox, opencode-get-session, prd-interview,
+15 навыков: 10 SDD-навыков, agent-inbox, opencode-get-session, prd-interview,
 session-context-recover и workspace-permission-setup.
 
 ## SDD Flow v2
@@ -36,11 +36,13 @@ Log, Git и текущего вывода механических инстру�
 | `sdd-execute` | Исполнение одного тикета или очереди по `sdd-task`; реальные gates, audit, code-review |
 | `sdd-critic` | Одно on-demand независимое смысловое ревью bounded target-set; без автоправок |
 | `sdd-reconcile` | Восстановление треугольника spec ↔ task ↔ code по текущим артефактам |
+| `sdd-feature` | Лёгкий путь для обычной фичи в существующем коде: границы, до 5 вопросов, дельта спеки, red → green, одно ревью диффа |
+| `sdd-bugfix` | Лёгкий путь для бага: причина, вердикт спеки, красный тест, минимальная правка, сверка со спекой |
 | `sdd-check` | Механическая проверка; `--spec --authoring` авто-фиксит только тривиальный формат |
 | `sdd-audit` | Проверка соответствия spec/task/diff/Execution Log |
 | `sdd-code-review` | Независимый поиск поведенческих ошибок после аудита |
 
-Прямые входы `sdd-scaffold`, `sdd-execute`, `sdd-critic`, `sdd-reconcile` передают router один
+Прямые входы `sdd-scaffold`, `sdd-execute`, `sdd-critic`, `sdd-reconcile`, `sdd-feature`, `sdd-bugfix` передают router один
 read-only snapshot и forced intent. Router не открывает и не закрывает сессию.
 
 ## Механика и смысл

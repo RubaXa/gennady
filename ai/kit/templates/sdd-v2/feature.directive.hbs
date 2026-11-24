@@ -1,0 +1,274 @@
+<SddFeature keywords="feature, small-change, brownfield, scope-freeze, narrow-recon, short-interview, spec-delta, red-green, diff-review, sdd-feature" type="directive" ver="1.0">
+  <Mission>
+    Add or change a bounded piece of behaviour in EXISTING code, end to end, in one session:
+    confirm size and boundary → exact reading of the touch point → short interview → small spec
+    delta approved once → red tests → green code → one diff review → report.
+
+    This is the default route for ordinary product work in a brownfield project: a product feature,
+    a new API method, a handler, a flag, a field. The flow has one operator approval (the spec
+    delta) and one reviewer (the final diff). Tickets, scaffold, approval #2, the spec review cycle
+    and audit belong to the full flow and stay there.
+
+    The change reuses the existing architecture. A change that needs a new scope, module, public
+    entity, cross-scope contract, external dependency, or an architecture choice leaves through
+    `H_TOO_BIG` to the full flow.
+
+    The root session does the work itself. Subagents: one read-only reviewer at
+    `STEP_6_CHECK`, plus a read-only search agent when the touch point spans many files.
+
+    Input — operator intent: what to add or change, constraints, what stays untouched.
+    Output — spec delta, tests and code in the working tree, uncommitted; a report listing the
+    agent's own decisions and a «На потом» list.
+  </Mission>
+
+  <BeliefState deps="AX_READER_WITHOUT_SESSION_CONTEXT">
+    {{> "axiom/process/ax-operator-language"}}
+
+    {{> "axiom/process/ax-tool-invocation"}}
+
+    {{> "axiom/process/ax-operator-dialogue-style"}}
+
+    {{> "axiom/process/ax-no-process-narration"}}
+
+    {{> "axiom/process/ax-operator-output-live-text"}}
+
+    {{> "axiom/truth/ax-reuse-first"}}
+
+    <Axiom id="AX_SIZE_CONFIRMED">
+      The operator confirms the size before any design question. A size trigger is any of: a new
+      scope or module; a new public entity in a spec inventory; an architecture alternative that
+      must be chosen; a change to a contract another scope consumes; a new external dependency; a
+      spec delta beyond about 60 lines or three spec files; an expected diff beyond about 15 code
+      files. A trigger found at any step is reported as it is, with its evidence; the operator may
+      still answer «делаем здесь», and that answer is recorded in the report.
+    </Axiom>
+
+    <Axiom id="AX_SCOPE_FREEZE">
+      The boundary is fixed before the first question: a «Не делаем» list built from the operator's
+      own words plus the obvious neighbours (other entry points, renames, old debts), confirmed
+      together with the size. After that the boundary moves only by the operator's explicit words.
+      An answer to a question, a reference project, or a gap the agent noticed leaves the boundary
+      where it is; whatever turns up outside goes to «На потом».
+    </Axiom>
+
+    <Axiom id="AX_NARROW_NOT_SHALLOW">
+      Recon is narrow in breadth and exact in depth. The touch point is read to the line: the code
+      that will change, its direct callers and wiring (flags, construction, mount points), every
+      spec section that mentions the touched behaviour, and the tests around it. The real gaps of a
+      reuse are found only by exact reading. The rest of the scope, sibling features and reference
+      projects stay unread unless the operator asks.
+    </Axiom>
+
+    <Axiom id="AX_ASK_ONLY_BLOCKERS">
+      A hole is triaged before it is asked:
+      - **Блокирует** — the change cannot work or cannot be specified without an answer that code
+        and specs do not contain → a question, with the SMALLEST working option recommended first.
+      - **По умолчанию** — a defensible, cheap-to-change default exists → take it and list it under
+        «Принял без вопроса».
+      - **На потом** — real but outside the boundary → one line in «На потом».
+      Budget: five questions for the whole flow, in at most two `AskUserQuestion` calls. A sixth
+      question is a size trigger per `AX_SIZE_CONFIRMED`. A solution the operator already named is
+      settled: confirm it fits and ask only where it breaks. A reference the operator points at
+      answers only the question it was given; its other differences are at most three one-liners
+      in «На потом». A counter-question gets a plain answer and one return to the original
+      question carrying only what changed.
+    </Axiom>
+
+    <Axiom id="AX_DELTA_BEFORE_CODE">
+      The agreed result of the interview is a spec DELTA, written before any code and approved
+      once; the operator signs the delta, and the chat is only how it was reached. The delta holds
+      the new or changed requirement lines edited in place, the scenarios for the new behaviour
+      (including the flag-off or fallback scenario when a flag is involved), and a Decision Log
+      entry only for a non-obvious trade-off. A confirmed default, a refusal, or a clarification is
+      conversation and stays out of the Decision Log. The delta is a surgical `Edit` of the owning
+      spec: neighbouring sections and unrelated spec debt keep their bytes, and debt met on the way
+      is listed in «На потом».
+    </Axiom>
+
+    <Axiom id="AX_RED_BEFORE_GREEN">
+      Every scenario of the delta maps to a test at the cheapest level that can prove it. The tests
+      are written first, run, and seen failing for the right reason — the behaviour is absent.
+      Then comes the minimal code that makes them pass.
+    </Axiom>
+
+    <Axiom id="AX_ONE_REVIEW_NO_LOOP">
+      The verification tail is the agent's own diff-against-delta sweep plus ONE fresh read-only
+      reviewer over the diff. The reviewer returns `CLEAN` or at most five evidence-backed findings
+      and judges only lines the diff changed; older debt it meets is listed separately and blocks
+      nothing. A finding the agent confirms against the code is fixed in one pass. A second look happens only when a
+      fix changed behaviour, and it is a narrowed recheck of exactly those fixes. A finding that
+      needs a behaviour choice goes to the operator as a question.
+    </Axiom>
+
+    <Axiom id="AX_DEVIATIONS_AT_END">
+      A decision the agent made alone while implementing (an unlisted default, a helper it had to
+      add, a scenario it could not automate, an old defect it worked around) is noted as it happens
+      and shown to the operator once, in the report, with the choices «принять как есть ·
+      переделать · откатить». Implementation continues without stopping for it.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_TOO_BIG` | A size trigger of `AX_SIZE_CONFIRMED` fired — name it, offer the full flow; continue here only on the operator's explicit «делаем здесь» |
+    | `H_NOT_A_FEATURE` | The request is a defect: observed behaviour differs from intended and nothing new is designed — hand to the fix flow |
+    | `H_NO_OWNING_SPEC` | No spec owns the touched behaviour and the operator declined a thin spec for it |
+    | `H_DELTA_REJECTED` | The operator rejected the delta twice — ask what the target behaviour is |
+    | `H_RED_NOT_RED` | A new test passes before any code change, or fails for a reason other than the missing behaviour |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_SIZE_AND_BOUNDARY">
+      <Goal>One confirmation: what is done, what is left out, and that it is small.</Goal>
+      <Action>
+        Consume `routerState` from the entry skill; do not repeat `sdd-state`. Restate the request in
+        at most three lines, per `AX_OPERATOR_DIALOGUE_STYLE` and `AX_OPERATOR_OUTPUT_LIVE_TEXT`,
+        without narrating routing per `AX_NO_PROCESS_NARRATION`. Draft «Не делаем» per
+        `AX_SCOPE_FREEZE` and check the triggers of `AX_SIZE_CONFIRMED`. A defect → `H_NOT_A_FEATURE`.
+        A trigger → `H_TOO_BIG`.
+
+        Ask ONE `AskUserQuestion`: «Делаю как доработку: <одна строка>. Не трогаю: <список>. Верно?»
+        with options «Да (рекомендую)» · «Поправить границы» · «Это крупнее — полный флоу». This is
+        the size confirmation the router skipped for this route; design questions wait for
+        `STEP_2_SHORT_INTERVIEW`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_NARROW_RECON">
+      <Goal>Know exactly how the touch point works today and where the request does not fit.</Goal>
+      <Action>
+        Per `AX_NARROW_NOT_SHALLOW`, read the code to change with its callers and wiring, the spec
+        sections that mention the behaviour, and the neighbouring tests. Find the owning spec through
+        the code file header (`@spec`) and the specs portal. Produce three short working lists:
+        **Берём готовым** (reused as is, per `AX_REUSE_FIRST`), **Дыры** (where the request as stated
+        would not work or contradicts a spec, each with `file:line`), **Что говорит спека** (the
+        sections that will change and any that already promise this behaviour).
+
+        A spec that contradicts the request is a «Блокирует» question. A size trigger found here →
+        `H_TOO_BIG`.
+
+        When no spec owns the touched code — the normal state of legacy code — the delta goes into a
+        thin spec that covers this behaviour only: propose its path in the `STEP_3_SPEC_DELTA` card.
+        Recovering the whole module's spec from code is separate work and goes to «На потом». The
+        operator declining a thin spec → `H_NO_OWNING_SPEC`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_SHORT_INTERVIEW">
+      <Goal>Close the blocking holes and nothing else.</Goal>
+      <Action>
+        Triage every hole per `AX_ASK_ONLY_BLOCKERS`. With no blocking hole, go to
+        `STEP_3_SPEC_DELTA` with zero questions.
+
+        Otherwise send one message: two lines of what was found (reuse confirmed, N holes), then the
+        questions — each one sentence of situation, the smallest working option first, the
+        alternative, one line of consequence — batched in one `AskUserQuestion`. A second call is
+        used only when an answer opened a new blocking hole. Under the questions list «Принял без
+        вопроса» (one line each, the operator corrects by number) and «На потом» so far. The
+        boundary of `AX_SCOPE_FREEZE` holds through every answer.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_SPEC_DELTA">
+      <Goal>The agreed behaviour is written down and approved once.</Goal>
+      <Action>
+        Write the delta into the owning spec per `AX_DELTA_BEFORE_CODE`, as a surgical `Edit`. Keep
+        it readable per `AX_READER_WITHOUT_SESSION_CONTEXT`: the delta names behaviour, not this
+        conversation. For an existing V2 spec, check its structure:
+        <ToolCall owner="this-step" result="deltaReceipt">npx gennady sdd-check --spec <spec-path> --authoring</ToolCall> Inputs <spec-path>: exact path of the spec edited in this step. Use deltaReceipt.
+        Fix only findings on the lines this step wrote; findings on older lines go to «На потом».
+
+        Show ONE approval card: the scenarios (title plus one line each), the changed requirement
+        lines, the test plan (scenario → level → test file), the files expected to change, «Не
+        делаем», «На потом». Each item states its meaning in plain words with its ID in parentheses.
+        Then `AskUserQuestion`: «Утверждаете?» — «Да, пишу тесты и код (рекомендую)» · «Есть правки».
+        On «Есть правки» apply them, show only the changed lines, ask again; a second rejection →
+        `H_DELTA_REJECTED`.
+
+        This approval is approval #1 for the edited spec. Record it in that spec's approval marker
+        with `Reviewed set` naming that spec and `Independent review: pending`; `STEP_6_CHECK`
+        updates the review field. Other specs keep their markers. No task index and no approval #2
+        marker is written in this flow.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_RED">
+      <Goal>Failing tests that state the new behaviour.</Goal>
+      <Action>
+        Per `AX_RED_BEFORE_GREEN`, write the tests of the plan with names that mirror the scenario
+        titles, using the test level and commands the project already uses for the touched area. Run
+        them and confirm each fails because the behaviour is absent; otherwise `H_RED_NOT_RED` —
+        repair the test before any production code.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_GREEN">
+      <Goal>Minimal code that makes them pass.</Goal>
+      <Action>
+        Implement with reuse first per `AX_REUSE_FIRST`. A new or touched code file carries the
+        project's file header pointing at the owning spec; this flow has no Task-ID, so none is
+        written. Run the targeted tests until green, then the project's own gates for the touched
+        area (its test and lint commands as the repository defines them). Note every own decision
+        for `AX_DEVIATIONS_AT_END` as it is made.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_CHECK">
+      <Goal>The diff does what the delta says — no less, no more.</Goal>
+      <Action>
+        Own sweep first: for each scenario of the delta — the test that exercises it and the code that
+        implements it; for each changed code path — the scenario that asked for it. Code without a
+        scenario is a deviation or is removed; a scenario without a test is a gap to close.
+
+        Then, per `AX_ONE_REVIEW_NO_LOOP`, dispatch ONE fresh read-only reviewer with the `git diff`
+        (spec delta, tests, code), the paths of the owning specs, and these questions: does the code
+        implement each scenario and the fallback path; does any test assert code shape instead of
+        the outcome; does the diff contradict another statement of the owning spec; is anything in
+        the diff inside «Не делаем»; does a new entity duplicate an existing one. It returns `CLEAN`
+        or at most five findings with `file:line` evidence, never edits, and is not retained.
+
+        Verify each finding against the code: real → fix in one pass and re-run the affected tests;
+        not real → reject with the line that resolves it; needs a behaviour choice → an operator
+        question in `STEP_7_REPORT`. Set the marker's review field to `clean` or `findings resolved`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_7_REPORT">
+      <Goal>The operator knows what is true now and what is theirs to decide.</Goal>
+      <Action>
+        Send one message per `FEATURE_REPORT_FORMAT`. When own decisions or open behaviour choices
+        exist, follow it with ONE `AskUserQuestion` over them per `AX_DEVIATIONS_AT_END` and apply
+        the answers. The flow ends at the report: commit, push and merge request wait for the
+        operator's word, and the full-flow menu (critic, scaffold, audit) is not offered.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <Contracts>
+    {{> "contract/process/halt-format"}}
+
+    <Contract id="FEATURE_REPORT_FORMAT">
+      ```
+      ✅ <что теперь умеет продукт — одна строка>
+
+      **Что сделано**
+      - Спека: <файл> — <N сценариев>, <что изменено>
+      - Тесты: <файлы> — <N новых>, были красными по причине <…>, теперь зелёные
+      - Код: <N файлов>, +<a>/−<b>; переиспользовано: <…>
+
+      **Проверки**
+      - <команда> → <результат>   (каждая запущенная; незапущенные — отдельной строкой с причиной)
+      - Ревью диффа: <CLEAN | N находок: K исправлено, M отклонено>
+
+      **Решил сам** (если есть)
+      1. <что> — <почему> — <где>
+
+      **На потом** (если есть)
+      - <что> — <где видно>
+
+      Ничего не закоммичено.
+      ```
+    </Contract>
+  </Contracts>
+</SddFeature>

@@ -44,6 +44,8 @@ sdd-v2/critic.directive.xml
 sdd-v2/deviation-review.directive.xml
 sdd-v2/discover-from-code.directive.xml
 sdd-v2/execute.directive.xml
+sdd-v2/feature.directive.xml
+sdd-v2/fix.directive.xml
 sdd-v2/formats/audit-round.xml
 sdd-v2/formats/change-manifest.xml
 sdd-v2/formats/dbc-contracts.xml

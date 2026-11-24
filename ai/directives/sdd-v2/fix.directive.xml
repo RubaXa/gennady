@@ -1,0 +1,189 @@
+<SddFix keywords="fix, bugfix, red-green, regression-test, spec-verdict, spec-conflict-check, sdd-bugfix" type="directive" ver="1.0">
+  <Mission>
+    Fix a defect, end to end, in one session: understand and locate the bug → ask the spec what
+    the behaviour should be → red test that reproduces it → minimal green fix → check the result
+    against the specs → report.
+
+    One flow for every defect, whatever its source — a bug report, a failing scenario, a review or
+    audit finding. Several findings are taken one by one through the same steps; findings sharing
+    one cause share one red test and one fix.
+
+    The request to fix is the approval. The flow has no ticket, no plan table, no reviewer subagent;
+    the regression test is the evidence. The root session does the work itself. Restoring a
+    desynced spec ⟷ ticket ⟷ code triangle, or continuing an open ticket, is the reconcile flow.
+
+    Input — what was observed, what was expected, how to reproduce.
+    Output — a regression test and the fix in the working tree, uncommitted; a spec edit only when
+    the spec verdict requires one; a short report.
+  </Mission>
+
+  <BeliefState>
+    Inherited from the loading directive (already in context): AX_NO_PROCESS_NARRATION, AX_OPERATOR_DIALOGUE_STYLE, AX_OPERATOR_LANGUAGE, AX_TOOL_INVOCATION, HALT_FORMAT
+
+    <Axiom id="AX_REUSE_FIRST">Orchestrator holds full project context — the ONLY actor able to detect duplication against existing code/specs (the isolated critic cannot). For every entity/type/method/contract the artifact introduces, reconcile before accepting it: REUSE existing (adapt artifact to it) > EXTEND existing > JUSTIFY new (record one-line rationale in artifact: why existing surface is insufficient) > ESCALATE to operator. Unjustified new surface is a finding to resolve, not to wave through. Bias toward consolidation — do not let the system grow a duplicate entity each round.</Axiom>
+
+    <Axiom id="AX_VERIFY_CLAIM_AGAINST_CODE">
+      The reported mechanism — why it is a bug, what the code allegedly does — is a claim until the
+      code confirms it, whether it comes from a human or a bot. The fix targets the mechanism the
+      code actually has, found by reading the code at the reported place and following it to where
+      the wrong value or state is produced.
+    </Axiom>
+
+    <Axiom id="AX_SPEC_VERDICT_FIRST">
+      The specs are asked what the behaviour should be BEFORE the red test. Exactly one verdict:
+      - **A · Спека права, код нет.** The spec states the expected behaviour and the code violates
+        it → a pure bug. The test is derived from the spec statement; the spec stays as it is and
+        the operator is not asked.
+      - **B · Спека молчит.** No statement either way, or no spec owns this code → the red test
+        will DEFINE behaviour. The operator confirms the expected behaviour in one line unless the
+        report states it unambiguously; an existing owning spec receives one scenario for it before
+        the code.
+      - **C · Спека описывает то, что код и делает.** The «bug» is a request to change intended
+        behaviour → it is a feature.
+      A verdict taken after the fix comes too late: in case C the code is already written against
+      the spec.
+    </Axiom>
+
+    <Axiom id="AX_RED_FIRST">
+      The test that reproduces the bug exists and fails before production code changes, at the
+      cheapest level that can show the defect. It fails for the bug's own reason — the assertion
+      that describes the wrong behaviour. A defect that no reasonable test level can automate is
+      fixed without a red test only after the operator's OK, with manual reproduction steps
+      recorded in the report.
+    </Axiom>
+
+    <Axiom id="AX_MINIMAL_GREEN">
+      The fix is the smallest change that makes the red test pass and keeps everything else green.
+      The diff contains the cause's repair and its test; refactors, renames and nearby cleanups go
+      to «На потом». The same mistake in the same pattern nearby (other call sites, sibling handlers
+      built from one template) is the same cause and is fixed with its own assertion; a merely
+      similar place is one line in «На потом».
+    </Axiom>
+
+    <Axiom id="AX_CHECK_AGAINST_SPEC_AFTER">
+      A green fix is read against the specs that own the touched behaviour with three questions:
+      does the fix contradict any statement or scenario of those specs; did behaviour change beyond
+      the reported bug; is the spec now out of step with the code anywhere the fix touched. Any
+      «yes» is a conflict the operator resolves, shown with both quotes — the spec line and the
+      code line — and a recommendation. Stale spec text merely noticed nearby is «На потом».
+    </Axiom>
+
+    <Axiom id="AX_NO_CEREMONY">
+      The operator is asked only for what is theirs to decide: expected behaviour (verdict B), a
+      behaviour change (verdict C), a spec conflict after the fix, a fix without a red test, or a
+      fix that outgrew this flow. Everything else proceeds without a stop.
+    </Axiom>
+  </BeliefState>
+
+  <HaltConditions>
+    | ID | Trigger |
+    |---|---|
+    | `H_NO_BUG` | The context names nothing to fix — ask what is wrong |
+    | `H_CANNOT_REPRODUCE` | The reported behaviour cannot be reproduced from the code or a run — ask for the missing step or data |
+    | `H_BEHAVIOR_CHANGE` | Spec verdict C: the code does what the spec says — offer the feature flow |
+    | `H_RED_NOT_RED` | The regression test passes before the fix, or fails for a reason other than the bug |
+    | `H_NOT_A_SMALL_FIX` | The fix needs a design decision, a new entity, a contract change, or spreads past the cause (roughly more than five production files) — offer the feature flow or the full flow |
+    | `H_SPEC_CONFLICT` | `AX_CHECK_AGAINST_SPEC_AFTER` found a contradiction — the operator decides |
+  </HaltConditions>
+
+  <ExecutionPlan>
+    <Step id="STEP_0_INTAKE">
+      <Goal>Know the bug.</Goal>
+      <Action>
+        Consume `routerState` from the entry skill; do not repeat `sdd-state`. Extract observed,
+        expected and reproduction from the context and ask only for what is missing and needed to
+        reproduce, in plain words per `AX_OPERATOR_DIALOGUE_STYLE` and without narrating routing per
+        `AX_NO_PROCESS_NARRATION`. Nothing to fix → `H_NO_BUG`. For a list of findings, group those
+        with one cause and run `STEP_1_LOCATE` through `STEP_5_CHECK_AGAINST_SPEC` per group, with
+        one report at the end.
+      </Action>
+    </Step>
+
+    <Step id="STEP_1_LOCATE">
+      <Goal>The cause, not the symptom.</Goal>
+      <Action>
+        Per `AX_VERIFY_CLAIM_AGAINST_CODE`, read the code at the reported place and follow it to the
+        cause. Reproduce — by a run when cheap, by reading otherwise; failing that →
+        `H_CANNOT_REPRODUCE`. Take one look for same-cause siblings per `AX_MINIMAL_GREEN`. A fix
+        that needs a design decision → `H_NOT_A_SMALL_FIX`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_2_SPEC_VERDICT">
+      <Goal>What the behaviour should be, according to the specs.</Goal>
+      <Action>
+        Per `AX_SPEC_VERDICT_FIRST`, find the owning spec through the code file header (`@spec`) and
+        one targeted search of `specs/` for the behaviour; pick verdict A, B or C and quote the spec
+        line or state that there is none.
+        - A → continue to `STEP_3_RED` without a stop, per `AX_NO_CEREMONY`.
+        - B → one-line confirmation «Ожидаю: <…>. Верно?» unless the report states the expected
+          behaviour unambiguously; add one scenario to the owning spec as a surgical `Edit` when
+          such a spec exists; continue to `STEP_3_RED`. Legacy code without a spec gets no spec
+          from this flow — the regression test carries the behaviour, and the missing spec is one
+          line in «На потом».
+        - C → `H_BEHAVIOR_CHANGE`. When the operator answers that the spec itself is wrong, treat
+          it as verdict B plus an edit of the stale statement.
+      </Action>
+    </Step>
+
+    <Step id="STEP_3_RED">
+      <Goal>A test that fails because of the bug.</Goal>
+      <Action>
+        Per `AX_RED_FIRST`, write the regression test with assertions for same-cause siblings, using
+        the test level and commands the project already uses for the touched area. Run it and
+        confirm the failure is the bug; otherwise `H_RED_NOT_RED`. Keep the failing output line for
+        the report.
+      </Action>
+    </Step>
+
+    <Step id="STEP_4_GREEN">
+      <Goal>The smallest fix.</Goal>
+      <Action>
+        Per `AX_MINIMAL_GREEN`, fix the cause; a helper the fix needs follows `AX_REUSE_FIRST`. Run
+        the regression test until green, then the project's own gates for the touched area (its test
+        and lint commands as the repository defines them). A fix that spreads past the cause →
+        `H_NOT_A_SMALL_FIX`.
+      </Action>
+    </Step>
+
+    <Step id="STEP_5_CHECK_AGAINST_SPEC">
+      <Goal>The fix agrees with the specs.</Goal>
+      <Action>
+        Per `AX_CHECK_AGAINST_SPEC_AFTER`, answer the three questions against the owning specs. Any
+        «yes» → `H_SPEC_CONFLICT`: one `AskUserQuestion` with both quotes and the options «Править
+        спеку под новое поведение» · «Править код под спеку» · «Оставить, записать как известное
+        расхождение». Apply the answer. A spec edited by this flow has its approval marker updated
+        by that same operator answer; other specs keep their markers.
+      </Action>
+    </Step>
+
+    <Step id="STEP_6_REPORT">
+      <Goal>Short and verifiable.</Goal>
+      <Action>
+        Send one message per `FIX_REPORT_FORMAT`. The flow ends at the report: commit, push and
+        merge request wait for the operator's word, and the full-flow menu (critic, audit) is not
+        offered.
+      </Action>
+    </Step>
+  </ExecutionPlan>
+
+  <Contracts>
+    <Contract id="FIX_REPORT_FORMAT">
+      ```
+      ✅ <что было не так и что теперь — одна строка>
+
+      **Причина:** <file:line> — <одно-два предложения>
+      **Спека:** <A: «цитата» (файл) — код ей не соответствовал | B: молчала — добавлен сценарий «…» | C→B: устаревшая строка исправлена>
+      **Тест:** <test-file>::<имя> — был красным: `<строка падения>`; теперь зелёный
+      **Правка:** <N файлов>, +<a>/−<b>
+      **Проверки:** <команда> → <результат>   (незапущенные — отдельной строкой с причиной)
+      **Сверка со спекой после правки:** <расхождений нет | что решил оператор>
+
+      **На потом** (если есть)
+      - <похожее место или устаревшая строка спеки> — <где>
+
+      Ничего не закоммичено.
+      ```
+    </Contract>
+  </Contracts>
+</SddFix>

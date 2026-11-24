@@ -30,6 +30,22 @@
   Canonical tokens (`AX_*`, IDs, status / type / scope-type, code, file paths) stay English per
   `AX_OPERATOR_LANGUAGE`, shown as a tag beside the plain sentence — never as the sentence itself.
 
+  **Meaning first, token in parentheses after.** State in plain words what the thing is or what it
+  requires, then give its token in parentheses: «требование про хранилище данных аккаунта
+  (`ACC-REQ-5`)», «запись в журнале решений про отправку радаров (`MU-DL-5`)», «подтверждение спек
+  оператором (`Approval #1`)». The sentence must stay fully understandable to a developer who has
+  never opened the spec or the directives when every parenthesis is deleted. This covers requirement,
+  decision, task and halt IDs, axiom and contract names, review-dimension labels, and the agent's own
+  numbering: name a review dimension by what is wrong («новое поведение не следует ни из одного
+  требования (`Parsimony`)»), and restate an earlier finding in a few words instead of pointing at
+  its number («п. 3»).
+
+  - BAD: «Для нового поведения нет требования (Boundary, Parsimony). MU-DL-5 переписан. Радары (п. 3):
+    убрал утверждение.»
+  - GOOD: «Модалка способа оплаты не следует ни из одного требования скоупа — нужно новое требование
+    (`Parsimony`). Переписал запись в журнале решений про то, какой вариант шлётся в радары
+    (`MU-DL-5`).»
+
   Test before sending: read it as a busy mid-level developer. Stumbled on a word, or it sounds
   like a blog showing off? Rewrite plainer. Would you say it aloud to a colleague at the next desk?
 
